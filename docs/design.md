@@ -415,12 +415,30 @@ connectors cover where the data already lives:
   Instant Client ODBC driver. Three Oracle behaviours meet the load rules in
   [What "never wrong" means](#what-never-wrong-means):
   - `NUMBER` without a declared precision is a floating decimal of up to 38
-    digits. Such a column must declare its Arrow type, and its values are
-    fetched as text and parsed exactly, never through f64.
+    digits, but Oracle's ODBC driver reports it as a double and converts it
+    through one even when asked for text. Such a column must be selected as
+    `TO_CHAR(col, 'TM9', 'NLS_NUMERIC_CHARACTERS=''.,''')` and declare its Arrow
+    type, so the text made by the database is parsed exactly, never through f64.
   - `DATE` carries a time of day but no zone, so it follows the rule for
     zoneless timestamps. `TIMESTAMP WITH TIME ZONE` is an instant.
   - Oracle stores an empty string as NULL, so text columns from Oracle can't
     distinguish the two.
+- Database connections and queries are configuration. A connection string may
+  name environment variables as `${NAME}`, so passwords stay out of files, and
+  dataset parameters bind to the query's `?` markers in a declared order. A
+  column fetched as text to stay exact, a zoneless time's zone and choice in the
+  repeated hour, a time kept as wall-clock, and a JSON column's fields are all
+  declared per dataset. Digits below the microsecond refuse the load rather than
+  being cut. Every column a setting names must be in the query's result, so a
+  misspelt name fails instead of falling back to defaults. On Oracle, a column
+  the driver reports as a double refuses the load unless it is listed as a real
+  `BINARY_DOUBLE` or declared as a float, and the refusal names the `TO_CHAR`
+  form to select instead. An environment value is quoted for its setting: braced in an ODBC
+  string, percent-encoded in a MongoDB URI; `env:NAME` takes a whole setting from
+  the environment. The ODBC and MongoDB connectors are features of `parallax-sources`
+  and the server, because they need unixODBC and the database drivers
+  installed. CI runs them against SQL Server, Oracle Database and MongoDB in
+  service containers.
 - **JSON columns and MongoDB documents** go through one shared converter that
   maps declared paths to declared Arrow types.
   - Numbers are parsed from text straight into the declared type, and decimals
@@ -431,7 +449,10 @@ connectors cover where the data already lives:
     [Deferred work](future.md).
   - Wall-clock text without an offset follows the zoneless-timestamp rule in
     the column's zone.
-  - MongoDB uses the official `mongodb` driver.
+  - MongoDB uses the official `mongodb` driver. `Decimal128` values keep every
+    digit, dates become instants, and object ids become their hex text. The
+    filter is extended JSON with `{name}` placeholders, filled as JSON strings
+    so that a parameter cannot change the filter's shape.
 - **Parquet** goes through the `parquet` crate, behind a local SSD cache keyed
   by path, size and modification time, so the slow NFS share is read only once.
   Older copies of a file are removed when a newer one is cached. Dataset
