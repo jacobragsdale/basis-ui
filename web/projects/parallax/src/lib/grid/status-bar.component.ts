@@ -4,7 +4,7 @@
  * and a failed refresh. Stale data is wrong data, so the age is always visible.
  */
 
-import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, input, output, signal } from "@angular/core";
+import { ChangeDetectionStrategy, Component, DestroyRef, ViewEncapsulation, computed, inject, input, output, signal } from "@angular/core";
 
 import type { TableStatus } from "../proto/parallax_pb";
 import type { ViewPlacement } from "./grid-source";
@@ -49,9 +49,78 @@ interface Badge {
   readonly title: string;
 }
 
+/** The status bar's look, shared by every host: grids, pivots and charts. */
+const STATUS_STYLES = `
+  px-status-bar {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 24px;
+    padding: 0 8px;
+    border-top: 1px solid var(--px-grid-line);
+    background: var(--px-status-bg);
+    color: var(--px-status-fg);
+    font-size: 12px;
+    white-space: nowrap;
+  }
+  px-status-bar .px-status-message {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  px-status-bar .px-badge {
+    padding: 1px 6px;
+    border-radius: 8px;
+    color: #fff;
+  }
+  px-status-bar .px-badge-warning {
+    background: var(--px-warning);
+  }
+  px-status-bar .px-badge-danger {
+    background: var(--px-danger);
+  }
+  px-status-bar .px-status-info {
+    width: 18px;
+    height: 18px;
+    padding: 0;
+    border: 1px solid currentColor;
+    border-radius: 50%;
+    background: transparent;
+    color: inherit;
+    font: italic 600 11px serif;
+    cursor: pointer;
+  }
+  px-status-bar .px-info {
+    position: absolute;
+    right: 8px;
+    bottom: 28px;
+    z-index: 3;
+    display: grid;
+    grid-template-columns: auto auto;
+    gap: 4px 12px;
+    margin: 0;
+    padding: 10px 12px;
+    border: 1px solid var(--px-grid-line);
+    border-radius: 4px;
+    background: var(--px-grid-bg);
+    color: var(--px-grid-fg);
+    white-space: normal;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  }
+  px-status-bar .px-info dt {
+    color: var(--px-muted-fg);
+  }
+  px-status-bar .px-info dd {
+    margin: 0;
+  }`;
+
 @Component({
   selector: "px-status-bar",
   changeDetection: ChangeDetectionStrategy.OnPush,
+  // Global, so the selectors read as written and hosts can override them.
+  encapsulation: ViewEncapsulation.None,
+  styles: STATUS_STYLES,
   template: `
     <span class="px-status-dataset">{{ dataset() }}</span>
     <span class="px-status-rows">{{ rows() }}</span>
@@ -62,8 +131,10 @@ interface Badge {
       <span [class]="b.classes" [attr.role]="b.role" [title]="b.title">{{ b.text }}</span>
     }
     <span class="px-status-message" role="status">{{ message() }}</span>
-    <button type="button" class="px-status-export" (click)="exported.emit('xlsx')">Export to Excel</button>
-    <button type="button" class="px-status-export" (click)="exported.emit('csv')">CSV</button>
+    @if (exports()) {
+      <button type="button" class="px-status-export" (click)="exported.emit('xlsx')">Export to Excel</button>
+      <button type="button" class="px-status-export" (click)="exported.emit('csv')">CSV</button>
+    }
     <button type="button" class="px-status-info" [attr.aria-expanded]="open()" aria-label="About this data" (click)="open.set(!open())">i</button>
     @if (open()) {
       <dl class="px-info" role="dialog" aria-label="About this data">
@@ -82,6 +153,10 @@ export class StatusBarComponent {
   public readonly parameters = input<Readonly<Record<string, string>>>({});
   /** Rows in the view. */
   public readonly viewRows = input<number | null>(null);
+  /** Said in place of the row count, such as a chart's points; null shows the rows. */
+  public readonly summary = input<string | null>(null);
+  /** Whether the export buttons show. */
+  public readonly exports = input(true);
   /** When the source was read, in microseconds since the epoch. */
   public readonly sourceAsOf = input<bigint | null>(null);
   /** The table's status from the engine. */
@@ -97,6 +172,10 @@ export class StatusBarComponent {
   private readonly now = signal(Date.now());
 
   protected readonly rows = computed(() => {
+    const summary = this.summary();
+    if (summary !== null) {
+      return summary;
+    }
     const rows = this.viewRows();
     return rows === null ? "loading…" : `${GROUPED.format(rows)} rows`;
   });
