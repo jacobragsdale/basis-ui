@@ -89,10 +89,22 @@ export interface ChartFrameData {
   readonly content: ChartContent;
   /** The indicators' lines, each for one series. */
   readonly indicators: readonly IndicatorLineData[];
+  /** The rows the layout's events column marks in the range shown, at most 500, and how many there are in all. */
+  readonly events: readonly ChartEventData[];
+  readonly eventsTotal: number;
   /** Where each x value the layout's drawings are anchored to sits on the axis, by the value's canonical JSON; NaN where the axis cannot place it. */
   readonly anchors: ReadonlyMap<string, number>;
   /** When the chart window this frame answers was asked for, by `performance.now()`. */
   readonly requestedAtMs?: number;
+}
+
+/** A row an events column marks: where, when, and what happened. */
+export interface ChartEventData {
+  readonly x: number;
+  readonly xText: string;
+  readonly text: string;
+  /** The series column's value as text, or "" without a series column. */
+  readonly series: string;
 }
 
 /** One line of an indicator, for one series: points in order, with NaN y values at breaks. */
@@ -315,6 +327,8 @@ export function decodeChartFrame(frame: ChartFrame): ChartFrameData {
     ticks: frame.ticks.map((t) => ({ x: t.x, label: t.label })),
     content: decodeContent(frame, new Columns(decoded)),
     indicators: decodeIndicators(frame),
+    events: frame.events.map((e) => ({ x: e.x, xText: e.xText, text: e.text, series: e.series })),
+    eventsTotal: frame.eventsTotal,
     anchors: new Map(
       frame.anchors.flatMap((a): [string, number][] => {
         const key = canonicalJson(a.xJson);

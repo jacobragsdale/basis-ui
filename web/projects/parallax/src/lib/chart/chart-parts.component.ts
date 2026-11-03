@@ -4,7 +4,8 @@ import { ChangeDetectionStrategy, Component, ViewEncapsulation, afterNextRender,
 import type { ElementRef } from "@angular/core";
 
 import { MAX_NOTE } from "../layout";
-import type { DrawingTool, Point } from "./drawings";
+import type { MeasureView } from "./drawing-editor";
+import type { Point, Tool } from "./drawings";
 import type { TipRow } from "./interaction";
 import type { LegendEntry } from "./model";
 
@@ -65,12 +66,13 @@ export class ChartTipComponent {
 }
 
 /** The drawing tools, as their buttons name them. */
-const TOOLS: readonly { readonly tool: DrawingTool; readonly label: string }[] = [
+const TOOLS: readonly { readonly tool: Tool; readonly label: string }[] = [
   { tool: "trend", label: "Trend line" },
   { tool: "horizontal", label: "Horizontal line" },
   { tool: "fibonacci", label: "Fibonacci" },
   { tool: "rectangle", label: "Rectangle" },
-  { tool: "note", label: "Note" }
+  { tool: "note", label: "Note" },
+  { tool: "measure", label: "Measure" }
 ];
 
 /** The drawing tools: a button per kind of drawing, pressed while it is the one in hand, and one to delete the selected drawing. */
@@ -87,9 +89,9 @@ const TOOLS: readonly { readonly tool: DrawingTool; readonly label: string }[] =
   `
 })
 export class ChartToolsComponent {
-  public readonly tool = input.required<DrawingTool | null>();
+  public readonly tool = input.required<Tool | null>();
   public readonly selected = input.required<boolean>();
-  public readonly picked = output<DrawingTool | null>();
+  public readonly picked = output<Tool | null>();
   public readonly removed = output();
   protected readonly tools = TOOLS;
 }
@@ -165,9 +167,32 @@ export class ChartNoteComponent {
 export class ChartHeadComponent {
   public readonly entries = input.required<readonly LegendEntry[]>();
   public readonly drawable = input.required<boolean>();
-  public readonly tool = input.required<DrawingTool | null>();
+  public readonly tool = input.required<Tool | null>();
   public readonly selected = input.required<boolean>();
   public readonly toggled = output<string>();
-  public readonly picked = output<DrawingTool | null>();
+  public readonly picked = output<Tool | null>();
   public readonly removed = output();
+}
+
+/** A measurement: the band dragged, and a card of what the engine said changed across it. */
+@Component({
+  selector: "px-chart-measure",
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  encapsulation: ViewEncapsulation.None,
+  template: `
+    <div class="px-chart-measure-band" [style.left.px]="view().band.x" [style.top.px]="view().band.y" [style.width.px]="view().band.w" [style.height.px]="view().band.h"></div>
+    @if (view().lines.length > 0) {
+      <div class="px-chart-tip px-chart-measure" role="status" [style.left.px]="view().card.x" [style.top.px]="view().card.y">
+        @for (line of view().lines; track $index) {
+          <div class="px-tip-row">
+            <strong>{{ line.value }}</strong
+            ><span>{{ line.label }}</span>
+          </div>
+        }
+      </div>
+    }
+  `
+})
+export class ChartMeasureComponent {
+  public readonly view = input.required<MeasureView>();
 }

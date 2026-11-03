@@ -1,12 +1,14 @@
 import { signal } from "@angular/core";
+
+import type { Measurement } from "../connection";
 import { describe, expect, it } from "vitest";
 
-import type { CandleData, ChartFrameData } from "../chart-frame";
+import type { CandleData, ChartFrameData, SeriesData } from "../chart-frame";
 import { parseLayout } from "../layout";
 import type { LayoutChart, LayoutDrawing } from "../layout";
 import { CHART_COLORS } from "../theme";
-import { DrawingEditor } from "./drawing-editor";
-import { anchorPosition, drawingAt, drawingFrom, handleAt, moved, shapesOf, snap } from "./drawings";
+import { DrawingEditor, measureView } from "./drawing-editor";
+import { anchorPosition, drawingAt, drawingFrom, handleAt, moved, seriesAt, shapesOf, snap } from "./drawings";
 import type { Shape } from "./drawings";
 import { chartModel } from "./model";
 import type { ChartModel } from "./model";
@@ -54,7 +56,9 @@ function frame(anchors: ReadonlyMap<string, number> = new Map()): ChartFrameData
     ticks: [],
     content: { kind: "candles", candles: CANDLES },
     indicators: [],
-    anchors
+    anchors,
+    events: [],
+    eventsTotal: 0
   };
 }
 
@@ -168,16 +172,20 @@ describe("drawings placed on the chart", () => {
 });
 
 describe("the drawing editor", () => {
+  const MEASURED: Measurement = { fromX: "day 2", toX: "day 6", fromPosition: 2, toPosition: 6, fromValue: "102.50", toValue: "106.50", change: "4.00", percent: "3.90%", rows: 4 };
+
   function editor(start: readonly LayoutDrawing[] = []): {
     readonly edit: DrawingEditor;
     readonly saved: LayoutDrawing[][];
     readonly m: ChartModel;
     readonly drawings: ReturnType<typeof signal<readonly LayoutDrawing[]>>;
+    readonly asked: (readonly [number, number])[];
   } {
     const f = frame();
     const m = model(chart(), f);
     const drawings = signal<readonly LayoutDrawing[]>(start);
     const saved: LayoutDrawing[][] = [];
+    const asked: (readonly [number, number])[] = [];
     const edit = new DrawingEditor({
       model: signal(m),
       frame: signal(f),
@@ -187,9 +195,13 @@ describe("the drawing editor", () => {
         drawings.set(d);
       },
       measure,
-      hidden: signal([])
+      hidden: signal([]),
+      measureChart: (from, to) => {
+        asked.push([from, to]);
+        return Promise.resolve(MEASURED);
+      }
     });
-    return { edit, saved, m, drawings };
+    return { edit, saved, m, drawings, asked };
   }
   const point = (m: ChartModel, day: number, price: number): { x: number; y: number } => ({ x: m.x?.map(day) ?? 0, y: m.yAxes[0]?.scale.map(price) ?? 0 });
 
@@ -276,11 +288,64 @@ describe("the drawing editor", () => {
     expect(saved).toEqual([]);
   });
 
+  it("measures across a band dragged: asks the engine at the snapped places and shows its answer", async () => {
+    const { edit, saved, m, asked } = editor();
+    edit.pick("measure");
+    edit.down(point(m, 2, 102));
+    edit.move(point(m, 6, 106));
+    expect(edit.measuring()?.state).toBe("dragging");
+    edit.up();
+    expect(edit.measuring()?.state).toBe("asking");
+    await Promise.resolve();
+    expect(edit.measuring()).toMatchObject({ state: "measured", measurement: MEASURED, series: "" });
+    expect(asked).toEqual([[2, 6]]);
+    // Drawn on another scale, as after a zoom, the band is where its days are now, and its card inside the plot.
+    const measuring = edit.measuring();
+    if (measuring === null) {
+      throw new Error("no measurement");
+    }
+    const zoomed = chartModel({ chart: chart(), width: 500, height: 300, colors: CHART_COLORS.light, muted: "#999999", measure, frame: { ...frame(), xFrom: 4, xTo: 8 }, categories: null });
+    const view = measureView(measuring, zoomed);
+    expect(view?.band.x).toBeCloseTo(zoomed.x?.map(2) ?? Number.NaN);
+    expect(view?.lines.map((l) => l.value)).toEqual(["4.00 (3.90%)", "4", "102.50 → 106.50", "day 2 → day 6"]);
+    expect((view?.card.x ?? 0) + 220).toBeLessThanOrEqual(zoomed.plot.x + zoomed.plot.w);
+    // A measurement is not a drawing, and a press puts it away.
+    expect(saved).toEqual([]);
+    edit.down(point(m, 8, 108));
+    expect(edit.measuring()).toBeNull();
+  });
+
   it("puts the tool down and drops the selection on Escape", () => {
     const { edit } = editor([{ kind: "horizontal", y: 104 }]);
     edit.pick("fibonacci");
     expect(edit.cancel()).toBe(true);
     expect(edit.tool()).toBeNull();
     expect(edit.cancel()).toBe(false);
+  });
+});
+
+describe("the series a measurement measures", () => {
+  it("is the shown series whose line is nearest the press", () => {
+    const series = (label: string, base: number): SeriesData => ({
+      label,
+      column: "close",
+      right: false,
+      x: Float64Array.from(DAYS),
+      y: Float64Array.from(DAYS.map((d) => base + d)),
+      xText: DAYS.map(String),
+      yText: DAYS.map(String),
+      xJson: DAYS.map(String)
+    });
+    const layout = parseLayout({ chart: { kind: "line", x: "date", y: ["close"], series: "ticker" } }).chart;
+    if (layout === null) {
+      throw new Error("no chart");
+    }
+    const f: ChartFrameData = { ...frame(), content: { kind: "series", series: [series("close AAPL", 100), series("close MSFT", 200)] } };
+    const m = model(layout, f);
+    const near = (price: number): { x: number; y: number } => ({ x: m.x?.map(4) ?? 0, y: m.yAxes[0]?.scale.map(price) ?? 0 });
+    expect(seriesAt(f, m, near(195), [])).toEqual({ label: "close MSFT", key: "MSFT" });
+    expect(seriesAt(f, m, near(105), [])).toEqual({ label: "close AAPL", key: "AAPL" });
+    // A hidden series is never measured.
+    expect(seriesAt(f, m, near(195), ["close MSFT"])).toEqual({ label: "close AAPL", key: "AAPL" });
   });
 });
