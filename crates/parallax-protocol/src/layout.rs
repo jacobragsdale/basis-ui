@@ -14,6 +14,7 @@ use parallax_engine::aggregate::{Aggregate, Measure, ShowAs};
 use parallax_engine::chart::{ChartConfig, ChartKind, OhlcColumns, XAxis};
 use parallax_engine::filter::{Filter, FilterOp};
 use parallax_engine::format::{Abbreviation, Format, Negative, TimePrecision, exact_decimal};
+use parallax_engine::indicator::Indicator;
 use parallax_engine::view::{Comparison, GroupOrder, GroupSort, Having, Sort, TopN, ViewConfig};
 use parallax_engine::{ColumnType, Scalar, Table};
 use schemars::JsonSchema;
@@ -170,6 +171,137 @@ pub struct LayoutRange {
     pub to: f64,
 }
 
+const fn period_20() -> u32 {
+    20
+}
+const fn period_14() -> u32 {
+    14
+}
+const fn deviations_2() -> f64 {
+    2.0
+}
+const fn fast_12() -> u32 {
+    12
+}
+const fn slow_26() -> u32 {
+    26
+}
+const fn signal_9() -> u32 {
+    9
+}
+const fn smooth_3() -> u32 {
+    3
+}
+
+/// A technical-analysis indicator, in a layout, with TA-Lib's usual defaults.
+/// Averages, bands and VWAP are drawn over the price; the others in panes of
+/// their own.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
+pub enum LayoutIndicator {
+    /// The simple moving average of the price.
+    Sma {
+        /// Rows averaged.
+        #[serde(default = "period_20")]
+        #[schemars(range(min = 1, max = 100_000))]
+        period: u32,
+    },
+    /// The exponential moving average of the price.
+    Ema {
+        /// Rows in the smoothing.
+        #[serde(default = "period_20")]
+        #[schemars(range(min = 1, max = 100_000))]
+        period: u32,
+    },
+    /// The weighted moving average of the price.
+    Wma {
+        /// Rows averaged.
+        #[serde(default = "period_20")]
+        #[schemars(range(min = 1, max = 100_000))]
+        period: u32,
+    },
+    /// Bollinger Bands around the price's simple average.
+    Bollinger {
+        /// Rows averaged.
+        #[serde(default = "period_20")]
+        #[schemars(range(min = 1, max = 100_000))]
+        period: u32,
+        /// Standard deviations above and below.
+        #[serde(default = "deviations_2")]
+        #[schemars(extend("exclusiveMinimum" = 0))]
+        deviations: f64,
+    },
+    /// The relative strength index of the price.
+    Rsi {
+        /// Rows in Wilder's smoothing.
+        #[serde(default = "period_14")]
+        #[schemars(range(min = 1, max = 100_000))]
+        period: u32,
+    },
+    /// MACD of the price.
+    Macd {
+        /// Rows of the fast average.
+        #[serde(default = "fast_12")]
+        #[schemars(range(min = 1, max = 100_000))]
+        fast: u32,
+        /// Rows of the slow average.
+        #[serde(default = "slow_26")]
+        #[schemars(range(min = 1, max = 100_000))]
+        slow: u32,
+        /// Rows of the signal line's average.
+        #[serde(default = "signal_9")]
+        #[schemars(range(min = 1, max = 100_000))]
+        signal: u32,
+    },
+    /// The average true range.
+    Atr {
+        /// Rows in Wilder's smoothing.
+        #[serde(default = "period_14")]
+        #[schemars(range(min = 1, max = 100_000))]
+        period: u32,
+    },
+    /// The slow stochastic oscillator.
+    Stochastic {
+        /// Rows whose range the close is placed in.
+        #[serde(default = "period_14")]
+        #[schemars(range(min = 1, max = 100_000))]
+        k: u32,
+        /// Rows %K is averaged over.
+        #[serde(default = "smooth_3")]
+        #[schemars(range(min = 1, max = 100_000))]
+        k_smooth: u32,
+        /// Rows %D averages %K over.
+        #[serde(default = "smooth_3")]
+        #[schemars(range(min = 1, max = 100_000))]
+        d: u32,
+    },
+    // Empty struct variants rather than unit ones: serde applies
+    // `deny_unknown_fields` only to struct variants of an internally tagged enum.
+    /// The volume-weighted average price.
+    Vwap {},
+    /// Volume, summed per candle.
+    Volume {},
+}
+
+impl LayoutIndicator {
+    /// The engine's indicator.
+    #[must_use]
+    pub fn to_engine(self) -> Indicator {
+        match self {
+            Self::Sma { period } => Indicator::Sma { period },
+            Self::Ema { period } => Indicator::Ema { period },
+            Self::Wma { period } => Indicator::Wma { period },
+            Self::Bollinger { period, deviations } => Indicator::Bollinger { period, deviations },
+            Self::Rsi { period } => Indicator::Rsi { period },
+            Self::Macd { fast, slow, signal } => Indicator::Macd { fast, slow, signal },
+            Self::Atr { period } => Indicator::Atr { period },
+            Self::Stochastic { k, k_smooth, d } => Indicator::Stochastic { k, k_smooth, d },
+            Self::Vwap {} => Indicator::Vwap,
+            Self::Volume {} => Indicator::Volume,
+        }
+    }
+}
+
 /// A chart, in a layout. Bar charts and heatmaps draw the layout's grouped view;
 /// the other kinds are reduced by the engine to the plot's pixels.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
@@ -210,6 +342,13 @@ pub struct LayoutChart {
     /// Series hidden from the plot, by their legend labels.
     #[serde(default)]
     pub hidden: Vec<String>,
+    /// Technical-analysis indicators, computed over every row before the chart
+    /// is reduced.
+    #[serde(default)]
+    pub indicators: Vec<LayoutIndicator>,
+    /// The volume column, which a VWAP and volume read.
+    #[serde(default)]
+    pub volume: Option<String>,
 }
 
 impl LayoutChart {
@@ -233,8 +372,8 @@ impl LayoutChart {
                 XAxisName::Value => XAxis::Value,
                 XAxisName::Trading => XAxis::Trading,
             },
-            indicators: Vec::new(),
-            volume: None,
+            indicators: self.indicators.iter().map(|i| i.to_engine()).collect(),
+            volume: self.volume.clone(),
         })
     }
 }
@@ -1164,6 +1303,43 @@ mod tests {
     }
 
     #[test]
+    fn indicators_take_defaults_and_refuse_unknown_fields() {
+        let chart = |indicators: &str| {
+            Layout::from_json(&format!(
+                r#"{{"chart": {{"kind": "candlestick", "x": "date", "indicators": {indicators}}}}}"#
+            ))
+        };
+        let layout =
+            chart(r#"[{"kind": "macd"}, {"kind": "vwap"}, {"kind": "stochastic", "k": 9}]"#)
+                .unwrap();
+        assert_eq!(
+            layout.chart.unwrap().indicators,
+            vec![
+                LayoutIndicator::Macd {
+                    fast: 12,
+                    slow: 26,
+                    signal: 9
+                },
+                LayoutIndicator::Vwap {},
+                LayoutIndicator::Stochastic {
+                    k: 9,
+                    k_smooth: 3,
+                    d: 3
+                },
+            ]
+        );
+        // Unknown fields are errors in every variant, the fieldless ones too.
+        for wrong in [
+            r#"[{"kind": "vwap", "period": 5}]"#,
+            r#"[{"kind": "volume", "column": "vol"}]"#,
+            r#"[{"kind": "sma", "length": 5}]"#,
+            r#"[{"kind": "vortex"}]"#,
+        ] {
+            assert!(chart(wrong).is_err(), "{wrong}");
+        }
+    }
+
+    #[test]
     fn formats_round_trip_through_the_engine() {
         let mut formats = Vec::new();
         for decimals in [None, Some(0), Some(30)] {
@@ -1247,7 +1423,12 @@ mod tests {
             "dataset": "prices",
             "filters": [{"column": "ticker", "op": "eq", "value": "AAPL"}],
             "chart": {"kind": "candlestick", "x": "date",
-                      "ohlc": {"open": "open", "high": "high", "low": "low", "close": "close"}}
+                      "ohlc": {"open": "open", "high": "high", "low": "low", "close": "close"},
+                      "volume": "volume",
+                      "indicators": [{"kind": "sma"}, {"kind": "bollinger", "period": 10, "deviations": 1.5},
+                                     {"kind": "rsi"}, {"kind": "macd", "fast": 5, "slow": 35, "signal": 5},
+                                     {"kind": "atr"}, {"kind": "stochastic", "k": 9}, {"kind": "vwap"},
+                                     {"kind": "volume"}, {"kind": "ema", "period": 50}, {"kind": "wma"}]}
         }"#;
         [
             Layout::default(),
