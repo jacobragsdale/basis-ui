@@ -159,6 +159,9 @@ pub struct Candle {
 /// A calendar bucket and where it spans on the axis.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Bucket {
+    /// The bucket's start as an x value: days since the epoch for dates,
+    /// microseconds for instants.
+    pub start: i64,
     /// The axis position of the bucket's start.
     pub from: f64,
     /// The axis position of the next bucket's start.
@@ -298,6 +301,13 @@ impl Placement {
     }
 }
 
+/// A numeric column's value at `slot` as a double, a decimal correctly rounded,
+/// or `None` for a null, a NaN or a column that is not numeric.
+#[must_use]
+pub fn number(column: &Column, slot: usize) -> Option<f64> {
+    y_value(column, slot)
+}
+
 /// The y value of a slot as a double, or `None` for a null or NaN.
 fn y_value(column: &Column, slot: usize) -> Option<f64> {
     let scale = match column.column_type() {
@@ -429,6 +439,11 @@ impl ChartView {
                 column: config.x.clone(),
                 data_type: table.column(x).column_type().to_arrow().to_string(),
             });
+        }
+        if candles && !config.y.is_empty() {
+            return Err(ConfigError::Chart(
+                "a candlestick or OHLC chart draws its prices only; plot other columns in a chart of their own".into(),
+            ));
         }
         if candles && config.series.is_some() {
             return Err(ConfigError::Chart(
@@ -706,6 +721,7 @@ impl ChartView {
                     candles.push((span, candle));
                 }
                 let span = Bucket {
+                    start: bucket,
                     from: self.bucket_position(bucket, interval, instants, &zone, false),
                     to: self.bucket_position(bucket, interval, instants, &zone, true),
                 };
