@@ -29,6 +29,8 @@ export interface SeriesData {
   readonly y: Float64Array;
   readonly xText: readonly (string | null)[];
   readonly yText: readonly (string | null)[];
+  /** Each point's x value as exact JSON, for filters that select a range. */
+  readonly xJson: readonly (string | null)[];
 }
 
 /** One series of a histogram: a count per bin. */
@@ -55,6 +57,9 @@ export interface CandleData {
   readonly highText: readonly (string | null)[];
   readonly lowText: readonly (string | null)[];
   readonly closeText: readonly (string | null)[];
+  /** Each bucket's start, and the next bucket's start, as exact JSON. */
+  readonly xJson: readonly (string | null)[];
+  readonly endJson: readonly (string | null)[];
 }
 
 /** What a chart frame holds. */
@@ -74,6 +79,9 @@ export interface ChartFrameData {
   /** The x range shown, in axis positions. */
   readonly xFrom: number;
   readonly xTo: number;
+  /** The data's whole x range, in axis positions, which zooming and panning stay within. */
+  readonly extentFrom: number;
+  readonly extentTo: number;
   readonly ticks: readonly ChartTickData[];
   readonly content: ChartContent;
   /** When the chart window this frame answers was asked for, by `performance.now()`. */
@@ -169,13 +177,22 @@ function runs(ids: Uint32Array, count: number): readonly (readonly [number, numb
 function decodeContent(frame: ChartFrame, columns: Columns): ChartContent {
   if (columns.has("y")) {
     const ids = columns.counts32("series");
-    const [x, y, xText, yText] = [columns.floats("x"), columns.floats("y"), columns.texts("x_text"), columns.texts("y_text")];
+    const [x, y, xText, yText, xJson] = [columns.floats("x"), columns.floats("y"), columns.texts("x_text"), columns.texts("y_text"), columns.texts("x_json")];
     const spans = runs(ids, frame.series.length);
     return {
       kind: "series",
       series: frame.series.map((s, i) => {
         const [from, to] = spans[i] ?? [0, 0];
-        return { label: s.label, column: s.column, right: s.right, x: x.subarray(from, to), y: y.subarray(from, to), xText: xText.slice(from, to), yText: yText.slice(from, to) };
+        return {
+          label: s.label,
+          column: s.column,
+          right: s.right,
+          x: x.subarray(from, to),
+          y: y.subarray(from, to),
+          xText: xText.slice(from, to),
+          yText: yText.slice(from, to),
+          xJson: xJson.slice(from, to)
+        };
       })
     };
   }
@@ -194,7 +211,9 @@ function decodeContent(frame: ChartFrame, columns: Columns): ChartContent {
         openText: columns.texts("open_text"),
         highText: columns.texts("high_text"),
         lowText: columns.texts("low_text"),
-        closeText: columns.texts("close_text")
+        closeText: columns.texts("close_text"),
+        xJson: columns.texts("x_json"),
+        endJson: columns.texts("end_json")
       }
     };
   }
@@ -217,14 +236,21 @@ function decodeContent(frame: ChartFrame, columns: Columns): ChartContent {
   return { kind: "density", columns: frame.columns, rows: frame.rows, yFrom: frame.yFrom, yTo: frame.yTo, counts };
 }
 
+function isRange(from: number, to: number): boolean {
+  return Number.isFinite(from) && Number.isFinite(to) && to >= from;
+}
+
 /** Decodes and checks a chart frame. */
 export function decodeChartFrame(frame: ChartFrame): ChartFrameData {
   const decoded = tableFromIPC(frame.batch);
   if (!(decoded instanceof Table)) {
     throw new FrameError("a chart frame's batch must decode synchronously");
   }
-  if (!Number.isFinite(frame.xFrom) || !Number.isFinite(frame.xTo) || frame.xTo < frame.xFrom) {
+  if (!isRange(frame.xFrom, frame.xTo)) {
     throw new FrameError("a chart frame's x range is not a range");
+  }
+  if (!isRange(frame.extentFrom, frame.extentTo)) {
+    throw new FrameError("a chart frame's x extent is not a range");
   }
   return {
     viewId: frame.viewId,
@@ -234,6 +260,8 @@ export function decodeChartFrame(frame: ChartFrame): ChartFrameData {
     pushed: frame.pushed,
     xFrom: frame.xFrom,
     xTo: frame.xTo,
+    extentFrom: frame.extentFrom,
+    extentTo: frame.extentTo,
     ticks: frame.ticks.map((t) => ({ x: t.x, label: t.label })),
     content: decodeContent(frame, new Columns(decoded))
   };
