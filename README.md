@@ -43,6 +43,18 @@ trades take a few seconds. `pnpm e2e`, run from `web`, tests the demo in
 Chromium with the GPU off, starting the release server built in step 2 if it is
 not already running.
 
+`pnpm screenshots`, also run from `web`, compares every chart in the demo, in
+both themes, pixel for pixel with the screenshots in `web/e2e/screenshots`.
+Text renders differently from one machine to the next, so it runs Playwright in
+the Docker image `mcr.microsoft.com/playwright` of the installed
+`@playwright/test` version, against a reference server it starts on this
+machine; `pnpm e2e:image` runs every end-to-end spec that way, as CI does. Both
+need Docker, build the wasm worker, the demo and the server first, and refuse
+to run while another server answers on port 8791, which could be serving an
+older build. After an intended change to how charts look, run
+`pnpm screenshots --update-snapshots`, look at the new screenshots, and commit
+them.
+
 ## Documentation
 
 - [How parallax is designed](docs/design.md) explains the architecture and
