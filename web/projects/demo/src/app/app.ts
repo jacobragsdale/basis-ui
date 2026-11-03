@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, signal } from "@angular/core";
-import { GridComponent } from "parallax";
+import { GridComponent, PivotComponent, decodeLayout, encodeLayout } from "parallax";
 import type { LayoutInput } from "parallax";
 import { z } from "zod";
 
@@ -16,7 +16,7 @@ const PRESETS = {
   sorted: { dataset: "trades", sort: [{ column: "gross_amount_local", descending: true }] }
 } as const satisfies Record<string, LayoutInput>;
 
-const searchSchema = z.strictObject({ preset: z.enum(["pivot", "trades", "sorted"]).default("pivot"), theme: z.enum(["light", "dark"]).default("light") });
+const searchSchema = z.strictObject({ preset: z.enum(["pivot", "trades", "sorted"]).default("pivot"), theme: z.enum(["light", "dark"]).default("light"), layout: z.string().optional() });
 
 type Search = z.infer<typeof searchSchema>;
 
@@ -28,18 +28,26 @@ function readSearch(): Search {
 @Component({
   selector: "demo-root",
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [GridComponent],
+  imports: [GridComponent, PivotComponent],
   template: `
     <header>
       <strong>parallax</strong>
       <span>{{ search.preset }}</span>
+      <button type="button" (click)="share()">Copy link to this view</button>
+      <span role="status">{{ note() }}</span>
       <details>
         <summary>Layout</summary>
         <pre data-testid="layout-json">{{ layoutJson() }}</pre>
       </details>
     </header>
     <main>
-      <px-grid [(layout)]="layout" [theme]="search.theme" />
+      @if (ready()) {
+        @if (grouped()) {
+          <px-pivot [(layout)]="layout" [theme]="search.theme" />
+        } @else {
+          <px-grid [(layout)]="layout" [theme]="search.theme" />
+        }
+      }
     </main>
   `,
   styles: `
@@ -50,6 +58,7 @@ function readSearch(): Search {
     }
     header {
       display: flex;
+      align-items: center;
       gap: 12px;
       padding: 8px 12px;
       font:
@@ -80,4 +89,42 @@ export class App {
   protected readonly search = readSearch();
   protected readonly layout = signal<LayoutInput>(PRESETS[this.search.preset]);
   protected readonly layoutJson = computed(() => JSON.stringify(this.layout(), null, 2));
+  /** A linked layout opens as a pivot if it groups, and as a grid otherwise. */
+  protected readonly grouped = computed(() => {
+    const layout = this.layout();
+    return (layout.group_by?.length ?? 0) > 0 || (layout.split_by?.length ?? 0) > 0 || (layout.measures?.length ?? 0) > 0;
+  });
+  protected readonly note = signal("");
+  /** False while a linked layout is being read, so the preset never opens in its place. */
+  protected readonly ready = signal(this.search.layout === undefined);
+
+  constructor() {
+    const link = this.search.layout;
+    if (link !== undefined) {
+      decodeLayout(link).then(
+        (layout) => {
+          this.layout.set(layout);
+          this.ready.set(true);
+        },
+        (failure: unknown) => {
+          this.note.set(`The link's layout could not be read, so the preset is shown: ${failure instanceof Error ? failure.message : String(failure)}`);
+          this.ready.set(true);
+        }
+      );
+    }
+  }
+
+  protected share(): void {
+    encodeLayout(this.layout()).then(
+      (encoded) => {
+        const url = new URL(location.href);
+        url.searchParams.set("layout", encoded);
+        history.replaceState(null, "", url);
+        this.note.set("The address bar now links to this view.");
+      },
+      (failure: unknown) => {
+        this.note.set(failure instanceof Error ? failure.message : String(failure));
+      }
+    );
+  }
 }

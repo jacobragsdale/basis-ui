@@ -13,8 +13,9 @@ import type { Signal } from "@angular/core";
 import { DataType, Table, tableFromIPC } from "apache-arrow";
 
 import { ParallaxClient } from "../client";
-import type { Viewport, ViewHandle } from "../connection";
+import type { DistinctValues, Viewport, ViewHandle } from "../connection";
 import { pathValue } from "../format";
+import { isNumericType } from "../frame";
 import type { FrameData } from "../frame";
 import type { Layout, LayoutScalar } from "../layout";
 import type { TableStatus } from "../proto/parallax_pb";
@@ -23,10 +24,29 @@ import type { TableStatus } from "../proto/parallax_pb";
 const ROW_MARGIN = 40;
 const COLUMN_MARGIN = 2;
 
+/** The kind of value a column holds. */
+export type FieldKind = "boolean" | "integer" | "float" | "decimal" | "text" | "date" | "timestamp";
+
 /** A column of the dataset, from the schema the engine sends when a view opens. */
 export interface SourceField {
   readonly name: string;
-  readonly numeric: boolean;
+  readonly kind: FieldKind;
+}
+
+function kindOf(type: unknown): FieldKind {
+  if (DataType.isBool(type)) {
+    return "boolean";
+  }
+  if (isNumericType(type)) {
+    return DataType.isInt(type) ? "integer" : DataType.isFloat(type) ? "float" : "decimal";
+  }
+  if (DataType.isDate(type)) {
+    return "date";
+  }
+  if (DataType.isTimestamp(type)) {
+    return "timestamp";
+  }
+  return "text";
 }
 
 /** A group the user expanded or collapsed, as the layout records it. */
@@ -47,6 +67,8 @@ export interface GridSource {
   readonly toggle: (frame: FrameData, local: number) => ExpandedEntry | null;
   /** Fetches a window once, without moving the view, for copying. */
   readonly fetch: (viewport: Viewport) => Promise<FrameData>;
+  /** Lists a column's values under the view's other filters, for filter pick-lists. */
+  readonly distinct: (column: string, search: string, limit: number) => Promise<DistinctValues>;
 }
 
 function covers(outer: Viewport, inner: Viewport, totalRows: number, totalColumns: number): boolean {
@@ -86,7 +108,7 @@ function readFields(schema: Uint8Array): readonly SourceField[] {
   if (!(table instanceof Table)) {
     return [];
   }
-  return table.schema.fields.map((f) => ({ name: f.name, numeric: DataType.isFloat(f.type) || DataType.isInt(f.type) || DataType.isDecimal(f.type) }));
+  return table.schema.fields.map((f) => ({ name: f.name, kind: kindOf(f.type) }));
 }
 
 interface Current {
@@ -237,6 +259,7 @@ export function gridSource(layout: Signal<Layout | null>): GridSource {
       current.sent = withExpanded(current.sent, entry);
       return entry;
     },
-    fetch: (viewport) => (current === null ? Promise.reject(new Error("the view is not open yet")) : current.view.fetch(viewport))
+    fetch: (viewport) => (current === null ? Promise.reject(new Error("the view is not open yet")) : current.view.fetch(viewport)),
+    distinct: (column, search, limit) => (current === null ? Promise.reject(new Error("the view is not open yet")) : current.view.distinctValues(column, search, limit))
   };
 }

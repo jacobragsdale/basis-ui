@@ -529,6 +529,24 @@ on screen is fetched first, up to 1,000,000 cells, without moving the view.
 Hovering over a cell whose text was cut, a `###`, or a flagged cell shows the
 full text or what the flag means.
 
+`<px-pivot>` puts the pivot's settings beside a grid: row and column groups in
+order, values with their aggregate and how they are shown, filters, the levels
+open by default, and top-N. Removing or moving a value renumbers everything that
+referred to it by position: the group sort, aggregate filters, top-N and column
+widths. A filter picks its values from a list of the column's values, which
+the engine computes under the view's other filters, as a spreadsheet's filter
+list does; text columns can search it. "(blank)" can be picked too: an "is one
+of" list may name null, and then matches blanks. A filter stays out of the
+layout until it names a value, because an empty "is one of" would hide every
+row. Double-clicking a value opens the rows behind its cell in a drawer: a flat
+view with the pivot's filters plus one filter per group level and per
+column-pivot level. The drawer closes when the pivot's filters or groups
+change, since its rows would no longer add up to the cells above.
+
+A layout also travels as a link: `encodeLayout` deflates it into a URL
+parameter, and `decodeLayout` checks it against the schema, so an edited link
+fails loudly instead of opening a different view.
+
 Under every grid a status bar names the dataset and the rows shown, and says
 when the source was read and how long ago. It also flags NaN values the load
 turned blank, and a failed refresh with its time. An info button lists the load
