@@ -725,18 +725,7 @@ impl View {
                 sort_flat(table, flat);
             }
             Kind::Grouped(g) => {
-                g.nodes.clear();
-                g.free.clear();
-                g.split_ids.clear();
-                g.split_keys.clear();
-                g.split_rows.clear();
-                g.alloc(Key::Null, 0, NO_PARENT);
-                let source = Source::Table(table);
-                for slot in table.live_slots() {
-                    if passes(slot) {
-                        g.apply_row(source, slot, 1);
-                    }
-                }
+                g.build(table, &passes);
                 g.invalidate();
             }
         }
@@ -1130,6 +1119,259 @@ fn to_f64(value: &MeasureValue, scale: i8) -> Option<f64> {
     }
 }
 
+/// The inputs one row gives each measure.
+fn fill_inputs(measures: &[CompiledMeasure], source: Source<'_>, row: usize, out: &mut Vec<Input>) {
+    let seq = source.seq(row);
+    out.clear();
+    out.extend(
+        measures
+            .iter()
+            .map(|m| {
+                let (key, float, exact) = match m.column {
+                    Some(c) => {
+                        let column = source.column(c);
+                        (source.key(c, row), column.f64(row), column.exact(row))
+                    }
+                    None => (Key::Null, None, None),
+                };
+                let (weight_float, weight_exact) = match m.weight {
+                    Some(w) => {
+                        let column = source.column(w);
+                        (column.f64(row), column.exact(row))
+                    }
+                    None => (None, None),
+                };
+                Input {
+                    key,
+                    float,
+                    exact: if matches!(m.column_type, Some(ColumnType::Float64)) {
+                        None
+                    } else {
+                        exact
+                    },
+                    weight_float: if matches!(m.weight_type, Some(ColumnType::Float64)) {
+                        weight_float
+                    } else {
+                        None
+                    },
+                    weight_exact: if matches!(m.weight_type, Some(ColumnType::Float64)) {
+                        None
+                    } else {
+                        weight_exact
+                    },
+                    unit: m.unit.map(|u| source.key(u, row)),
+                    seq,
+                }
+            })
+            .map(|mut input| {
+                if input.exact.is_some() {
+                    input.float = None;
+                }
+                input
+            }),
+    );
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+/// Rows per task when a grouped view builds in parallel.
+const BUILD_CHUNK: usize = 1 << 16;
+#[cfg(not(target_arch = "wasm32"))]
+/// Hash partitions of the leaf keys; each is aggregated by one task.
+const PARTITIONS: usize = 64;
+#[cfg(not(target_arch = "wasm32"))]
+/// Distinct leaf keys, in a sample of the first rows, up to which every task
+/// aggregates its own rows into its own cells and the tasks' cells are merged.
+/// With few keys that is cheap and keeps every thread busy however unevenly the
+/// rows spread over the keys; with many, partitioning by key builds each cell
+/// once.
+const FEW_LEAVES: usize = 4_096;
+
+/// Maps items to results in parallel where threads exist, keeping their order.
+#[cfg(not(target_arch = "wasm32"))]
+fn map_ordered<T: Send, R: Send>(items: Vec<T>, f: impl Fn(T) -> R + Sync + Send) -> Vec<R> {
+    use rayon::iter::{IntoParallelIterator, ParallelIterator};
+    items.into_par_iter().map(f).collect()
+}
+
+/// The partition of a leaf key. The hash is mixed again so that the partition
+/// does not follow the bits the hash map uses for its buckets.
+#[cfg(not(target_arch = "wasm32"))]
+fn partition(keys: &[Key]) -> usize {
+    const _: () = assert!(PARTITIONS == 1 << 6, "partition keeps 6 bits");
+    use std::hash::{Hash, Hasher};
+    let mut hasher = rustc_hash::FxHasher::default();
+    keys.hash(&mut hasher);
+    (hasher.finish().wrapping_mul(0x9E37_79B9_7F4A_7C15) >> 58) as usize
+}
+
+/// A total order on keys of one column, for grouping equal keys together. It is
+/// not the display order.
+fn arrangement(key: &Key) -> (u8, i128) {
+    match *key {
+        Key::Null => (0, 0),
+        Key::Bool(b) => (1, i128::from(b)),
+        Key::Int(v) | Key::Ts(v) => (2, i128::from(v)),
+        Key::Float(bits) => (3, i128::from(bits)),
+        Key::Decimal(v) => (4, v),
+        Key::Str(code) => (5, i128::from(code)),
+        Key::Date(d) => (6, i128::from(d)),
+    }
+}
+
+type LeafMap = FxHashMap<Box<[Key]>, Cell>;
+
+/// What aggregating rows into leaf cells needs.
+struct Leaves<'a> {
+    measures: &'a [CompiledMeasure],
+    columns: &'a [usize],
+    table: &'a Table,
+    passes: &'a (dyn Fn(usize) -> bool + Sync),
+}
+
+impl Leaves<'_> {
+    fn keys(&self, slot: usize, keys: &mut Vec<Key>) {
+        keys.clear();
+        keys.extend(self.columns.iter().map(|&c| self.table.column(c).key(slot)));
+    }
+
+    /// Adds the rows at `slots` that pass the filters into `cells`.
+    fn aggregate(&self, slots: impl Iterator<Item = usize>, cells: &mut LeafMap) {
+        let source = Source::Table(self.table);
+        let mut keys = Vec::with_capacity(self.columns.len());
+        let mut inputs = Vec::with_capacity(self.measures.len());
+        for slot in slots {
+            if !(self.passes)(slot) {
+                continue;
+            }
+            self.keys(slot, &mut keys);
+            fill_inputs(self.measures, source, slot, &mut inputs);
+            if let Some(cell) = cells.get_mut(keys.as_slice()) {
+                cell.apply(self.measures, &inputs, 1);
+            } else {
+                let mut cell = Cell::new(self.measures, true);
+                cell.apply(self.measures, &inputs, 1);
+                cells.insert(keys.as_slice().into(), cell);
+            }
+        }
+    }
+
+    /// Whether the first rows hold at most [`FEW_LEAVES`] distinct keys.
+    #[cfg(not(target_arch = "wasm32"))]
+    fn few(&self) -> bool {
+        let mut seen = rustc_hash::FxHashSet::default();
+        let mut keys = Vec::with_capacity(self.columns.len());
+        for slot in self.table.live_slots_in(0..BUILD_CHUNK) {
+            if (self.passes)(slot) {
+                self.keys(slot, &mut keys);
+                if seen.insert(keys.clone()) && seen.len() > FEW_LEAVES {
+                    return false;
+                }
+            }
+        }
+        true
+    }
+
+    /// Every task aggregates its own chunks; the cells are merged pairwise.
+    #[cfg(not(target_arch = "wasm32"))]
+    fn merged(&self, chunks: Vec<Range<usize>>) -> LeafMap {
+        use rayon::iter::{IntoParallelIterator, ParallelIterator};
+        chunks
+            .into_par_iter()
+            .map(|range| {
+                let mut cells = LeafMap::default();
+                self.aggregate(self.table.live_slots_in(range), &mut cells);
+                cells
+            })
+            .reduce_with(|mut a, b| {
+                for (keys, cell) in b {
+                    match a.get_mut(&keys) {
+                        Some(into) => into.merge(&cell),
+                        None => {
+                            a.insert(keys, cell);
+                        }
+                    }
+                }
+                a
+            })
+            .unwrap_or_default()
+    }
+
+    /// Rows are sorted into partitions by key, and each partition is aggregated
+    /// by one task, so every cell is built once.
+    #[cfg(not(target_arch = "wasm32"))]
+    fn partitioned(&self, chunks: Vec<Range<usize>>) -> Vec<LeafMap> {
+        let sorted: Vec<Vec<Vec<u32>>> = map_ordered(chunks, |range| {
+            let mut parts = vec![Vec::new(); PARTITIONS];
+            let mut keys = Vec::with_capacity(self.columns.len());
+            for slot in self.table.live_slots_in(range) {
+                if (self.passes)(slot) {
+                    self.keys(slot, &mut keys);
+                    // The caller keeps slots below 2^32.
+                    parts[partition(&keys)].push(slot as u32);
+                }
+            }
+            parts
+        });
+        map_ordered((0..PARTITIONS).collect(), |p| {
+            let mut cells = LeafMap::default();
+            let slots = sorted
+                .iter()
+                .flat_map(|chunk| chunk[p].iter().map(|&s| s as usize));
+            // Every slot here passed the filters already; checking again is cheap.
+            self.aggregate(slots, &mut cells);
+            cells
+        })
+    }
+}
+
+/// One cell for every distinct key over `columns` among the rows `passes`
+/// accepts, with the keys, sorted by [`arrangement`] key by key.
+fn leaf_cells(
+    measures: &[CompiledMeasure],
+    columns: &[usize],
+    table: &Table,
+    passes: &(dyn Fn(usize) -> bool + Sync),
+) -> Vec<(Box<[Key]>, Cell)> {
+    let leaves = Leaves {
+        measures,
+        columns,
+        table,
+        passes,
+    };
+    // WebAssembly runs on one thread, so one pass over the rows does it.
+    #[cfg(target_arch = "wasm32")]
+    let maps = {
+        let mut cells = LeafMap::default();
+        leaves.aggregate(table.live_slots(), &mut cells);
+        vec![cells]
+    };
+    #[cfg(not(target_arch = "wasm32"))]
+    let maps = {
+        let slots = table.num_slots();
+        let chunks: Vec<Range<usize>> = (0..slots)
+            .step_by(BUILD_CHUNK)
+            .map(|start| start..(start + BUILD_CHUNK).min(slots))
+            .collect();
+        if u32::try_from(slots).is_err() || leaves.few() {
+            vec![leaves.merged(chunks)]
+        } else {
+            leaves.partitioned(chunks)
+        }
+    };
+    let mut cells: Vec<(Box<[Key]>, Cell)> = maps.into_iter().flatten().collect();
+    let order = |a: &(Box<[Key]>, Cell), b: &(Box<[Key]>, Cell)| {
+        a.0.iter().map(arrangement).cmp(b.0.iter().map(arrangement))
+    };
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        use rayon::slice::ParallelSliceMut;
+        cells.par_sort_unstable_by(order);
+    }
+    #[cfg(target_arch = "wasm32")]
+    cells.sort_unstable_by(order);
+    cells
+}
+
 impl Grouped {
     fn levels(&self) -> usize {
         self.group_columns.len()
@@ -1171,78 +1413,108 @@ impl Grouped {
         self.lazy_values.get_mut().clear();
     }
 
-    fn fill_inputs(&self, source: Source<'_>, row: usize, out: &mut Vec<Input>) {
-        let seq = source.seq(row);
-        out.clear();
-        out.extend(
-            self.measures
-                .iter()
-                .map(|m| {
-                    let (key, float, exact) = match m.column {
-                        Some(c) => {
-                            let column = source.column(c);
-                            (source.key(c, row), column.f64(row), column.exact(row))
-                        }
-                        None => (Key::Null, None, None),
-                    };
-                    let (weight_float, weight_exact) = match m.weight {
-                        Some(w) => {
-                            let column = source.column(w);
-                            (column.f64(row), column.exact(row))
-                        }
-                        None => (None, None),
-                    };
-                    Input {
-                        key,
-                        float,
-                        exact: if matches!(m.column_type, Some(ColumnType::Float64)) {
-                            None
-                        } else {
-                            exact
-                        },
-                        weight_float: if matches!(m.weight_type, Some(ColumnType::Float64)) {
-                            weight_float
-                        } else {
-                            None
-                        },
-                        weight_exact: if matches!(m.weight_type, Some(ColumnType::Float64)) {
-                            None
-                        } else {
-                            weight_exact
-                        },
-                        unit: m.unit.map(|u| source.key(u, row)),
-                        seq,
-                    }
-                })
-                .map(|mut input| {
-                    if input.exact.is_some() {
-                        input.float = None;
-                    }
-                    input
-                }),
-        );
+    /// The id of a column-pivot key, assigned on first sight.
+    fn split_id(&mut self, keys: &[Key]) -> u32 {
+        if let Some(&id) = self.split_ids.get(keys) {
+            return id;
+        }
+        let id = self.split_keys.len() as u32;
+        let boxed: Box<[Key]> = keys.into();
+        self.split_ids.insert(boxed.clone(), id);
+        self.split_keys.push(boxed);
+        self.split_rows.push(0);
+        id
+    }
+
+    /// The child of `node` with `key`, created if there is none.
+    fn child(&mut self, node: u32, key: Key) -> u32 {
+        if let Some(&child) = self.node(node).children.get(&key) {
+            return child;
+        }
+        let depth = self.node(node).depth + 1;
+        let child = self.alloc(key, depth, node);
+        self.node_mut(node).children.insert(key, child);
+        child
+    }
+
+    /// Builds the tree from the rows of `table` that `passes` accepts.
+    ///
+    /// Rows go into one cell per leaf group and column-pivot key, built in
+    /// parallel over hash partitions of those keys so that each cell has one
+    /// owner. Each node then merges once into its parent, children first. Every
+    /// state merges exactly, so the tree equals the one adding the rows one by
+    /// one, in any order, would give.
+    fn build(&mut self, table: &Table, passes: &(dyn Fn(usize) -> bool + Sync)) {
+        self.nodes.clear();
+        self.free.clear();
+        self.split_ids.clear();
+        self.split_keys.clear();
+        self.split_rows.clear();
+        self.alloc(Key::Null, 0, NO_PARENT);
+        let columns: Vec<usize> = self
+            .group_columns
+            .iter()
+            .chain(&self.split_columns)
+            .copied()
+            .collect();
+        let levels = self.levels();
+        let pivoted = !self.split_columns.is_empty();
+        // Sorted by their keys, leaves sharing a path come together, so only the
+        // levels that change from one leaf to the next need looking up.
+        let mut path: Vec<u32> = vec![0];
+        let mut previous: Option<Box<[Key]>> = None;
+        for (keys, cell) in leaf_cells(&self.measures, &columns, table, passes) {
+            let (group, split) = keys.split_at(levels);
+            let shared = previous.as_ref().map_or(0, |p| {
+                p.iter().zip(group).take_while(|(a, b)| a == b).count()
+            });
+            path.truncate(shared + 1);
+            for &key in &group[path.len() - 1..] {
+                let parent = *path.last().expect("the root");
+                path.push(self.child(parent, key));
+            }
+            let node = *path.last().expect("the root");
+            if pivoted {
+                let s = self.split_id(split);
+                self.split_rows[s as usize] += cell.rows;
+                let leaf = self.node_mut(node);
+                leaf.total.merge(&cell);
+                leaf.split.insert(s, cell);
+            } else {
+                // Without a column pivot, each leaf group has exactly one cell.
+                self.node_mut(node).total = cell;
+            }
+            previous = Some(keys);
+        }
+        // A child is always allocated after its parent, so going down the ids
+        // reaches every child before its parent.
+        let measures = &self.measures;
+        let nodes = &mut self.nodes;
+        for id in (1..nodes.len()).rev() {
+            let (before, from) = nodes.split_at_mut(id);
+            let child = from[0].as_ref().expect("live node");
+            let parent = before[child.parent as usize].as_mut().expect("live node");
+            parent.total.merge(&child.total);
+            for (&s, cell) in &child.split {
+                parent
+                    .split
+                    .entry(s)
+                    .or_insert_with(|| Cell::new(measures, false))
+                    .merge(cell);
+            }
+        }
     }
 
     fn apply_row(&mut self, source: Source<'_>, row: usize, sign: i64) {
         let mut inputs = std::mem::take(&mut self.scratch_inputs);
-        self.fill_inputs(source, row, &mut inputs);
+        fill_inputs(&self.measures, source, row, &mut inputs);
         let split = if self.split_columns.is_empty() {
             None
         } else {
             let mut keys = std::mem::take(&mut self.scratch_keys);
             keys.clear();
             keys.extend(self.split_columns.iter().map(|&c| source.key(c, row)));
-            let id = match self.split_ids.get(keys.as_slice()) {
-                Some(&id) => id,
-                None => {
-                    let id = self.split_keys.len() as u32;
-                    let boxed: Box<[Key]> = keys.as_slice().into();
-                    self.split_ids.insert(boxed.clone(), id);
-                    self.split_keys.push(boxed);
-                    self.split_rows.push(0);
-                    id
-                }
-            };
+            let id = self.split_id(&keys);
             self.scratch_keys = keys;
             self.split_rows[id as usize] += sign;
             Some(id)
@@ -1253,17 +1525,8 @@ impl Grouped {
         let mut node = 0u32;
         path.push(node);
         for level in 0..levels {
-            let key = source.key(self.group_columns[level], row);
-            let child = match self.node(node).children.get(&key) {
-                Some(&c) => c,
-                None => {
-                    let c = self.alloc(key, level as u32 + 1, node);
-                    self.node_mut(node).children.insert(key, c);
-                    c
-                }
-            };
-            path.push(child);
-            node = child;
+            node = self.child(node, source.key(self.group_columns[level], row));
+            path.push(node);
         }
         for &id in &path {
             let leaf = self.node(id).depth as usize == levels;
