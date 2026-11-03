@@ -9,9 +9,22 @@ import { Connection } from "./connection";
 export interface ParallaxConfig {
   /** The server's WebSocket URL, such as `wss://host/ws`. A path such as `/ws` is resolved against the page. */
   readonly url: string;
+  /** Where exports are posted. By default, `/export` on the same server as `url`. */
+  readonly exportUrl?: string;
 }
 
 const CONFIG = new InjectionToken<ParallaxConfig>("parallax config");
+
+/** The export endpoint beside a server's WebSocket endpoint: `wss://host/app/ws` gives `https://host/app/export`. */
+export function exportUrlFor(socketUrl: string): string {
+  const url = new URL(socketUrl);
+  url.protocol = url.protocol === "wss:" ? "https:" : "http:";
+  const base = url.pathname.replace(/\/ws\/?$/, "").replace(/\/+$/, "");
+  url.pathname = `${base}/export`;
+  url.search = "";
+  url.hash = "";
+  return url.toString();
+}
 
 /** Provides the parallax client for an application. */
 export function provideParallax(config: ParallaxConfig): EnvironmentProviders {
@@ -31,6 +44,11 @@ function absolute(url: string): string {
 export class ParallaxClient {
   private readonly config = inject(CONFIG);
   private connecting: Promise<Connection> | null = null;
+
+  /** The URL exports are posted to. */
+  public exportUrl(): string {
+    return this.config.exportUrl ?? exportUrlFor(absolute(this.config.url));
+  }
 
   /** Returns the shared connection. */
   public connection(): Promise<Connection> {

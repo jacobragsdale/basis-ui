@@ -41,6 +41,7 @@ import { CellFlag } from "../frame";
 import type { FrameData, TreeRows } from "../frame";
 import { TREE_WIDTH_KEY, layoutSchema } from "../layout";
 import type { Layout, LayoutInput, LayoutScalar } from "../layout";
+import { ParallaxClient } from "../client";
 import { installThemeStyles, readTheme } from "../theme";
 import type { Theme, ThemeName } from "../theme";
 import { DEFAULT_TREE_WIDTH, DEFAULT_WIDTH, MIN_WIDTH, flatGeometry, groupedGeometry, rowGeometry } from "./geometry";
@@ -67,6 +68,9 @@ export interface DrillRequest {
   /** The group's label as shown. */
   readonly label: string;
 }
+
+/** The message a refused export posts from its hidden frame. */
+const exportRefusal = z.strictObject({ source: z.literal("parallax-export"), token: z.string(), error: z.string() });
 
 /** Row heights by density. */
 const ROW_HEIGHTS = { compact: 24, comfortable: 30 } as const;
@@ -305,6 +309,7 @@ const GRID_STYLES = `
       [sourceAsOf]="source.frame()?.sourceAsOfMicros ?? null"
       [status]="source.status()"
       [message]="message()"
+      (exported)="export($event)"
     />
   `,
   styles: GRID_STYLES
@@ -379,8 +384,11 @@ export class GridComponent {
   private prepared: { readonly key: string; readonly text: string } | null = null;
   private tooltipTimer: ReturnType<typeof setTimeout> | null = null;
 
+  private readonly document = inject(DOCUMENT);
+  private readonly client = inject(ParallaxClient);
+
   constructor() {
-    installThemeStyles(inject(DOCUMENT));
+    installThemeStyles(this.document);
     const destroyRef = inject(DestroyRef);
     // Measure once rendered and whenever the grid resizes; that also asks for the first rows.
     afterNextRender(() => {
@@ -410,6 +418,58 @@ export class GridComponent {
   /** Drawing counters, for measurement. */
   public drawStats(): DrawStats {
     return this.stats;
+  }
+
+  /**
+   * Downloads the view as an Excel workbook or a CSV file. The browser posts the
+   * layout in a form and streams the answer to disk, so a large export never sits
+   * in the page's memory. A refusal, such as more rows than Excel holds, comes
+   * back as text, which the status bar shows.
+   */
+  public export(format: "xlsx" | "csv"): void {
+    const layout = this.current();
+    if (layout === null) {
+      return;
+    }
+    const token = `${String(Date.now())}-${String(Math.random()).slice(2)}`;
+    const target = `px-export-${token}`;
+    const frame = this.document.createElement("iframe");
+    frame.name = target;
+    frame.hidden = true;
+    // Downloads never reach the page; a refusal posts its reason here, which works
+    // even when the server is on another origin and the frame cannot be read.
+    const window = this.document.defaultView;
+    const listen = (event: MessageEvent<unknown>): void => {
+      const posted = exportRefusal.safeParse(event.data);
+      if (posted.success && posted.data.token === token) {
+        this.message.set(`Export failed: ${posted.data.error}`);
+      }
+    };
+    window?.addEventListener("message", listen);
+    this.document.body.append(frame);
+    setTimeout(() => {
+      window?.removeEventListener("message", listen);
+      frame.remove();
+    }, 600_000);
+    const form = this.document.createElement("form");
+    form.method = "post";
+    form.action = this.client.exportUrl();
+    form.target = target;
+    for (const [name, value] of [
+      ["layout", JSON.stringify(layout)],
+      ["format", format],
+      ["token", token]
+    ] as const) {
+      const field = this.document.createElement("input");
+      field.type = "hidden";
+      field.name = name;
+      field.value = value;
+      form.append(field);
+    }
+    this.document.body.append(form);
+    form.submit();
+    form.remove();
+    this.message.set(format === "xlsx" ? "Exporting to Excel; your browser will save the file." : "Exporting to CSV; your browser will save the file.");
   }
 
   /** Lists a column's values under the view's other filters, for filter pick-lists. */
