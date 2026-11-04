@@ -1,5 +1,5 @@
 import { create } from "@bufbuild/protobuf";
-import { Decimal, Field, Float64, Int32, Int64, makeData, RecordBatch, Schema, Struct, Table, tableToIPC, Uint8, Utf8 } from "apache-arrow";
+import { Decimal, Field, Float64, Int32, Int64, makeData, RecordBatch, RecordBatchStreamWriter, Schema, Struct, Uint8, Utf8 } from "apache-arrow";
 import type { Data, DataType } from "apache-arrow";
 import { describe, expect, it } from "vitest";
 
@@ -29,10 +29,18 @@ function text(values: readonly string[]): Data<Utf8> {
   return makeData({ type: new Utf8(), length: values.length, valueOffsets: offsets, data });
 }
 
+/**
+ * A frame's Arrow IPC stream, written with its declared schema as the engine writes it: an Arrow JS batch's own schema
+ * merges the metadata of fields that share a name.
+ */
 function frameOf(columns: readonly Column[], rows: number): Uint8Array {
   const schema = new Schema(columns.map((c) => c.field));
   const struct = makeData({ type: new Struct(schema.fields), length: rows, nullCount: 0, children: columns.map((c) => c.data) });
-  return tableToIPC(new Table([new RecordBatch(schema, struct)]), "stream");
+  const writer = new RecordBatchStreamWriter();
+  writer.reset(undefined, schema);
+  writer.write(new RecordBatch(schema, struct));
+  writer.finish();
+  return writer.toUint8Array(true);
 }
 
 function decode(columns: readonly Column[], rows: number): ReturnType<typeof decodeFrame> {
@@ -178,11 +186,26 @@ describe("decodeFrame, for a detail view", () => {
     expect([0, 1, 2].map((r) => frame.tree?.rows(r))).toEqual([2, null, null]);
     const [pnl] = frame.columns;
     expect(pnl?.numeric).toBe(true);
+    expect(pnl?.totalNumeric).toBe(true);
     // The group row's cell copies its total's every digit; a row copies its own value.
     expect(pnl?.copy(0)).toBe("3.75");
     expect(pnl?.copy(1)).toBe("1.5");
     expect(pnl?.total?.(1)).toEqual({ kind: "null" });
     expect(frame.totals?.[0]?.text(0)).toBe("3.75");
+  });
+
+  it("keeps a group key apart from the shown column of the same name", () => {
+    // Grouped by desk, with desk also shown: two fields named desk, one key and one value.
+    const shown: readonly Column[] = [
+      ...detail.slice(0, 5),
+      column("desk", new Utf8(), "group", text(["Rates", "Rates", "Rates"]), { "parallax.level": "0" }),
+      column("desk", new Utf8(), "value", text(["", "Rates", "Rates"]), { "parallax.index": "0" }),
+      column("desk#text", new Utf8(), "text", text(["", "Rates", "Rates"]), { "parallax.index": "0" })
+    ];
+    const frame = decode(shown, 3);
+    expect(frame.groups.map((g) => [g.name, g.value(0)])).toEqual([["desk", { kind: "text", value: "Rates" }]]);
+    expect(frame.columns.map((c) => c.name)).toEqual(["desk"]);
+    expect(frame.columns[0]?.text(1)).toBe("Rates");
   });
 
   it("refuses a totals row that does not match the frame's columns", () => {

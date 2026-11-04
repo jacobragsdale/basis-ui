@@ -552,3 +552,67 @@ test.describe("columns", () => {
     expect(lengthOf(await layout(page), "sort")).toBe(0);
   });
 });
+
+test.describe("grouping", () => {
+  const rows = async (section: Locator): Promise<number> => Number(await section.locator('[role="grid"]').getAttribute("aria-rowcount"));
+
+  test("Group by this column lists the rows under their groups, which collapse, expand, copy and export", async ({ page }) => {
+    const section = await blotter(page);
+    const grid = section.locator('[role="grid"]');
+    const panel = section.locator("px-group-panel");
+    // The blotter's sixth column is the fund; its menu groups by it.
+    await section.locator("canvas.px-canvas").click({ position: { x: 40, y: 40 } });
+    for (let i = 0; i < 5; i += 1) {
+      await page.keyboard.press("ArrowRight");
+    }
+    await page.keyboard.press("Alt+ArrowDown");
+    const menu = page.locator("px-header-menu");
+    await expect(menu).toHaveAttribute("aria-label", "Column fund");
+    await menu.getByRole("menuitem", { name: "Group by this column" }).click();
+    await expect(panel.locator(".px-chip")).toHaveText(["fund"]);
+    // Every group is open: the 500 rows and a row for each fund above its rows.
+    await expect.poll(() => rows(section)).toBeGreaterThan(500);
+    const all = await rows(section);
+    const funds = all - 500;
+    await panel.getByRole("button", { name: "Collapse all" }).click();
+    await expect(grid).toHaveAttribute("aria-rowcount", String(funds));
+    await panel.getByRole("button", { name: "Expand all" }).click();
+    await expect(grid).toHaveAttribute("aria-rowcount", String(all));
+    // A group's cell copies its label and count, as the export writes it.
+    await section.locator("canvas.px-canvas").click({ position: { x: 40, y: 36 } });
+    await page.keyboard.press("ControlOrMeta+c");
+    await expect(section.locator(".px-status-message")).toContainText("Copied", { timeout: 30_000 });
+    expect(await page.evaluate(() => navigator.clipboard.readText())).toMatch(/^\S.* \(\d+\)$/);
+    // The CSV holds each group, at level 1, and each row under it, at level 2.
+    const download = page.waitForEvent("download", { timeout: 60_000 });
+    await section.getByRole("button", { name: "More export formats" }).click();
+    await section.getByRole("menuitem", { name: /CSV/ }).click();
+    const text = await import("node:fs").then(async (fs) => fs.readFileSync(await (await download).path(), "utf8"));
+    const lines = text.slice(1).trim().split("\n");
+    expect(lines[0]?.startsWith("level,fund,")).toBe(true);
+    expect(lines.filter((l) => l.startsWith("1,")).length).toBe(funds);
+    expect(lines.filter((l) => l.startsWith("2,")).length).toBe(500);
+  });
+
+  test("a header dropped on the group panel groups by its column, and its chip ungroups it", async ({ page }) => {
+    const section = await blotter(page);
+    const panel = section.locator("px-group-panel");
+    await expect(panel).toContainText("Drag a column header here");
+    const canvas = await section.locator("canvas.px-canvas").boundingBox();
+    const target = await panel.boundingBox();
+    if (canvas === null || target === null) {
+      throw new Error("no canvas or group panel");
+    }
+    await page.mouse.move(canvas.x + 40, canvas.y + 12);
+    await page.mouse.down();
+    await page.mouse.move(canvas.x + 70, canvas.y + 12, { steps: 3 });
+    await page.mouse.move(target.x + 200, target.y + target.height / 2, { steps: 8 });
+    await expect(panel).toHaveAttribute("data-drop", "true");
+    await page.mouse.up();
+    await expect(panel.locator(".px-chip")).toHaveCount(1);
+    await expect.poll(() => rows(section)).toBeGreaterThan(500);
+    await panel.getByRole("button", { name: /^Stop grouping by / }).click();
+    await expect(panel.locator(".px-chip")).toHaveCount(0);
+    await expect(section.locator('[role="grid"]')).toHaveAttribute("aria-rowcount", "500");
+  });
+});

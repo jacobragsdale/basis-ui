@@ -22,10 +22,12 @@ export interface ToolbarParts {
   /** The totals row's switch; a pivot has its grand total instead. */
   readonly totals: boolean;
   readonly export: boolean;
+  /** The strip above the grid where its groups show, and headers are dropped to group by them. */
+  readonly group: boolean;
 }
 
 /** Every part shown. */
-export const ALL_PARTS: ToolbarParts = { search: true, chips: true, columns: true, totals: true, export: true };
+export const ALL_PARTS: ToolbarParts = { search: true, chips: true, columns: true, totals: true, export: true, group: true };
 
 /** The toolbar's look, shared by grids and pivots. */
 const TOOLBAR_STYLES = `

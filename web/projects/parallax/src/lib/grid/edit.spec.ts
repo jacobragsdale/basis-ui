@@ -3,6 +3,9 @@ import { describe, expect, it } from "vitest";
 import { parseLayout } from "../layout";
 import type { LayoutFilter } from "../layout";
 import {
+  withAllExpanded,
+  withGroupedBy,
+  withoutGroup,
   columnCondition,
   defaultTotals,
   filterLabel,
@@ -131,5 +134,20 @@ describe("column order and totals", () => {
     expect(withShown(layout, fields, "fund", false).columns).toEqual(["position_id"]);
     expect(defaultTotals(parseLayout({ columns: ["fund", "price"] }), fields).totals.map((t) => [t.column, t.aggregate])).toEqual([["price", "sum"]]);
     expect(defaultTotals(layout, fields).totals.map((t) => [t.column, t.aggregate])).toEqual([["position_id", "count"]]);
+  });
+});
+
+describe("grouping a grid", () => {
+  it("groups by columns, keeping rows under their groups, and ungroups back to a list", () => {
+    const flat = parseLayout({ columns: ["fund", "ticker", "price"] });
+    const one = withGroupedBy(flat, "fund");
+    expect(one).toMatchObject({ group_by: ["fund"], detail: true, expand_depth: 1 });
+    const two = withGroupedBy(one, "ticker", 0);
+    expect(two.group_by).toEqual(["ticker", "fund"]);
+    expect(withGroupedBy(two, "fund", 0).group_by).toEqual(["fund", "ticker"]);
+    expect(withoutGroup(two, "ticker")).toMatchObject({ group_by: ["fund"], detail: true });
+    expect(withoutGroup(one, "fund")).toMatchObject({ group_by: [], detail: false, expand_depth: 0 });
+    expect(withAllExpanded(two, false)).toMatchObject({ expand_depth: 0, expanded: [] });
+    expect(withAllExpanded(two, true).expand_depth).toBe(2);
   });
 });

@@ -20,6 +20,7 @@ import {
   Component,
   DOCUMENT,
   DestroyRef,
+  ElementRef,
   ViewEncapsulation,
   afterNextRender,
   afterRenderEffect,
@@ -33,13 +34,13 @@ import {
   untracked,
   viewChild
 } from "@angular/core";
-import type { ElementRef } from "@angular/core";
+
 import * as z from "zod/mini";
 
 import type { DistinctValues, Viewport } from "../connection";
 import { isNegativeText } from "../format";
 import { CellFlag } from "../frame";
-import type { FrameColumn, FrameData, TreeRows } from "../frame";
+import type { FrameColumn, FrameData, RowKind, TreeRows } from "../frame";
 import { TREE_WIDTH_KEY, checkLayout } from "../layout";
 import type { Layout, LayoutInput, LayoutScalar } from "../layout";
 import { ParallaxClient } from "../client";
@@ -48,7 +49,8 @@ import type { Theme, ThemeName } from "../theme";
 import { DEFAULT_TREE_WIDTH, DEFAULT_WIDTH, MIN_WIDTH, columnAt, flatGeometry, groupedGeometry, rowGeometry, screenX, scrolledColumns } from "./geometry";
 import type { ColumnGeometry } from "./geometry";
 import { groupPath, gridSource, withExpanded } from "./grid-source";
-import { highlightRanges, isFiltered, searchColumns, shownColumns, withColumnBefore } from "./edit";
+import { highlightRanges, isFiltered, searchColumns, shownColumns, withColumnBefore, withGroupedBy } from "./edit";
+import { GroupPanelComponent } from "./group-panel.component";
 import { HeaderMenuComponent } from "./header-menu.component";
 import { PopoverComponent } from "../ui/popover.component";
 import { contains, moveFocus, rangeOf, selectAll, toTsv } from "./selection";
@@ -164,8 +166,43 @@ interface Pass {
 /** No highlighted ranges. */
 const NO_MARKS: readonly (readonly [number, number])[] = [];
 
+/**
+ * How a data cell draws: its colour, whether it aligns right, and the search's matches to mark. A detail view's group
+ * row holds its totals, which align as numbers whatever the column holds.
+ */
+function cellStyle(
+  pass: Pass,
+  data: FrameColumn,
+  kind: RowKind | null,
+  text: string,
+  flag: CellFlag
+): { readonly color: string; readonly right: boolean; readonly marks: readonly (readonly [number, number])[] } {
+  const { theme } = pass;
+  const numeric = data.total !== null && kind === "group" ? data.totalNumeric : data.numeric;
+  const color = flag !== CellFlag.Ok ? theme.muted : numeric && isNegativeText(text) ? theme.negative : theme.foreground;
+  const marks = pass.search !== "" && !numeric && pass.searched.has(data.name) ? highlightRanges(text, pass.search) : NO_MARKS;
+  return { color, right: numeric && flag === CellFlag.Ok, marks };
+}
+
+/** Counts as the export writes them. */
+const GROUPED = new Intl.NumberFormat("en-US");
+
+/**
+ * A row's text in the group column: its label and, for a detail view's group row, how many rows it holds, as the
+ * export writes it. Drawing, fitting and copying share it, so the screen, the clipboard and the file agree.
+ */
+function groupText(tree: TreeRows, local: number): string {
+  const count = tree.rows(local);
+  return count === null ? tree.label(local) : `${tree.label(local)} (${GROUPED.format(count)})`;
+}
+
 function isGrouped(layout: Layout): boolean {
   return layout.group_by.length > 0 || layout.split_by.length > 0 || layout.measures.length > 0;
+}
+
+/** A pivot of measures, rather than a list of rows, grouped or not. */
+function isPivot(layout: Layout): boolean {
+  return isGrouped(layout) && !layout.detail;
 }
 
 function parse(input: LayoutInput): Parsed {
@@ -253,11 +290,14 @@ const GRID_STYLES = `
   selector: "px-grid",
   changeDetection: ChangeDetectionStrategy.OnPush,
   encapsulation: ViewEncapsulation.None,
-  imports: [GridToolbarComponent, HeaderMenuComponent, PopoverComponent, StatusBarComponent],
+  imports: [GridToolbarComponent, GroupPanelComponent, HeaderMenuComponent, PopoverComponent, StatusBarComponent],
   host: { "[attr.data-px-theme]": "theme()", "[class.px-auto-height]": "height() === 'auto'" },
   template: `
     @if (toolbarView(); as bar) {
       <px-grid-toolbar #toolbar [layout]="bar.layout" [fields]="fields()" [parts]="bar.parts" (changed)="layout.set($event)" (exported)="export($event)" />
+    }
+    @if (groupPanel(); as grouped) {
+      <px-group-panel #groupPanel [layout]="grouped" [dropping]="overPanel()" (changed)="layout.set($event)" />
     }
     <div class="px-body" [style.height.px]="bodyHeight()" [style.flex]="bodyHeight() === null ? null : 'none'">
       <div
@@ -292,9 +332,7 @@ const GRID_STYLES = `
           <px-header-menu [layout]="m.layout" [column]="m.name" [fields]="fields()" [source]="values" (changed)="layout.set($event)" (fit)="fitColumn(m.column)" (done)="menu.set(null)" />
         </px-popover>
       }
-      @if (totalsText(); as totals) {
-        <div class="px-visually-hidden" role="status" aria-label="Totals row">{{ totals }}</div>
-      }
+      <div class="px-visually-hidden" role="status" aria-label="Totals row" [hidden]="totalsText() === null">{{ totalsText() }}</div>
       @if (tooltip(); as tip) {
         <div class="px-tooltip" role="tooltip" [style.left.px]="tip.x" [style.top.px]="tip.y">{{ tip.text }}</div>
       }
@@ -349,7 +387,7 @@ export class GridComponent {
     const parts = setting === true ? ALL_PARTS : { ...ALL_PARTS, ...setting };
     // A pivot's columns are its measures, and its grand total is a row of its own.
     const layout = this.current();
-    const pivot = layout !== null && isGrouped(layout) && !layout.detail;
+    const pivot = layout !== null && isPivot(layout);
     return pivot ? { ...parts, columns: false, totals: false } : parts;
   });
   private readonly toolbarRef = viewChild<GridToolbarComponent>("toolbar");
@@ -367,6 +405,15 @@ export class GridComponent {
   });
   /** The header column under the pointer. */
   private readonly hoverHeader = signal<number | null>(null);
+  /** The group panel shows above a grid, flat or grouped, whose toolbar keeps it; a pivot has its settings instead. */
+  protected readonly groupPanel = computed(() => {
+    const parts = this.toolbarParts();
+    const layout = this.current();
+    return parts === null || !parts.group || layout === null || isPivot(layout) ? null : layout;
+  });
+  private readonly groupPanelRef = viewChild<string, ElementRef<HTMLElement>>("groupPanel", { read: ElementRef });
+  /** Whether a dragged header is over the group panel, where dropping it groups by its column. */
+  protected readonly overPanel = signal(false);
   /** A header being dragged to another place: the column, and the column it would go before, or the count for last. */
   private readonly drag = signal<{ readonly from: number; readonly before: number } | null>(null);
   /** Lists a column's values for the header menu's filter. */
@@ -422,12 +469,14 @@ export class GridComponent {
     const count = this.source.frame()?.totalColumns ?? 0;
     const live = this.liveWidth();
     const widths = { ...(layout?.column_widths ?? {}), ...(live === null ? {} : { [live.key]: live.width }) };
-    if (layout !== null && isGrouped(layout)) {
+    if (layout !== null && isPivot(layout)) {
       return groupedGeometry(count, layout.measures.length, widths);
     }
     const names = layout === null ? this.source.fields().map((f) => f.name) : shownColumns(layout, this.source.fields());
     const pinned = layout === null ? 0 : layout.pinned.filter((c) => names.includes(c)).length;
-    return flatGeometry(count, names, widths, pinned, this.fitted());
+    // A detail view keeps its group column at the left, as a pivot does, before its own columns.
+    const treePx = layout !== null && layout.detail && layout.group_by.length > 0 ? Math.max(MIN_WIDTH, widths[TREE_WIDTH_KEY] ?? DEFAULT_TREE_WIDTH) : 0;
+    return flatGeometry(count, names, widths, pinned, this.fitted(), treePx);
   });
   private readonly extent = computed((): Extent => ({ rows: this.totalRows(), columns: this.geometry().count, tree: this.geometry().treePx > 0 }));
 
@@ -728,6 +777,8 @@ export class GridComponent {
     if (this.drag() === null && Math.abs(event.clientX - pressed.x) < DRAG_THRESHOLD) {
       return false;
     }
+    const panel = this.groupPanelRef()?.nativeElement.getBoundingClientRect();
+    this.overPanel.set(panel !== undefined && event.clientY >= panel.top && event.clientY <= panel.bottom && event.clientX >= panel.left && event.clientX <= panel.right);
     const geometry = this.geometry();
     const at = columnAt(geometry, event.offsetX, this.scrollLeft()) ?? geometry.count - 1;
     const column = Math.max(0, at);
@@ -767,6 +818,7 @@ export class GridComponent {
     this.selecting = false;
     if (this.drag() !== null) {
       this.drag.set(null);
+      this.overPanel.set(false);
     }
     if (this.liveWidth() !== null) {
       this.liveWidth.set(null);
@@ -813,7 +865,13 @@ export class GridComponent {
     const drag = this.drag();
     if (drag !== null) {
       this.drag.set(null);
-      this.dropHeader(drag.from, drag.before);
+      if (this.overPanel()) {
+        this.overPanel.set(false);
+        const name = this.geometry().widthKey(drag.from);
+        this.change((layout) => withGroupedBy(layout, name));
+      } else {
+        this.dropHeader(drag.from, drag.before);
+      }
       return;
     }
     const hit = this.hit(event.offsetX, event.offsetY);
@@ -851,7 +909,8 @@ export class GridComponent {
     const frame = this.source.frame();
     const tree = frame?.tree ?? null;
     const local = frame === null ? -1 : row - frame.firstRow;
-    if (frame === null || tree === null || local < 0 || local >= frame.rowCount || tree.kind(local) === "other") {
+    const layout = this.current();
+    if (frame === null || tree === null || layout === null || !isPivot(layout) || local < 0 || local >= frame.rowCount || tree.kind(local) === "other") {
       return;
     }
     const data = frame.columns[column - frame.firstColumn];
@@ -865,7 +924,7 @@ export class GridComponent {
   /** The source column a data column's menu edits, or null where there is no menu: a pivot's columns are measures. */
   private menuColumn(column: number): string | null {
     const layout = this.current();
-    if (layout === null || column < 0 || column >= this.geometry().count || isGrouped(layout)) {
+    if (layout === null || column < 0 || column >= this.geometry().count || isPivot(layout)) {
       return null;
     }
     return this.geometry().widthKey(column);
@@ -896,7 +955,7 @@ export class GridComponent {
       return;
     }
     const context = this.canvas().nativeElement.getContext("2d");
-    if (layout === null || context === null || (isGrouped(layout) && !layout.detail)) {
+    if (layout === null || context === null || isPivot(layout)) {
       return;
     }
     context.font = (this.tokens ?? readTheme(this.canvas().nativeElement)).font;
@@ -968,7 +1027,7 @@ export class GridComponent {
     if (column === -1) {
       const tree = frame.tree;
       for (let local = 0; local < frame.rowCount && tree !== null; local += 1) {
-        widest = Math.max(widest, tree.depth(local) * INDENT + this.measure(context, `▾ ${tree.label(local)}`));
+        widest = Math.max(widest, tree.depth(local) * INDENT + this.measure(context, `▾ ${groupText(tree, local)}`));
       }
       return Math.max(DEFAULT_TREE_WIDTH / 2, widest + 2 * PADDING);
     }
@@ -986,11 +1045,12 @@ export class GridComponent {
   /** Cycles a column's sort: ascending, descending, then off. Shift adds it to the sorts of a flat view. */
   private sortBy(column: number, additive: boolean): void {
     this.change((layout) => {
-      if (isGrouped(layout)) {
+      if (column === -1 && isGrouped(layout)) {
         const by = layout.group_sort.by;
-        if (column === -1) {
-          return { ...layout, group_sort: { by: "key", descending: by === "key" ? !layout.group_sort.descending : false } };
-        }
+        return { ...layout, group_sort: { by: "key", descending: by === "key" ? !layout.group_sort.descending : false } };
+      }
+      if (isPivot(layout)) {
+        const by = layout.group_sort.by;
         const measure = column % Math.max(1, layout.measures.length);
         const same = by !== "key" && by.measure === measure;
         if (!same) {
@@ -1090,7 +1150,8 @@ export class GridComponent {
       const local = row - frame.firstRow;
       const cells: string[] = [];
       for (let column = range.left; column <= range.right; column += 1) {
-        cells.push(column === -1 ? (frame.tree?.label(local) ?? "") : (frame.columns[column - frame.firstColumn]?.copy(local) ?? ""));
+        const tree = frame.tree;
+        cells.push(column === -1 ? (tree === null ? "" : groupText(tree, local)) : (frame.columns[column - frame.firstColumn]?.copy(local) ?? ""));
       }
       rows.push(cells);
     }
@@ -1368,12 +1429,12 @@ export class GridComponent {
     if (layout === null) {
       return "";
     }
-    if (isGrouped(layout)) {
+    if (column === -1) {
+      return layout.group_sort.by === "key" && layout.group_sort.descending ? "▼" : "";
+    }
+    if (isPivot(layout)) {
       const by = layout.group_sort.by;
       const arrow = layout.group_sort.descending ? "▼" : "▲";
-      if (column === -1) {
-        return by === "key" && layout.group_sort.descending ? "▼" : "";
-      }
       return by !== "key" && column % Math.max(1, layout.measures.length) === by.measure ? arrow : "";
     }
     const name = this.geometry().widthKey(column);
@@ -1543,7 +1604,7 @@ export class GridComponent {
     const depth = tree.depth(local);
     const expanded = tree.expanded(local);
     const marker = expanded === null ? "  " : expanded ? "▾ " : "▸ ";
-    const text = `${marker}${tree.label(local)}`;
+    const text = `${marker}${groupText(tree, local)}`;
     const key = `${String(row)}:-1`;
     if (!pass.full && !pass.stale.has(row) && this.drawn.get(key) === text) {
       return 0;
@@ -1554,7 +1615,7 @@ export class GridComponent {
     const left = PADDING + depth * INDENT;
     const marks = pass.labelsSearched ? highlightRanges(tree.label(local), pass.search).map(([a, b]) => [a + marker.length, b + marker.length] as const) : NO_MARKS;
     if (this.clipText(context, text, left - PADDING, geometry.treePx - left + PADDING, y + rowPx / 2, false, marks, theme.highlight)) {
-      this.notes.set(key, tree.label(local));
+      this.notes.set(key, groupText(tree, local));
     }
     context.fillStyle = theme.gridLine;
     context.fillRect(geometry.treePx - 1, y, 1, rowPx);
@@ -1577,21 +1638,23 @@ export class GridComponent {
     const width = geometry.width(column);
     this.cellBackground(pass, row, column, x, y, width, stripe);
     const flag = data.flag(local);
-    context.fillStyle = flag !== CellFlag.Ok ? theme.muted : data.numeric && isNegativeText(text) ? theme.negative : theme.foreground;
-    const marks = pass.search !== "" && !data.numeric && pass.searched.has(data.name) ? highlightRanges(text, pass.search) : NO_MARKS;
-    const clipped = this.clipText(context, text, x, width, y + rowPx / 2, data.numeric && flag === CellFlag.Ok, marks, theme.highlight);
-    const note = FLAG_NOTES[flag];
-    if (note !== null) {
-      this.notes.set(key, note);
-    } else if (clipped) {
-      this.notes.set(key, text);
-    } else {
-      this.notes.delete(key);
-    }
+    const style = cellStyle(pass, data, frame.tree?.kind(local) ?? null, text, flag);
+    context.fillStyle = style.color;
+    const clipped = this.clipText(context, text, x, width, y + rowPx / 2, style.right, style.marks, theme.highlight);
+    this.noteCell(key, FLAG_NOTES[flag] ?? (clipped ? text : null));
     context.fillStyle = theme.gridLine;
     context.fillRect(x + width - 1, y, 1, rowPx);
     this.drawn.set(key, text);
     return true;
+  }
+
+  /** Keeps what a cell's tooltip says, or forgets it when null. */
+  private noteCell(key: string, note: string | null): void {
+    if (note === null) {
+      this.notes.delete(key);
+    } else {
+      this.notes.set(key, note);
+    }
   }
 
   /**

@@ -13,7 +13,7 @@
  * digits.
  */
 
-import { DataType, Table, tableFromIPC } from "apache-arrow";
+import { DataType, RecordBatchReader, Table, tableFromIPC } from "apache-arrow";
 import * as z from "zod/mini";
 import type { Field, Vector } from "apache-arrow";
 
@@ -55,6 +55,8 @@ export interface FrameColumn {
   readonly copy: (row: number) => string;
   /** `true` for numbers, which align right. */
   readonly numeric: boolean;
+  /** `true` when the column's group totals are numbers, which align right on group rows. */
+  readonly totalNumeric: boolean;
   /** For a column under column pivots, its pivot values as exact JSON; null otherwise. */
   readonly split: readonly (string | number | boolean | null)[] | null;
   /**
@@ -435,7 +437,8 @@ function dataColumn(index: number, parts: DataParts, rowCount: number): FrameCol
       }
       return exactText(exact(row)) ?? shown(row);
     },
-    numeric: isNumericType(field.type) || (parts.total !== undefined && isNumericType(parts.total.field.type)),
+    numeric: isNumericType(field.type),
+    totalNumeric: parts.total !== undefined && isNumericType(parts.total.field.type),
     split: splitOf(field),
     total
   };
@@ -464,13 +467,24 @@ function addPart(data: Map<number, DataParts>, role: "value" | "total" | "flag" 
   data.set(index, parts);
 }
 
-/** Decodes one Arrow IPC stream of one batch into its data columns and roles. */
-function decodeBatch(bytes: Uint8Array): Decoded {
-  const decoded = tableFromIPC(bytes);
-  if (!(decoded instanceof Table)) {
+/**
+ * Reads an Arrow IPC stream as a table with the schema the stream declares. A frame's field names can repeat, as a
+ * detail view's group key beside the same column's values, or two equal measures. Arrow JS gives each batch it reads
+ * a schema that merges the metadata of fields sharing a name (`Schema.assign`), which would file a group key as a
+ * second value. So the table keeps the declared schema, and its vectors match it by position.
+ */
+function readTable(bytes: Uint8Array): Table {
+  const reader = RecordBatchReader.from(bytes);
+  if (!reader.isSync()) {
     throw new FrameError("a frame's batch must decode synchronously");
   }
-  const table = decoded;
+  const declared = reader.open().schema;
+  return new Table(declared, [...reader]);
+}
+
+/** Decodes one Arrow IPC stream of one batch into its data columns and roles. */
+function decodeBatch(bytes: Uint8Array): Decoded {
+  const table = readTable(bytes);
   const byRole = new Map<Role, Vector>();
   const data = new Map<number, DataParts>();
   const groups = new Map<number, GroupKey>();

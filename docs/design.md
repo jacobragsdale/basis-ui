@@ -494,6 +494,11 @@ it, tagged by view ID.
   for copying. Every Arrow field names its role and column index in its
   metadata, so the client pairs them by index, never by name. Column-pivot names
   can display alike: 1.001 and 1.004 both read 1.00 at two decimals.
+- Names can repeat within a frame: a detail view grouped by a column it also
+  shows has that column's group key and its values under one name. Arrow JS
+  merges the metadata of same-named fields when it builds a batch, so the client
+  reads each field from the schema the stream declares, matching vectors by
+  position.
 
 The browser worker that hosts the WebAssembly engine speaks the same messages
 over `postMessage`, through the same session code as the server. The server

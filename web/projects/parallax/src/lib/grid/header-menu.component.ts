@@ -10,7 +10,7 @@ import type { Layout, LayoutMeasure } from "../layout";
 import { label } from "../pivot/labels";
 import type { ValueSource } from "../pivot/value-picker.component";
 import { MenuComponent } from "../ui/menu.component";
-import { totalChoices, totalOf, withHidden, withPinned, withSort, withTitle, withTotal } from "./edit";
+import { totalChoices, totalOf, withGroupedBy, withHidden, withPinned, withSort, withTitle, withTotal, withoutGroup } from "./edit";
 import type { FieldKind, SourceField } from "./grid-source";
 
 /** How each kind of column says its sort order. */
@@ -87,6 +87,7 @@ const ORDER: Readonly<Record<FieldKind, readonly [string, string]>> = {
       <button type="button" role="menuitem" (click)="finish(hide())">Hide column</button>
       <button type="button" role="menuitem" (click)="finish(pin())">{{ pinned() ? "Unpin" : "Pin to the left" }}</button>
       <button type="button" role="menuitem" (click)="fit.emit(); done.emit()">Fit width</button>
+      <button type="button" role="menuitem" (click)="finish(group())">{{ grouped() ? "Stop grouping by this column" : "Group by this column" }}</button>
     </px-menu>
     <div class="px-menu-fields">
       <label for="px-title">Title</label>
@@ -122,6 +123,7 @@ export class HeaderMenuComponent {
   protected readonly title = computed(() => this.layout().titles[this.column()] ?? this.column());
   protected readonly sorted = computed(() => this.layout().sort.some((s) => s.column === this.column()));
   protected readonly pinned = computed(() => this.layout().pinned.includes(this.column()));
+  protected readonly grouped = computed(() => this.layout().group_by.includes(this.column()));
   protected readonly total = computed(() => totalOf(this.layout(), this.column()) ?? "");
   protected readonly totals = computed(() => totalChoices(this.kind()));
 
@@ -135,6 +137,10 @@ export class HeaderMenuComponent {
 
   protected hide(): Layout {
     return withHidden(this.layout(), this.column(), this.fields());
+  }
+
+  protected group(): Layout {
+    return this.grouped() ? withoutGroup(this.layout(), this.column()) : withGroupedBy(this.layout(), this.column());
   }
 
   protected pin(): Layout {

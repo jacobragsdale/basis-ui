@@ -242,3 +242,25 @@ export function defaultTotals(layout: Layout, fields: readonly SourceField[]): L
   }
   return first === undefined ? layout : withTotal({ ...layout, totals: [] }, first, "count");
 }
+
+/**
+ * Groups a grid by `column`, after its other groups or before group `at`: its rows stay under their groups, as a
+ * detail view, with every level open.
+ */
+export function withGroupedBy(layout: Layout, column: string, at: number | null = null): Layout {
+  const rest = layout.group_by.filter((c) => c !== column);
+  const index = at === null ? rest.length : Math.max(0, Math.min(at, rest.length));
+  const groupBy = [...rest.slice(0, index), column, ...rest.slice(index)];
+  return { ...layout, group_by: groupBy, detail: true, measures: [], split_by: [], expand_depth: groupBy.length, expanded: [] };
+}
+
+/** Stops grouping by `column`; without groups left, the grid lists its rows again. */
+export function withoutGroup(layout: Layout, column: string): Layout {
+  const groupBy = layout.group_by.filter((c) => c !== column);
+  return { ...layout, group_by: groupBy, detail: groupBy.length > 0 && layout.detail, expand_depth: Math.min(layout.expand_depth, groupBy.length), expanded: [] };
+}
+
+/** Opens every group of a grouped grid, down to its rows, or closes every group, forgetting each one's own state. */
+export function withAllExpanded(layout: Layout, expanded: boolean): Layout {
+  return { ...layout, expand_depth: expanded ? layout.group_by.length : 0, expanded: [] };
+}
