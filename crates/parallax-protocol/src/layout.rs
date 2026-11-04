@@ -1186,6 +1186,9 @@ impl Layout {
                     Ok((column.clone(), f.to_engine()))
                 })
                 .collect::<Result<_, LayoutError>>()?,
+            // Layouts name titles and totals from version 2.
+            titles: std::collections::BTreeMap::new(),
+            totals: Vec::new(),
         };
         let chart = self
             .chart

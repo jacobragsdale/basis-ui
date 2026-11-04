@@ -398,6 +398,54 @@ fn verify_grouped(table: &Table, conn: &Connection, config: &ViewConfig) -> Resu
     Ok(())
 }
 
+/// Checks a flat view's totals against DuckDB's aggregates of the rows that pass
+/// the same filters.
+fn verify_totals(
+    table: &Table,
+    conn: &Connection,
+    filters: &[Filter],
+    totals: &[Measure],
+    ours: &[CellValue],
+) -> Result<(), String> {
+    if totals.is_empty() {
+        return if ours.is_empty() {
+            Ok(())
+        } else {
+            Err(format!("totals {ours:?} without any asked for"))
+        };
+    }
+    let mut select = Vec::new();
+    for (i, m) in totals.iter().enumerate() {
+        select.push(format!("{} AS m{i}", measure_sql(m)));
+        if m.aggregate == Aggregate::Sum && m.column.as_deref().is_some_and(|c| FLOATS.contains(&c))
+        {
+            let c = ident(m.column.as_deref().unwrap());
+            select.push(format!("list({c}) FILTER (WHERE {c} IS NOT NULL) AS l{i}"));
+        }
+    }
+    let sql = format!(
+        "SELECT {} FROM t{}",
+        select.join(", "),
+        where_clause(table, filters)
+    );
+    let batches = query(conn, &sql);
+    let batch = &batches[0];
+    for (i, m) in totals.iter().enumerate() {
+        let theirs = batch.column_by_name(&format!("m{i}")).unwrap();
+        let list = batch.column_by_name(&format!("l{i}"));
+        check(
+            table,
+            m,
+            &ours[i],
+            theirs.as_ref(),
+            list.map(|l| l.as_ref()),
+            0,
+        )
+        .map_err(|e| format!("total {e}\n{sql}"))?;
+    }
+    Ok(())
+}
+
 fn value_of(table: &Table, column: &str, picker: &mut Picker) -> Scalar {
     let c = table.column(table.column_index(column).unwrap());
     let slots: Vec<usize> = table.live_slots().collect();
@@ -597,12 +645,23 @@ fn run_flat(hostile: bool, seed: u64, configs: usize) {
                 descending: picker.chance(50),
             })
             .collect();
+        // Totals of a few columns, at most one each.
+        let mut totals: Vec<Measure> = Vec::new();
+        for _ in 0..picker.below(4) {
+            let m = random_measure(&mut picker);
+            if m.column.is_some() && !totals.iter().any(|t| t.column == m.column) {
+                totals.push(m);
+            }
+        }
         let config = ViewConfig {
             filters: filters.clone(),
             sort: sort.clone(),
+            totals: totals.clone(),
             ..ViewConfig::default()
         };
         let mut view = View::new(&table, config).unwrap();
+        verify_totals(&table, &conn, &filters, &totals, &view.totals(&table))
+            .unwrap_or_else(|e| panic!("flat config {i}: {e}"));
         let n = view.num_rows(&table);
         let frame = view.window(&table, 0..n, 0..0);
         let ours: Vec<i64> = frame

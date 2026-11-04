@@ -135,6 +135,14 @@ pub struct ViewConfig {
     /// Display formats by source column. A measure without its own format takes its
     /// column's, except counts and variances.
     pub formats: BTreeMap<String, Format>,
+    /// Header text of a flat view's columns, by source column; a column without
+    /// one shows its name. Changing it recomputes nothing.
+    pub titles: BTreeMap<String, String>,
+    /// Totals of a flat view's columns, over the rows that pass the filters: at
+    /// most one per column, each a measure of its column shown as its value. They
+    /// are computed as a pivot's grand total is, so the digits agree. A grouped
+    /// view ignores them; its grand total is a row of its own.
+    pub totals: Vec<Measure>,
 }
 
 impl ViewConfig {
@@ -390,6 +398,8 @@ struct Flat {
     columns: Vec<usize>,
     sort: Vec<(usize, bool)>,
     order: Vec<usize>,
+    /// The totals, as a grouped view with no levels, whose root is its one leaf.
+    totals: Option<Box<Grouped>>,
 }
 
 #[derive(Clone, Debug)]
@@ -409,11 +419,13 @@ pub struct View {
     load_version: u64,
 }
 
-/// The checked formats of a view: one per table column and one per measure.
+/// The checked formats of a view: one per table column, one per measure and one
+/// per total.
 #[derive(Clone, Debug)]
 struct Formatters {
     columns: Vec<Formatter>,
     measures: Vec<Formatter>,
+    totals: Vec<Formatter>,
 }
 
 impl Formatters {
@@ -432,28 +444,47 @@ impl Formatters {
         let columns = (0..table.schema().fields().len())
             .map(|c| by_index.remove(&c).unwrap_or_else(|| default.clone()))
             .collect();
-        let measures = config
-            .measures
-            .iter()
-            .map(|m| {
-                let format =
-                    measure_format(m, m.column.as_ref().and_then(|c| config.formats.get(c)));
-                compile(&m.label(), &format)
-            })
-            .collect::<Result<_, _>>()?;
-        Ok(Self { columns, measures })
+        let of = |measures: &[Measure]| {
+            measures
+                .iter()
+                .map(|m| {
+                    let format =
+                        measure_format(m, m.column.as_ref().and_then(|c| config.formats.get(c)));
+                    compile(&m.label(), &format)
+                })
+                .collect::<Result<Vec<_>, _>>()
+        };
+        Ok(Self {
+            columns,
+            measures: of(&config.measures)?,
+            totals: of(&config.totals)?,
+        })
     }
 }
 
-/// A configuration with its display formats removed, for comparing what is
-/// computed.
-fn without_formats(config: &ViewConfig) -> ViewConfig {
+/// A configuration without what only changes how its rows are shown, for
+/// comparing what is computed: formats, titles and totals, and which columns a
+/// flat view shows and in what order, which picks columns but not rows. A grouped
+/// view's rows don't depend on its columns either.
+fn without_display(config: &ViewConfig) -> ViewConfig {
     let mut stripped = config.clone();
     stripped.formats.clear();
+    stripped.titles.clear();
+    stripped.columns.clear();
+    stripped.totals.clear();
     for m in &mut stripped.measures {
         m.format = None;
     }
     stripped
+}
+
+/// Totals without their formats, for telling whether they must be computed again.
+fn totals_computed(config: &ViewConfig) -> Vec<Measure> {
+    let mut totals = config.totals.clone();
+    for m in &mut totals {
+        m.format = None;
+    }
+    totals
 }
 
 /// The format a measure shows with: its own, else a percentage for shares, the
@@ -541,6 +572,51 @@ fn compile_measure(table: &Table, m: &Measure) -> Result<CompiledMeasure, Config
     })
 }
 
+/// The table columns a flat view shows, in order.
+fn flat_columns(table: &Table, config: &ViewConfig) -> Result<Vec<usize>, ConfigError> {
+    if config.columns.is_empty() {
+        Ok((0..table.schema().fields().len()).collect())
+    } else {
+        config
+            .columns
+            .iter()
+            .map(|c| column_index(table, c))
+            .collect()
+    }
+}
+
+/// Checks and compiles a flat view's totals, which are not computed yet.
+fn compile_totals(table: &Table, config: &ViewConfig) -> Result<Option<Box<Grouped>>, ConfigError> {
+    if config.totals.is_empty() {
+        return Ok(None);
+    }
+    let mut seen = rustc_hash::FxHashSet::default();
+    let mut measures = Vec::with_capacity(config.totals.len());
+    for m in &config.totals {
+        let refuse = |reason: &str| ConfigError::Total {
+            column: m.column.clone().unwrap_or_else(|| m.label()),
+            reason: reason.to_owned(),
+        };
+        let Some(column) = &m.column else {
+            return Err(refuse(
+                "a total belongs to a column; count the column's values instead",
+            ));
+        };
+        if m.show_as != ShowAs::Value {
+            return Err(refuse("a total shows its value, not a share"));
+        }
+        if !seen.insert(column.as_str()) {
+            return Err(refuse("a column has at most one total"));
+        }
+        measures.push(compile_measure(table, m)?);
+    }
+    Ok(Some(Box::new(Grouped::new(
+        measures,
+        Vec::new(),
+        Vec::new(),
+    ))))
+}
+
 impl View {
     /// Builds a view of `table`.
     ///
@@ -578,51 +654,30 @@ impl View {
             if let Some(t) = &config.top_n {
                 check(t.measure)?;
             }
-            Kind::Grouped(Box::new(Grouped {
+            Kind::Grouped(Box::new(Grouped::new(
                 measures,
-                group_columns: config
+                config
                     .group_by
                     .iter()
                     .map(|c| column_index(table, c))
                     .collect::<Result<_, _>>()?,
-                split_columns: config
+                config
                     .split_by
                     .iter()
                     .map(|c| column_index(table, c))
                     .collect::<Result<_, _>>()?,
-                nodes: Vec::new(),
-                free: Vec::new(),
-                split_ids: FxHashMap::default(),
-                split_keys: Vec::new(),
-                split_rows: Vec::new(),
-                expanded: Vec::new(),
-                show_all: false,
-                visible: None,
-                columns: None,
-                lazy_values: RefCell::default(),
-                scratch_inputs: Vec::new(),
-                scratch_keys: Vec::new(),
-                scratch_path: Vec::new(),
-            }))
+            )))
         } else {
-            let columns = if config.columns.is_empty() {
-                (0..table.schema().fields().len()).collect()
-            } else {
-                config
-                    .columns
-                    .iter()
-                    .map(|c| column_index(table, c))
-                    .collect::<Result<_, _>>()?
-            };
             let sort = config
                 .sort
                 .iter()
                 .map(|s| Ok((column_index(table, &s.column)?, s.descending)))
                 .collect::<Result<_, ConfigError>>()?;
             Kind::Flat(Flat {
-                columns,
+                columns: flat_columns(table, &config)?,
                 sort,
                 order: Vec::new(),
+                totals: compile_totals(table, &config)?,
             })
         };
         let mut view = Self {
@@ -676,20 +731,113 @@ impl View {
         &self.config
     }
 
-    /// Switches to `config` without recomputing anything, if it differs from the
-    /// current configuration only in display formats. Returns `false`, changing
-    /// nothing, when it differs in anything else.
+    /// Switches to `config` without computing the rows again, if it differs from
+    /// the current configuration only in how they are shown: formats, titles,
+    /// totals, and which columns a flat view shows in what order. Totals that
+    /// changed are computed over the same rows. Returns `false`, changing nothing,
+    /// when it differs in anything else.
     ///
     /// # Errors
     ///
-    /// Returns an error if a new format is invalid; the view is then unchanged.
+    /// Returns an error if a new format, column or total is invalid; the view is
+    /// then unchanged.
     pub fn reformat(&mut self, table: &Table, config: &ViewConfig) -> Result<bool, ConfigError> {
-        if without_formats(&self.config) != without_formats(config) {
+        if without_display(&self.config) != without_display(config) {
             return Ok(false);
         }
-        self.formatters = Formatters::new(table, config)?;
+        let formatters = Formatters::new(table, config)?;
+        if let Kind::Flat(flat) = &mut self.kind {
+            let columns = flat_columns(table, config)?;
+            let totals = if totals_computed(&self.config) == totals_computed(config) {
+                None
+            } else {
+                Some(compile_totals(table, config)?)
+            };
+            flat.columns = columns;
+            if let Some(mut totals) = totals {
+                if let Some(grouped) = &mut totals {
+                    for filter in &mut self.filters {
+                        filter.prepare(table, false);
+                    }
+                    let filters = &self.filters;
+                    grouped.build(table, &|slot: usize| {
+                        filters.iter().all(|f| f.passes_table(table, slot))
+                    });
+                    grouped.invalidate();
+                }
+                flat.totals = totals;
+            }
+        }
+        self.formatters = formatters;
         self.config = config.clone();
         Ok(true)
+    }
+
+    /// The totals of a flat view, one per configured total, in order. Empty for a
+    /// grouped view, which ignores totals.
+    pub fn totals(&mut self, table: &Table) -> Vec<CellValue> {
+        let Kind::Flat(Flat {
+            totals: Some(grouped),
+            ..
+        }) = &mut self.kind
+        else {
+            return Vec::new();
+        };
+        (0..grouped.measures.len())
+            .map(|m| grouped.cell_value(table, 0, ROW_TOTAL, m))
+            .collect()
+    }
+
+    /// The totals row of a flat view's data columns `columns`: one row with a data
+    /// column for each column in the window, as [`View::window`] gives them. A
+    /// column with a total holds its value, flag and text, formatted as a pivot's
+    /// grand total is; a column without one holds null and empty text. `None` for
+    /// a view without totals.
+    pub fn totals_window(&mut self, table: &Table, columns: Range<usize>) -> Option<RecordBatch> {
+        let Kind::Flat(flat) = &mut self.kind else {
+            return None;
+        };
+        let grouped = flat.totals.as_mut()?;
+        let cols = columns.start.min(flat.columns.len())..columns.end.min(flat.columns.len());
+        let mut out = FrameBuilder::default();
+        for (index, &c) in flat.columns[cols].iter().enumerate() {
+            let field = table.schema().field(c);
+            let title = title_of(&self.config, field.name());
+            let total = self
+                .config
+                .totals
+                .iter()
+                .position(|m| m.column.as_deref() == Some(field.name().as_str()));
+            match total {
+                Some(m) => {
+                    let measure = grouped.measures[m].clone();
+                    let value = grouped.shown(table, &[0], ROW_TOTAL, m);
+                    let (array, data_type) =
+                        values_to_arrow(table, &measure, std::slice::from_ref(&value));
+                    out.data_column(
+                        index,
+                        &Field::new(field.name(), data_type, true),
+                        title,
+                        array,
+                        Some(vec![value_flag(&value)]),
+                        &self.formatters.totals[m],
+                        None,
+                        None,
+                    );
+                }
+                None => out.data_column(
+                    index,
+                    &Field::new(field.name(), field.data_type().clone(), true),
+                    title,
+                    arrow_array::new_null_array(field.data_type(), 1),
+                    None,
+                    &self.formatters.columns[c],
+                    None,
+                    None,
+                ),
+            }
+        }
+        Some(out.finish())
     }
 
     /// The configuration version, which every frame carries.
@@ -728,6 +876,10 @@ impl View {
             Kind::Flat(flat) => {
                 flat.order = passing_slots(table, &passes);
                 sort_flat(table, flat);
+                if let Some(totals) = &mut flat.totals {
+                    totals.build(table, &passes);
+                    totals.invalidate();
+                }
             }
             Kind::Grouped(g) => {
                 g.build(table, &passes);
@@ -799,7 +951,9 @@ impl View {
     /// Returns rows `rows` and data columns `columns` of the view.
     pub fn window(&mut self, table: &Table, rows: Range<usize>, columns: Range<usize>) -> Frame {
         let (batch, total_rows, total_columns) = match &mut self.kind {
-            Kind::Flat(flat) => flat_window(table, &self.formatters, flat, rows, columns),
+            Kind::Flat(flat) => {
+                flat_window(table, &self.config, &self.formatters, flat, rows, columns)
+            }
             Kind::Grouped(g) => g.window(table, &self.config, &self.formatters, rows, columns),
         };
         Frame {
@@ -959,6 +1113,7 @@ fn sort_flat(table: &Table, flat: &mut Flat) {
 
 fn flat_window(
     table: &Table,
+    config: &ViewConfig,
     formatters: &Formatters,
     flat: &Flat,
     rows: Range<usize>,
@@ -981,7 +1136,7 @@ fn flat_window(
         out.data_column(
             index,
             field,
-            field.name().clone(),
+            title_of(config, field.name()),
             table.column(c).to_arrow(slots),
             None,
             formatter,
@@ -1404,6 +1559,31 @@ fn leaf_cells(
 }
 
 impl Grouped {
+    fn new(
+        measures: Vec<CompiledMeasure>,
+        group_columns: Vec<usize>,
+        split_columns: Vec<usize>,
+    ) -> Self {
+        Self {
+            measures,
+            group_columns,
+            split_columns,
+            nodes: Vec::new(),
+            free: Vec::new(),
+            split_ids: FxHashMap::default(),
+            split_keys: Vec::new(),
+            split_rows: Vec::new(),
+            expanded: Vec::new(),
+            show_all: false,
+            visible: None,
+            columns: None,
+            lazy_values: RefCell::default(),
+            scratch_inputs: Vec::new(),
+            scratch_keys: Vec::new(),
+            scratch_path: Vec::new(),
+        }
+    }
+
     fn levels(&self) -> usize {
         self.group_columns.len()
     }
@@ -2081,16 +2261,7 @@ impl Grouped {
                 }
             };
             let (array, data_type) = values_to_arrow(table, &measure, &values);
-            let flags = values
-                .iter()
-                .map(|v| match v {
-                    CellValue::Overflow => flag::OVERFLOW,
-                    CellValue::Mixed => flag::MIXED,
-                    CellValue::Undefined => flag::UNDEFINED,
-                    CellValue::Float(f) if f.is_nan() => flag::UNDEFINED,
-                    _ => flag::OK,
-                })
-                .collect();
+            let flags = values.iter().map(value_flag).collect();
             out.data_column(
                 index,
                 &Field::new(name, data_type, true),
@@ -2104,6 +2275,26 @@ impl Grouped {
         }
         (out.finish(), total_rows, total_columns)
     }
+}
+
+/// The cell flag a computed value carries.
+fn value_flag(value: &CellValue) -> u8 {
+    match value {
+        CellValue::Overflow => flag::OVERFLOW,
+        CellValue::Mixed => flag::MIXED,
+        CellValue::Undefined => flag::UNDEFINED,
+        CellValue::Float(f) if f.is_nan() => flag::UNDEFINED,
+        _ => flag::OK,
+    }
+}
+
+/// The header text of a flat view's column: its title, else its name.
+fn title_of(config: &ViewConfig, name: &str) -> String {
+    config
+        .titles
+        .get(name)
+        .cloned()
+        .unwrap_or_else(|| name.to_owned())
 }
 
 /// A group value as a row label or column-pivot header: `(blank)` for null, and

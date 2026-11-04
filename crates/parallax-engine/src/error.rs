@@ -119,6 +119,14 @@ pub enum ConfigError {
     /// Column pivots produced more columns than the view allows.
     #[error("column pivots produce {0} columns, more than the limit of {1}")]
     TooManyColumns(usize, usize),
+    /// A flat view's totals cannot be computed as asked.
+    #[error("total of {column}: {reason}")]
+    Total {
+        /// The column, or the total's label when it names none.
+        column: String,
+        /// What is wrong.
+        reason: String,
+    },
     /// A display format cannot be used.
     #[error("format of {column}: {reason}")]
     Format {

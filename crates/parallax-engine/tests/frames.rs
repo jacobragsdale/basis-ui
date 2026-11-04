@@ -283,3 +283,120 @@ fn reformat_applies_only_format_changes() {
         "an invalid format changes nothing"
     );
 }
+
+#[test]
+fn totals_read_as_the_pivot_grand_total_and_titles_rename_headers() {
+    let t = table();
+    let mut formats = BTreeMap::new();
+    formats.insert(
+        "pnl".to_owned(),
+        Format {
+            abbreviate: Some(Abbreviation::Millions),
+            negative: Negative::Parentheses,
+            ..Format::default()
+        },
+    );
+    let titles = BTreeMap::from([
+        ("pnl".to_owned(), "P&L".to_owned()),
+        ("at".to_owned(), "Traded".to_owned()),
+    ]);
+    let mut flat = View::new(
+        &t,
+        ViewConfig {
+            formats: formats.clone(),
+            titles,
+            totals: vec![
+                Measure::new(Aggregate::Sum, "pnl"),
+                Measure::new(Aggregate::Count, "desk"),
+                Measure::new(Aggregate::Max, "at"),
+            ],
+            ..ViewConfig::default()
+        },
+    )
+    .unwrap();
+    let window = flat.window(&t, 0..10, 0..10);
+    assert_eq!(title_of(&window.batch, 0), "desk");
+    assert_eq!(title_of(&window.batch, 2), "P&L");
+    // A renamed instant keeps its zone in the header.
+    assert_eq!(title_of(&window.batch, 3), "Traded (America/New_York)");
+    let totals = flat.totals_window(&t, 0..10).unwrap();
+    assert_eq!(totals.num_rows(), 1);
+    assert_eq!(title_of(&totals, 2), "P&L");
+    let mut pivot = View::new(
+        &t,
+        ViewConfig {
+            measures: vec![
+                Measure::new(Aggregate::Sum, "pnl"),
+                Measure::new(Aggregate::Count, "desk"),
+                Measure::new(Aggregate::Max, "at"),
+            ],
+            formats,
+            ..ViewConfig::default()
+        },
+    )
+    .unwrap();
+    let grand = pivot.window(&t, 0..1, 0..3);
+    assert_eq!(text_of(&totals, 0), text_of(&grand.batch, 1));
+    assert_eq!(text_of(&totals, 2), text_of(&grand.batch, 0));
+    assert_eq!(text_of(&totals, 2), ["0.8M"]);
+    assert_eq!(text_of(&totals, 3), text_of(&grand.batch, 2));
+    // A column without a total is blank.
+    assert_eq!(text_of(&totals, 1), [""]);
+    // A window of columns gets the totals of those columns.
+    let right = flat.totals_window(&t, 2..3).unwrap();
+    assert_eq!(text_of(&right, 0), ["0.8M"]);
+}
+
+#[test]
+fn column_changes_keep_the_rows_and_new_totals_count_them() {
+    use parallax_engine::view::Sort;
+    use parallax_engine::{Filter, FilterOp};
+    let t = table();
+    let config = ViewConfig {
+        filters: vec![Filter::new("desk", FilterOp::IsNotNull)],
+        sort: vec![Sort {
+            column: "pnl".into(),
+            descending: true,
+        }],
+        ..ViewConfig::default()
+    };
+    let mut view = View::new(&t, config.clone()).unwrap();
+    let order = |view: &mut View| text_of(&view.window(&t, 0..10, 0..10).batch, 0);
+    let before = order(&mut view);
+    // Hidden and reordered columns, a title and a total: the rows stay as they were.
+    let shown = ViewConfig {
+        columns: vec!["pnl".into(), "desk".into()],
+        titles: BTreeMap::from([("desk".to_owned(), "Desk".to_owned())]),
+        totals: vec![Measure::new(Aggregate::Count, "desk")],
+        ..config.clone()
+    };
+    assert!(view.reformat(&t, &shown).unwrap());
+    let window = view.window(&t, 0..10, 0..10);
+    assert_eq!(window.total_columns, 2);
+    assert_eq!(title_of(&window.batch, 1), "Desk");
+    assert_eq!(text_of(&window.batch, 1), before);
+    assert_eq!(
+        view.totals(&t),
+        [parallax_engine::CellValue::Count(3)],
+        "the total counts the rows that pass"
+    );
+    // Two totals of one column are refused, and the view stays as it was.
+    let twice = ViewConfig {
+        totals: vec![
+            Measure::new(Aggregate::Count, "desk"),
+            Measure::new(Aggregate::DistinctCount, "desk"),
+        ],
+        ..shown.clone()
+    };
+    assert!(matches!(
+        view.reformat(&t, &twice),
+        Err(ConfigError::Total { .. })
+    ));
+    assert_eq!(view.config(), &shown);
+    // Another sort computes the rows again.
+    let resorted = ViewConfig {
+        sort: Vec::new(),
+        ..shown
+    };
+    assert!(!view.reformat(&t, &resorted).unwrap());
+}
