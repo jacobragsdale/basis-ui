@@ -37,7 +37,8 @@ fn the_conversation_answers_every_request() {
             // Two charts, each opened and reduced, then a viewport a chart refuses.
             "opened", "chart", "opened", "chart", "error",
             // A grid scrolled near its end, then two updates with their windows.
-            "opened", "frame", "frame", "frame"
+            "opened", "frame", "frame", "frame", // A grid grouped with its rows.
+            "opened", "frame"
         ]
     );
     // The filter leaves fewer rows than the window skipped, so it is answered from
@@ -45,6 +46,7 @@ fn the_conversation_answers_every_request() {
     let first_rows: Vec<(u64, u64)> = messages
         .iter()
         .rev()
+        .skip(2)
         .take(2)
         .map(|m| match m.body.as_ref().unwrap() {
             Body::Frame(f) => (m.request_id, f.first_row),
@@ -298,7 +300,7 @@ fn chart_frames_carry_reduced_data_and_exact_text() {
 
 /// The WebAssembly test suite checks the same value, so both builds must answer
 /// byte for byte the same.
-pub const TRANSCRIPT_FINGERPRINT: u64 = 18_412_750_216_388_629_436;
+pub const TRANSCRIPT_FINGERPRINT: u64 = 8_502_503_552_598_466_909;
 
 #[test]
 fn transcript_fingerprint_is_stable() {
@@ -761,6 +763,154 @@ mod requests {
             update(r#"{"columns":["position_id","fund"]}"#, 3, None),
         );
         assert!(grid.is_empty(), "{grid:?}");
+    }
+
+    fn viewport_frame(s: &mut Session, request_id: u64) -> parallax_protocol::v1::Frame {
+        let answer = ask(
+            s,
+            request_id,
+            C::SetViewport(SetViewport {
+                view_id: 1,
+                first_row: 0,
+                row_count: 10_000,
+                first_column: 0,
+                column_count: 40,
+            }),
+        );
+        match answer.into_iter().next() {
+            Some((_, Body::Frame(f))) => f,
+            other => panic!("a frame, got {other:?}"),
+        }
+    }
+
+    fn strings(batch: &arrow_array::RecordBatch, name: &str) -> Vec<String> {
+        arrow_array::cast::AsArray::as_string::<i32>(batch.column_by_name(name).unwrap().as_ref())
+            .iter()
+            .map(|v| v.unwrap_or_default().to_owned())
+            .collect()
+    }
+
+    #[test]
+    fn a_search_narrows_the_rows_and_the_value_lists() {
+        let mut s = session();
+        open(&mut s, r#"{"columns":["position_id","fund","sector"]}"#);
+        let all = viewport_frame(&mut s, 2).total_rows;
+        // A fund's name, searched for in lower case.
+        let fund = strings(
+            &decode_batches(&viewport_frame(&mut s, 3).batch).unwrap()[0],
+            "fund#text",
+        )[0]
+        .to_lowercase();
+        let searched =
+            format!(r#"{{"columns":["position_id","fund","sector"],"search":{fund:?}}}"#);
+        ask(&mut s, 4, update(&searched, 1, None));
+        let found = viewport_frame(&mut s, 5);
+        assert!(
+            found.total_rows > 0 && found.total_rows < all,
+            "{} of {all}",
+            found.total_rows
+        );
+        let funds = strings(&decode_batches(&found.batch).unwrap()[0], "fund#text");
+        let sectors = strings(&decode_batches(&found.batch).unwrap()[0], "sector#text");
+        assert!(
+            funds
+                .iter()
+                .zip(&sectors)
+                .all(|(f, s)| f.to_lowercase().contains(&fund) || s.to_lowercase().contains(&fund))
+        );
+        // The value lists count only the rows the search keeps.
+        let listed = ask(
+            &mut s,
+            6,
+            C::DistinctValues(parallax_protocol::v1::DistinctValues {
+                view_id: 1,
+                column: "sector".into(),
+                search: String::new(),
+                limit: 1_000,
+            }),
+        );
+        let Body::DistinctValues(list) = &listed[0].1 else {
+            panic!("values, got {listed:?}");
+        };
+        let counts = decode_batches(&list.values).unwrap();
+        let total: i64 = counts
+            .iter()
+            .map(|b| {
+                arrow_array::cast::AsArray::as_primitive::<arrow_array::types::Int64Type>(
+                    b.column_by_name("count").unwrap().as_ref(),
+                )
+                .values()
+                .iter()
+                .sum::<i64>()
+            })
+            .sum();
+        assert_eq!(total as u64, found.total_rows);
+        // A view that shows no text column has nothing to search.
+        let answer = ask(
+            &mut s,
+            7,
+            update(r#"{"columns":["position_id"],"search":"x"}"#, 2, None),
+        );
+        assert!(
+            matches!(&answer[0].1, Body::Error(e) if e.message.contains("no text column")),
+            "{answer:?}"
+        );
+    }
+
+    #[test]
+    fn frames_carry_the_totals_row_and_pinned_columns_come_first() {
+        let mut s = session();
+        open(
+            &mut s,
+            r#"{"columns":["position_id","fund","market_value_usd"],"pinned":["market_value_usd"],
+                "titles":{"fund":"Fund"},
+                "totals":[{"column":"market_value_usd","aggregate":"sum"},{"column":"fund","aggregate":"distinct_count"}]}"#,
+        );
+        let frame = viewport_frame(&mut s, 2);
+        let batch = &decode_batches(&frame.batch).unwrap()[0];
+        let schema = batch.schema();
+        let values: Vec<&str> = schema
+            .fields()
+            .iter()
+            .filter(|f| f.metadata().get("parallax.role").map(String::as_str) == Some("value"))
+            .map(|f| f.name().as_str())
+            .collect();
+        assert_eq!(values, ["market_value_usd", "position_id", "fund"]);
+        let fund = schema.field_with_name("fund").unwrap();
+        assert_eq!(fund.metadata()["parallax.title"], "Fund");
+        let totals = &decode_batches(&frame.totals).unwrap()[0];
+        assert_eq!(totals.num_rows(), 1);
+        assert_ne!(strings(totals, "market_value_usd#text"), [""]);
+        assert_eq!(strings(totals, "position_id#text"), [""]);
+        assert!(strings(totals, "fund#text")[0].parse::<u32>().unwrap() > 1);
+        // A view without totals sends none.
+        ask(&mut s, 3, update(r#"{"columns":["fund"]}"#, 1, None));
+        assert!(viewport_frame(&mut s, 4).totals.is_empty());
+    }
+
+    #[test]
+    fn a_detail_layout_lists_rows_under_their_groups() {
+        let mut s = session();
+        open(
+            &mut s,
+            r#"{"group_by":["fund"],"detail":true,"expand_depth":1,"columns":["position_id","ticker"],
+                "totals":[{"column":"position_id","aggregate":"count"}]}"#,
+        );
+        let frame = viewport_frame(&mut s, 2);
+        let batch = &decode_batches(&frame.batch).unwrap()[0];
+        let kinds = strings(batch, "__kind");
+        assert_eq!(kinds[0], "group");
+        assert_eq!(kinds[1], "row");
+        assert_eq!(frame.total_rows as usize, kinds.len());
+        assert_eq!(kinds.iter().filter(|k| *k == "row").count(), 3_000);
+        // The footer counts every row.
+        assert_eq!(
+            strings(
+                &decode_batches(&frame.totals).unwrap()[0],
+                "position_id#text"
+            ),
+            ["3,000"]
+        );
     }
 
     #[test]

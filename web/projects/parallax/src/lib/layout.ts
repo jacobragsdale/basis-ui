@@ -16,8 +16,8 @@ import { en } from "zod/locales";
  */
 const ENGLISH = { error: en().localeError };
 
-/** The layout version this library writes. */
-export const LAYOUT_VERSION = 1;
+/** The layout version this library writes. Version 1 documents read unchanged. */
+export const LAYOUT_VERSION = 2;
 
 const name = z.string();
 const count = z.int().check(z.nonnegative());
@@ -66,7 +66,14 @@ const measureSchema = z.strictObject({
   format: orNull(formatSchema)
 });
 
-const filterSchema = z.strictObject({ column: name, op: z.enum(FILTER_OPS), value: z._default(scalar, null), values: z._default(z.array(scalar), []) });
+const filterSchema = z.strictObject({
+  column: name,
+  op: z.enum(FILTER_OPS),
+  value: z._default(scalar, null),
+  values: z._default(z.array(scalar), []),
+  // More columns tested: the filter passes when it holds in any, as a search does.
+  columns: z._default(z.array(name), [])
+});
 
 const sortSchema = z.strictObject({ column: name, descending: z._default(z.boolean(), false) });
 
@@ -78,8 +85,8 @@ const topNSchema = z.strictObject({ n: count, measure: count, largest: z._defaul
 
 const expandedSchema = z.strictObject({ path: z.array(scalar), expanded: z.boolean() });
 
-/** What a chart draws. Bar charts and heatmaps draw the layout's grouped view; the engine reduces the others. */
-export const CHART_KINDS = ["line", "area", "bar", "scatter", "heatmap", "histogram", "candlestick", "ohlc"] as const;
+/** What a chart draws. Bar charts, heatmaps and pies draw the layout's grouped view; the engine reduces the others. */
+export const CHART_KINDS = ["line", "area", "bar", "scatter", "heatmap", "histogram", "candlestick", "ohlc", "pie"] as const;
 
 /** The technical-analysis indicators a chart computes. */
 export const INDICATOR_KINDS = ["sma", "ema", "wma", "bollinger", "rsi", "macd", "atr", "stochastic", "vwap", "volume"] as const;
@@ -141,7 +148,9 @@ const chartSchema = z.strictObject({
   volume: orNull(name),
   drawings: z._default(z.array(drawingSchema), []),
   compare: z._default(z.boolean(), false),
-  events: orNull(name)
+  events: orNull(name),
+  // A pie is a ring, with the total in the middle, unless this is off.
+  donut: z._default(z.boolean(), true)
 });
 
 /** The schema of a layout document. Unknown fields are errors, as in Rust. */
@@ -166,7 +175,12 @@ export const layoutSchema = z.strictObject({
   expanded: z._default(z.array(expandedSchema), []),
   formats: z._default(z.record(name, formatSchema), {}),
   column_widths: z._default(z.record(z.string(), z.int().check(z.minimum(0), z.maximum(4_294_967_295))), {}),
-  chart: orNull(chartSchema)
+  chart: orNull(chartSchema),
+  search: z._default(z.string(), ""),
+  pinned: z._default(z.array(name), []),
+  titles: z._default(z.record(name, z.string()), {}),
+  totals: z._default(z.array(measureSchema), []),
+  detail: z._default(z.boolean(), false)
 });
 
 /** A complete layout, with every default filled in. */

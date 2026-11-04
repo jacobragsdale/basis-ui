@@ -172,6 +172,13 @@ const LAYOUTS: &[&str] = &[
        "expand_depth":2,"formats":{"market_value_usd":{"abbreviate":"millions","negative":"parentheses"}}}"#,
     r#"{"version":1,"group_by":["ticker"],"measures":[{"column":"daily_pnl_usd","aggregate":"sum"}],
        "group_sort":{"by":{"measure":0},"descending":true},"top_n":{"n":25,"measure":0}}"#,
+    r#"{"version":2,"columns":["position_id","fund","ticker","market_value_usd"],"pinned":["ticker"],
+       "search":"a","sort":[{"column":"market_value_usd","descending":true}],
+       "totals":[{"column":"market_value_usd","aggregate":"sum"}],"titles":{"fund":"Fund"}}"#,
+    r#"{"version":2,"group_by":["fund","sector"],"detail":true,"expand_depth":2,
+       "columns":["position_id","ticker","market_value_usd"],"sort":[{"column":"ticker"}],
+       "filters":[{"column":"ticker","op":"not_contains","value":"q","columns":["sector"]}],
+       "totals":[{"column":"market_value_usd","aggregate":"sum"},{"column":"ticker","aggregate":"distinct_count"}]}"#,
 ];
 
 #[test]

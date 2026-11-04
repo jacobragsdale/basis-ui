@@ -21,8 +21,10 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-/// The current layout version.
-pub const LAYOUT_VERSION: u32 = 1;
+/// The current layout version. Version 2 added `search`, filters across several
+/// columns, two text conditions, `pinned`, `titles`, `totals`, `detail` and pie
+/// charts; a version 1 document reads unchanged.
+pub const LAYOUT_VERSION: u32 = 2;
 
 /// A view, as saved and sent.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
@@ -68,6 +70,23 @@ pub struct Layout {
     pub column_widths: BTreeMap<String, u32>,
     /// Draws the view as a chart instead of a grid.
     pub chart: Option<LayoutChart>,
+    /// Text to search for, ignoring case, in every searched column: the text
+    /// columns a flat view shows, those and the group columns of a detail view,
+    /// or the group and column-pivot columns of a pivot. Rows must match it as
+    /// well as the filters. Empty searches nothing.
+    pub search: String,
+    /// Columns of a flat or detail view kept at the left while the rest scroll,
+    /// in order. They come first, whatever `columns` says.
+    pub pinned: Vec<String>,
+    /// Header text by source column; a column without one shows its name. The
+    /// export's headers are the same.
+    pub titles: BTreeMap<String, String>,
+    /// The totals row of a flat or detail view: at most one total per column,
+    /// each a measure of its column. A detail view's group rows show them too.
+    pub totals: Vec<LayoutMeasure>,
+    /// Groups `group_by` with the rows under them, in `sort` order and with the
+    /// `columns`, as a grid does, rather than as a pivot of measures.
+    pub detail: bool,
 }
 
 impl Default for Layout {
@@ -91,6 +110,11 @@ impl Default for Layout {
             formats: BTreeMap::new(),
             column_widths: BTreeMap::new(),
             chart: None,
+            search: String::new(),
+            pinned: Vec::new(),
+            titles: BTreeMap::new(),
+            totals: Vec::new(),
+            detail: false,
         }
     }
 }
@@ -117,6 +141,9 @@ pub enum ChartKindName {
     Candlestick,
     /// Bars of each bucket's open, high, low and close.
     Ohlc,
+    /// Slices of the layout's grouped view, one per group, sized by its first
+    /// measure, as a ring when `donut` is set.
+    Pie,
 }
 
 impl ChartKindName {
@@ -140,7 +167,7 @@ impl ChartKindName {
             Self::Histogram => ChartKind::Histogram,
             Self::Candlestick => ChartKind::Candlestick,
             Self::Ohlc => ChartKind::Ohlc,
-            Self::Bar | Self::Heatmap => return None,
+            Self::Bar | Self::Heatmap | Self::Pie => return None,
         })
     }
 }
@@ -440,6 +467,9 @@ pub struct LayoutChart {
     /// A column whose non-null values mark rows as events, such as earnings.
     #[serde(default)]
     pub events: Option<String>,
+    /// Draws a pie chart as a ring, with the total in its centre.
+    #[serde(default = "yes")]
+    pub donut: bool,
 }
 
 impl LayoutChart {
@@ -659,6 +689,53 @@ pub struct LayoutMeasure {
     pub format: Option<LayoutFormat>,
 }
 
+impl LayoutMeasure {
+    /// The engine's measure, or what is missing.
+    ///
+    /// # Errors
+    ///
+    /// Returns a message for a percentile without its value or a weighted mean
+    /// without its weight.
+    pub fn to_engine(&self) -> Result<Measure, String> {
+        let aggregate = match self.aggregate {
+            AggregateName::Count => Aggregate::Count,
+            AggregateName::CountAll => Aggregate::CountAll,
+            AggregateName::Sum => Aggregate::Sum,
+            AggregateName::Mean => Aggregate::Mean,
+            AggregateName::WeightedMean => Aggregate::WeightedMean,
+            AggregateName::Min => Aggregate::Min,
+            AggregateName::Max => Aggregate::Max,
+            AggregateName::First => Aggregate::First,
+            AggregateName::Last => Aggregate::Last,
+            AggregateName::DistinctCount => Aggregate::DistinctCount,
+            AggregateName::Variance => Aggregate::Variance,
+            AggregateName::StdDev => Aggregate::StdDev,
+            AggregateName::Median => Aggregate::Median,
+            AggregateName::Percentile => Aggregate::Percentile(
+                self.percentile
+                    .ok_or_else(|| "percentile is missing".to_owned())?,
+            ),
+        };
+        if aggregate == Aggregate::WeightedMean && self.weight.is_none() {
+            return Err("weighted_mean needs a weight".into());
+        }
+        Ok(Measure {
+            column: self.column.clone(),
+            aggregate,
+            weight: self.weight.clone(),
+            unit_column: self.unit_column.clone(),
+            show_as: match self.show_as {
+                ShowAsName::Value => ShowAs::Value,
+                ShowAsName::PercentOfGrandTotal => ShowAs::PercentOfGrandTotal,
+                ShowAsName::PercentOfColumnTotal => ShowAs::PercentOfColumnTotal,
+                ShowAsName::PercentOfRowTotal => ShowAs::PercentOfRowTotal,
+                ShowAsName::PercentOfParent => ShowAs::PercentOfParent,
+            },
+            format: self.format.as_ref().map(LayoutFormat::to_engine),
+        })
+    }
+}
+
 /// A filter operator in a layout.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -708,6 +785,10 @@ pub struct LayoutFilter {
     /// The operands of `in` and `not_in`.
     #[serde(default)]
     pub values: Vec<Value>,
+    /// More columns the condition is tested in: the filter passes when it holds
+    /// in `column` or in any of these, as a search across columns does.
+    #[serde(default)]
+    pub columns: Vec<String>,
 }
 
 /// A sort in a layout.
@@ -825,6 +906,12 @@ pub enum LayoutError {
     /// A measure is incomplete.
     #[error("measure {0}: {1}")]
     Measure(usize, String),
+    /// A total is incomplete.
+    #[error("total {0}: {1}")]
+    Total(usize, String),
+    /// A search has no column to search.
+    #[error("the search for {0:?} has no text column to search")]
+    Search(String),
 }
 
 /// Returns the JSON Schema of layout documents.
@@ -1007,7 +1094,8 @@ impl Layout {
         if version > LAYOUT_VERSION {
             return Err(LayoutError::Version(version));
         }
-        // Migrations from older versions go here, one step at a time.
+        // Migrations from older versions go here, one step at a time. Version 2
+        // only added fields, whose defaults mean what version 1 did.
         if let Some(object) = value.as_object_mut() {
             object.insert("version".into(), Value::from(LAYOUT_VERSION));
         }
@@ -1024,6 +1112,86 @@ impl Layout {
         serde_json::to_string(self).expect("layouts serialize")
     }
 
+    /// Whether the layout is grouped: a pivot or a detail view rather than a flat
+    /// list of rows.
+    #[must_use]
+    pub fn is_grouped(&self) -> bool {
+        !self.group_by.is_empty() || !self.split_by.is_empty() || !self.measures.is_empty()
+    }
+
+    /// The filter the search becomes: its text in any searched column, ignoring
+    /// case. A flat view searches the text columns it shows; a detail view, those
+    /// and its group columns; a pivot, its group and column-pivot columns. `None`
+    /// without a search.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for unknown columns, or a search with no text column to
+    /// search.
+    pub fn search_filter(&self, table: &Table) -> Result<Option<LayoutFilter>, LayoutError> {
+        if self.search.is_empty() {
+            return Ok(None);
+        }
+        let mut candidates: Vec<String> = Vec::new();
+        if self.is_grouped() {
+            candidates.extend(self.group_by.iter().cloned());
+            if self.detail {
+                candidates.extend(self.shown_columns(table)?);
+            } else {
+                candidates.extend(self.split_by.iter().cloned());
+            }
+        } else {
+            candidates.extend(self.shown_columns(table)?);
+        }
+        let mut columns: Vec<String> = Vec::new();
+        for c in candidates {
+            if column_type(table, &c)? == ColumnType::Utf8 && !columns.contains(&c) {
+                columns.push(c);
+            }
+        }
+        let Some((first, rest)) = columns.split_first() else {
+            return Err(LayoutError::Search(self.search.clone()));
+        };
+        Ok(Some(LayoutFilter {
+            column: first.clone(),
+            columns: rest.to_vec(),
+            op: FilterOpName::Contains,
+            value: Some(Value::String(self.search.clone())),
+            values: Vec::new(),
+        }))
+    }
+
+    /// The columns a flat or detail view shows, in order: the pinned ones first,
+    /// then the rest of `columns`, or of the table's when `columns` is empty.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for a pinned column that is not in the table.
+    pub fn shown_columns(&self, table: &Table) -> Result<Vec<String>, LayoutError> {
+        if self.pinned.is_empty() {
+            return Ok(self.columns.clone());
+        }
+        for c in &self.pinned {
+            column_type(table, c)?;
+        }
+        let rest: Vec<String> = if self.columns.is_empty() {
+            table
+                .schema()
+                .fields()
+                .iter()
+                .map(|f| f.name().clone())
+                .collect()
+        } else {
+            self.columns.clone()
+        };
+        Ok(self
+            .pinned
+            .iter()
+            .chain(rest.iter().filter(|c| !self.pinned.contains(c)))
+            .cloned()
+            .collect())
+    }
+
     /// Interprets the layout against `table`.
     ///
     /// # Errors
@@ -1036,51 +1204,24 @@ impl Layout {
             .iter()
             .enumerate()
             .map(|(i, m)| {
-                let aggregate = match m.aggregate {
-                    AggregateName::Count => Aggregate::Count,
-                    AggregateName::CountAll => Aggregate::CountAll,
-                    AggregateName::Sum => Aggregate::Sum,
-                    AggregateName::Mean => Aggregate::Mean,
-                    AggregateName::WeightedMean => Aggregate::WeightedMean,
-                    AggregateName::Min => Aggregate::Min,
-                    AggregateName::Max => Aggregate::Max,
-                    AggregateName::First => Aggregate::First,
-                    AggregateName::Last => Aggregate::Last,
-                    AggregateName::DistinctCount => Aggregate::DistinctCount,
-                    AggregateName::Variance => Aggregate::Variance,
-                    AggregateName::StdDev => Aggregate::StdDev,
-                    AggregateName::Median => Aggregate::Median,
-                    AggregateName::Percentile => {
-                        Aggregate::Percentile(m.percentile.ok_or_else(|| {
-                            LayoutError::Measure(i, "percentile is missing".into())
-                        })?)
-                    }
-                };
-                if aggregate == Aggregate::WeightedMean && m.weight.is_none() {
-                    return Err(LayoutError::Measure(
-                        i,
-                        "weighted_mean needs a weight".into(),
-                    ));
-                }
-                Ok(Measure {
-                    column: m.column.clone(),
-                    aggregate,
-                    weight: m.weight.clone(),
-                    unit_column: m.unit_column.clone(),
-                    show_as: match m.show_as {
-                        ShowAsName::Value => ShowAs::Value,
-                        ShowAsName::PercentOfGrandTotal => ShowAs::PercentOfGrandTotal,
-                        ShowAsName::PercentOfColumnTotal => ShowAs::PercentOfColumnTotal,
-                        ShowAsName::PercentOfRowTotal => ShowAs::PercentOfRowTotal,
-                        ShowAsName::PercentOfParent => ShowAs::PercentOfParent,
-                    },
-                    format: m.format.as_ref().map(LayoutFormat::to_engine),
-                })
+                m.to_engine()
+                    .map_err(|reason| LayoutError::Measure(i, reason))
             })
             .collect::<Result<Vec<_>, LayoutError>>()?;
+        let totals = self
+            .totals
+            .iter()
+            .enumerate()
+            .map(|(i, m)| {
+                m.to_engine()
+                    .map_err(|reason| LayoutError::Total(i, reason))
+            })
+            .collect::<Result<Vec<_>, LayoutError>>()?;
+        let search = self.search_filter(table)?;
         let filters = self
             .filters
             .iter()
+            .chain(&search)
             .map(|f| {
                 let ty = column_type(table, &f.column)?;
                 let single = || -> Result<Scalar, LayoutError> {
@@ -1118,7 +1259,11 @@ impl Layout {
                     FilterOpName::StartsWith => FilterOp::StartsWith(text()?),
                     FilterOpName::EndsWith => FilterOp::EndsWith(text()?),
                 };
-                Ok(Filter::new(&f.column, op))
+                for column in &f.columns {
+                    column_type(table, column)?;
+                }
+                let columns: Vec<&str> = f.columns.iter().map(String::as_str).collect();
+                Ok(Filter::new(&f.column, op).or_in(&columns))
             })
             .collect::<Result<Vec<_>, LayoutError>>()?;
         let expanded = self
@@ -1135,7 +1280,7 @@ impl Layout {
             })
             .collect::<Result<Vec<_>, LayoutError>>()?;
         let config = ViewConfig {
-            columns: self.columns.clone(),
+            columns: self.shown_columns(table)?,
             group_by: self.group_by.clone(),
             split_by: self.split_by.clone(),
             measures,
@@ -1186,10 +1331,16 @@ impl Layout {
                     Ok((column.clone(), f.to_engine()))
                 })
                 .collect::<Result<_, LayoutError>>()?,
-            // Layouts name titles, totals and detail from version 2.
-            titles: std::collections::BTreeMap::new(),
-            totals: Vec::new(),
-            detail: false,
+            titles: self
+                .titles
+                .iter()
+                .map(|(column, title)| {
+                    column_type(table, column)?;
+                    Ok((column.clone(), title.clone()))
+                })
+                .collect::<Result<_, LayoutError>>()?,
+            totals,
+            detail: self.detail,
         };
         let chart = self
             .chart
@@ -1347,6 +1498,7 @@ impl Layout {
                 };
                 LayoutFilter {
                     column: f.column.clone(),
+                    columns: f.or_columns.clone(),
                     op,
                     value,
                     values,
@@ -1439,6 +1591,22 @@ mod tests {
         assert_eq!(exact_decimal(5, -2), "500");
         assert_eq!(exact_decimal(-5, 3), "-0.005");
         assert_eq!(exact_decimal(42, 0), "42");
+    }
+
+    #[test]
+    fn a_version_1_layout_reads_as_version_2_with_nothing_new_set() {
+        let v1 = r#"{"version":1,"dataset":"positions","group_by":["fund"],
+            "measures":[{"column":"market_value_usd","aggregate":"sum"}],
+            "filters":[{"column":"fund","op":"contains","value":"a"}],
+            "chart":{"kind":"bar"}}"#;
+        let layout = Layout::from_json(v1).unwrap();
+        assert_eq!(layout.version, LAYOUT_VERSION);
+        assert_eq!(layout.search, "");
+        assert!(layout.pinned.is_empty() && layout.titles.is_empty() && layout.totals.is_empty());
+        assert!(!layout.detail);
+        assert!(layout.filters[0].columns.is_empty());
+        // A pie is a ring unless it says otherwise; version 1 had none.
+        assert!(layout.chart.unwrap().donut);
     }
 
     #[test]
@@ -1539,7 +1707,7 @@ mod tests {
     /// web library's schema must read each one back unchanged.
     fn fixture_layouts() -> Vec<Value> {
         let full = r#"{
-            "version": 1,
+            "version": 2,
             "dataset": "positions",
             "parameters": {"as_of": "2026-11-02"},
             "columns": ["fund", "ticker"],
@@ -1558,7 +1726,9 @@ mod tests {
             "filters": [
                 {"column": "fund", "op": "in", "values": ["Atlas", "Cobalt"]},
                 {"column": "quantity", "op": "gt", "value": "1.5"},
-                {"column": "sector", "op": "is_null"}
+                {"column": "sector", "op": "is_null"},
+                {"column": "ticker", "op": "not_contains", "value": "X", "columns": ["fund", "sector"]},
+                {"column": "ticker", "op": "ends_with", "value": "a"}
             ],
             "sort": [{"column": "fund", "descending": true}],
             "group_sort": {"by": {"measure": 0}, "descending": true},
@@ -1567,7 +1737,13 @@ mod tests {
             "expand_depth": 2,
             "expanded": [{"path": ["Atlas", null, 1.5, true], "expanded": false}],
             "formats": {"quantity": {"abbreviate": "thousands"}, "trade_time": {"precision": "microseconds"}},
-            "column_widths": {"fund": 180, "__tree": 300, "__measure:0": 120, "region": 0}
+            "column_widths": {"fund": 180, "__tree": 300, "__measure:0": 120, "region": 0},
+            "search": "atl",
+            "pinned": ["ticker"],
+            "titles": {"fund": "Fund", "market_value_usd": "Market value (USD)"},
+            "totals": [{"column": "market_value_usd", "aggregate": "sum"},
+                       {"column": "ticker", "aggregate": "distinct_count"}],
+            "detail": true
         }"#;
         let chart = r#"{
             "dataset": "prices",
@@ -1598,6 +1774,7 @@ mod tests {
             Layout::from_json(chart).unwrap(),
             Layout::from_json(candles).unwrap(),
             Layout::from_json(r#"{"chart": {"kind": "bar"}}"#).unwrap(),
+            Layout::from_json(r#"{"chart": {"kind": "pie", "donut": false}}"#).unwrap(),
         ]
         .iter()
         .map(|l| serde_json::to_value(l).unwrap())

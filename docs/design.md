@@ -700,6 +700,22 @@ The TypeScript library checks layouts with a Zod schema that mirrors the Rust
 types. A test reads layouts the Rust crate wrote and requires each to come back
 unchanged, with the same defaults, so the two can't drift.
 
+Version 2 added what grids need. A version 1 document reads unchanged, since
+every new field defaults to what version 1 meant.
+
+- `search` matches text, ignoring case, in every column searched: the text
+  columns a grid shows, or a pivot's group and column-pivot columns. The layout
+  turns it into one filter across those columns, so a search survives
+  drill-through, and the value lists in filter menus honour it.
+- A filter can name more `columns`, and passes when its condition holds in any
+  of them.
+- `pinned` columns come first and stay at the left.
+- `titles` rename headers, in the grid and in the export alike.
+- `totals` fill a totals row, and a detail view's group rows.
+- `detail` groups a grid's rows rather than pivoting them.
+
+Frames carry the totals row beside the rows, computed for the same columns.
+
 `<px-grid>` keeps everything the user changes in the layout. Clicking a header
 sorts by that column, then reverses it, then clears it; Shift adds a sort. In a
 pivot, a header sorts groups by that measure. Dragging a header edge resizes

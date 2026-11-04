@@ -137,6 +137,11 @@
           "const": "ohlc",
           "description": "Bars of each bucket's open, high, low and close.",
           "type": "string"
+        },
+        {
+          "const": "pie",
+          "description": "Slices of the layout's grouped view, one per group, sized by its first\nmeasure, as a ring when `donut` is set.",
+          "type": "string"
         }
       ]
     },
@@ -306,6 +311,11 @@
         "compare": {
           "default": false,
           "description": "Each series as its percentage change from its first value in the range\nshown, on a line or area chart.",
+          "type": "boolean"
+        },
+        "donut": {
+          "default": true,
+          "description": "Draws a pie chart as a ring, with the total in its centre.",
           "type": "boolean"
         },
         "drawings": {
@@ -575,6 +585,14 @@
         "column": {
           "description": "The column.",
           "type": "string"
+        },
+        "columns": {
+          "default": [],
+          "description": "More columns the condition is tested in: the filter passes when it holds\nin `column` or in any of these, as a search across columns does.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
         },
         "op": {
           "$ref": "#/$defs/FilterOpName",
@@ -1236,6 +1254,11 @@
       "description": "The dataset the view reads. Empty in layouts sent with an open-view\nrequest, which names the dataset itself; when both are given they must\nagree.",
       "type": "string"
     },
+    "detail": {
+      "default": false,
+      "description": "Groups `group_by` with the rows under them, in `sort` order and with the\n`columns`, as a grid does, rather than as a pivot of measures.",
+      "type": "boolean"
+    },
     "expand_depth": {
       "default": 0,
       "description": "Levels expanded by default.",
@@ -1307,6 +1330,19 @@
       "description": "The dataset's parameters, such as an as-of date.",
       "type": "object"
     },
+    "pinned": {
+      "default": [],
+      "description": "Columns of a flat or detail view kept at the left while the rest scroll,\nin order. They come first, whatever `columns` says.",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "search": {
+      "default": "",
+      "description": "Text to search for, ignoring case, in every searched column: the text\ncolumns a flat view shows, those and the group columns of a detail view,\nor the group and column-pivot columns of a pivot. Rows must match it as\nwell as the filters. Empty searches nothing.",
+      "type": "string"
+    },
     "sort": {
       "default": [],
       "description": "Sorts of a flat view.",
@@ -1323,6 +1359,14 @@
       },
       "type": "array"
     },
+    "titles": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "default": {},
+      "description": "Header text by source column; a column without one shows its name. The\nexport's headers are the same.",
+      "type": "object"
+    },
     "top_n": {
       "anyOf": [
         {
@@ -1335,8 +1379,16 @@
       "default": null,
       "description": "Top-N per set of siblings."
     },
+    "totals": {
+      "default": [],
+      "description": "The totals row of a flat or detail view: at most one total per column,\neach a measure of its column. A detail view's group rows show them too.",
+      "items": {
+        "$ref": "#/$defs/LayoutMeasure"
+      },
+      "type": "array"
+    },
     "version": {
-      "default": 1,
+      "default": 2,
       "description": "The layout version; [`LAYOUT_VERSION`] for documents this crate writes.",
       "format": "uint32",
       "minimum": 0,

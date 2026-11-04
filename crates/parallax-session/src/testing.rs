@@ -54,6 +54,12 @@ const RESORTED: &str = r#"{"version":1,"group_by":["fund","sector"],"split_by":[
 
 const FLAT: &str = r#"{"version":1,"columns":["position_id","ticker","market_value_usd"]}"#;
 
+const DETAIL: &str = r#"{"version":2,"group_by":["fund"],"detail":true,"expand_depth":1,
+"columns":["position_id","ticker","market_value_usd"],"pinned":["market_value_usd"],"search":"a",
+"sort":[{"column":"market_value_usd","descending":true}],"titles":{"ticker":"Ticker"},
+"totals":[{"column":"market_value_usd","aggregate":"sum"},{"column":"ticker","aggregate":"distinct_count"}],
+"formats":{"market_value_usd":{"abbreviate":"millions"}}}"#;
+
 const FILTERED: &str = r#"{"version":1,"columns":["position_id","ticker","market_value_usd"],
 "filters":[{"column":"asset_class","op":"in","values":["Bond"]}]}"#;
 
@@ -333,6 +339,34 @@ pub fn transcript() -> Vec<Vec<u8>> {
             ),
         );
     }
+    // A grid grouped with its rows, searched, pinned, titled and totalled.
+    send(
+        &mut session,
+        &mut out,
+        message(
+            20,
+            B::OpenView(OpenView {
+                view_id: 6,
+                dataset: "positions".into(),
+                parameters: Default::default(),
+                layout_json: DETAIL.into(),
+            }),
+        ),
+    );
+    send(
+        &mut session,
+        &mut out,
+        message(
+            21,
+            B::SetViewport(SetViewport {
+                view_id: 6,
+                first_row: 0,
+                row_count: 40,
+                first_column: 0,
+                column_count: 3,
+            }),
+        ),
+    );
     out
 }
 

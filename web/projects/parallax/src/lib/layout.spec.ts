@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import * as z from "zod/mini";
 
-import { checkLayout, layoutSchema, parseLayout } from "./layout";
+import { LAYOUT_VERSION, checkLayout, layoutSchema, parseLayout } from "./layout";
 import fixtures from "./testing/layouts.json";
 
 // The fixtures are written by parallax-protocol's tests, from the Rust types.
@@ -25,7 +25,7 @@ describe("layoutSchema", () => {
   });
 
   it("refuses values the engine would refuse", () => {
-    expect(layoutSchema.safeParse({ version: 2 }).success).toBe(false);
+    expect(layoutSchema.safeParse({ version: 3 }).success).toBe(false);
     expect(layoutSchema.safeParse({ column_widths: { x: -1 } }).success).toBe(false);
     expect(layoutSchema.safeParse({ measures: [{ aggregate: "percentile", percentile: 1.5 }] }).success).toBe(false);
     expect(layoutSchema.safeParse({ formats: { x: { decimals: 31 } } }).success).toBe(false);
@@ -42,7 +42,8 @@ describe("layoutSchema", () => {
   });
 
   it("brings older versions up to date, as the Rust crate does", () => {
-    expect(parseLayout({ version: 0 }).version).toBe(1);
+    expect(parseLayout({ version: 0 }).version).toBe(LAYOUT_VERSION);
+    expect(parseLayout({ version: 1 }).version).toBe(2);
   });
 
   it("says what is wrong in English, without changing Zod's settings for the host", () => {

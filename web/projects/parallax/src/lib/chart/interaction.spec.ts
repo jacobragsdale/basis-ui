@@ -283,8 +283,8 @@ describe("brushFilters", () => {
   it("selects from the first point inside the range to the last, inclusive, with the exact values sent, and snaps to them", () => {
     expect(brushFilters(f, "date", [], [0.5, 4.2])).toEqual({
       filters: [
-        { column: "date", op: "ge", value: "2024-01-02", values: [] },
-        { column: "date", op: "le", value: "2024-01-05", values: [] }
+        { column: "date", op: "ge", value: "2024-01-02", values: [], columns: [] },
+        { column: "date", op: "le", value: "2024-01-05", values: [], columns: [] }
       ],
       range: [1, 4]
     });
@@ -321,8 +321,8 @@ describe("brushFilters", () => {
     // From the middle of Monday's bucket to the middle of Tuesday's: both, whole.
     expect(brushFilters(candles, "date", [], [0.5, 1.5])).toEqual({
       filters: [
-        { column: "date", op: "ge", value: "2024-01-01", values: [] },
-        { column: "date", op: "lt", value: "2024-01-03", values: [] }
+        { column: "date", op: "ge", value: "2024-01-01", values: [], columns: [] },
+        { column: "date", op: "lt", value: "2024-01-03", values: [], columns: [] }
       ],
       range: [0, 2]
     });

@@ -1,5 +1,5 @@
 import { create } from "@bufbuild/protobuf";
-import { Decimal, Field, Float64, Int32, makeData, RecordBatch, Schema, Struct, Table, tableToIPC, Uint8, Utf8 } from "apache-arrow";
+import { Decimal, Field, Float64, Int32, Int64, makeData, RecordBatch, Schema, Struct, Table, tableToIPC, Uint8, Utf8 } from "apache-arrow";
 import type { Data, DataType } from "apache-arrow";
 import { describe, expect, it } from "vitest";
 
@@ -124,5 +124,69 @@ describe("decodeFrame", () => {
         2
       )
     ).toThrow(/numbered from 0/);
+  });
+});
+
+describe("decodeFrame, for a detail view", () => {
+  const ints = (values: readonly (bigint | null)[]): Data =>
+    makeData({
+      type: new Int64(),
+      length: values.length,
+      nullCount: values.filter((v) => v === null).length,
+      nullBitmap: bits(values.map((v) => v !== null)),
+      data: BigInt64Array.from(values.map((v) => v ?? 0n))
+    });
+
+  function bits(valid: readonly boolean[]): Uint8Array {
+    const out = new Uint8Array(Math.ceil(valid.length / 8));
+    valid.forEach((v, i) => {
+      if (v) {
+        out[i >> 3] = (out[i >> 3] ?? 0) | (1 << (i & 7));
+      }
+    });
+    return out;
+  }
+
+  // A group of two rows: its count, and a total in the column beside the rows' values.
+  const detail: readonly Column[] = [
+    column("__depth", new Int32(), "depth", makeData({ type: new Int32(), length: 3, data: new Int32Array([1, 2, 2]) })),
+    column("__kind", new Utf8(), "kind", text(["group", "row", "row"])),
+    column("__expanded", new Utf8(), "expanded", text(["", "", ""])),
+    column("__label", new Utf8(), "label", text(["Rates", "", ""])),
+    column("__rows", new Int64(), "rows", ints([2n, null, null])),
+    column("pnl", new Float64(), "value", makeData({ type: new Float64(), length: 3, nullCount: 1, nullBitmap: bits([false, true, true]), data: new Float64Array([0, 1.5, 2.25]) }), {
+      "parallax.index": "0",
+      "parallax.title": "P&L"
+    }),
+    column(
+      "pnl#total",
+      new Decimal(2, 38, 128),
+      "total",
+      makeData({ type: new Decimal(2, 38, 128), length: 3, nullCount: 2, nullBitmap: bits([true, false, false]), data: decimals([375n, 0n, 0n]).values }),
+      { "parallax.index": "0" }
+    ),
+    column("pnl#text", new Utf8(), "text", text(["3.75", "1.50", "2.25"]), { "parallax.index": "0" })
+  ];
+
+  it("reads row kinds, group counts and each group's typed total", () => {
+    const totalsRow: readonly Column[] = [
+      column("pnl", new Float64(), "value", makeData({ type: new Float64(), length: 1, data: new Float64Array([3.75]) }), { "parallax.index": "0" }),
+      column("pnl#text", new Utf8(), "text", text(["3.75"]), { "parallax.index": "0" })
+    ];
+    const frame = decodeFrame(create(FrameSchema, { viewId: 1, batch: frameOf(detail, 3), totals: frameOf(totalsRow, 1), totalRows: 3n, totalColumns: 1 }));
+    expect([0, 1, 2].map((r) => frame.tree?.kind(r))).toEqual(["group", "row", "row"]);
+    expect([0, 1, 2].map((r) => frame.tree?.rows(r))).toEqual([2, null, null]);
+    const [pnl] = frame.columns;
+    expect(pnl?.numeric).toBe(true);
+    // The group row's cell copies its total's every digit; a row copies its own value.
+    expect(pnl?.copy(0)).toBe("3.75");
+    expect(pnl?.copy(1)).toBe("1.5");
+    expect(pnl?.total?.(1)).toEqual({ kind: "null" });
+    expect(frame.totals?.[0]?.text(0)).toBe("3.75");
+  });
+
+  it("refuses a totals row that does not match the frame's columns", () => {
+    const wide = [...detail.slice(5), column("x", new Float64(), "value", makeData({ type: new Float64(), length: 1, data: new Float64Array([1]) }), { "parallax.index": "1" })];
+    expect(() => decodeFrame(create(FrameSchema, { viewId: 1, batch: frameOf(detail, 3), totals: frameOf(wide.slice(0, 1), 1), totalRows: 3n, totalColumns: 1 }))).toThrow(FrameError);
   });
 });

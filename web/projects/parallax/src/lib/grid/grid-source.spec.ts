@@ -4,7 +4,22 @@ import type { FrameData } from "../frame";
 import { WHOLE_CELLS, windowFor } from "./grid-source";
 
 function frame(totalRows: number, totalColumns: number): FrameData {
-  return { viewId: 1, configVersion: 1n, loadVersion: 1n, firstRow: 0, firstColumn: 0, rowCount: 0, totalRows, totalColumns, sourceAsOfMicros: 0n, pushed: false, columns: [], groups: [], tree: null };
+  return {
+    viewId: 1,
+    configVersion: 1n,
+    loadVersion: 1n,
+    firstRow: 0,
+    firstColumn: 0,
+    rowCount: 0,
+    totalRows,
+    totalColumns,
+    sourceAsOfMicros: 0n,
+    pushed: false,
+    columns: [],
+    groups: [],
+    tree: null,
+    totals: null
+  };
 }
 
 describe("windowFor", () => {

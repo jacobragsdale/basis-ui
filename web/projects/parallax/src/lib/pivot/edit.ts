@@ -127,7 +127,7 @@ export function updateMeasure(layout: Layout, index: number, patch: Partial<Layo
 
 /** A filter with every field at its default. */
 export function filter(column: string, op: LayoutFilter["op"]): LayoutFilter {
-  return { column, op, value: null, values: [] };
+  return { column, op, value: null, values: [], columns: [] };
 }
 
 /** Adds a filter at the end. */

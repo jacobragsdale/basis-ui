@@ -4,6 +4,7 @@
     "column_widths": {},
     "columns": [],
     "dataset": "",
+    "detail": false,
     "expand_depth": 0,
     "expanded": [],
     "filters": [],
@@ -16,10 +17,14 @@
     "having": [],
     "measures": [],
     "parameters": {},
+    "pinned": [],
+    "search": "",
     "sort": [],
     "split_by": [],
+    "titles": {},
     "top_n": null,
-    "version": 1
+    "totals": [],
+    "version": 2
   },
   {
     "chart": null,
@@ -34,6 +39,7 @@
       "ticker"
     ],
     "dataset": "positions",
+    "detail": true,
     "expand_depth": 2,
     "expanded": [
       {
@@ -49,6 +55,7 @@
     "filters": [
       {
         "column": "fund",
+        "columns": [],
         "op": "in",
         "value": null,
         "values": [
@@ -58,14 +65,33 @@
       },
       {
         "column": "quantity",
+        "columns": [],
         "op": "gt",
         "value": "1.5",
         "values": []
       },
       {
         "column": "sector",
+        "columns": [],
         "op": "is_null",
         "value": null,
+        "values": []
+      },
+      {
+        "column": "ticker",
+        "columns": [
+          "fund",
+          "sector"
+        ],
+        "op": "not_contains",
+        "value": "X",
+        "values": []
+      },
+      {
+        "column": "ticker",
+        "columns": [],
+        "op": "ends_with",
+        "value": "a",
         "values": []
       }
     ],
@@ -155,6 +181,10 @@
     "parameters": {
       "as_of": "2026-11-02"
     },
+    "pinned": [
+      "ticker"
+    ],
+    "search": "atl",
     "sort": [
       {
         "column": "fund",
@@ -164,18 +194,43 @@
     "split_by": [
       "asset_class"
     ],
+    "titles": {
+      "fund": "Fund",
+      "market_value_usd": "Market value (USD)"
+    },
     "top_n": {
       "largest": false,
       "measure": 0,
       "n": 10,
       "other": true
     },
-    "version": 1
+    "totals": [
+      {
+        "aggregate": "sum",
+        "column": "market_value_usd",
+        "format": null,
+        "percentile": null,
+        "show_as": "value",
+        "unit_column": null,
+        "weight": null
+      },
+      {
+        "aggregate": "distinct_count",
+        "column": "ticker",
+        "format": null,
+        "percentile": null,
+        "show_as": "value",
+        "unit_column": null,
+        "weight": null
+      }
+    ],
+    "version": 2
   },
   {
     "chart": {
       "axis": "trading",
       "compare": true,
+      "donut": true,
       "drawings": [],
       "events": "event",
       "hidden": [
@@ -204,6 +259,7 @@
     "column_widths": {},
     "columns": [],
     "dataset": "prices",
+    "detail": false,
     "expand_depth": 0,
     "expanded": [],
     "filters": [],
@@ -216,15 +272,20 @@
     "having": [],
     "measures": [],
     "parameters": {},
+    "pinned": [],
+    "search": "",
     "sort": [],
     "split_by": [],
+    "titles": {},
     "top_n": null,
-    "version": 1
+    "totals": [],
+    "version": 2
   },
   {
     "chart": {
       "axis": "value",
       "compare": false,
+      "donut": true,
       "drawings": [
         {
           "from": {
@@ -339,11 +400,13 @@
     "column_widths": {},
     "columns": [],
     "dataset": "prices",
+    "detail": false,
     "expand_depth": 0,
     "expanded": [],
     "filters": [
       {
         "column": "ticker",
+        "columns": [],
         "op": "eq",
         "value": "AAPL",
         "values": []
@@ -358,15 +421,20 @@
     "having": [],
     "measures": [],
     "parameters": {},
+    "pinned": [],
+    "search": "",
     "sort": [],
     "split_by": [],
+    "titles": {},
     "top_n": null,
-    "version": 1
+    "totals": [],
+    "version": 2
   },
   {
     "chart": {
       "axis": "value",
       "compare": false,
+      "donut": true,
       "drawings": [],
       "events": null,
       "hidden": [],
@@ -386,6 +454,7 @@
     "column_widths": {},
     "columns": [],
     "dataset": "",
+    "detail": false,
     "expand_depth": 0,
     "expanded": [],
     "filters": [],
@@ -398,9 +467,59 @@
     "having": [],
     "measures": [],
     "parameters": {},
+    "pinned": [],
+    "search": "",
     "sort": [],
     "split_by": [],
+    "titles": {},
     "top_n": null,
-    "version": 1
+    "totals": [],
+    "version": 2
+  },
+  {
+    "chart": {
+      "axis": "value",
+      "compare": false,
+      "donut": false,
+      "drawings": [],
+      "events": null,
+      "hidden": [],
+      "horizontal": false,
+      "indicators": [],
+      "kind": "pie",
+      "log_y": false,
+      "ohlc": null,
+      "range": null,
+      "series": null,
+      "stacked": false,
+      "volume": null,
+      "x": "",
+      "y": [],
+      "y_right": []
+    },
+    "column_widths": {},
+    "columns": [],
+    "dataset": "",
+    "detail": false,
+    "expand_depth": 0,
+    "expanded": [],
+    "filters": [],
+    "formats": {},
+    "group_by": [],
+    "group_sort": {
+      "by": "key",
+      "descending": false
+    },
+    "having": [],
+    "measures": [],
+    "parameters": {},
+    "pinned": [],
+    "search": "",
+    "sort": [],
+    "split_by": [],
+    "titles": {},
+    "top_n": null,
+    "totals": [],
+    "version": 2
   }
 ]

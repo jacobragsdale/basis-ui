@@ -104,7 +104,8 @@ describe("ViewHandle request timing", () => {
     pushed: false,
     columns: [],
     groups: [],
-    tree: null
+    tree: null,
+    totals: null
   });
 
   it("stamps each answered frame with when the grid asked, including time queued behind another request", () => {
@@ -172,7 +173,8 @@ describe("ViewHandle updates", () => {
     pushed: false,
     columns: [],
     groups: [],
-    tree: null
+    tree: null,
+    totals: null
   });
 
   /** The messages sent after hello and opening the view, decoded. */

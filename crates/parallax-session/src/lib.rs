@@ -928,9 +928,17 @@ impl Session {
                 ));
             }
         }
-        let window = view.window(&state.table, rows, columns);
+        let window = view.window(&state.table, rows, columns.clone());
         let batch = match encode_batch(&window.batch) {
             Ok(bytes) => bytes,
+            Err(e) => return Some(error(request_id, view_id, e.to_string())),
+        };
+        let totals = match view
+            .totals_window(&state.table, columns)
+            .map(|t| encode_batch(&t))
+            .transpose()
+        {
+            Ok(bytes) => bytes.unwrap_or_default(),
             Err(e) => return Some(error(request_id, view_id, e.to_string())),
         };
         Some(reply(
@@ -946,6 +954,7 @@ impl Session {
                 batch,
                 source_as_of_micros: state.source_as_of_micros,
                 pushed,
+                totals,
             }),
         ))
     }
@@ -1011,18 +1020,25 @@ impl Session {
             .get(&request.view_id)
             .ok_or_else(|| format!("no view {}", request.view_id))?;
         let state = read_table(&open.table)?;
-        // Other columns' filters apply, as in a spreadsheet's filter list; the
-        // column's own filter does not, so its other values stay choosable.
+        // Other columns' filters apply, as in a spreadsheet's filter list, and so
+        // does the view's search; the column's own filter does not, so its other
+        // values stay choosable.
         let mut filters: Vec<LayoutFilter> = open
             .layout
             .filters
             .iter()
-            .filter(|f| f.column != request.column)
+            .filter(|f| f.column != request.column || !f.columns.is_empty())
             .cloned()
             .collect();
+        filters.extend(
+            open.layout
+                .search_filter(&state.table)
+                .map_err(|e| e.to_string())?,
+        );
         if !request.search.is_empty() {
             filters.push(LayoutFilter {
                 column: request.column.clone(),
+                columns: Vec::new(),
                 op: FilterOpName::Contains,
                 value: Some(serde_json::Value::String(request.search.clone())),
                 values: Vec::new(),

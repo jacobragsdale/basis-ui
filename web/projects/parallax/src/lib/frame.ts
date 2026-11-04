@@ -57,6 +57,11 @@ export interface FrameColumn {
   readonly numeric: boolean;
   /** For a column under column pivots, its pivot values as exact JSON; null otherwise. */
   readonly split: readonly (string | number | boolean | null)[] | null;
+  /**
+   * For a detail view's column with a total, reads row `row`'s group total, null on the rows themselves; null for
+   * other columns. On group rows, `text`, `flag` and `copy` are the total's.
+   */
+  readonly total: ((row: number) => CellValue) | null;
 }
 
 /** The key of one group level, on every row of a grouped view. */
@@ -68,10 +73,16 @@ export interface GroupKey {
 /** Tree columns of a grouped view's rows. */
 export interface TreeRows {
   readonly depth: (row: number) => number;
-  readonly kind: (row: number) => "total" | "group" | "leaf" | "other";
+  /** A row of the table under its innermost group, in a detail view, is a `row`. */
+  readonly kind: (row: number) => RowKind;
   readonly expanded: (row: number) => boolean | null;
   readonly label: (row: number) => string;
+  /** A detail view's group row's count of rows; null on other rows and in pivots. */
+  readonly rows: (row: number) => number | null;
 }
+
+/** The kinds of a grouped view's rows. */
+export type RowKind = "total" | "group" | "leaf" | "other" | "row";
 
 /** A decoded, validated window of a view. */
 export interface FrameData {
@@ -95,6 +106,8 @@ export interface FrameData {
   readonly groups: readonly GroupKey[];
   /** Present for grouped views. */
   readonly tree: TreeRows | null;
+  /** The totals row's data columns, as `columns` are, read at row 0; null for a view without totals. */
+  readonly totals: readonly FrameColumn[] | null;
 }
 
 /** A frame the client cannot trust. */
@@ -255,12 +268,13 @@ function textReader(name: string, vector: Vector, rowCount: number): (row: numbe
   };
 }
 
-function rowKind(value: unknown): "total" | "group" | "leaf" | "other" {
+function rowKind(value: unknown): RowKind {
   switch (value) {
     case "total":
     case "group":
     case "leaf":
     case "other":
+    case "row":
       return value;
     default:
       throw new FrameError(`unknown row kind ${String(value)}`);
@@ -268,7 +282,7 @@ function rowKind(value: unknown): "total" | "group" | "leaf" | "other" {
 }
 
 /** The roles a frame field can have, as the engine writes them. */
-type Role = "seq" | "depth" | "kind" | "expanded" | "label" | "group" | "value" | "flag" | "text" | "copy";
+type Role = "seq" | "depth" | "kind" | "expanded" | "label" | "rows" | "group" | "value" | "total" | "flag" | "text" | "copy";
 
 function roleOf(field: Field): Role {
   const role = field.metadata.get("parallax.role") ?? "";
@@ -278,8 +292,10 @@ function roleOf(field: Field): Role {
     case "kind":
     case "expanded":
     case "label":
+    case "rows":
     case "group":
     case "value":
+    case "total":
     case "flag":
     case "text":
     case "copy":
@@ -318,6 +334,8 @@ function treeRows(rowCount: number, byRole: ReadonlyMap<Role, Vector>): TreeRows
   const rowKinds = Array.from({ length: rowCount }, (_, row) => rowKind(kinds.get(row)));
   const flags = only(expanded);
   const labels = textReader("__label", label, rowCount);
+  const counted = byRole.get("rows");
+  const counts = counted === undefined ? null : integerReader("__rows", only(counted));
   return {
     depth: (row) => depths[row] ?? 0,
     kind: (row) => rowKinds[row] ?? "leaf",
@@ -325,7 +343,11 @@ function treeRows(rowCount: number, byRole: ReadonlyMap<Role, Vector>): TreeRows
       const value = flags.get(row);
       return typeof value === "boolean" ? value : null;
     },
-    label: labels
+    label: labels,
+    rows: (row) => {
+      const count = counts?.(row);
+      return count?.kind === "integer" ? Number(count.value) : null;
+    }
   };
 }
 
@@ -349,6 +371,7 @@ function exactText(value: CellValue): string | null {
 
 interface DataParts {
   value?: { readonly field: Field; readonly vector: Vector };
+  total?: { readonly field: Field; readonly vector: Vector };
   flag?: Vector;
   text?: Vector;
   copy?: Vector;
@@ -391,6 +414,12 @@ function dataColumn(index: number, parts: DataParts, rowCount: number): FrameCol
   const shown = textReader(`${field.name}#text`, text, rowCount);
   const copied = parts.copy === undefined ? null : textReader(`${field.name}#copy`, parts.copy, rowCount);
   const title = field.metadata.get("parallax.title") ?? field.name;
+  const total = parts.total === undefined ? null : reader(parts.total.field, parts.total.vector);
+  // A group row's cell holds its total; a row's, its value.
+  const exact = (row: number): CellValue => {
+    const sum = total?.(row);
+    return sum === undefined || sum.kind === "null" ? read(row) : sum;
+  };
   return {
     name: field.name,
     title,
@@ -404,16 +433,40 @@ function dataColumn(index: number, parts: DataParts, rowCount: number): FrameCol
       if (copied !== null) {
         return copied(row);
       }
-      return exactText(read(row)) ?? shown(row);
+      return exactText(exact(row)) ?? shown(row);
     },
-    numeric: isNumericType(field.type),
-    split: splitOf(field)
+    numeric: isNumericType(field.type) || (parts.total !== undefined && isNumericType(parts.total.field.type)),
+    split: splitOf(field),
+    total
   };
 }
 
-/** Decodes and validates a frame. */
-export function decodeFrame(frame: Frame): FrameData {
-  const decoded = tableFromIPC(frame.batch);
+/** The parts of a decoded batch: its data columns, group keys and the fields of each other role. */
+interface Decoded {
+  readonly rowCount: number;
+  readonly columns: readonly FrameColumn[];
+  readonly groups: readonly GroupKey[];
+  readonly byRole: ReadonlyMap<Role, Vector>;
+}
+
+/** Files a data column's field under its index and role, refusing a second of the same role. */
+function addPart(data: Map<number, DataParts>, role: "value" | "total" | "flag" | "text" | "copy", field: Field, vector: Vector): void {
+  const index = indexOf(field, "parallax.index");
+  const parts = data.get(index) ?? {};
+  if (parts[role] !== undefined) {
+    throw new FrameError(`data column ${String(index)} has two ${role} columns`);
+  }
+  if (role === "value" || role === "total") {
+    parts[role] = { field, vector };
+  } else {
+    parts[role] = vector;
+  }
+  data.set(index, parts);
+}
+
+/** Decodes one Arrow IPC stream of one batch into its data columns and roles. */
+function decodeBatch(bytes: Uint8Array): Decoded {
+  const decoded = tableFromIPC(bytes);
   if (!(decoded instanceof Table)) {
     throw new FrameError("a frame's batch must decode synchronously");
   }
@@ -433,28 +486,18 @@ export function decodeFrame(frame: Frame): FrameData {
       case "kind":
       case "expanded":
       case "label":
+      case "rows":
         byRole.set(role, vector);
         return;
       case "group":
         groups.set(indexOf(field, "parallax.level"), { name: field.name, value: reader(field, vector) });
         return;
       case "value":
+      case "total":
       case "flag":
       case "text":
-      case "copy": {
-        const index = indexOf(field, "parallax.index");
-        const parts = data.get(index) ?? {};
-        if (parts[role] !== undefined) {
-          throw new FrameError(`data column ${String(index)} has two ${role} columns`);
-        }
-        if (role === "value") {
-          parts.value = { field, vector };
-        } else {
-          parts[role] = vector;
-        }
-        data.set(index, parts);
-        return;
-      }
+      case "copy":
+        addPart(data, role, field, vector);
     }
   });
   const columns = Array.from({ length: data.size }, (_, index) => {
@@ -471,20 +514,35 @@ export function decodeFrame(frame: Frame): FrameData {
     }
     return key;
   });
+  return { rowCount: table.numRows, columns, groups: levels, byRole };
+}
+
+/** Decodes and validates a frame. */
+export function decodeFrame(frame: Frame): FrameData {
+  const { rowCount, columns, groups, byRole } = decodeBatch(frame.batch);
+  let totals: readonly FrameColumn[] | null = null;
+  if (frame.totals.length > 0) {
+    const row = decodeBatch(frame.totals);
+    if (row.rowCount !== 1 || row.columns.length !== columns.length) {
+      throw new FrameError("a frame's totals must be one row with the frame's data columns");
+    }
+    totals = row.columns;
+  }
   return {
     viewId: frame.viewId,
     configVersion: frame.configVersion,
     loadVersion: frame.loadVersion,
     firstRow: Number(frame.firstRow),
     firstColumn: frame.firstColumn,
-    rowCount: table.numRows,
+    rowCount,
     totalRows: Number(frame.totalRows),
     totalColumns: frame.totalColumns,
     sourceAsOfMicros: frame.sourceAsOfMicros,
     pushed: frame.pushed,
     columns,
-    groups: levels,
-    tree: treeRows(table.numRows, byRole)
+    groups,
+    tree: treeRows(rowCount, byRole),
+    totals
   };
 }
 

@@ -63,19 +63,19 @@ type Kept = Pick<NonNullable<LayoutInput["chart"]>, "drawings" | "range" | "hidd
 
 /** The chart the settings make, keeping what the chart before it holds. */
 function chartLayout(s: Settings, kept: Kept): LayoutInput {
-  const since: LayoutFilter = { column: "date", op: "ge", value: s.since, values: [] };
+  const since: LayoutFilter = { column: "date", op: "ge", value: s.since, values: [], columns: [] };
   const indicators = OPTIONS.filter((o) => s.on.has(o.key) && fits(o, s)).map((o) => o.indicator);
   if (s.compare) {
     return {
       dataset: "prices",
-      filters: [{ column: "ticker", op: "in", value: null, values: [...TICKERS] }, since],
+      filters: [{ column: "ticker", op: "in", value: null, values: [...TICKERS], columns: [] }, since],
       chart: { ...kept, kind: "line", x: "date", y: ["close"], series: "ticker", axis: "trading", compare: true, indicators, events: s.events ? "event" : null }
     };
   }
   const candles = s.kind === "candlestick" || s.kind === "ohlc";
   return {
     dataset: "prices",
-    filters: [{ column: "ticker", op: "eq", value: s.ticker, values: [] }, since],
+    filters: [{ column: "ticker", op: "eq", value: s.ticker, values: [], columns: [] }, since],
     chart: {
       ...kept,
       kind: s.kind,
@@ -92,10 +92,10 @@ function chartLayout(s: Settings, kept: Kept): LayoutInput {
 
 /** The ticker's days, narrowed to a brushed range. */
 function rowsLayout(s: Settings, brush: readonly LayoutFilter[]): LayoutInput {
-  const ticker: LayoutFilter = s.compare ? { column: "ticker", op: "in", value: null, values: [...TICKERS] } : { column: "ticker", op: "eq", value: s.ticker, values: [] };
+  const ticker: LayoutFilter = s.compare ? { column: "ticker", op: "in", value: null, values: [...TICKERS], columns: [] } : { column: "ticker", op: "eq", value: s.ticker, values: [], columns: [] };
   return {
     dataset: "prices",
-    filters: [ticker, { column: "date", op: "ge", value: s.since, values: [] }, ...brush],
+    filters: [ticker, { column: "date", op: "ge", value: s.since, values: [], columns: [] }, ...brush],
     sort: [{ column: "date", descending: true }, { column: "ticker" }],
     columns: ["date", "ticker", "open", "high", "low", "close", "volume", "event"]
   };

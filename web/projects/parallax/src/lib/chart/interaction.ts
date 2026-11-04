@@ -370,8 +370,8 @@ export function brushFilters(frame: ChartFrameData, column: string, hidden: read
   const op = content.kind === "candles" ? "lt" : "le";
   return {
     filters: [
-      { column, op: "ge", value: low, values: [] },
-      { column, op, value: high, values: [] }
+      { column, op: "ge", value: low, values: [], columns: [] },
+      { column, op, value: high, values: [], columns: [] }
     ],
     range: [first.from, last.to]
   };

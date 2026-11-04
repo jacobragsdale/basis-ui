@@ -14,7 +14,7 @@ interface Card {
 
 const THREE = ["QYE", "ZREZ", "NV"];
 
-const QYE: LayoutFilter = { column: "ticker", op: "eq", value: "QYE", values: [] };
+const QYE: LayoutFilter = { column: "ticker", op: "eq", value: "QYE", values: [], columns: [] };
 
 const ALL_DAYS = "QYE's days, all of them until a range of candles is selected";
 

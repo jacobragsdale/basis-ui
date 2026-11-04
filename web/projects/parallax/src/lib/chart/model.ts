@@ -846,7 +846,8 @@ const KIND_NAMES: Readonly<Record<LayoutChart["kind"], string>> = {
   heatmap: "Heatmap",
   histogram: "Histogram",
   candlestick: "Candlestick chart",
-  ohlc: "OHLC chart"
+  ohlc: "OHLC chart",
+  pie: "Pie chart"
 };
 
 function kindName(chart: LayoutChart): string {

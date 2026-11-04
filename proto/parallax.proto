@@ -175,6 +175,10 @@ message Frame {
   int64 source_as_of_micros = 9;
   // Whether this frame answers a viewport request or was pushed after a refresh.
   bool pushed = 10;
+  // For a flat or detail view with totals, the totals row of the frame's data
+  // columns: an Arrow IPC stream of one record batch of one row, whose data
+  // columns are the frame's. Empty without totals.
+  bytes totals = 11;
 }
 
 message TableStatus {

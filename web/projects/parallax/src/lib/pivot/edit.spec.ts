@@ -97,9 +97,9 @@ describe("drillLayout", () => {
     expect(drilled.group_by).toEqual([]);
     expect(drilled.measures).toEqual([]);
     expect(drilled.filters).toEqual([
-      { column: "currency", op: "eq", value: "USD", values: [] },
-      { column: "fund", op: "eq", value: "Atlas", values: [] },
-      { column: "strategy", op: "is_null", value: null, values: [] }
+      { column: "currency", op: "eq", value: "USD", values: [], columns: [] },
+      { column: "fund", op: "eq", value: "Atlas", values: [], columns: [] },
+      { column: "strategy", op: "is_null", value: null, values: [], columns: [] }
     ]);
     expect(drilled.formats).toEqual(withFilter.formats);
     expect(drilled.dataset).toBe("positions");
@@ -109,8 +109,8 @@ describe("drillLayout", () => {
   it("adds the pivot values of a cell under column pivots", () => {
     const drilled = drillLayout(base, ["Atlas"], ["Bond"]);
     expect(drilled.filters.slice(-2)).toEqual([
-      { column: "fund", op: "eq", value: "Atlas", values: [] },
-      { column: "asset_class", op: "eq", value: "Bond", values: [] }
+      { column: "fund", op: "eq", value: "Atlas", values: [], columns: [] },
+      { column: "asset_class", op: "eq", value: "Bond", values: [], columns: [] }
     ]);
   });
 
