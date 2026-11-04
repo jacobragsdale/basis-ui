@@ -249,6 +249,10 @@ pub mod role {
     pub const COPY: &str = "copy";
     /// A detail view's group row's count of rows, null for the rows themselves.
     pub const ROWS: &str = "rows";
+    /// A data column's totals on a detail view's group rows, in the total's type,
+    /// null on the rows themselves. The column's text and flags are the total's on
+    /// group rows.
+    pub const TOTAL: &str = "total";
 }
 
 /// The kinds of grouped rows, as `__kind` holds them.
@@ -964,14 +968,10 @@ impl View {
         Ok(true)
     }
 
-    /// The totals of a flat view, one per configured total, in order. Empty for a
-    /// grouped view, which ignores totals.
+    /// The grand totals of a flat or detail view, one per configured total, in
+    /// order. Empty for a pivot, which ignores totals.
     pub fn totals(&mut self, table: &Table) -> Vec<CellValue> {
-        let Kind::Flat(Flat {
-            totals: Some(grouped),
-            ..
-        }) = &mut self.kind
-        else {
+        let Some((grouped, _)) = self.totals_source() else {
             return Vec::new();
         };
         (0..grouped.measures.len())
@@ -979,27 +979,31 @@ impl View {
             .collect()
     }
 
-    /// The totals row of a flat view's data columns `columns`: one row with a data
-    /// column for each column in the window, as [`View::window`] gives them. A
-    /// column with a total holds its value, flag and text, formatted as a pivot's
-    /// grand total is; a column without one holds null and empty text. `None` for
-    /// a view without totals.
+    /// The grouped view a flat or detail view's grand totals are the root of, and
+    /// the table columns it shows.
+    fn totals_source(&self) -> Option<(&Grouped, &[usize])> {
+        match &self.kind {
+            Kind::Flat(flat) => Some((flat.totals.as_deref()?, &flat.columns)),
+            Kind::Grouped(g) if !self.config.totals.is_empty() => {
+                Some((g, &g.detail.as_deref()?.columns))
+            }
+            Kind::Grouped(_) => None,
+        }
+    }
+
+    /// The totals row of a flat or detail view's data columns `columns`: one row
+    /// with a data column for each column in the window, as [`View::window`] gives
+    /// them. A column with a total holds its value, flag and text, formatted as a
+    /// pivot's grand total is; a column without one holds null and empty text.
+    /// `None` for a view without totals.
     pub fn totals_window(&mut self, table: &Table, columns: Range<usize>) -> Option<RecordBatch> {
-        let Kind::Flat(flat) = &mut self.kind else {
-            return None;
-        };
-        let grouped = flat.totals.as_mut()?;
-        let cols = columns.start.min(flat.columns.len())..columns.end.min(flat.columns.len());
+        let (grouped, shown) = self.totals_source()?;
+        let cols = columns.start.min(shown.len())..columns.end.min(shown.len());
         let mut out = FrameBuilder::default();
-        for (index, &c) in flat.columns[cols].iter().enumerate() {
+        for (index, &c) in shown[cols].iter().enumerate() {
             let field = table.schema().field(c);
             let title = title_of(&self.config, field.name());
-            let total = self
-                .config
-                .totals
-                .iter()
-                .position(|m| m.column.as_deref() == Some(field.name().as_str()));
-            match total {
+            match total_of(&self.config, field.name()) {
                 Some(m) => {
                     let measure = grouped.measures[m].clone();
                     let value = grouped.shown(table, &[0], ROW_TOTAL, m);
@@ -1365,6 +1369,16 @@ fn role_field(
     Field::new(name, data_type, nullable).with_metadata(metadata)
 }
 
+/// A detail view's totals of one data column on the rows of a window.
+struct GroupTotals<'a> {
+    /// One per row, null on the rows that are not groups.
+    values: ArrayRef,
+    flags: Vec<u8>,
+    formatter: &'a Formatter,
+    /// Which rows are groups.
+    groups: &'a [bool],
+}
+
 /// Collects a frame's fields and arrays.
 #[derive(Default)]
 struct FrameBuilder {
@@ -1440,6 +1454,108 @@ impl FrameBuilder {
                 Arc::new(UInt8Array::from(flags)),
             );
         }
+        self.push(
+            role_field(
+                &format!("{name}#text"),
+                DataType::Utf8,
+                false,
+                role::TEXT,
+                &at,
+            ),
+            Arc::new(StringArray::from(text)),
+        );
+        if let Some(copy) = copy {
+            self.push(
+                role_field(
+                    &format!("{name}#copy"),
+                    DataType::Utf8,
+                    false,
+                    role::COPY,
+                    &at,
+                ),
+                Arc::new(StringArray::from(copy)),
+            );
+        }
+    }
+
+    /// Adds a detail view's data column with totals on its group rows: the rows'
+    /// values, then the groups' totals in a field of their own, and flags, text and
+    /// copy text that are the total's on group rows and the value's on the rows.
+    fn detail_column(
+        &mut self,
+        index: usize,
+        source: &Field,
+        title: String,
+        values: ArrayRef,
+        formatter: &Formatter,
+        totals: &GroupTotals<'_>,
+    ) {
+        let name = source.name().as_str();
+        let at = [(meta::INDEX, index.to_string())];
+        let title = match source.data_type() {
+            DataType::Timestamp(_, Some(_)) => format!("{title} ({})", formatter.zone_name()),
+            _ => title,
+        };
+        let rows_text = formatter.texts(&values);
+        let mut totals_text = totals.formatter.texts(&totals.values);
+        for (t, &f) in totals_text.iter_mut().zip(&totals.flags) {
+            match f {
+                flag::OVERFLOW => format::OVERFLOW_TEXT.clone_into(t),
+                flag::MIXED => format::MIXED_TEXT.clone_into(t),
+                flag::UNDEFINED => format::UNDEFINED_TEXT.clone_into(t),
+                _ => {}
+            }
+        }
+        let pick = |rows: Vec<String>, groups: Vec<String>| -> Vec<String> {
+            rows.into_iter()
+                .zip(groups)
+                .zip(totals.groups)
+                .map(|((r, g), &group)| if group { g } else { r })
+                .collect()
+        };
+        let copy = matches!(source.data_type(), DataType::Timestamp(..)).then(|| {
+            let groups = if matches!(totals.values.data_type(), DataType::Timestamp(..)) {
+                totals.formatter.timestamps_full(&totals.values)
+            } else {
+                totals_text.clone()
+            };
+            pick(formatter.timestamps_full(&values), groups)
+        });
+        let text = pick(rows_text, totals_text);
+        let flags: Vec<u8> = totals
+            .flags
+            .iter()
+            .zip(totals.groups)
+            .map(|(&f, &group)| if group { f } else { flag::OK })
+            .collect();
+        let mut metadata = source.metadata().clone();
+        metadata.insert(meta::ROLE.to_owned(), role::VALUE.to_owned());
+        metadata.insert(meta::INDEX.to_owned(), index.to_string());
+        metadata.insert(meta::TITLE.to_owned(), title);
+        self.push(
+            Field::new(name, values.data_type().clone(), true).with_metadata(metadata),
+            values,
+        );
+        self.push(
+            role_field(
+                &format!("{name}#total"),
+                totals.values.data_type().clone(),
+                true,
+                role::TOTAL,
+                &at,
+            ),
+            Arc::clone(&totals.values),
+        );
+        self.push(
+            role_field(
+                &format!("{name}#flag"),
+                DataType::UInt8,
+                false,
+                role::FLAG,
+                &at,
+            ),
+            Arc::new(UInt8Array::from(flags)),
+        );
         self.push(
             role_field(
                 &format!("{name}#text"),
@@ -2670,20 +2786,47 @@ impl Grouped {
                     .collect::<Int64Array>(),
             ),
         );
+        let groups: Vec<bool> = shown.iter().map(|r| matches!(r, Row::Node(_))).collect();
         for (index, &c) in detail_columns[cols].iter().enumerate() {
             let field = table.schema().field(c);
             // Group rows hold no values of their own, so every column may be null.
             let nullable = Field::new(field.name(), field.data_type().clone(), true)
                 .with_metadata(field.metadata().clone());
-            out.data_column(
+            let values = table.column(c).to_arrow_or_null(&slots);
+            let title = title_of(config, field.name());
+            let Some(m) = total_of(config, field.name()) else {
+                out.data_column(
+                    index,
+                    &nullable,
+                    title,
+                    values,
+                    None,
+                    &formatters.columns[c],
+                    None,
+                    None,
+                );
+                continue;
+            };
+            let totals: Vec<CellValue> = shown
+                .iter()
+                .map(|r| match r {
+                    Row::Node(id) => self.shown(table, &[*id], ROW_TOTAL, m),
+                    _ => CellValue::Null,
+                })
+                .collect();
+            let (total_values, _) = values_to_arrow(table, &self.measures[m], &totals);
+            out.detail_column(
                 index,
                 &nullable,
-                title_of(config, field.name()),
-                table.column(c).to_arrow_or_null(&slots),
-                None,
+                title,
+                values,
                 &formatters.columns[c],
-                None,
-                None,
+                &GroupTotals {
+                    values: total_values,
+                    flags: totals.iter().map(value_flag).collect(),
+                    formatter: &formatters.totals[m],
+                    groups: &groups,
+                },
             );
         }
         (out.finish(), total_rows, total_columns)
@@ -2699,6 +2842,14 @@ fn value_flag(value: &CellValue) -> u8 {
         CellValue::Float(f) if f.is_nan() => flag::UNDEFINED,
         _ => flag::OK,
     }
+}
+
+/// The position of the total of column `name` among a view's totals.
+fn total_of(config: &ViewConfig, name: &str) -> Option<usize> {
+    config
+        .totals
+        .iter()
+        .position(|m| m.column.as_deref() == Some(name))
 }
 
 /// The header text of a flat view's column: its title, else its name.

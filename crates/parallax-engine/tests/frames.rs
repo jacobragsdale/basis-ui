@@ -547,3 +547,74 @@ fn a_detail_view_refuses_what_it_cannot_show() {
     }
     assert!(View::new(&t, detail).is_ok());
 }
+
+#[test]
+fn a_detail_views_group_rows_carry_their_totals_as_a_pivot_shows_them() {
+    use arrow_array::types::Int64Type;
+    let t = table();
+    let mut formats = BTreeMap::new();
+    formats.insert(
+        "pnl".to_owned(),
+        Format {
+            abbreviate: Some(Abbreviation::Millions),
+            ..Format::default()
+        },
+    );
+    let totals = vec![
+        Measure::new(Aggregate::Sum, "pnl"),
+        Measure::new(Aggregate::Count, "level"),
+    ];
+    let mut detail = View::new(
+        &t,
+        ViewConfig {
+            group_by: vec!["desk".into()],
+            columns: vec!["pnl".into(), "level".into(), "at".into()],
+            formats: formats.clone(),
+            totals: totals.clone(),
+            detail: true,
+            expand_depth: 1,
+            ..ViewConfig::default()
+        },
+    )
+    .unwrap();
+    let frame = detail.window(&t, 0..20, 0..3);
+    let batch = &frame.batch;
+    let mut pivot = View::new(
+        &t,
+        ViewConfig {
+            group_by: vec!["desk".into()],
+            measures: totals,
+            formats,
+            ..ViewConfig::default()
+        },
+    )
+    .unwrap();
+    let grand = pivot.window(&t, 0..10, 0..2);
+    // The pivot's rows are the total, then the groups; the detail view's groups
+    // are rows 0, 2 and 5, between their rows.
+    let pivot_pnl = text_of(&grand.batch, 0);
+    let pnl = text_of(batch, 0);
+    assert_eq!(
+        [&pnl[0], &pnl[2], &pnl[5]],
+        [&pivot_pnl[1], &pivot_pnl[2], &pivot_pnl[3]]
+    );
+    // A row reads its own value, in the column's format; without a sort, rows come
+    // in the table's order.
+    assert_eq!([&pnl[3], &pnl[4]], ["-1.3M", "2.0M"]);
+    let pivot_count = text_of(&grand.batch, 1);
+    let count = text_of(batch, 1);
+    assert_eq!([&count[0], &count[2]], [&pivot_count[1], &pivot_count[2]]);
+    // The totals travel typed, in a field of their own, null on the rows.
+    let counts: Vec<Option<i64>> = batch
+        .column(fields_with(batch, role::TOTAL)[1])
+        .as_primitive::<Int64Type>()
+        .iter()
+        .collect();
+    assert_eq!(counts, [Some(1), None, Some(2), None, None, Some(1), None]);
+    // A column without a total has no totals field, and its group rows are blank.
+    assert_eq!(fields_with(batch, role::TOTAL).len(), 2);
+    assert_eq!(text_of(batch, 2)[0], "");
+    // The footer is the grand total.
+    let footer = detail.totals_window(&t, 0..3).unwrap();
+    assert_eq!(text_of(&footer, 0), [pivot_pnl[0].clone()]);
+}

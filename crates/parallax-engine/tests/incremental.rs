@@ -206,6 +206,10 @@ fn configs() -> Vec<ViewConfig> {
                 descending: true,
             }],
             filters: vec![Filter::new("sector", FilterOp::NotContains("util".into()))],
+            totals: vec![
+                Measure::new(Aggregate::Sum, "market_value_usd"),
+                Measure::new(Aggregate::DistinctCount, "ticker"),
+            ],
             detail: true,
             expand_depth: 2,
             ..ViewConfig::default()

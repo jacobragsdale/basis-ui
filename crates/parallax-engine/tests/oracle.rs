@@ -723,6 +723,13 @@ fn run_detail(hostile: bool, seed: u64, configs: usize) {
             })
             .collect();
         let descending = picker.chance(40);
+        let mut totals: Vec<Measure> = Vec::new();
+        for _ in 0..picker.below(4) {
+            let m = random_measure(&mut picker);
+            if m.column.is_some() && !totals.iter().any(|t| t.column == m.column) {
+                totals.push(m);
+            }
+        }
         let config = ViewConfig {
             group_by: group_by.clone(),
             filters: filters.clone(),
@@ -733,9 +740,28 @@ fn run_detail(hostile: bool, seed: u64, configs: usize) {
             },
             detail: true,
             expand_depth: levels,
+            totals: totals.clone(),
             ..ViewConfig::default()
         };
         let mut view = View::new(&table, config).unwrap();
+        // The groups' totals are the cells of the same pivot, which DuckDB checks.
+        let pivot = ViewConfig {
+            group_by: group_by.clone(),
+            filters: filters.clone(),
+            measures: totals.clone(),
+            ..ViewConfig::default()
+        };
+        let mut as_pivot = View::new(&table, pivot.clone()).unwrap();
+        assert_eq!(
+            view.cells(&table),
+            as_pivot.cells(&table),
+            "detail config {i}: totals"
+        );
+        assert_eq!(view.totals(&table).len(), totals.len());
+        if !totals.is_empty() {
+            verify_grouped(&table, &conn, &pivot)
+                .unwrap_or_else(|e| panic!("detail config {i}: {e}"));
+        }
         let n = view.num_rows(&table);
         let frame = view.window(&table, 0..n, 0..0);
         let column = |name: &str| frame.batch.column_by_name(name).unwrap().clone();
