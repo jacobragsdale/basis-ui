@@ -45,8 +45,8 @@ const TOOLBAR_STYLES = `
     display: flex;
     align-items: center;
     gap: 6px;
-    width: 240px;
-    max-width: 100%;
+    flex: 0 1 240px;
+    min-width: 140px;
     height: 28px;
     padding: 0 6px 0 8px;
     border: 1px solid var(--px-control-border);

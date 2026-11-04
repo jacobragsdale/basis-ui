@@ -4,7 +4,7 @@
  * `pivot/edit.ts`.
  */
 
-import type { Layout, LayoutFilter, LayoutScalar } from "../layout";
+import type { Layout, LayoutFilter, LayoutMeasure, LayoutScalar } from "../layout";
 import { operandOf } from "../pivot/edit";
 import { label } from "../pivot/labels";
 import type { SourceField } from "./grid-source";
@@ -93,4 +93,112 @@ export function highlightRanges(text: string, search: string): readonly (readonl
     from = lower.indexOf(needle, from + needle.length);
   }
   return out;
+}
+
+/** A column's filter as the header menu edits it: a list of values to keep, a condition, a range, or none. */
+export type ColumnCondition =
+  | { readonly kind: "none" }
+  | { readonly kind: "values"; readonly values: readonly LayoutScalar[] }
+  | { readonly kind: "one"; readonly op: LayoutFilter["op"]; readonly value: LayoutScalar }
+  | { readonly kind: "between"; readonly from: LayoutScalar; readonly to: LayoutScalar };
+
+/** The filters on `column` alone, which the header menu owns; a search or a filter across columns is not one. */
+function ownFilters(layout: Layout, column: string): readonly LayoutFilter[] {
+  return layout.filters.filter((f) => f.column === column && f.columns.length === 0);
+}
+
+/** How the header menu reads `column`'s filters: a list, a condition, a range of `ge` and `le`, or none. */
+export function columnCondition(layout: Layout, column: string): ColumnCondition {
+  const own = ownFilters(layout, column);
+  const [first, second] = own;
+  if (first === undefined) {
+    return { kind: "none" };
+  }
+  if (own.length === 2 && second !== undefined && first.op === "ge" && second.op === "le") {
+    return { kind: "between", from: first.value, to: second.value };
+  }
+  if (first.op === "in") {
+    return { kind: "values", values: first.values };
+  }
+  return { kind: "one", op: first.op, value: first.value };
+}
+
+/** The layout with `column`'s own filters replaced by `condition`, leaving every other filter as it was. */
+export function withColumnCondition(layout: Layout, column: string, condition: ColumnCondition): Layout {
+  const others = layout.filters.filter((f) => !(f.column === column && f.columns.length === 0));
+  const base = { column, value: null, values: [], columns: [] };
+  const added: readonly LayoutFilter[] = ((): readonly LayoutFilter[] => {
+    switch (condition.kind) {
+      case "none":
+        return [];
+      case "values":
+        return condition.values.length === 0 ? [] : [{ ...base, op: "in", values: [...condition.values] }];
+      case "one":
+        return [{ ...base, op: condition.op, value: condition.value }];
+      case "between":
+        return [
+          { ...base, op: "ge", value: condition.from },
+          { ...base, op: "le", value: condition.to }
+        ];
+    }
+  })();
+  return { ...layout, filters: [...others, ...added] };
+}
+
+/** Whether `column` has a filter of its own, which fills its header's funnel. */
+export function isFiltered(layout: Layout, column: string): boolean {
+  return ownFilters(layout, column).length > 0;
+}
+
+/** Sorts a flat or detail grid by `column` alone, or stops sorting by it when `descending` is null. */
+export function withSort(layout: Layout, column: string, descending: boolean | null): Layout {
+  return { ...layout, sort: descending === null ? layout.sort.filter((s) => s.column !== column) : [{ column, descending }] };
+}
+
+/** Hides `column`, listing the columns that stay when the layout listed none. */
+export function withHidden(layout: Layout, column: string, fields: readonly SourceField[]): Layout {
+  const shown = shownColumns(layout, fields).filter((c) => c !== column);
+  return { ...layout, columns: shown, pinned: layout.pinned.filter((c) => c !== column) };
+}
+
+/** Pins `column` at the left, after the columns pinned before it, or unpins it. */
+export function withPinned(layout: Layout, column: string, pinned: boolean): Layout {
+  const rest = layout.pinned.filter((c) => c !== column);
+  return { ...layout, pinned: pinned ? [...rest, column] : rest };
+}
+
+/** Gives `column` a title, or its name back when `title` is empty. */
+export function withTitle(layout: Layout, column: string, title: string): Layout {
+  const titles = Object.fromEntries(Object.entries(layout.titles).filter(([c]) => c !== column));
+  return { ...layout, titles: title.trim() === "" || title === column ? titles : { ...titles, [column]: title.trim() } };
+}
+
+/** The aggregates a column's total can use, by the column's kind. */
+export function totalChoices(kind: SourceField["kind"]): readonly LayoutMeasure["aggregate"][] {
+  switch (kind) {
+    case "integer":
+    case "float":
+    case "decimal":
+      return ["sum", "mean", "min", "max", "count", "distinct_count"];
+    case "date":
+    case "timestamp":
+      return ["min", "max", "count", "distinct_count"];
+    case "text":
+    case "boolean":
+      return ["count", "distinct_count"];
+  }
+}
+
+/** The total of `column`, or null without one. */
+export function totalOf(layout: Layout, column: string): LayoutMeasure["aggregate"] | null {
+  return layout.totals.find((t) => t.column === column)?.aggregate ?? null;
+}
+
+/** Sets `column`'s total to `aggregate`, or removes it when null. */
+export function withTotal(layout: Layout, column: string, aggregate: LayoutMeasure["aggregate"] | null): Layout {
+  const others = layout.totals.filter((t) => t.column !== column);
+  if (aggregate === null) {
+    return { ...layout, totals: others };
+  }
+  return { ...layout, totals: [...others, { column, aggregate, percentile: null, weight: null, unit_column: null, show_as: "value", format: null }] };
 }

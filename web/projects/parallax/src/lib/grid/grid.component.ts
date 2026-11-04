@@ -48,7 +48,9 @@ import type { Theme, ThemeName } from "../theme";
 import { DEFAULT_TREE_WIDTH, DEFAULT_WIDTH, MIN_WIDTH, flatGeometry, groupedGeometry, rowGeometry } from "./geometry";
 import type { ColumnGeometry } from "./geometry";
 import { groupPath, gridSource, withExpanded } from "./grid-source";
-import { highlightRanges, searchColumns } from "./edit";
+import { highlightRanges, isFiltered, searchColumns, shownColumns } from "./edit";
+import { HeaderMenuComponent } from "./header-menu.component";
+import { PopoverComponent } from "../ui/popover.component";
 import { contains, moveFocus, rangeOf, selectAll, toTsv } from "./selection";
 import type { CellRange, CellRef, Extent, Selection } from "./selection";
 import { StatusBarComponent } from "./status-bar.component";
@@ -98,6 +100,11 @@ const MARKER_WIDTH = 14;
 /** How close to a header edge, in pixels, the pointer starts a resize. */
 const EDGE = 4;
 const TOOLTIP_DELAY_MS = 350;
+/** The room a header keeps at its right for the funnel that opens the column's menu. */
+const FUNNEL_WIDTH = 20;
+/** The icons a header draws, as SVG path data on a 16-unit square. */
+const FUNNEL_PATH = "M2.5 3h11L9.25 8.25v4.75l-2.5-1.25V8.25z";
+const PIN_PATH = "M5.5 2.5h5M6.5 2.5v4l-2 2.5h7l-2-2.5v-4M8 9v5";
 
 const FLAG_NOTES: Readonly<Record<CellFlag, string | null>> = {
   [CellFlag.Ok]: null,
@@ -117,6 +124,8 @@ interface Hit {
   readonly column: number | null;
   /** The column whose right edge is under the pointer in the header, -1 for the group column. */
   readonly edge: number | null;
+  /** Whether the pointer is on the header's funnel, which opens the column's menu. */
+  readonly funnel: boolean;
 }
 
 /** The scrolled area a pass draws. */
@@ -204,6 +213,10 @@ const GRID_STYLES = `
     background: var(--px-danger);
     color: #fff;
   }
+  px-grid .px-menu-anchor {
+    position: absolute;
+    pointer-events: none;
+  }
   px-grid .px-tooltip {
     position: absolute;
     z-index: 2;
@@ -225,13 +238,11 @@ const GRID_STYLES = `
   selector: "px-grid",
   changeDetection: ChangeDetectionStrategy.OnPush,
   encapsulation: ViewEncapsulation.None,
-  imports: [GridToolbarComponent, StatusBarComponent],
+  imports: [GridToolbarComponent, HeaderMenuComponent, PopoverComponent, StatusBarComponent],
   host: { "[attr.data-px-theme]": "theme()" },
   template: `
-    @if (toolbarParts(); as parts) {
-      @if (current(); as active) {
-        <px-grid-toolbar #toolbar [layout]="active" [fields]="fields()" [parts]="parts" (changed)="layout.set($event)" (exported)="export($event)" />
-      }
+    @if (toolbarView(); as bar) {
+      <px-grid-toolbar #toolbar [layout]="bar.layout" [fields]="fields()" [parts]="bar.parts" (changed)="layout.set($event)" (exported)="export($event)" />
     }
     <div class="px-body">
       <div
@@ -260,6 +271,12 @@ const GRID_STYLES = `
           (dblclick)="onDoubleClick($event)"
         ></canvas>
       </div>
+      @if (menuView(); as m) {
+        <div #menuAnchor class="px-menu-anchor" [style.left.px]="m.left" [style.top.px]="m.top" [style.width.px]="m.width" [style.height.px]="m.height"></div>
+        <px-popover [anchor]="menuAnchor" [restore]="scroll" alignTo="end" (closed)="menu.set(null)">
+          <px-header-menu [layout]="m.layout" [column]="m.name" [fields]="fields()" [source]="values" (changed)="layout.set($event)" (fit)="fitColumn(m.column)" (done)="menu.set(null)" />
+        </px-popover>
+      }
       @if (tooltip(); as tip) {
         <div class="px-tooltip" role="tooltip" [style.left.px]="tip.x" [style.top.px]="tip.y">{{ tip.text }}</div>
       }
@@ -301,6 +318,22 @@ export class GridComponent {
     return setting === true ? ALL_PARTS : { ...ALL_PARTS, ...setting };
   });
   private readonly toolbarRef = viewChild<GridToolbarComponent>("toolbar");
+  protected readonly toolbarView = computed(() => {
+    const parts = this.toolbarParts();
+    const layout = this.current();
+    return parts === null || layout === null ? null : { parts, layout };
+  });
+  /** The column whose menu is open, and where its header is, over the grid's body. */
+  protected readonly menu = signal<{ readonly column: number; readonly name: string; readonly left: number; readonly top: number; readonly width: number; readonly height: number } | null>(null);
+  protected readonly menuView = computed(() => {
+    const menu = this.menu();
+    const layout = this.current();
+    return menu === null || layout === null ? null : { ...menu, layout };
+  });
+  /** The header column under the pointer. */
+  private readonly hoverHeader = signal<number | null>(null);
+  /** Lists a column's values for the header menu's filter. */
+  protected readonly values = (column: string, search: string, limit: number): Promise<DistinctValues> => this.source.distinct(column, search, limit);
 
   private readonly parsed = computed(() => parse(this.layout()));
   protected readonly current = computed(() => {
@@ -340,7 +373,7 @@ export class GridComponent {
     if (layout !== null && isGrouped(layout)) {
       return groupedGeometry(count, layout.measures.length, widths);
     }
-    const names = layout !== null && layout.columns.length > 0 ? layout.columns : this.source.fields().map((f) => f.name);
+    const names = layout === null ? this.source.fields().map((f) => f.name) : shownColumns(layout, this.source.fields());
     return flatGeometry(count, names, widths);
   });
   private readonly extent = computed((): Extent => ({ rows: this.totalRows(), columns: this.geometry().count, tree: this.geometry().treePx > 0 }));
@@ -545,16 +578,28 @@ export class GridComponent {
       const content = x + this.scrollLeft();
       column = content < geometry.contentWidth && geometry.count > 0 ? geometry.indexAt(content) : null;
       if (header && column !== null) {
-        const right = geometry.x(column) + geometry.width(column) - this.scrollLeft();
-        const left = geometry.x(column) - this.scrollLeft();
-        if (right - x <= EDGE) {
-          edge = column;
-        } else if (x - left <= EDGE && column > 0) {
-          edge = column - 1;
+        const part = this.headerPart(column, x);
+        if (part === "funnel") {
+          return { header, row: null, column, edge: null, funnel: true };
         }
+        edge = part;
       }
     }
-    return { header, row: row !== null && row < this.totalRows() ? row : null, column, edge };
+    return { header, row: row !== null && row < this.totalRows() ? row : null, column, edge, funnel: false };
+  }
+
+  /** The part of data column `column`'s header at `x`: the edge of a column, the funnel, or neither. */
+  private headerPart(column: number, x: number): number | "funnel" | null {
+    const geometry = this.geometry();
+    const right = geometry.x(column) + geometry.width(column) - this.scrollLeft();
+    const left = geometry.x(column) - this.scrollLeft();
+    if (right - x <= EDGE) {
+      return column;
+    }
+    if (x - left <= EDGE && column > 0) {
+      return column - 1;
+    }
+    return right - x <= FUNNEL_WIDTH && this.menuColumn(column) !== null ? "funnel" : null;
   }
 
   private widthKeyOf(column: number): string {
@@ -595,6 +640,22 @@ export class GridComponent {
     }
   }
 
+  /**
+   * Handles the grid's own shortcuts: Ctrl+F searches the grid rather than the page, and Alt+Down opens the focused
+   * cell's column menu, as a spreadsheet's filter does. Returns whether it handled `event`.
+   */
+  private shortcut(event: KeyboardEvent): boolean {
+    if ((event.ctrlKey || event.metaKey) && !event.altKey && event.key.toLowerCase() === "f") {
+      return this.toolbarRef()?.focusSearch() === true;
+    }
+    const focus = this.selection()?.focus;
+    if (event.altKey && event.key === "ArrowDown" && focus !== undefined && this.menuColumn(focus.column) !== null) {
+      this.openMenu(focus.column);
+      return true;
+    }
+    return false;
+  }
+
   /** Whether `x` falls on the expand marker of row `row`'s group cell. */
   private onMarker(row: number, x: number): boolean {
     const frame = this.source.frame();
@@ -631,6 +692,7 @@ export class GridComponent {
       return;
     }
     this.cursor.set(hit.edge !== null ? "col-resize" : hit.header && hit.column !== null ? "pointer" : "default");
+    this.hoverHeader.set(hit.header ? hit.column : null);
     this.scheduleTooltip(hit, event.offsetX, event.offsetY);
   }
 
@@ -651,12 +713,17 @@ export class GridComponent {
     }
     const hit = this.hit(event.offsetX, event.offsetY);
     if (hit.header && hit.column !== null && hit.column === pressed.hit.column) {
-      this.sortBy(hit.column, event.shiftKey);
+      if (hit.funnel && pressed.hit.funnel) {
+        this.openMenu(hit.column);
+      } else {
+        this.sortBy(hit.column, event.shiftKey);
+      }
     }
   }
 
   protected onPointerLeave(): void {
     this.clearTooltip();
+    this.hoverHeader.set(null);
     if (this.pressed === null) {
       this.cursor.set("default");
     }
@@ -686,6 +753,32 @@ export class GridComponent {
     const split = data?.split ?? null;
     const label = split === null || data === undefined ? tree.label(local) : `${tree.label(local)}, ${data.title.slice(0, data.title.lastIndexOf(" | "))}`;
     this.drill.emit({ path: groupPath(frame, local), split, label });
+  }
+
+  // ---- Header menus -----------------------------------------------------
+
+  /** The source column a data column's menu edits, or null where there is no menu: a pivot's columns are measures. */
+  private menuColumn(column: number): string | null {
+    const layout = this.current();
+    if (layout === null || column < 0 || column >= this.geometry().count || isGrouped(layout)) {
+      return null;
+    }
+    return this.geometry().widthKey(column);
+  }
+
+  /** Opens data column `column`'s menu below its header. */
+  private openMenu(column: number): void {
+    const name = this.menuColumn(column);
+    if (name === null) {
+      return;
+    }
+    const geometry = this.geometry();
+    this.clearTooltip();
+    this.menu.set({ column, name, left: geometry.x(column) - this.scrollLeft(), top: 0, width: geometry.width(column), height: this.rowHeight() });
+  }
+
+  protected fitColumn(column: number): void {
+    this.setWidth(this.widthKeyOf(column), this.fitWidth(column));
   }
 
   // ---- Layout changes ----------------------------------------------------
@@ -794,8 +887,7 @@ export class GridComponent {
   }
 
   protected onKey(event: KeyboardEvent): void {
-    // Ctrl+F searches the grid, rather than the page, when the grid has a search box.
-    if ((event.ctrlKey || event.metaKey) && !event.altKey && event.key.toLowerCase() === "f" && this.toolbarRef()?.focusSearch() === true) {
+    if (this.shortcut(event)) {
       event.preventDefault();
       return;
     }
@@ -1009,7 +1101,7 @@ export class GridComponent {
     const geometry = this.geometry();
     const layout = this.current();
     const versions = frame === null ? null : [frame.configVersion.toString(), frame.loadVersion.toString(), frame.totalRows, frame.firstColumn];
-    const decor = layout === null ? null : [layout.column_widths, layout.sort, layout.group_sort];
+    const decor = layout === null ? null : [layout.column_widths, layout.sort, layout.group_sort, layout.filters, layout.pinned, this.hoverHeader(), this.menu()?.column];
     return JSON.stringify([at, versions, this.theme(), geometry.treePx, geometry.contentWidth, decor]);
   }
 
@@ -1139,17 +1231,61 @@ export class GridComponent {
     }
     this.inDataArea(pass, 0, rowPx, () => {
       for (const column of this.visibleColumns(pass)) {
-        const x = geometry.x(column) - pass.scrollLeft;
-        const width = geometry.width(column);
-        const data = frame === null ? undefined : frame.columns[column - frame.firstColumn];
-        context.fillStyle = theme.headerForeground;
-        this.headerText(pass, data?.title ?? "", this.sortMark(column), x, width);
-        context.fillStyle = theme.gridLine;
-        context.fillRect(x + width - 1, 0, 1, rowPx);
+        this.drawColumnHeader(pass, frame, layout, column);
       }
     });
     context.fillStyle = theme.gridLine;
     context.fillRect(0, rowPx - 1, pass.width, 1);
+  }
+
+  /** Draws data column `column`'s header: its title, sort mark, and for a column with a menu, its funnel and pin. */
+  private drawColumnHeader(pass: Pass, frame: FrameData | null, layout: Layout | null, column: number): void {
+    const { context, theme, rowPx, geometry } = pass;
+    const x = geometry.x(column) - pass.scrollLeft;
+    const width = geometry.width(column);
+    const title = (frame === null ? undefined : frame.columns[column - frame.firstColumn])?.title ?? "";
+    const name = this.menuColumn(column);
+    const open = column === this.menu()?.column;
+    const lit = open || column === this.hoverHeader();
+    if (lit) {
+      context.fillStyle = theme.controlHover;
+      context.fillRect(x, 0, width, rowPx);
+    }
+    context.fillStyle = theme.headerForeground;
+    if (name === null || layout === null) {
+      this.headerText(pass, title, this.sortMark(column), x, width);
+    } else {
+      const filtered = isFiltered(layout, name);
+      const indent = layout.pinned.includes(name) ? 16 : 0;
+      if (indent > 0) {
+        this.icon(context, PIN_PATH, x + PADDING - 2, rowPx / 2 - 7, theme.muted, false);
+      }
+      context.fillStyle = theme.headerForeground;
+      this.headerText(pass, title, this.sortMark(column), x + indent, width - indent - FUNNEL_WIDTH + PADDING);
+      const color = filtered || open ? theme.accent : lit ? theme.headerForeground : theme.muted;
+      this.icon(context, FUNNEL_PATH, x + width - FUNNEL_WIDTH, rowPx / 2 - 7, color, filtered);
+    }
+    context.fillStyle = theme.gridLine;
+    context.fillRect(x + width - 1, 0, 1, rowPx);
+  }
+
+  /** Draws an icon's path, 14 px square, with its top left at `x`, `y`. */
+  private icon(canvas: CanvasRenderingContext2D, path: string, x: number, y: number, color: string, filled: boolean): void {
+    const context = canvas;
+    context.save();
+    context.translate(x, y);
+    context.scale(0.875, 0.875);
+    const shape = new Path2D(path);
+    context.lineWidth = 1.5;
+    context.lineCap = "round";
+    context.lineJoin = "round";
+    context.strokeStyle = color;
+    if (filled) {
+      context.fillStyle = color;
+      context.fill(shape);
+    }
+    context.stroke(shape);
+    context.restore();
   }
 
   private headerText(pass: Pass, title: string, mark: string, x: number, width: number): void {

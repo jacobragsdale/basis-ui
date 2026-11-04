@@ -1,7 +1,7 @@
 /** Functional checks of `<px-grid>` against the reference server. */
 
 import { expect, test } from "@playwright/test";
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 
 const ROW = 24;
 
@@ -364,5 +364,64 @@ test.describe("toolbar", () => {
     await chip.getByRole("button", { name: /^Remove the filter/ }).click();
     await expect.poll(() => rowCount(page)).toBe(before);
     await expect(page.locator("px-grid-toolbar .px-chip")).toHaveCount(0);
+  });
+});
+
+test.describe("header menu", () => {
+  /** The blotter on the Small tables page, at full size. */
+  async function blotter(page: Page): Promise<Locator> {
+    await page.goto("/?preset=small");
+    const section = page.locator('section[data-table="blotter"]');
+    await expect(section.locator('[role="grid"]')).toHaveAttribute("aria-rowcount", "500", { timeout: 60_000 });
+    return section;
+  }
+
+  test("a header's funnel opens its menu, whose value list keeps the values ticked", async ({ page }) => {
+    const section = await blotter(page);
+    const grid = section.locator('[role="grid"]');
+    // The fourth column's funnel, at the right of its header; columns start 140 px wide.
+    await section.locator("canvas.px-canvas").click({ position: { x: 4 * 140 - 10, y: 12 } });
+    const menu = page.locator("px-header-menu");
+    await expect(menu).toBeVisible();
+    const first = menu.locator("px-value-picker input[type=checkbox]").first();
+    await expect(first).toBeVisible({ timeout: 30_000 });
+    await first.check();
+    await expect.poll(async () => Number(await grid.getAttribute("aria-rowcount"))).toBeLessThan(500);
+    await expect(section.locator("px-grid-toolbar .px-chip")).toHaveCount(1);
+    // Escape closes the menu and gives the grid its focus back.
+    await page.keyboard.press("Escape");
+    await expect(menu).toHaveCount(0);
+    await expect(section.locator(".px-scroll")).toBeFocused();
+  });
+
+  test("Alt+Down opens the focused column's menu, and Hide column hides it", async ({ page }) => {
+    const section = await blotter(page);
+    const grid = section.locator('[role="grid"]');
+    const columns = Number(await grid.getAttribute("aria-colcount"));
+    await section.locator("canvas.px-canvas").click({ position: { x: 60, y: 40 } });
+    await page.keyboard.press("Alt+ArrowDown");
+    await expect(page.locator("px-header-menu")).toBeVisible();
+    await page.getByRole("menuitem", { name: "Hide column" }).click();
+    await expect(grid).toHaveAttribute("aria-colcount", String(columns - 1));
+    await expect(page.locator("px-header-menu")).toHaveCount(0);
+  });
+
+  test("a condition filters the column, and does not contain says it keeps blanks", async ({ page }) => {
+    await page.goto("/?preset=small");
+    const section = page.locator('section[data-table="book"]');
+    const grid = section.locator('[role="grid"]');
+    await expect(grid).toHaveAttribute("aria-rowcount", "300", { timeout: 60_000 });
+    // The book's third column is the fund, which is text.
+    await section.locator("canvas.px-canvas").click({ position: { x: 3 * 140 - 10, y: 12 } });
+    const menu = page.locator("px-header-menu");
+    const mode = menu.getByRole("combobox", { name: "Keep rows where" });
+    await mode.selectOption("not_contains", { timeout: 10_000 });
+    await expect(menu.getByText("Blank cells are kept, as in Excel.")).toBeVisible();
+    await mode.selectOption("contains", { timeout: 10_000 });
+    const value = menu.getByRole("textbox", { name: "Value" });
+    await value.fill("atlas");
+    await value.press("Enter");
+    await expect.poll(async () => Number(await grid.getAttribute("aria-rowcount"))).toBeLessThan(300);
+    await expect(section.locator("px-grid-toolbar .px-chip")).toContainText("contains atlas");
   });
 });

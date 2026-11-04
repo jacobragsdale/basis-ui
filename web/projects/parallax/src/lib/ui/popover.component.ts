@@ -49,6 +49,7 @@ export function placement(
       color: var(--px-control-fg);
       box-shadow: var(--px-shadow);
       font: var(--px-font);
+      text-align: start;
     }
   `,
   template: `<ng-content />`
@@ -57,7 +58,9 @@ export class PopoverComponent {
   /** The control the panel belongs to, which gets focus back when it closes. */
   public readonly anchor = input.required<HTMLElement>();
   /** Which edge of the anchor the panel lines up with. */
-  public readonly align = input<"start" | "end">("start");
+  public readonly alignTo = input<"start" | "end">("start");
+  /** What gets focus back when the panel closes, if not the anchor, as when the anchor only marks a place. */
+  public readonly restore = input<HTMLElement | null>(null);
   /** Fires when the panel asks to close: Escape, or a press outside it. */
   public readonly closed = output();
 
@@ -71,7 +74,7 @@ export class PopoverComponent {
     const place = (): void => {
       const anchor = this.anchor().getBoundingClientRect();
       const panel = this.host.getBoundingClientRect();
-      this.position.set(placement(anchor, panel, { width: window?.innerWidth ?? 1024, height: window?.innerHeight ?? 768 }, this.align()));
+      this.position.set(placement(anchor, panel, { width: window?.innerWidth ?? 1024, height: window?.innerHeight ?? 768 }, this.alignTo()));
       this.placed.set(true);
     };
     const outside = (event: PointerEvent): void => {
@@ -92,7 +95,7 @@ export class PopoverComponent {
       // Focus goes back to the control that opened the panel, unless it moved elsewhere on purpose.
       const active = document.activeElement;
       if (active === null || active === document.body || this.host.contains(active)) {
-        this.anchor().focus();
+        (this.restore() ?? this.anchor()).focus({ preventScroll: true });
       }
     });
   }

@@ -2,7 +2,24 @@ import { describe, expect, it } from "vitest";
 
 import { parseLayout } from "../layout";
 import type { LayoutFilter } from "../layout";
-import { filterLabel, highlightRanges, searchColumns, shownColumns, withoutFilter, withoutFilters } from "./edit";
+import {
+  columnCondition,
+  filterLabel,
+  highlightRanges,
+  isFiltered,
+  searchColumns,
+  shownColumns,
+  totalChoices,
+  totalOf,
+  withColumnCondition,
+  withHidden,
+  withPinned,
+  withSort,
+  withTitle,
+  withTotal,
+  withoutFilter,
+  withoutFilters
+} from "./edit";
 import type { SourceField } from "./grid-source";
 
 const fields: readonly SourceField[] = [
@@ -63,5 +80,35 @@ describe("highlightRanges", () => {
 
   it("marks nothing when lowering changes the text's length", () => {
     expect(highlightRanges("İstanbul", "stan")).toEqual([]);
+  });
+});
+
+describe("header menu edits", () => {
+  const base = parseLayout({ columns: ["fund", "price"], filters: [{ column: "fund", op: "contains", value: "x", columns: ["ticker"] }] });
+
+  it("read and write a column's own filter, leaving searches across columns alone", () => {
+    expect(columnCondition(base, "fund")).toEqual({ kind: "none" });
+    const ranged = withColumnCondition(base, "price", { kind: "between", from: "1", to: "5" });
+    expect(columnCondition(ranged, "price")).toEqual({ kind: "between", from: "1", to: "5" });
+    expect(isFiltered(ranged, "price")).toBe(true);
+    const listed = withColumnCondition(ranged, "price", { kind: "values", values: ["2", null] });
+    expect(columnCondition(listed, "price")).toEqual({ kind: "values", values: ["2", null] });
+    expect(listed.filters).toHaveLength(2);
+    expect(withColumnCondition(listed, "price", { kind: "values", values: [] }).filters).toEqual(base.filters);
+    expect(columnCondition(withColumnCondition(base, "fund", { kind: "one", op: "not_contains", value: "a" }), "fund")).toEqual({ kind: "one", op: "not_contains", value: "a" });
+  });
+
+  it("sort, hide, pin, rename and total a column", () => {
+    expect(withSort(base, "price", true).sort).toEqual([{ column: "price", descending: true }]);
+    expect(withSort(withSort(base, "price", true), "price", null).sort).toEqual([]);
+    expect(withHidden(parseLayout({ pinned: ["ticker"] }), "ticker", fields)).toMatchObject({ columns: ["position_id", "fund", "sector", "price"], pinned: [] });
+    expect(withPinned(withPinned(base, "price", true), "fund", true).pinned).toEqual(["price", "fund"]);
+    expect(withPinned(withPinned(base, "price", true), "price", false).pinned).toEqual([]);
+    expect(withTitle(base, "fund", " Fund ").titles).toEqual({ fund: "Fund" });
+    expect(withTitle(withTitle(base, "fund", "Fund"), "fund", "").titles).toEqual({});
+    const totalled = withTotal(base, "price", "sum");
+    expect(totalOf(totalled, "price")).toBe("sum");
+    expect(totalOf(withTotal(totalled, "price", null), "price")).toBeNull();
+    expect(totalChoices("text")).toEqual(["count", "distinct_count"]);
   });
 });
