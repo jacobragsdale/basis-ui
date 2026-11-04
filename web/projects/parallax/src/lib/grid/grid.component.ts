@@ -39,16 +39,16 @@ import * as z from "zod/mini";
 import type { DistinctValues, Viewport } from "../connection";
 import { isNegativeText } from "../format";
 import { CellFlag } from "../frame";
-import type { FrameData, TreeRows } from "../frame";
+import type { FrameColumn, FrameData, TreeRows } from "../frame";
 import { TREE_WIDTH_KEY, checkLayout } from "../layout";
 import type { Layout, LayoutInput, LayoutScalar } from "../layout";
 import { ParallaxClient } from "../client";
 import { installThemeStyles, readTheme } from "../theme";
 import type { Theme, ThemeName } from "../theme";
-import { DEFAULT_TREE_WIDTH, DEFAULT_WIDTH, MIN_WIDTH, flatGeometry, groupedGeometry, rowGeometry } from "./geometry";
+import { DEFAULT_TREE_WIDTH, DEFAULT_WIDTH, MIN_WIDTH, columnAt, flatGeometry, groupedGeometry, rowGeometry, screenX, scrolledColumns } from "./geometry";
 import type { ColumnGeometry } from "./geometry";
 import { groupPath, gridSource, withExpanded } from "./grid-source";
-import { highlightRanges, isFiltered, searchColumns, shownColumns } from "./edit";
+import { highlightRanges, isFiltered, searchColumns, shownColumns, withColumnBefore } from "./edit";
 import { HeaderMenuComponent } from "./header-menu.component";
 import { PopoverComponent } from "../ui/popover.component";
 import { contains, moveFocus, rangeOf, selectAll, toTsv } from "./selection";
@@ -100,6 +100,10 @@ const MARKER_WIDTH = 14;
 /** How close to a header edge, in pixels, the pointer starts a resize. */
 const EDGE = 4;
 const TOOLTIP_DELAY_MS = 350;
+/** How far a pressed header must move, in pixels, before it is dragged rather than clicked. */
+const DRAG_THRESHOLD = 6;
+/** The widest a column is fitted to its values; wider ones are cut, and can be widened by hand. */
+const MAX_FITTED = 320;
 /** The room a header keeps at its right for the funnel that opens the column's menu. */
 const FUNNEL_WIDTH = 20;
 /** The icons a header draws, as SVG path data on a 16-unit square. */
@@ -186,6 +190,9 @@ const GRID_STYLES = `
     flex: 1;
     min-height: 0;
   }
+  px-grid.px-auto-height {
+    height: auto;
+  }
   px-grid .px-scroll {
     position: absolute;
     inset: 0;
@@ -213,6 +220,14 @@ const GRID_STYLES = `
     background: var(--px-danger);
     color: #fff;
   }
+  px-grid .px-visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
   px-grid .px-menu-anchor {
     position: absolute;
     pointer-events: none;
@@ -239,12 +254,12 @@ const GRID_STYLES = `
   changeDetection: ChangeDetectionStrategy.OnPush,
   encapsulation: ViewEncapsulation.None,
   imports: [GridToolbarComponent, HeaderMenuComponent, PopoverComponent, StatusBarComponent],
-  host: { "[attr.data-px-theme]": "theme()" },
+  host: { "[attr.data-px-theme]": "theme()", "[class.px-auto-height]": "height() === 'auto'" },
   template: `
     @if (toolbarView(); as bar) {
       <px-grid-toolbar #toolbar [layout]="bar.layout" [fields]="fields()" [parts]="bar.parts" (changed)="layout.set($event)" (exported)="export($event)" />
     }
-    <div class="px-body">
+    <div class="px-body" [style.height.px]="bodyHeight()" [style.flex]="bodyHeight() === null ? null : 'none'">
       <div
         class="px-scroll"
         #scroll
@@ -276,6 +291,9 @@ const GRID_STYLES = `
         <px-popover [anchor]="menuAnchor" [restore]="scroll" alignTo="end" (closed)="menu.set(null)">
           <px-header-menu [layout]="m.layout" [column]="m.name" [fields]="fields()" [source]="values" (changed)="layout.set($event)" (fit)="fitColumn(m.column)" (done)="menu.set(null)" />
         </px-popover>
+      }
+      @if (totalsText(); as totals) {
+        <div class="px-visually-hidden" role="status" aria-label="Totals row">{{ totals }}</div>
       }
       @if (tooltip(); as tip) {
         <div class="px-tooltip" role="tooltip" [style.left.px]="tip.x" [style.top.px]="tip.y">{{ tip.text }}</div>
@@ -310,12 +328,29 @@ export class GridComponent {
    * `{ export: false }` for a small tile.
    */
   public readonly toolbar = input<boolean | Partial<ToolbarParts>>(true);
+  /** `fill` takes the height its container gives; `auto` sizes the grid to its rows, up to `maxHeight`. */
+  public readonly height = input<"fill" | "auto">("fill");
+  /** The tallest an `auto` grid's rows grow, in CSS pixels, before they scroll. */
+  public readonly maxHeight = input(480);
+  /** The body's height for an `auto` grid: the header, every row and the totals, up to the maximum. */
+  protected readonly bodyHeight = computed(() => {
+    if (this.height() === "fill") {
+      return null;
+    }
+    // Room for a horizontal scrollbar, so it never covers the last row.
+    const scrollbar = this.geometry().contentWidth > this.widthPx() ? 14 : 2;
+    return Math.min(this.maxHeight(), (this.totalRows() + 1 + this.footer()) * this.rowHeight() + scrollbar);
+  });
   protected readonly toolbarParts = computed((): ToolbarParts | null => {
     const setting = this.toolbar();
     if (setting === false) {
       return null;
     }
-    return setting === true ? ALL_PARTS : { ...ALL_PARTS, ...setting };
+    const parts = setting === true ? ALL_PARTS : { ...ALL_PARTS, ...setting };
+    // A pivot's columns are its measures, and its grand total is a row of its own.
+    const layout = this.current();
+    const pivot = layout !== null && isGrouped(layout) && !layout.detail;
+    return pivot ? { ...parts, columns: false, totals: false } : parts;
   });
   private readonly toolbarRef = viewChild<GridToolbarComponent>("toolbar");
   protected readonly toolbarView = computed(() => {
@@ -332,6 +367,8 @@ export class GridComponent {
   });
   /** The header column under the pointer. */
   private readonly hoverHeader = signal<number | null>(null);
+  /** A header being dragged to another place: the column, and the column it would go before, or the count for last. */
+  private readonly drag = signal<{ readonly from: number; readonly before: number } | null>(null);
   /** Lists a column's values for the header menu's filter. */
   protected readonly values = (column: string, search: string, limit: number): Promise<DistinctValues> => this.source.distinct(column, search, limit);
 
@@ -363,7 +400,22 @@ export class GridComponent {
 
   protected readonly rowHeight = computed(() => ROW_HEIGHTS[this.density()]);
   protected readonly totalRows = computed(() => this.source.frame()?.totalRows ?? 0);
-  private readonly rows = computed(() => rowGeometry(this.totalRows() + 1, this.rowHeight()));
+  /** A footer row for the totals, when the view has them. */
+  protected readonly footer = computed(() => ((this.source.frame()?.totals ?? null) === null ? 0 : 1));
+  private readonly rows = computed(() => rowGeometry(this.totalRows() + 1 + this.footer(), this.rowHeight()));
+  /** The totals row as text, for screen readers, which cannot read the canvas: each total with its column's title. */
+  protected readonly totalsText = computed(() => {
+    const totals = this.source.frame()?.totals ?? null;
+    if (totals === null) {
+      return null;
+    }
+    const parts = totals.filter((t) => t.text(0) !== "").map((t) => `${t.title}: ${t.text(0)}`);
+    return parts.length === 0 ? null : `Totals. ${parts.join("; ")}`;
+  });
+  /** Widths fitted to the loaded values of columns the user has not sized. */
+  private readonly fitted = signal<Readonly<Record<string, number>>>({});
+  /** How many rows each fitted width was measured over. */
+  private fittedOver = new Map<string, number>();
   protected readonly spacerHeight = computed(() => this.rows().spacerPx);
   protected readonly geometry = computed((): ColumnGeometry => {
     const layout = this.current();
@@ -374,7 +426,8 @@ export class GridComponent {
       return groupedGeometry(count, layout.measures.length, widths);
     }
     const names = layout === null ? this.source.fields().map((f) => f.name) : shownColumns(layout, this.source.fields());
-    return flatGeometry(count, names, widths);
+    const pinned = layout === null ? 0 : layout.pinned.filter((c) => names.includes(c)).length;
+    return flatGeometry(count, names, widths, pinned, this.fitted());
   });
   private readonly extent = computed((): Extent => ({ rows: this.totalRows(), columns: this.geometry().count, tree: this.geometry().treePx > 0 }));
 
@@ -421,6 +474,14 @@ export class GridComponent {
     // Ask for what is in view whenever scrolling, resizing or a new column count changes it.
     effect(() => {
       this.source.show(this.visible());
+    });
+    // Columns the user has not sized fit their values: every row of a small view, else the first rows loaded.
+    effect(() => {
+      const frame = this.source.frame();
+      const layout = this.current();
+      untracked(() => {
+        this.fitColumns(frame, layout);
+      });
     });
     // When the rows shrink to end at or above the first row in view, as after a search, show them from the top.
     // The engine answers such a change from row 0, so the rows are already here.
@@ -529,7 +590,8 @@ export class GridComponent {
     if (geometry.count === 0) {
       return { firstRow, rowCount, firstColumn: 0, columnCount: Math.ceil(width / DEFAULT_WIDTH) + 1 };
     }
-    const left = geometry.indexAt(geometry.treePx + scrollLeft);
+    // Pinned columns show whatever the scroll, so the window always starts with them.
+    const left = geometry.pinned > 0 ? 0 : geometry.indexAt(geometry.frozenPx + scrollLeft);
     const right = geometry.indexAt(scrollLeft + width);
     return { firstRow, rowCount, firstColumn: left, columnCount: right - left + 1 };
   }
@@ -549,11 +611,11 @@ export class GridComponent {
     } else if (cell.row >= first + visibleRows) {
       element.scrollTop = this.rows().scrollTopFor(cell.row - visibleRows + 1, element.clientHeight);
     }
-    if (cell.column >= 0) {
-      const geometry = this.geometry();
+    const geometry = this.geometry();
+    if (cell.column >= geometry.pinned) {
       const x = geometry.x(cell.column) - element.scrollLeft;
-      if (x < geometry.treePx) {
-        element.scrollLeft = geometry.x(cell.column) - geometry.treePx;
+      if (x < geometry.frozenPx) {
+        element.scrollLeft = geometry.x(cell.column) - geometry.frozenPx;
       } else if (x + geometry.width(cell.column) > element.clientWidth) {
         element.scrollLeft = geometry.x(cell.column) + geometry.width(cell.column) - element.clientWidth;
       }
@@ -566,17 +628,16 @@ export class GridComponent {
     const rowPx = this.rowHeight();
     const geometry = this.geometry();
     const header = y < rowPx;
-    const row = header ? null : this.firstVisibleRow() + Math.floor((y - rowPx) / rowPx);
-    let column: number | null;
+    // The totals footer at the bottom is not a row of the view.
+    const onFooter = this.footer() > 0 && y >= this.viewportPx() - rowPx;
+    const row = header || onFooter ? null : this.firstVisibleRow() + Math.floor((y - rowPx) / rowPx);
+    const column = columnAt(geometry, x, this.scrollLeft());
     let edge: number | null = null;
-    if (geometry.treePx > 0 && x < geometry.treePx) {
-      column = -1;
+    if (column === -1) {
       if (header && geometry.treePx - x <= EDGE) {
         edge = -1;
       }
     } else {
-      const content = x + this.scrollLeft();
-      column = content < geometry.contentWidth && geometry.count > 0 ? geometry.indexAt(content) : null;
       if (header && column !== null) {
         const part = this.headerPart(column, x);
         if (part === "funnel") {
@@ -591,8 +652,8 @@ export class GridComponent {
   /** The part of data column `column`'s header at `x`: the edge of a column, the funnel, or neither. */
   private headerPart(column: number, x: number): number | "funnel" | null {
     const geometry = this.geometry();
-    const right = geometry.x(column) + geometry.width(column) - this.scrollLeft();
-    const left = geometry.x(column) - this.scrollLeft();
+    const left = screenX(geometry, column, this.scrollLeft());
+    const right = left + geometry.width(column);
     if (right - x <= EDGE) {
       return column;
     }
@@ -621,9 +682,8 @@ export class GridComponent {
     if (hit.header) {
       const key = hit.edge === null ? "" : this.widthKeyOf(hit.edge);
       this.pressed = { hit, x: event.clientX, startWidth: hit.edge === null ? 0 : this.widthOf(hit.edge), key };
-      if (hit.edge !== null) {
-        canvas.setPointerCapture(event.pointerId);
-      }
+      // A resize, or a header dragged to another place, follows the pointer off the canvas.
+      canvas.setPointerCapture(event.pointerId);
       return;
     }
     if (hit.row === null || hit.column === null) {
@@ -656,6 +716,39 @@ export class GridComponent {
     return false;
   }
 
+  /**
+   * Follows a pressed header that moved past the threshold: it is dragged, and drops before the column whose middle
+   * the pointer is left of. Returns whether the press is a drag.
+   */
+  private dragHeader(pressed: { readonly hit: Hit; readonly x: number }, event: PointerEvent): boolean {
+    const from = pressed.hit.column;
+    if (!pressed.hit.header || pressed.hit.funnel || from === null || this.menuColumn(from) === null) {
+      return false;
+    }
+    if (this.drag() === null && Math.abs(event.clientX - pressed.x) < DRAG_THRESHOLD) {
+      return false;
+    }
+    const geometry = this.geometry();
+    const at = columnAt(geometry, event.offsetX, this.scrollLeft()) ?? geometry.count - 1;
+    const column = Math.max(0, at);
+    const middle = screenX(geometry, column, this.scrollLeft()) + geometry.width(column) / 2;
+    this.drag.set({ from, before: event.offsetX < middle ? column : column + 1 });
+    this.clearTooltip();
+    this.cursor.set("grabbing");
+    return true;
+  }
+
+  /** Moves dragged column `from` to just before column `before`, within its zone. */
+  private dropHeader(from: number, before: number): void {
+    const geometry = this.geometry();
+    if (before === from || before === from + 1) {
+      return;
+    }
+    const name = geometry.widthKey(from);
+    const target = before < geometry.count ? geometry.widthKey(before) : null;
+    this.change((layout) => withColumnBefore(layout, this.fields(), name, target));
+  }
+
   /** Whether `x` falls on the expand marker of row `row`'s group cell. */
   private onMarker(row: number, x: number): boolean {
     const frame = this.source.frame();
@@ -672,6 +765,9 @@ export class GridComponent {
   protected endPointer(): void {
     this.pressed = null;
     this.selecting = false;
+    if (this.drag() !== null) {
+      this.drag.set(null);
+    }
     if (this.liveWidth() !== null) {
       this.liveWidth.set(null);
     }
@@ -681,6 +777,9 @@ export class GridComponent {
     const pressed = this.pressed;
     if (pressed !== null && pressed.hit.edge !== null) {
       this.liveWidth.set({ key: pressed.key, width: Math.max(MIN_WIDTH, Math.round(pressed.startWidth + event.clientX - pressed.x)) });
+      return;
+    }
+    if (pressed !== null && this.dragHeader(pressed, event)) {
       return;
     }
     const hit = this.hit(event.offsetX, event.offsetY);
@@ -709,6 +808,12 @@ export class GridComponent {
       if (live !== null) {
         this.setWidth(live.key, live.width);
       }
+      return;
+    }
+    const drag = this.drag();
+    if (drag !== null) {
+      this.drag.set(null);
+      this.dropHeader(drag.from, drag.before);
       return;
     }
     const hit = this.hit(event.offsetX, event.offsetY);
@@ -774,7 +879,64 @@ export class GridComponent {
     }
     const geometry = this.geometry();
     this.clearTooltip();
-    this.menu.set({ column, name, left: geometry.x(column) - this.scrollLeft(), top: 0, width: geometry.width(column), height: this.rowHeight() });
+    this.menu.set({ column, name, left: screenX(geometry, column, this.scrollLeft()), top: 0, width: geometry.width(column), height: this.rowHeight() });
+  }
+
+  /**
+   * Fits the columns of `frame` the user has not sized to their header and values. A column is measured on the first
+   * frame of a view, and again on a frame that holds more of the whole view; widths only grow, so a column never
+   * narrows under the pointer.
+   */
+  private fitColumns(frame: FrameData | null, layout: Layout | null): void {
+    if (frame === null) {
+      if (this.fittedOver.size > 0) {
+        this.fittedOver = new Map();
+        this.fitted.set({});
+      }
+      return;
+    }
+    const context = this.canvas().nativeElement.getContext("2d");
+    if (layout === null || context === null || (isGrouped(layout) && !layout.detail)) {
+      return;
+    }
+    context.font = (this.tokens ?? readTheme(this.canvas().nativeElement)).font;
+    const whole = frame.firstRow === 0 && frame.rowCount >= frame.totalRows;
+    let fitted = this.fitted();
+    for (const data of frame.columns) {
+      if (!this.needsFit(layout, data.name, whole, frame.rowCount)) {
+        continue;
+      }
+      this.fittedOver.set(data.name, frame.rowCount);
+      const width = this.fittedWidth(context, data, frame.rowCount);
+      if (width > (fitted[data.name] ?? 0)) {
+        fitted = { ...fitted, [data.name]: width };
+      }
+    }
+    if (fitted !== this.fitted()) {
+      this.fitted.set(fitted);
+    }
+  }
+
+  /**
+   * Whether column `name` should be fitted to a frame of `rows` rows: never once the user sized it; otherwise when it
+   * was never measured, or the frame holds more of the whole view than the last measurement did.
+   */
+  private needsFit(layout: Layout, name: string, whole: boolean, rows: number): boolean {
+    if (layout.column_widths[name] !== undefined) {
+      return false;
+    }
+    const over = this.fittedOver.get(name);
+    return over === undefined || (whole && over < rows);
+  }
+
+  /** The width that shows a column's title, with room for its marks, and its first `rows` values, up to a limit. */
+  private fittedWidth(context: CanvasRenderingContext2D, data: FrameColumn, rows: number): number {
+    // Room for the title, a sort mark with its priority, the funnel and a pin.
+    let widest = this.measure(context, `${data.title} ▲2`) + FUNNEL_WIDTH + 16;
+    for (let local = 0; local < rows; local += 1) {
+      widest = Math.max(widest, this.measure(context, data.text(local)));
+    }
+    return Math.min(MAX_FITTED, Math.max(MIN_WIDTH, Math.ceil(widest + 2 * PADDING + 2)));
   }
 
   protected fitColumn(column: number): void {
@@ -1067,6 +1229,7 @@ export class GridComponent {
     const pass = this.begin(context, frame, { first, scrollLeft, width, height });
     if (frame !== null) {
       const cells = this.drawRows(pass, frame, first, height);
+      this.drawFooter(pass, frame, height);
       const now = performance.now();
       const asked = frame.requestedAtMs;
       const answered = asked !== undefined && asked !== this.timedRequest;
@@ -1101,7 +1264,7 @@ export class GridComponent {
     const geometry = this.geometry();
     const layout = this.current();
     const versions = frame === null ? null : [frame.configVersion.toString(), frame.loadVersion.toString(), frame.totalRows, frame.firstColumn];
-    const decor = layout === null ? null : [layout.column_widths, layout.sort, layout.group_sort, layout.filters, layout.pinned, this.hoverHeader(), this.menu()?.column];
+    const decor = layout === null ? null : [layout.column_widths, layout.sort, layout.group_sort, layout.filters, layout.pinned, this.hoverHeader(), this.menu()?.column, this.drag()];
     return JSON.stringify([at, versions, this.theme(), geometry.treePx, geometry.contentWidth, decor]);
   }
 
@@ -1172,26 +1335,32 @@ export class GridComponent {
     return cells;
   }
 
-  /** Data columns that intersect the visible part of the data area. */
-  private visibleColumns(pass: Pass): readonly number[] {
-    const { geometry } = pass;
-    if (geometry.count === 0) {
-      return [];
-    }
-    const left = geometry.indexAt(geometry.treePx + pass.scrollLeft);
-    const right = geometry.indexAt(pass.scrollLeft + pass.width);
-    return Array.from({ length: right - left + 1 }, (_, i) => left + i);
-  }
-
-  /** Runs `paint` clipped to the data area, which scrolls under the pinned group column. */
-  private inDataArea(pass: Pass, top: number, height: number, paint: () => void): void {
+  /**
+   * Runs `paint` for each data column in view: first the scrolling ones, clipped to the area they scroll in, then the
+   * pinned ones over them, clipped beside the group column, with a shadow on their edge once anything is scrolled.
+   */
+  private eachColumn(pass: Pass, top: number, height: number, paint: (column: number) => void): void {
     const { context, geometry } = pass;
-    context.save();
-    context.beginPath();
-    context.rect(geometry.treePx, top, Math.max(0, pass.width - geometry.treePx), height);
-    context.clip();
-    paint();
-    context.restore();
+    const clipped = (left: number, right: number, columns: readonly number[]): void => {
+      context.save();
+      context.beginPath();
+      context.rect(left, top, Math.max(0, right - left), height);
+      context.clip();
+      columns.forEach(paint);
+      context.restore();
+    };
+    clipped(geometry.frozenPx, pass.width, scrolledColumns(geometry, pass.scrollLeft, pass.width));
+    if (geometry.pinned > 0) {
+      clipped(
+        geometry.treePx,
+        geometry.frozenPx,
+        Array.from({ length: geometry.pinned }, (_, i) => i)
+      );
+      if (pass.scrollLeft > 0) {
+        context.fillStyle = pass.theme.gridLine;
+        context.fillRect(geometry.frozenPx - 1, top, 2, height);
+      }
+    }
   }
 
   private sortMark(column: number): string {
@@ -1229,11 +1398,16 @@ export class GridComponent {
       context.fillStyle = theme.gridLine;
       context.fillRect(geometry.treePx - 1, 0, 1, rowPx);
     }
-    this.inDataArea(pass, 0, rowPx, () => {
-      for (const column of this.visibleColumns(pass)) {
-        this.drawColumnHeader(pass, frame, layout, column);
-      }
+    this.eachColumn(pass, 0, rowPx, (column) => {
+      this.drawColumnHeader(pass, frame, layout, column);
     });
+    const drag = this.drag();
+    if (drag !== null && geometry.count > 0) {
+      const at = Math.min(drag.before, geometry.count);
+      const x = at < geometry.count ? screenX(geometry, at, pass.scrollLeft) : screenX(geometry, at - 1, pass.scrollLeft) + geometry.width(at - 1);
+      context.fillStyle = theme.accent;
+      context.fillRect(x - 1, 0, 3, rowPx);
+    }
     context.fillStyle = theme.gridLine;
     context.fillRect(0, rowPx - 1, pass.width, 1);
   }
@@ -1241,12 +1415,12 @@ export class GridComponent {
   /** Draws data column `column`'s header: its title, sort mark, and for a column with a menu, its funnel and pin. */
   private drawColumnHeader(pass: Pass, frame: FrameData | null, layout: Layout | null, column: number): void {
     const { context, theme, rowPx, geometry } = pass;
-    const x = geometry.x(column) - pass.scrollLeft;
+    const x = screenX(geometry, column, pass.scrollLeft);
     const width = geometry.width(column);
     const title = (frame === null ? undefined : frame.columns[column - frame.firstColumn])?.title ?? "";
     const name = this.menuColumn(column);
     const open = column === this.menu()?.column;
-    const lit = open || column === this.hoverHeader();
+    const lit = open || column === this.hoverHeader() || column === this.drag()?.from;
     if (lit) {
       context.fillStyle = theme.controlHover;
       context.fillRect(x, 0, width, rowPx);
@@ -1255,18 +1429,30 @@ export class GridComponent {
     if (name === null || layout === null) {
       this.headerText(pass, title, this.sortMark(column), x, width);
     } else {
-      const filtered = isFiltered(layout, name);
-      const indent = layout.pinned.includes(name) ? 16 : 0;
-      if (indent > 0) {
-        this.icon(context, PIN_PATH, x + PADDING - 2, rowPx / 2 - 7, theme.muted, false);
-      }
-      context.fillStyle = theme.headerForeground;
-      this.headerText(pass, title, this.sortMark(column), x + indent, width - indent - FUNNEL_WIDTH + PADDING);
-      const color = filtered || open ? theme.accent : lit ? theme.headerForeground : theme.muted;
-      this.icon(context, FUNNEL_PATH, x + width - FUNNEL_WIDTH, rowPx / 2 - 7, color, filtered);
+      this.drawMenuHeader(pass, column, { x, width, title }, isFiltered(layout, name), layout.pinned.includes(name), open || lit ? (open ? "open" : "lit") : "rest");
     }
     context.fillStyle = theme.gridLine;
     context.fillRect(x + width - 1, 0, 1, rowPx);
+  }
+
+  /** Draws the header of a column with a menu: a pin mark if pinned, the title and sort mark, and the funnel. */
+  private drawMenuHeader(
+    pass: Pass,
+    column: number,
+    at: { readonly x: number; readonly width: number; readonly title: string },
+    filtered: boolean,
+    pinned: boolean,
+    state: "open" | "lit" | "rest"
+  ): void {
+    const { context, theme, rowPx } = pass;
+    const indent = pinned ? 16 : 0;
+    if (pinned) {
+      this.icon(context, PIN_PATH, at.x + PADDING - 2, rowPx / 2 - 7, theme.muted, false);
+    }
+    context.fillStyle = theme.headerForeground;
+    this.headerText(pass, at.title, this.sortMark(column), at.x + indent, at.width - indent - FUNNEL_WIDTH + PADDING);
+    const color = filtered || state === "open" ? theme.accent : state === "lit" ? theme.headerForeground : theme.muted;
+    this.icon(context, FUNNEL_PATH, at.x + at.width - FUNNEL_WIDTH, rowPx / 2 - 7, color, filtered);
   }
 
   /** Draws an icon's path, 14 px square, with its top left at `x`, `y`. */
@@ -1297,14 +1483,41 @@ export class GridComponent {
     }
   }
 
+  /** Draws the totals row along the bottom, over the rows: the engine's text for each column with a total. */
+  private drawFooter(pass: Pass, frame: FrameData, height: number): void {
+    const totals = frame.totals;
+    if (totals === null) {
+      return;
+    }
+    const { context, theme, rowPx, geometry } = pass;
+    const y = height - rowPx;
+    context.fillStyle = theme.headerBackground;
+    context.fillRect(0, y, pass.width, rowPx);
+    context.font = `600 ${theme.font}`;
+    if (geometry.treePx > 0) {
+      context.fillStyle = theme.headerForeground;
+      this.clipText(context, "Total", 0, geometry.treePx, y + rowPx / 2, false);
+    }
+    this.eachColumn(pass, y, rowPx, (column) => {
+      const data = totals[column - frame.firstColumn];
+      const x = screenX(geometry, column, pass.scrollLeft);
+      const text = data?.text(0) ?? "";
+      // A grid without a group column says which row this is in its first column, unless that has a total.
+      const shown = text === "" && column === 0 && geometry.treePx === 0 ? "Total" : text;
+      context.fillStyle = data !== undefined && data.flag(0) !== CellFlag.Ok ? theme.muted : data?.numeric === true && isNegativeText(text) ? theme.negative : theme.headerForeground;
+      this.clipText(context, shown, x, geometry.width(column), y + rowPx / 2, data?.numeric === true && text !== "");
+    });
+    context.font = theme.font;
+    context.fillStyle = theme.gridLine;
+    context.fillRect(0, y, pass.width, 1);
+  }
+
   private drawRow(pass: Pass, frame: FrameData, local: number, row: number, y: number): number {
     const stripe = row % 2 === 0 ? pass.theme.background : pass.theme.stripe;
     let cells = frame.tree === null ? 0 : this.drawTreeCell(pass, frame.tree, local, row, y, stripe);
-    this.inDataArea(pass, y, pass.rowPx, () => {
-      for (const column of this.visibleColumns(pass)) {
-        if (this.drawCell(pass, frame, column, local, row, y, stripe)) {
-          cells += 1;
-        }
+    this.eachColumn(pass, y, pass.rowPx, (column) => {
+      if (this.drawCell(pass, frame, column, local, row, y, stripe)) {
+        cells += 1;
       }
     });
     return cells;
@@ -1360,7 +1573,7 @@ export class GridComponent {
       return false;
     }
     const { context, theme, rowPx, geometry } = pass;
-    const x = geometry.x(column) - pass.scrollLeft;
+    const x = screenX(geometry, column, pass.scrollLeft);
     const width = geometry.width(column);
     this.cellBackground(pass, row, column, x, y, width, stripe);
     const flag = data.flag(local);

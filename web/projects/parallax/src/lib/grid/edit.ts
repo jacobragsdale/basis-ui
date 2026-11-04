@@ -202,3 +202,43 @@ export function withTotal(layout: Layout, column: string, aggregate: LayoutMeasu
   }
   return { ...layout, totals: [...others, { column, aggregate, percentile: null, weight: null, unit_column: null, show_as: "value", format: null }] };
 }
+
+/**
+ * Moves `column` to just before `before`, or to the end when `before` is null, within its own zone: a pinned column
+ * moves among the pinned ones, any other among the rest.
+ */
+export function withColumnBefore(layout: Layout, fields: readonly SourceField[], column: string, before: string | null): Layout {
+  const pinned = layout.pinned.includes(column);
+  const zone = pinned ? layout.pinned : shownColumns(layout, fields).filter((c) => !layout.pinned.includes(c));
+  const others = zone.filter((c) => c !== column);
+  const at = before === null ? -1 : others.indexOf(before);
+  const moved = at === -1 ? [...others, column] : [...others.slice(0, at), column, ...others.slice(at)];
+  if (pinned) {
+    return { ...layout, pinned: moved };
+  }
+  return { ...layout, columns: [...layout.pinned, ...moved] };
+}
+
+/** Shows or hides `column`; a column shown again comes last. */
+export function withShown(layout: Layout, fields: readonly SourceField[], column: string, shown: boolean): Layout {
+  if (!shown) {
+    return withHidden(layout, column, fields);
+  }
+  const listed = shownColumns(layout, fields);
+  return listed.includes(column) ? layout : { ...layout, columns: [...listed, column] };
+}
+
+/** Totals for a grid that has none: the sum of each number column it shows, or failing that a count of its first. */
+export function defaultTotals(layout: Layout, fields: readonly SourceField[]): Layout {
+  const kinds = new Map(fields.map((f) => [f.name, f.kind]));
+  const shown = shownColumns(layout, fields);
+  const summed = shown.filter((c) => {
+    const kind = kinds.get(c);
+    return kind === "float" || kind === "decimal";
+  });
+  const first = shown[0];
+  if (summed.length > 0) {
+    return summed.reduce<Layout>((l, c) => withTotal(l, c, "sum"), { ...layout, totals: [] });
+  }
+  return first === undefined ? layout : withTotal({ ...layout, totals: [] }, first, "count");
+}

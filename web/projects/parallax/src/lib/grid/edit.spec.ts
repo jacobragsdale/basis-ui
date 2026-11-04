@@ -4,6 +4,7 @@ import { parseLayout } from "../layout";
 import type { LayoutFilter } from "../layout";
 import {
   columnCondition,
+  defaultTotals,
   filterLabel,
   highlightRanges,
   isFiltered,
@@ -11,8 +12,10 @@ import {
   shownColumns,
   totalChoices,
   totalOf,
+  withColumnBefore,
   withColumnCondition,
   withHidden,
+  withShown,
   withPinned,
   withSort,
   withTitle,
@@ -110,5 +113,23 @@ describe("header menu edits", () => {
     expect(totalOf(totalled, "price")).toBe("sum");
     expect(totalOf(withTotal(totalled, "price", null), "price")).toBeNull();
     expect(totalChoices("text")).toEqual(["count", "distinct_count"]);
+  });
+});
+
+describe("column order and totals", () => {
+  it("moves a column within its zone", () => {
+    const layout = parseLayout({ columns: ["position_id", "fund", "ticker", "price"], pinned: ["price"] });
+    expect(shownColumns(withColumnBefore(layout, fields, "ticker", "position_id"), fields)).toEqual(["price", "ticker", "position_id", "fund"]);
+    expect(shownColumns(withColumnBefore(layout, fields, "position_id", null), fields)).toEqual(["price", "fund", "ticker", "position_id"]);
+    const two = withPinned(layout, "fund", true);
+    expect(withColumnBefore(two, fields, "fund", "price").pinned).toEqual(["fund", "price"]);
+  });
+
+  it("shows a hidden column last, and gives a grid without totals sums of its numbers", () => {
+    const layout = parseLayout({ columns: ["position_id", "fund"] });
+    expect(withShown(layout, fields, "price", true).columns).toEqual(["position_id", "fund", "price"]);
+    expect(withShown(layout, fields, "fund", false).columns).toEqual(["position_id"]);
+    expect(defaultTotals(parseLayout({ columns: ["fund", "price"] }), fields).totals.map((t) => [t.column, t.aggregate])).toEqual([["price", "sum"]]);
+    expect(defaultTotals(layout, fields).totals.map((t) => [t.column, t.aggregate])).toEqual([["position_id", "count"]]);
   });
 });

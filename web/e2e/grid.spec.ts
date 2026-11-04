@@ -14,6 +14,69 @@ async function rowCount(page: Page): Promise<number> {
   return Number(await page.locator('[role="grid"]').getAttribute("aria-rowcount"));
 }
 
+/** A list of names in a layout, such as its columns, read without trusting the page. */
+function listOf(value: unknown, key: string): readonly string[] {
+  if (typeof value !== "object" || value === null) {
+    return [];
+  }
+  const found: unknown = Object.entries(value).find(([k]) => k === key)?.[1];
+  return Array.isArray(found) ? found.filter((v): v is string => typeof v === "string") : [];
+}
+
+/** The blotter on the Small tables page, at full size. */
+async function blotter(page: Page): Promise<Locator> {
+  await page.goto("/?preset=small");
+  const section = page.locator('section[data-table="blotter"]');
+  await expect(section.locator('[role="grid"]')).toHaveAttribute("aria-rowcount", "500", { timeout: 60_000 });
+  return section;
+}
+
+/**
+ * A column's header on a grid's canvas, from the menu that Alt+Down opens over it: columns fit their values, so their
+ * widths aren't known ahead. `column` counts from 0 at the left; `grid` holds one grid.
+ */
+async function headerOf(page: Page, grid: Locator, column: number): Promise<{ readonly name: string; readonly left: number; readonly right: number }> {
+  const canvas = grid.locator("canvas.px-canvas");
+  await canvas.click({ position: { x: 10, y: ROW + ROW / 2 } });
+  for (let i = 0; i < column; i += 1) {
+    await page.keyboard.press("ArrowRight");
+  }
+  await page.keyboard.press("Alt+ArrowDown");
+  const menu = grid.locator("px-header-menu");
+  const name = ((await menu.getAttribute("aria-label")) ?? "").replace(/^Column /, "");
+  const anchor = await grid.locator(".px-menu-anchor").boundingBox();
+  const box = await canvas.boundingBox();
+  await page.keyboard.press("Escape");
+  await expect(menu).toHaveCount(0);
+  if (anchor === null || box === null) {
+    throw new Error("no header menu anchor");
+  }
+  const right = anchor.x + anchor.width - box.x;
+  if (right > box.width) {
+    throw new Error(`column ${String(column)} ends past the canvas, at ${String(right)} px of ${String(box.width)}`);
+  }
+  return { name, left: anchor.x - box.x, right };
+}
+
+/** A column's saved width in a layout, or null. */
+function savedWidth(value: unknown, column: string): number | null {
+  if (typeof value !== "object" || value === null) {
+    return null;
+  }
+  const widths: unknown = Object.entries(value).find(([k]) => k === "column_widths")?.[1];
+  const width: unknown = typeof widths === "object" && widths !== null ? Object.entries(widths).find(([k]) => k === column)?.[1] : null;
+  return typeof width === "number" ? width : null;
+}
+
+/** The length of a list in a layout, such as its sorts, or -1 if it has none. */
+function lengthOf(value: unknown, key: string): number {
+  if (typeof value !== "object" || value === null) {
+    return -1;
+  }
+  const found: unknown = Object.entries(value).find(([k]) => k === key)?.[1];
+  return Array.isArray(found) ? found.length : -1;
+}
+
 async function layout(page: Page): Promise<unknown> {
   const text = await page.getByTestId("layout-json").textContent({ timeout: 5_000 });
   return JSON.parse(text ?? "null");
@@ -121,16 +184,18 @@ test("every column in view is drawn, not only the first few", async ({ page }) =
 
 test("dragging a header edge resizes the column into the layout", async ({ page }) => {
   await open(page, "preset=trades");
-  const canvas = page.locator("canvas.px-canvas");
-  const box = await canvas.boundingBox();
+  const grid = page.locator("px-grid").first();
+  const first = await headerOf(page, grid, 0);
+  const box = await grid.locator("canvas.px-canvas").boundingBox();
   if (box === null) {
     throw new Error("no canvas");
   }
-  await page.mouse.move(box.x + 139, box.y + ROW / 2);
+  // Pressed 1 px inside the edge and moved 61 px right, the column grows by 61 px.
+  await page.mouse.move(box.x + first.right - 1, box.y + ROW / 2);
   await page.mouse.down();
-  await page.mouse.move(box.x + 200, box.y + ROW / 2, { steps: 4 });
+  await page.mouse.move(box.x + first.right + 60, box.y + ROW / 2, { steps: 4 });
   await page.mouse.up();
-  await expect.poll(async () => layout(page)).toMatchObject({ column_widths: { trade_id: 201 } });
+  await expect.poll(async () => savedWidth(await layout(page), first.name)).toBeCloseTo(first.right - first.left + 61, 0);
 });
 
 test("a range copies as tab-separated rows", async ({ page }) => {
@@ -368,19 +433,12 @@ test.describe("toolbar", () => {
 });
 
 test.describe("header menu", () => {
-  /** The blotter on the Small tables page, at full size. */
-  async function blotter(page: Page): Promise<Locator> {
-    await page.goto("/?preset=small");
-    const section = page.locator('section[data-table="blotter"]');
-    await expect(section.locator('[role="grid"]')).toHaveAttribute("aria-rowcount", "500", { timeout: 60_000 });
-    return section;
-  }
-
   test("a header's funnel opens its menu, whose value list keeps the values ticked", async ({ page }) => {
     const section = await blotter(page);
     const grid = section.locator('[role="grid"]');
-    // The fourth column's funnel, at the right of its header; columns start 140 px wide.
-    await section.locator("canvas.px-canvas").click({ position: { x: 4 * 140 - 10, y: 12 } });
+    // The second column's funnel, at the right of its header.
+    const second = await headerOf(page, section, 1);
+    await section.locator("canvas.px-canvas").click({ position: { x: second.right - 10, y: 12 } });
     const menu = page.locator("px-header-menu");
     await expect(menu).toBeVisible();
     const first = menu.locator("px-value-picker input[type=checkbox]").first();
@@ -400,7 +458,12 @@ test.describe("header menu", () => {
     const columns = Number(await grid.getAttribute("aria-colcount"));
     await section.locator("canvas.px-canvas").click({ position: { x: 60, y: 40 } });
     await page.keyboard.press("Alt+ArrowDown");
-    await expect(page.locator("px-header-menu")).toBeVisible();
+    // The menu takes the focus, so Escape closes it and gives the grid its focus back.
+    await expect(page.locator("px-header-menu").getByRole("menuitem").first()).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect(page.locator("px-header-menu")).toHaveCount(0);
+    await expect(section.locator(".px-scroll")).toBeFocused();
+    await page.keyboard.press("Alt+ArrowDown");
     await page.getByRole("menuitem", { name: "Hide column" }).click();
     await expect(grid).toHaveAttribute("aria-colcount", String(columns - 1));
     await expect(page.locator("px-header-menu")).toHaveCount(0);
@@ -411,8 +474,10 @@ test.describe("header menu", () => {
     const section = page.locator('section[data-table="book"]');
     const grid = section.locator('[role="grid"]');
     await expect(grid).toHaveAttribute("aria-rowcount", "300", { timeout: 60_000 });
-    // The book's third column is the fund, which is text.
-    await section.locator("canvas.px-canvas").click({ position: { x: 3 * 140 - 10, y: 12 } });
+    // The book's third column is the fund, which is text; its funnel is at the right of its header.
+    const fund = await headerOf(page, section, 2);
+    expect(fund.name).toBe("fund");
+    await section.locator("canvas.px-canvas").click({ position: { x: fund.right - 10, y: 12 } });
     const menu = page.locator("px-header-menu");
     const mode = menu.getByRole("combobox", { name: "Keep rows where" });
     await mode.selectOption("not_contains", { timeout: 10_000 });
@@ -423,5 +488,67 @@ test.describe("header menu", () => {
     await value.press("Enter");
     await expect.poll(async () => Number(await grid.getAttribute("aria-rowcount"))).toBeLessThan(300);
     await expect(section.locator("px-grid-toolbar .px-chip")).toContainText("contains atlas");
+  });
+});
+
+test.describe("columns", () => {
+  const colcount = async (page: Page): Promise<number> => Number(await page.locator('[role="grid"]').getAttribute("aria-colcount"));
+
+  test("the chooser hides a column and moves another", async ({ page }) => {
+    await open(page, "preset=trades");
+    const before = await colcount(page);
+    await page.getByRole("button", { name: "Columns" }).click();
+    const chooser = page.locator("px-column-chooser");
+    await chooser.getByRole("checkbox").first().uncheck();
+    await expect.poll(() => colcount(page)).toBe(before - 1);
+    // The second shown column moves up with Alt+Up.
+    const second = chooser.getByRole("checkbox", { checked: true }).nth(1);
+    const name = await second.locator("xpath=following-sibling::span").textContent();
+    await second.focus();
+    await page.keyboard.press("Alt+ArrowUp");
+    await expect.poll(async () => listOf(await layout(page), "columns")[0]).toBe(name);
+  });
+
+  test("a pinned column stays put while the others scroll", async ({ page }) => {
+    await open(page, "preset=trades");
+    await page.getByRole("button", { name: "Columns" }).click();
+    await page.getByRole("button", { name: "Pin fund" }).click();
+    await expect.poll(async () => listOf(await layout(page), "pinned")).toEqual(["fund"]);
+    await page.keyboard.press("Escape");
+    await page.locator(".px-scroll").evaluate((element) => {
+      element.scrollTo({ left: 900 });
+    });
+    // The first column on screen is still the fund: a cell there opens the fund's menu.
+    await page.locator("canvas.px-canvas").click({ position: { x: 40, y: 40 } });
+    await page.keyboard.press("Alt+ArrowDown");
+    await expect(page.locator("px-header-menu")).toHaveAttribute("aria-label", "Column fund");
+  });
+
+  test("Totals adds a totals row, which the grid also says in text", async ({ page }) => {
+    await page.goto("/?preset=small");
+    const section = page.locator('section[data-table="blotter"]');
+    await expect(section.locator('[role="grid"]')).toHaveAttribute("aria-rowcount", "500", { timeout: 60_000 });
+    await section.getByRole("button", { name: "Totals" }).click();
+    await expect(section.getByRole("button", { name: "Totals" })).toHaveAttribute("aria-pressed", "true");
+    await expect(section.getByRole("status", { name: "Totals row" })).toContainText(/Totals\. .+: [\d,.()-]+/);
+    await section.getByRole("button", { name: "Totals" }).click();
+    await expect(section.getByRole("status", { name: "Totals row" })).toHaveCount(0);
+  });
+
+  test("dragging a header moves its column; a click still sorts", async ({ page }) => {
+    await open(page, "preset=trades");
+    const first = await headerOf(page, page.locator("px-grid").first(), 0);
+    const canvas = page.locator("canvas.px-canvas");
+    const box = await canvas.boundingBox();
+    if (box === null) {
+      throw new Error("no canvas");
+    }
+    await page.mouse.move(box.x + 40, box.y + 12);
+    await page.mouse.down();
+    await page.mouse.move(box.x + 120, box.y + 12, { steps: 4 });
+    await page.mouse.move(box.x + 380, box.y + 12, { steps: 8 });
+    await page.mouse.up();
+    await expect.poll(async () => listOf(await layout(page), "columns").indexOf(first.name)).toBeGreaterThan(0);
+    expect(lengthOf(await layout(page), "sort")).toBe(0);
   });
 });

@@ -4,7 +4,7 @@
  * anchor, as a menu's does.
  */
 
-import { ChangeDetectionStrategy, Component, DOCUMENT, DestroyRef, ElementRef, ViewEncapsulation, afterNextRender, inject, input, output, signal } from "@angular/core";
+import { ChangeDetectionStrategy, Component, DOCUMENT, DestroyRef, ElementRef, Injector, ViewEncapsulation, afterNextRender, inject, input, output, signal } from "@angular/core";
 
 /** The gap between the anchor and the panel, and the panel and the window's edge. */
 const GAP = 4;
@@ -83,9 +83,17 @@ export class PopoverComponent {
         this.closed.emit();
       }
     };
+    const injector = inject(Injector);
     afterNextRender(() => {
       place();
-      this.host.querySelector<HTMLElement>("[autofocus], input, button, [role='menuitem'], [tabindex='0']")?.focus();
+      // The panel shows on the render that placing it causes; until then it is hidden, and a hidden control can't
+      // take focus, which also leaves Escape with nothing to close.
+      afterNextRender(
+        () => {
+          this.host.querySelector<HTMLElement>("[autofocus], input, button, [role='menuitem'], [tabindex='0']")?.focus();
+        },
+        { injector }
+      );
       document.addEventListener("pointerdown", outside, true);
       window?.addEventListener("resize", place);
     });

@@ -21,6 +21,10 @@ export interface ColumnGeometry {
   readonly count: number;
   /** Width of the pinned group column, or 0 for a flat view. */
   readonly treePx: number;
+  /** How many data columns, the first ones, are pinned at the left beside the group column. */
+  readonly pinned: number;
+  /** Where the scrolling columns start on screen: after the group column and the pinned columns. */
+  readonly frozenPx: number;
   /** Total width of the content. */
   readonly contentWidth: number;
   /** The left edge of data column `column`. */
@@ -63,18 +67,25 @@ function search(sums: readonly number[], x: number): number {
   return Math.max(0, lo);
 }
 
-/** Geometry of a flat view whose columns are `names`, in order. Columns past the names known so far get the default width. */
-export function flatGeometry(count: number, names: readonly string[], widths: Widths): ColumnGeometry {
+/**
+ * Geometry of a flat view, or of a detail view's columns after its group column of `treePx`, whose columns are `names`
+ * in order. The first `pinned` stay at the left. A column without a saved width takes its fitted width from `fitted`,
+ * else the default; columns past the names known so far get the default.
+ */
+export function flatGeometry(count: number, names: readonly string[], widths: Widths, pinned = 0, fitted: Widths = {}, treePx = 0): ColumnGeometry {
   const key = (column: number): string => names[column] ?? `#${String(column)}`;
-  const sums = prefixSums(Array.from({ length: count }, (_, j) => widthOr(widths, key(j), DEFAULT_WIDTH)));
-  const total = sums.at(-1) ?? 0;
+  const sums = prefixSums(Array.from({ length: count }, (_, j) => widthOr(widths, key(j), fitted[key(j)] ?? DEFAULT_WIDTH))).map((x) => x + treePx);
+  const total = sums.at(-1) ?? treePx;
+  const frozen = Math.min(pinned, count);
   return {
     count,
-    treePx: 0,
+    treePx,
+    pinned: frozen,
+    frozenPx: sums[frozen] ?? treePx,
     contentWidth: total,
     x: (column) => sums[column] ?? total,
     width: (column) => (sums[column + 1] ?? total) - (sums[column] ?? total),
-    indexAt: (x) => (count === 0 ? 0 : search(sums, x)),
+    indexAt: (x) => (count === 0 ? 0 : search(sums, Math.max(x, treePx))),
     widthKey: key
   };
 }
@@ -89,6 +100,8 @@ export function groupedGeometry(count: number, measures: number, widths: Widths)
   return {
     count,
     treePx,
+    pinned: 0,
+    frozenPx: treePx,
     contentWidth: x(count),
     x,
     width: (column) => (sums[(column % period) + 1] ?? 0) - (sums[column % period] ?? 0),
@@ -135,4 +148,34 @@ export function rowGeometry(rows: number, rowPx: number): RowGeometry {
     offset: () => 0,
     scrollTopFor: (row, viewport) => Math.ceil((row / Math.max(1, span(viewport))) * Math.max(1, MAX_SCROLL_PX - viewport))
   };
+}
+
+/** Where data column `column` starts on screen: pinned columns stay put, the rest move with `scrollLeft`. */
+export function screenX(geometry: ColumnGeometry, column: number, scrollLeft: number): number {
+  return column < geometry.pinned ? geometry.x(column) : geometry.x(column) - scrollLeft;
+}
+
+/** The column at screen offset `x`: -1 for the group column, a data column, or null past the last one. */
+export function columnAt(geometry: ColumnGeometry, x: number, scrollLeft: number): number | null {
+  if (geometry.treePx > 0 && x < geometry.treePx) {
+    return -1;
+  }
+  if (geometry.count === 0) {
+    return null;
+  }
+  if (x < geometry.frozenPx) {
+    return geometry.indexAt(x);
+  }
+  const content = x + scrollLeft;
+  return content < geometry.contentWidth ? geometry.indexAt(content) : null;
+}
+
+/** The scrolling data columns that show in a view `width` wide, past the pinned ones. */
+export function scrolledColumns(geometry: ColumnGeometry, scrollLeft: number, width: number): readonly number[] {
+  if (geometry.count <= geometry.pinned) {
+    return [];
+  }
+  const left = Math.max(geometry.pinned, geometry.indexAt(geometry.frozenPx + scrollLeft));
+  const right = geometry.indexAt(scrollLeft + width);
+  return Array.from({ length: Math.max(0, right - left + 1) }, (_, i) => left + i);
 }

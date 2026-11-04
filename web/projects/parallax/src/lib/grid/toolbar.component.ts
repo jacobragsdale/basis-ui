@@ -7,6 +7,7 @@ import { ChangeDetectionStrategy, Component, ViewEncapsulation, computed, input,
 
 import type { Layout } from "../layout";
 import { ExportButtonComponent } from "../ui/export-button.component";
+import { ColumnToolsComponent } from "./column-tools.component";
 import { searchColumns, withSearch } from "./edit";
 import { FilterChipsComponent } from "./filter-chips.component";
 import type { SourceField } from "./grid-source";
@@ -16,11 +17,15 @@ import { SearchBoxComponent } from "./search-box.component";
 export interface ToolbarParts {
   readonly search: boolean;
   readonly chips: boolean;
+  /** The column chooser; a pivot, whose columns are its measures, has none. */
+  readonly columns: boolean;
+  /** The totals row's switch; a pivot has its grand total instead. */
+  readonly totals: boolean;
   readonly export: boolean;
 }
 
 /** Every part shown. */
-export const ALL_PARTS: ToolbarParts = { search: true, chips: true, export: true };
+export const ALL_PARTS: ToolbarParts = { search: true, chips: true, columns: true, totals: true, export: true };
 
 /** The toolbar's look, shared by grids and pivots. */
 const TOOLBAR_STYLES = `
@@ -38,8 +43,13 @@ const TOOLBAR_STYLES = `
   .px-toolbar .px-spring {
     flex: 1;
   }
-  .px-toolbar .px-chips {
+  .px-toolbar .px-chips,
+  .px-toolbar .px-column-tools {
     display: contents;
+  }
+  .px-toolbar button[aria-pressed="true"] {
+    border-color: var(--px-accent);
+    color: var(--px-accent);
   }
   .px-toolbar .px-search {
     display: flex;
@@ -150,7 +160,7 @@ const TOOLBAR_STYLES = `
   selector: "px-grid-toolbar",
   changeDetection: ChangeDetectionStrategy.OnPush,
   encapsulation: ViewEncapsulation.None,
-  imports: [ExportButtonComponent, FilterChipsComponent, SearchBoxComponent],
+  imports: [ColumnToolsComponent, ExportButtonComponent, FilterChipsComponent, SearchBoxComponent],
   host: { class: "px-toolbar", role: "toolbar", "aria-label": "Grid tools" },
   styles: TOOLBAR_STYLES,
   template: `
@@ -162,6 +172,7 @@ const TOOLBAR_STYLES = `
     }
     <span class="px-spring"></span>
     <ng-content />
+    <px-column-tools [layout]="layout()" [fields]="fields()" [columns]="parts().columns" [totals]="parts().totals" (changed)="changed.emit($event)" />
     @if (parts().export) {
       <px-export-button (exported)="exported.emit($event)" />
     }
