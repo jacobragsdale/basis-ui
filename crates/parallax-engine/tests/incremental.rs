@@ -193,6 +193,28 @@ fn configs() -> Vec<ViewConfig> {
             ],
             ..ViewConfig::default()
         },
+        // Grids grouped with their rows, all shown or only the outer groups.
+        ViewConfig {
+            group_by: vec!["sector".into(), "fund".into()],
+            columns: vec![
+                "position_id".into(),
+                "ticker".into(),
+                "market_value_usd".into(),
+            ],
+            sort: vec![parallax_engine::view::Sort {
+                column: "market_value_usd".into(),
+                descending: true,
+            }],
+            filters: vec![Filter::new("sector", FilterOp::NotContains("util".into()))],
+            detail: true,
+            expand_depth: 2,
+            ..ViewConfig::default()
+        },
+        ViewConfig {
+            group_by: vec!["fund".into()],
+            detail: true,
+            ..ViewConfig::default()
+        },
     ]
 }
 
@@ -222,6 +244,19 @@ fn applied_changes_equal_a_rebuild() {
             for (i, view) in views.iter_mut().enumerate() {
                 view.apply(&table, &change);
                 let mut fresh = View::new(&table, view.config().clone()).unwrap();
+                // What a screen would show, every row and column of it.
+                let rows = fresh.num_rows(&table);
+                let columns = fresh.num_columns(&table);
+                assert_eq!(
+                    view.num_rows(&table),
+                    rows,
+                    "seed {seed} round {round} view {i}: rows"
+                );
+                assert_eq!(
+                    view.window(&table, 0..rows, 0..columns).batch,
+                    fresh.window(&table, 0..rows, 0..columns).batch,
+                    "seed {seed} round {round} view {i}: window"
+                );
                 let applied = snapshot(view.cells(&table));
                 let rebuilt = snapshot(fresh.cells(&table));
                 assert_eq!(

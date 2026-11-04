@@ -163,6 +163,16 @@ Pivots support:
 - drill-through to the underlying rows
 - several measures at once
 
+A grid can be grouped too, keeping its rows: a detail view. Its innermost
+groups expand into their rows, in the grid's sort, and each group row carries a
+count of its rows. The grand total is the grid's totals row rather than a row
+of its own. Detail rows are kept as runs, one per group, so a million rows cost
+a group's entry rather than one each. The rows that pass are gathered by group
+the first time any show, and each group is sorted the first time its rows show;
+on 1,000,000 trades grouped two levels deep, that first window took 23 ms and
+later ones under 2 ms. A detail view takes no column pivots, measures, top-N or
+aggregate filters, and sorts its groups by their keys.
+
 ## What "never wrong" means
 
 parallax treats a plausible but wrong number as worse than an error. Every rule

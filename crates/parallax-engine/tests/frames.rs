@@ -400,3 +400,150 @@ fn column_changes_keep_the_rows_and_new_totals_count_them() {
     };
     assert!(!view.reformat(&t, &resorted).unwrap());
 }
+
+#[test]
+fn a_detail_view_lists_each_groups_rows_under_it() {
+    use arrow_array::types::{Float64Type, Int32Type, Int64Type};
+    use parallax_engine::Scalar;
+    use parallax_engine::view::Sort;
+    let t = table();
+    let mut view = View::new(
+        &t,
+        ViewConfig {
+            group_by: vec!["desk".into()],
+            columns: vec!["pnl".into()],
+            sort: vec![Sort {
+                column: "pnl".into(),
+                descending: true,
+            }],
+            detail: true,
+            expand_depth: 1,
+            ..ViewConfig::default()
+        },
+    )
+    .unwrap();
+    let frame = view.window(&t, 0..20, 0..1);
+    let batch = &frame.batch;
+    let strings = |name: &str| -> Vec<Option<String>> {
+        batch
+            .column_by_name(name)
+            .unwrap()
+            .as_string::<i32>()
+            .iter()
+            .map(|v| v.map(str::to_owned))
+            .collect()
+    };
+    let some =
+        |v: &[&str]| -> Vec<Option<String>> { v.iter().map(|s| Some((*s).to_owned())).collect() };
+    // Text reading "(blank)" sorts as text; the null group comes last. No grand
+    // total: it is the footer.
+    assert_eq!(
+        strings("__kind"),
+        some(&["group", "row", "group", "row", "row", "group", "row"])
+    );
+    assert_eq!(
+        strings("__label"),
+        some(&["(blank)", "", "Rates", "", "", "(blank)", ""])
+    );
+    let depths: Vec<i32> = batch
+        .column_by_name("__depth")
+        .unwrap()
+        .as_primitive::<Int32Type>()
+        .values()
+        .to_vec();
+    assert_eq!(depths, [1, 2, 1, 2, 2, 1, 2]);
+    let counts: Vec<Option<i64>> = batch
+        .column_by_name("__rows")
+        .unwrap()
+        .as_primitive::<Int64Type>()
+        .iter()
+        .collect();
+    assert_eq!(counts, [Some(1), None, Some(2), None, None, Some(1), None]);
+    // Every row carries its group's key, and the rows of a group follow the sort.
+    assert_eq!(
+        strings("desk"),
+        [
+            Some("(blank)".into()),
+            Some("(blank)".into()),
+            Some("Rates".into()),
+            Some("Rates".into()),
+            Some("Rates".into()),
+            None,
+            None
+        ]
+    );
+    let pnl: Vec<Option<f64>> = batch
+        .column_by_name("pnl")
+        .unwrap()
+        .as_primitive::<Float64Type>()
+        .iter()
+        .collect();
+    assert_eq!(
+        pnl,
+        [
+            None,
+            Some(0.0),
+            None,
+            Some(2_000_000.0),
+            Some(-1_250_000.0),
+            None,
+            Some(10.0)
+        ]
+    );
+    assert_eq!(
+        text_of(batch, 0)[0],
+        "",
+        "a group row holds no value of its own"
+    );
+    // Collapsing a group hides its rows.
+    view.set_expanded(vec![Scalar::Utf8("Rates".into())], false);
+    assert_eq!(view.num_rows(&t), 5);
+    // By default only the groups show.
+    let mut closed = View::new(
+        &t,
+        ViewConfig {
+            expand_depth: 0,
+            ..view.config().clone()
+        },
+    )
+    .unwrap();
+    assert_eq!(closed.num_rows(&t), 3);
+}
+
+#[test]
+fn a_detail_view_refuses_what_it_cannot_show() {
+    use parallax_engine::view::{GroupOrder, GroupSort};
+    let t = table();
+    let detail = ViewConfig {
+        group_by: vec!["desk".into()],
+        detail: true,
+        ..ViewConfig::default()
+    };
+    for config in [
+        ViewConfig {
+            group_by: Vec::new(),
+            ..detail.clone()
+        },
+        ViewConfig {
+            split_by: vec!["level".into()],
+            ..detail.clone()
+        },
+        ViewConfig {
+            measures: vec![Measure::count_all()],
+            ..detail.clone()
+        },
+        ViewConfig {
+            group_sort: GroupSort {
+                by: GroupOrder::Measure(0),
+                descending: true,
+            },
+            ..detail.clone()
+        },
+    ] {
+        assert!(
+            matches!(View::new(&t, config.clone()), Err(ConfigError::Detail(_))),
+            "{config:?}"
+        );
+    }
+    assert!(View::new(&t, detail).is_ok());
+}

@@ -119,6 +119,9 @@ pub enum ConfigError {
     /// Column pivots produced more columns than the view allows.
     #[error("column pivots produce {0} columns, more than the limit of {1}")]
     TooManyColumns(usize, usize),
+    /// A detail view's configuration asks for something it cannot show.
+    #[error("a grid grouped with its rows {0}")]
+    Detail(String),
     /// A flat view's totals cannot be computed as asked.
     #[error("total of {column}: {reason}")]
     Total {

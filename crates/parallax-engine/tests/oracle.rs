@@ -688,6 +688,110 @@ fn run_flat(hostile: bool, seed: u64, configs: usize) {
     }
 }
 
+/// Detail views, fully expanded, against DuckDB: the rows under the groups come
+/// in the order of the group keys, then the view's sort, then the key, and each
+/// group row counts the rows under it.
+fn run_detail(hostile: bool, seed: u64, configs: usize) {
+    use arrow_array::types::Int64Type;
+    let batch = positions(2_000, 200, hostile, seed);
+    let table = engine_table(&batch);
+    let conn = duck(&batch);
+    let mut picker = Picker::new(seed + 200);
+    let sortable: Vec<&str> = GROUPS
+        .iter()
+        .chain(DECIMALS)
+        .chain(FLOATS)
+        .copied()
+        .collect();
+    for i in 0..configs {
+        let filters: Vec<Filter> = (0..picker.below(3))
+            .filter_map(|_| random_filter(&table, &mut picker))
+            .collect();
+        let levels = 1 + picker.below(3);
+        let group_by: Vec<String> = picker
+            .sample(GROUPS, levels)
+            .into_iter()
+            .map(str::to_owned)
+            .collect();
+        let count = picker.below(3);
+        let sort: Vec<Sort> = picker
+            .sample(&sortable, count)
+            .into_iter()
+            .map(|c| Sort {
+                column: c.to_owned(),
+                descending: picker.chance(50),
+            })
+            .collect();
+        let descending = picker.chance(40);
+        let config = ViewConfig {
+            group_by: group_by.clone(),
+            filters: filters.clone(),
+            sort: sort.clone(),
+            group_sort: GroupSort {
+                by: GroupOrder::Key,
+                descending,
+            },
+            detail: true,
+            expand_depth: levels,
+            ..ViewConfig::default()
+        };
+        let mut view = View::new(&table, config).unwrap();
+        let n = view.num_rows(&table);
+        let frame = view.window(&table, 0..n, 0..0);
+        let column = |name: &str| frame.batch.column_by_name(name).unwrap().clone();
+        let kinds = column("__kind");
+        let kinds = kinds.as_string::<i32>();
+        let depths = column("__depth");
+        let depths = depths.as_primitive::<arrow_array::types::Int32Type>();
+        let seqs = column("__seq");
+        let seqs = seqs.as_primitive::<Int64Type>();
+        let counts = column("__rows");
+        let counts = counts.as_primitive::<Int64Type>();
+        let ours: Vec<i64> = (0..n)
+            .filter(|&r| kinds.value(r) == "row")
+            .map(|r| seqs.value(r))
+            .collect();
+        // Each group row counts the rows below it, up to the next group at its depth
+        // or above.
+        for r in (0..n).filter(|&r| kinds.value(r) == "group") {
+            let depth = depths.value(r);
+            let below = (r + 1..n)
+                .take_while(|&b| kinds.value(b) == "row" || depths.value(b) > depth)
+                .filter(|&b| kinds.value(b) == "row")
+                .count();
+            assert_eq!(counts.value(r), below as i64, "detail config {i}, row {r}");
+        }
+        let keys: Vec<Sort> = group_by
+            .iter()
+            .map(|g| Sort {
+                column: g.clone(),
+                descending,
+            })
+            .chain(sort.iter().cloned())
+            .collect();
+        let sql = format!(
+            "SELECT __seq FROM t{} ORDER BY {}",
+            where_clause(&table, &filters),
+            order_sql(&table, &keys)
+        );
+        let theirs: Vec<i64> = query(&conn, &sql)
+            .iter()
+            .flat_map(|b: &RecordBatch| b.column(0).as_primitive::<Int64Type>().values().to_vec())
+            .collect();
+        assert_eq!(ours, theirs, "detail config {i}\n{sql}");
+    }
+}
+
+#[test]
+fn detail_views_match_duckdb_order() {
+    run_detail(false, 21, 40);
+}
+
+#[test]
+fn detail_views_match_duckdb_order_on_hostile_data() {
+    run_detail(true, 22, 40);
+}
+
 #[test]
 fn flat_views_match_duckdb_order() {
     run_flat(false, 3, 60);

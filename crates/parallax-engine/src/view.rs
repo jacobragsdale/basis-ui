@@ -140,9 +140,16 @@ pub struct ViewConfig {
     pub titles: BTreeMap<String, String>,
     /// Totals of a flat view's columns, over the rows that pass the filters: at
     /// most one per column, each a measure of its column shown as its value. They
-    /// are computed as a pivot's grand total is, so the digits agree. A grouped
-    /// view ignores them; its grand total is a row of its own.
+    /// are computed as a pivot's grand total is, so the digits agree. A pivot
+    /// ignores them, since its grand total is a row of its own; a detail view also
+    /// shows them on each group row.
     pub totals: Vec<Measure>,
+    /// Shows the rows under each innermost group, in the order `sort` gives, with
+    /// the data columns of `columns`: a grid grouped by `group_by` rather than a
+    /// pivot. Its group rows carry a count of their rows and the totals. It takes
+    /// no measures, column pivots, aggregate filters or top-N, and sorts groups by
+    /// their keys. The grand total is not a row.
+    pub detail: bool,
 }
 
 impl ViewConfig {
@@ -240,6 +247,22 @@ pub mod role {
     pub const TEXT: &str = "text";
     /// A data column's text for copying, with every digit, for timestamps.
     pub const COPY: &str = "copy";
+    /// A detail view's group row's count of rows, null for the rows themselves.
+    pub const ROWS: &str = "rows";
+}
+
+/// The kinds of grouped rows, as `__kind` holds them.
+pub mod kind {
+    /// The grand total of a pivot.
+    pub const TOTAL: &str = "total";
+    /// A group with groups or rows under it.
+    pub const GROUP: &str = "group";
+    /// An innermost group of a pivot, which expands no further.
+    pub const LEAF: &str = "leaf";
+    /// The groups a top-N leaves out, as one row.
+    pub const OTHER: &str = "other";
+    /// A row of the table, under its innermost group in a detail view.
+    pub const ROW: &str = "row";
 }
 
 /// Cell flags carried next to each value column.
@@ -366,7 +389,112 @@ struct Node {
 #[derive(Clone, Debug)]
 enum Visible {
     Node(u32),
-    Other { parent: u32, members: Vec<u32> },
+    Other {
+        parent: u32,
+        members: Vec<u32>,
+    },
+    /// The rows of a detail view's innermost group: `count` rows.
+    Rows {
+        leaf: u32,
+        count: usize,
+    },
+}
+
+/// The visible rows of a grouped view: entries that each stand for one row, or
+/// for the run of a detail group's rows, with where each ends, so that a view of
+/// millions of rows keeps one entry per group and finds a row by binary search.
+#[derive(Clone, Debug, Default)]
+struct Shown {
+    entries: Vec<Visible>,
+    /// The row after each entry's last.
+    ends: Vec<usize>,
+}
+
+/// One visible row of a grouped view.
+#[derive(Clone, Debug)]
+enum Row {
+    Node(u32),
+    Other {
+        parent: u32,
+        members: Vec<u32>,
+    },
+    /// Row `index`, in display order, of the detail group `leaf`.
+    Detail {
+        leaf: u32,
+        index: usize,
+    },
+}
+
+impl Shown {
+    fn push(&mut self, entry: Visible) {
+        let count = match &entry {
+            Visible::Rows { count, .. } => *count,
+            Visible::Node(_) | Visible::Other { .. } => 1,
+        };
+        self.ends.push(self.len() + count);
+        self.entries.push(entry);
+    }
+
+    fn len(&self) -> usize {
+        self.ends.last().copied().unwrap_or(0)
+    }
+
+    /// The visible rows in `rows`, clamped to the view.
+    fn rows(&self, rows: Range<usize>) -> Vec<Row> {
+        let end = rows.end.min(self.len());
+        let mut row = rows.start.min(end);
+        let mut out = Vec::with_capacity(end - row);
+        let mut i = self.ends.partition_point(|&e| e <= row);
+        while row < end {
+            match &self.entries[i] {
+                Visible::Node(id) => {
+                    out.push(Row::Node(*id));
+                    row += 1;
+                }
+                Visible::Other { parent, members } => {
+                    out.push(Row::Other {
+                        parent: *parent,
+                        members: members.clone(),
+                    });
+                    row += 1;
+                }
+                Visible::Rows { leaf, .. } => {
+                    let first = if i == 0 { 0 } else { self.ends[i - 1] };
+                    let stop = self.ends[i].min(end);
+                    out.extend((row..stop).map(|r| Row::Detail {
+                        leaf: *leaf,
+                        index: r - first,
+                    }));
+                    row = stop;
+                }
+            }
+            i += 1;
+        }
+        out
+    }
+
+    fn get(&self, row: usize) -> Option<Row> {
+        self.rows(row..row.saturating_add(1)).pop()
+    }
+}
+
+/// What a detail view adds to a grouped one: its rows, by innermost group.
+#[derive(Clone, Debug)]
+struct Detail {
+    /// The table columns shown, in order.
+    columns: Vec<usize>,
+    /// The order of each group's rows.
+    sort: Vec<(usize, bool)>,
+    /// The rows that pass, by innermost group, gathered the first time any rows
+    /// show and dropped whenever the rows change. Each group's rows are sorted the
+    /// first time they show.
+    buckets: Option<FxHashMap<u32, Bucket>>,
+}
+
+#[derive(Clone, Debug)]
+struct Bucket {
+    slots: Vec<u32>,
+    sorted: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -383,8 +511,10 @@ struct Grouped {
     /// Shows every group whatever its expanded state, for exports. Frames still
     /// report each group's own state.
     show_all: bool,
-    visible: Option<Vec<Visible>>,
+    visible: Option<Shown>,
     columns: Option<Vec<(u32, usize)>>,
+    /// Set for a detail view.
+    detail: Option<Box<Detail>>,
     /// Values of lazy measures above the leaves, by (node, split, measure). Cleared
     /// whenever the view changes.
     lazy_values: RefCell<FxHashMap<(u32, u32, usize), MeasureValue>>,
@@ -585,11 +715,55 @@ fn flat_columns(table: &Table, config: &ViewConfig) -> Result<Vec<usize>, Config
     }
 }
 
+/// The columns a flat view, or a detail view's groups, sort their rows by, with
+/// whether each is descending.
+fn flat_sort(table: &Table, config: &ViewConfig) -> Result<Vec<(usize, bool)>, ConfigError> {
+    config
+        .sort
+        .iter()
+        .map(|s| Ok((column_index(table, &s.column)?, s.descending)))
+        .collect()
+}
+
+/// Refuses what a detail view cannot show.
+fn check_detail(config: &ViewConfig) -> Result<(), ConfigError> {
+    let refuse = |reason: &str| Err(ConfigError::Detail(reason.to_owned()));
+    if config.group_by.is_empty() {
+        return refuse("needs a column to group by");
+    }
+    if !config.split_by.is_empty() {
+        return refuse("cannot also pivot columns");
+    }
+    if !config.measures.is_empty() {
+        return refuse("shows totals of its columns, not measures");
+    }
+    if !config.having.is_empty() {
+        return refuse("cannot filter its groups by a value");
+    }
+    if config.top_n.is_some() {
+        return refuse("cannot keep only its top groups");
+    }
+    if config.group_sort.by != GroupOrder::Key {
+        return refuse("sorts its groups by their values, not by a measure");
+    }
+    Ok(())
+}
+
 /// Checks and compiles a flat view's totals, which are not computed yet.
 fn compile_totals(table: &Table, config: &ViewConfig) -> Result<Option<Box<Grouped>>, ConfigError> {
     if config.totals.is_empty() {
         return Ok(None);
     }
+    Ok(Some(Box::new(Grouped::new(
+        total_measures(table, config)?,
+        Vec::new(),
+        Vec::new(),
+    ))))
+}
+
+/// Checks and compiles a view's totals: at most one per column, each of its
+/// column and shown as its value.
+fn total_measures(table: &Table, config: &ViewConfig) -> Result<Vec<CompiledMeasure>, ConfigError> {
     let mut seen = rustc_hash::FxHashSet::default();
     let mut measures = Vec::with_capacity(config.totals.len());
     for m in &config.totals {
@@ -610,11 +784,7 @@ fn compile_totals(table: &Table, config: &ViewConfig) -> Result<Option<Box<Group
         }
         measures.push(compile_measure(table, m)?);
     }
-    Ok(Some(Box::new(Grouped::new(
-        measures,
-        Vec::new(),
-        Vec::new(),
-    ))))
+    Ok(measures)
 }
 
 impl View {
@@ -631,12 +801,20 @@ impl View {
             .map(|f| CompiledFilter::compile(table, f))
             .collect::<Result<Vec<_>, _>>()?;
         let formatters = Formatters::new(table, &config)?;
+        if config.detail {
+            check_detail(&config)?;
+        }
         let kind = if config.is_grouped() {
-            let measures = config
-                .measures
-                .iter()
-                .map(|m| compile_measure(table, m))
-                .collect::<Result<Vec<_>, _>>()?;
+            // A detail view's group rows carry its totals, so those are its measures.
+            let measures = if config.detail {
+                total_measures(table, &config)?
+            } else {
+                config
+                    .measures
+                    .iter()
+                    .map(|m| compile_measure(table, m))
+                    .collect::<Result<Vec<_>, _>>()?
+            };
             let n = measures.len();
             let check = |i: usize| {
                 if i < n {
@@ -654,7 +832,7 @@ impl View {
             if let Some(t) = &config.top_n {
                 check(t.measure)?;
             }
-            Kind::Grouped(Box::new(Grouped::new(
+            let mut grouped = Grouped::new(
                 measures,
                 config
                     .group_by
@@ -666,13 +844,17 @@ impl View {
                     .iter()
                     .map(|c| column_index(table, c))
                     .collect::<Result<_, _>>()?,
-            )))
+            );
+            if config.detail {
+                grouped.detail = Some(Box::new(Detail {
+                    columns: flat_columns(table, &config)?,
+                    sort: flat_sort(table, &config)?,
+                    buckets: None,
+                }));
+            }
+            Kind::Grouped(Box::new(grouped))
         } else {
-            let sort = config
-                .sort
-                .iter()
-                .map(|s| Ok((column_index(table, &s.column)?, s.descending)))
-                .collect::<Result<_, ConfigError>>()?;
+            let sort = flat_sort(table, &config)?;
             Kind::Flat(Flat {
                 columns: flat_columns(table, &config)?,
                 sort,
@@ -746,6 +928,15 @@ impl View {
             return Ok(false);
         }
         let formatters = Formatters::new(table, config)?;
+        if let Kind::Grouped(g) = &mut self.kind
+            && let Some(detail) = &mut g.detail
+        {
+            // A detail view's totals are its groups' measures.
+            if totals_computed(&self.config) != totals_computed(config) {
+                return Ok(false);
+            }
+            detail.columns = flat_columns(table, config)?;
+        }
         if let Kind::Flat(flat) = &mut self.kind {
             let columns = flat_columns(table, config)?;
             let totals = if totals_computed(&self.config) == totals_computed(config) {
@@ -944,7 +1135,10 @@ impl View {
     pub fn num_columns(&mut self, table: &Table) -> usize {
         match &mut self.kind {
             Kind::Flat(flat) => flat.columns.len(),
-            Kind::Grouped(g) => g.data_columns(table).len(),
+            Kind::Grouped(g) => match &g.detail {
+                Some(detail) => detail.columns.len(),
+                None => g.data_columns(table).len(),
+            },
         }
     }
 
@@ -954,6 +1148,14 @@ impl View {
             Kind::Flat(flat) => {
                 flat_window(table, &self.config, &self.formatters, flat, rows, columns)
             }
+            Kind::Grouped(g) if g.detail.is_some() => g.detail_window(
+                table,
+                &self.config,
+                &self.formatters,
+                &self.filters,
+                rows,
+                columns,
+            ),
             Kind::Grouped(g) => g.window(table, &self.config, &self.formatters, rows, columns),
         };
         Frame {
@@ -1006,11 +1208,8 @@ impl View {
             return None;
         };
         match g.visible(table, &self.config).get(row)? {
-            Visible::Node(id) => {
-                let id = *id;
-                Some(g.path(table, id))
-            }
-            Visible::Other { .. } => None,
+            Row::Node(id) | Row::Detail { leaf: id, .. } => Some(g.path(table, id)),
+            Row::Other { .. } => None,
         }
     }
 
@@ -1072,30 +1271,34 @@ impl View {
     }
 }
 
+/// Orders two table rows by `sort`, nulls last whichever the direction, then by
+/// the table's key, or failing that by insertion.
+fn compare_slots(table: &Table, sort: &[(usize, bool)], a: usize, b: usize) -> Ordering {
+    for &(c, descending) in sort {
+        let column = table.column(c);
+        let (ka, kb) = (column.key(a), column.key(b));
+        let ordering = match (ka, kb) {
+            (Key::Null, Key::Null) => Ordering::Equal,
+            (Key::Null, _) => Ordering::Greater,
+            (_, Key::Null) => Ordering::Less,
+            _ if descending => column.cmp_keys(kb, ka),
+            _ => column.cmp_keys(ka, kb),
+        };
+        if ordering != Ordering::Equal {
+            return ordering;
+        }
+    }
+    match table.key_column() {
+        Some(k) => table
+            .column(k)
+            .cmp_keys(table.column(k).key(a), table.column(k).key(b)),
+        None => table.seq(a).cmp(&table.seq(b)),
+    }
+}
+
 fn sort_flat(table: &Table, flat: &mut Flat) {
-    let key_column = table.key_column();
-    let cmp = |&a: &usize, &b: &usize| {
-        for &(c, descending) in &flat.sort {
-            let column = table.column(c);
-            let (ka, kb) = (column.key(a), column.key(b));
-            let ordering = match (ka, kb) {
-                (Key::Null, Key::Null) => Ordering::Equal,
-                (Key::Null, _) => Ordering::Greater,
-                (_, Key::Null) => Ordering::Less,
-                _ if descending => column.cmp_keys(kb, ka),
-                _ => column.cmp_keys(ka, kb),
-            };
-            if ordering != Ordering::Equal {
-                return ordering;
-            }
-        }
-        match key_column {
-            Some(k) => table
-                .column(k)
-                .cmp_keys(table.column(k).key(a), table.column(k).key(b)),
-            None => table.seq(a).cmp(&table.seq(b)),
-        }
-    };
+    let sort = &flat.sort;
+    let cmp = |&a: &usize, &b: &usize| compare_slots(table, sort, a, b);
     #[cfg(not(target_arch = "wasm32"))]
     {
         use rayon::slice::ParallelSliceMut;
@@ -1577,6 +1780,7 @@ impl Grouped {
             show_all: false,
             visible: None,
             columns: None,
+            detail: None,
             lazy_values: RefCell::default(),
             scratch_inputs: Vec::new(),
             scratch_keys: Vec::new(),
@@ -1622,6 +1826,9 @@ impl Grouped {
         self.visible = None;
         self.columns = None;
         self.lazy_values.get_mut().clear();
+        if let Some(detail) = &mut self.detail {
+            detail.buckets = None;
+        }
     }
 
     /// The id of a column-pivot key, assigned on first sight.
@@ -1952,7 +2159,7 @@ impl Grouped {
         if node.parent == NO_PARENT {
             return true;
         }
-        if node.depth as usize == self.levels() {
+        if node.depth as usize == self.levels() && self.detail.is_none() {
             return false;
         }
         if !self.expanded.is_empty() {
@@ -2050,21 +2257,26 @@ impl Grouped {
         (children, rest)
     }
 
-    fn visible(&mut self, table: &Table, config: &ViewConfig) -> &[Visible] {
+    fn visible(&mut self, table: &Table, config: &ViewConfig) -> &Shown {
         if self.visible.is_none() {
-            let mut out = vec![Visible::Node(0)];
+            // A pivot shows its grand total first; a detail view's is its footer.
+            let mut out = Shown::default();
+            if self.detail.is_none() {
+                out.push(Visible::Node(0));
+            }
             // Depth-first, children in display order.
-            let mut ordered: Vec<Visible> = Vec::new();
-            fn walk(
-                g: &Grouped,
-                table: &Table,
-                config: &ViewConfig,
-                id: u32,
-                out: &mut Vec<Visible>,
-            ) {
-                if g.node(id).depth as usize == g.levels()
-                    || (!g.show_all && !g.is_expanded(table, id, config))
-                {
+            fn walk(g: &Grouped, table: &Table, config: &ViewConfig, id: u32, out: &mut Shown) {
+                let shown = g.show_all || g.is_expanded(table, id, config);
+                if g.node(id).depth as usize == g.levels() {
+                    if g.detail.is_some() && shown {
+                        out.push(Visible::Rows {
+                            leaf: id,
+                            count: usize::try_from(g.node(id).total.rows).unwrap_or(0),
+                        });
+                    }
+                    return;
+                }
+                if !shown {
                     return;
                 }
                 let (children, rest) = g.children_in_order(table, id, config);
@@ -2079,11 +2291,10 @@ impl Grouped {
                     });
                 }
             }
-            walk(self, table, config, 0, &mut ordered);
-            out.extend(ordered);
+            walk(self, table, config, 0, &mut out);
             self.visible = Some(out);
         }
-        self.visible.as_deref().expect("computed")
+        self.visible.as_ref().expect("computed")
     }
 
     fn data_columns(&mut self, table: &Table) -> &[(u32, usize)] {
@@ -2125,24 +2336,24 @@ impl Grouped {
         columns: Range<usize>,
     ) -> (RecordBatch, usize, usize) {
         let total_rows = self.visible(table, config).len();
-        let start = rows.start.min(total_rows);
-        let end = rows.end.min(total_rows).max(start);
-        let shown: Vec<Visible> = self.visible(table, config)[start..end].to_vec();
+        let shown: Vec<Row> = self.visible(table, config).rows(rows);
         let total_columns = self.data_columns(table).len();
         let cols = columns.start.min(total_columns)..columns.end.min(total_columns);
         let data_columns: Vec<(u32, usize)> = self.data_columns(table)[cols].to_vec();
         let levels = self.levels();
 
         let mut out = FrameBuilder::default();
-        let ids_of = |v: &Visible| -> Vec<u32> {
+        let ids_of = |v: &Row| -> Vec<u32> {
             match v {
-                Visible::Node(id) => vec![*id],
-                Visible::Other { members, .. } => members.clone(),
+                Row::Node(id) | Row::Detail { leaf: id, .. } => vec![*id],
+                Row::Other { members, .. } => members.clone(),
             }
         };
-        let depth_of = |v: &Visible| match v {
-            Visible::Node(id) => self.node(*id).depth as i32,
-            Visible::Other { parent, .. } => self.node(*parent).depth as i32 + 1,
+        let depth_of = |v: &Row| match v {
+            Row::Node(id) => self.node(*id).depth as i32,
+            Row::Other { parent, .. } | Row::Detail { leaf: parent, .. } => {
+                self.node(*parent).depth as i32 + 1
+            }
         };
         out.push(
             role_field("__depth", DataType::Int32, false, role::DEPTH, &[]),
@@ -2152,10 +2363,11 @@ impl Grouped {
             role_field("__kind", DataType::Utf8, false, role::KIND, &[]),
             Arc::new(StringArray::from_iter_values(shown.iter().map(
                 |v| match v {
-                    Visible::Other { .. } => "other",
-                    Visible::Node(0) => "total",
-                    Visible::Node(id) if self.node(*id).depth as usize == levels => "leaf",
-                    Visible::Node(_) => "group",
+                    Row::Other { .. } => kind::OTHER,
+                    Row::Node(0) => kind::TOTAL,
+                    Row::Node(id) if self.node(*id).depth as usize == levels => kind::LEAF,
+                    Row::Node(_) => kind::GROUP,
+                    Row::Detail { .. } => kind::ROW,
                 },
             ))),
         );
@@ -2165,9 +2377,7 @@ impl Grouped {
                 shown
                     .iter()
                     .map(|v| match v {
-                        Visible::Node(id)
-                            if *id != 0 && (self.node(*id).depth as usize) < levels =>
-                        {
+                        Row::Node(id) if *id != 0 && (self.node(*id).depth as usize) < levels => {
                             Some(self.is_expanded(table, *id, config))
                         }
                         _ => None,
@@ -2179,9 +2389,10 @@ impl Grouped {
             role_field("__label", DataType::Utf8, false, role::LABEL, &[]),
             Arc::new(StringArray::from_iter_values(shown.iter().map(
                 |v| match v {
-                    Visible::Other { .. } => "Other".to_owned(),
-                    Visible::Node(0) => "Total".to_owned(),
-                    Visible::Node(id) => {
+                    Row::Other { .. } => "Other".to_owned(),
+                    Row::Detail { .. } => String::new(),
+                    Row::Node(0) => "Total".to_owned(),
+                    Row::Node(id) => {
                         let node = self.node(*id);
                         let c = self.group_columns[node.depth as usize - 1];
                         display_label(
@@ -2200,8 +2411,8 @@ impl Grouped {
                 .iter()
                 .map(|v| {
                     let id = match v {
-                        Visible::Node(id) => *id,
-                        Visible::Other { parent, .. } => *parent,
+                        Row::Node(id) | Row::Detail { leaf: id, .. } => *id,
+                        Row::Other { parent, .. } => *parent,
                     };
                     let mut node = id;
                     while node != NO_PARENT && self.node(node).depth as usize > level + 1 {
@@ -2271,6 +2482,208 @@ impl Grouped {
                 &formatters.measures[m],
                 Some(m),
                 split_json,
+            );
+        }
+        (out.finish(), total_rows, total_columns)
+    }
+}
+
+impl Grouped {
+    /// Gathers a detail view's rows by innermost group, if they are not gathered.
+    fn gather(&mut self, table: &Table, filters: &[CompiledFilter]) {
+        let Some(detail) = &self.detail else {
+            return;
+        };
+        if detail.buckets.is_some() {
+            return;
+        }
+        let mut buckets: FxHashMap<u32, Bucket> = FxHashMap::default();
+        for slot in table.live_slots() {
+            if !filters.iter().all(|f| f.passes_table(table, slot)) {
+                continue;
+            }
+            let mut node = 0;
+            for &c in &self.group_columns {
+                node = self.node(node).children[&table.column(c).key(slot)];
+            }
+            buckets
+                .entry(node)
+                .or_insert_with(|| Bucket {
+                    slots: Vec::new(),
+                    sorted: false,
+                })
+                .slots
+                .push(u32::try_from(slot).expect("fewer than 2^32 slots"));
+        }
+        if let Some(detail) = &mut self.detail {
+            detail.buckets = Some(buckets);
+        }
+    }
+
+    /// The slots of a detail view's rows, sorting each group the first time its
+    /// rows show; `None` for group rows.
+    fn detail_slots(&mut self, table: &Table, shown: &[Row]) -> Vec<Option<usize>> {
+        let Some(detail) = &mut self.detail else {
+            return vec![None; shown.len()];
+        };
+        let Some(buckets) = &mut detail.buckets else {
+            return vec![None; shown.len()];
+        };
+        let sort = &detail.sort;
+        shown
+            .iter()
+            .map(|row| {
+                let Row::Detail { leaf, index } = row else {
+                    return None;
+                };
+                let bucket = buckets.get_mut(leaf)?;
+                if !bucket.sorted {
+                    bucket.slots.sort_unstable_by(|&a, &b| {
+                        compare_slots(table, sort, a as usize, b as usize)
+                    });
+                    bucket.sorted = true;
+                }
+                bucket.slots.get(*index).map(|&s| s as usize)
+            })
+            .collect()
+    }
+
+    /// The window of a detail view: group rows with their counts, and under each
+    /// innermost group its rows, with the detail columns.
+    fn detail_window(
+        &mut self,
+        table: &Table,
+        config: &ViewConfig,
+        formatters: &Formatters,
+        filters: &[CompiledFilter],
+        rows: Range<usize>,
+        columns: Range<usize>,
+    ) -> (RecordBatch, usize, usize) {
+        let total_rows = self.visible(table, config).len();
+        let shown = self.visible(table, config).rows(rows);
+        if shown.iter().any(|r| matches!(r, Row::Detail { .. })) {
+            self.gather(table, filters);
+        }
+        let slots = self.detail_slots(table, &shown);
+        let detail_columns = self.detail.as_ref().map_or(&[][..], |d| &d.columns[..]);
+        let total_columns = detail_columns.len();
+        let cols = columns.start.min(total_columns)..columns.end.min(total_columns);
+        let levels = self.levels();
+        let node_of = |row: &Row| match row {
+            Row::Node(id) | Row::Detail { leaf: id, .. } => *id,
+            Row::Other { parent, .. } => *parent,
+        };
+        let mut out = FrameBuilder::default();
+        out.push(
+            role_field("__depth", DataType::Int32, false, role::DEPTH, &[]),
+            Arc::new(Int32Array::from_iter_values(shown.iter().map(
+                |r| match r {
+                    Row::Detail { .. } => levels as i32 + 1,
+                    r => self.node(node_of(r)).depth as i32,
+                },
+            ))),
+        );
+        out.push(
+            role_field("__kind", DataType::Utf8, false, role::KIND, &[]),
+            Arc::new(StringArray::from_iter_values(shown.iter().map(
+                |r| match r {
+                    Row::Detail { .. } => kind::ROW,
+                    _ => kind::GROUP,
+                },
+            ))),
+        );
+        out.push(
+            role_field("__expanded", DataType::Boolean, true, role::EXPANDED, &[]),
+            Arc::new(
+                shown
+                    .iter()
+                    .map(|r| match r {
+                        Row::Node(id) => Some(self.is_expanded(table, *id, config)),
+                        _ => None,
+                    })
+                    .collect::<BooleanArray>(),
+            ),
+        );
+        out.push(
+            role_field("__label", DataType::Utf8, false, role::LABEL, &[]),
+            Arc::new(StringArray::from_iter_values(shown.iter().map(
+                |r| match r {
+                    Row::Node(id) => {
+                        let node = self.node(*id);
+                        let c = self.group_columns[node.depth as usize - 1];
+                        display_label(
+                            table,
+                            formatters,
+                            c,
+                            &table.column(c).key_to_scalar(node.key),
+                        )
+                    }
+                    _ => String::new(),
+                },
+            ))),
+        );
+        for (level, &c) in self.group_columns.iter().enumerate() {
+            let column = table.column(c);
+            let keys: Vec<Key> = shown
+                .iter()
+                .map(|r| {
+                    let mut node = node_of(r);
+                    while self.node(node).depth as usize > level + 1 {
+                        node = self.node(node).parent;
+                    }
+                    if self.node(node).depth as usize == level + 1 {
+                        self.node(node).key
+                    } else {
+                        Key::Null
+                    }
+                })
+                .collect();
+            out.push(
+                role_field(
+                    table.schema().field(c).name(),
+                    column.column_type().to_arrow(),
+                    true,
+                    role::GROUP,
+                    &[(meta::LEVEL, level.to_string())],
+                ),
+                keys_to_arrow(column, &keys),
+            );
+        }
+        out.push(
+            role_field("__seq", DataType::Int64, true, role::SEQ, &[]),
+            Arc::new(
+                slots
+                    .iter()
+                    .map(|s| s.map(|s| table.seq(s) as i64))
+                    .collect::<Int64Array>(),
+            ),
+        );
+        out.push(
+            role_field("__rows", DataType::Int64, true, role::ROWS, &[]),
+            Arc::new(
+                shown
+                    .iter()
+                    .map(|r| match r {
+                        Row::Node(id) => Some(self.node(*id).total.rows),
+                        _ => None,
+                    })
+                    .collect::<Int64Array>(),
+            ),
+        );
+        for (index, &c) in detail_columns[cols].iter().enumerate() {
+            let field = table.schema().field(c);
+            // Group rows hold no values of their own, so every column may be null.
+            let nullable = Field::new(field.name(), field.data_type().clone(), true)
+                .with_metadata(field.metadata().clone());
+            out.data_column(
+                index,
+                &nullable,
+                title_of(config, field.name()),
+                table.column(c).to_arrow_or_null(&slots),
+                None,
+                &formatters.columns[c],
+                None,
+                None,
             );
         }
         (out.finish(), total_rows, total_columns)

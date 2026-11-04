@@ -281,24 +281,33 @@ impl Column {
     /// Builds an Arrow array of the values at `slots`, in order.
     #[must_use]
     pub fn to_arrow(&self, slots: &[usize]) -> ArrayRef {
-        let valid = |s: usize| self.valid.get(s);
+        self.arrow_of(slots.len(), |i| Some(slots[i]))
+    }
+
+    /// Builds an Arrow array with the value at each of `slots`, in order, and a null
+    /// where there is no slot.
+    #[must_use]
+    pub fn to_arrow_or_null(&self, slots: &[Option<usize>]) -> ArrayRef {
+        self.arrow_of(slots.len(), |i| slots[i])
+    }
+
+    /// Builds an Arrow array of `len` values, the `i`th from slot `at(i)`, if any.
+    fn arrow_of(&self, len: usize, at: impl Fn(usize) -> Option<usize>) -> ArrayRef {
+        let value = |i: usize| at(i).filter(|&s| self.valid.get(s));
         match &self.values {
             Values::Boolean(v) => Arc::new(
-                slots
-                    .iter()
-                    .map(|&s| valid(s).then(|| v[s]))
+                (0..len)
+                    .map(|i| value(i).map(|s| v[s]))
                     .collect::<BooleanArray>(),
             ),
             Values::Int64(v) => Arc::new(
-                slots
-                    .iter()
-                    .map(|&s| valid(s).then(|| v[s]))
+                (0..len)
+                    .map(|i| value(i).map(|s| v[s]))
                     .collect::<Int64Array>(),
             ),
             Values::Float64(v) => Arc::new(
-                slots
-                    .iter()
-                    .map(|&s| valid(s).then(|| v[s]))
+                (0..len)
+                    .map(|i| value(i).map(|s| v[s]))
                     .collect::<Float64Array>(),
             ),
             Values::Decimal(v) => {
@@ -306,29 +315,26 @@ impl Column {
                     unreachable!("decimal values have a decimal type")
                 };
                 Arc::new(
-                    slots
-                        .iter()
-                        .map(|&s| valid(s).then(|| v[s]))
+                    (0..len)
+                        .map(|i| value(i).map(|s| v[s]))
                         .collect::<Decimal128Array>()
                         .with_precision_and_scale(precision, scale)
                         .expect("valid decimal type"),
                 )
             }
             Values::Utf8 { codes, dictionary } => Arc::new(
-                slots
-                    .iter()
-                    .map(|&s| valid(s).then(|| dictionary.get(codes[s])))
+                (0..len)
+                    .map(|i| value(i).map(|s| dictionary.get(codes[s])))
                     .collect::<StringArray>(),
             ),
             Values::Date32(v) => Arc::new(
-                slots
-                    .iter()
-                    .map(|&s| valid(s).then(|| v[s]))
+                (0..len)
+                    .map(|i| value(i).map(|s| v[s]))
                     .collect::<Date32Array>(),
             ),
             Values::Timestamp(v) => {
                 let array: TimestampMicrosecondArray =
-                    slots.iter().map(|&s| valid(s).then(|| v[s])).collect();
+                    (0..len).map(|i| value(i).map(|s| v[s])).collect();
                 let ColumnType::Timestamp { timezone } = &self.ty else {
                     unreachable!("timestamp values have a timestamp type")
                 };
