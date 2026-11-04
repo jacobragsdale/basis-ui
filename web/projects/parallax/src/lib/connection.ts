@@ -92,6 +92,9 @@ function sameViewport(a: Viewport | null, b: Viewport): boolean {
   return a !== null && a.firstRow === b.firstRow && a.rowCount === b.rowCount && a.firstColumn === b.firstColumn && a.columnCount === b.columnCount;
 }
 
+/** How many recent layouts a view remembers. */
+const LAYOUTS_KEPT = 8n;
+
 function gridWindow(viewport: Viewport): { readonly firstRow: bigint; readonly rowCount: bigint; readonly firstColumn: number; readonly columnCount: number } {
   return { firstRow: BigInt(viewport.firstRow), rowCount: BigInt(viewport.rowCount), firstColumn: viewport.firstColumn, columnCount: viewport.columnCount };
 }
@@ -126,6 +129,8 @@ export class ViewHandle {
   private updatePending: PendingUpdate | null = null;
   /** Expansions asked for while an update waits, sent after it. */
   private heldExpansions: readonly { readonly pathJson: string; readonly expanded: boolean }[] = [];
+  /** The layouts recently sent, by configuration version, so a frame's own layout can be read. */
+  private readonly layouts = new Map<bigint, string>();
   private readonly fetches = new Map<bigint, Pending<FrameData>>();
   private readonly lists = new Map<bigint, Pending<DistinctValues>>();
   private readonly measures = new Map<bigint, Pending<Measurement | null>>();
@@ -288,8 +293,25 @@ export class ViewHandle {
     this.sendUpdate(update);
   }
 
+  /** The layout the view was opened or last updated with at `configVersion`, if it is still remembered. */
+  public layoutAt(configVersion: bigint): string | undefined {
+    return this.layouts.get(configVersion);
+  }
+
+  /** @internal Called by the connection with the layout the view opens with. */
+  public opened(layoutJson: string): void {
+    this.layouts.set(0n, layoutJson);
+  }
+
   private sendUpdate(update: PendingUpdate): void {
     this.configVersion += 1n;
+    this.layouts.set(this.configVersion, update.layoutJson);
+    // Frames older than the last few layouts are dropped anyway.
+    for (const version of this.layouts.keys()) {
+      if (version + LAYOUTS_KEPT <= this.configVersion) {
+        this.layouts.delete(version);
+      }
+    }
     // Timed from when it was asked for, so that time spent waiting behind the update in flight counts.
     this.change = { configVersion: this.configVersion, sentAtMs: update.askedAtMs };
     const viewport = update.window?.() ?? null;
@@ -560,6 +582,7 @@ export class Connection {
     const id = this.nextView;
     this.nextView += 1;
     const view = new ViewHandle(id, this, listener);
+    view.opened(layoutJson);
     this.views.set(id, view);
     this.send({ case: "openView", value: { viewId: id, dataset, layoutJson, parameters: { ...parameters } } });
     return view;

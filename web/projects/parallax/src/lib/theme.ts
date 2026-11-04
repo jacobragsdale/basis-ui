@@ -23,6 +23,21 @@ export interface Theme {
   readonly statusForeground: string;
   readonly warning: string;
   readonly danger: string;
+  /** The background behind text that matches a search. */
+  readonly highlight: string;
+  /** Buttons, the toolbar's active parts and the drop target of a drag. */
+  readonly accent: string;
+  readonly controlBackground: string;
+  readonly controlForeground: string;
+  readonly controlBorder: string;
+  readonly controlHover: string;
+  /** The ring around a focused control. */
+  readonly focus: string;
+  /** Under popovers and menus. */
+  readonly shadow: string;
+  readonly radius: string;
+  /** Behind a filter chip. */
+  readonly chipBackground: string;
 }
 
 /** The themes the library ships. */
@@ -45,7 +60,17 @@ export const TOKENS: Readonly<Record<keyof Theme, string>> = {
   statusBackground: "--px-status-bg",
   statusForeground: "--px-status-fg",
   warning: "--px-warning",
-  danger: "--px-danger"
+  danger: "--px-danger",
+  highlight: "--px-highlight",
+  accent: "--px-accent",
+  controlBackground: "--px-control-bg",
+  controlForeground: "--px-control-fg",
+  controlBorder: "--px-control-border",
+  controlHover: "--px-control-hover",
+  focus: "--px-focus",
+  shadow: "--px-shadow",
+  radius: "--px-radius",
+  chipBackground: "--px-chip-bg"
 };
 
 const FONT = "13px system-ui, -apple-system, 'Segoe UI', sans-serif";
@@ -68,7 +93,17 @@ export const THEMES: Readonly<Record<ThemeName, Theme>> = {
     statusBackground: "#f2f4f7",
     statusForeground: "#344054",
     warning: "#b54708",
-    danger: "#b42318"
+    danger: "#b42318",
+    highlight: "#ffe58a",
+    accent: "#0b4ea2",
+    controlBackground: "#ffffff",
+    controlForeground: "#1d2330",
+    controlBorder: "#c9ced8",
+    controlHover: "#eef1f6",
+    focus: "rgba(11, 78, 162, 0.45)",
+    shadow: "0 6px 18px rgba(16, 24, 40, 0.16)",
+    radius: "6px",
+    chipBackground: "#e8eefb"
   },
   dark: {
     font: FONT,
@@ -86,7 +121,17 @@ export const THEMES: Readonly<Record<ThemeName, Theme>> = {
     statusBackground: "#1c1f26",
     statusForeground: "#b8bfcc",
     warning: "#e0a400",
-    danger: "#ff7b72"
+    danger: "#ff7b72",
+    highlight: "rgba(255, 214, 10, 0.38)",
+    accent: "#5b9bff",
+    controlBackground: "#1c1f26",
+    controlForeground: "#e3e6ec",
+    controlBorder: "#3a3f4b",
+    controlHover: "#262a33",
+    focus: "rgba(91, 155, 255, 0.55)",
+    shadow: "0 6px 18px rgba(0, 0, 0, 0.5)",
+    radius: "6px",
+    chipBackground: "#22324d"
   }
 };
 
@@ -111,7 +156,17 @@ const KEYS = everyToken([
   "statusBackground",
   "statusForeground",
   "warning",
-  "danger"
+  "danger",
+  "highlight",
+  "accent",
+  "controlBackground",
+  "controlForeground",
+  "controlBorder",
+  "controlHover",
+  "focus",
+  "shadow",
+  "radius",
+  "chipBackground"
 ]);
 
 function declarations(theme: Theme): string {
@@ -224,6 +279,16 @@ export function readTheme(element: Element): Theme {
     statusBackground: read("statusBackground"),
     statusForeground: read("statusForeground"),
     warning: read("warning"),
-    danger: read("danger")
+    danger: read("danger"),
+    highlight: read("highlight"),
+    accent: read("accent"),
+    controlBackground: read("controlBackground"),
+    controlForeground: read("controlForeground"),
+    controlBorder: read("controlBorder"),
+    controlHover: read("controlHover"),
+    focus: read("focus"),
+    shadow: read("shadow"),
+    radius: read("radius"),
+    chipBackground: read("chipBackground")
   };
 }

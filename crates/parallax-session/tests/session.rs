@@ -845,6 +845,13 @@ mod requests {
             })
             .sum();
         assert_eq!(total as u64, found.total_rows);
+        // A view of every column searches every text column.
+        ask(
+            &mut s,
+            8,
+            update(&format!(r#"{{"search":{fund:?}}}"#), 3, None),
+        );
+        assert_eq!(viewport_frame(&mut s, 9).total_rows, found.total_rows);
         // A view that shows no text column has nothing to search.
         let answer = ask(
             &mut s,

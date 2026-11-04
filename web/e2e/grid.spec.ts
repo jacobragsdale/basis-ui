@@ -290,7 +290,7 @@ test.describe("export", () => {
   test("Export to Excel downloads a workbook of the view", async ({ page }) => {
     await open(page, "preset=pivot");
     const download = page.waitForEvent("download", { timeout: 60_000 });
-    await page.getByRole("button", { name: "Export to Excel" }).click();
+    await page.getByRole("button", { name: "Export", exact: true }).first().click();
     const file = await download;
     expect(file.suggestedFilename()).toMatch(/^positions-\d{4}-\d{2}-\d{2}-\d{4}\.xlsx$/);
     const path = await file.path();
@@ -307,14 +307,15 @@ test.describe("export", () => {
       await route.fulfill({ status: 422, contentType: "text/html", headers: { "cross-origin-embedder-policy": "require-corp" }, body: `<script>parent.postMessage(${payload}, "*");</script>` });
     });
     await open(page, "preset=pivot");
-    await page.getByRole("button", { name: "Export to Excel" }).click();
+    await page.getByRole("button", { name: "Export", exact: true }).first().click();
     await expect(page.locator(".px-status-message")).toContainText("Export failed: the view has 2000000 rows");
   });
 
   test("CSV downloads every digit of the view", async ({ page }) => {
     await open(page, "preset=pivot");
     const download = page.waitForEvent("download", { timeout: 60_000 });
-    await page.getByRole("button", { name: "CSV" }).click();
+    await page.getByRole("button", { name: "More export formats" }).first().click();
+    await page.getByRole("menuitem", { name: /CSV/ }).click();
     const file = await download;
     const text = await import("node:fs").then(async (fs) => fs.readFileSync(await file.path(), "utf8"));
     expect(text.startsWith("\uFEFF")).toBe(true);
@@ -322,5 +323,46 @@ test.describe("export", () => {
     expect(lines[0]?.startsWith("level,fund,strategy,sector,ticker,Bond | sum(market_value_usd),")).toBe(true);
     expect(lines[0]?.endsWith(",Total | count(*)")).toBe(true);
     expect(lines[1]?.startsWith("0,,,,,")).toBe(true);
+  });
+});
+
+test.describe("toolbar", () => {
+  test("a search narrows the rows, and the CSV export holds the same rows", async ({ page }) => {
+    await page.goto("/?preset=small");
+    const blotter = page.locator('section[data-table="blotter"]');
+    await expect(blotter.locator('[role="grid"]')).toHaveAttribute("aria-rowcount", "500", { timeout: 60_000 });
+    const search = blotter.getByRole("searchbox", { name: "Search the grid" });
+    await search.fill("atlas");
+    await expect.poll(async () => Number(await blotter.locator('[role="grid"]').getAttribute("aria-rowcount"))).toBeLessThan(500);
+    const shown = Number(await blotter.locator('[role="grid"]').getAttribute("aria-rowcount"));
+    expect(shown).toBeGreaterThan(0);
+    const download = page.waitForEvent("download", { timeout: 60_000 });
+    await blotter.getByRole("button", { name: "More export formats" }).click();
+    await blotter.getByRole("menuitem", { name: /CSV/ }).click();
+    const text = await import("node:fs").then(async (fs) => fs.readFileSync(await (await download).path(), "utf8"));
+    expect(text.trim().split("\n").length).toBe(shown + 1);
+    // Clearing the search brings every row back.
+    await blotter.getByRole("button", { name: "Clear the search" }).click();
+    await expect(blotter.locator('[role="grid"]')).toHaveAttribute("aria-rowcount", "500");
+  });
+
+  test("Ctrl+F in a grid puts the cursor in its search", async ({ page }) => {
+    await open(page, "preset=trades");
+    await page.locator("canvas.px-canvas").click({ position: { x: 40, y: 40 } });
+    await page.keyboard.press("ControlOrMeta+f");
+    await expect(page.getByRole("searchbox", { name: "Search the grid" })).toBeFocused();
+  });
+
+  test("a filter's chip says what it keeps, and removes it", async ({ page }) => {
+    await open(page, "preset=pivot");
+    const before = await rowCount(page);
+    await page.getByRole("button", { name: "Add filter" }).click();
+    await page.locator(".px-popover input[type=checkbox]").first().check();
+    await expect.poll(() => rowCount(page)).toBeLessThan(before);
+    const chip = page.locator("px-grid-toolbar .px-chip").first();
+    await expect(chip).toContainText(":");
+    await chip.getByRole("button", { name: /^Remove the filter/ }).click();
+    await expect.poll(() => rowCount(page)).toBe(before);
+    await expect(page.locator("px-grid-toolbar .px-chip")).toHaveCount(0);
   });
 });

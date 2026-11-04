@@ -301,7 +301,6 @@ const KEYS: Readonly<Partial<Record<string, "in" | "out" | "left" | "right" | "a
       [dataset]="current()?.dataset ?? ''"
       [parameters]="current()?.parameters ?? {}"
       [summary]="summary()"
-      [exports]="false"
       [sourceAsOf]="source.frame()?.sourceAsOfMicros ?? null"
       [status]="source.status()"
       [placement]="source.placement()"

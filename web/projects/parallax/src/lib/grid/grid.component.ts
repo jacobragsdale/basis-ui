@@ -48,9 +48,12 @@ import type { Theme, ThemeName } from "../theme";
 import { DEFAULT_TREE_WIDTH, DEFAULT_WIDTH, MIN_WIDTH, flatGeometry, groupedGeometry, rowGeometry } from "./geometry";
 import type { ColumnGeometry } from "./geometry";
 import { groupPath, gridSource, withExpanded } from "./grid-source";
+import { highlightRanges, searchColumns } from "./edit";
 import { contains, moveFocus, rangeOf, selectAll, toTsv } from "./selection";
 import type { CellRange, CellRef, Extent, Selection } from "./selection";
 import { StatusBarComponent } from "./status-bar.component";
+import { ALL_PARTS, GridToolbarComponent } from "./toolbar.component";
+import type { ToolbarParts } from "./toolbar.component";
 
 /** Counters for measuring the grid. */
 export interface DrawStats {
@@ -137,7 +140,16 @@ interface Pass {
   readonly focus: CellRef | null;
   /** Rows to redraw even if their text has not changed, because the selection moved over them. */
   readonly stale: ReadonlySet<number>;
+  /** The search the frame's rows matched, whose text is highlighted; empty for none. */
+  readonly search: string;
+  /** The columns that search looks in. */
+  readonly searched: ReadonlySet<string>;
+  /** Whether the search looks in the group labels. */
+  readonly labelsSearched: boolean;
 }
+
+/** No highlighted ranges. */
+const NO_MARKS: readonly (readonly [number, number])[] = [];
 
 function isGrouped(layout: Layout): boolean {
   return layout.group_by.length > 0 || layout.split_by.length > 0 || layout.measures.length > 0;
@@ -213,9 +225,14 @@ const GRID_STYLES = `
   selector: "px-grid",
   changeDetection: ChangeDetectionStrategy.OnPush,
   encapsulation: ViewEncapsulation.None,
-  imports: [StatusBarComponent],
+  imports: [GridToolbarComponent, StatusBarComponent],
   host: { "[attr.data-px-theme]": "theme()" },
   template: `
+    @if (toolbarParts(); as parts) {
+      @if (current(); as active) {
+        <px-grid-toolbar #toolbar [layout]="active" [fields]="fields()" [parts]="parts" (changed)="layout.set($event)" (exported)="export($event)" />
+      }
+    }
     <div class="px-body">
       <div
         class="px-scroll"
@@ -258,7 +275,6 @@ const GRID_STYLES = `
       [status]="source.status()"
       [placement]="source.placement()"
       [message]="message()"
-      (exported)="export($event)"
     />
   `,
   styles: GRID_STYLES
@@ -272,6 +288,19 @@ export class GridComponent {
   public readonly density = input<Density>("compact");
   /** Fires when the user double-clicks a value in a grouped view, asking for the rows behind its group. */
   public readonly drill = output<DrillRequest>();
+  /**
+   * The toolbar above the grid: true shows all of it, false hides it, and an object turns parts off, such as
+   * `{ export: false }` for a small tile.
+   */
+  public readonly toolbar = input<boolean | Partial<ToolbarParts>>(true);
+  protected readonly toolbarParts = computed((): ToolbarParts | null => {
+    const setting = this.toolbar();
+    if (setting === false) {
+      return null;
+    }
+    return setting === true ? ALL_PARTS : { ...ALL_PARTS, ...setting };
+  });
+  private readonly toolbarRef = viewChild<GridToolbarComponent>("toolbar");
 
   private readonly parsed = computed(() => parse(this.layout()));
   protected readonly current = computed(() => {
@@ -765,6 +794,11 @@ export class GridComponent {
   }
 
   protected onKey(event: KeyboardEvent): void {
+    // Ctrl+F searches the grid, rather than the page, when the grid has a search box.
+    if ((event.ctrlKey || event.metaKey) && !event.altKey && event.key.toLowerCase() === "f" && this.toolbarRef()?.focusSearch() === true) {
+      event.preventDefault();
+      return;
+    }
     const extent = this.extent();
     if (extent.rows === 0) {
       return;
@@ -1006,7 +1040,11 @@ export class GridComponent {
     const theme = full || this.tokens === null ? readTheme(this.canvas().nativeElement) : this.tokens;
     this.tokens = theme;
     this.shape = shape;
-    const pass: Pass = { context: target, theme, rowPx: this.rowHeight(), full, geometry, scrollLeft: at.scrollLeft, width: at.width, range, focus, stale };
+    const search = frame === null ? "" : this.source.searchOf(frame);
+    const layout = this.current();
+    const searched: ReadonlySet<string> = search === "" || layout === null ? new Set() : new Set(searchColumns(layout, this.fields()));
+    const labelsSearched = layout?.group_by.some((g) => searched.has(g)) ?? false;
+    const pass: Pass = { context: target, theme, rowPx: this.rowHeight(), full, geometry, scrollLeft: at.scrollLeft, width: at.width, range, focus, stale, search, searched, labelsSearched };
     const { context } = pass;
     context.font = theme.font;
     context.textBaseline = "middle";
@@ -1165,7 +1203,8 @@ export class GridComponent {
     this.cellBackground(pass, row, -1, 0, y, geometry.treePx, stripe);
     context.fillStyle = tree.kind(local) === "total" ? theme.totalForeground : theme.foreground;
     const left = PADDING + depth * INDENT;
-    if (this.clipText(context, text, left - PADDING, geometry.treePx - left + PADDING, y + rowPx / 2, false)) {
+    const marks = pass.labelsSearched ? highlightRanges(tree.label(local), pass.search).map(([a, b]) => [a + marker.length, b + marker.length] as const) : NO_MARKS;
+    if (this.clipText(context, text, left - PADDING, geometry.treePx - left + PADDING, y + rowPx / 2, false, marks, theme.highlight)) {
       this.notes.set(key, tree.label(local));
     }
     context.fillStyle = theme.gridLine;
@@ -1190,7 +1229,8 @@ export class GridComponent {
     this.cellBackground(pass, row, column, x, y, width, stripe);
     const flag = data.flag(local);
     context.fillStyle = flag !== CellFlag.Ok ? theme.muted : data.numeric && isNegativeText(text) ? theme.negative : theme.foreground;
-    const clipped = this.clipText(context, text, x, width, y + rowPx / 2, data.numeric && flag === CellFlag.Ok);
+    const marks = pass.search !== "" && !data.numeric && pass.searched.has(data.name) ? highlightRanges(text, pass.search) : NO_MARKS;
+    const clipped = this.clipText(context, text, x, width, y + rowPx / 2, data.numeric && flag === CellFlag.Ok, marks, theme.highlight);
     const note = FLAG_NOTES[flag];
     if (note !== null) {
       this.notes.set(key, note);
@@ -1205,8 +1245,11 @@ export class GridComponent {
     return true;
   }
 
-  /** Draws text within a cell; returns `true` if it did not fit and was cut or replaced by `###`. */
-  private clipText(context: CanvasRenderingContext2D, text: string, x: number, width: number, y: number, numeric: boolean): boolean {
+  /**
+   * Draws text within a cell, behind `marks` (ranges of the text, as a search's matches) in `markColor`; returns
+   * `true` if it did not fit and was cut or replaced by `###`.
+   */
+  private clipText(context: CanvasRenderingContext2D, text: string, x: number, width: number, y: number, numeric: boolean, marks = NO_MARKS, markColor = ""): boolean {
     const room = width - 2 * PADDING;
     const measured = this.measure(context, text);
     if (numeric) {
@@ -1216,15 +1259,33 @@ export class GridComponent {
       context.fillText(shown, x + width - PADDING - w, y);
       return !fits;
     }
-    if (measured <= room) {
-      context.fillText(text, x + PADDING, y);
-      return false;
-    }
+    const fits = measured <= room;
     let cut = text.length;
-    while (cut > 0 && this.measure(context, `${text.slice(0, cut)}…`) > room) {
+    while (!fits && cut > 0 && this.measure(context, `${text.slice(0, cut)}…`) > room) {
       cut -= 1;
     }
-    context.fillText(`${text.slice(0, cut)}…`, x + PADDING, y);
-    return true;
+    this.mark(context, text, cut, x + PADDING, y, marks, markColor);
+    context.fillText(fits ? text : `${text.slice(0, cut)}…`, x + PADDING, y);
+    return !fits;
+  }
+
+  /** Fills behind each range of `marks` within the first `shown` characters of `text`, drawn from `left`. */
+  private mark(canvas: CanvasRenderingContext2D, text: string, shown: number, left: number, y: number, marks: readonly (readonly [number, number])[], color: string): void {
+    if (marks.length === 0) {
+      return;
+    }
+    const context = canvas;
+    const ink = context.fillStyle;
+    context.fillStyle = color;
+    const height = this.rowHeight() - 6;
+    for (const [start, end] of marks) {
+      if (start >= shown) {
+        break;
+      }
+      const from = left + this.measure(context, text.slice(0, start));
+      const to = left + this.measure(context, text.slice(0, Math.min(end, shown)));
+      context.fillRect(from, y - height / 2, to - from, height);
+    }
+    context.fillStyle = ink;
   }
 }

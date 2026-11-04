@@ -4,7 +4,7 @@
  * and a failed refresh. Stale data is wrong data, so the age is always visible.
  */
 
-import { ChangeDetectionStrategy, Component, DestroyRef, ViewEncapsulation, computed, inject, input, output, signal } from "@angular/core";
+import { ChangeDetectionStrategy, Component, DestroyRef, ViewEncapsulation, computed, inject, input, signal } from "@angular/core";
 
 import type { TableStatus } from "../proto/parallax_pb";
 import type { ViewPlacement } from "./grid-source";
@@ -136,10 +136,6 @@ const STATUS_STYLES = `
       <span [class]="b.classes" [attr.role]="b.role" [title]="b.title">{{ b.text }}</span>
     }
     <span class="px-status-message" role="status">{{ message() }}</span>
-    @if (exports()) {
-      <button type="button" class="px-status-export" (click)="exported.emit('xlsx')">Export to Excel</button>
-      <button type="button" class="px-status-export" (click)="exported.emit('csv')">CSV</button>
-    }
     <button type="button" class="px-status-info" [attr.aria-expanded]="open()" aria-label="About this data" (click)="open.set(!open())">i</button>
     @if (open()) {
       <dl class="px-info" role="dialog" aria-label="About this data">
@@ -160,8 +156,6 @@ export class StatusBarComponent {
   public readonly viewRows = input<number | null>(null);
   /** Said in place of the row count, such as a chart's points; null shows the rows. */
   public readonly summary = input<string | null>(null);
-  /** Whether the export buttons show. */
-  public readonly exports = input(true);
   /** When the source was read, in microseconds since the epoch. */
   public readonly sourceAsOf = input<bigint | null>(null);
   /** The table's status from the engine. */
@@ -170,8 +164,6 @@ export class StatusBarComponent {
   public readonly placement = input<ViewPlacement | null>(null);
   /** A short note, such as the result of a copy. */
   public readonly message = input<string>("");
-  /** Fires when the user asks for an export, with its format. */
-  public readonly exported = output<"xlsx" | "csv">();
 
   protected readonly open = signal(false);
   private readonly now = signal(Date.now());

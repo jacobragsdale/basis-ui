@@ -83,6 +83,8 @@ export interface GridSource {
   readonly distinct: (column: string, search: string, limit: number) => Promise<DistinctValues>;
   /** When the current view began opening, connecting included, by `performance.now()`; null before the first. */
   readonly openedAtMs: () => number | null;
+  /** The search of the layout that `frame` answers, which is what its rows matched; empty without one. */
+  readonly searchOf: (frame: FrameData) => string;
 }
 
 function covers(outer: Viewport, inner: Viewport, totalRows: number, totalColumns: number): boolean {
@@ -125,6 +127,15 @@ function held(frame: FrameData): Viewport {
 export function groupPath(frame: FrameData, local: number): readonly LayoutScalar[] {
   const depth = frame.tree?.depth(local) ?? 0;
   return frame.groups.slice(0, depth).map((key) => pathValue(key.value(local)));
+}
+
+/** The search of a layout's JSON, or empty if it has none. */
+function searchIn(json: string): string {
+  const parsed: unknown = JSON.parse(json);
+  if (typeof parsed === "object" && parsed !== null && "search" in parsed && typeof parsed.search === "string") {
+    return parsed.search;
+  }
+  return "";
 }
 
 /** What the engine computes from a layout; widths and expansions are left out. */
@@ -171,6 +182,8 @@ export function gridSource(layout: Signal<Layout | null>): GridSource {
   let destroyed = false;
   let visible: Viewport | null = null;
   let openedAtMs: number | null = null;
+  /** The search of each layout version, read once. */
+  const searches = new Map<bigint, string>();
 
   const request = (view: ViewHandle, wanted: Viewport): void => {
     const shown = frame();
@@ -308,6 +321,20 @@ export function gridSource(layout: Signal<Layout | null>): GridSource {
     },
     fetch: (viewport) => (current === null ? Promise.reject(new Error("the view is not open yet")) : current.view.fetch(viewport)),
     distinct: (column, search, limit) => (current === null ? Promise.reject(new Error("the view is not open yet")) : current.view.distinctValues(column, search, limit)),
-    openedAtMs: () => openedAtMs
+    openedAtMs: () => openedAtMs,
+    searchOf: (shown) => {
+      const known = searches.get(shown.configVersion);
+      if (known !== undefined) {
+        return known;
+      }
+      const json = current?.view.layoutAt(shown.configVersion);
+      if (json === undefined) {
+        return "";
+      }
+      const search = searchIn(json);
+      searches.clear();
+      searches.set(shown.configVersion, search);
+      return search;
+    }
   };
 }

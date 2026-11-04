@@ -1132,16 +1132,30 @@ impl Layout {
         if self.search.is_empty() {
             return Ok(None);
         }
+        // An empty list of columns shows every column.
+        let shown = || -> Result<Vec<String>, LayoutError> {
+            let shown = self.shown_columns(table)?;
+            Ok(if shown.is_empty() {
+                table
+                    .schema()
+                    .fields()
+                    .iter()
+                    .map(|f| f.name().clone())
+                    .collect()
+            } else {
+                shown
+            })
+        };
         let mut candidates: Vec<String> = Vec::new();
         if self.is_grouped() {
             candidates.extend(self.group_by.iter().cloned());
             if self.detail {
-                candidates.extend(self.shown_columns(table)?);
+                candidates.extend(shown()?);
             } else {
                 candidates.extend(self.split_by.iter().cloned());
             }
         } else {
-            candidates.extend(self.shown_columns(table)?);
+            candidates.extend(shown()?);
         }
         let mut columns: Vec<String> = Vec::new();
         for c in candidates {
