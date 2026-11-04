@@ -1,11 +1,13 @@
 import { ChangeDetectionStrategy, Component, computed, signal, viewChild } from "@angular/core";
 import { GridComponent, PivotComponent, decodeLayout, encodeLayout } from "parallax";
-import type { Density, DrawStats, LayoutInput, ThemeName } from "parallax";
+import type { Density, LayoutInput, ThemeName } from "parallax";
 import * as z from "zod/mini";
 
 import { ChartsComponent } from "./charts.component";
 import { TechnicalComponent } from "./technical.component";
 import { PerformanceComponent } from "./performance.component";
+import type { GridStats } from "./performance.component";
+import { SmallComponent } from "./small.component";
 
 /** A view the demo opens, and what it shows off. */
 interface Preset {
@@ -22,7 +24,7 @@ const REFERENCE_PIVOT = {
 } as const satisfies LayoutInput;
 
 /** The views the demo opens, in the order of their tabs. */
-const PRESET_NAMES = ["pivot", "browser", "trades", "sorted", "prices", "charts", "technical"] as const;
+const PRESET_NAMES = ["pivot", "browser", "trades", "sorted", "prices", "small", "charts", "technical"] as const;
 
 type PresetName = (typeof PRESET_NAMES)[number];
 
@@ -49,6 +51,12 @@ const PRESETS: Readonly<Record<PresetName, Preset>> = {
     title: "Largest trades",
     about: "The trades sorted by gross amount, largest first, with amounts shown exactly.",
     layout: { dataset: "trades", sort: [{ column: "gross_amount_local", descending: true }] }
+  },
+  small: {
+    title: "Small tables",
+    about:
+      "Two tables of a few hundred rows, the size most tables are: 300 positions held in this page and run by the WebAssembly engine, and 500 trades held on the server. Every change should feel instant; open Performance to time each one from the click or keystroke to the screen.",
+    layout: { dataset: "book" }
   },
   charts: {
     title: "Charts",
@@ -98,7 +106,7 @@ function remember(name: string, value: string): void {
   selector: "demo-root",
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { "[class.dark]": "theme() === 'dark'" },
-  imports: [ChartsComponent, GridComponent, PivotComponent, PerformanceComponent, TechnicalComponent],
+  imports: [ChartsComponent, GridComponent, PivotComponent, PerformanceComponent, SmallComponent, TechnicalComponent],
   template: `
     <header>
       <strong>parallax</strong>
@@ -133,6 +141,8 @@ function remember(name: string, value: string): void {
     <main>
       @if (charts()) {
         <demo-charts [theme]="theme()" />
+      } @else if (small()) {
+        <demo-small [theme]="theme()" [density]="density()" />
       } @else if (technical()) {
         <demo-technical [theme]="theme()" [density]="density()" />
       } @else if (ready()) {
@@ -241,8 +251,10 @@ export class App {
   protected readonly charts = computed(() => this.search.preset === "charts" && this.search.layout === undefined);
   /** The technical-analysis page, which has its own controls. */
   protected readonly technical = computed(() => this.search.preset === "technical" && this.search.layout === undefined);
+  /** The small-tables page, which shows two grids. */
+  protected readonly small = computed(() => this.search.preset === "small" && this.search.layout === undefined);
   /** A page of views of its own, which the header's link and layout cannot describe. */
-  protected readonly pageOfViews = computed(() => this.charts() || this.technical());
+  protected readonly pageOfViews = computed(() => this.charts() || this.technical() || this.small());
   /** False while a linked layout is being read, so the preset never opens in its place. */
   protected readonly ready = signal(this.search.layout === undefined);
   protected readonly about = computed(() => (this.search.layout === undefined ? PRESETS[this.search.preset].about : "A view opened from a shared link."));
@@ -252,12 +264,20 @@ export class App {
       return { name, title: PRESETS[name].title, href: `?${params.toString()}`, current: this.search.layout === undefined && name === this.search.preset };
     })
   );
-  protected readonly context = computed(() => `${this.layout().dataset ?? "no dataset"}, ${this.grouped() ? "pivot" : "grid"}, ${this.theme()} theme, ${this.density()} rows`);
+  protected readonly context = computed(() => {
+    const showing = this.small() ? "book and blotter, grids" : `${this.layout().dataset ?? "no dataset"}, ${this.grouped() ? "pivot" : "grid"}`;
+    return `${showing}, ${this.theme()} theme, ${this.density()} rows`;
+  });
 
   private readonly grid = viewChild(GridComponent);
   private readonly pivot = viewChild(PivotComponent);
-  /** The visible grid's drawing counters, for the performance overlay. */
-  protected readonly readStats = (): DrawStats | null => this.grid()?.drawStats() ?? this.pivot()?.drawStats() ?? null;
+  private readonly smallTables = viewChild(SmallComponent);
+  /** The drawing counters of each grid on the page, for the performance overlay. */
+  protected readonly readStats = (): readonly GridStats[] => {
+    const name = this.layout().dataset ?? "";
+    const stats = this.grid()?.drawStats() ?? this.pivot()?.drawStats() ?? null;
+    return stats === null ? (this.smallTables()?.stats() ?? []) : [{ name, stats }];
+  };
 
   constructor() {
     const link = this.search.layout;

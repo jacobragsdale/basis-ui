@@ -99,6 +99,8 @@ export class ViewHandle {
   /** The chart window awaiting its frame, and one asked for meanwhile, as with viewports. */
   private chartInFlight: { readonly window: ChartWindow; readonly requestId: bigint; readonly askedAtMs: number } | null = null;
   private chartPending: { readonly window: ChartWindow; readonly askedAtMs: number } | null = null;
+  /** The latest layout change still waiting for its first frame, and when it was sent. */
+  private change: { readonly configVersion: bigint; readonly sentAtMs: number } | null = null;
   private readonly fetches = new Map<bigint, Pending<FrameData>>();
   private readonly lists = new Map<bigint, Pending<DistinctValues>>();
   private readonly measures = new Map<bigint, Pending<Measurement | null>>();
@@ -242,6 +244,7 @@ export class ViewHandle {
       return;
     }
     this.configVersion += 1n;
+    this.change = { configVersion: this.configVersion, sentAtMs: performance.now() };
     this.connection.send({ case: "updateView", value: { viewId: this.id, layoutJson, configVersion: this.configVersion } });
   }
 
@@ -302,7 +305,17 @@ export class ViewHandle {
       return;
     }
     this.lastLoadVersion = frame.loadVersion;
-    this.listener.frame(askedAtMs === undefined ? frame : { ...frame, requestedAtMs: askedAtMs });
+    // The first frame of the latest layout answers the change, whichever request it came back on.
+    let changedAtMs: number | undefined;
+    if (this.change !== null && frame.configVersion >= this.change.configVersion) {
+      changedAtMs = this.change.sentAtMs;
+      this.change = null;
+    }
+    if (askedAtMs === undefined && changedAtMs === undefined) {
+      this.listener.frame(frame);
+      return;
+    }
+    this.listener.frame({ ...frame, ...(askedAtMs === undefined ? {} : { requestedAtMs: askedAtMs }), ...(changedAtMs === undefined ? {} : { changedAtMs }) });
   }
 
   /** @internal Called by the connection when the transport closes: fetches fail and the view reports why. */

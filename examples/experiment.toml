@@ -43,3 +43,22 @@ browser = true
 kind = "generator"
 dataset = "prices"
 tickers = 50
+
+# Small tables, the size most tables are: 300 positions held in the browser and
+# 500 trades held on the server, so the demo can time both at that size.
+[[dataset]]
+name = "book"
+primary_key = "position_id"
+browser = true
+[dataset.source]
+kind = "generator"
+dataset = "positions"
+rows = 300
+
+[[dataset]]
+name = "blotter"
+primary_key = "trade_id"
+[dataset.source]
+kind = "generator"
+dataset = "trades"
+rows = 500

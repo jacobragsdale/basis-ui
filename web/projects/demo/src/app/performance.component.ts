@@ -8,8 +8,10 @@
  *   of its own;
  * - main-thread time blocked by long frames, the Long Animation Frames API's
  *   blocking duration;
- * - the grid's own drawing time per frame, and the time from asking for rows to
- *   drawing them, from the grid's counters;
+ * - for each grid on the page, from its counters: its drawing time per frame, the
+ *   time from asking for rows to drawing them, the time from an input such as a
+ *   click or a keystroke to drawing the change it made, and the time to its first
+ *   rows. Inputs are counted from when the overlay opened;
  * - tab memory, from `measureUserAgentSpecificMemory` when the page is
  *   cross-origin isolated, which then counts the worker too, or else Chromium's
  *   main-thread JavaScript heap.
@@ -22,10 +24,30 @@ import type { DrawStats } from "parallax";
 const FRAMES = 240;
 /** How far back long frames count, in milliseconds. */
 const WINDOW_MS = 10_000;
+/** How long before a layout change was sent an input can have caused it, in milliseconds. */
+const INPUT_WINDOW_MS = 1_000;
+/** How many recent input times the overlay keeps. */
+const INPUTS = 200;
+
+/** One grid's drawing counters, and the name the overlay shows them under. */
+export interface GridStats {
+  readonly name: string;
+  readonly stats: DrawStats;
+}
 
 interface Memory {
   readonly bytes: number;
   readonly scope: string;
+}
+
+/** One sample of one grid's counters. */
+interface GridFigures {
+  /** Empty when the page shows one grid or none. */
+  readonly name: string;
+  readonly drawMsPerFrame: number | null;
+  readonly latency: readonly number[];
+  readonly inputToScreen: readonly number[];
+  readonly firstRows: DrawStats["firstRows"];
 }
 
 /** One sample of the counters the overlay shows. */
@@ -34,9 +56,7 @@ interface Figures {
   readonly frameP95: number;
   readonly longFrames: number;
   readonly blockedMsPerSecond: number;
-  readonly drawMsPerFrame: number | null;
-  readonly latencyP50: number | null;
-  readonly latencyP95: number | null;
+  readonly grids: readonly GridFigures[];
 }
 
 /** The `p`th percentile, interpolating between the two nearest ranks. */
@@ -98,6 +118,27 @@ function ms(value: number | null): string {
   return value === null ? "n/a" : `${value.toFixed(1)} ms`;
 }
 
+/** The median and 95th percentile of some times, and how many there were. */
+function spread(values: readonly number[], what: string): string {
+  return values.length === 0 ? "n/a" : `${ms(percentile(values, 50))} median, ${ms(percentile(values, 95))} p95 of ${values.length.toString()} ${what}`;
+}
+
+/**
+ * How long after its input each layout change was drawn. The input is the latest one up to a second before the
+ * change was sent; a change with no input in that second, such as one made before the overlay opened, is left out.
+ */
+export function inputToScreen(changes: DrawStats["changes"], inputs: readonly number[]): number[] {
+  return changes.flatMap((change) => {
+    let input: number | null = null;
+    for (const at of inputs) {
+      if (at <= change.sentAtMs && at >= change.sentAtMs - INPUT_WINDOW_MS && (input === null || at > input)) {
+        input = at;
+      }
+    }
+    return input === null ? [] : [change.drawnAtMs - input];
+  });
+}
+
 @Component({
   selector: "demo-performance",
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -120,7 +161,7 @@ function ms(value: number | null): string {
       right: 12px;
       bottom: 40px;
       z-index: 20;
-      width: 330px;
+      width: 400px;
       padding: 10px 12px;
       font:
         12px system-ui,
@@ -154,8 +195,8 @@ function ms(value: number | null): string {
   `
 })
 export class PerformanceComponent {
-  /** Reads the visible grid's counters, or null while there is none. */
-  public readonly stats = input.required<() => DrawStats | null>();
+  /** Reads the counters of each grid on the page; none while there is none. */
+  public readonly stats = input.required<() => readonly GridStats[]>();
   /** What the page shows, for the report. */
   public readonly context = input<string>("");
 
@@ -169,11 +210,26 @@ export class PerformanceComponent {
       return null;
     }
     const memory = this.memory();
+    // With several grids, each figure names its grid.
+    const grids: readonly GridFigures[] = f.grids.length === 0 ? [{ name: "", drawMsPerFrame: null, latency: [], inputToScreen: [], firstRows: null }] : f.grids;
     return [
       { key: "frame", term: "Frame time", value: `${ms(f.frameP50)} median, ${ms(f.frameP95)} p95` },
       { key: "blocked", term: "Long frames", value: `${f.longFrames.toString()} in 10 s, ${ms(f.blockedMsPerSecond)} blocked per s` },
-      { key: "draw", term: "Grid drawing", value: `${ms(f.drawMsPerFrame)} per frame` },
-      { key: "latency", term: "Rows asked to drawn", value: f.latencyP50 === null ? "n/a" : `${ms(f.latencyP50)} median, ${ms(f.latencyP95)} p95` },
+      ...grids.flatMap((g) => {
+        const key = (k: string): string => (g.name === "" ? k : `${k}-${g.name}`);
+        const term = (t: string): string => (g.name === "" ? t : `${t} (${g.name})`);
+        const first = g.firstRows;
+        return [
+          { key: key("draw"), term: term("Grid drawing"), value: `${ms(g.drawMsPerFrame)} per frame` },
+          {
+            key: key("first-rows"),
+            term: term("First rows"),
+            value: first === null ? "n/a" : `${ms(first.drawnAtMs - first.openedAtMs)} after opening, ${ms(first.drawnAtMs)} after the page began loading`
+          },
+          { key: key("input"), term: term("Input to screen"), value: spread(g.inputToScreen, "changes") },
+          { key: key("latency"), term: term("Rows asked to drawn"), value: spread(g.latency, "requests") }
+        ];
+      }),
       { key: "memory", term: "Memory", value: memory === null ? "n/a" : `${(memory.bytes / MEGABYTE).toFixed(0)} MB` },
       { key: "memory-scope", term: "Memory covers", value: memory?.scope ?? "not measurable in this browser" }
     ];
@@ -209,26 +265,39 @@ export class PerformanceComponent {
       });
       observer.observe({ type: "long-animation-frame", buffered: false });
     }
-    let previous: DrawStats | null = null;
-    // An idle grid draws nothing, so the figure keeps the last second that drew.
-    let drawMsPerFrame: number | null = null;
+    // Inputs that can change a layout, by their event times, which share performance.now()'s clock.
+    const inputs: number[] = [];
+    const onInput = (event: Event): void => {
+      inputs.push(event.timeStamp);
+      if (inputs.length > INPUTS) {
+        inputs.shift();
+      }
+    };
+    const inputEvents = ["pointerup", "keydown", "input", "change"] as const;
+    for (const type of inputEvents) {
+      document.addEventListener(type, onInput, { capture: true, passive: true });
+    }
+    // An idle grid draws nothing, so each grid's figure keeps the last second that drew.
+    const previous = new Map<string, DrawStats>();
+    const drawMs = new Map<string, number | null>();
     const sample = (): void => {
       const now = performance.now();
       while (longFrames.length > 0 && (longFrames[0]?.at ?? now) < now - WINDOW_MS) {
         longFrames.shift();
       }
-      const stats = this.stats()();
-      drawMsPerFrame = drawTime(stats, previous, drawMsPerFrame);
-      previous = stats;
-      const latencies = stats?.latencyMs ?? [];
+      const all = this.stats()();
+      const grids = all.map(({ name, stats }): GridFigures => {
+        const drawn = drawTime(stats, previous.get(name) ?? null, drawMs.get(name) ?? null);
+        previous.set(name, stats);
+        drawMs.set(name, drawn);
+        return { name: all.length > 1 ? name : "", drawMsPerFrame: drawn, latency: stats.latencyMs, inputToScreen: inputToScreen(stats.changes, inputs), firstRows: stats.firstRows };
+      });
       this.figures.set({
         frameP50: percentile(intervals, 50),
         frameP95: percentile(intervals, 95),
         longFrames: longFrames.length,
         blockedMsPerSecond: longFrames.reduce((sum, f) => sum + f.blocked, 0) / (WINDOW_MS / 1000),
-        drawMsPerFrame,
-        latencyP50: latencies.length === 0 ? null : percentile(latencies, 50),
-        latencyP95: latencies.length === 0 ? null : percentile(latencies, 95)
+        grids
       });
     };
     // The heap figure shows at once; the whole tab's replaces it whenever the browser answers.
@@ -261,6 +330,9 @@ export class PerformanceComponent {
     inject(DestroyRef).onDestroy(() => {
       cancelAnimationFrame(handle);
       document.removeEventListener("visibilitychange", onVisibility);
+      for (const type of inputEvents) {
+        document.removeEventListener(type, onInput, { capture: true });
+      }
       observer?.disconnect();
       clearInterval(sampler);
       clearInterval(memoryTimer);

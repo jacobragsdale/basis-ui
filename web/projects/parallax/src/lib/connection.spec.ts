@@ -129,4 +129,30 @@ describe("ViewHandle request timing", () => {
     expect(seen.map((f) => f.requestedAtMs)).toEqual([1_000, 1_010, undefined]);
     clock.mockRestore();
   });
+
+  it("stamps the first frame of the latest layout with when that change was sent, and drops frames of older ones", () => {
+    let now = 2_000;
+    const clock = vi.spyOn(performance, "now").mockImplementation(() => now);
+    const { connection: c } = connection();
+    const seen: FrameData[] = [];
+    const view = c.open("positions", "{}", {
+      frame: (f) => {
+        seen.push(f);
+      }
+    });
+    view.update("{}");
+    now = 2_005;
+    // A second change before the first is answered: only the newer one is timed.
+    view.update("{}");
+    now = 2_050;
+    view.receiveFrame(frame(1n), 50n);
+    view.receiveFrame(frame(2n), 51n);
+    // Later frames of the same layout, such as scrolls, answer no change.
+    view.receiveFrame(frame(2n), 52n);
+    expect(seen.map((f) => [f.configVersion, f.changedAtMs])).toEqual([
+      [2n, 2_005],
+      [2n, undefined]
+    ]);
+    clock.mockRestore();
+  });
 });

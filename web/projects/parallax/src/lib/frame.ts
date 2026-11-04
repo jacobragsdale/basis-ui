@@ -87,6 +87,8 @@ export interface FrameData {
   readonly pushed: boolean;
   /** When the grid asked for the rows this frame answers, by `performance.now()`; absent for frames nobody asked for. */
   readonly requestedAtMs?: number;
+  /** When the layout change this frame is the first answer to was sent, by `performance.now()`; absent otherwise. */
+  readonly changedAtMs?: number;
   /** Data columns, in display order. */
   readonly columns: readonly FrameColumn[];
   /** Group keys from the outermost level, for grouped views. */

@@ -17,7 +17,7 @@ test("every view opens from its tab, and the browser-held ones say so", async ({
   await page.goto("/");
   await ready(page);
   const titles = await page.getByRole("navigation", { name: "Views" }).getByRole("link").allTextContents();
-  expect(titles).toEqual(["Positions pivot", "Pivot in the browser", "1,000,000 trades", "Largest trades", "Daily prices", "Charts", "Technical analysis"]);
+  expect(titles).toEqual(["Positions pivot", "Pivot in the browser", "1,000,000 trades", "Largest trades", "Daily prices", "Small tables", "Charts", "Technical analysis"]);
   for (const [title, where] of [
     ["1,000,000 trades", null],
     ["Daily prices", "in browser"],
@@ -85,4 +85,36 @@ test("the performance overlay measures the page and copies its report", async ({
   const isolated = await page.evaluate(() => crossOriginIsolated);
   expect(report).toContain(`Cross-origin isolated: ${isolated ? "yes" : "no"}`);
   expect(report).toMatch(/Memory: \d+ MB/);
+});
+
+test("the small tables open in their places, and the overlay times each one from input to screen", async ({ page }) => {
+  await page.goto("/?preset=small");
+  const book = page.locator('section[data-table="book"]');
+  const blotter = page.locator('section[data-table="blotter"]');
+  for (const [table, rows] of [
+    [book, "300"],
+    [blotter, "500"]
+  ] as const) {
+    await expect(table.locator('[role="grid"]')).toHaveAttribute("aria-rowcount", new RegExp(`^${rows}$`), { timeout: 120_000 });
+  }
+  await expect(book.locator(".px-status-where")).toHaveText("in browser");
+  await expect(blotter.locator(".px-status-where")).toHaveCount(0);
+  await page.getByRole("button", { name: "Performance" }).click();
+  const figure = (key: string): Locator => page.locator(`demo-performance [data-figure="${key}"]`);
+  await expect(figure("first-rows-book")).toContainText("after opening", { timeout: 10_000 });
+  await expect(figure("first-rows-blotter")).toContainText("after opening");
+  // Inputs count from when the overlay opened, so sorting now gives each grid its input-to-screen figure.
+  for (const table of [book, blotter]) {
+    for (let click = 0; click < 3; click += 1) {
+      await table.locator("canvas.px-canvas").click({ position: { x: 40, y: 12 } });
+      await page.waitForTimeout(150);
+    }
+  }
+  await expect(figure("input-book")).toContainText(/ms median, [\d.]+ ms p95 of \d+ changes/, { timeout: 10_000 });
+  await expect(figure("input-blotter")).toContainText(/ms median, [\d.]+ ms p95 of \d+ changes/, { timeout: 10_000 });
+  await page.locator("demo-performance").getByRole("button", { name: "Copy report" }).click();
+  const report = await page.evaluate(() => navigator.clipboard.readText());
+  expect(report).toContain("Showing: book and blotter, grids, light theme, compact rows");
+  expect(report).toMatch(/Input to screen \(book\): [\d.]+ ms median/);
+  expect(report).toMatch(/Input to screen \(blotter\): [\d.]+ ms median/);
 });

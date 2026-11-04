@@ -1,1 +1,4 @@
-/* You can add global styles to this file, and also import other style files */
+/* The demo fills the window exactly; the browser's default margin would push the status bar below it. */
+body {
+  margin: 0;
+}

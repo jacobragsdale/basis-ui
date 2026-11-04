@@ -59,6 +59,10 @@ export interface DrawStats {
   readonly drawMs: number;
   /** For the most recent frames that answered a request, the time from asking for the rows to drawing them, in ms. */
   readonly latencyMs: readonly number[];
+  /** When the view last began opening, connecting included, and when its first rows were drawn, by `performance.now()`; null until drawn. */
+  readonly firstRows: { readonly openedAtMs: number; readonly drawnAtMs: number } | null;
+  /** For the most recent layout changes, such as a sort or a filter, when each was sent and when its answer was drawn, by `performance.now()`. */
+  readonly changes: readonly { readonly sentAtMs: number; readonly drawnAtMs: number }[];
 }
 
 /** How many recent request-to-draw times the stats keep. */
@@ -311,9 +315,10 @@ export class GridComponent {
   });
   private readonly extent = computed((): Extent => ({ rows: this.totalRows(), columns: this.geometry().count, tree: this.geometry().treePx > 0 }));
 
-  private stats: DrawStats = { frames: 0, fullDraws: 0, cellDraws: 0, drawMs: 0, latencyMs: [] };
+  private stats: DrawStats = { frames: 0, fullDraws: 0, cellDraws: 0, drawMs: 0, latencyMs: [], firstRows: null, changes: [] };
   /** When the rows of the last frame timed were asked for, so that each request is counted once. */
   private timedRequest: number | null = null;
+  private timedChange: number | null = null;
   private drawn = new Map<string, string>();
   private drawnRows = new Set<number>();
   /** Full text of cells drawn cut short, and notes for flagged cells, by cell key. */
@@ -925,7 +930,24 @@ export class GridComponent {
         this.timedRequest = asked;
       }
       const latencyMs = answered ? [...this.stats.latencyMs.slice(1 - LATENCIES), now - asked] : this.stats.latencyMs;
-      this.stats = { frames: this.stats.frames + 1, fullDraws: this.stats.fullDraws, cellDraws: this.stats.cellDraws + cells, drawMs: this.stats.drawMs + now - started, latencyMs };
+      const changed = frame.changedAtMs;
+      const answersChange = changed !== undefined && changed !== this.timedChange;
+      if (answersChange) {
+        this.timedChange = changed;
+      }
+      const changes = answersChange ? [...this.stats.changes.slice(1 - LATENCIES), { sentAtMs: changed, drawnAtMs: now }] : this.stats.changes;
+      // Opening a view clears the frame, so the first frame drawn after it opened holds its first rows.
+      const opened = this.source.openedAtMs();
+      const firstRows = opened !== null && opened !== this.stats.firstRows?.openedAtMs ? { openedAtMs: opened, drawnAtMs: now } : this.stats.firstRows;
+      this.stats = {
+        frames: this.stats.frames + 1,
+        fullDraws: this.stats.fullDraws,
+        cellDraws: this.stats.cellDraws + cells,
+        drawMs: this.stats.drawMs + now - started,
+        latencyMs,
+        firstRows,
+        changes
+      };
     }
   }
 

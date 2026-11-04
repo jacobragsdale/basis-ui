@@ -76,6 +76,8 @@ export interface GridSource {
   readonly fetch: (viewport: Viewport) => Promise<FrameData>;
   /** Lists a column's values under the view's other filters, for filter pick-lists. */
   readonly distinct: (column: string, search: string, limit: number) => Promise<DistinctValues>;
+  /** When the current view began opening, connecting included, by `performance.now()`; null before the first. */
+  readonly openedAtMs: () => number | null;
 }
 
 function covers(outer: Viewport, inner: Viewport, totalRows: number, totalColumns: number): boolean {
@@ -138,6 +140,7 @@ export function gridSource(layout: Signal<Layout | null>): GridSource {
   let generation = 0;
   let destroyed = false;
   let visible: Viewport | null = null;
+  let openedAtMs: number | null = null;
 
   const request = (view: ViewHandle, wanted: Viewport): void => {
     const shown = frame();
@@ -166,6 +169,7 @@ export function gridSource(layout: Signal<Layout | null>): GridSource {
     placement.set(null);
     fields.set([]);
     generation += 1;
+    openedAtMs = performance.now();
     const mine = generation;
     client.connectionFor(next.dataset, next.parameters).then(
       ({ connection, fallback }) => {
@@ -271,6 +275,7 @@ export function gridSource(layout: Signal<Layout | null>): GridSource {
       return entry;
     },
     fetch: (viewport) => (current === null ? Promise.reject(new Error("the view is not open yet")) : current.view.fetch(viewport)),
-    distinct: (column, search, limit) => (current === null ? Promise.reject(new Error("the view is not open yet")) : current.view.distinctValues(column, search, limit))
+    distinct: (column, search, limit) => (current === null ? Promise.reject(new Error("the view is not open yet")) : current.view.distinctValues(column, search, limit)),
+    openedAtMs: () => openedAtMs
   };
 }

@@ -11,6 +11,7 @@ behind the design, see [How parallax is designed](design.md).
 | 1 | Engine, grid, pivot, Excel export, and connectors for SQL Server (including JSON columns), Oracle Database, Parquet, MongoDB and HTTP (existing REST GETs). Angular package and demo app. |
 | 2 | Charts: line, area, bar (vertical or horizontal, grouped or stacked), scatter as density, heatmap, histogram, candlestick and OHLC. Crosshair with synced tooltips, wheel and drag zoom and pan, a range brush that filters linked views, legend toggling, two y-axes, log scale, and a trading-time axis driven by a per-dataset trading calendar. |
 | 3 | Technical-analysis tools, described in [Milestone 3 tools](#milestone-3-tools). |
+| 4 | Grids and pivots for everyday use: search, Excel-style column filters, hiding, reordering and pinning columns, a totals row, grouping from the grid, export from a toolbar, a reworked pivot field list, pie and donut charts, and tables of a few hundred rows that feel instant. |
 
 Releases are semver 0.x until milestone 3. Each milestone publishes
 `@jacobragsdale/parallax` to npm and the `parallax-*` crates to crates.io.
@@ -41,6 +42,30 @@ Releases are semver 0.x until milestone 3. Each milestone publishes
 6. The demo's technical-analysis page, with screenshots, and the release,
    whose publishing the maintainer does by hand; see
    [Release](../CONTRIBUTING.md#release).
+
+## Milestone 4 build order
+
+Most tables hold a few hundred rows, so their speed is measured first and
+checked at every step after.
+
+1. Small tables: a baseline, measured in the demo; see
+   [Small tables](#small-tables).
+2. Small tables: fewer round trips. Every layout change is answered with the
+   rows to draw, one change is in flight at a time, and small views are fetched
+   whole.
+3. Engine: search, and text filters that test each dictionary entry once.
+4. Engine: totals, and column changes that don't recompute the rows.
+5. Engine: detail groups, whose innermost groups show their rows.
+6. Engine: totals on the group rows of detail groups.
+7. Layout version 2, the protocol and the session.
+8. Excel export of titles, pinned columns, totals and detail groups.
+9. The grid's toolbar: search, filter chips and export.
+10. Excel-style header menus.
+11. Columns: the chooser, reordering, pinning, the totals row and fitted widths.
+12. Grouping from the grid.
+13. The pivot's field list, toolbar and header menus.
+14. Pie and donut charts, small charts, and filtering a grid from a chart.
+15. The demo, the documentation and the release.
 
 ## Milestone 1 build order
 
@@ -145,6 +170,42 @@ The demo's initial bundle is 558 kB, 134 kB compressed (2026-11-02). Zod's
 tree-shakable build cut it from 981 kB. Of the rest, Apache Arrow's
 JavaScript is 204 kB and Angular 126 kB. The build warns above 600 kB.
 
+### Small tables
+
+Most tables hold a few hundred rows, and at that size every change should feel
+instant. These budgets hold with the CPU throttled four times, as a stand-in for
+a Citrix desktop:
+
+| Measure | Budget |
+|---|---|
+| First rows of a table of a few hundred rows, after its grid opens the view | ≤ 150 ms |
+| A sort, filter or search of such a table, from the input to the screen | ≤ 50 ms |
+
+The demo's performance overlay shows both figures for every grid on the page.
+The baseline was taken on the build host on 2026-11-03, in headless Chromium
+without a GPU, with the server on the same machine. First rows are the median
+of five loads with an empty cache and five reloads with a full one. Sorts are
+20 clicks on a header. Each table had the page to itself:
+
+| Table | Held | First rows, empty cache | First rows, cached | Sort, median and p95 |
+|---|---|---|---|---|
+| `book`, 300 positions | in the browser | 233 ms | 115 ms | 30 ms, 32 ms |
+| `blotter`, 500 trades | on the server | 133 ms | 84 ms | 33 ms, 36 ms |
+| `trades`, 1,000,000 trades | on the server | 133 ms | 89 ms | 34 ms, 38 ms |
+
+Unthrottled, the same figures were 151 ms, 49 ms and 19 ms for the book;
+29 ms, 12 ms and 20 ms for the blotter; and 35 ms, 24 ms and 27 ms for the
+trades.
+
+- Sorts already meet the budget at every size and in both places. They take
+  about one frame unthrottled and two throttled, because the answer is drawn at
+  the next animation frame.
+- A table held in the browser opens slower than the same size on the server,
+  because the worker, the WebAssembly engine and the copy all start first. With
+  an empty cache it misses the budget.
+- On the Small tables page, the book's start also slows the blotter beside it:
+  its cached first rows took 56 ms instead of 12 ms, unthrottled.
+
 A budget for live updates, 10,000 row updates per second with a p99 of
 ≤ 250 ms from update to screen, waits until a streaming source exists. See
 [Deferred work](future.md).
@@ -152,9 +213,11 @@ A budget for live updates, 10,000 row updates per second with a p99 of
 ## Verification on a VDI
 
 The demo app has a performance overlay, opened by its **Performance** button.
-It shows frame time, the main-thread time blocked by long frames, the grid's
-drawing time per frame, tab memory and the time from asking for rows to drawing
-them, and a **Copy report** button copies those figures with the browser and
+It shows frame time and the main-thread time blocked by long frames. For each
+grid on the page, it shows the drawing time per frame, the time to the first
+rows, the time from an input such as a click or a keystroke to drawing the
+change it made, and the time from asking for rows to drawing them. It also shows
+tab memory. A **Copy report** button copies those figures with the browser and
 window they were taken on. Tab memory covers the whole tab, worker included,
 only when the server sends `cross_origin_isolated` headers and the page is a
 secure context (HTTPS or localhost); otherwise it is Chromium's JavaScript heap
