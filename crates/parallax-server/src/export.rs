@@ -43,6 +43,10 @@ pub struct ExportRequest {
     /// Echoed in a refusal posted to the parent window.
     #[serde(default)]
     pub token: Option<String>,
+    /// The table load the screen shows. When the table holds another, the export
+    /// is refused, so the file never holds other numbers than the screen.
+    #[serde(default)]
+    pub load_version: Option<u64>,
 }
 
 /// A shared table, read one chunk at a time.
@@ -172,6 +176,7 @@ pub(crate) async fn export(
             let source = ExportSource {
                 dataset: layout.dataset.clone(),
                 as_of: format!("{as_of} New York"),
+                load_version: request.load_version,
             };
             let mut file = tempfile::tempfile()
                 .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
@@ -179,9 +184,21 @@ pub(crate) async fn export(
             let written = if extension == "xlsx" {
                 write_xlsx(&shared, &layout, &source, &mut file)
             } else {
-                write_csv(&shared, &layout, std::io::BufWriter::new(&mut file))
+                write_csv(
+                    &shared,
+                    &layout,
+                    &source,
+                    std::io::BufWriter::new(&mut file),
+                )
             };
-            written.map_err(|e| (StatusCode::UNPROCESSABLE_ENTITY, e.to_string()))?;
+            written.map_err(|e| {
+                let status = if matches!(e, parallax_export::ExportError::Stale { .. }) {
+                    StatusCode::CONFLICT
+                } else {
+                    StatusCode::UNPROCESSABLE_ENTITY
+                };
+                (status, e.to_string())
+            })?;
             file.seek(SeekFrom::Start(0))
                 .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
             Ok(file)

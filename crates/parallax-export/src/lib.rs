@@ -19,11 +19,11 @@ use std::io::{Seek, Write};
 
 use arrow_array::cast::AsArray;
 use arrow_array::types::{Date32Type, Decimal128Type, Float64Type, Int64Type};
-use arrow_array::{Array, ArrayRef, Int32Array, RecordBatch, StringArray, UInt8Array};
+use arrow_array::{Array, ArrayRef, Int32Array, Int64Array, RecordBatch, StringArray, UInt8Array};
 use arrow_schema::DataType;
 use parallax_engine::format::{Formatter, exact_decimal};
 use parallax_engine::view::{flag, meta, role};
-use parallax_engine::{ConfigError, Table, View};
+use parallax_engine::{ColumnType, ConfigError, Scalar, Table, View};
 use parallax_protocol::layout::{Layout, LayoutError};
 use rust_xlsxwriter::{ExcelDateTime, Format, FormatBorder, Workbook, Worksheet, XlsxError};
 
@@ -116,6 +116,17 @@ pub enum ExportError {
     /// The table reloaded part way through the export.
     #[error("the data reloaded while it was being exported; export again for the new data")]
     Reloaded,
+    /// The table holds a newer load than the screen shows, so the export would not
+    /// match it.
+    #[error(
+        "the data has reloaded since the screen showed it (load {shown}; it is now at load {current}), so the export would not match the screen; reload the view, then export again"
+    )]
+    Stale {
+        /// The load the screen shows.
+        shown: u64,
+        /// The load the table holds.
+        current: u64,
+    },
 }
 
 /// What an export wrote.
@@ -129,19 +140,24 @@ pub struct ExportSummary {
     pub notes: Vec<String>,
 }
 
-/// Where the data came from, for the Notes sheet.
+/// Where the data came from, for the Notes sheet, and which load the screen shows.
 #[derive(Clone, Debug, Default)]
 pub struct ExportSource {
     /// The dataset's name.
     pub dataset: String,
     /// When the source was read, as text.
     pub as_of: String,
+    /// The table load the screen shows. An export of any other load is refused,
+    /// so the file always holds what the screen does; `None` exports the latest.
+    pub load_version: Option<u64>,
 }
 
 /// One data column of a frame.
 struct Column<'a> {
     title: String,
     values: &'a ArrayRef,
+    /// A detail view's group totals, null on its rows.
+    totals: Option<&'a ArrayRef>,
     flags: Option<&'a UInt8Array>,
     text: &'a StringArray,
     copy: Option<&'a StringArray>,
@@ -149,11 +165,40 @@ struct Column<'a> {
     name: String,
 }
 
-/// The tree columns of a pivot frame.
+impl Column<'_> {
+    /// The array holding row `i`'s value, and whether it is a group's total: a
+    /// detail view's group rows hold their totals, every other row its values.
+    fn values_at(&self, i: usize) -> (&ArrayRef, bool) {
+        match self.totals {
+            Some(t) if t.is_valid(i) => (t, true),
+            _ => (self.values, false),
+        }
+    }
+}
+
+/// The tree columns of a pivot or detail frame.
 struct Tree<'a> {
     depth: &'a Int32Array,
     kind: &'a StringArray,
     label: &'a StringArray,
+    /// A detail view's group rows' counts of their rows.
+    rows: Option<&'a Int64Array>,
+}
+
+impl Tree<'_> {
+    /// Row `i`'s label, with its count of rows for a detail view's group row, as
+    /// the grid shows it.
+    fn label(&self, i: usize) -> String {
+        let label = self.label.value(i);
+        match self.rows {
+            Some(rows) if rows.is_valid(i) => {
+                let count =
+                    Formatter::default().scalar(&ColumnType::Int64, &Scalar::Int64(rows.value(i)));
+                format!("{label} ({count})")
+            }
+            _ => label.to_owned(),
+        }
+    }
 }
 
 /// A frame read by field role.
@@ -195,6 +240,7 @@ impl<'a> Frame<'a> {
                 depth: batch.column(d).as_primitive(),
                 kind: batch.column(k).as_string(),
                 label: batch.column(l).as_string(),
+                rows: by_role(role::ROWS).map(|r| batch.column(r).as_primitive()),
             }),
             _ => None,
         };
@@ -224,6 +270,7 @@ impl<'a> Frame<'a> {
                         .cloned()
                         .unwrap_or_else(|| field.name().clone()),
                     values: batch.column(i),
+                    totals: part(role::TOTAL, index).map(|t| batch.column(t)),
                     flags: part(role::FLAG, index).map(|f| batch.column(f).as_primitive()),
                     text: batch.column(part(role::TEXT, index)?).as_string(),
                     copy: part(role::COPY, index).map(|c| batch.column(c).as_string()),
@@ -316,13 +363,16 @@ fn write_number(
     Ok(())
 }
 
-/// Writes one data cell as the screen shows it.
+/// Writes one data cell as the screen shows it. A detail view's group row holds
+/// its total, written with `total_formats`.
+#[allow(clippy::too_many_arguments)]
 fn write_cell(
     sheet: &mut Worksheet,
     (row, col): (u32, u16),
     column: &Column<'_>,
     i: usize,
     formats: &ColumnFormats,
+    total_formats: Option<&ColumnFormats>,
     notes: &mut Notes,
     view_row: usize,
 ) -> Result<(), ExportError> {
@@ -332,12 +382,18 @@ fn write_cell(
         sheet.write_string(row, col, text)?;
         return Ok(());
     }
-    if column.values.is_null(i) {
+    let (values, total) = column.values_at(i);
+    let formats = if total {
+        total_formats.unwrap_or(formats)
+    } else {
+        formats
+    };
+    if values.is_null(i) {
         return Ok(());
     }
-    match column.values.data_type() {
+    match values.data_type() {
         DataType::Float64 => {
-            let v = column.values.as_primitive::<Float64Type>().value(i);
+            let v = values.as_primitive::<Float64Type>().value(i);
             if v.is_finite() {
                 write_number(sheet, row, col, v, text, formats)?;
             } else {
@@ -348,7 +404,7 @@ fn write_cell(
             }
         }
         DataType::Int64 => {
-            let v = column.values.as_primitive::<Int64Type>().value(i);
+            let v = values.as_primitive::<Int64Type>().value(i);
             if v.unsigned_abs() >= 1_000_000_000_000_000 {
                 notes.add("Some integers have more than 15 digits; Excel keeps 15, so they show rounded in Excel. The CSV export has every digit.");
             }
@@ -356,7 +412,7 @@ fn write_cell(
         }
         DataType::Decimal128(_, scale) => {
             let exact = exact_decimal(
-                column.values.as_primitive::<Decimal128Type>().value(i),
+                values.as_primitive::<Decimal128Type>().value(i),
                 i32::from(*scale),
             );
             if significant_digits(&exact) > 15 {
@@ -366,7 +422,7 @@ fn write_cell(
             write_number(sheet, row, col, v, text, formats)?;
         }
         DataType::Boolean => {
-            sheet.write_boolean(row, col, column.values.as_boolean().value(i))?;
+            sheet.write_boolean(row, col, values.as_boolean().value(i))?;
         }
         DataType::Utf8 => {
             let length = text.chars().count();
@@ -384,7 +440,7 @@ fn write_cell(
         }
         DataType::Date32 => {
             let serial =
-                f64::from(column.values.as_primitive::<Date32Type>().value(i)) + EXCEL_EPOCH_OFFSET;
+                f64::from(values.as_primitive::<Date32Type>().value(i)) + EXCEL_EPOCH_OFFSET;
             if serial >= 61.0 {
                 write_number(sheet, row, col, serial, text, formats)?;
             } else {
@@ -461,6 +517,15 @@ fn outline(sheet: &mut Worksheet, shape: &[usize], notes: &mut Notes) -> Result<
     Ok(())
 }
 
+/// The table's load version, refusing one other than the load the screen shows.
+fn check_load(table: &Table, source: &ExportSource) -> Result<u64, ExportError> {
+    let current = table.load_version();
+    match source.load_version {
+        Some(shown) if shown != current => Err(ExportError::Stale { shown, current }),
+        _ => Ok(current),
+    }
+}
+
 /// Reads the table and checks that it has not reloaded since `version`.
 fn read_at<T: ReadTable + ?Sized>(source: &T, version: u64) -> Result<T::Guard<'_>, ExportError> {
     let guard = source.read().map_err(ExportError::Read)?;
@@ -488,13 +553,15 @@ pub fn write_xlsx<T: ReadTable + ?Sized, W: Write + Seek + Send>(
     out: W,
 ) -> Result<ExportSummary, ExportError> {
     let first = tables.read().map_err(ExportError::Read)?;
-    let version = first.load_version();
+    let version = check_load(&first, source)?;
     let mut view = view_of(&first, layout)?;
     let rows = view.num_rows(&first);
     let columns = view.num_columns(&first);
-    if rows + 1 > EXCEL_MAX_ROWS {
+    // The totals row sits below the rows, outside the filter range.
+    let footer = usize::from(!view.totals(&first).is_empty());
+    if rows + 1 + footer > EXCEL_MAX_ROWS {
         return Err(ExportError::TooManyRows {
-            rows: rows + 1,
+            rows: rows + 1 + footer,
             limit: EXCEL_MAX_ROWS,
         });
     }
@@ -527,15 +594,27 @@ pub fn write_xlsx<T: ReadTable + ?Sized, W: Write + Seek + Send>(
         let title = if layout.group_by.is_empty() {
             "Group".to_owned()
         } else {
-            layout.group_by.join(" › ")
+            layout
+                .group_by
+                .iter()
+                .map(|g| layout.titles.get(g).unwrap_or(g).as_str())
+                .collect::<Vec<_>>()
+                .join(" › ")
         };
         sheet.write_string_with_format(0, 0, &title, &header)?;
         let width = layout.column_widths.get("__tree").copied().unwrap_or(260);
         sheet.set_column_width_pixels(0, width)?;
     }
-    sheet.set_freeze_panes(1, offset)?;
+    // Pinned columns stay in view on screen, so they stay in view in Excel too.
+    let pinned = if grouped && !layout.detail {
+        0
+    } else {
+        u16::try_from(layout.pinned.len()).unwrap_or(0)
+    };
+    sheet.set_freeze_panes(1, offset + pinned)?;
 
     let mut formats: Vec<ColumnFormats> = Vec::new();
+    let mut total_formats: Vec<Option<ColumnFormats>> = Vec::new();
     let labels: Vec<Format> = (0..=EXCEL_MAX_OUTLINE)
         .map(|d| Format::new().set_indent(u8::try_from(d).unwrap_or(7)))
         .collect();
@@ -560,6 +639,15 @@ pub fn write_xlsx<T: ReadTable + ?Sized, W: Write + Seek + Send>(
                     &formatter_of(&view, &table, column),
                     column.values.data_type(),
                 ));
+                total_formats.push(column.totals.map(|t| {
+                    ColumnFormats::new(
+                        &view
+                            .total_formatter(&column.name)
+                            .cloned()
+                            .unwrap_or_default(),
+                        t.data_type(),
+                    )
+                }));
                 sheet.write_string_with_format(0, col, &column.title, &header)?;
                 let key = column
                     .measure
@@ -585,7 +673,7 @@ pub fn write_xlsx<T: ReadTable + ?Sized, W: Write + Seek + Send>(
                 } else {
                     &labels[depth]
                 };
-                sheet.write_string_with_format(row, 0, tree.label.value(i), format)?;
+                sheet.write_string_with_format(row, 0, tree.label(i), format)?;
             }
             for (j, column) in read.columns.iter().enumerate().take(formats.len()) {
                 let col = u16::try_from(usize::from(offset) + j).unwrap_or(u16::MAX);
@@ -595,10 +683,42 @@ pub fn write_xlsx<T: ReadTable + ?Sized, W: Write + Seek + Send>(
                     column,
                     i,
                     &formats[j],
+                    total_formats[j].as_ref(),
                     &mut notes,
                     view_row,
                 )?;
             }
+        }
+    }
+    if footer > 0 {
+        let table = read_at(tables, version)?;
+        if let Some(batch) = view.totals_window(&table, 0..fit) {
+            let read = Frame::read(&batch);
+            let row = u32::try_from(rows + 1).unwrap_or(u32::MAX);
+            if grouped {
+                sheet.write_string_with_format(row, 0, "Total", &total_label)?;
+            }
+            for (j, column) in read.columns.iter().enumerate() {
+                let col = u16::try_from(usize::from(offset) + j).unwrap_or(u16::MAX);
+                let format = ColumnFormats::new(
+                    &view
+                        .total_formatter(&column.name)
+                        .cloned()
+                        .unwrap_or_default(),
+                    column.values.data_type(),
+                );
+                write_cell(
+                    sheet,
+                    (row, col),
+                    column,
+                    0,
+                    &format,
+                    None,
+                    &mut notes,
+                    rows,
+                )?;
+            }
+            notes.add("The last row holds the view's totals of every row exported. It sits below the filter range, so Excel's filters do not change it.");
         }
     }
 
@@ -659,32 +779,29 @@ fn exact_text(column: &Column<'_>, i: usize) -> String {
     if flagged {
         return column.text.value(i).to_owned();
     }
-    if column.values.is_null(i) {
+    let (values, _) = column.values_at(i);
+    if values.is_null(i) {
         return String::new();
     }
-    match column.values.data_type() {
+    match values.data_type() {
         DataType::Float64 => {
-            let v = column.values.as_primitive::<Float64Type>().value(i);
+            let v = values.as_primitive::<Float64Type>().value(i);
             if v.is_finite() {
                 format!("{v:?}")
             } else {
                 column.text.value(i).to_owned()
             }
         }
-        DataType::Int64 => column
-            .values
-            .as_primitive::<Int64Type>()
-            .value(i)
-            .to_string(),
+        DataType::Int64 => values.as_primitive::<Int64Type>().value(i).to_string(),
         DataType::Decimal128(_, scale) => exact_decimal(
-            column.values.as_primitive::<Decimal128Type>().value(i),
+            values.as_primitive::<Decimal128Type>().value(i),
             i32::from(*scale),
         ),
         DataType::Timestamp(..) => column.copy.map_or_else(
             || column.text.value(i).to_owned(),
             |c| c.value(i).to_owned(),
         ),
-        DataType::Utf8 => column.values.as_string::<i32>().value(i).to_owned(),
+        DataType::Utf8 => values.as_string::<i32>().value(i).to_owned(),
         _ => column.text.value(i).to_owned(),
     }
 }
@@ -758,10 +875,11 @@ fn csv_text(text: &str) -> String {
 pub fn write_csv<T: ReadTable + ?Sized, W: Write>(
     tables: &T,
     layout: &Layout,
+    source: &ExportSource,
     mut out: W,
 ) -> Result<ExportSummary, ExportError> {
     let first = tables.read().map_err(ExportError::Read)?;
-    let version = first.load_version();
+    let version = check_load(&first, source)?;
     let mut view = view_of(&first, layout)?;
     let rows = view.num_rows(&first);
     let columns = view.num_columns(&first);
@@ -788,7 +906,12 @@ pub fn write_csv<T: ReadTable + ?Sized, W: Write>(
             let mut titles: Vec<String> = Vec::new();
             if grouped {
                 titles.push("level".to_owned());
-                titles.extend(layout.group_by.iter().cloned());
+                titles.extend(
+                    layout
+                        .group_by
+                        .iter()
+                        .map(|g| layout.titles.get(g).unwrap_or(g).clone()),
+                );
             }
             titles.extend(read.columns.iter().map(|c| c.title.clone()));
             writeln!(

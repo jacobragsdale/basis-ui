@@ -36,7 +36,13 @@ fn main() {
     );
     let mut csv = tempfile::tempfile().unwrap();
     let started = Instant::now();
-    write_csv(&table, &layout, std::io::BufWriter::new(&mut csv)).unwrap();
+    write_csv(
+        &table,
+        &layout,
+        &ExportSource::default(),
+        std::io::BufWriter::new(&mut csv),
+    )
+    .unwrap();
     println!(
         "csv: {:.1} s, {:.0} MB",
         started.elapsed().as_secs_f64(),

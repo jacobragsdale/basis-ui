@@ -778,7 +778,14 @@ so it holds the same numbers.
 - Dates and times are Excel dates, shown in the display zone. Times shown to
   the microsecond, which Excel cannot hold, are written as their text.
 - The sheet has a frozen header row, column widths from the layout, and, for
-  flat views, an autofilter.
+  flat views, an autofilter. Headers are the layout's titles, and pinned
+  columns are frozen too, as they stay put on screen.
+- A grid with totals ends with its totals row, read as the screen shows it. It
+  sits below the autofilter's range, so Excel's filters don't change it, and
+  the Notes sheet says so. CSV leaves it out.
+- A detail view exports as an outline like a pivot's. Its group rows read
+  "Atlas (120)", with the group's count, and hold the group totals; its rows
+  hold their values.
 - A pivot exports every group as an outline, with the outline buttons beside
   the group rows, which come first as on screen. Groups start expanded:
   `rust_xlsxwriter` 0.102 marks a collapsed group on the row after it, which is
@@ -799,7 +806,10 @@ so it holds the same numbers.
 
 The export reads the table one chunk at a time, each under its own read lock,
 so a long export never holds up a reload; if the table reloads part way, the
-export stops rather than mix two loads. A refusal reaches the page even when the
+export stops rather than mix two loads. The form also carries the load the
+screen shows, and an export of any other load is refused with the reason: a
+browser copy is fetched once per page, so without this a browser-held view
+could export newer numbers than it shows. A refusal reaches the page even when the
 server is on another origin: the form carries a token, and the answer posts the
 reason to the page, which shows it in the status bar.
 

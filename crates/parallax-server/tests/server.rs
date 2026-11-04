@@ -363,6 +363,21 @@ async fn bad_exports_say_why() {
 }
 
 #[tokio::test]
+async fn an_export_of_another_load_than_the_screen_shows_is_refused() {
+    let layout = r#"{"dataset":"positions","columns":["position_id"]}"#;
+    let (status, _, body) = export(format!("{}&load_version=999", form(layout, "csv"))).await;
+    assert_eq!(status, 409);
+    assert!(
+        String::from_utf8_lossy(&body).contains("reloaded since the screen showed it"),
+        "{}",
+        String::from_utf8_lossy(&body)
+    );
+    // The load a freshly opened table holds exports.
+    let (status, _, body) = export(format!("{}&load_version=1", form(layout, "csv"))).await;
+    assert_eq!(status, 200, "{}", String::from_utf8_lossy(&body));
+}
+
+#[tokio::test]
 async fn a_refusal_for_a_page_posts_its_reason_to_the_parent_window() {
     let body = format!(
         "{}&token=abc",

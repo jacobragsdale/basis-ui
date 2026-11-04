@@ -383,6 +383,7 @@ fn the_notes_sheet_says_where_excel_cannot_match_the_screen() {
     let source = ExportSource {
         dataset: "rates".into(),
         as_of: "2026-11-02 16:00:00".into(),
+        load_version: None,
     };
     let summary = write_xlsx(&long_decimals(), &Layout::default(), &source, &mut out).unwrap();
     assert!(
@@ -406,7 +407,13 @@ fn the_notes_sheet_says_where_excel_cannot_match_the_screen() {
 #[test]
 fn csv_holds_every_digit() {
     let mut out = Vec::new();
-    write_csv(&long_decimals(), &Layout::default(), &mut out).unwrap();
+    write_csv(
+        &long_decimals(),
+        &Layout::default(),
+        &ExportSource::default(),
+        &mut out,
+    )
+    .unwrap();
     let text = String::from_utf8(out).unwrap();
     let text = text
         .strip_prefix('\u{feff}')
@@ -426,7 +433,7 @@ fn a_pivot_csv_names_each_level() {
         r#"{"group_by":["fund","strategy"],"measures":[{"aggregate":"count_all"}]}"#,
     )
     .unwrap();
-    write_csv(&table, &layout, &mut out).unwrap();
+    write_csv(&table, &layout, &ExportSource::default(), &mut out).unwrap();
     let text = String::from_utf8(out).unwrap();
     let mut lines = text.trim_start_matches('\u{feff}').lines();
     assert_eq!(lines.next(), Some("level,fund,strategy,count(*)"));
@@ -485,7 +492,13 @@ fn a_reload_part_way_stops_the_export() {
     assert!(matches!(error, ExportError::Reloaded), "{error}");
     tables.reads.store(0, std::sync::atomic::Ordering::SeqCst);
     assert!(matches!(
-        write_csv(&tables, &Layout::default(), Vec::new()).unwrap_err(),
+        write_csv(
+            &tables,
+            &Layout::default(),
+            &ExportSource::default(),
+            Vec::new()
+        )
+        .unwrap_err(),
         ExportError::Reloaded
     ));
 }
@@ -536,10 +549,154 @@ fn csv_text_that_looks_like_a_formula_stays_text() {
     )
     .unwrap();
     let mut out = Vec::new();
-    write_csv(&table_of(&batch), &Layout::default(), &mut out).unwrap();
+    write_csv(
+        &table_of(&batch),
+        &Layout::default(),
+        &ExportSource::default(),
+        &mut out,
+    )
+    .unwrap();
     let text = String::from_utf8(out).unwrap();
     let lines: Vec<&str> = text.trim_start_matches('\u{feff}').lines().collect();
     // Text is guarded; a negative number is still a number.
     assert_eq!(lines[1], "'=1+1,-5.0");
     assert_eq!(lines[2], "plain,2.0");
+}
+
+fn number(cell: &Data) -> f64 {
+    match cell {
+        Data::Float(f) => *f,
+        Data::Int(i) => *i as f64,
+        other => panic!("a number, got {other:?}"),
+    }
+}
+
+#[test]
+fn titles_head_the_columns_and_pinned_columns_stay_in_view() {
+    let table = positions(200);
+    let layout = r#"{"columns":["position_id","fund","ticker"],"pinned":["ticker"],
+        "titles":{"fund":"Fund","ticker":"Ticker"}}"#;
+    let bytes = xlsx(&table, layout);
+    let range = sheet(&bytes);
+    let header: Vec<String> = (0..3)
+        .map(|c| range.get((0, c)).unwrap().to_string())
+        .collect();
+    assert_eq!(header, ["Ticker", "position_id", "Fund"]);
+    // The header row and the pinned column are frozen.
+    let xml = zipped(&bytes, "xl/worksheets/sheet1.xml");
+    assert!(
+        xml.contains(r#"xSplit="1" ySplit="1""#),
+        "{}",
+        &xml[..xml.len().min(1_500)]
+    );
+}
+
+#[test]
+fn the_totals_row_reads_as_the_screen_below_the_filter_range() {
+    let table = positions(300);
+    let layout = r#"{"columns":["position_id","fund","market_value_usd"],
+        "filters":[{"column":"asset_class","op":"eq","value":"Equity"}],
+        "totals":[{"column":"market_value_usd","aggregate":"sum"},{"column":"fund","aggregate":"distinct_count"}]}"#;
+    let resolved = Layout::from_json(layout).unwrap().resolve(&table).unwrap();
+    let mut view = View::new(&table, resolved.config).unwrap();
+    let rows = view.num_rows(&table);
+    let totals = view.totals_window(&table, 0..3).unwrap();
+    let bytes = xlsx(&table, layout);
+    let range = sheet(&bytes);
+    let last = u32::try_from(rows + 1).unwrap();
+    let (_, sum, _, sum_text) = &values_of(&totals)[2];
+    same(
+        range.get((last as usize, 2)).unwrap(),
+        sum,
+        sum_text,
+        false,
+        0,
+        "total",
+    );
+    assert_eq!(
+        number(range.get((last as usize, 1)).unwrap()),
+        values_of(&totals)[1].1.as_primitive::<Int64Type>().value(0) as f64
+    );
+    assert!(
+        range
+            .get((last as usize, 0))
+            .is_none_or(|c| *c == Data::Empty)
+    );
+    // The autofilter covers the rows, not the totals.
+    let xml = zipped(&bytes, "xl/worksheets/sheet1.xml");
+    assert!(
+        xml.contains(&format!(r#"<autoFilter ref="A1:C{last}"/>"#)),
+        "autofilter"
+    );
+    let notes = zipped(&bytes, "xl/sharedStrings.xml");
+    assert!(notes.contains("totals of every row exported"));
+    // The CSV has no totals row.
+    let mut csv = Vec::new();
+    write_csv(
+        &table,
+        &Layout::from_json(layout).unwrap(),
+        &ExportSource::default(),
+        &mut csv,
+    )
+    .unwrap();
+    assert_eq!(String::from_utf8(csv).unwrap().lines().count(), rows + 1);
+}
+
+#[test]
+fn a_detail_view_exports_as_an_outline_of_groups_with_their_counts_and_totals() {
+    let table = positions(200);
+    let layout = r#"{"group_by":["fund"],"detail":true,"expand_depth":1,
+        "columns":["position_id","market_value_usd"],
+        "totals":[{"column":"market_value_usd","aggregate":"sum"}]}"#;
+    let frame = engine_frame(&table, layout);
+    let bytes = xlsx(&table, layout);
+    let range = sheet(&bytes);
+    let kinds = frame.column_by_name("__kind").unwrap().as_string::<i32>();
+    let labels = frame.column_by_name("__label").unwrap().as_string::<i32>();
+    let counts = frame
+        .column_by_name("__rows")
+        .unwrap()
+        .as_primitive::<Int64Type>();
+    let totals = frame.column_by_name("market_value_usd#total").unwrap();
+    let values = frame.column_by_name("market_value_usd").unwrap();
+    let text = frame.column_by_name("market_value_usd#text").unwrap();
+    for row in 0..frame.num_rows() {
+        let cell = range.get((row + 1, 2)).unwrap();
+        if kinds.value(row) == "group" {
+            assert_eq!(
+                range.get((row + 1, 0)).unwrap().to_string(),
+                format!("{} ({})", labels.value(row), counts.value(row))
+            );
+            same(cell, totals, text, false, row, "group total");
+        } else {
+            same(cell, values, text, false, row, "row");
+        }
+    }
+    // Rows sit in an outline under their groups.
+    assert!(zipped(&bytes, "xl/worksheets/sheet1.xml").contains(r#"outlineLevel="1""#));
+    // The footer is the grand total, labelled.
+    let last = frame.num_rows() + 1;
+    assert_eq!(range.get((last, 0)).unwrap().to_string(), "Total");
+}
+
+#[test]
+fn an_export_of_a_load_the_screen_does_not_show_is_refused() {
+    let table = positions(50);
+    let behind = ExportSource {
+        load_version: Some(table.load_version() + 1),
+        ..ExportSource::default()
+    };
+    let refused =
+        write_xlsx(&table, &Layout::default(), &behind, Cursor::new(Vec::new())).unwrap_err();
+    assert!(matches!(refused, ExportError::Stale { .. }), "{refused}");
+    assert!(refused.to_string().contains("reload the view"), "{refused}");
+    assert!(matches!(
+        write_csv(&table, &Layout::default(), &behind, Vec::new()).unwrap_err(),
+        ExportError::Stale { .. }
+    ));
+    let current = ExportSource {
+        load_version: Some(table.load_version()),
+        ..ExportSource::default()
+    };
+    assert!(write_csv(&table, &Layout::default(), &current, Vec::new()).is_ok());
 }

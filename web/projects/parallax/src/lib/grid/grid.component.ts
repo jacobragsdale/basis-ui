@@ -426,10 +426,13 @@ export class GridComponent {
     form.method = "post";
     form.action = this.client.exportUrl();
     form.target = target;
+    // The server refuses to export another load than the screen shows, so the file holds what the screen does.
+    const shown = this.source.frame()?.loadVersion;
     for (const [name, value] of [
       ["layout", JSON.stringify(layout)],
       ["format", format],
-      ["token", token]
+      ["token", token],
+      ...(shown === undefined ? [] : [["load_version", shown.toString()] as const])
     ] as const) {
       const field = this.document.createElement("input");
       field.type = "hidden";

@@ -1183,6 +1183,12 @@ impl View {
         self.formatters.measures.get(measure)
     }
 
+    /// The formatter of the total of source column `name`, as frames use it.
+    #[must_use]
+    pub fn total_formatter(&self, name: &str) -> Option<&Formatter> {
+        self.formatters.totals.get(total_of(&self.config, name)?)
+    }
+
     /// The formatter of source column `name`, as frames use it.
     #[must_use]
     pub fn column_formatter(&self, table: &Table, name: &str) -> Option<&Formatter> {
