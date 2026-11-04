@@ -124,6 +124,18 @@ A flat view re-filters and re-sorts the table on every change, using every core
 on the server. Incremental maintenance of flat views waits for live sources,
 which are deferred.
 
+Text is stored as dictionary codes, so a filter on a text column decides each
+distinct string once. It keeps a bit per code saying whether that string
+passes, and testing a row reads its code and one bit; new strings are decided
+as a reload interns them. Removed rows carry dictionaries of their own, so they
+are tested on their text. On 1,000,000 trades, a "contains" filter on the
+ticker took 1.4 ms this way, against 27 ms when each row's text was lowered
+and searched (2026-11-03). Text conditions ignore case: contains, does not
+contain, starts with and ends with. "Does not contain" keeps blanks, as a
+spreadsheet does. A filter may test several columns and pass when its
+condition holds in any of them, which is how a search across a grid's columns
+runs.
+
 A grouped view keeps a tree. The root is the grand total, and each level below
 groups by one more column. Every node is fed directly by base rows, so no total
 is computed from other totals. Column pivots keep one cell per node and

@@ -10,7 +10,7 @@ use arrow_array::types::{Decimal128Type, Float64Type, Int64Type};
 use arrow_array::{Array, ArrayRef, Decimal128Array, Float64Array, RecordBatch, StringArray};
 use common::{Picker, positions};
 use parallax_engine::{
-    Aggregate, CellValue, Filter, FilterOp, GroupCell, Measure, Table, TableOptions, View,
+    Aggregate, CellValue, Filter, FilterOp, GroupCell, Measure, Scalar, Table, TableOptions, View,
     ViewConfig,
 };
 
@@ -155,8 +155,42 @@ fn configs() -> Vec<ViewConfig> {
         ViewConfig {
             group_by: vec!["sector".into()],
             split_by: vec!["long_short".into()],
-            measures,
+            measures: measures.clone(),
             filters: vec![Filter::new("beta", FilterOp::IsNotNull)],
+            ..ViewConfig::default()
+        },
+        // Text filters on a column whose reloads bring new strings, which the
+        // filters' answers per dictionary code must take in, and which removed
+        // rows carry in dictionaries of their own.
+        ViewConfig {
+            group_by: vec!["sector".into(), "fund".into()],
+            measures: measures.clone(),
+            filters: vec![
+                Filter::new("sector", FilterOp::Contains("ER".into())).or_in(&["fund"]),
+                Filter::new("sector", FilterOp::NotContains("util".into())),
+            ],
+            ..ViewConfig::default()
+        },
+        ViewConfig {
+            group_by: vec!["fund".into()],
+            measures: measures.clone(),
+            filters: vec![Filter::new(
+                "sector",
+                FilterOp::In(vec![
+                    Scalar::Utf8("New Sector".into()),
+                    Scalar::Utf8("énergie".into()),
+                    Scalar::Null,
+                ]),
+            )],
+            ..ViewConfig::default()
+        },
+        ViewConfig {
+            group_by: vec!["sector".into()],
+            measures,
+            filters: vec![
+                Filter::new("sector", FilterOp::Gt(Scalar::Utf8("energy".into()))),
+                Filter::new("sector", FilterOp::EndsWith("R".into())).or_in(&["ticker"]),
+            ],
             ..ViewConfig::default()
         },
     ]

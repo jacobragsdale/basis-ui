@@ -73,6 +73,13 @@ impl Dictionary {
         &self.values[code as usize]
     }
 
+    /// Returns the string for `code` in lower case, as text order and text
+    /// matching compare it.
+    #[must_use]
+    pub fn folded(&self, code: u32) -> &str {
+        &self.folded[code as usize]
+    }
+
     /// Recomputes ranks after new strings were interned.
     pub fn refresh_ranks(&mut self) {
         if !self.ranks_stale && self.ranks.len() == self.values.len() {

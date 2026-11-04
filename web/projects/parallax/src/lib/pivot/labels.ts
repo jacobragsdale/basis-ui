@@ -34,7 +34,9 @@ const LABELS: Readonly<Record<string, string>> = {
   is_null: "is blank",
   is_not_null: "is not blank",
   contains: "contains",
-  starts_with: "starts with"
+  not_contains: "does not contain",
+  starts_with: "starts with",
+  ends_with: "ends with"
 };
 
 /** The label for a layout name. */

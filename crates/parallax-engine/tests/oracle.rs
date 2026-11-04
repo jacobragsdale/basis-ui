@@ -88,12 +88,21 @@ fn literal(table: &Table, column: &str, value: &Scalar) -> String {
     }
 }
 
+/// A filter passes when its condition holds in any of its columns.
 fn filter_sql(table: &Table, f: &Filter) -> String {
-    let c = ident(&f.column);
-    let lit = |v: &Scalar| literal(table, &f.column, v);
+    let each: Vec<String> = std::iter::once(&f.column)
+        .chain(&f.or_columns)
+        .map(|column| condition_sql(table, column, &f.op))
+        .collect();
+    format!("({})", each.join(" OR "))
+}
+
+fn condition_sql(table: &Table, column: &str, op: &FilterOp) -> String {
+    let c = ident(column);
+    let lit = |v: &Scalar| literal(table, column, v);
     let text = matches!(
         table
-            .column(table.column_index(&f.column).unwrap())
+            .column(table.column_index(column).unwrap())
             .column_type(),
         ColumnType::Utf8
     );
@@ -103,7 +112,8 @@ fn filter_sql(table: &Table, f: &Filter) -> String {
         let strict = op.trim_end_matches('=');
         format!("(lower({c}) {strict} lower({l}) OR (lower({c}) = lower({l}) AND {c} {op} {l}))")
     };
-    match &f.op {
+    let needle = |s: &str| s.replace('\'', "''");
+    match op {
         FilterOp::Eq(v) => format!("{c} = {}", lit(v)),
         FilterOp::Ne(v) => format!("{c} <> {}", lit(v)),
         FilterOp::Lt(v) if text => text_range("<", v),
@@ -133,15 +143,16 @@ fn filter_sql(table: &Table, f: &Filter) -> String {
         }
         FilterOp::IsNull => format!("{c} IS NULL"),
         FilterOp::IsNotNull => format!("{c} IS NOT NULL"),
-        FilterOp::Contains(s) => {
-            format!("contains(lower({c}), lower('{}'))", s.replace('\'', "''"))
-        }
-        FilterOp::StartsWith(s) => {
+        FilterOp::Contains(s) => format!("contains(lower({c}), lower('{}'))", needle(s)),
+        // As in a spreadsheet, a blank does not contain the text.
+        FilterOp::NotContains(s) => {
             format!(
-                "starts_with(lower({c}), lower('{}'))",
-                s.replace('\'', "''")
+                "({c} IS NULL OR NOT contains(lower({c}), lower('{}')))",
+                needle(s)
             )
         }
+        FilterOp::StartsWith(s) => format!("starts_with(lower({c}), lower('{}'))", needle(s)),
+        FilterOp::EndsWith(s) => format!("ends_with(lower({c}), lower('{}'))", needle(s)),
     }
 }
 
@@ -418,7 +429,7 @@ fn random_filter(table: &Table, picker: &mut Picker) -> Option<Filter> {
     }
     let column = *picker.pick(GROUPS);
     let v = value_of(table, column, picker);
-    let op = match picker.below(9) {
+    let op = match picker.below(12) {
         0 if v != Scalar::Null => FilterOp::Eq(v),
         1 if v != Scalar::Null => FilterOp::Ne(v),
         // Either value may be null, which an "in" list matches as blank.
@@ -429,6 +440,21 @@ fn random_filter(table: &Table, picker: &mut Picker) -> Option<Filter> {
         6 => FilterOp::Contains(picker.pick(&["a", "E", "in", "ou", "x"]).to_string()),
         7 if v != Scalar::Null => FilterOp::Lt(v),
         8 => FilterOp::StartsWith(picker.pick(&["a", "C", "Me", "u"]).to_string()),
+        9 => FilterOp::NotContains(picker.pick(&["a", "E", "in", "ou", "x"]).to_string()),
+        10 => FilterOp::EndsWith(picker.pick(&["s", "E", "ty", "nd", "q"]).to_string()),
+        // A search: text in any of a few columns.
+        11 => {
+            let text = picker.pick(&["a", "E", "in", "Me", "ou", "x"]).to_string();
+            let op = match picker.below(4) {
+                0 => FilterOp::Contains(text),
+                1 => FilterOp::NotContains(text),
+                2 => FilterOp::StartsWith(text),
+                _ => FilterOp::EndsWith(text),
+            };
+            let count = 1 + picker.below(3);
+            let others: Vec<&str> = picker.sample(GROUPS, count);
+            return Some(Filter::new(column, op).or_in(&others));
+        }
         _ => return None,
     };
     Some(Filter::new(column, op))

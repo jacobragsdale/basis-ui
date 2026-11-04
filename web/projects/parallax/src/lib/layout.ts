@@ -46,7 +46,13 @@ export const AGGREGATES = ["count", "count_all", "sum", "mean", "weighted_mean",
 export const SHOW_AS = ["value", "percent_of_grand_total", "percent_of_column_total", "percent_of_row_total", "percent_of_parent"] as const;
 
 /** The filter operators. */
-export const FILTER_OPS = ["eq", "ne", "lt", "le", "gt", "ge", "in", "not_in", "is_null", "is_not_null", "contains", "starts_with"] as const;
+export const FILTER_OPS = ["eq", "ne", "lt", "le", "gt", "ge", "in", "not_in", "is_null", "is_not_null", "contains", "not_contains", "starts_with", "ends_with"] as const;
+
+/** A filter operator. */
+export type FilterOp = (typeof FILTER_OPS)[number];
+
+/** The filter operators that match text, which only text columns take. */
+export const TEXT_FILTER_OPS: readonly FilterOp[] = ["contains", "not_contains", "starts_with", "ends_with"];
 
 const comparisons = ["gt", "ge", "lt", "le", "eq", "ne"] as const;
 

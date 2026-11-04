@@ -704,24 +704,29 @@ impl View {
         self.load_version
     }
 
+    /// Whether `row` of `source` passes every filter. The table's rows are tested
+    /// by their text's dictionary code; removed rows, on their text.
     fn passes(&self, source: Source<'_>, row: usize) -> bool {
-        self.filters
-            .iter()
-            .all(|f| f.passes(source.column(f.column), row))
+        match source {
+            Source::Table(table) => self.filters.iter().all(|f| f.passes_table(table, row)),
+            Source::Removed(..) => self
+                .filters
+                .iter()
+                .all(|f| f.passes(|c| source.column(c), row)),
+        }
     }
 
     /// Recomputes the view from the table.
     pub fn rebuild(&mut self, table: &Table) {
         self.load_version = table.load_version();
+        for filter in &mut self.filters {
+            filter.prepare(table, true);
+        }
         let filters = std::mem::take(&mut self.filters);
-        let passes = |slot: usize| {
-            filters
-                .iter()
-                .all(|f| f.passes(table.column(f.column), slot))
-        };
+        let passes = |slot: usize| filters.iter().all(|f| f.passes_table(table, slot));
         match &mut self.kind {
             Kind::Flat(flat) => {
-                flat.order = table.live_slots().filter(|&s| passes(s)).collect();
+                flat.order = passing_slots(table, &passes);
                 sort_flat(table, flat);
             }
             Kind::Grouped(g) => {
@@ -738,6 +743,9 @@ impl View {
         if matches!(self.kind, Kind::Flat(_)) {
             self.rebuild(table);
             return;
+        }
+        for filter in &mut self.filters {
+            filter.prepare(table, false);
         }
         let removed = Source::Removed(table, &change.removed);
         let current = Source::Table(table);
@@ -1185,6 +1193,29 @@ const PARTITIONS: usize = 64;
 /// rows spread over the keys; with many, partitioning by key builds each cell
 /// once.
 const FEW_LEAVES: usize = 4_096;
+
+/// The live slots of `table` that pass, in slot order, tested in parallel where
+/// threads exist.
+fn passing_slots(table: &Table, passes: &(dyn Fn(usize) -> bool + Sync)) -> Vec<usize> {
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        let slots = table.num_slots();
+        if slots > BUILD_CHUNK {
+            let chunks: Vec<Range<usize>> = (0..slots)
+                .step_by(BUILD_CHUNK)
+                .map(|start| start..(start + BUILD_CHUNK).min(slots))
+                .collect();
+            return map_ordered(chunks, |range| {
+                table
+                    .live_slots_in(range)
+                    .filter(|&s| passes(s))
+                    .collect::<Vec<_>>()
+            })
+            .concat();
+        }
+    }
+    table.live_slots().filter(|&s| passes(s)).collect()
+}
 
 /// Maps items to results in parallel where threads exist, keeping their order.
 #[cfg(not(target_arch = "wasm32"))]

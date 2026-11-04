@@ -685,8 +685,13 @@ pub enum FilterOpName {
     IsNotNull,
     /// Text containing `value`, ignoring case.
     Contains,
+    /// Text not containing `value`, ignoring case. Blanks match, as in a
+    /// spreadsheet.
+    NotContains,
     /// Text starting with `value`, ignoring case.
     StartsWith,
+    /// Text ending with `value`, ignoring case.
+    EndsWith,
 }
 
 /// A filter in a layout.
@@ -1109,7 +1114,9 @@ impl Layout {
                     FilterOpName::IsNull => FilterOp::IsNull,
                     FilterOpName::IsNotNull => FilterOp::IsNotNull,
                     FilterOpName::Contains => FilterOp::Contains(text()?),
+                    FilterOpName::NotContains => FilterOp::NotContains(text()?),
                     FilterOpName::StartsWith => FilterOp::StartsWith(text()?),
+                    FilterOpName::EndsWith => FilterOp::EndsWith(text()?),
                 };
                 Ok(Filter::new(&f.column, op))
             })
@@ -1318,8 +1325,18 @@ impl Layout {
                         Some(Value::String(t.clone())),
                         Vec::new(),
                     ),
+                    FilterOp::NotContains(t) => (
+                        FilterOpName::NotContains,
+                        Some(Value::String(t.clone())),
+                        Vec::new(),
+                    ),
                     FilterOp::StartsWith(t) => (
                         FilterOpName::StartsWith,
+                        Some(Value::String(t.clone())),
+                        Vec::new(),
+                    ),
+                    FilterOp::EndsWith(t) => (
+                        FilterOpName::EndsWith,
                         Some(Value::String(t.clone())),
                         Vec::new(),
                     ),

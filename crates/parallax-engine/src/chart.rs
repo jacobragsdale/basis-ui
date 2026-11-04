@@ -760,17 +760,16 @@ impl ChartView {
     /// Recomputes the chart's rows from the table.
     pub fn rebuild(&mut self, table: &Table) {
         self.load_version = table.load_version();
+        for filter in &mut self.filters {
+            filter.prepare(table, true);
+        }
         let x = table.column(self.x);
         // Each row's position, its own x value, insertion number and slot.
         type Placed = (f64, i128, u64, usize);
         let mut by_key: rustc_hash::FxHashMap<Option<Key>, Vec<Placed>> =
             rustc_hash::FxHashMap::default();
         for slot in table.live_slots() {
-            if !self
-                .filters
-                .iter()
-                .all(|f| f.passes(table.column(f.column), slot))
-            {
+            if !self.filters.iter().all(|f| f.passes_table(table, slot)) {
                 continue;
             }
             let x_key = x.key(slot);

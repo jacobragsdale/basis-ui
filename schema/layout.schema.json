@@ -234,8 +234,18 @@
           "type": "string"
         },
         {
+          "const": "not_contains",
+          "description": "Text not containing `value`, ignoring case. Blanks match, as in a\nspreadsheet.",
+          "type": "string"
+        },
+        {
           "const": "starts_with",
           "description": "Text starting with `value`, ignoring case.",
+          "type": "string"
+        },
+        {
+          "const": "ends_with",
+          "description": "Text ending with `value`, ignoring case.",
           "type": "string"
         }
       ]

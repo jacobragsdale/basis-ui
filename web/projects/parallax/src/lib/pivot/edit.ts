@@ -161,7 +161,9 @@ export function operandOf(op: LayoutFilter["op"]): "one" | "many" | "none" {
     case "gt":
     case "ge":
     case "contains":
+    case "not_contains":
     case "starts_with":
+    case "ends_with":
       return "one";
   }
 }

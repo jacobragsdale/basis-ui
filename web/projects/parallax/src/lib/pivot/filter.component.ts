@@ -2,7 +2,7 @@
 
 import { ChangeDetectionStrategy, Component, computed, input, linkedSignal, output } from "@angular/core";
 
-import { FILTER_OPS } from "../layout";
+import { FILTER_OPS, TEXT_FILTER_OPS } from "../layout";
 import type { LayoutFilter, LayoutScalar } from "../layout";
 import { filterValue, operandOf } from "./edit";
 import { choices, fieldChoices, operandText } from "./labels";
@@ -45,7 +45,7 @@ export class PivotFilterComponent {
 
   private readonly kind = computed(() => this.fields().find((f) => f.name === this.filter().column)?.kind ?? "text");
   /** Text matching applies to text columns only. */
-  protected readonly ops = computed(() => choices(this.kind() === "text" ? FILTER_OPS : FILTER_OPS.filter((op) => op !== "contains" && op !== "starts_with")));
+  protected readonly ops = computed(() => choices(this.kind() === "text" ? FILTER_OPS : FILTER_OPS.filter((op) => !TEXT_FILTER_OPS.includes(op))));
   protected readonly picking = linkedSignal(() => this.startPicking());
   protected readonly columns = computed(() => fieldChoices(this.fields()));
   protected readonly operand = computed(() => operandOf(this.filter().op));

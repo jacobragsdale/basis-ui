@@ -220,3 +220,74 @@ fn an_in_list_can_match_blanks() {
         .is_err()
     );
 }
+
+#[test]
+fn text_conditions_treat_blanks_as_a_spreadsheet_does() {
+    use parallax_engine::{Filter, FilterOp};
+    let t = table(vec![
+        (
+            "desk",
+            Arc::new(StringArray::from(vec![
+                Some("Rates"),
+                None,
+                Some("FX Options"),
+                Some("Credit"),
+            ])) as ArrayRef,
+        ),
+        (
+            "trader",
+            Arc::new(StringArray::from(vec![
+                Some("Ana"),
+                Some("Rafael"),
+                None,
+                Some("Mei"),
+            ])) as ArrayRef,
+        ),
+    ]);
+    let count = |filter: Filter| {
+        let mut view = View::new(
+            &t,
+            ViewConfig {
+                filters: vec![filter],
+                ..ViewConfig::default()
+            },
+        )
+        .unwrap();
+        view.num_rows(&t)
+    };
+    // "Does not contain" keeps the blank desk; "contains" does not.
+    assert_eq!(
+        count(Filter::new("desk", FilterOp::NotContains("rat".into()))),
+        3
+    );
+    assert_eq!(
+        count(Filter::new("desk", FilterOp::Contains("RAT".into()))),
+        1
+    );
+    assert_eq!(
+        count(Filter::new("desk", FilterOp::EndsWith("IONS".into()))),
+        1
+    );
+    // A search passes when any of its columns matches: "ra" is in Rates, and in
+    // Rafael, whose desk is blank.
+    assert_eq!(
+        count(Filter::new("desk", FilterOp::Contains("ra".into())).or_in(&["trader"])),
+        2
+    );
+    // Text conditions need text columns, in every column searched.
+    let numbers = table(vec![
+        (
+            "desk",
+            Arc::new(StringArray::from(vec![Some("Rates")])) as ArrayRef,
+        ),
+        ("qty", Arc::new(Int64Array::from(vec![Some(1)])) as ArrayRef),
+    ]);
+    let config = ViewConfig {
+        filters: vec![Filter::new("desk", FilterOp::Contains("r".into())).or_in(&["qty"])],
+        ..ViewConfig::default()
+    };
+    assert!(matches!(
+        View::new(&numbers, config),
+        Err(ConfigError::Filter { column, .. }) if column == "qty"
+    ));
+}
