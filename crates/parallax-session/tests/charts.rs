@@ -93,6 +93,7 @@ fn update(session: &mut Session, request_id: u64, layout: &str) -> Vec<Body> {
             view_id: 1,
             layout_json: layout.into(),
             config_version: request_id,
+            viewport: None,
         }),
     )
 }
@@ -725,6 +726,7 @@ mod drawings {
                 view_id: 1,
                 layout_json: layout(moved),
                 config_version: 3,
+                viewport: None,
             }),
         ));
         assert_eq!(frame.anchors.len(), 2);

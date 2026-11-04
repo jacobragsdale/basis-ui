@@ -233,16 +233,26 @@ function flagReader(vector: Vector | null, rowCount: number): (row: number) => C
   return (row) => flags[row] ?? CellFlag.Ok;
 }
 
+/**
+ * Reads a column of text. A frame with a row missing its text is refused here, before any grid draws it, but each
+ * row is decoded only when it is first read: a small view is fetched whole, and a grid draws only the rows in view.
+ */
 function textReader(name: string, vector: Vector, rowCount: number): (row: number) => string {
   const chunk = only(vector);
-  const texts = Array.from({ length: rowCount }, (_, row) => {
-    const text = chunk.get(row);
-    if (typeof text !== "string") {
-      throw new FrameError(`${name}: display text is missing`);
+  if (vector.nullCount > 0) {
+    throw new FrameError(`${name}: display text is missing`);
+  }
+  const texts = new Map<number, string>();
+  return (row) => {
+    const known = texts.get(row);
+    if (known !== undefined) {
+      return known;
     }
-    return text;
-  });
-  return (row) => texts[row] ?? "";
+    const text = row >= 0 && row < rowCount ? chunk.get(row) : null;
+    const value = typeof text === "string" ? text : "";
+    texts.set(row, value);
+    return value;
+  };
 }
 
 function rowKind(value: unknown): "total" | "group" | "leaf" | "other" {

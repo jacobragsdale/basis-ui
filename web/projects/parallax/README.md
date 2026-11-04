@@ -72,6 +72,17 @@ bar shows **on server** with the reason. Without `worker`, every view runs on
 the server. The worker starts, and the engine downloads, only when a page
 first opens a browser dataset.
 
+To show a browser dataset's first rows sooner, start the worker when the
+application starts, along with the connection to the server:
+
+```ts
+provideParallax({ url: "/ws", worker: "/parallax/worker.js", prewarm: true });
+```
+
+The engine then starts without waiting for the server's welcome. In exchange,
+every page downloads the engine, about 1 MB compressed, and runs its worker,
+even a page that opens no browser dataset.
+
 ## Export a view
 
 The status bar under every grid has **Export to Excel** and **CSV**. The grid

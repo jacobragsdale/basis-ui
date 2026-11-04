@@ -447,6 +447,21 @@ it, tagged by view ID.
 - A client can fetch a window once without moving the view's viewport, which
   is how a copy larger than the screen gets its rows. One fetch is limited to
   1,000,000 cells.
+- A grid's layout change carries the window to answer it with, so the reply
+  holds the rows to draw and the grid never asks twice. If the rows now end at
+  or above the window's first row, as after a search, the window starts again
+  at row 0 and the grid scrolls to the top.
+- A grid has at most one layout change in flight. A newer change replaces any
+  change still waiting, so a small table answers every keystroke and a large
+  one never queues a backlog. Viewports and expansions asked for while a change
+  waits are sent after it, so that they apply to its layout. The engine answers
+  every change that carries a window, if only to refuse it, so a change in
+  flight is never left waiting for an answer that won't come.
+- A view of at most 20,000 cells, such as a few hundred rows, is fetched whole,
+  so scrolling it needs no request. After a search leaves it small, the grid
+  asks for rows up to that many cells, so clearing the search needs no request
+  either. A larger view is fetched for what is in view, plus 40 rows and two
+  columns on every side.
 - A chart asks for a chart window instead of a viewport: an x range at a plot
   size in pixels, at most 16,384 each way. The answer is the reduction for that
   window, with the x axis's labelled ticks and every value's text, and a
@@ -473,6 +488,13 @@ proxies often block.
 axum router and an engine handle. A small reference binary wraps it for
 deployment as a Linux container on Kubernetes (AKS), close to the Citrix farm
 on the network.
+
+The router is served with Nagle's algorithm off. With it on, a frame written
+just after another reply waited for the browser to acknowledge that reply,
+which its operating system may delay: by 40 ms on Linux, and by up to 200 ms
+on Windows, which Citrix desktops run. On the demo's Small tables page, the blotter's
+first frame waited 44 ms behind its own ViewOpened. A host that serves the
+router itself must turn it off too.
 
 The library contains no authentication, entitlement or audit code. Its one
 extension point is a per-connection value: the host's middleware sets it,
@@ -640,7 +662,12 @@ standalone components.
 - The npm package ships the WebAssembly engine and its worker script in its
   `wasm` folder, which the application serves as static files. The worker
   starts only when a page first opens a dataset marked for the browser, so pages
-  that don't use one never download the engine.
+  that don't use one never download the engine. `prewarm: true` starts it when
+  the application starts instead, beside the connection to the server. A
+  browser dataset's first rows otherwise wait for the server's welcome, then the
+  worker, then the engine: on the build host, with the CPU throttled four times
+  and an empty cache, they came 372 ms after the page began loading with
+  prewarming and 510 ms without. The demo prewarms.
 
 A layout is a JSON document that describes a whole view: dataset and
 parameters, grouping, pivots, filters, sorts, formats, column widths, chart

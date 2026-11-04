@@ -208,6 +208,23 @@ test.describe("px-pivot", () => {
     expect(await layout(page)).toMatchObject({ filters: [{ op: "in", values: [expect.any(String)] }] });
   });
 
+  test("a filter that leaves fewer rows than were scrolled past shows them from the top", async ({ page }) => {
+    await open(page, "preset=pivot");
+    const before = await rowCount(page);
+    const scroll = page.locator(".px-scroll").first();
+    await scroll.evaluate((element) => {
+      element.scrollTo({ top: element.scrollHeight });
+    });
+    await expect.poll(() => scroll.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+    await page.getByRole("button", { name: "Add filter" }).click();
+    const first = page.locator(".px-popover input[type=checkbox]").first();
+    await expect(first).toBeVisible({ timeout: 30_000 });
+    await first.check();
+    await expect.poll(() => rowCount(page)).toBeLessThan(before / 2);
+    await expect.poll(() => scroll.evaluate((element) => element.scrollTop)).toBe(0);
+    await expect(page.locator(".px-error")).toHaveCount(0);
+  });
+
   test("double-clicking a value opens the rows behind its group", async ({ page }) => {
     await open(page, "preset=pivot");
     // Row 1 is the first fund; its first value sits just right of the group column.

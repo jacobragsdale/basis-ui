@@ -10,6 +10,11 @@
  * - At most one viewport request per view is in flight, matched to its reply by
  *   request id. Scrolling faster than frames arrive replaces the pending request
  *   instead of queueing them.
+ * - A grid's layout update carries the window to answer it with, which the engine
+ *   always answers. At most one such update per view is in flight, and only the
+ *   newest waits, so typing faster than the engine answers never queues a backlog.
+ *   Viewports, chart windows and expansions asked for while an update waits are
+ *   sent after it, so that they apply to its layout.
  *
  * A one-off window, such as the cells a user copies, is fetched without moving the
  * viewport; its reply is matched by request id and never drawn.
@@ -87,20 +92,40 @@ function sameViewport(a: Viewport | null, b: Viewport): boolean {
   return a !== null && a.firstRow === b.firstRow && a.rowCount === b.rowCount && a.firstColumn === b.firstColumn && a.columnCount === b.columnCount;
 }
 
+function gridWindow(viewport: Viewport): { readonly firstRow: bigint; readonly rowCount: bigint; readonly firstColumn: number; readonly columnCount: number } {
+  return { firstRow: BigInt(viewport.firstRow), rowCount: BigInt(viewport.rowCount), firstColumn: viewport.firstColumn, columnCount: viewport.columnCount };
+}
+
+/** A layout update not yet sent: the layout, the window to answer it with when it goes, and when it was asked for. */
+interface PendingUpdate {
+  readonly layoutJson: string;
+  readonly window: (() => Viewport | null) | null;
+  readonly askedAtMs: number;
+}
+
 /** One open view. */
 export class ViewHandle {
   private configVersion = 0n;
   private lastLoadVersion = 0n;
-  /** The viewport request awaiting its frame, and when the grid asked for it. */
-  private inFlight: { readonly viewport: Viewport; readonly requestId: bigint; readonly askedAtMs: number } | null = null;
+  /**
+   * The window awaiting its frame, and when the grid asked for it: a viewport request, or the window an update
+   * carried, which is not timed as a request because the update is.
+   */
+  private inFlight: { readonly viewport: Viewport; readonly requestId: bigint; readonly askedAtMs: number | null } | null = null;
   /** A viewport asked for while another was in flight, and when. */
   private pending: { readonly viewport: Viewport; readonly askedAtMs: number } | null = null;
   private closed = false;
   /** The chart window awaiting its frame, and one asked for meanwhile, as with viewports. */
   private chartInFlight: { readonly window: ChartWindow; readonly requestId: bigint; readonly askedAtMs: number } | null = null;
   private chartPending: { readonly window: ChartWindow; readonly askedAtMs: number } | null = null;
-  /** The latest layout change still waiting for its first frame, and when it was sent. */
+  /** The latest layout change still waiting for its first frame, and when it was asked for. */
   private change: { readonly configVersion: bigint; readonly sentAtMs: number } | null = null;
+  /** The update with a window that the engine has not answered yet. */
+  private updateInFlight: { readonly configVersion: bigint; readonly requestId: bigint } | null = null;
+  /** The newest update asked for while another was in flight. */
+  private updatePending: PendingUpdate | null = null;
+  /** Expansions asked for while an update waits, sent after it. */
+  private heldExpansions: readonly { readonly pathJson: string; readonly expanded: boolean }[] = [];
   private readonly fetches = new Map<bigint, Pending<FrameData>>();
   private readonly lists = new Map<bigint, Pending<DistinctValues>>();
   private readonly measures = new Map<bigint, Pending<Measurement | null>>();
@@ -128,7 +153,7 @@ export class ViewHandle {
     }
     // The clock starts now, so time spent waiting behind the request in flight counts.
     const askedAtMs = performance.now();
-    if (this.inFlight !== null) {
+    if (this.inFlight !== null || this.updatePending !== null) {
       this.pending = { viewport, askedAtMs };
       return;
     }
@@ -149,7 +174,7 @@ export class ViewHandle {
       return;
     }
     const askedAtMs = performance.now();
-    if (this.chartInFlight !== null) {
+    if (this.chartInFlight !== null || this.updatePending !== null) {
       this.chartPending = { window, askedAtMs };
       return;
     }
@@ -170,18 +195,25 @@ export class ViewHandle {
     this.chartInFlight = { window, requestId, askedAtMs };
   }
 
+  /** Releases the chart window in flight if `requestId` answers it, and sends any pending one unless an update waits. */
+  private settleChart(requestId: bigint): number | undefined {
+    if (this.chartInFlight?.requestId !== requestId) {
+      return undefined;
+    }
+    const askedAtMs = this.chartInFlight.askedAtMs;
+    this.chartInFlight = null;
+    const next = this.chartPending;
+    if (next !== null && this.updatePending === null) {
+      this.chartPending = null;
+      this.sendChartWindow(next.window, next.askedAtMs);
+    }
+    return askedAtMs;
+  }
+
   /** @internal Called by the connection. */
   public receiveChartFrame(frame: ChartFrameData, requestId: bigint): void {
-    let askedAtMs: number | undefined;
-    if (this.chartInFlight?.requestId === requestId) {
-      askedAtMs = this.chartInFlight.askedAtMs;
-      this.chartInFlight = null;
-      const next = this.chartPending;
-      this.chartPending = null;
-      if (next !== null) {
-        this.sendChartWindow(next.window, next.askedAtMs);
-      }
-    }
+    const askedAtMs = this.settleChart(requestId);
+    this.answered(frame.configVersion);
     if (frame.configVersion < this.configVersion || frame.loadVersion < this.lastLoadVersion) {
       return;
     }
@@ -238,21 +270,83 @@ export class ViewHandle {
     this.measures.clear();
   }
 
-  /** Replaces the view's layout. Frames from the old layout are dropped from now on. */
-  public update(layoutJson: string): void {
+  /**
+   * Replaces the view's layout; frames of older layouts are dropped once it is sent. `window` gives a grid's window
+   * to answer the update with, read when the update is sent so that it is the newest. The engine always answers an
+   * update with a window, so one waits in flight until it does; an update asked for meanwhile waits, replacing any
+   * already waiting, so only the newest layout goes next. An update without a window goes at once.
+   */
+  public update(layoutJson: string, window: (() => Viewport | null) | null = null): void {
     if (this.closed) {
       return;
     }
+    const update: PendingUpdate = { layoutJson, window, askedAtMs: performance.now() };
+    if (this.updateInFlight !== null) {
+      this.updatePending = update;
+      return;
+    }
+    this.sendUpdate(update);
+  }
+
+  private sendUpdate(update: PendingUpdate): void {
     this.configVersion += 1n;
-    this.change = { configVersion: this.configVersion, sentAtMs: performance.now() };
-    this.connection.send({ case: "updateView", value: { viewId: this.id, layoutJson, configVersion: this.configVersion } });
+    // Timed from when it was asked for, so that time spent waiting behind the update in flight counts.
+    this.change = { configVersion: this.configVersion, sentAtMs: update.askedAtMs };
+    const viewport = update.window?.() ?? null;
+    const requestId = this.connection.send({
+      case: "updateView",
+      value: { viewId: this.id, layoutJson: update.layoutJson, configVersion: this.configVersion, ...(viewport === null ? {} : { viewport: gridWindow(viewport) }) }
+    });
+    if (viewport !== null) {
+      this.updateInFlight = { configVersion: this.configVersion, requestId };
+      // The update's answer holds the newest window, so a viewport still waiting is no longer wanted.
+      this.pending = null;
+      this.inFlight = { viewport, requestId, askedAtMs: null };
+    }
+    // What waited behind the update follows it, in the order it was asked for.
+    for (const held of this.heldExpansions) {
+      this.connection.send({ case: "setExpanded", value: { viewId: this.id, ...held } });
+    }
+    this.heldExpansions = [];
+    const viewportNext = this.pending;
+    if (viewportNext !== null && this.inFlight === null) {
+      this.pending = null;
+      this.sendViewport(viewportNext.viewport, viewportNext.askedAtMs);
+    }
+    const chartNext = this.chartPending;
+    if (chartNext !== null && this.chartInFlight === null) {
+      this.chartPending = null;
+      this.sendChartWindow(chartNext.window, chartNext.askedAtMs);
+    }
+  }
+
+  /** Releases the update in flight once a frame of its layout or a newer one arrives, and sends the one waiting. */
+  private answered(configVersion: bigint): void {
+    if (this.updateInFlight !== null && configVersion >= this.updateInFlight.configVersion) {
+      this.releaseUpdate();
+    }
+  }
+
+  private releaseUpdate(): void {
+    this.updateInFlight = null;
+    const next = this.updatePending;
+    this.updatePending = null;
+    if (next !== null) {
+      this.sendUpdate(next);
+    }
   }
 
   /** Expands or collapses the group at `path`. */
   public setExpanded(path: readonly (string | number | boolean | null)[], expanded: boolean): void {
-    if (!this.closed) {
-      this.connection.send({ case: "setExpanded", value: { viewId: this.id, pathJson: JSON.stringify(path), expanded } });
+    if (this.closed) {
+      return;
     }
+    const held = { pathJson: JSON.stringify(path), expanded };
+    if (this.updatePending !== null) {
+      this.heldExpansions = [...this.heldExpansions, held];
+      return;
+    }
+    this.connection.send({ case: "setExpanded", value: { viewId: this.id, ...held } });
   }
 
   /** `true` once the view is closed. */
@@ -264,6 +358,8 @@ export class ViewHandle {
   public close(): void {
     if (!this.closed) {
       this.closed = true;
+      this.updatePending = null;
+      this.heldExpansions = [];
       this.failPending("the view is closed");
       this.connection.send({ case: "closeView", value: { viewId: this.id } });
       this.connection.forget(this.id);
@@ -271,24 +367,26 @@ export class ViewHandle {
   }
 
   private sendViewport(viewport: Viewport, askedAtMs: number): void {
-    const requestId = this.connection.send({
-      case: "setViewport",
-      value: { viewId: this.id, firstRow: BigInt(viewport.firstRow), rowCount: BigInt(viewport.rowCount), firstColumn: viewport.firstColumn, columnCount: viewport.columnCount }
-    });
+    const requestId = this.connection.send({ case: "setViewport", value: { viewId: this.id, ...gridWindow(viewport) } });
     this.inFlight = { viewport, requestId, askedAtMs };
   }
 
-  /** Releases the in-flight viewport if `requestId` answers it, and sends any pending one. */
-  private settle(requestId: bigint): void {
+  /**
+   * Releases the window in flight if `requestId` answers it, and sends any pending one unless an update waits.
+   * Returns when the grid asked for the window, if it was a viewport request.
+   */
+  private settle(requestId: bigint): number | undefined {
     if (this.inFlight?.requestId !== requestId) {
-      return;
+      return undefined;
     }
+    const askedAtMs = this.inFlight.askedAtMs ?? undefined;
     this.inFlight = null;
     const next = this.pending;
-    this.pending = null;
-    if (next !== null) {
+    if (next !== null && this.updatePending === null) {
+      this.pending = null;
       this.sendViewport(next.viewport, next.askedAtMs);
     }
+    return askedAtMs;
   }
 
   /** @internal Called by the connection. */
@@ -296,11 +394,12 @@ export class ViewHandle {
     const fetch = this.fetches.get(requestId);
     if (fetch !== undefined) {
       this.fetches.delete(requestId);
+      this.answered(frame.configVersion);
       fetch.resolve(frame);
       return;
     }
-    const askedAtMs = this.inFlight?.requestId === requestId ? this.inFlight.askedAtMs : undefined;
-    this.settle(requestId);
+    const askedAtMs = this.settle(requestId);
+    this.answered(frame.configVersion);
     if (frame.configVersion < this.configVersion || frame.loadVersion < this.lastLoadVersion) {
       return;
     }
@@ -323,6 +422,9 @@ export class ViewHandle {
     this.failPending(reason);
     this.inFlight = null;
     this.pending = null;
+    this.updateInFlight = null;
+    this.updatePending = null;
+    this.heldExpansions = [];
     this.closed = true;
     this.listener.error?.(reason);
   }
@@ -373,13 +475,10 @@ export class ViewHandle {
       return;
     }
     this.settle(requestId);
-    if (this.chartInFlight?.requestId === requestId) {
-      this.chartInFlight = null;
-      const next = this.chartPending;
-      this.chartPending = null;
-      if (next !== null) {
-        this.sendChartWindow(next.window, next.askedAtMs);
-      }
+    this.settleChart(requestId);
+    // An update the engine refused is answered all the same: the next one may go.
+    if (this.updateInFlight?.requestId === requestId) {
+      this.releaseUpdate();
     }
     this.listener.error?.(message);
   }

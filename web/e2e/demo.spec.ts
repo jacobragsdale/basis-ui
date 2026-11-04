@@ -118,3 +118,44 @@ test("the small tables open in their places, and the overlay times each one from
   expect(report).toMatch(/Input to screen \(book\): [\d.]+ ms median/);
   expect(report).toMatch(/Input to screen \(blotter\): [\d.]+ ms median/);
 });
+
+test("a table of a few hundred rows is held whole, so scrolling it and copying from it ask for nothing", async ({ page }) => {
+  let sent = 0;
+  page.on("websocket", (socket) => {
+    socket.on("framesent", () => {
+      sent += 1;
+    });
+  });
+  await page.goto("/?preset=small");
+  // The blotter runs on the server, so its requests cross the socket.
+  const blotter = page.locator('section[data-table="blotter"]');
+  await expect(blotter.locator('[role="grid"]')).toHaveAttribute("aria-rowcount", "500", { timeout: 120_000 });
+  // The first rows are what is in view; the whole table follows them.
+  await expect
+    .poll(async () => {
+      const before = sent;
+      await page.waitForTimeout(300);
+      return sent - before;
+    })
+    .toBe(0);
+  const quiet = sent;
+  const scroll = blotter.locator(".px-scroll");
+  await scroll.evaluate((element) => {
+    element.scrollTo({ top: element.scrollHeight });
+  });
+  await page.waitForTimeout(300);
+  const canvas = blotter.locator("canvas.px-canvas");
+  const box = await canvas.boundingBox();
+  if (box === null) {
+    throw new Error("the blotter's canvas is not on the page");
+  }
+  await canvas.click({ position: { x: 40, y: box.height - 12 } });
+  await page.keyboard.press("ControlOrMeta+c");
+  await expect(blotter.locator(".px-status-message")).toContainText("Copied");
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toMatch(/\S/);
+  await scroll.evaluate((element) => {
+    element.scrollTo({ top: element.scrollHeight / 2 });
+  });
+  await page.waitForTimeout(300);
+  expect(sent).toBe(quiet);
+});

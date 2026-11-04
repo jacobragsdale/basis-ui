@@ -166,9 +166,11 @@ its time now goes to building one tree node per group, which needs a more
 compact tree to come down further. The build host has too little free memory to
 load 20M rows, so the budget is still unmeasured at that size.
 
-The demo's initial bundle is 558 kB, 134 kB compressed (2026-11-02). Zod's
-tree-shakable build cut it from 981 kB. Of the rest, Apache Arrow's
-JavaScript is 204 kB and Angular 126 kB. The build warns above 600 kB.
+The demo's initial bundle is 657 kB, 186 kB with gzip (2026-11-03), so the
+build, which warns above 600 kB, now warns. Zod's tree-shakable build had cut
+it from 981 kB to 558 kB on 2026-11-02, when Apache Arrow's JavaScript was
+204 kB of it and Angular 126 kB. The charts and technical-analysis tools of
+milestones 2 and 3 have landed since.
 
 ### Small tables
 
@@ -182,10 +184,12 @@ a Citrix desktop:
 | A sort, filter or search of such a table, from the input to the screen | ≤ 50 ms |
 
 The demo's performance overlay shows both figures for every grid on the page.
-The baseline was taken on the build host on 2026-11-03, in headless Chromium
-without a GPU, with the server on the same machine. First rows are the median
-of five loads with an empty cache and five reloads with a full one. Sorts are
-20 clicks on a header. Each table had the page to itself:
+The figures below were taken on the build host on 2026-11-03, in headless
+Chromium without a GPU, with the server on the same machine. First rows are the
+median of five loads with an empty cache and five reloads with a full one.
+Sorts are 20 clicks on a header. Each table had the page to itself.
+
+The baseline, before any change for small tables:
 
 | Table | Held | First rows, empty cache | First rows, cached | Sort, median and p95 |
 |---|---|---|---|---|
@@ -195,16 +199,57 @@ of five loads with an empty cache and five reloads with a full one. Sorts are
 
 Unthrottled, the same figures were 151 ms, 49 ms and 19 ms for the book;
 29 ms, 12 ms and 20 ms for the blotter; and 35 ms, 24 ms and 27 ms for the
-trades.
+trades. It showed three things:
 
-- Sorts already meet the budget at every size and in both places. They take
+- Sorts already met the budget at every size and in both places. They take
   about one frame unthrottled and two throttled, because the answer is drawn at
   the next animation frame.
-- A table held in the browser opens slower than the same size on the server,
-  because the worker, the WebAssembly engine and the copy all start first. With
-  an empty cache it misses the budget.
-- On the Small tables page, the book's start also slows the blotter beside it:
+- A table held in the browser opened slower than the same size on the server,
+  because the worker, the WebAssembly engine and the copy all started first.
+  With an empty cache it missed the budget.
+- On the Small tables page, the book's start also slowed the blotter beside it:
   its cached first rows took 56 ms instead of 12 ms, unthrottled.
+
+After step 2, with fewer round trips:
+
+| Table | Held | First rows, empty cache | First rows, cached | Sort, median and p95 |
+|---|---|---|---|---|
+| `book`, 300 positions | in the browser | 135 ms | 101 ms | 31 ms, 34 ms |
+| `blotter`, 500 trades | on the server | 122 ms | 83 ms | 39 ms, 45 ms |
+| `trades`, 1,000,000 trades | on the server | 138 ms | 92 ms | 33 ms, 39 ms |
+
+Unthrottled, the figures were 59 ms, 49 ms and 20 ms for the book; 28 ms,
+14 ms and 21 ms for the blotter; and 36 ms, 24 ms and 27 ms for the trades.
+Every figure for a table on a page of its own now meets its budget. Side by
+side on the Small tables page, with an empty cache, each table's first rows
+took 153 ms and 155 ms.
+
+- **Prewarming.** With the CPU throttled and an empty cache, the book's first
+  rows had waited 57 ms for the socket's welcome before the worker even
+  started. Then they waited 67 ms for the worker to start and 54 ms for the
+  engine to download. The demo now starts the worker when the application
+  starts (`prewarm: true`), so the engine loads while the socket connects. The
+  book's first rows came 372 ms after the page began loading instead of 510 ms.
+- **Cache headers on the engine** weren't added. Compiling it took at most
+  15 ms, and with a full cache it loaded without any transfer.
+- **The book and the blotter** were slowed by Nagle's algorithm, not by each
+  other. The blotter's first frame waited 44 ms for the browser to acknowledge
+  the ViewOpened sent just before it. The server now turns Nagle's algorithm
+  off on every connection, and the blotter's cached first rows take 14 ms
+  beside the book, as alone. Windows, which Citrix desktops run, can delay an
+  acknowledgement by up to 200 ms.
+- **Fetching small views whole** lets them scroll, and lets a search that left
+  them small be cleared, with no request. It makes each change's answer
+  larger: the blotter's is about 360 kB, where its rows in view were about
+  27 kB. Decoding every text cell of such a frame made the blotter's sorts
+  take 49 ms, p95 55 ms. The grid now decodes text only when it draws it,
+  which saved about 14 ms a sort. Reading the larger frame still costs the
+  blotter about 6 ms a sort, throttled, against the baseline.
+- **Every change is answered with the rows to draw.** A change carries the
+  grid's window, so no grid asks twice, and a filter or search that leaves
+  fewer rows than were scrolled past is answered from the top. Only one change
+  is in flight at a time, and only the newest waits, so the value picker
+  searches on every keystroke instead of after a 200 ms pause.
 
 A budget for live updates, 10,000 row updates per second with a p99 of
 ≤ 250 ms from update to screen, waits until a streaming source exists. See

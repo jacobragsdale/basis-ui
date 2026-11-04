@@ -150,7 +150,18 @@ async fn main() -> anyhow::Result<()> {
                 HeaderValue::from_static("require-corp"),
             ));
     }
-    let listener = tokio::net::TcpListener::bind(config.listen).await?;
+    // Replies go out as soon as they are written. With Nagle's algorithm, a frame
+    // written just after another reply waited for the browser to acknowledge that
+    // reply, which its operating system may delay by 40 ms on Linux and up to
+    // 200 ms on Windows.
+    let listener = axum::serve::ListenerExt::tap_io(
+        tokio::net::TcpListener::bind(config.listen).await?,
+        |tcp| {
+            if let Err(e) = tcp.set_nodelay(true) {
+                tracing::warn!(error = %e, "could not turn off Nagle's algorithm for a connection");
+            }
+        },
+    );
     tracing::info!(address = %config.listen, "listening");
     axum::serve(listener, app)
         .with_graceful_shutdown(async {

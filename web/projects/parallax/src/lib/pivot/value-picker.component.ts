@@ -66,15 +66,17 @@ export class ValuePickerComponent {
   protected readonly truncated = signal(false);
   protected readonly note = signal("Loading…");
   protected readonly chosen = computed((): ReadonlySet<string> => new Set(this.values().map((v) => JSON.stringify(v))));
+  /** Counts the lists asked for, so that only the answer to the newest is shown. */
   private generation = 0;
-  private timer: ReturnType<typeof setTimeout> | null = null;
+  /** Whether a list is on its way. */
+  private loading = false;
+  /** The newest list asked for while another was on its way, asked for when that one arrives. */
+  private queued: { readonly column: string; readonly search: string } | null = null;
 
   constructor() {
     inject(DestroyRef).onDestroy(() => {
       this.generation += 1;
-      if (this.timer !== null) {
-        clearTimeout(this.timer);
-      }
+      this.queued = null;
     });
     // A new column starts a new list, unsearched.
     effect(() => {
@@ -90,12 +92,7 @@ export class ValuePickerComponent {
   protected onSearch(event: Event): void {
     const text = event.target instanceof HTMLInputElement ? event.target.value : "";
     this.search.set(text);
-    if (this.timer !== null) {
-      clearTimeout(this.timer);
-    }
-    this.timer = setTimeout(() => {
-      this.load(this.column(), text);
-    }, 200);
+    this.load(this.column(), text);
   }
 
   protected toggle(option: Option): void {
@@ -109,12 +106,34 @@ export class ValuePickerComponent {
     this.changed.emit([...next].flatMap((key) => (known.has(key) ? [known.get(key) ?? null] : [])));
   }
 
+  /**
+   * Asks for a column's values. One list is asked for at a time: while one is on its way, the newest search waits
+   * for it, so typing searches on every keystroke without a backlog on a large table.
+   */
   private load(column: string, search: string): void {
     this.generation += 1;
-    const mine = this.generation;
     this.note.set("Loading…");
+    if (this.loading) {
+      this.queued = { column, search };
+      return;
+    }
+    this.fetch(column, search);
+  }
+
+  private fetch(column: string, search: string): void {
+    const mine = this.generation;
+    this.loading = true;
+    const settle = (): void => {
+      this.loading = false;
+      const next = this.queued;
+      this.queued = null;
+      if (next !== null) {
+        this.fetch(next.column, next.search);
+      }
+    };
     this.source()(column, search, LIMIT).then(
       (result) => {
+        settle();
         if (mine !== this.generation) {
           return;
         }
@@ -128,6 +147,7 @@ export class ValuePickerComponent {
         this.note.set("No values match.");
       },
       (failure: unknown) => {
+        settle();
         if (mine === this.generation) {
           this.note.set(failure instanceof Error ? failure.message : String(failure));
         }

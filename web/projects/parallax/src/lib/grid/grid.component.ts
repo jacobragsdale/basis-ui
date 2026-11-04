@@ -30,6 +30,7 @@ import {
   model,
   output,
   signal,
+  untracked,
   viewChild
 } from "@angular/core";
 import type { ElementRef } from "@angular/core";
@@ -334,6 +335,8 @@ export class GridComponent {
   /** Rows fetched for a copy that could not reach the clipboard at once, kept for the next Ctrl+C. */
   private prepared: { readonly key: string; readonly text: string } | null = null;
   private tooltipTimer: ReturnType<typeof setTimeout> | null = null;
+  /** The row count of the last frame, to tell when rows shrink to end above the view. */
+  private shownRows = 0;
 
   private readonly document = inject(DOCUMENT);
   private readonly client = inject(ParallaxClient);
@@ -356,6 +359,23 @@ export class GridComponent {
     // Ask for what is in view whenever scrolling, resizing or a new column count changes it.
     effect(() => {
       this.source.show(this.visible());
+    });
+    // When the rows shrink to end at or above the first row in view, as after a search, show them from the top.
+    // The engine answers such a change from row 0, so the rows are already here.
+    effect(() => {
+      const rows = this.source.frame()?.totalRows ?? null;
+      untracked(() => {
+        const before = this.shownRows;
+        this.shownRows = rows ?? 0;
+        if (rows === null || rows >= before) {
+          return;
+        }
+        const first = rowGeometry(before + 1, this.rowHeight()).firstRow(this.scrollTop(), this.viewportPx());
+        if (rows <= first) {
+          this.scroll().nativeElement.scrollTop = 0;
+          this.scrollTop.set(0);
+        }
+      });
     });
     afterRenderEffect(() => {
       // Reading these tracks them; any change redraws.

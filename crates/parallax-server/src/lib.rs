@@ -16,6 +16,12 @@
 //! - `GET /copy/{dataset}` sends a copy of a table for the browser's engine,
 //!   compressed; see [`copy`].
 //! - `GET /health` answers `ok`.
+//!
+//! Serve the router with Nagle's algorithm off, as the reference binary does with
+//! `axum::serve::ListenerExt::tap_io` and `set_nodelay(true)`. Otherwise a frame
+//! written just after another reply can wait for the browser to acknowledge that
+//! reply, which its operating system may delay by 40 ms on Linux and up to 200 ms
+//! on Windows.
 
 pub mod copy;
 pub mod export;

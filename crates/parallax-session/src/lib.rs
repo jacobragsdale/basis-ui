@@ -28,8 +28,8 @@ use parallax_protocol::layout::{
 };
 use parallax_protocol::v1::{
     ClientMessage, ColumnCount, DatasetInfo, DistinctValues, DistinctValuesResult,
-    Error as ErrorMessage, Frame, ServerMessage, TableStatus, ViewOpened, Welcome, client_message,
-    server_message,
+    Error as ErrorMessage, Frame, GridWindow, ServerMessage, TableStatus, ViewOpened, Welcome,
+    client_message, server_message,
 };
 use prost::Message;
 
@@ -320,6 +320,28 @@ struct Viewport {
     column_count: u32,
 }
 
+impl From<GridWindow> for Viewport {
+    fn from(window: GridWindow) -> Self {
+        Self {
+            first_row: window.first_row,
+            row_count: window.row_count,
+            first_column: window.first_column,
+            column_count: window.column_count,
+        }
+    }
+}
+
+/// The window a frame answers.
+#[derive(Clone, Copy, Debug)]
+enum Asked {
+    /// The view's viewport. One that begins at or past the view's last row starts
+    /// again at row 0, so that a grid whose rows shrank below where it was scrolled
+    /// is answered with rows to draw, not an empty window.
+    Viewport,
+    /// One window of at most this many cells, which leaves the viewport alone.
+    Once(Viewport, u64),
+}
+
 /// Converts a client's start and count to an index range, saturating instead of
 /// overflowing and clamping to the platform's index size.
 fn index_range(start: u64, count: u64) -> Range<usize> {
@@ -343,6 +365,9 @@ struct OpenView {
     /// The load version a rebuild last failed at, so the error is reported once.
     broken_at: Option<u64>,
 }
+
+/// Why a chart refuses a viewport, or a window sent with an update.
+const CHART_HAS_NO_VIEWPORT: &str = "this view is a chart; ask for its chart window instead";
 
 /// The most cells one [`FetchWindow`](parallax_protocol::v1::FetchWindow) may ask for.
 pub const MAX_FETCH_CELLS: u64 = 1_000_000;
@@ -388,9 +413,7 @@ impl Computed {
     fn grid(&mut self) -> Result<&mut View, String> {
         match self {
             Self::Grid(view) => Ok(view),
-            Self::Chart(_) => {
-                Err("this view is a chart; ask for its chart window instead".to_owned())
-            }
+            Self::Chart(_) => Err(CHART_HAS_NO_VIEWPORT.to_owned()),
         }
     }
 }
@@ -631,13 +654,25 @@ impl Session {
                 open.layout = layout;
                 open.config_version = update.config_version;
                 open.broken_at = None;
-                // A chart has no viewport; a grid has no chart window.
-                if matches!(open.view, Computed::Chart(_)) {
-                    open.viewport = None;
-                }
+                // A grid's update may carry the window to answer with, which saves
+                // asking again. A chart has no viewport, and refuses a window as it
+                // refuses a viewport, so an update with one is always answered.
+                let refused = match (&open.view, update.viewport) {
+                    (Computed::Chart(_), window) => {
+                        open.viewport = None;
+                        window.map(|_| error(id, update.view_id, CHART_HAS_NO_VIEWPORT))
+                    }
+                    (Computed::Grid(_), window) => {
+                        if let Some(window) = window {
+                            open.viewport = Some(window.into());
+                        }
+                        None
+                    }
+                };
                 self.frame(id, update.view_id, false)
                     .into_iter()
                     .chain(self.chart_frame(id, update.view_id, false))
+                    .chain(refused)
                     .collect()
             }
             client_message::Body::SetViewport(v) => {
@@ -659,7 +694,7 @@ impl Session {
                     first_column: f.first_column,
                     column_count: f.column_count,
                 };
-                self.window_frame(id, f.view_id, viewport, false, Some(MAX_FETCH_CELLS))
+                self.window_frame(id, f.view_id, Asked::Once(viewport, MAX_FETCH_CELLS), false)
                     .into_iter()
                     .collect()
             }
@@ -800,8 +835,8 @@ impl Session {
 
     /// Builds the frame for a view's current viewport, if it has one.
     fn frame(&mut self, request_id: u64, view_id: u32, pushed: bool) -> Option<ServerMessage> {
-        let viewport = self.views.get(&view_id)?.viewport?;
-        self.window_frame(request_id, view_id, viewport, pushed, None)
+        self.views.get(&view_id)?.viewport?;
+        self.window_frame(request_id, view_id, Asked::Viewport, pushed)
     }
 
     /// Builds the chart frame for a chart's window, if it was asked for one. The
@@ -837,16 +872,14 @@ impl Session {
         Some(reply(request_id, server_message::Body::ChartFrame(frame)))
     }
 
-    /// Builds the frame for one window of a view, refusing windows of more than
-    /// `max_cells` cells. The view first catches up with its table, under the same
-    /// lock the window is read under.
+    /// Builds the frame for the window `asked` names. The view first catches up
+    /// with its table, under the same lock the window is read under.
     fn window_frame(
         &mut self,
         request_id: u64,
         view_id: u32,
-        viewport: Viewport,
+        asked: Asked,
         pushed: bool,
-        max_cells: Option<u64>,
     ) -> Option<ServerMessage> {
         let Some(open) = self.views.get_mut(&view_id) else {
             return Some(error(request_id, view_id, format!("no view {view_id}")));
@@ -863,12 +896,24 @@ impl Session {
             Ok(view) => view,
             Err(message) => return Some(error(request_id, view_id, message)),
         };
+        let viewport = match asked {
+            Asked::Viewport => {
+                let mut viewport = open.viewport?;
+                let total_rows = view.num_rows(&state.table) as u64;
+                if viewport.first_row > 0 && viewport.first_row >= total_rows {
+                    viewport.first_row = 0;
+                    open.viewport = Some(viewport);
+                }
+                viewport
+            }
+            Asked::Once(viewport, _) => viewport,
+        };
         let rows = index_range(viewport.first_row, viewport.row_count);
         let columns = index_range(
             u64::from(viewport.first_column),
             u64::from(viewport.column_count),
         );
-        if let Some(max) = max_cells {
+        if let Asked::Once(_, max) = asked {
             let total_rows = view.num_rows(&state.table);
             let total_columns = view.num_columns(&state.table);
             let height = rows.end.min(total_rows).saturating_sub(rows.start) as u64;

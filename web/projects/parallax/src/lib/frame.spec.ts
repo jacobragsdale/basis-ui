@@ -91,6 +91,15 @@ describe("decodeFrame", () => {
     expect(() => decode(missing, 2)).toThrow(FrameError);
   });
 
+  it("refuses display text with a row missing", () => {
+    const encoder = new TextEncoder();
+    const bytes = encoder.encode("0.10");
+    // The second row is null: its validity bit is clear.
+    const holed = makeData({ type: new Utf8(), length: 2, nullCount: 1, nullBitmap: new Uint8Array([0b01]), valueOffsets: new Int32Array([0, bytes.length, bytes.length]), data: bytes });
+    const missing = pivot.map((c) => (c.field.name === "sum(pnl)#text" ? column("sum(pnl)#text", new Utf8(), "text", holed, { "parallax.index": "1" }) : c));
+    expect(() => decode(missing, 2)).toThrow(/display text is missing/);
+  });
+
   it("refuses unknown roles and flags", () => {
     const unknownRole = [...pivot, column("extra", new Utf8(), "sparkle", text(["a", "b"]))];
     expect(() => decode(unknownRole, 2)).toThrow(/unknown role/);

@@ -87,8 +87,25 @@ message UpdateView {
   string layout_json = 2;
   // Increases with every update; frames carry it back.
   uint64 config_version = 3;
+  // For a grid, the window to answer with, which becomes the view's viewport, so
+  // that the reply holds the rows to draw under the new layout. Without it, the
+  // reply uses the viewport the view already has, if it has one. A chart refuses
+  // it with an error, as it refuses SetViewport, so an update with a window is
+  // always answered.
+  GridWindow viewport = 4;
 }
 
+// A window of a grid's rows and data columns.
+message GridWindow {
+  uint64 first_row = 1;
+  uint64 row_count = 2;
+  uint32 first_column = 3;
+  uint32 column_count = 4;
+}
+
+// Moves a grid's viewport. When the view's rows end at or before its first row,
+// as when a filter or a refresh leaves fewer rows, the viewport starts again at
+// row 0, and the frame says so in its first_row.
 message SetViewport {
   uint32 view_id = 1;
   uint64 first_row = 2;

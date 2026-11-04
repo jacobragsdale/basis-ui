@@ -23,6 +23,11 @@ import type { TableStatus } from "../proto/parallax_pb";
 /** Rows and columns fetched beyond the visible ones, so small scrolls need no request. */
 const ROW_MARGIN = 40;
 const COLUMN_MARGIN = 2;
+/**
+ * A view of at most this many cells is fetched whole, so that scrolling it needs no request. So is one of up to this
+ * many cells after a change, so that clearing a search that left it small needs no further request either.
+ */
+export const WHOLE_CELLS = 20_000;
 
 /** The kind of value a column holds. */
 export type FieldKind = "boolean" | "integer" | "float" | "decimal" | "text" | "date" | "timestamp";
@@ -86,6 +91,31 @@ function covers(outer: Viewport, inner: Viewport, totalRows: number, totalColumn
   return outer.firstRow <= inner.firstRow && outer.firstRow + outer.rowCount >= rowEnd && outer.firstColumn <= inner.firstColumn && outer.firstColumn + outer.columnCount >= columnEnd;
 }
 
+/** Whether the view `frame` comes from is small enough to hold whole. */
+function small(frame: FrameData): boolean {
+  return frame.totalRows * frame.totalColumns <= WHOLE_CELLS;
+}
+
+/**
+ * The window to ask for to show `wanted`. A view the latest frame, `shown`, says is small is asked for whole, with
+ * rows to spare up to {@link WHOLE_CELLS}, so that it can grow again; a larger one, for `wanted` and a margin.
+ */
+export function windowFor(wanted: Viewport, shown: FrameData | null): Viewport {
+  const wantedColumns = wanted.firstColumn + wanted.columnCount + COLUMN_MARGIN;
+  if (shown !== null && small(shown)) {
+    const columnCount = Math.max(shown.totalColumns, wantedColumns);
+    return { firstRow: 0, rowCount: Math.max(shown.totalRows, wanted.firstRow + wanted.rowCount + ROW_MARGIN, Math.floor(WHOLE_CELLS / columnCount)), firstColumn: 0, columnCount };
+  }
+  const firstRow = Math.max(0, wanted.firstRow - ROW_MARGIN);
+  const firstColumn = Math.max(0, wanted.firstColumn - COLUMN_MARGIN);
+  return { firstRow, rowCount: wanted.firstRow - firstRow + wanted.rowCount + ROW_MARGIN, firstColumn, columnCount: wantedColumns - firstColumn };
+}
+
+/** What must be held to show `wanted`: all of a small view, or just `wanted` of a larger one. */
+function needed(wanted: Viewport, shown: FrameData | null): Viewport {
+  return shown !== null && small(shown) ? { firstRow: 0, rowCount: shown.totalRows, firstColumn: 0, columnCount: shown.totalColumns } : wanted;
+}
+
 /** The rows and data columns a frame holds. */
 function held(frame: FrameData): Viewport {
   return { firstRow: frame.firstRow, rowCount: frame.rowCount, firstColumn: frame.firstColumn, columnCount: frame.columns.length };
@@ -144,22 +174,19 @@ export function gridSource(layout: Signal<Layout | null>): GridSource {
 
   const request = (view: ViewHandle, wanted: Viewport): void => {
     const shown = frame();
-    if (shown !== null && covers(held(shown), wanted, shown.totalRows, shown.totalColumns)) {
+    const need = needed(wanted, shown);
+    if (shown !== null && covers(held(shown), need, shown.totalRows, shown.totalColumns)) {
       return;
     }
     const asked = view.requested();
-    if (asked !== null && covers(asked, wanted, shown?.totalRows ?? Number.MAX_SAFE_INTEGER, shown?.totalColumns ?? Number.MAX_SAFE_INTEGER)) {
+    if (asked !== null && covers(asked, need, shown?.totalRows ?? Number.MAX_SAFE_INTEGER, shown?.totalColumns ?? Number.MAX_SAFE_INTEGER)) {
       return;
     }
-    const firstRow = Math.max(0, wanted.firstRow - ROW_MARGIN);
-    const firstColumn = Math.max(0, wanted.firstColumn - COLUMN_MARGIN);
-    view.setViewport({
-      firstRow,
-      rowCount: wanted.firstRow - firstRow + wanted.rowCount + ROW_MARGIN,
-      firstColumn,
-      columnCount: wanted.firstColumn - firstColumn + wanted.columnCount + COLUMN_MARGIN
-    });
+    view.setViewport(windowFor(wanted, shown));
   };
+
+  /** The window an update is answered with: what `request` would ask for now. */
+  const updateWindow = (): Viewport | null => (visible === null ? null : windowFor(visible, frame()));
 
   const open = (next: Layout): void => {
     current?.view.close();
@@ -185,6 +212,11 @@ export function gridSource(layout: Signal<Layout | null>): GridSource {
             frame: (f) => {
               error.set(null);
               frame.set(f);
+              // A frame can leave rows in view unheld, such as the first rows of a small view, which is then
+              // fetched whole.
+              if (current !== null && visible !== null) {
+                request(current.view, visible);
+              }
             },
             opened: (opened) => {
               fields.set(readFields(opened.tableSchema));
@@ -213,14 +245,14 @@ export function gridSource(layout: Signal<Layout | null>): GridSource {
   /** Sends what changed between the layout the engine runs, `sent`, and `next`. */
   const follow = (view: ViewHandle, sent: Layout, next: Layout): void => {
     if (computedPart(sent) !== computedPart(next)) {
-      view.update(JSON.stringify(next));
+      view.update(JSON.stringify(next), updateWindow);
       return;
     }
     const before = new Map(sent.expanded.map((e) => [pathKey(e.path), e.expanded]));
     const after = new Set(next.expanded.map((e) => pathKey(e.path)));
     if ([...before.keys()].some((key) => !after.has(key))) {
       // A group went back to its default state; only a full update can say so.
-      view.update(JSON.stringify(next));
+      view.update(JSON.stringify(next), updateWindow);
       return;
     }
     for (const e of next.expanded) {

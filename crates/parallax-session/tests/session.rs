@@ -35,9 +35,23 @@ fn the_conversation_answers_every_request() {
             // The reload: each open view gets its status, then a pushed frame.
             "status", "frame", "status", "frame", "error",
             // Two charts, each opened and reduced, then a viewport a chart refuses.
-            "opened", "chart", "opened", "chart", "error"
+            "opened", "chart", "opened", "chart", "error",
+            // A grid scrolled near its end, then two updates with their windows.
+            "opened", "frame", "frame", "frame"
         ]
     );
+    // The filter leaves fewer rows than the window skipped, so it is answered from
+    // the top; the next update is answered where its window is.
+    let first_rows: Vec<(u64, u64)> = messages
+        .iter()
+        .rev()
+        .take(2)
+        .map(|m| match m.body.as_ref().unwrap() {
+            Body::Frame(f) => (m.request_id, f.first_row),
+            other => panic!("a frame, got {other:?}"),
+        })
+        .collect();
+    assert_eq!(first_rows, vec![(19, 10), (18, 0)]);
 }
 
 #[test]
@@ -284,7 +298,7 @@ fn chart_frames_carry_reduced_data_and_exact_text() {
 
 /// The WebAssembly test suite checks the same value, so both builds must answer
 /// byte for byte the same.
-pub const TRANSCRIPT_FINGERPRINT: u64 = 4_466_502_437_510_005_248;
+pub const TRANSCRIPT_FINGERPRINT: u64 = 18_412_750_216_388_629_436;
 
 #[test]
 fn transcript_fingerprint_is_stable() {
@@ -472,7 +486,7 @@ mod requests {
     use parallax_engine::{Table, TableOptions};
     use parallax_protocol::ipc::decode_batches;
     use parallax_protocol::v1::{
-        ClientMessage, FetchWindow, OpenView, SetExpanded, SetViewport, UpdateView,
+        ClientMessage, FetchWindow, GridWindow, OpenView, SetExpanded, SetViewport, UpdateView,
         client_message::Body as C, server_message::Body,
     };
     use parallax_session::{MAX_FETCH_CELLS, MemoryCatalog, Session, TableState};
@@ -563,6 +577,7 @@ mod requests {
                 view_id: 1,
                 layout_json: r#"{"columns":["position_id","fund"],"formats":{"position_id":{"thousands":false}}}"#.into(),
                 config_version: 1,
+                viewport: None,
             }),
         );
         assert_eq!(frame_rows(&updated), Some((4, 10)));
@@ -633,6 +648,7 @@ mod requests {
                 view_id: 1,
                 layout_json: r#"{"group_by":["fund","strategy"],"measures":[{"column":"market_value_usd","aggregate":"sum","format":{"abbreviate":"millions"}}],"expanded":[{"path":["Atlas Global Macro"],"expanded":false}]}"#.into(),
                 config_version: 1,
+                viewport: None,
             }),
         );
         let (_, rows_after) = frame_rows(&reformatted).unwrap();
@@ -644,6 +660,107 @@ mod requests {
         let text = batch.column_by_name("sum(market_value_usd)#text").unwrap();
         let text = arrow_array::cast::AsArray::as_string::<i32>(text.as_ref());
         assert!(text.value(0).ends_with('M'), "{}", text.value(0));
+    }
+
+    fn first_row(messages: &[(u64, Body)]) -> Option<u64> {
+        messages.iter().find_map(|(_, b)| match b {
+            Body::Frame(f) => Some(f.first_row),
+            _ => None,
+        })
+    }
+
+    fn update(layout: &str, version: u64, viewport: Option<GridWindow>) -> C {
+        C::UpdateView(UpdateView {
+            view_id: 1,
+            layout_json: layout.into(),
+            config_version: version,
+            viewport,
+        })
+    }
+
+    fn window(first_row: u64, row_count: u64) -> GridWindow {
+        GridWindow {
+            first_row,
+            row_count,
+            first_column: 0,
+            column_count: 2,
+        }
+    }
+
+    #[test]
+    fn an_update_answers_with_the_window_it_carries() {
+        let mut s = session();
+        let layout = r#"{"columns":["position_id","fund"]}"#;
+        open(&mut s, layout);
+        // A view that has never had a viewport is answered all the same.
+        let updated = ask(&mut s, 2, update(layout, 1, Some(window(100, 30))));
+        assert_eq!(frame_rows(&updated), Some((2, 30)));
+        assert_eq!(first_row(&updated), Some(100));
+        // The window becomes the viewport: an update without one answers with it.
+        let again = ask(&mut s, 3, update(layout, 2, None));
+        assert_eq!(frame_rows(&again), Some((3, 30)));
+        assert_eq!(first_row(&again), Some(100));
+    }
+
+    #[test]
+    fn rows_that_end_before_the_viewport_answer_from_the_top() {
+        let mut s = session();
+        open(&mut s, r#"{"columns":["position_id","fund"]}"#);
+        ask(
+            &mut s,
+            2,
+            C::SetViewport(SetViewport {
+                view_id: 1,
+                first_row: 2_900,
+                row_count: 50,
+                first_column: 0,
+                column_count: 2,
+            }),
+        );
+        // 40 rows remain, all before the viewport.
+        let narrowed = r#"{"columns":["position_id","fund"],"filters":[{"column":"position_id","op":"le","value":40}]}"#;
+        let answer = ask(&mut s, 3, update(narrowed, 1, None));
+        assert_eq!(first_row(&answer), Some(0));
+        let Some((3, rows)) = frame_rows(&answer) else {
+            panic!("a frame, got {answer:?}");
+        };
+        assert!(rows > 0 && rows <= 50, "{rows}");
+        // So does a window sent with the update, and the viewport stays at the top.
+        let sent = ask(&mut s, 4, update(narrowed, 2, Some(window(1_000, 50))));
+        assert_eq!(first_row(&sent), Some(0));
+        let viewport = C::SetViewport(SetViewport {
+            view_id: 1,
+            first_row: 0,
+            row_count: 50,
+            first_column: 0,
+            column_count: 2,
+        });
+        assert_eq!(frame_rows(&ask(&mut s, 5, viewport)), Some((5, rows)));
+        // A window that starts inside the rows is answered where it is.
+        let inside = ask(&mut s, 6, update(narrowed, 3, Some(window(10, 50))));
+        assert_eq!(first_row(&inside), Some(10));
+    }
+
+    #[test]
+    fn a_chart_refuses_a_window_sent_with_its_update() {
+        let mut s = session();
+        open(&mut s, r#"{"columns":["position_id","fund"]}"#);
+        let chart = r#"{"chart":{"kind":"histogram","x":"beta"}}"#;
+        // An update with a window is always answered, here with the reason.
+        let answer = ask(&mut s, 2, update(chart, 1, Some(window(0, 50))));
+        let [(2, Body::Error(e))] = answer.as_slice() else {
+            panic!("one error, got {answer:?}");
+        };
+        assert!(e.message.contains("chart window"), "{}", e.message);
+        // Without a window, a chart that was never asked for one has nothing to say.
+        assert!(ask(&mut s, 3, update(chart, 2, None)).is_empty());
+        // The chart has no viewport, so a grid layout after it has none either.
+        let grid = ask(
+            &mut s,
+            4,
+            update(r#"{"columns":["position_id","fund"]}"#, 3, None),
+        );
+        assert!(grid.is_empty(), "{grid:?}");
     }
 
     #[test]

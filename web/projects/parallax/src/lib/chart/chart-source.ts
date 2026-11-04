@@ -15,7 +15,7 @@ import type { Signal } from "@angular/core";
 
 import type { ChartFrameData } from "../chart-frame";
 import { ParallaxClient } from "../client";
-import type { Measurement, ViewHandle } from "../connection";
+import type { Measurement, ViewHandle, Viewport } from "../connection";
 import type { CellValue, FrameData } from "../frame";
 import type { ViewPlacement } from "../grid/grid-source";
 import type { Layout } from "../layout";
@@ -25,6 +25,7 @@ import type { CategoryData } from "./model";
 /** The most groups a bar chart or heatmap draws, and the most columns it reads. */
 const MAX_GROUPS = 500;
 const MAX_COLUMNS = 400;
+const GROUPS: Viewport = { firstRow: 0, rowCount: MAX_GROUPS, firstColumn: 0, columnCount: MAX_COLUMNS };
 
 /** The plot's size in CSS pixels. */
 export interface PlotSize {
@@ -100,6 +101,13 @@ interface Current {
   readonly source: string;
   computed: string;
   shape: string;
+  /** Whether the engine reduces the chart, so that its view keeps the chart window last asked for. */
+  reduced: boolean;
+}
+
+/** Whether the engine reduces a layout's chart, rather than drawing a grouped view's rows. */
+function reduced(layout: Layout): boolean {
+  return layout.chart !== null && !drawsGroups(layout);
 }
 
 /** Which rows a chart draws: a brush selects among them, so a change here leaves a brush selecting nothing it shows. */
@@ -130,12 +138,15 @@ export function chartSource(layout: Signal<Layout | null>): ChartSource {
   let destroyed = false;
   let wanted: { readonly size: PlotSize; readonly range: readonly [number, number] | null } | null = null;
 
+  /** The groups a chart of a grouped view draws, once it has a size to draw them at. */
+  const groupsWindow = (): Viewport | null => (wanted === null ? null : GROUPS);
+
   const request = (view: ViewHandle, groups: boolean): void => {
     if (wanted === null) {
       return;
     }
     if (groups) {
-      view.setViewport({ firstRow: 0, rowCount: MAX_GROUPS, firstColumn: 0, columnCount: MAX_COLUMNS });
+      view.setViewport(GROUPS);
     } else {
       view.setChartWindow({ ...(wanted.range === null ? {} : { x: wanted.range }), width: wanted.size.width, height: wanted.size.height });
     }
@@ -181,7 +192,7 @@ export function chartSource(layout: Signal<Layout | null>): ChartSource {
           },
           next.parameters
         );
-        current = { view, source: JSON.stringify([next.dataset, next.parameters]), computed: computedPart(next), shape: shapeOf(next) };
+        current = { view, source: JSON.stringify([next.dataset, next.parameters]), computed: computedPart(next), shape: shapeOf(next), reduced: reduced(next) };
         request(view, drawsGroups(next));
       },
       (failure: unknown) => {
@@ -214,9 +225,14 @@ export function chartSource(layout: Signal<Layout | null>): ChartSource {
         }
         current.shape = shapeOf(next);
         current.computed = computed;
-        current.view.update(JSON.stringify(next));
-        // A grouped view needs its rows asked for again after an update.
-        request(current.view, drawsGroups(next));
+        // A grouped view's update carries the window of its groups. A reduced chart that was reduced before keeps
+        // the window it was asked for, and the engine answers the update with it; any other asks again.
+        const before = current.reduced;
+        current.reduced = reduced(next);
+        current.view.update(JSON.stringify(next), drawsGroups(next) ? groupsWindow : null);
+        if (!(before && current.reduced)) {
+          request(current.view, drawsGroups(next));
+        }
       }
     });
   });

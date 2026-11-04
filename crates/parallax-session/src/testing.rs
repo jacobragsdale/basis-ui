@@ -7,8 +7,8 @@ use parallax_datagen::Dataset;
 use parallax_datagen::positions::{Positions, PositionsOptions};
 use parallax_engine::{Table, TableOptions};
 use parallax_protocol::v1::{
-    ClientMessage, CloseView, DistinctValues, DrillThrough, Hello, OpenView, SetChartWindow,
-    SetExpanded, SetViewport, UpdateView, client_message,
+    ClientMessage, CloseView, DistinctValues, DrillThrough, GridWindow, Hello, OpenView,
+    SetChartWindow, SetExpanded, SetViewport, UpdateView, client_message,
 };
 use prost::Message;
 
@@ -51,6 +51,11 @@ const RESORTED: &str = r#"{"version":1,"group_by":["fund","sector"],"split_by":[
 "group_sort":{"by":{"measure":0},"descending":true},"expand_depth":1,
 "filters":[{"column":"asset_class","op":"in","values":["Equity","Bond"]}],
 "formats":{"market_value_usd":{"decimals":0},"as_of_date":{}}}"#;
+
+const FLAT: &str = r#"{"version":1,"columns":["position_id","ticker","market_value_usd"]}"#;
+
+const FILTERED: &str = r#"{"version":1,"columns":["position_id","ticker","market_value_usd"],
+"filters":[{"column":"asset_class","op":"in","values":["Bond"]}]}"#;
 
 /// Runs the conversation and returns every server message, encoded, in order.
 ///
@@ -149,6 +154,7 @@ pub fn transcript() -> Vec<Vec<u8>> {
                 view_id: 1,
                 layout_json: RESORTED.into(),
                 config_version: 2,
+                viewport: None,
             }),
         ),
     );
@@ -214,6 +220,7 @@ pub fn transcript() -> Vec<Vec<u8>> {
                 view_id: 1,
                 layout_json: r#"{"version":1,"group_by":["no_such_column"]}"#.into(),
                 config_version: 3,
+                viewport: None,
             }),
         ),
     );
@@ -277,6 +284,55 @@ pub fn transcript() -> Vec<Vec<u8>> {
             }),
         ),
     );
+    // A flat grid scrolled near its end, then filtered to fewer rows than that:
+    // the update carries its window, and is answered from the top.
+    send(
+        &mut session,
+        &mut out,
+        message(
+            16,
+            B::OpenView(OpenView {
+                view_id: 5,
+                dataset: "positions".into(),
+                parameters: Default::default(),
+                layout_json: FLAT.into(),
+            }),
+        ),
+    );
+    send(
+        &mut session,
+        &mut out,
+        message(
+            17,
+            B::SetViewport(SetViewport {
+                view_id: 5,
+                first_row: 1_900,
+                row_count: 50,
+                first_column: 0,
+                column_count: 3,
+            }),
+        ),
+    );
+    for (request, layout, first_row) in [(18, FILTERED, 1_800), (19, FLAT, 10)] {
+        send(
+            &mut session,
+            &mut out,
+            message(
+                request,
+                B::UpdateView(UpdateView {
+                    view_id: 5,
+                    layout_json: layout.into(),
+                    config_version: request,
+                    viewport: Some(GridWindow {
+                        first_row,
+                        row_count: 60,
+                        first_column: 0,
+                        column_count: 3,
+                    }),
+                }),
+            ),
+        );
+    }
     out
 }
 

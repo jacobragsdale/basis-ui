@@ -1,6 +1,6 @@
 /** Angular access to a parallax engine. */
 
-import { Injectable, InjectionToken, inject, makeEnvironmentProviders } from "@angular/core";
+import { Injectable, InjectionToken, inject, makeEnvironmentProviders, provideEnvironmentInitializer } from "@angular/core";
 import type { EnvironmentProviders } from "@angular/core";
 
 import { BrowserEngine, COPY_TIMEOUT_MS } from "./browser-engine";
@@ -21,6 +21,13 @@ export interface ParallaxConfig {
    * without it, every view runs on the server.
    */
   readonly worker?: string;
+  /**
+   * Connects to the server and starts the worker when the application starts, rather than when a view first needs
+   * them, so that a dataset held in the browser shows its first rows sooner: the engine starts without waiting for
+   * the server's welcome. Every page then downloads the engine, about 1 MB compressed, and runs its worker, whether
+   * or not it opens a dataset held in the browser. Needs `worker`. Off by default.
+   */
+  readonly prewarm?: boolean;
 }
 
 /** The connection a view of one dataset should use. */
@@ -63,7 +70,16 @@ export function copyUrlFor(base: string, dataset: string, parameters: Readonly<R
 
 /** Provides the parallax client for an application. */
 export function provideParallax(config: ParallaxConfig): EnvironmentProviders {
-  return makeEnvironmentProviders([{ provide: CONFIG, useValue: config }]);
+  return makeEnvironmentProviders([
+    { provide: CONFIG, useValue: config },
+    ...(config.prewarm === true
+      ? [
+          provideEnvironmentInitializer(() => {
+            inject(ParallaxClient).prewarm();
+          })
+        ]
+      : [])
+  ]);
 }
 
 function absolute(url: string): string {
@@ -97,21 +113,30 @@ export class ParallaxClient {
     return this.connecting;
   }
 
+  /** Connects to the server and starts the browser's engine, if there is a worker, before any view needs them. */
+  public prewarm(): void {
+    // A connection that fails is reported to the views that need it.
+    this.connection().catch(() => undefined);
+    this.engine();
+  }
+
+  /** The browser's engine, started on first use, or null without a worker. */
+  private engine(): BrowserEngine | null {
+    const worker = this.config.worker;
+    if (worker === undefined) {
+      return null;
+    }
+    this.browser ??= BrowserEngine.start(worker);
+    return this.browser;
+  }
+
   /**
    * Returns the connection for views of `dataset`: the browser's engine if the server marks the dataset for the
    * browser, a worker is configured and the copy loads; otherwise the server. A copy that fails to load leaves
    * the view on the server, which holds the same table, and says why.
    */
   public async connectionFor(dataset: string, parameters: Readonly<Record<string, string>>): Promise<Placement> {
-    const worker = this.config.worker;
-    const browser = (): BrowserEngine | null => {
-      if (worker === undefined) {
-        return null;
-      }
-      this.browser ??= BrowserEngine.start(worker);
-      return this.browser;
-    };
-    return placeView(await this.connection(), browser, dataset, parameters, copyUrlFor(this.httpBase(), dataset, parameters));
+    return placeView(await this.connection(), () => this.engine(), dataset, parameters, copyUrlFor(this.httpBase(), dataset, parameters));
   }
 }
 
