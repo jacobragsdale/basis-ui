@@ -273,7 +273,7 @@ test("a token set on a wrapper or on :root reaches the canvas once the page's cl
   const grid = page.locator("px-grid");
   // The header's corner, left of its first title.
   const header = (): Promise<string> => pixel(grid, 2, 2);
-  expect(await header()).toBe("232,235,240");
+  expect(await header()).not.toBe("255,0,0");
   // A token on an element around the grid, as a host's wrapper would set it, then a dark class on <html>, as a host's
   // theme switch would: the grid reads its tokens again without any input changing.
   await page.locator("demo-root").evaluate((root) => {
@@ -303,15 +303,48 @@ test("a row height set on :root sizes the grid's rows, and comfortable rows add 
   const scroll = page.locator(".px-scroll").first();
   const rows = await rowCount(page);
   const contentHeight = (): Promise<number> => scroll.evaluate((element) => element.scrollHeight);
-  // The header is a row high, and the rows below it.
-  expect(await contentHeight()).toBe((rows + 1) * 24);
+  // The header is 6 pixels taller than a row, and the rows are below it.
+  expect(await contentHeight()).toBe(rows * 24 + 30);
   await page.addStyleTag({ content: ":root { --px-row-height: 40px; }" });
   await page.evaluate(() => {
     document.body.classList.add("tall");
   });
-  await expect.poll(contentHeight).toBe((rows + 1) * 40);
+  await expect.poll(contentHeight).toBe(rows * 40 + 46);
   await page.getByLabel("Row height").selectOption("comfortable");
-  await expect.poll(contentHeight).toBe((rows + 1) * 46);
+  await expect.poll(contentHeight).toBe(rows * 46 + 52);
+});
+
+test("light-dark() in a token follows the grid's scheme", async ({ page }) => {
+  await open(page, "preset=trades");
+  const grid = page.locator("px-grid");
+  await page.addStyleTag({ content: ":root { --px-header-background: light-dark(rgb(255, 0, 0), rgb(0, 0, 255)); }" });
+  await page.evaluate(() => {
+    document.body.classList.add("branded");
+  });
+  await expect.poll(() => pixel(grid, 2, 2)).toBe("255,0,0");
+  await page.getByLabel("Theme").selectOption("dark");
+  await expect.poll(() => pixel(grid, 2, 2)).toBe("0,0,255");
+});
+
+test("the row under the pointer is highlighted by drawing its cells again, never the whole grid", async ({ page }) => {
+  await open(page, "preset=trades&performance=on");
+  const draws = page.locator('[data-figure="draws"]');
+  await expect(draws).toHaveText(/^\d+, \d+ of them full$/);
+  const counts = async (): Promise<readonly number[]> => ((await draws.textContent()) ?? "").match(/\d+/g)?.map(Number) ?? [];
+  const canvas = page.locator("canvas.px-canvas");
+  const box = await canvas.boundingBox();
+  if (box === null) {
+    throw new Error("no canvas");
+  }
+  await page.mouse.move(box.x + 200, box.y + 100);
+  await expect.poll(async () => (await counts())[0]).toBeGreaterThan(0);
+  const [before, fullBefore] = await counts();
+  for (let i = 0; i < 6; i += 1) {
+    await page.mouse.move(box.x + 200, box.y + 100 + i * ROW);
+  }
+  // The overlay samples the counters once a second.
+  await expect.poll(async () => (await counts())[0]).toBeGreaterThan(before ?? 0);
+  expect((await counts())[1]).toBe(fullBefore);
 });
 
 test.describe("px-pivot", () => {

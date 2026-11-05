@@ -17,7 +17,9 @@ import type { SourceField } from "./grid-source";
   host: { class: "px-column-tools" },
   template: `
     @if (columns()) {
-      <button #chooser type="button" aria-haspopup="dialog" [attr.aria-expanded]="open()" (click)="open.set(!open())"><px-icon name="columns" />Columns</button>
+      <button #chooser type="button" aria-haspopup="dialog" [attr.aria-expanded]="open()" aria-label="Columns" (click)="open.set(!open())">
+        <px-icon name="columns" /><span class="px-label">Columns</span>
+      </button>
       @if (open()) {
         <px-popover [anchor]="chooser" alignTo="end" (closed)="open.set(false)">
           <px-column-chooser [layout]="layout()" [fields]="fields()" (changed)="changed.emit($event)" />
@@ -25,7 +27,9 @@ import type { SourceField } from "./grid-source";
       }
     }
     @if (totals()) {
-      <button type="button" [attr.aria-pressed]="totalled()" title="A totals row under the rows; each column's total is in its menu" (click)="toggleTotals()"><px-icon name="sum" />Totals</button>
+      <button type="button" [attr.aria-pressed]="totalled()" title="A totals row under the rows; each column's total is in its menu" aria-label="Totals" (click)="toggleTotals()">
+        <px-icon name="sum" /><span class="px-label">Totals</span>
+      </button>
     }
   `
 })

@@ -3,7 +3,7 @@
 import { ChangeDetectionStrategy, Component, ViewEncapsulation, computed, input } from "@angular/core";
 
 /** The icons the library draws. */
-export type IconName = "search" | "close" | "download" | "chevron-down" | "filter" | "columns" | "sum" | "pin" | "check" | "group" | "drag" | "expand" | "collapse";
+export type IconName = "search" | "close" | "download" | "chevron-down" | "filter" | "columns" | "sum" | "pin" | "check" | "group" | "drag" | "expand" | "collapse" | "info";
 
 /** Each icon's strokes, as SVG path data on a 16-unit square. */
 const PATHS: Readonly<Record<IconName, readonly string[]>> = {
@@ -19,7 +19,8 @@ const PATHS: Readonly<Record<IconName, readonly string[]>> = {
   group: ["M2.5 3.5h11M5.5 8h8M5.5 12.5h8"],
   drag: ["M6 4h.01M10 4h.01M6 8h.01M10 8h.01M6 12h.01M10 12h.01"],
   expand: ["M3 5.5 8 10.5l5-5"],
-  collapse: ["M3 10.5 8 5.5l5 5"]
+  collapse: ["M3 10.5 8 5.5l5 5"],
+  info: ["M8 14.5a6.5 6.5 0 1 0 0-13 6.5 6.5 0 0 0 0 13z", "M8 7.25v4", "M8 4.75h.01"]
 };
 
 @Component({

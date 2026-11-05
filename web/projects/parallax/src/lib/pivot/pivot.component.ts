@@ -18,6 +18,7 @@ import { themed } from "../theming";
 import { drillLayout } from "./edit";
 import { PivotPanelComponent } from "./pivot-panel.component";
 import type { ValueSource } from "./value-picker.component";
+import { SELECT_ARROW } from "../ui/controls";
 
 /** What decides the rows behind a group: the dataset, filters and groups. */
 function computedKey(layout: Layout): string {
@@ -27,8 +28,12 @@ function computedKey(layout: Layout): string {
 const PIVOT_STYLES = `
   px-pivot {
     display: flex;
+    box-sizing: border-box;
     height: 100%;
     min-height: 0;
+    overflow: hidden;
+    border: var(--_px-wrapper-border);
+    border-radius: var(--_px-wrapper-radius);
     font: var(--_px-font-size) var(--_px-font-family);
     color: var(--_px-foreground);
     background: var(--_px-background);
@@ -39,7 +44,7 @@ const PIVOT_STYLES = `
     width: 300px;
     min-width: 300px;
     border-right: 1px solid var(--_px-border-color);
-    background: var(--_px-status-background);
+    background: var(--_px-chrome-background);
   }
   px-pivot .px-pivot-side[data-open="false"] {
     width: 28px;
@@ -57,13 +62,14 @@ const PIVOT_STYLES = `
   px-pivot px-pivot-panel {
     display: block;
     overflow: auto;
+    scrollbar-width: thin;
     padding: 0 calc(var(--_px-spacing) * 2.5) calc(var(--_px-spacing) * 2.5);
   }
   px-pivot px-pivot-panel h3 {
     margin: calc(var(--_px-spacing) * 3) 0 calc(var(--_px-spacing) * 1.5);
     color: var(--_px-muted);
     font-size: calc(var(--_px-font-size-small) - 1px);
-    font-weight: 600;
+    font-weight: var(--_px-header-font-weight);
     letter-spacing: 0.04em;
     text-transform: uppercase;
   }
@@ -86,8 +92,10 @@ const PIVOT_STYLES = `
     padding: calc(var(--_px-spacing) * 0.5) var(--_px-spacing);
     border: 1px solid var(--_px-control-border);
     border-radius: calc(var(--_px-radius) - 2px);
-    background: var(--_px-control-background);
+    background-color: var(--_px-control-background);
     color: var(--_px-control-foreground);
+  }
+  px-pivot select {${SELECT_ARROW}
   }
   px-pivot button:disabled {
     opacity: 0.35;

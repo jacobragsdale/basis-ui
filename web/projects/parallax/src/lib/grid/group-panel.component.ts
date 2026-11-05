@@ -21,8 +21,8 @@ import { withAllExpanded, withoutGroup } from "./edit";
       flex-wrap: wrap;
       align-items: center;
       gap: calc(var(--_px-spacing) * 1.5);
-      min-height: 32px;
-      padding: calc(var(--_px-spacing) * 0.5) calc(var(--_px-spacing) * 2);
+      min-height: 30px;
+      padding: calc(var(--_px-spacing) * 0.5) calc(var(--_px-spacing) * 2.5);
       border-bottom: 1px solid var(--_px-border-color);
       background: var(--_px-background);
       color: var(--_px-muted);
@@ -64,6 +64,9 @@ import { withAllExpanded, withoutGroup } from "./edit";
     }
     .px-group-panel .px-spring {
       flex: 1;
+    }
+    .px-group-panel [hidden] {
+      display: none;
     }
   `,
   template: `

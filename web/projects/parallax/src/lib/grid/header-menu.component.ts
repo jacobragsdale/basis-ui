@@ -12,6 +12,7 @@ import type { ValueSource } from "../pivot/value-picker.component";
 import { MenuComponent } from "../ui/menu.component";
 import { totalChoices, totalOf, withGroupedBy, withHidden, withPinned, withSort, withTitle, withTotal, withoutGroup } from "./edit";
 import type { FieldKind, SourceField } from "./grid-source";
+import { SELECT_ARROW } from "../ui/controls";
 
 /** How each kind of column says its sort order. */
 const ORDER: Readonly<Record<FieldKind, readonly [string, string]>> = {
@@ -46,7 +47,7 @@ const ORDER: Readonly<Record<FieldKind, readonly [string, string]>> = {
       margin: var(--_px-spacing) calc(var(--_px-spacing) * 2.5) 0;
       color: var(--_px-muted);
       font-size: calc(var(--_px-font-size-small) - 1px);
-      font-weight: 600;
+      font-weight: var(--_px-header-font-weight);
       letter-spacing: 0.04em;
       text-transform: uppercase;
     }
@@ -64,9 +65,12 @@ const ORDER: Readonly<Record<FieldKind, readonly [string, string]>> = {
       padding: 0 calc(var(--_px-spacing) * 1.5);
       border: 1px solid var(--_px-control-border);
       border-radius: calc(var(--_px-radius) - 2px);
-      background: var(--_px-control-background);
+      background-color: var(--_px-control-background);
       color: var(--_px-control-foreground);
       font: inherit;
+    }
+    .px-header-menu .px-menu-fields select {
+      ${SELECT_ARROW}
     }
   `,
   template: `

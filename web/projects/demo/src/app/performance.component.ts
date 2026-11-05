@@ -48,6 +48,8 @@ interface GridFigures {
   readonly latency: readonly number[];
   readonly inputToScreen: readonly number[];
   readonly firstRows: DrawStats["firstRows"];
+  /** Draws since the grid opened, and how many of them redrew everything rather than the cells that changed. */
+  readonly draws: { readonly all: number; readonly full: number } | null;
 }
 
 /** One sample of the counters the overlay shows. */
@@ -211,7 +213,7 @@ export class PerformanceComponent {
     }
     const memory = this.memory();
     // With several grids, each figure names its grid.
-    const grids: readonly GridFigures[] = f.grids.length === 0 ? [{ name: "", drawMsPerFrame: null, latency: [], inputToScreen: [], firstRows: null }] : f.grids;
+    const grids: readonly GridFigures[] = f.grids.length === 0 ? [{ name: "", drawMsPerFrame: null, latency: [], inputToScreen: [], firstRows: null, draws: null }] : f.grids;
     return [
       { key: "frame", term: "Frame time", value: `${ms(f.frameP50)} median, ${ms(f.frameP95)} p95` },
       { key: "blocked", term: "Long frames", value: `${f.longFrames.toString()} in 10 s, ${ms(f.blockedMsPerSecond)} blocked per s` },
@@ -227,6 +229,7 @@ export class PerformanceComponent {
             value: first === null ? "n/a" : `${ms(first.drawnAtMs - first.openedAtMs)} after opening, ${ms(first.drawnAtMs)} after the page began loading`
           },
           { key: key("input"), term: term("Input to screen"), value: spread(g.inputToScreen, "changes") },
+          { key: key("draws"), term: term("Draws"), value: g.draws === null ? "n/a" : `${g.draws.all.toString()}, ${g.draws.full.toString()} of them full` },
           { key: key("latency"), term: term("Rows asked to drawn"), value: spread(g.latency, "requests") }
         ];
       }),
@@ -290,7 +293,14 @@ export class PerformanceComponent {
         const drawn = drawTime(stats, previous.get(name) ?? null, drawMs.get(name) ?? null);
         previous.set(name, stats);
         drawMs.set(name, drawn);
-        return { name: all.length > 1 ? name : "", drawMsPerFrame: drawn, latency: stats.latencyMs, inputToScreen: inputToScreen(stats.changes, inputs), firstRows: stats.firstRows };
+        return {
+          name: all.length > 1 ? name : "",
+          drawMsPerFrame: drawn,
+          latency: stats.latencyMs,
+          inputToScreen: inputToScreen(stats.changes, inputs),
+          firstRows: stats.firstRows,
+          draws: { all: stats.frames, full: stats.fullDraws }
+        };
       });
       this.figures.set({
         frameP50: percentile(intervals, 50),

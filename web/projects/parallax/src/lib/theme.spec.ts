@@ -12,7 +12,7 @@ describe("the token stylesheet", () => {
   });
 
   it("registers colours and lengths, so their computed values are concrete, and leaves font families and shadows as text", () => {
-    expect(THEME_STYLES).toContain('@property --_px-accent { syntax: "<color>"; inherits: true; initial-value: #0b4ea2; }');
+    expect(THEME_STYLES).toContain('@property --_px-accent { syntax: "<color>"; inherits: true; initial-value: #2563eb; }');
     expect(THEME_STYLES).toContain('@property --_px-font-size { syntax: "<length>"; inherits: true; initial-value: 13px; }');
     expect(THEME_STYLES).toContain('@property --_px-series-1 { syntax: "<color>"; inherits: true; initial-value: #2a78d6; }');
     expect(THEME_STYLES).not.toContain("@property --_px-font-family");
@@ -23,10 +23,17 @@ describe("the token stylesheet", () => {
     expect(THEME_STYLES).toContain('[data-px-density="comfortable"] { --_px-density-step: 6px; }');
     expect(THEME_STYLES).toContain("--_px-row-height: calc(var(--px-row-height, var(--_px-theme-row-height, 24px)) + var(--_px-density-step, 0px));");
     expect(THEME_STYLES).toContain(
-      "--_px-header-height: calc(var(--px-header-height, var(--_px-theme-header-height, var(--px-row-height, var(--_px-theme-row-height, 24px)))) + var(--_px-density-step, 0px));"
+      "--_px-header-height: calc(var(--px-header-height, var(--_px-theme-header-height, calc(var(--px-row-height, var(--_px-theme-row-height, 24px)) + 6px))) + var(--_px-density-step, 0px));"
     );
-    expect(THEME_STYLES).toContain("--_px-cell-padding: var(--px-cell-padding, var(--_px-theme-cell-padding, calc(var(--_px-spacing) * 1.5)));");
-    expect(THEME_STYLES).toContain('@property --_px-cell-padding { syntax: "<length>"; inherits: true; initial-value: 6px; }');
+    expect(THEME_STYLES).toContain("--_px-cell-padding: var(--px-cell-padding, var(--_px-theme-cell-padding, calc(var(--_px-spacing) * 2)));");
+    expect(THEME_STYLES).toContain('@property --_px-cell-padding { syntax: "<length>"; inherits: true; initial-value: 8px; }');
+  });
+
+  it("derives colours from the base tokens, so a theme of an accent, a background and a foreground is consistent", () => {
+    expect(THEME_STYLES).toContain("--_px-selection-background: var(--px-selection-background, var(--_px-theme-selection-background, color-mix(in srgb, var(--_px-accent) 12%, transparent)));");
+    expect(THEME_STYLES).toContain("--_px-border-color: var(--px-border-color, var(--_px-theme-border-color, color-mix(in srgb, var(--_px-foreground) 12%, var(--_px-background))));");
+    expect(THEME_STYLES).toContain("color-scheme: light;");
+    expect(THEME_STYLES).toContain('[data-px-scheme="dark"] { color-scheme: dark;');
   });
 
   it("declares the dark defaults only where they differ from the light ones", () => {

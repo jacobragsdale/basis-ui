@@ -42,9 +42,10 @@ export function placement(
       max-width: min(420px, calc(100vw - 8px));
       max-height: calc(100vh - 8px);
       overflow: auto;
+      scrollbar-width: thin;
       padding: var(--_px-spacing);
-      border: 1px solid var(--_px-control-border);
-      border-radius: var(--_px-radius);
+      border: 1px solid var(--_px-border-color);
+      border-radius: var(--_px-wrapper-radius);
       background: var(--_px-control-background);
       color: var(--_px-control-foreground);
       box-shadow: var(--_px-shadow);

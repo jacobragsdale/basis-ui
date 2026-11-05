@@ -196,6 +196,13 @@ wins over the theme:
 }
 ```
 
+Most tokens derive from a few: set `--px-accent`, `--px-background` and
+`--px-foreground`, and the borders, header, stripes, selection, focus rings
+and chips follow. A value may be any CSS colour, `color-mix()` or
+`light-dark()`, which follows the component's scheme. Grids and pivots have a
+rounded frame; `--px-wrapper-border: none` removes it, as for a grid inside a
+card of your own.
+
 `defineTheme` makes a named theme from values for both schemes or for one,
 optionally extending another theme. Give it to a component's `theme` input, or
 to `provideParallax({ theme, scheme })` for every component:

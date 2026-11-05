@@ -35,6 +35,7 @@ export const ALL_PARTS: ToolbarParts = { search: true, chips: true, columns: tru
 /** The toolbar's look, shared by grids and pivots. */
 const TOOLBAR_STYLES = `
   .px-toolbar {
+    container-type: inline-size;
     display: flex;
     flex-wrap: wrap;
     align-items: center;
@@ -53,8 +54,18 @@ const TOOLBAR_STYLES = `
     display: contents;
   }
   .px-toolbar button[aria-pressed="true"] {
-    border-color: var(--_px-accent);
+    border-color: color-mix(in srgb, var(--_px-accent) 45%, transparent);
+    background: var(--_px-chip-background);
     color: var(--_px-accent);
+  }
+  /* A narrow toolbar keeps its buttons' icons and drops their words, so that it stays on one line. */
+  @container (max-width: 560px) {
+    .px-toolbar .px-label {
+      display: none;
+    }
+    .px-toolbar button {
+      padding: 0 calc(var(--_px-spacing) * 1.75);
+    }
   }
   .px-toolbar .px-search {
     display: flex;
@@ -100,6 +111,9 @@ const TOOLBAR_STYLES = `
   }
   .px-toolbar button:hover {
     background: var(--_px-control-hover);
+  }
+  .px-toolbar button[aria-pressed="true"]:hover {
+    background: var(--_px-chip-background);
   }
   .px-toolbar button:focus-visible {
     outline: none;
@@ -177,8 +191,8 @@ const TOOLBAR_STYLES = `
     }
     <span class="px-spring"></span>
     @if (expandable()) {
-      <button type="button" (click)="changed.emit(withAllExpanded(layout(), true))"><px-icon name="expand" />Expand all</button>
-      <button type="button" (click)="changed.emit(withAllExpanded(layout(), false))"><px-icon name="collapse" />Collapse all</button>
+      <button type="button" aria-label="Expand all" (click)="changed.emit(withAllExpanded(layout(), true))"><px-icon name="expand" /><span class="px-label">Expand all</span></button>
+      <button type="button" aria-label="Collapse all" (click)="changed.emit(withAllExpanded(layout(), false))"><px-icon name="collapse" /><span class="px-label">Collapse all</span></button>
     }
     <ng-content />
     <px-column-tools [layout]="layout()" [fields]="fields()" [columns]="parts().columns" [totals]="parts().totals" (changed)="changed.emit($event)" />

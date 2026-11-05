@@ -201,6 +201,11 @@ function rowsLayout(s: Settings, brush: readonly LayoutFilter[]): LayoutInput {
       flex: 1;
       min-height: 0;
     }
+    /* The card frames the grid, so the grid draws no frame of its own. */
+    px-grid {
+      --px-wrapper-border: none;
+      --px-wrapper-radius: 0;
+    }
   `
 })
 export class TechnicalComponent {

@@ -13,7 +13,7 @@ import { PopoverComponent } from "./popover.component";
   imports: [IconComponent, MenuComponent, PopoverComponent],
   host: { class: "px-split" },
   template: `
-    <button type="button" title="Export the rows shown to Excel" (click)="exported.emit('xlsx')"><px-icon name="download" />Export</button>
+    <button type="button" title="Export the rows shown to Excel" aria-label="Export" (click)="exported.emit('xlsx')"><px-icon name="download" /><span class="px-label">Export</span></button>
     <button #more type="button" aria-label="More export formats" aria-haspopup="menu" [attr.aria-expanded]="open()" (click)="open.set(!open())"><px-icon name="chevron-down" /></button>
     @if (open()) {
       <px-popover [anchor]="more" alignTo="end" (closed)="open.set(false)">

@@ -14,6 +14,7 @@ import type { Layout, LayoutFilter, LayoutScalar } from "../layout";
 import { filterValue } from "../pivot/edit";
 import { ValuePickerComponent } from "../pivot/value-picker.component";
 import type { ValueSource } from "../pivot/value-picker.component";
+import { SELECT_ARROW } from "../ui/controls";
 
 /** What the editor can keep rows by. */
 type Mode = "values" | "between" | LayoutFilter["op"];
@@ -90,9 +91,12 @@ function inputText(value: LayoutScalar | undefined): string {
       padding: 0 calc(var(--_px-spacing) * 1.5);
       border: 1px solid var(--_px-control-border);
       border-radius: calc(var(--_px-radius) - 2px);
-      background: var(--_px-control-background);
+      background-color: var(--_px-control-background);
       color: var(--_px-control-foreground);
       font: inherit;
+    }
+    .px-column-filter select {
+      ${SELECT_ARROW}
     }
     .px-column-filter .px-row {
       display: flex;

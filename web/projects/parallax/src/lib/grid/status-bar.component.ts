@@ -8,6 +8,7 @@ import { ChangeDetectionStrategy, Component, DestroyRef, ViewEncapsulation, comp
 
 import type { TableStatus } from "../proto/parallax_pb";
 import type { ViewPlacement } from "./grid-source";
+import { IconComponent } from "../ui/icon.component";
 
 /** The zone the status bar shows times in. */
 const ZONE = "America/New_York";
@@ -72,7 +73,7 @@ const STATUS_STYLES = `
   px-status-bar .px-badge {
     padding: 1px calc(var(--_px-spacing) * 1.5);
     border-radius: 8px;
-    color: #fff;
+    color: var(--_px-on-accent);
   }
   px-status-bar .px-badge-neutral {
     padding: 0 calc(var(--_px-spacing) * 1.25);
@@ -86,15 +87,22 @@ const STATUS_STYLES = `
     background: var(--_px-danger);
   }
   px-status-bar .px-status-info {
-    width: 18px;
-    height: 18px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
     padding: 0;
-    border: 1px solid currentColor;
+    border: 0;
     border-radius: 50%;
     background: transparent;
-    color: inherit;
-    font: italic 600 11px serif;
+    color: var(--_px-muted);
     cursor: pointer;
+  }
+  px-status-bar .px-status-info:hover,
+  px-status-bar .px-status-info[aria-expanded="true"] {
+    background: var(--_px-control-hover);
+    color: var(--_px-foreground);
   }
   px-status-bar .px-info {
     position: absolute;
@@ -107,11 +115,11 @@ const STATUS_STYLES = `
     margin: 0;
     padding: calc(var(--_px-spacing) * 2.5) calc(var(--_px-spacing) * 3);
     border: 1px solid var(--_px-border-color);
-    border-radius: 4px;
+    border-radius: var(--_px-wrapper-radius);
     background: var(--_px-background);
     color: var(--_px-foreground);
     white-space: normal;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+    box-shadow: var(--_px-shadow);
   }
   px-status-bar .px-info dt {
     color: var(--_px-muted);
@@ -125,6 +133,7 @@ const STATUS_STYLES = `
   changeDetection: ChangeDetectionStrategy.OnPush,
   // Global, so the selectors read as written and hosts can override them.
   encapsulation: ViewEncapsulation.None,
+  imports: [IconComponent],
   styles: STATUS_STYLES,
   template: `
     <span class="px-status-dataset">{{ dataset() }}</span>
@@ -136,7 +145,7 @@ const STATUS_STYLES = `
       <span [class]="b.classes" [attr.role]="b.role" [title]="b.title">{{ b.text }}</span>
     }
     <span class="px-status-message" role="status">{{ message() }}</span>
-    <button type="button" class="px-status-info" [attr.aria-expanded]="open()" aria-label="About this data" (click)="open.set(!open())">i</button>
+    <button type="button" class="px-status-info" [attr.aria-expanded]="open()" aria-label="About this data" (click)="open.set(!open())"><px-icon name="info" /></button>
     @if (open()) {
       <dl class="px-info" role="dialog" aria-label="About this data">
         @for (item of details(); track item.term) {

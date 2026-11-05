@@ -105,6 +105,10 @@ interface Metrics {
   readonly iconPx: number;
   /** The room a header keeps at its right for the funnel that opens the column's menu. */
   readonly funnelPx: number;
+  /** The room before a group's label for its expand marker. */
+  readonly markerPx: number;
+  /** A sort arrow. */
+  readonly arrowPx: number;
 }
 
 /** A length token in pixels, or `otherwise` if it is not one. */
@@ -123,7 +127,9 @@ function metricsOf(tokens: Theme, step = 0): Metrics {
     padding,
     indent: pixels(tokens.indent, 14),
     iconPx,
-    funnelPx: iconPx + padding
+    funnelPx: iconPx + padding,
+    markerPx: iconPx + 4,
+    arrowPx: Math.round(iconPx * 0.85)
   };
 }
 
@@ -132,8 +138,6 @@ function invisible(color: string): boolean {
   return color === "transparent" || color === "rgba(0, 0, 0, 0)";
 }
 
-/** The width of the expand marker, which a click toggles. */
-const MARKER_WIDTH = 14;
 /** How close to a header edge, in pixels, the pointer starts a resize. */
 const EDGE = 4;
 const TOOLTIP_DELAY_MS = 350;
@@ -146,6 +150,20 @@ const FUNNEL_PATH = "M2.5 3h11L9.25 8.25v4.75l-2.5-1.25V8.25z";
 const PIN_PATH = "M5.5 2.5h5M6.5 2.5v4l-2 2.5h7l-2-2.5v-4M8 9v5";
 /** The mark of a pivot measure's menu, where a column has its funnel: a measure is not filtered from its header. */
 const CHEVRON_PATH = "M4 6l4 4 4-4";
+/** A group's expand marker: open, and closed. */
+const OPEN_PATH = "M4.5 6.5l3.5 3.5 3.5-3.5";
+const CLOSED_PATH = "M6.5 4.5l3.5 3.5-3.5 3.5";
+/** A column's sort, ascending and descending. */
+const UP_PATH = "M8 12.5v-9M4.5 7L8 3.5 11.5 7";
+const DOWN_PATH = "M8 3.5v9M4.5 9L8 12.5 11.5 9";
+/** How strongly a funnel draws on a header the pointer isn't over, so that it is there to find but not loud. */
+const RESTING_FUNNEL = 0.5;
+
+/** A column's sort as its header shows it: the direction, and the priority when there are several sorts. */
+interface SortMark {
+  readonly descending: boolean;
+  readonly priority: number | null;
+}
 
 const FLAG_NOTES: Readonly<Record<CellFlag, string | null>> = {
   [CellFlag.Ok]: null,
@@ -185,6 +203,12 @@ interface Pass {
   readonly headerPx: number;
   /** The line under each row, or null for none. */
   readonly rowRule: string | null;
+  /** The row under the pointer and its highlight, or null for none. */
+  readonly hover: { readonly row: number; readonly color: string } | null;
+  /** Whether the rows are a grouped grid's, whose group rows have a background of their own. */
+  readonly detail: boolean;
+  /** The fonts of the body, of group rows and of the header. */
+  readonly fonts: { readonly body: string; readonly group: string; readonly header: string };
   readonly full: boolean;
   readonly geometry: ColumnGeometry;
   readonly scrollLeft: number;
@@ -253,12 +277,20 @@ const GRID_STYLES = `
     display: flex;
     flex-direction: column;
     position: relative;
+    box-sizing: border-box;
     height: 100%;
     min-height: 0;
     overflow: hidden;
+    border: var(--_px-wrapper-border);
+    border-radius: var(--_px-wrapper-radius);
     font: var(--_px-font-size) var(--_px-font-family);
     color: var(--_px-foreground);
     background: var(--_px-background);
+  }
+  /* A grid inside a pivot is framed by the pivot. */
+  px-pivot px-grid {
+    border: none;
+    border-radius: 0;
   }
   px-grid .px-body {
     position: relative;
@@ -273,6 +305,15 @@ const GRID_STYLES = `
     inset: 0;
     overflow: auto;
     outline: none;
+    scrollbar-width: thin;
+  }
+  px-grid .px-pinned-edge {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 6px;
+    background: linear-gradient(to right, var(--_px-pinned-shadow), transparent);
+    pointer-events: none;
   }
   px-grid .px-scroll:focus-visible {
     box-shadow: inset 0 0 0 2px var(--_px-selection-border);
@@ -293,7 +334,7 @@ const GRID_STYLES = `
     inset: auto 0 0 0;
     padding: calc(var(--_px-spacing) * 1.5) calc(var(--_px-spacing) * 2.5);
     background: var(--_px-danger);
-    color: #fff;
+    color: var(--_px-on-accent);
   }
   px-grid .px-visually-hidden {
     position: absolute;
@@ -313,13 +354,13 @@ const GRID_STYLES = `
     max-width: 480px;
     padding: var(--_px-spacing) calc(var(--_px-spacing) * 2);
     border: 1px solid var(--_px-border-color);
-    border-radius: 3px;
-    background: var(--_px-header-background);
-    color: var(--_px-header-foreground);
+    border-radius: var(--_px-radius);
+    background: var(--_px-background);
+    color: var(--_px-foreground);
     white-space: pre-wrap;
     word-break: break-word;
     pointer-events: none;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    box-shadow: var(--_px-shadow);
   }
 
 `;
@@ -364,6 +405,7 @@ const GRID_STYLES = `
           (dblclick)="onDoubleClick($event)"
         ></canvas>
       </div>
+      <div class="px-pinned-edge" [hidden]="pinnedEdge() === null" [style.left.px]="pinnedEdge()"></div>
       @if (menuView(); as m) {
         <div #menuAnchor class="px-menu-anchor" [style.left.px]="m.left" [style.top.px]="m.top" [style.width.px]="m.width" [style.height.px]="m.height"></div>
         <px-popover [anchor]="menuAnchor" [restore]="scroll" alignTo="end" (closed)="menu.set(null)">
@@ -427,7 +469,7 @@ export class GridComponent {
       return null;
     }
     // Room for a horizontal scrollbar, so it never covers the last row.
-    const scrollbar = this.geometry().contentWidth > this.widthPx() ? 14 : 2;
+    const scrollbar = this.geometry().contentWidth > this.widthPx() ? this.scrollbarPx() : 2;
     return Math.min(this.maxHeight(), (this.totalRows() + this.footer()) * this.rowHeight() + this.headerHeight() + scrollbar);
   });
   protected readonly toolbarParts = computed((): ToolbarParts | null => {
@@ -465,6 +507,15 @@ export class GridComponent {
   });
   /** The header column under the pointer. */
   private readonly hoverHeader = signal<number | null>(null);
+  /** The view row under the pointer, which the theme's row hover highlights. */
+  private readonly hoverRow = signal<number | null>(null);
+  /** Where the pointer is over the canvas, to find the row under it again after a scroll; null once it leaves. */
+  private pointerAt: { readonly x: number; readonly y: number } | null = null;
+  /** The pinned columns' right edge while columns scroll under them, where their shadow falls; null otherwise. */
+  protected readonly pinnedEdge = computed(() => {
+    const geometry = this.geometry();
+    return geometry.pinned > 0 && this.scrollLeft() > 0 ? geometry.frozenPx : null;
+  });
   /** The group panel shows above a grid, flat or grouped, whose toolbar keeps it; a pivot has its settings instead. */
   protected readonly groupPanel = computed(() => {
     const parts = this.toolbarParts();
@@ -497,6 +548,8 @@ export class GridComponent {
   private readonly scrollTop = signal(0);
   private readonly scrollLeft = signal(0);
   private readonly viewportPx = signal(600);
+  /** How tall a horizontal scrollbar is, measured once one shows; until then, the widest a browser draws. */
+  private readonly scrollbarPx = signal(14);
   private readonly widthPx = signal(800);
   private readonly selection = signal<Selection | null>(null);
   /** A width being dragged, before it is committed to the layout. */
@@ -570,6 +623,8 @@ export class GridComponent {
   private selecting = false;
   /** The selection as last drawn, to find the rows a new selection changes. */
   private drawnRange: CellRange | null = null;
+  /** The row highlighted under the pointer as last drawn. */
+  private drawnHover: number | null = null;
   private drawnFocus: CellRef | null = null;
   /** Rows fetched for a copy that could not reach the clipboard at once, kept for the next Ctrl+C. */
   private prepared: { readonly key: string; readonly text: string } | null = null;
@@ -647,6 +702,7 @@ export class GridComponent {
       this.palette();
       this.geometry();
       this.selection();
+      this.hoverRow();
       this.draw(this.source.frame(), this.scrollTop(), this.scrollLeft(), this.viewportPx(), this.widthPx());
     });
   }
@@ -733,6 +789,20 @@ export class GridComponent {
     this.scrollLeft.set(element.scrollLeft);
     this.viewportPx.set(element.clientHeight);
     this.widthPx.set(element.clientWidth);
+    const scrollbar = element.offsetHeight - element.clientHeight;
+    if (scrollbar > 0) {
+      this.scrollbarPx.set(scrollbar);
+    }
+    this.hoverAt(this.pointerAt);
+  }
+
+  /** Highlights the row at `at`, or none, if the theme highlights rows under the pointer. */
+  private hoverAt(at: { readonly x: number; readonly y: number } | null): void {
+    const tokens = untracked(this.palette);
+    if (tokens === null || invisible(tokens.rowHover)) {
+      return;
+    }
+    this.hoverRow.set(at === null ? null : this.hit(at.x, at.y).row);
   }
 
   /** The rows and data columns in view. Before the first frame, when the column count is unknown, it covers the width at default widths. */
@@ -915,9 +985,9 @@ export class GridComponent {
     if (frame === null || tree === null || local < 0 || local >= frame.rowCount || tree.expanded(local) === null) {
       return false;
     }
-    const { padding, indent } = this.metrics();
+    const { padding, indent, markerPx } = this.metrics();
     const left = padding + tree.depth(local) * indent;
-    return x >= left - 4 && x <= left + MARKER_WIDTH;
+    return x >= left - 4 && x <= left + markerPx;
   }
 
   /** Ends a drag that the browser cancelled, as when the window loses focus. */
@@ -952,6 +1022,8 @@ export class GridComponent {
     }
     this.cursor.set(hit.edge !== null ? "col-resize" : hit.header && hit.column !== null ? "pointer" : "default");
     this.hoverHeader.set(hit.header ? hit.column : null);
+    this.pointerAt = { x: event.offsetX, y: event.offsetY };
+    this.hoverAt(this.pointerAt);
     this.scheduleTooltip(hit, event.offsetX, event.offsetY);
   }
 
@@ -995,6 +1067,8 @@ export class GridComponent {
   protected onPointerLeave(): void {
     this.clearTooltip();
     this.hoverHeader.set(null);
+    this.pointerAt = null;
+    this.hoverRow.set(null);
     if (this.pressed === null) {
       this.cursor.set("default");
     }
@@ -1089,9 +1163,16 @@ export class GridComponent {
     const keys = frame.columns.map((data, i) => (pivot ? measureWidthKey((frame.firstColumn + i) % period) : data.name));
     const due = new Set(keys.filter((key) => this.needsFit(layout, key, whole, frame.rowCount)));
     let fitted = this.fitted();
-    frame.columns.forEach((data, i) => {
-      const key = keys[i] ?? data.name;
-      const width = due.has(key) ? this.fittedWidth(context, data, frame.rowCount, !pivot) : 0;
+    const fitting = frame.columns.map((data, i) => ({ data, key: keys[i] ?? data.name })).filter(({ key }) => due.has(key));
+    const widths = this.fittedWidths(
+      context,
+      fitting.map(({ data }) => data),
+      frame.rowCount,
+      pivot ? null : layout.pinned,
+      frame.tree
+    );
+    fitting.forEach(({ key }, n) => {
+      const width = widths[n] ?? 0;
       if (width > (fitted[key] ?? 0)) {
         fitted = { ...fitted, [key]: width };
       }
@@ -1117,18 +1198,58 @@ export class GridComponent {
   }
 
   /**
-   * The width that shows a column's first `rows` values and, with `title`, its title with room for its marks, up to a
-   * limit. A pivot's titles name the pivot values and the measure, and would make every column wide, so its columns fit
-   * their values and are never narrower than the default.
+   * The widths that show each column's first `rows` values and its title with room for its marks, up to a limit; a
+   * title has a pin before it if its column is in `pinned`. A pivot's titles name the pivot values and the measure, and
+   * would make every column wide, so its columns, whose `pinned` is null, fit their values and are never narrower than
+   * the default. Every title is measured in one font and every value in one or two, since setting a font is slow.
    */
-  private fittedWidth(context: CanvasRenderingContext2D, data: FrameColumn, rows: number, title: boolean): number {
+  private fittedWidths(context: CanvasRenderingContext2D, columns: readonly FrameColumn[], rows: number, pinned: readonly string[] | null, tree: TreeRows | null): readonly number[] {
     const { padding, funnelPx, iconPx } = untracked(this.metrics);
-    // Room for the title, a sort mark with its priority, the funnel and a pin.
-    let widest = title ? this.measure(context, `${data.title} ▲2`) + funnelPx + iconPx + 2 : DEFAULT_WIDTH - 2 * padding - 2;
-    for (let local = 0; local < rows; local += 1) {
-      widest = Math.max(widest, this.measure(context, data.text(local)));
+    const tokens = this.currentTokens();
+    this.useFont(context, `${tokens.headerFontWeight} ${tokens.font}`);
+    // Room for the title, a sort arrow, the funnel and any pin. A second sort's priority may cut the title, as in Excel.
+    const arrow = this.markWidth(context, { descending: false, priority: null });
+    const titles = columns.map((data) => (pinned === null ? DEFAULT_WIDTH - 2 * padding - 2 : this.measure(context, data.title) + arrow + funnelPx + (pinned.includes(data.name) ? iconPx + 2 : 0)));
+    const values = this.widestTexts(
+      context,
+      rows,
+      tree,
+      columns.map((data) => (local: number) => data.text(local))
+    );
+    return columns.map((_, n) => Math.min(MAX_FITTED, Math.max(MIN_WIDTH, Math.ceil(Math.max(titles[n] ?? 0, values[n] ?? 0) + 2 * padding + 2))));
+  }
+
+  /** The width of a header's title in the header's font, with room for `mark`. */
+  private titleWidth(context: CanvasRenderingContext2D, title: string, mark: SortMark | null): number {
+    const tokens = this.currentTokens();
+    this.useFont(context, `${tokens.headerFontWeight} ${tokens.font}`);
+    const width = this.measure(context, title) + this.markWidth(context, mark);
+    this.useFont(context, tokens.font);
+    return width;
+  }
+
+  /**
+   * For each of `texts`, the widest of the first `rows` texts it gives, each measured in the font its row draws in: a
+   * group's row and a grand total in the group font, the rest in the body's. Each font is set once for every column.
+   */
+  private widestTexts(context: CanvasRenderingContext2D, rows: number, tree: TreeRows | null, texts: readonly ((local: number) => number | string)[]): number[] {
+    const tokens = this.currentTokens();
+    const widest = texts.map(() => 0);
+    for (const strong of tree === null ? [false] : [false, true]) {
+      this.useFont(context, strong ? `${tokens.groupFontWeight} ${tokens.font}` : tokens.font);
+      for (let local = 0; local < rows; local += 1) {
+        const kind = tree?.kind(local) ?? null;
+        if ((kind === "group" || kind === "total") !== strong) {
+          continue;
+        }
+        texts.forEach((text, n) => {
+          const shown = text(local);
+          widest[n] = Math.max(widest[n] ?? 0, typeof shown === "number" ? shown : this.measure(context, shown));
+        });
+      }
     }
-    return Math.min(MAX_FITTED, Math.max(MIN_WIDTH, Math.ceil(widest + 2 * padding + 2)));
+    this.useFont(context, tokens.font);
+    return widest;
   }
 
   protected fitColumn(column: number): void {
@@ -1155,25 +1276,21 @@ export class GridComponent {
     if (frame === null || context === null) {
       return this.widthOf(column);
     }
-    this.useFont(context, this.currentTokens().font);
-    const { padding, indent } = untracked(this.metrics);
-    let widest = 0;
+    const { padding, indent, markerPx } = untracked(this.metrics);
+    const tree = frame.tree;
     if (column === -1) {
-      const tree = frame.tree;
-      for (let local = 0; local < frame.rowCount && tree !== null; local += 1) {
-        widest = Math.max(widest, tree.depth(local) * indent + this.measure(context, `▾ ${groupText(tree, local)}`));
+      if (tree === null) {
+        return this.widthOf(column);
       }
-      return Math.max(DEFAULT_TREE_WIDTH / 2, widest + 2 * padding);
+      const [widest] = this.widestTexts(context, frame.rowCount, tree, [(local) => tree.depth(local) * indent + markerPx + this.measure(context, groupText(tree, local))]);
+      return Math.max(DEFAULT_TREE_WIDTH / 2, (widest ?? 0) + 2 * padding);
     }
     const data = frame.columns[column - frame.firstColumn];
     if (data === undefined) {
       return this.widthOf(column);
     }
-    widest = this.measure(context, `${data.title} ▲`);
-    for (let local = 0; local < frame.rowCount; local += 1) {
-      widest = Math.max(widest, this.measure(context, data.text(local)));
-    }
-    return widest + 2 * padding + 2;
+    const [values] = this.widestTexts(context, frame.rowCount, tree, [(local) => data.text(local)]);
+    return Math.max(this.titleWidth(context, data.title, { descending: false, priority: null }), values ?? 0) + 2 * padding + 2;
   }
 
   /** Cycles a column's sort: ascending, descending, then off. Shift adds it to the sorts of a flat view. */
@@ -1488,33 +1605,60 @@ export class GridComponent {
     return rows;
   }
 
+  /**
+   * The rows to draw again although their text is unchanged: those the selection covered or now covers, and the row
+   * the pointer left and the row it entered.
+   */
+  private staleRows(range: CellRange | null, focus: CellRef | null, hovered: number | null, at: Area): Set<number> {
+    const moved = JSON.stringify([range, focus]) !== JSON.stringify([this.drawnRange, this.drawnFocus]);
+    const stale = moved ? new Set(this.selectionRows(range, focus, at)) : new Set<number>();
+    this.drawnRange = range;
+    this.drawnFocus = focus;
+    if (hovered !== this.drawnHover) {
+      for (const row of [hovered, this.drawnHover]) {
+        if (row !== null) {
+          stale.add(row);
+        }
+      }
+      this.drawnHover = hovered;
+    }
+    return stale;
+  }
+
+  /** The search `frame`'s rows matched, the columns it looks in, and whether it looks in the group labels. */
+  private searchedBy(frame: FrameData | null, layout: Layout | null): Pick<Pass, "search" | "searched" | "labelsSearched"> {
+    const search = frame === null ? "" : this.source.searchOf(frame);
+    const searched: ReadonlySet<string> = search === "" || layout === null ? new Set() : new Set(searchColumns(layout, this.fields()));
+    return { search, searched, labelsSearched: layout?.group_by.some((g) => searched.has(g)) ?? false };
+  }
+
   private begin(target: CanvasRenderingContext2D, frame: FrameData | null, at: Area): Pass {
     const geometry = this.geometry();
     const selection = this.selection();
     const shape = this.shapeOf(frame, at);
     const range = selection === null ? null : rangeOf(selection);
     const focus = selection?.focus ?? null;
-    const moved = JSON.stringify([range, focus]) !== JSON.stringify([this.drawnRange, this.drawnFocus]);
-    const stale = moved ? this.selectionRows(range, focus, at) : new Set<number>();
-    this.drawnRange = range;
-    this.drawnFocus = focus;
+    const hovered = this.hoverRow();
+    const stale = this.staleRows(range, focus, hovered, at);
     const theme = this.palette() ?? readTheme(this.canvas().nativeElement);
     const full = theme !== this.tokens || shape !== this.shape;
     this.tokens = theme;
     this.shape = shape;
-    const search = frame === null ? "" : this.source.searchOf(frame);
     const layout = this.current();
-    const searched: ReadonlySet<string> = search === "" || layout === null ? new Set() : new Set(searchColumns(layout, this.fields()));
-    const labelsSearched = layout?.group_by.some((g) => searched.has(g)) ?? false;
+    const { search, searched, labelsSearched } = this.searchedBy(frame, layout);
     const metrics = this.metrics();
     this.padding = metrics.padding;
     const rowRule = invisible(theme.rowBorder) ? null : theme.rowBorder;
+    const hover = hovered === null || invisible(theme.rowHover) ? null : { row: hovered, color: theme.rowHover };
     const pass: Pass = {
       context: target,
       theme,
       rowPx: metrics.rowPx,
       headerPx: metrics.headerPx,
       rowRule,
+      hover,
+      detail: layout?.detail ?? false,
+      fonts: { body: theme.font, group: `${theme.groupFontWeight} ${theme.font}`, header: `${theme.headerFontWeight} ${theme.font}` },
       full,
       geometry,
       scrollLeft: at.scrollLeft,
@@ -1583,40 +1727,48 @@ export class GridComponent {
         Array.from({ length: geometry.pinned }, (_, i) => i)
       );
       if (pass.scrollLeft > 0) {
+        // A line at the edge; the shadow beside it is an element over the canvas, so redrawn cells never darken it.
         context.fillStyle = pass.theme.borderColor;
-        context.fillRect(geometry.frozenPx - 1, top, 2, height);
+        context.fillRect(geometry.frozenPx - 1, top, 1, height);
       }
     }
   }
 
-  private sortMark(column: number): string {
+  private sortMark(column: number): SortMark | null {
     const layout = this.current();
     if (layout === null) {
-      return "";
+      return null;
     }
     if (column === -1) {
-      return layout.group_sort.by === "key" && layout.group_sort.descending ? "▼" : "";
+      return layout.group_sort.by === "key" && layout.group_sort.descending ? { descending: true, priority: null } : null;
     }
     if (isPivot(layout)) {
       const by = layout.group_sort.by;
-      const arrow = layout.group_sort.descending ? "▼" : "▲";
-      return by !== "key" && column % Math.max(1, layout.measures.length) === by.measure ? arrow : "";
+      return by !== "key" && column % Math.max(1, layout.measures.length) === by.measure ? { descending: layout.group_sort.descending, priority: null } : null;
     }
     const name = this.geometry().widthKey(column);
     const index = layout.sort.findIndex((s) => s.column === name);
     const sort = layout.sort[index];
     if (sort === undefined) {
-      return "";
+      return null;
     }
-    const arrow = sort.descending ? "▼" : "▲";
-    return layout.sort.length > 1 ? `${arrow}${String(index + 1)}` : arrow;
+    return { descending: sort.descending, priority: layout.sort.length > 1 ? index + 1 : null };
+  }
+
+  /** The room a sort mark takes in a header: its arrow and, after a gap, its priority. */
+  private markWidth(context: CanvasRenderingContext2D, mark: SortMark | null): number {
+    if (mark === null) {
+      return 0;
+    }
+    const { arrowPx } = untracked(this.metrics);
+    return arrowPx + 2 + (mark.priority === null ? 0 : this.measure(context, String(mark.priority)) + 1);
   }
 
   private drawHeader(pass: Pass, frame: FrameData | null): void {
     const { context, theme, headerPx, geometry } = pass;
     context.fillStyle = theme.headerBackground;
     context.fillRect(0, 0, pass.width, headerPx);
-    this.useFont(context, `${theme.headerFontWeight} ${theme.font}`);
+    this.useFont(context, pass.fonts.header);
     const layout = this.current();
     if (geometry.treePx > 0) {
       context.fillStyle = theme.headerForeground;
@@ -1628,7 +1780,7 @@ export class GridComponent {
     this.eachColumn(pass, 0, headerPx, (column) => {
       this.drawColumnHeader(pass, frame, layout, column);
     });
-    this.useFont(context, theme.font);
+    this.useFont(context, pass.fonts.body);
     const drag = this.drag();
     if (drag !== null && geometry.count > 0) {
       const at = Math.min(drag.before, geometry.count);
@@ -1694,13 +1846,14 @@ export class GridComponent {
     context.fillStyle = theme.headerForeground;
     this.headerText(pass, at.title, this.sortMark(column), at.x + indent, at.width - indent - funnelPx + padding);
     const color = filtered || state === "open" ? theme.accent : state === "lit" ? theme.headerForeground : theme.muted;
-    this.icon(context, look.mark, at.x + at.width - funnelPx, top, iconPx, color, filtered);
+    this.icon(context, look.mark, at.x + at.width - funnelPx, top, iconPx, color, filtered, filtered || state !== "rest" ? 1 : RESTING_FUNNEL);
   }
 
-  /** Draws an icon's path, `size` pixels square, with its top left at `x`, `y`. */
-  private icon(canvas: CanvasRenderingContext2D, path: string, x: number, y: number, size: number, color: string, filled: boolean): void {
+  /** Draws an icon's path, `size` pixels square, with its top left at `x`, `y`, at `alpha` strength. */
+  private icon(canvas: CanvasRenderingContext2D, path: string, x: number, y: number, size: number, color: string, filled: boolean, alpha = 1): void {
     const context = canvas;
     context.save();
+    context.globalAlpha = alpha;
     context.translate(x, y);
     context.scale(size / 16, size / 16);
     const shape = new Path2D(path);
@@ -1716,12 +1869,22 @@ export class GridComponent {
     context.restore();
   }
 
-  private headerText(pass: Pass, title: string, mark: string, x: number, width: number): void {
-    const { context, headerPx } = pass;
-    const markWidth = mark === "" ? 0 : this.measure(context, mark) + 4;
+  /** Draws a header's title, cut to leave room for its sort mark, then the mark: an arrow in the accent and its priority. */
+  private headerText(pass: Pass, title: string, mark: SortMark | null, x: number, width: number): void {
+    const { context, headerPx, theme } = pass;
+    const markWidth = this.markWidth(context, mark);
     this.clipText(context, title, x, width - markWidth, headerPx / 2, false);
-    if (mark !== "") {
-      context.fillText(mark, x + width - this.padding - markWidth + 4, headerPx / 2);
+    if (mark === null) {
+      return;
+    }
+    const { arrowPx } = this.metrics();
+    const left = x + width - this.padding - markWidth + 2;
+    this.icon(context, mark.descending ? DOWN_PATH : UP_PATH, left, headerPx / 2 - arrowPx / 2, arrowPx, theme.accent, false);
+    if (mark.priority !== null) {
+      const ink = context.fillStyle;
+      context.fillStyle = theme.accent;
+      context.fillText(String(mark.priority), left + arrowPx + 1, headerPx / 2);
+      context.fillStyle = ink;
     }
   }
 
@@ -1733,11 +1896,11 @@ export class GridComponent {
     }
     const { context, theme, rowPx, geometry } = pass;
     const y = height - rowPx;
-    context.fillStyle = theme.headerBackground;
+    context.fillStyle = theme.totalBackground;
     context.fillRect(0, y, pass.width, rowPx);
     this.useFont(context, `${theme.totalFontWeight} ${theme.font}`);
     if (geometry.treePx > 0) {
-      context.fillStyle = theme.headerForeground;
+      context.fillStyle = theme.foreground;
       this.clipText(context, "Total", 0, geometry.treePx, y + rowPx / 2, false);
     }
     this.eachColumn(pass, y, rowPx, (column) => {
@@ -1746,7 +1909,7 @@ export class GridComponent {
       const text = data?.text(0) ?? "";
       // A grid without a group column says which row this is in its first column, unless that has a total.
       const shown = text === "" && column === 0 && geometry.treePx === 0 ? "Total" : text;
-      context.fillStyle = data !== undefined && data.flag(0) !== CellFlag.Ok ? theme.muted : data?.numeric === true && isNegativeText(text) ? theme.negative : theme.headerForeground;
+      context.fillStyle = data !== undefined && data.flag(0) !== CellFlag.Ok ? theme.muted : data?.numeric === true && isNegativeText(text) ? theme.negative : theme.foreground;
       this.clipText(context, shown, x, geometry.width(column), y + rowPx / 2, data?.numeric === true && text !== "");
     });
     this.useFont(context, theme.font);
@@ -1755,20 +1918,30 @@ export class GridComponent {
   }
 
   private drawRow(pass: Pass, frame: FrameData, local: number, row: number, y: number): number {
-    const stripe = row % 2 === 0 ? pass.theme.background : pass.theme.stripe;
+    // A group's row, and a pivot's grand total, stand out in the group font; a grouped grid's groups have their own
+    // background too, to set them off from the rows under them.
+    const kind = frame.tree?.kind(local) ?? null;
+    const strong = kind === "group" || kind === "total";
+    const stripe = kind === "group" && pass.detail ? pass.theme.groupBackground : row % 2 === 0 ? pass.theme.background : pass.theme.stripe;
+    if (strong) {
+      this.useFont(pass.context, pass.fonts.group);
+    }
     let cells = frame.tree === null ? 0 : this.drawTreeCell(pass, frame.tree, local, row, y, stripe);
     this.eachColumn(pass, y, pass.rowPx, (column) => {
       if (this.drawCell(pass, frame, column, local, row, y, stripe)) {
         cells += 1;
       }
     });
+    if (strong) {
+      this.useFont(pass.context, pass.fonts.body);
+    }
     return cells;
   }
 
-  /** Fills a cell's background, marking it if it is selected. */
+  /** Fills a cell's background, highlighting it if its row is under the pointer and marking it if it is selected. */
   private cellBackground(pass: Pass, row: number, column: number, x: number, y: number, width: number, stripe: string): void {
-    const { context, theme, rowPx, range, focus } = pass;
-    context.fillStyle = stripe;
+    const { context, theme, rowPx, range, focus, hover } = pass;
+    context.fillStyle = hover?.row === row ? hover.color : stripe;
     context.fillRect(x, y, width, rowPx);
     if (range !== null && contains(range, row, column)) {
       context.fillStyle = theme.selectionBackground;
@@ -1777,27 +1950,34 @@ export class GridComponent {
     if (focus !== null && focus.row === row && focus.column === column) {
       context.strokeStyle = theme.selectionBorder;
       context.lineWidth = 2;
-      context.strokeRect(x + 1, y + 1, width - 2, rowPx - 2);
+      context.beginPath();
+      context.roundRect(x + 1, y + 1, width - 3, rowPx - 3, 2);
+      context.stroke();
     }
   }
 
   private drawTreeCell(pass: Pass, tree: TreeRows, local: number, row: number, y: number, stripe: string): number {
     const depth = tree.depth(local);
     const expanded = tree.expanded(local);
-    const marker = expanded === null ? "  " : expanded ? "▾ " : "▸ ";
-    const text = `${marker}${groupText(tree, local)}`;
+    const label = groupText(tree, local);
+    // What the cell shows, to tell when it changes: the marker's state and the label.
+    const text = `${expanded === null ? " " : expanded ? "-" : "+"}${label}`;
     const key = `${String(row)}:-1`;
     if (!pass.full && !pass.stale.has(row) && this.drawn.get(key) === text) {
       return 0;
     }
     const { context, theme, rowPx, geometry } = pass;
     this.cellBackground(pass, row, -1, 0, y, geometry.treePx, stripe);
-    context.fillStyle = tree.kind(local) === "total" ? theme.totalForeground : theme.foreground;
-    const { padding, indent } = this.metrics();
+    const { padding, indent, iconPx, markerPx } = this.metrics();
     const left = padding + depth * indent;
-    const marks = pass.labelsSearched ? highlightRanges(tree.label(local), pass.search).map(([a, b]) => [a + marker.length, b + marker.length] as const) : NO_MARKS;
-    if (this.clipText(context, text, left - padding, geometry.treePx - left + padding, y + rowPx / 2, false, marks, theme.highlight)) {
-      this.notes.set(key, groupText(tree, local));
+    if (expanded !== null) {
+      this.icon(context, expanded ? OPEN_PATH : CLOSED_PATH, left - 2, y + rowPx / 2 - iconPx / 2, iconPx, theme.muted, false);
+    }
+    context.fillStyle = tree.kind(local) === "total" ? theme.totalForeground : theme.foreground;
+    const marks = pass.labelsSearched ? highlightRanges(tree.label(local), pass.search) : NO_MARKS;
+    const start = left + markerPx;
+    if (this.clipText(context, label, start - padding, geometry.treePx - start + padding, y + rowPx / 2, false, marks, theme.highlight)) {
+      this.notes.set(key, label);
     }
     this.rowRule(pass, 0, y, geometry.treePx);
     context.fillStyle = theme.columnBorder;

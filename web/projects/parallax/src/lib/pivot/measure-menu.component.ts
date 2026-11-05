@@ -14,6 +14,7 @@ import { measure, measureSort, moveMeasure, removeMeasure, updateMeasure, withMe
 import { NUMERIC_AGGREGATES, NUMERIC_KINDS, choices, fieldChoices, measureName } from "./labels";
 import type { Choice } from "./labels";
 import { SelectComponent } from "./select.component";
+import { SELECT_ARROW } from "../ui/controls";
 
 /** Decimal places a value can show; auto keeps the column's own. */
 const DECIMALS: readonly Choice[] = [{ value: "", text: "Auto" }, ...[0, 1, 2, 3, 4, 6].map((d) => ({ value: String(d), text: String(d) }))];
@@ -65,9 +66,12 @@ const NEGATIVES: readonly Choice[] = [
       padding: 0 calc(var(--_px-spacing) * 1.5);
       border: 1px solid var(--_px-control-border);
       border-radius: calc(var(--_px-radius) - 2px);
-      background: var(--_px-control-background);
+      background-color: var(--_px-control-background);
       color: var(--_px-control-foreground);
       font: inherit;
+    }
+    .px-measure-menu .px-menu-fields select {
+      ${SELECT_ARROW}
     }
   `,
   template: `

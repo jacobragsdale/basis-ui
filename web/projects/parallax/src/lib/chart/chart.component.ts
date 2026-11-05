@@ -227,7 +227,7 @@ const CHART_STYLES = `
     background: var(--_px-header-background);
     color: var(--_px-header-foreground);
     font-size: var(--_px-font-size-small);
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    box-shadow: var(--_px-shadow);
     pointer-events: none;
     white-space: nowrap;
   }
@@ -262,7 +262,7 @@ const CHART_STYLES = `
     padding: calc(var(--_px-spacing) * 1.5) calc(var(--_px-spacing) * 2);
     border-radius: 4px;
     background: var(--_px-danger);
-    color: #fff;
+    color: var(--_px-on-accent);
     font-size: var(--_px-font-size-small);
   }
 `;

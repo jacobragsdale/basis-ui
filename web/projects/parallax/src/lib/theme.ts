@@ -19,7 +19,7 @@ export type Scheme = "light" | "dark" | "auto";
 export type ResolvedScheme = Exclude<Scheme, "auto">;
 
 /** How a token's value is checked and registered. */
-type Syntax = "color" | "length" | "family" | "weight" | "shadow";
+type Syntax = "color" | "length" | "family" | "weight" | "shadow" | "border";
 
 /** The `@property` syntax each kind registers with, if any, and the CSS property a host's value is checked against. */
 const SYNTAXES: Readonly<Record<Syntax, { readonly register: string | null; readonly check: string }>> = {
@@ -27,7 +27,8 @@ const SYNTAXES: Readonly<Record<Syntax, { readonly register: string | null; read
   length: { register: "<length>", check: "width" },
   family: { register: null, check: "font-family" },
   weight: { register: null, check: "font-weight" },
-  shadow: { register: null, check: "box-shadow" }
+  shadow: { register: null, check: "box-shadow" },
+  border: { register: null, check: "border" }
 };
 
 /**
@@ -56,48 +57,98 @@ function spaced(units: number): string {
   return `calc(var(--_px-spacing) * ${String(units)})`;
 }
 
-/** Every token but the charts' colours, by its name in a theme's parameters. */
+/** `percent` of the token `of` over the token `over`, such as a tint of the foreground over the background. */
+function mix(of: string, percent: number, over: string): string {
+  return `color-mix(in srgb, var(--_px-${of}) ${String(percent)}%, ${over === "transparent" ? over : `var(--_px-${over})`})`;
+}
+
+/** A token whose default is derived from others the same way in both schemes, registered with `initial`. */
+function derived<S extends Syntax>(property: string, syntax: S, value: string, initial: string): TokenSpec & { readonly syntax: S } {
+  return { property, syntax, light: value, dark: value, initial };
+}
+
+/** A colour token tinted from others by a different amount in each scheme. */
+function tinted(property: string, of: string, light: number, dark: number, over: string, initial: string): TokenSpec & { readonly syntax: "color" } {
+  return { property, syntax: "color", light: mix(of, light, over), dark: mix(of, dark, over), initial };
+}
+
+/**
+ * Every token but the charts' colours, by its name in a theme's parameters. The first few are the base a theme
+ * usually sets; most of the rest derive from them, so a theme of an accent, a background and a foreground is
+ * consistent throughout.
+ */
 const SPECS = {
+  /** Buttons, the toolbar's active parts, selections, focus rings and the drop target of a drag. */
+  accent: { property: "accent", syntax: "color", light: "#2563eb", dark: "#5b9bff" },
+  background: { property: "background", syntax: "color", light: "#ffffff", dark: "#16181d" },
+  foreground: { property: "foreground", syntax: "color", light: "#1d2330", dark: "#e3e6ec" },
   fontFamily: { property: "font-family", syntax: "family", light: FONT_FAMILY, dark: FONT_FAMILY },
   fontSize: { property: "font-size", syntax: "length", light: "13px", dark: "13px" },
-  background: { property: "background", syntax: "color", light: "#ffffff", dark: "#16181d" },
-  stripe: { property: "stripe", syntax: "color", light: "#f6f7f9", dark: "#1c1f26" },
-  foreground: { property: "foreground", syntax: "color", light: "#1d2330", dark: "#e3e6ec" },
+  /** The unit every gap, margin and padding is a multiple of. */
+  spacing: { property: "spacing", syntax: "length", light: "4px", dark: "4px" },
+  /** The corners of controls, chips and menus. */
+  radius: { property: "radius", syntax: "length", light: "6px", dark: "6px" },
+  /** A grid row, before the density's step. */
+  rowHeight: { property: "row-height", syntax: "length", light: "24px", dark: "24px", stepped: true },
   muted: { property: "muted", syntax: "color", light: "#667085", dark: "#8a93a3" },
   negative: { property: "negative", syntax: "color", light: "#b42318", dark: "#ff7b72" },
-  totalForeground: { property: "total-foreground", syntax: "color", light: "#0b4ea2", dark: "#7cb7ff" },
-  headerBackground: { property: "header-background", syntax: "color", light: "#e8ebf0", dark: "#23262e" },
-  headerForeground: { property: "header-foreground", syntax: "color", light: "#1d2330", dark: "#e3e6ec" },
-  borderColor: { property: "border-color", syntax: "color", light: "#e3e6eb", dark: "#2b2f38" },
-  selectionBackground: { property: "selection-background", syntax: "color", light: "rgba(11, 78, 162, 0.14)", dark: "rgba(91, 155, 255, 0.25)" },
-  selectionBorder: { property: "selection-border", syntax: "color", light: "#0b4ea2", dark: "#5b9bff" },
-  statusBackground: { property: "status-background", syntax: "color", light: "#f2f4f7", dark: "#1c1f26" },
-  statusForeground: { property: "status-foreground", syntax: "color", light: "#344054", dark: "#b8bfcc" },
   warning: { property: "warning", syntax: "color", light: "#b54708", dark: "#e0a400" },
   danger: { property: "danger", syntax: "color", light: "#b42318", dark: "#ff7b72" },
   /** The background behind text that matches a search. */
   highlight: { property: "highlight", syntax: "color", light: "#ffe58a", dark: "rgba(255, 214, 10, 0.38)" },
-  /** Buttons, the toolbar's active parts and the drop target of a drag. */
-  accent: { property: "accent", syntax: "color", light: "#0b4ea2", dark: "#5b9bff" },
-  controlBackground: { property: "control-background", syntax: "color", light: "#ffffff", dark: "#1c1f26" },
-  controlForeground: { property: "control-foreground", syntax: "color", light: "#1d2330", dark: "#e3e6ec" },
-  controlBorder: { property: "control-border", syntax: "color", light: "#c9ced8", dark: "#3a3f4b" },
-  controlHover: { property: "control-hover", syntax: "color", light: "#eef1f6", dark: "#262a33" },
+  /** Text on the accent, the warning and the danger colours. */
+  onAccent: { property: "on-accent", syntax: "color", light: "#ffffff", dark: "#0b1220" },
+  /** Lines between parts: under the toolbar, around menus and panels. */
+  borderColor: tinted("border-color", "foreground", 12, 16, "background", "#e1e2e5"),
+  /** Behind the header, the totals row, the status bar and the pivot's settings. */
+  chromeBackground: tinted("chrome-background", "foreground", 3, 5, "background", "#f8f8f9"),
+  /** Behind every other row. */
+  stripe: tinted("stripe", "foreground", 2, 3, "background", "#fafafb"),
+  /** Behind the row under the pointer; transparent turns the highlight off. */
+  rowHover: tinted("row-hover", "accent", 6, 10, "background", "#f1f5fe"),
+  headerBackground: derived("header-background", "color", "var(--_px-chrome-background)", "#f8f8f9"),
+  headerForeground: tinted("header-foreground", "foreground", 85, 85, "background", "#3c414e"),
+  headerFontWeight: { property: "header-font-weight", syntax: "weight", light: "600", dark: "600" },
+  /** The grand total's label in a pivot. */
+  totalForeground: derived("total-foreground", "color", "var(--_px-accent)", "#2563eb"),
+  totalBackground: derived("total-background", "color", "var(--_px-chrome-background)", "#f8f8f9"),
+  /** The totals row's. */
+  totalFontWeight: { property: "total-font-weight", syntax: "weight", light: "600", dark: "600" },
+  /** A group's row, in a pivot or a grouped grid. */
+  groupFontWeight: { property: "group-font-weight", syntax: "weight", light: "600", dark: "600" },
+  /** Behind a group's row in a grouped grid; a pivot's groups keep the stripes. */
+  groupBackground: derived("group-background", "color", "var(--_px-chrome-background)", "#f8f8f9"),
+  selectionBackground: tinted("selection-background", "accent", 12, 22, "transparent", "rgba(37, 99, 235, 0.12)"),
+  selectionBorder: derived("selection-border", "color", "var(--_px-accent)", "#2563eb"),
+  statusBackground: derived("status-background", "color", "var(--_px-chrome-background)", "#f8f8f9"),
+  statusForeground: tinted("status-foreground", "foreground", 72, 72, "background", "#61656e"),
+  controlBackground: derived("control-background", "color", "var(--_px-background)", "#ffffff"),
+  controlForeground: derived("control-foreground", "color", "var(--_px-foreground)", "#1d2330"),
+  controlBorder: tinted("control-border", "foreground", 18, 22, "background", "#d2d3d6"),
+  controlHover: tinted("control-hover", "foreground", 6, 9, "background", "#f0f0f1"),
   /** The ring around a focused control. */
-  focus: { property: "focus", syntax: "color", light: "rgba(11, 78, 162, 0.45)", dark: "rgba(91, 155, 255, 0.55)" },
-  /** Under popovers and menus. */
-  shadow: { property: "shadow", syntax: "shadow", light: "0 6px 18px rgba(16, 24, 40, 0.16)", dark: "0 6px 18px rgba(0, 0, 0, 0.5)" },
-  radius: { property: "radius", syntax: "length", light: "6px", dark: "6px" },
-  /** Behind a filter chip. */
-  chipBackground: { property: "chip-background", syntax: "color", light: "#e8eefb", dark: "#22324d" },
-  /** The unit every gap, margin and padding is a multiple of. */
-  spacing: { property: "spacing", syntax: "length", light: "4px", dark: "4px" },
-  /** A grid row, before the density's step. */
-  rowHeight: { property: "row-height", syntax: "length", light: "24px", dark: "24px", stepped: true },
+  focus: tinted("focus", "accent", 35, 45, "transparent", "rgba(37, 99, 235, 0.35)"),
+  /** Behind a filter chip and a drop target. */
+  chipBackground: tinted("chip-background", "accent", 10, 20, "background", "#e9effd"),
+  /** Under popovers, menus and tooltips. */
+  shadow: { property: "shadow", syntax: "shadow", light: "0 1px 2px rgba(16, 24, 40, 0.06), 0 8px 24px rgba(16, 24, 40, 0.14)", dark: "0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.5)" },
+  /** Around a grid or pivot; none removes it. */
+  wrapperBorder: derived("wrapper-border", "border", "1px solid var(--_px-border-color)", "1px solid #e1e2e5"),
+  /** The corners of a grid or pivot, and of menus and popovers. */
+  wrapperRadius: { property: "wrapper-radius", syntax: "length", light: "8px", dark: "8px" },
+  /** The scrollbars' thumbs. */
+  scrollbar: tinted("scrollbar", "foreground", 25, 30, "background", "#c6c8cb"),
   /** The grid's header, before the density's step. */
-  headerHeight: { property: "header-height", syntax: "length", light: given("row-height", "24px"), dark: given("row-height", "24px"), initial: "24px", stepped: true },
+  headerHeight: {
+    property: "header-height",
+    syntax: "length",
+    light: `calc(${given("row-height", "24px")} + 6px)`,
+    dark: `calc(${given("row-height", "24px")} + 6px)`,
+    initial: "30px",
+    stepped: true
+  },
   /** Between a cell's edge and its text. */
-  cellPadding: { property: "cell-padding", syntax: "length", light: spaced(1.5), dark: spaced(1.5), initial: "6px" },
+  cellPadding: derived("cell-padding", "length", spaced(2), "8px"),
   /** How far each level of a group column's tree is indented. */
   indent: { property: "indent", syntax: "length", light: "14px", dark: "14px" },
   /** Icons in toolbars and menus; the grid's header draws them at seven eighths of this. */
@@ -105,18 +156,17 @@ const SPECS = {
   /** Buttons, inputs and selects. */
   controlHeight: { property: "control-height", syntax: "length", light: "28px", dark: "28px" },
   /** Status bars, chips, legends and notes. */
-  fontSizeSmall: { property: "font-size-small", syntax: "length", light: "calc(var(--_px-font-size) - 1px)", dark: "calc(var(--_px-font-size) - 1px)", initial: "12px" },
-  headerFontWeight: { property: "header-font-weight", syntax: "weight", light: "400", dark: "400" },
-  /** The totals row's. */
-  totalFontWeight: { property: "total-font-weight", syntax: "weight", light: "600", dark: "600" },
-  /** Between the grid's columns. */
-  columnBorder: { property: "column-border", syntax: "color", light: "var(--_px-border-color)", dark: "var(--_px-border-color)", initial: "#e3e6eb" },
+  fontSizeSmall: derived("font-size-small", "length", "calc(var(--_px-font-size) - 1px)", "12px"),
+  /** Between the grid's columns; transparent draws none. */
+  columnBorder: tinted("column-border", "foreground", 7, 9, "background", "#eeeeef"),
   /** Between the grid's rows; transparent draws none. */
   rowBorder: { property: "row-border", syntax: "color", light: "transparent", dark: "transparent" },
   /** Under the grid's header. */
-  headerBorder: { property: "header-border", syntax: "color", light: "var(--_px-border-color)", dark: "var(--_px-border-color)", initial: "#e3e6eb" },
+  headerBorder: derived("header-border", "color", "var(--_px-border-color)", "#e1e2e5"),
   /** Over the grid's totals row. */
-  totalBorder: { property: "total-border", syntax: "color", light: "var(--_px-border-color)", dark: "var(--_px-border-color)", initial: "#e3e6eb" }
+  totalBorder: tinted("total-border", "foreground", 22, 26, "background", "#cbccd0"),
+  /** The shadow at the edge of pinned columns once the rest scroll under them. */
+  pinnedShadow: tinted("pinned-shadow", "foreground", 14, 40, "transparent", "rgba(29, 35, 48, 0.14)")
 } as const satisfies Readonly<Record<string, TokenSpec>>;
 
 /** The name of a token in a theme's parameters, such as `accent` or `fontSize`. */
@@ -239,7 +289,12 @@ function baseStyles(): string {
   const light = ENTRIES.map((entry) => resolved(entry, entry.light));
   const dark = ENTRIES.filter((entry) => entry.dark !== entry.light).map((entry) => resolved(entry, entry.dark));
   const comfortable = `${HOSTS}[data-px-density="comfortable"] { --_px-density-step: ${String(DENSITY_STEP)}px; }`;
-  return [...registered, `@layer parallax { ${HOSTS} { ${light.join(" ")} } ${HOSTS}[data-px-scheme="dark"] { ${dark.join(" ")} } ${comfortable} }`].join("\n");
+  // The scheme also picks the native controls' and scrollbars' colours; checkboxes and radios take the accent.
+  const native = "accent-color: var(--_px-accent); scrollbar-color: var(--_px-scrollbar) transparent;";
+  return [
+    ...registered,
+    `@layer parallax { ${HOSTS} { color-scheme: light; ${native} ${light.join(" ")} } ${HOSTS}[data-px-scheme="dark"] { color-scheme: dark; ${dark.join(" ")} } ${comfortable} }`
+  ].join("\n");
 }
 
 /** The stylesheet that registers and declares every token. */
@@ -357,47 +412,57 @@ export function defaultTheme(scheme: ResolvedScheme): Theme {
 function withFont(values: Readonly<Record<string, string>>): Theme {
   const value = (name: TokenName): string => values[name] ?? SPECS[name].light;
   const tokens: Record<TokenName, string> = {
+    accent: value("accent"),
+    background: value("background"),
+    foreground: value("foreground"),
     fontFamily: value("fontFamily"),
     fontSize: value("fontSize"),
-    background: value("background"),
-    stripe: value("stripe"),
-    foreground: value("foreground"),
+    spacing: value("spacing"),
+    radius: value("radius"),
+    rowHeight: value("rowHeight"),
     muted: value("muted"),
     negative: value("negative"),
-    totalForeground: value("totalForeground"),
+    warning: value("warning"),
+    danger: value("danger"),
+    highlight: value("highlight"),
+    onAccent: value("onAccent"),
+    borderColor: value("borderColor"),
+    chromeBackground: value("chromeBackground"),
+    stripe: value("stripe"),
+    rowHover: value("rowHover"),
     headerBackground: value("headerBackground"),
     headerForeground: value("headerForeground"),
-    borderColor: value("borderColor"),
+    headerFontWeight: value("headerFontWeight"),
+    totalForeground: value("totalForeground"),
+    totalBackground: value("totalBackground"),
+    totalFontWeight: value("totalFontWeight"),
+    groupFontWeight: value("groupFontWeight"),
+    groupBackground: value("groupBackground"),
     selectionBackground: value("selectionBackground"),
     selectionBorder: value("selectionBorder"),
     statusBackground: value("statusBackground"),
     statusForeground: value("statusForeground"),
-    warning: value("warning"),
-    danger: value("danger"),
-    highlight: value("highlight"),
-    accent: value("accent"),
     controlBackground: value("controlBackground"),
     controlForeground: value("controlForeground"),
     controlBorder: value("controlBorder"),
     controlHover: value("controlHover"),
     focus: value("focus"),
-    shadow: value("shadow"),
-    radius: value("radius"),
     chipBackground: value("chipBackground"),
-    spacing: value("spacing"),
-    rowHeight: value("rowHeight"),
+    shadow: value("shadow"),
+    wrapperBorder: value("wrapperBorder"),
+    wrapperRadius: value("wrapperRadius"),
+    scrollbar: value("scrollbar"),
     headerHeight: value("headerHeight"),
     cellPadding: value("cellPadding"),
     indent: value("indent"),
     iconSize: value("iconSize"),
     controlHeight: value("controlHeight"),
     fontSizeSmall: value("fontSizeSmall"),
-    headerFontWeight: value("headerFontWeight"),
-    totalFontWeight: value("totalFontWeight"),
     columnBorder: value("columnBorder"),
     rowBorder: value("rowBorder"),
     headerBorder: value("headerBorder"),
-    totalBorder: value("totalBorder")
+    totalBorder: value("totalBorder"),
+    pinnedShadow: value("pinnedShadow")
   };
   return { ...tokens, font: `${tokens.fontSize} ${tokens.fontFamily}` };
 }
