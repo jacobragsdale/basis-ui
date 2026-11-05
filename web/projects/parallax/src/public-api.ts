@@ -37,6 +37,7 @@ export type { Density, DrawStats, DrillRequest } from "./lib/grid/grid.component
 export type { FieldKind, SourceField, ViewPlacement } from "./lib/grid/grid-source";
 export { PivotComponent } from "./lib/pivot/pivot.component";
 export { ChartComponent } from "./lib/chart/chart.component";
+export type { ChartSelection } from "./lib/chart/chart.component";
 export { chartModel } from "./lib/chart/model";
 export type { CategoryData, ChartModel, LegendEntry, Mark } from "./lib/chart/model";
 export { drillLayout } from "./lib/pivot/edit";

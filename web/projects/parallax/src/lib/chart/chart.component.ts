@@ -3,9 +3,11 @@
  *
  * The layout's `chart` section says what to draw. The engine reduces line, area,
  * scatter, histogram, candlestick and OHLC charts to the plot's pixels; bar
- * charts and heatmaps draw the layout's grouped view. The legend's buttons hide
- * and show series, which the layout records. Under the chart, the status bar
- * says where the numbers come from and how old they are.
+ * charts, heatmaps and pies draw the layout's grouped view. The legend's buttons
+ * hide and show series, which the layout records. Clicking a bar or slice
+ * selects its group, for a linked view to filter by. Under the chart, the status
+ * bar says where the numbers come from and how old they are. A chart in a tile
+ * smaller than 260 by 200 pixels is compact: less padding, and no legend.
  */
 
 import {
@@ -13,6 +15,7 @@ import {
   Component,
   DOCUMENT,
   DestroyRef,
+  ElementRef,
   ViewEncapsulation,
   afterNextRender,
   afterRenderEffect,
@@ -26,19 +29,18 @@ import {
   untracked,
   viewChild
 } from "@angular/core";
-import type { ElementRef } from "@angular/core";
 
 import { StatusBarComponent } from "../grid/status-bar.component";
 import { DRAWABLE_KINDS, checkLayout } from "../layout";
-import type { Layout, LayoutFilter, LayoutInput } from "../layout";
+import type { Layout, LayoutFilter, LayoutInput, LayoutScalar } from "../layout";
 import { CHART_COLORS, THEMES, installThemeStyles, readChartColors, readTheme } from "../theme";
 import type { ChartColors, Theme, ThemeName } from "../theme";
 import { ChartHeadComponent, ChartMeasureComponent, ChartNoteComponent, ChartTipComponent } from "./chart-parts.component";
 import { DrawingEditor, measureView } from "./drawing-editor";
 import type { PlacedReading } from "./chart-parts.component";
-import { chartSource, rowsPart } from "./chart-source";
+import { chartSource, rowsPart, withPieLimit } from "./chart-source";
 import type { PlotSize } from "./chart-source";
-import { brushFilters, eventRows, indicatorRows, markAt, panRange, readSeries, zoomRange } from "./interaction";
+import { brushFilters, categoryAt, eventRows, indicatorRows, markAt, panRange, readSeries, zoomRange } from "./interaction";
 import type { Range, Reading } from "./interaction";
 import { chartModel, describeChart, plotBottom } from "./model";
 import type { ChartModel } from "./model";
@@ -163,6 +165,41 @@ const CHART_STYLES = `
   px-chart .px-chart-plot.px-chart-panning {
     cursor: grabbing;
   }
+  px-chart .px-chart-plot.px-chart-pick {
+    cursor: pointer;
+  }
+  px-chart .px-legend-note {
+    color: var(--px-muted-fg);
+    font-variant-numeric: tabular-nums;
+  }
+  px-chart.px-chart-side {
+    display: grid;
+    grid-template: "plot head" minmax(0, 1fr) "status status" auto / minmax(0, 1fr) fit-content(45%);
+  }
+  px-chart.px-chart-side .px-chart-head {
+    grid-area: head;
+    align-self: center;
+    max-height: 100%;
+    overflow: auto;
+  }
+  px-chart.px-chart-side .px-chart-legend {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    padding: 6px 8px;
+  }
+  px-chart.px-chart-side .px-legend-entry {
+    justify-content: flex-start;
+    white-space: nowrap;
+  }
+  px-chart.px-chart-side .px-chart-plot {
+    grid-area: plot;
+  }
+  px-chart.px-chart-side px-status-bar {
+    grid-area: status;
+  }
+  px-chart.px-chart-compact {
+    min-height: 80px;
+  }
   px-chart .px-chart-crosshair {
     position: absolute;
     width: 1px;
@@ -228,6 +265,20 @@ const CHART_STYLES = `
 
 const COUNT = new Intl.NumberFormat("en-US");
 
+/** A group selected by clicking its bar or slice: the outermost group column, and the group's exact key. */
+export interface ChartSelection {
+  readonly column: string;
+  readonly value: LayoutScalar;
+  /** The group's label, as the chart shows it. */
+  readonly label: string;
+}
+
+/** Below this size a chart is compact: less padding, and no legend. */
+const COMPACT_WIDTH = 260;
+const COMPACT_HEIGHT = 200;
+/** A pie at least this wide lists its slices beside it, as Excel does, rather than above it. */
+const SIDE_LEGEND_WIDTH = 360;
+
 /** About how wide a tooltip is, to keep it on the plot's right edge. */
 const TIP_WIDTH = 200;
 
@@ -255,7 +306,7 @@ const KEYS: Readonly<Partial<Record<string, "in" | "out" | "left" | "right" | "a
   changeDetection: ChangeDetectionStrategy.OnPush,
   encapsulation: ViewEncapsulation.None,
   imports: [ChartHeadComponent, ChartMeasureComponent, ChartNoteComponent, ChartTipComponent, StatusBarComponent],
-  host: { "[attr.data-px-theme]": "theme()" },
+  host: { "[attr.data-px-theme]": "theme()", "[class.px-chart-compact]": "compact()", "[class.px-chart-side]": "sideLegend()" },
   template: `
     <px-chart-head
       [entries]="legend()"
@@ -271,12 +322,14 @@ const KEYS: Readonly<Partial<Record<string, "in" | "out" | "left" | "right" | "a
       #plot
       tabindex="0"
       [class.px-chart-panning]="panning()"
+      [class.px-chart-pick]="pickable()"
       (pointerdown)="onPointerDown($event)"
       (pointermove)="onPointerMove($event)"
       (pointerup)="onPointerUp($event)"
       (pointercancel)="onPointerCancel($event)"
       (pointerleave)="onPointerLeave()"
       (wheel)="onWheel($event)"
+      (click)="onClick($event)"
       (dblclick)="reset()"
       (keydown)="onKeydown($event)"
     >
@@ -298,6 +351,7 @@ const KEYS: Readonly<Partial<Record<string, "in" | "out" | "left" | "right" | "a
       }
     </div>
     <px-status-bar
+      [hidden]="!statusBar()"
       [dataset]="current()?.dataset ?? ''"
       [parameters]="current()?.parameters ?? {}"
       [summary]="summary()"
@@ -320,14 +374,28 @@ export class ChartComponent {
   public readonly sync = input<string | null | undefined>(undefined);
   /** The filters selecting a range brushed with Shift and drag, for linked views; null when the brush is cleared. */
   public readonly brushed = output<readonly LayoutFilter[] | null>();
+  /** The group whose bar or slice was clicked, for linked views; null when the selection is cleared. */
+  public readonly selectionChange = output<ChartSelection | null>();
+  /** Whether the status bar shows under the chart; a small tile can do without it. */
+  public readonly statusBar = input(true);
 
   private readonly checked = computed(() => checkLayout(this.layout()));
   protected readonly current = computed((): Layout | null => {
     const checked = this.checked();
     return checked.ok && checked.layout.chart !== null ? checked.layout : null;
   });
-  protected readonly source = chartSource(this.current);
+  protected readonly source = chartSource(computed(() => withPieLimit(this.current())));
   private readonly size = signal<PlotSize>({ width: 0, height: 0 });
+  /** The whole chart's size, which decides whether it is compact: the plot's own changes with the legend. */
+  private readonly outer = signal<PlotSize>({ width: 0, height: 0 });
+  protected readonly compact = computed(() => {
+    const { width, height } = this.outer();
+    return width > 0 && (width < COMPACT_WIDTH || height < COMPACT_HEIGHT);
+  });
+  protected readonly sideLegend = computed(() => this.current()?.chart?.kind === "pie" && !this.compact() && this.outer().width >= SIDE_LEGEND_WIDTH);
+  /** The selected group, by its label. */
+  private readonly selected = signal<string | null>(null);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
   private readonly colors = signal<ChartColors>(CHART_COLORS.light);
   private readonly tokens = signal<Theme>(THEMES.light);
   private readonly plot = viewChild.required<ElementRef<HTMLDivElement>>("plot");
@@ -353,11 +421,20 @@ export class ChartComponent {
       muted: tokens.muted,
       measure: (text) => this.measure(text, tokens.font),
       frame: this.source.frame(),
-      categories: this.source.categories()
+      categories: this.source.categories(),
+      compact: this.compact(),
+      selected: this.selected()
     });
   });
 
-  protected readonly legend = computed(() => this.model()?.legend ?? []);
+  /** A compact chart has no room for a legend; its tooltip names what is under the pointer. */
+  protected readonly legend = computed(() => (this.compact() ? [] : (this.model()?.legend ?? [])));
+
+  /** Whether the pointer is over a bar or slice that clicking selects. */
+  protected readonly pickable = computed(() => {
+    const [model, hover] = [this.model(), this.hover()];
+    return model !== null && hover !== null && model.x === null && categoryAt(model, hover.x, hover.y) !== null;
+  });
 
   protected readonly problem = computed(() => {
     const checked = this.checked();
@@ -394,7 +471,8 @@ export class ChartComponent {
   private readonly drawn = computed(() => {
     const frame = this.source.frame();
     const categories = this.source.categories();
-    if (categories !== null && (this.current()?.chart?.kind === "bar" || this.current()?.chart?.kind === "heatmap")) {
+    const kind = this.current()?.chart?.kind;
+    if (categories !== null && (kind === "bar" || kind === "heatmap" || kind === "pie")) {
       return `${COUNT.format(categories.categories.length)} groups`;
     }
     if (frame === null) {
@@ -552,8 +630,11 @@ export class ChartComponent {
       const element = this.plot().nativeElement;
       const observer = new ResizeObserver(() => {
         this.size.set({ width: element.clientWidth, height: element.clientHeight });
+        this.outer.set({ width: this.host.clientWidth, height: this.host.clientHeight });
       });
       observer.observe(element);
+      observer.observe(this.host);
+      this.outer.set({ width: this.host.clientWidth, height: this.host.clientHeight });
       destroyRef.onDestroy(() => {
         observer.disconnect();
       });
@@ -717,6 +798,32 @@ export class ChartComponent {
     const brushed = brush === null || frame === null || chart === undefined || chart === null ? null : brushFilters(frame, chart.x, chart.hidden, brush);
     this.brush.set(brushed?.range ?? null);
     this.brushed.emit(brushed?.filters ?? null);
+  }
+
+  /**
+   * Selects the group of the bar or slice clicked, or clears the selection on a second click or a click elsewhere. Only
+   * charts of the grouped view select: the others pan and brush.
+   */
+  protected onClick(event: MouseEvent): void {
+    const model = this.model();
+    const layout = this.current();
+    const categories = this.source.categories();
+    if (model === null || layout === null || categories === null || model.x !== null) {
+      return;
+    }
+    const rect = this.plot().nativeElement.getBoundingClientRect();
+    const index = categoryAt(model, event.clientX - rect.left, event.clientY - rect.top);
+    const label = index === null ? null : (categories.categories[index] ?? null);
+    const column = layout.group_by[0];
+    if (index === null || label === null || column === undefined || label === this.selected()) {
+      if (this.selected() !== null) {
+        this.selected.set(null);
+        this.selectionChange.emit(null);
+      }
+      return;
+    }
+    this.selected.set(label);
+    this.selectionChange.emit({ column, value: categories.keys[index] ?? null, label });
   }
 
   /** A drag the browser took over or the system interrupted ends without a pointerup; a brush it was making is dropped. */

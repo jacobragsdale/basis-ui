@@ -43,6 +43,11 @@ function series(label: string, y: readonly number[], right = false): Extract<Cha
   return { label, column: "close", right, x: Float64Array.from(y.map((_, i) => i)), y: Float64Array.from(y), xText: y.map(() => "x"), yText: y.map(String), xJson: y.map((_, i) => String(i)) };
 }
 
+/** Category data with each group keyed by its label, none of them "Other", and no grand total. */
+function cats(categories: readonly string[], series: readonly { readonly label: string; readonly values: readonly number[]; readonly texts: readonly string[] }[]): CategoryData {
+  return { categories, keys: categories, others: categories.map(() => false), series: series.map((s) => ({ ...s, total: null })) };
+}
+
 function kinds<K extends Mark["kind"]>(marks: readonly Mark[], kind: K): Extract<Mark, { kind: K }>[] {
   return marks.filter((m): m is Extract<Mark, { kind: K }> => m.kind === kind);
 }
@@ -127,13 +132,13 @@ describe("chartModel", () => {
     expect(kinds(bars.marks, "candle").every((c) => c.bars)).toBe(true);
   });
 
-  const groups: CategoryData = {
-    categories: ["Atlas", "Cobalt"],
-    series: [
+  const groups = cats(
+    ["Atlas", "Cobalt"],
+    [
       { label: "Equity", values: [10, -4], texts: ["10.00", "(4.00)"] },
       { label: "Bond", values: [5, 6], texts: ["5.00", "6.00"] }
     ]
-  };
+  );
 
   it("caps bars at 24 px, rounds their data ends and keeps the baseline square", () => {
     const model = chartModel(input(chart({ kind: "bar" }), { categories: groups }));
@@ -160,7 +165,7 @@ describe("chartModel", () => {
   });
 
   it("colours a heatmap on two arms around a neutral middle when values take both signs", () => {
-    const model = chartModel(input(chart({ kind: "heatmap" }), { categories: { categories: ["a", "b", "c"], series: [{ label: "x", values: [-8, 0, 8], texts: ["-8", "0", "8"] }] } }));
+    const model = chartModel(input(chart({ kind: "heatmap" }), { categories: cats(["a", "b", "c"], [{ label: "x", values: [-8, 0, 8], texts: ["-8", "0", "8"] }]) }));
     const colors = kinds(model.marks, "cell").map((c) => c.color);
     expect(colors[0]).toBe(CHART_COLORS.light.negativeRamp[6]);
     expect(colors[1]).toBe(CHART_COLORS.light.middle);
@@ -187,14 +192,17 @@ describe("chartModel", () => {
   });
 
   it("draws a heatmap of only losses on the negative arm, the deepest darkest", () => {
-    const model = chartModel(input(chart({ kind: "heatmap" }), { categories: { categories: ["a", "b"], series: [{ label: "x", values: [-8, -1], texts: ["-8", "-1"] }] } }));
+    const model = chartModel(input(chart({ kind: "heatmap" }), { categories: cats(["a", "b"], [{ label: "x", values: [-8, -1], texts: ["-8", "-1"] }]) }));
     const colors = kinds(model.marks, "cell").map((c) => c.color);
     expect(colors[0]).toBe(CHART_COLORS.light.negativeRamp[6]);
     expect(CHART_COLORS.light.negativeRamp.indexOf(colors[1] ?? "")).toBeLessThan(6);
   });
 
   it("thins horizontal bar labels by line height", () => {
-    const many: CategoryData = { categories: Array.from({ length: 80 }, (_, i) => `T${String(i)}`), series: [{ label: "v", values: Array.from({ length: 80 }, () => 1), texts: [] }] };
+    const many = cats(
+      Array.from({ length: 80 }, (_, i) => `T${String(i)}`),
+      [{ label: "v", values: Array.from({ length: 80 }, () => 1), texts: [] }]
+    );
     const model = chartModel(input(chart({ kind: "bar", horizontal: true }), { categories: many }));
     const gaps = model.yLabels.slice(1).map((l, i) => l.px - (model.yLabels[i]?.px ?? 0));
     expect(model.yLabels.length).toBeGreaterThan(5);
@@ -203,7 +211,7 @@ describe("chartModel", () => {
 
   it("says when there is nothing to draw yet", () => {
     expect(chartModel(input(chart({ kind: "line" }), {})).empty).toBe("Loading…");
-    expect(chartModel(input(chart({ kind: "bar" }), { categories: { categories: [], series: [] } })).empty).toBe("No groups to show");
+    expect(chartModel(input(chart({ kind: "bar" }), { categories: cats([], []) })).empty).toBe("No groups to show");
   });
 });
 
@@ -230,5 +238,75 @@ describe("describeChart", () => {
       "Line chart of close, volume by ticker from prices"
     );
     expect(describeChart(parseLayout({ dataset: "prices", chart: { kind: "candlestick", x: "date" } }))).toBe("Candlestick chart of date from prices");
+  });
+});
+
+describe("pies", () => {
+  const classes: CategoryData = {
+    categories: ["Equity", "Bond", "Other"],
+    keys: ["Equity", "Bond", null],
+    others: [false, false, true],
+    series: [
+      { label: "sum(mv)", values: [60, 30, 10], texts: ["60.00", "30.00", "10.00"], total: "100.00" },
+      { label: "sum(mv) as % of total", values: [0.6, 0.3, 0.1], texts: ["60.00%", "30.00%", "10.00%"], total: "100.00%" }
+    ]
+  };
+
+  it("sizes each slice by the first measure, clockwise from twelve o'clock, with the engine's text", () => {
+    const model = chartModel(input(chart({ kind: "pie" }), { categories: classes }));
+    const slices = kinds(model.marks, "slice");
+    expect(slices.map((s) => (s.end - s.start) / (2 * Math.PI))).toEqual([expect.closeTo(0.6, 9), expect.closeTo(0.3, 9), expect.closeTo(0.1, 9)]);
+    expect(slices[0]?.start).toBeCloseTo(-Math.PI / 2);
+    expect(slices.at(-1)?.end).toBeCloseTo((3 * Math.PI) / 2);
+    // A donut by default, with the total in its hole; the tooltip reads every measure.
+    expect(slices[0]?.inner).toBeGreaterThan(0);
+    expect(model.centre).toEqual({ value: "100.00", label: "Total" });
+    expect(slices[1]?.hit.rows.map((r) => r.value)).toEqual(["30.00", "30.00%"]);
+    // "Other" is muted and can't be selected; the legend notes each share.
+    expect(slices[2]?.color).toBe("#999999");
+    expect(model.legend.map((e) => e.note)).toEqual(["60.00%", "30.00%", "10.00%"]);
+    expect(describeChart(parseLayout({ dataset: "positions", group_by: ["asset_class"], chart: { kind: "pie" } }))).toBe("Donut chart of asset_class from positions");
+  });
+
+  it("draws a whole pie without a hole, and drops a hidden slice and the total that no longer adds up", () => {
+    const pie = chartModel(input(chart({ kind: "pie", donut: false }), { categories: classes }));
+    expect(kinds(pie.marks, "slice").every((s) => s.inner === 0)).toBe(true);
+    expect(pie.centre).toBeNull();
+    const hidden = chartModel(input(chart({ kind: "pie", hidden: ["Equity"] }), { categories: classes }));
+    const slices = kinds(hidden.marks, "slice");
+    expect(slices.map((s) => s.hit.title)).toEqual(["Bond", "Other"]);
+    expect((slices[0]?.end ?? 0) - (slices[0]?.start ?? 0)).toBeCloseTo(0.75 * 2 * Math.PI);
+    expect(hidden.centre).toBeNull();
+  });
+
+  it("refuses negative values with a message, rather than drawing a share of a whole", () => {
+    const losses = cats(["Fund A", "Fund B"], [{ label: "pnl", values: [5, -2], texts: ["5.00", "(2.00)"] }]);
+    const model = chartModel(input(chart({ kind: "pie" }), { categories: losses }));
+    expect(model.marks).toEqual([]);
+    expect(model.empty).toBe("A pie can't show negative values: Fund B is (2.00)");
+  });
+
+  it("dims every group but the selected one, on pies and bars alike", () => {
+    const pie = chartModel({ ...input(chart({ kind: "pie" }), { categories: classes }), selected: "Bond" });
+    expect(kinds(pie.marks, "slice").map((s) => s.dim)).toEqual([true, false, true]);
+    const bars = chartModel({ ...input(chart({ kind: "bar" }), { categories: classes }), selected: "Bond" });
+    expect(
+      kinds(bars.marks, "rect")
+        .filter((r) => r.dim !== true)
+        .map((r) => r.hit.title)
+    ).toEqual(["Bond", "Bond"]);
+    // "Other" stands for several groups, so its bars select none.
+    expect(
+      kinds(bars.marks, "rect")
+        .filter((r) => r.hit.title === "Other")
+        .every((r) => r.category === undefined)
+    ).toBe(true);
+  });
+
+  it("pads a compact tile's plot less", () => {
+    const roomy = chartModel(input(chart({ kind: "bar" }), { categories: classes }));
+    const compact = chartModel({ ...input(chart({ kind: "bar" }), { categories: classes }), compact: true });
+    expect(compact.plot.y).toBeLessThan(roomy.plot.y);
+    expect(compact.plot.h).toBeGreaterThan(roomy.plot.h);
   });
 });

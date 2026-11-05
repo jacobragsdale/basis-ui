@@ -3,8 +3,8 @@
  * frame, and what to ask for when the layout or the plot's size changes.
  *
  * Kinds the engine reduces ask for a chart window: the x range shown at the
- * plot's size, again on every resize and zoom. Bar charts and heatmaps draw the
- * layout's grouped view, so they ask for its first rows like a pivot. Changing
+ * plot's size, again on every resize and zoom. Bar charts, heatmaps and pies draw
+ * the layout's grouped view, so they ask for its first rows like a pivot. Changing
  * the dataset or parameters opens a new view; changing what the engine computes
  * updates it; changing only how the chart is drawn, such as hidden series or the
  * scale, sends nothing.
@@ -16,10 +16,12 @@ import type { Signal } from "@angular/core";
 import type { ChartFrameData } from "../chart-frame";
 import { ParallaxClient } from "../client";
 import type { Measurement, ViewHandle, Viewport } from "../connection";
+import { pathValue } from "../format";
 import type { CellValue, FrameData } from "../frame";
 import type { ViewPlacement } from "../grid/grid-source";
 import type { Layout } from "../layout";
 import type { TableStatus } from "../proto/parallax_pb";
+import { PIE_SLICES } from "./model";
 import type { CategoryData } from "./model";
 
 /** The most groups a bar chart or heatmap draws, and the most columns it reads. */
@@ -48,7 +50,19 @@ export interface ChartSource {
 
 /** Whether a layout's chart draws its grouped view rather than a reduction. */
 export function drawsGroups(layout: Layout): boolean {
-  return layout.chart?.kind === "bar" || layout.chart?.kind === "heatmap";
+  const kind = layout.chart?.kind;
+  return kind === "bar" || kind === "heatmap" || kind === "pie";
+}
+
+/**
+ * A layout as the engine computes its chart: a pie past seven groups puts the rest in one "Other" slice, which the
+ * engine totals, unless the layout sets a top-N of its own.
+ */
+export function withPieLimit(layout: Layout | null): Layout | null {
+  if (layout?.chart?.kind !== "pie" || layout.top_n !== null || layout.measures.length === 0) {
+    return layout;
+  }
+  return { ...layout, top_n: { n: PIE_SLICES, measure: 0, largest: true, other: true } };
 }
 
 /** The part of a layout the engine computes from: not the zoom, hidden series or scales, which only change drawing. */
@@ -75,15 +89,20 @@ function toNumber(value: CellValue): number {
   }
 }
 
-/** A grouped frame's top-level groups and data columns, as a bar chart or heatmap draws them. */
+/** A grouped frame's top-level groups and data columns, as a bar chart, heatmap or pie draws them. */
 export function categoriesOf(frame: FrameData): CategoryData {
   const tree = frame.tree;
   const rows: number[] = [];
+  let total: number | null = null;
   for (let row = 0; row < frame.rowCount; row += 1) {
     if (tree !== null && tree.depth(row) === 1 && tree.kind(row) !== "total") {
       rows.push(row);
     }
+    if (tree?.kind(row) === "total") {
+      total = row;
+    }
   }
+  const key = frame.groups[0];
   // Under column pivots, one series per pivot value and measure; otherwise one per measure.
   const pivoted = frame.columns.some((c) => c.split !== null);
   const columns = frame.columns.filter((c) => !pivoted || c.split !== null);
@@ -92,7 +111,14 @@ export function categoriesOf(frame: FrameData): CategoryData {
   const strip = pivoted && suffixes.size === 1 && columns.every((c) => c.title.includes(" | "));
   return {
     categories: rows.map((row) => tree?.label(row) ?? ""),
-    series: columns.map((c) => ({ label: strip ? c.title.slice(0, c.title.lastIndexOf(" | ")) : c.title, values: rows.map((row) => toNumber(c.value(row))), texts: rows.map((row) => c.text(row)) }))
+    keys: rows.map((row) => (key === undefined ? null : pathValue(key.value(row)))),
+    others: rows.map((row) => tree?.kind(row) === "other"),
+    series: columns.map((c) => ({
+      label: strip ? c.title.slice(0, c.title.lastIndexOf(" | ")) : c.title,
+      values: rows.map((row) => toNumber(c.value(row))),
+      texts: rows.map((row) => c.text(row)),
+      total: total === null ? null : c.text(total)
+    }))
   };
 }
 

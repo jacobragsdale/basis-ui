@@ -123,10 +123,24 @@ function rows(hit: Hit, color: string | null): readonly TipRow[] {
   return hit.rows.map((r) => ({ value: r.value, label: r.label, color }));
 }
 
+/** Whether the pointer is on a slice: within its ring, give or take `slack` pixels, and between its angles. */
+function onSlice(mark: Extract<Mark, { kind: "slice" }>, px: number, py: number, slack: number): boolean {
+  const radius = Math.hypot(px - mark.cx, py - mark.cy);
+  if (radius > mark.outer + slack || radius < mark.inner - slack) {
+    return false;
+  }
+  // The pointer's angle, moved by whole turns to at or after the slice's start.
+  const turn = 2 * Math.PI;
+  const angle = Math.atan2(py - mark.cy, px - mark.cx);
+  return angle - turn * Math.floor((angle - mark.start) / turn) <= mark.end;
+}
+
 /** How far the pointer is from a mark, or null if it is outside the mark's hit area, a few pixels larger than the mark. */
 function distanceTo(mark: Mark, px: number, py: number): number | null {
   const slack = 4;
   switch (mark.kind) {
+    case "slice":
+      return onSlice(mark, px, py, slack) ? 0 : null;
     case "candle": {
       const distance = Math.abs(mark.x - px);
       return distance <= mark.width / 2 + slack ? distance : null;
@@ -150,6 +164,7 @@ function readMark(mark: Mark): Reading | null {
     case "candle":
       return { title: mark.hit.title, rows: rows(mark.hit, null), crosshair: mark.x };
     case "rect":
+    case "slice":
       return { title: mark.hit.title, rows: rows(mark.hit, mark.color), crosshair: null };
     case "cell":
       return mark.hit === null ? null : { title: mark.hit.title, rows: rows(mark.hit, mark.color), crosshair: null };
@@ -160,20 +175,45 @@ function readMark(mark: Mark): Reading | null {
   }
 }
 
-/** The mark nearest the pointer whose hit area holds it, and what it reads. */
-export function markAt(model: ChartModel, px: number, py: number): Reading | null {
+/** The nearest mark whose hit area holds the pointer, of those `keep` accepts. */
+function nearestMark(model: ChartModel, px: number, py: number, keep: (mark: Mark) => boolean): Mark | null {
   let best: { readonly mark: Mark; readonly distance: number } | null = null;
   for (const mark of model.marks) {
-    // A density's cells read nothing of their own.
-    if (mark.kind === "cell" && mark.hit === null) {
-      continue;
-    }
-    const distance = distanceTo(mark, px, py);
+    const distance = keep(mark) ? distanceTo(mark, px, py) : null;
     if (distance !== null && (best === null || distance < best.distance)) {
       best = { mark, distance };
     }
   }
-  return best === null ? null : readMark(best.mark);
+  return best?.mark ?? null;
+}
+
+/** The group a mark stands for, which clicking it selects: a bar's or a slice's, but not "Other"'s. */
+function groupOf(mark: Mark): number | null {
+  switch (mark.kind) {
+    case "slice":
+      return mark.category;
+    case "rect":
+      return mark.category ?? null;
+    case "line":
+    case "band":
+    case "columns":
+    case "cell":
+    case "candle":
+      return null;
+  }
+}
+
+/** The group of the bar or slice under the pointer, which clicking it selects; null where there is none, or for "Other". */
+export function categoryAt(model: ChartModel, px: number, py: number): number | null {
+  const mark = nearestMark(model, px, py, (m) => groupOf(m) !== null);
+  return mark === null ? null : groupOf(mark);
+}
+
+/** The mark nearest the pointer whose hit area holds it, and what it reads. */
+export function markAt(model: ChartModel, px: number, py: number): Reading | null {
+  // A density's cells read nothing of their own.
+  const mark = nearestMark(model, px, py, (m) => !(m.kind === "cell" && m.hit === null));
+  return mark === null ? null : readMark(mark);
 }
 
 /**

@@ -13,6 +13,25 @@ import type { ChartModel, Mark, Pane, Rect, ValueAxis } from "./model";
 /** The data end of a bar or column is rounded; its baseline stays square. */
 const RADIUS = 4;
 
+/** The surface gap between touching slices, as between bars. */
+const SLICE_GAP = 2;
+
+/** How faint the bars and slices of groups other than the selected one are. */
+const DIM = 0.3;
+
+/**
+ * The theme's font at `scale` times its size, with `weight`, for a donut's total; the font as it is if it names no
+ * size in pixels.
+ */
+export function scaledFont(font: string, scale: number, weight: string): string {
+  const match = /(\d+(?:\.\d+)?)px/.exec(font);
+  if (match?.[1] === undefined) {
+    return font;
+  }
+  const size = Math.round(Number(match[1]) * scale);
+  return `${weight} ${font.replace(match[0], `${String(size)}px`)}`;
+}
+
 type Side = "top" | "bottom" | "left" | "right" | "none";
 
 function corners(side: Side, r: number): [number, number, number, number] {
@@ -151,8 +170,13 @@ class Painter {
         this.line(mark);
         return;
       case "rect":
+        this.ctx.globalAlpha = mark.dim === true ? DIM : 1;
         this.ctx.fillStyle = mark.color;
         this.rect(mark.rect, mark.round);
+        this.ctx.globalAlpha = 1;
+        return;
+      case "slice":
+        this.slice(mark);
         return;
       case "cell":
         this.ctx.fillStyle = mark.color;
@@ -280,12 +304,64 @@ class Painter {
       ctx.fillText(model.empty, model.width / 2, model.height / 2);
       return;
     }
-    this.axes(model);
+    // A pie has no axes, nor a baseline under it.
+    if (!model.marks.some((m) => m.kind === "slice")) {
+      this.axes(model);
+    }
     this.clipped(model.plot, model.marks);
     for (const pane of model.panes) {
       this.clipped(pane.plot, pane.marks);
     }
     this.events(model);
+    this.centre(model);
+  }
+
+  /** A slice, with a gap of the surface's colour along its edges where it meets its neighbours. */
+  private slice(mark: Extract<Mark, { kind: "slice" }>): void {
+    const ctx = this.ctx;
+    ctx.globalAlpha = mark.dim ? DIM : 1;
+    ctx.fillStyle = mark.color;
+    ctx.beginPath();
+    ctx.arc(mark.cx, mark.cy, mark.outer, mark.start, mark.end);
+    if (mark.inner > 0) {
+      ctx.arc(mark.cx, mark.cy, mark.inner, mark.end, mark.start, true);
+    } else {
+      ctx.lineTo(mark.cx, mark.cy);
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    // A whole circle meets nothing.
+    if (mark.end - mark.start < 2 * Math.PI - 1e-6) {
+      ctx.strokeStyle = this.theme.background;
+      ctx.lineWidth = SLICE_GAP;
+      ctx.stroke();
+    }
+  }
+
+  /** A donut's total in its hole, over a muted label, when it fits. */
+  private centre(model: ChartModel): void {
+    const centre = model.centre ?? null;
+    const slice = model.marks.find((m): m is Extract<Mark, { kind: "slice" }> => m.kind === "slice");
+    if (centre === null || slice === undefined) {
+      return;
+    }
+    const ctx = this.ctx;
+    const room = slice.inner * 1.7;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.font = scaledFont(this.theme.font, 1.25, "600");
+    if (ctx.measureText(centre.value).width > room) {
+      ctx.font = this.theme.font;
+    }
+    if (ctx.measureText(centre.value).width > room) {
+      return;
+    }
+    ctx.fillStyle = this.theme.foreground;
+    ctx.fillText(centre.value, slice.cx, slice.cy - 8);
+    ctx.font = this.theme.font;
+    ctx.fillStyle = this.theme.muted;
+    ctx.fillText(centre.label, slice.cx, slice.cy + 10);
   }
 
   /** Event markers: small triangles along the bottom of the price's plot, ringed in the surface colour. */

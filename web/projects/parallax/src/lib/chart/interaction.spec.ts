@@ -4,7 +4,7 @@ import type { CandleData, ChartContent, ChartFrameData, SeriesData } from "../ch
 import { parseLayout } from "../layout";
 import type { LayoutChart } from "../layout";
 import { CHART_COLORS } from "../theme";
-import { brushFilters, markAt, nearestIndex, panRange, readSeries, zoomRange } from "./interaction";
+import { brushFilters, categoryAt, markAt, nearestIndex, panRange, readSeries, zoomRange } from "./interaction";
 import { chartModel } from "./model";
 import type { ChartModel } from "./model";
 
@@ -332,5 +332,35 @@ describe("brushFilters", () => {
   it("selects nothing when a bound's value is unknown", () => {
     const unknown: ChartContent = { kind: "series", series: [{ ...series("AAPL", [[0, 1]]), xJson: [null] }] };
     expect(brushFilters(frame(unknown), "date", [], [-1, 1])).toBeNull();
+  });
+});
+
+describe("categoryAt", () => {
+  const slices = chartModel({
+    chart: chart({ kind: "pie" }),
+    width: 300,
+    height: 300,
+    colors: CHART_COLORS.light,
+    muted: "#999999",
+    measure: (t) => t.length * 6,
+    frame: null,
+    categories: {
+      categories: ["Equity", "Bond", "Other"],
+      keys: ["Equity", "Bond", null],
+      others: [false, false, true],
+      series: [{ label: "mv", values: [50, 25, 25], texts: ["50", "25", "25"], total: "100" }]
+    }
+  });
+
+  it("finds the slice under the pointer by its angle, within its ring, and none in the hole or for Other", () => {
+    // Equity runs from twelve o'clock to six, clockwise: the right half. Bond is the bottom left quarter.
+    expect(categoryAt(slices, 250, 150)).toBe(0);
+    expect(categoryAt(slices, 70, 200)).toBe(1);
+    expect(markAt(slices, 70, 200)?.title).toBe("Bond");
+    // The donut's hole holds nothing; Other, the top left quarter, stands for several groups.
+    expect(categoryAt(slices, 150, 150)).toBeNull();
+    expect(markAt(slices, 70, 100)?.title).toBe("Other");
+    expect(categoryAt(slices, 70, 100)).toBeNull();
+    expect(categoryAt(slices, 2, 2)).toBeNull();
   });
 });

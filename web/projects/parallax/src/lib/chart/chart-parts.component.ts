@@ -31,6 +31,9 @@ export interface PlacedReading {
       <button type="button" class="px-legend-entry" [attr.aria-pressed]="!entry.hidden" (click)="toggled.emit(entry.label)">
         <span class="px-legend-key" [class.px-legend-line]="entry.shape === 'line'" [style.background]="entry.color"></span>
         <span>{{ entry.label }}</span>
+        @if (entry.note) {
+          <span class="px-legend-note">{{ entry.note }}</span>
+        }
       </button>
     }
   `

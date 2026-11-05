@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, input, signal } from "@angular/core";
 import { ChartComponent, GridComponent } from "parallax";
-import type { LayoutFilter, LayoutInput, ThemeName } from "parallax";
+import type { ChartSelection, LayoutFilter, LayoutInput, ThemeName } from "parallax";
 
 /** A chart the page shows, with what it says. */
 interface Card {
@@ -23,6 +23,14 @@ function rowsLayout(brush: readonly LayoutFilter[]): LayoutInput {
   return { dataset: "prices", filters: [QYE, ...brush], sort: [{ column: "date", descending: true }], columns: ["date", "open", "high", "low", "close", "volume"] };
 }
 
+const ALL_POSITIONS = "Positions, all of them until a slice of the donut is selected";
+
+/** The grid beside the donut: positions, narrowed to the asset class of a clicked slice. */
+function positionsLayout(selected: ChartSelection | null): LayoutInput {
+  const filters = selected === null ? [] : [{ column: selected.column, op: "eq" as const, value: selected.value }];
+  return { dataset: "positions", filters, columns: ["position_id", "fund", "asset_class", "ticker", "market_value_usd"], formats: { market_value_usd: { abbreviate: "millions" } } };
+}
+
 function card(id: string, title: string, layout: LayoutInput, linked = false): Card {
   return { id, title, layout: signal(layout), linked };
 }
@@ -36,12 +44,18 @@ function card(id: string, title: string, layout: LayoutInput, linked = false): C
     @for (c of cards; track c.id) {
       <section [attr.data-card]="c.id" [class.wide]="c.id === 'technical'">
         <h2>{{ c.title }}</h2>
-        <px-chart [(layout)]="c.layout" [theme]="theme()" (brushed)="brush(c, $event)" />
+        <px-chart [(layout)]="c.layout" [theme]="theme()" (brushed)="brush(c, $event)" (selectionChange)="select(c, $event)" />
       </section>
       @if (c.linked) {
-        <section>
+        <section data-linked="candles">
           <h2>{{ rowsTitle() }}</h2>
           <px-grid [(layout)]="rows" [theme]="theme()" />
+        </section>
+      }
+      @if (c.id === "donut") {
+        <section data-linked="donut">
+          <h2>{{ positionsTitle() }}</h2>
+          <px-grid [(layout)]="positions" [theme]="theme()" />
         </section>
       }
     }
@@ -91,6 +105,19 @@ export class ChartsComponent {
   /** The grid of QYE's days, narrowed by a brush on the candles. */
   protected readonly rows = signal<LayoutInput>(rowsLayout([]));
   protected readonly rowsTitle = signal(ALL_DAYS);
+
+  /** The positions beside the donut, narrowed to a clicked slice's asset class. */
+  protected readonly positions = signal<LayoutInput>(positionsLayout(null));
+  protected readonly positionsTitle = signal(ALL_POSITIONS);
+
+  /** A slice clicked on the donut narrows its grid to that asset class; clicking it again shows every position. */
+  protected select(c: Card, selected: ChartSelection | null): void {
+    if (c.id !== "donut") {
+      return;
+    }
+    this.positions.set(positionsLayout(selected));
+    this.positionsTitle.set(selected === null ? ALL_POSITIONS : `Positions in ${selected.label}, the slice selected`);
+  }
 
   /** A brushed range on a linked chart narrows the grid to the days it covers; clearing it shows them all. */
   protected brush(c: Card, filters: readonly LayoutFilter[] | null): void {
@@ -192,6 +219,24 @@ export class ChartsComponent {
       measures: [{ column: "daily_pnl_usd", aggregate: "sum" }],
       formats: { daily_pnl_usd: { abbreviate: "thousands", negative: "parentheses" } },
       chart: { kind: "heatmap" }
+    }),
+    card("donut", "Market value by asset class: click a slice to list its positions", {
+      dataset: "positions",
+      group_by: ["asset_class"],
+      measures: [
+        { column: "market_value_usd", aggregate: "sum" },
+        { column: "market_value_usd", aggregate: "sum", show_as: "percent_of_grand_total" }
+      ],
+      group_sort: { by: { measure: 0 }, descending: true },
+      formats: { market_value_usd: { abbreviate: "millions" } },
+      chart: { kind: "pie" }
+    }),
+    card("pie", "Positions by sector, the seven largest and the rest", {
+      dataset: "positions",
+      group_by: ["sector"],
+      measures: [{ aggregate: "count_all" }, { aggregate: "count_all", show_as: "percent_of_grand_total" }],
+      group_sort: { by: { measure: 0 }, descending: true },
+      chart: { kind: "pie", donut: false }
     })
   ];
 }

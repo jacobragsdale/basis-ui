@@ -8,10 +8,13 @@
  * gridlines. Series take the categorical colours in a fixed order by their place
  * in the data, never cycled, so hiding one never repaints the others; series past
  * the eighth are drawn in the muted colour.
+ *
+ * A pie's slices take their angles from the first measure's numbers, and its labels, tooltip and centre total from the
+ * engine's text. A selected group's bar or slice stays bright while the others dim.
  */
 
 import type { CandleData, ChartContent, ChartFrameData } from "../chart-frame";
-import type { Layout, LayoutChart } from "../layout";
+import type { Layout, LayoutChart, LayoutScalar } from "../layout";
 import type { ChartColors } from "../theme";
 import { PANE_GAP, indicatorStyles, paneDomain, paneHeight, paneScale, paneSpecs, paneValues, segmentsOf } from "./indicators";
 import type { IndicatorStyle, PaneSpec } from "./indicators";
@@ -47,7 +50,33 @@ export type Mark =
   | { readonly kind: "band"; readonly color: string; readonly upper: Float64Array; readonly lower: Float64Array }
   /** Thin bars from a baseline, as `x, y, w, h` quads, such as volume or MACD's histogram. */
   | { readonly kind: "columns"; readonly color: string; readonly rects: Float64Array }
-  | { readonly kind: "rect"; readonly color: string; readonly rect: Rect; readonly round: "top" | "bottom" | "left" | "right" | "none"; readonly hit: Hit }
+  | {
+      readonly kind: "rect";
+      readonly color: string;
+      readonly rect: Rect;
+      readonly round: "top" | "bottom" | "left" | "right" | "none";
+      readonly hit: Hit;
+      /** The group a bar stands for, which clicking it selects. */
+      readonly category?: number;
+      /** Drawn faint, because another group is selected. */
+      readonly dim?: boolean;
+    }
+  /** A pie's slice: a ring's segment from `start` to `end`, in radians clockwise from three o'clock. */
+  | {
+      readonly kind: "slice";
+      readonly color: string;
+      readonly cx: number;
+      readonly cy: number;
+      readonly outer: number;
+      /** The hole's radius; 0 for a pie. */
+      readonly inner: number;
+      readonly start: number;
+      readonly end: number;
+      readonly hit: Hit;
+      /** The group the slice stands for, which clicking it selects; null for "Other", which stands for several. */
+      readonly category: number | null;
+      readonly dim: boolean;
+    }
   | { readonly kind: "cell"; readonly color: string; readonly rect: Rect; readonly hit: Hit | null }
   | {
       readonly kind: "candle";
@@ -69,6 +98,8 @@ export interface LegendEntry {
   readonly color: string;
   readonly shape: "line" | "rect";
   readonly hidden: boolean;
+  /** A value beside the label, such as a slice's share. */
+  readonly note?: string;
 }
 
 /** A value axis. */
@@ -115,6 +146,8 @@ export interface ChartModel {
   readonly indicators: readonly IndicatorStyle[];
   /** Rows the layout's events column marks, along the bottom of the price's plot. */
   readonly events: readonly EventMark[];
+  /** A donut's total, written in its hole. */
+  readonly centre?: { readonly value: string; readonly label: string } | null;
 }
 
 /** An event marker: where, and what its tooltip says. */
@@ -138,10 +171,20 @@ export function plotBottom(model: ChartModel): number {
   return last === undefined ? model.plot.y + model.plot.h : last.plot.y + last.plot.h;
 }
 
-/** Data of a bar chart or heatmap, taken from the layout's grouped view. */
+/** Data of a bar chart, heatmap or pie, taken from the layout's grouped view. */
 export interface CategoryData {
   readonly categories: readonly string[];
-  readonly series: readonly { readonly label: string; readonly values: readonly number[]; readonly texts: readonly string[] }[];
+  /** Each group's key, as exact JSON, which selecting it reports. */
+  readonly keys: readonly LayoutScalar[];
+  /** Which groups are the top-N's "Other", which stands for several and can't be selected. */
+  readonly others: readonly boolean[];
+  readonly series: readonly {
+    readonly label: string;
+    readonly values: readonly number[];
+    readonly texts: readonly string[];
+    /** The grand total's text, if the view has one. */
+    readonly total: string | null;
+  }[];
 }
 
 /** What the model is built from. */
@@ -158,15 +201,32 @@ export interface ModelInput {
   readonly categories: CategoryData | null;
   /** The narrowest left gutter, so that the price's axis lines up with its panes'. */
   readonly minGutter?: number;
+  /** A small tile's chart: less padding around the plot. */
+  readonly compact?: boolean;
+  /** The selected group, by its label; the others' bars and slices dim. */
+  readonly selected?: string | null;
 }
 
 const COUNT = new Intl.NumberFormat("en-US");
 
 const PAD = 8;
+/** The padding of a compact chart. */
+const COMPACT_PAD = 4;
 const X_AXIS = 22;
 const MAX_BAR = 24;
 const GAP = 2;
 const TICKS_PER_PX = 1 / 56;
+
+/** The padding around the plot. */
+function padOf(input: ModelInput): number {
+  return input.compact === true ? COMPACT_PAD : PAD;
+}
+
+/** Whether a group is drawn faint, because another is selected. */
+function dimmed(input: ModelInput, label: string): boolean {
+  const selected = input.selected ?? null;
+  return selected !== null && selected !== label;
+}
 
 function seriesColor(input: ModelInput, index: number): string {
   return input.colors.series[index] ?? input.muted;
@@ -217,14 +277,15 @@ function axis(side: "left" | "right", scale: Scale, suffix = ""): ValueAxis {
 }
 
 function gutter(input: ModelInput, ticks: readonly ValueTick[]): number {
-  return Math.ceil(Math.max(0, ...ticks.map((t) => input.measure(t.label)))) + PAD + 2;
+  return Math.ceil(Math.max(0, ...ticks.map((t) => input.measure(t.label)))) + padOf(input) + 2;
 }
 
 /** The plot area once the value axes' labels have room. */
 function plotFor(input: ModelInput, left: readonly ValueTick[], right: readonly ValueTick[] | null): Rect {
+  const pad = padOf(input);
   const x = Math.max(gutter(input, left), input.minGutter ?? 0);
-  const w = input.width - x - (right === null ? PAD : gutter(input, right));
-  return { x, y: PAD, w: Math.max(1, w), h: Math.max(1, input.height - PAD - X_AXIS) };
+  const w = input.width - x - (right === null ? pad : gutter(input, right));
+  return { x, y: pad, w: Math.max(1, w), h: Math.max(1, input.height - pad - X_AXIS) };
 }
 
 /** Re-ranges a scale onto a new pixel range, keeping its domain. */
@@ -233,7 +294,8 @@ function onto(scale: Scale, range: readonly [number, number]): Scale {
 }
 
 function emptyModel(input: ModelInput, message: string): ChartModel {
-  const plot = { x: PAD, y: PAD, w: Math.max(1, input.width - 2 * PAD), h: Math.max(1, input.height - PAD - X_AXIS) };
+  const pad = padOf(input);
+  const plot = { x: pad, y: pad, w: Math.max(1, input.width - 2 * pad), h: Math.max(1, input.height - pad - X_AXIS) };
   return { width: input.width, height: input.height, plot, xTicks: [], yLabels: [], yAxes: [], x: null, marks: [], legend: [], empty: message, panes: [], indicators: [], events: [] };
 }
 
@@ -245,7 +307,7 @@ function lineModel(input: ModelInput, frame: ChartFrameData, content: Content<"s
   const over = overlayValues(input, frame, styles);
   const values = (right: boolean): number[] => [...visible.filter(({ s }) => s.right === right).flatMap(({ s }) => Array.from(s.y)), ...(right ? [] : over)];
   const area = input.chart.kind === "area";
-  const range: readonly [number, number] = [input.height - X_AXIS, PAD];
+  const range: readonly [number, number] = [input.height - X_AXIS, padOf(input)];
   const leftScale = valueScale(input, values(false), range, area);
   const hasRight = visible.some(({ s }) => s.right);
   const rightScale = hasRight ? valueScale(input, values(true), range, area) : null;
@@ -357,7 +419,7 @@ function legendWithOverlays(input: ModelInput, series: readonly string[], shape:
 function histogramModel(input: ModelInput, frame: ChartFrameData, content: Content<"histogram">): ChartModel {
   const visible = content.series.map((s, i) => ({ s, i })).filter(({ s }) => !hidden(input, s.label));
   const counts = visible.flatMap(({ s }) => s.counts);
-  const range: readonly [number, number] = [input.height - X_AXIS, PAD];
+  const range: readonly [number, number] = [input.height - X_AXIS, padOf(input)];
   const scale = valueScale(input, counts, range, true);
   const plot = plotFor(input, axis("left", scale).ticks, null);
   const y = onto(scale, [plot.y + plot.h, plot.y]);
@@ -406,7 +468,7 @@ function rampColor(ramp: readonly string[], share: number): string {
 }
 
 function densityModel(input: ModelInput, frame: ChartFrameData, content: Content<"density">): ChartModel {
-  const range: readonly [number, number] = [input.height - X_AXIS, PAD];
+  const range: readonly [number, number] = [input.height - X_AXIS, padOf(input)];
   const scale = linearScale([content.yFrom, content.yTo], range);
   const plot = plotFor(input, axis("left", scale).ticks, null);
   const y = linearScale([content.yFrom, content.yTo], [plot.y + plot.h, plot.y]);
@@ -504,7 +566,7 @@ function candleMark(input: ModelInput, c: Content<"candles">["candles"], i: numb
 function candleModel(input: ModelInput, frame: ChartFrameData, content: Content<"candles">): ChartModel {
   const c = content.candles;
   const styles = indicatorStyles(input.chart, frame, input.colors, input.muted, 0);
-  const range: readonly [number, number] = [input.height - X_AXIS, PAD];
+  const range: readonly [number, number] = [input.height - X_AXIS, padOf(input)];
   const scale = valueScale(input, [...c.low, ...c.high, ...overlayValues(input, frame, styles)], range, false);
   const plot = plotFor(input, axis("left", scale).ticks, null);
   const y = onto(scale, [plot.y + plot.h, plot.y]);
@@ -588,12 +650,13 @@ function barModel(input: ModelInput, data: CategoryData): ChartModel {
   const totals = stacked
     ? data.categories.flatMap((_, c) => [visible.reduce((sum, { s }) => sum + Math.max(0, finite(s.values[c])), 0), visible.reduce((sum, { s }) => sum + Math.min(0, finite(s.values[c])), 0)])
     : visible.flatMap(({ s }) => s.values);
-  const length = horizontal ? input.width - 2 * PAD : input.height - X_AXIS - PAD;
+  const pad = padOf(input);
+  const length = horizontal ? input.width - 2 * pad : input.height - X_AXIS - pad;
   const scale = valueScale({ ...input, chart: { ...input.chart, log_y: false } }, totals, [0, length], true);
-  const labelWidth = horizontal ? Math.min(input.width / 3, Math.max(0, ...data.categories.map((c) => input.measure(c))) + PAD + 2) : 0;
+  const labelWidth = horizontal ? Math.min(input.width / 3, Math.max(0, ...data.categories.map((c) => input.measure(c))) + pad + 2) : 0;
   const plot = horizontal
-    ? { x: labelWidth, y: PAD, w: Math.max(1, input.width - labelWidth - PAD), h: Math.max(1, input.height - PAD - X_AXIS) }
-    : plotFor(input, axis("left", onto(scale, [input.height - X_AXIS, PAD])).ticks, null);
+    ? { x: labelWidth, y: pad, w: Math.max(1, input.width - labelWidth - pad), h: Math.max(1, input.height - pad - X_AXIS) }
+    : plotFor(input, axis("left", onto(scale, [input.height - X_AXIS, pad])).ticks, null);
   const value = horizontal ? onto(scale, [plot.x, plot.x + plot.w]) : onto(scale, [plot.y + plot.h, plot.y]);
   const band = (horizontal ? plot.h : plot.w) / Math.max(1, data.categories.length);
   const slots = barSlots(band, visible.length, stacked);
@@ -612,7 +675,14 @@ function barModel(input: ModelInput, data: CategoryData): ChartModel {
       }
       const across = (horizontal ? plot.y : plot.x) + c * band + slots.offset(n);
       const geometry = { value, horizontal, stacked, thickness: slots.thickness };
-      marks.push({ ...barRect(geometry, start, v, across), color: seriesColor(input, i), hit: { title: category, rows: [{ label: s.label, value: s.texts[c] ?? "" }] } });
+      const selectable = data.others[c] !== true;
+      marks.push({
+        ...barRect(geometry, start, v, across),
+        color: seriesColor(input, i),
+        hit: { title: category, rows: [{ label: s.label, value: s.texts[c] ?? "" }] },
+        ...(selectable ? { category: c } : {}),
+        dim: dimmed(input, category)
+      });
     });
   });
   const positions = (i: number): number => (horizontal ? plot.y : plot.x) + (i + 0.5) * band;
@@ -634,6 +704,69 @@ function barModel(input: ModelInput, data: CategoryData): ChartModel {
     panes: [],
     indicators: [],
     events: []
+  };
+}
+
+/** The most slices a pie draws; past them, the engine's top-N puts the rest in one "Other" slice. */
+export const PIE_SLICES = 7;
+
+/** A donut's hole, as a share of its radius. */
+const HOLE = 0.6;
+
+/** A slice's colour: the categorical colours in the groups' order, and "Other" muted, as series past the eighth are. */
+function sliceColor(input: ModelInput, data: CategoryData, index: number): string {
+  return data.others[index] === true ? input.muted : seriesColor(input, index);
+}
+
+/** A pie's legend: every group, with its share if the view has a second measure for it, or else its value. */
+function pieLegend(input: ModelInput, data: CategoryData): readonly LegendEntry[] {
+  const noted = data.series[1] ?? data.series[0];
+  return data.categories.map((label, i) => ({ label, color: sliceColor(input, data, i), shape: "rect", hidden: hidden(input, label), note: noted?.texts[i] ?? "" }));
+}
+
+/**
+ * A pie or donut of the grouped view's first measure: a slice per group, sized by its number, clockwise from twelve
+ * o'clock in the view's order. The engine's text labels everything, and a donut shows the total in its hole while every
+ * group is shown. A share of a whole has no negative parts, so negative values are refused rather than drawn.
+ */
+function pieModel(input: ModelInput, data: CategoryData): ChartModel {
+  const first = data.series[0];
+  const negative = first?.values.findIndex((v) => v < 0) ?? -1;
+  if (first === undefined || negative !== -1) {
+    const message = first === undefined ? "No values to show" : `A pie can't show negative values: ${data.categories[negative] ?? ""} is ${first.texts[negative] ?? ""}`;
+    return emptyModel(input, message);
+  }
+  const pad = padOf(input);
+  const plot = { x: pad, y: pad, w: Math.max(1, input.width - 2 * pad), h: Math.max(1, input.height - 2 * pad) };
+  const [cx, cy] = [plot.x + plot.w / 2, plot.y + plot.h / 2];
+  const outer = Math.max(1, Math.min(plot.w, plot.h) / 2);
+  const inner = input.chart.donut ? outer * HOLE : 0;
+  const shown = data.categories.map((label, i) => ({ label, i, v: first.values[i] ?? Number.NaN })).filter(({ label, v }) => Number.isFinite(v) && v > 0 && !hidden(input, label));
+  const sum = shown.reduce((total, { v }) => total + v, 0);
+  let angle = -Math.PI / 2;
+  const marks: Mark[] = shown.map(({ label, i, v }) => {
+    const start = angle;
+    angle += (v / sum) * 2 * Math.PI;
+    const hit = { title: label, rows: data.series.map((s) => ({ label: s.label, value: s.texts[i] ?? "" })) };
+    const category = data.others[i] === true ? null : i;
+    return { kind: "slice", color: sliceColor(input, data, i), cx, cy, outer, inner, start, end: angle, hit, category, dim: dimmed(input, label) };
+  });
+  const whole = !data.categories.some((c) => hidden(input, c));
+  return {
+    width: input.width,
+    height: input.height,
+    plot,
+    xTicks: [],
+    yLabels: [],
+    yAxes: [],
+    x: null,
+    marks,
+    legend: pieLegend(input, data),
+    empty: marks.length === 0 ? "No values to show" : null,
+    panes: [],
+    indicators: [],
+    events: [],
+    centre: input.chart.donut && whole && first.total !== null && marks.length > 0 ? { value: first.total, label: "Total" } : null
   };
 }
 
@@ -660,8 +793,8 @@ function heatmapModel(input: ModelInput, data: CategoryData): ChartModel {
     rows.flatMap((s) => s.values),
     false
   ) ?? [0, 1];
-  const labelWidth = Math.min(input.width / 3, Math.max(0, ...rows.map((s) => input.measure(s.label))) + PAD + 2);
-  const plot = { x: labelWidth, y: PAD, w: Math.max(1, input.width - labelWidth - PAD), h: Math.max(1, input.height - PAD - X_AXIS) };
+  const labelWidth = Math.min(input.width / 3, Math.max(0, ...rows.map((s) => input.measure(s.label))) + padOf(input) + 2);
+  const plot = { x: labelWidth, y: padOf(input), w: Math.max(1, input.width - labelWidth - padOf(input)), h: Math.max(1, input.height - padOf(input) - X_AXIS) };
   const [cw, ch] = [plot.w / Math.max(1, data.categories.length), plot.h / Math.max(1, rows.length)];
   const marks: Mark[] = [];
   rows.forEach((s, r) => {
@@ -696,11 +829,18 @@ export function chartModel(input: ModelInput): ChartModel {
   if (input.width < 40 || input.height < 40) {
     return emptyModel(input, "");
   }
-  if (input.chart.kind === "bar" || input.chart.kind === "heatmap") {
+  if (input.chart.kind === "bar" || input.chart.kind === "heatmap" || input.chart.kind === "pie") {
     if (input.categories === null) {
       return emptyModel(input, "Loading…");
     }
-    return input.chart.kind === "bar" ? barModel(input, input.categories) : heatmapModel(input, input.categories);
+    switch (input.chart.kind) {
+      case "bar":
+        return barModel(input, input.categories);
+      case "heatmap":
+        return heatmapModel(input, input.categories);
+      case "pie":
+        return pieModel(input, input.categories);
+    }
   }
   const frame = input.frame;
   if (frame === null) {
@@ -732,7 +872,7 @@ interface PlacedPane {
  */
 function withPanes(input: ModelInput, frame: ChartFrameData, candles: CandleData | null, plotted: number, build: (input: ModelInput) => ChartModel): ChartModel {
   const specs = paneSpecs(input.chart);
-  const height = paneHeight(specs.length, input.height - PAD - X_AXIS);
+  const height = paneHeight(specs.length, input.height - padOf(input) - X_AXIS);
   if (height === 0) {
     return build(input);
   }
@@ -851,6 +991,9 @@ const KIND_NAMES: Readonly<Record<LayoutChart["kind"], string>> = {
 };
 
 function kindName(chart: LayoutChart): string {
+  if (chart.kind === "pie" && chart.donut) {
+    return "Donut chart";
+  }
   if (chart.kind !== "bar") {
     return KIND_NAMES[chart.kind];
   }
@@ -864,7 +1007,7 @@ export function describeChart(layout: Layout): string {
   if (chart === null) {
     return "Chart";
   }
-  const grouped = chart.kind === "bar" || chart.kind === "heatmap";
+  const grouped = chart.kind === "bar" || chart.kind === "heatmap" || chart.kind === "pie";
   const columns = [...chart.y, ...chart.y_right].join(", ");
   const of = grouped ? layout.group_by.join(", ") : columns === "" ? chart.x : columns;
   const by = grouped ? layout.split_by.join(", ") : (chart.series ?? "");

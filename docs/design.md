@@ -429,6 +429,24 @@ buckets are cut by each instant's own offset, so the repeated autumn hour gets
 its own candles. Candlestick and OHLC charts show one instrument and need dates
 or instants on the x axis.
 
+Pie and donut charts draw the layout's grouped view, as bar charts and heatmaps
+do, so the engine needed only the kind. A slice's angle comes from its group's
+first measure; its label, tooltip and a donut's centre total are the engine's
+text, and a second measure shown as a share of the total gives each slice its
+percentage, so no share is computed in the browser. A pie with more than seven
+groups asks the engine for its seven largest and one "Other" slice, which the
+engine totals, unless the layout sets its own top-N. A share of a whole has no
+negative parts, so a pie refuses negative values with a message rather than
+drawing them. Clicking a bar or slice selects its group: the chart emits
+`selectionChange` with the outermost group column and the group's exact key,
+for a host to filter a linked view by, dims the other groups, and clears it on
+a second click. "Other" stands for several groups and selects nothing.
+
+A chart smaller than 260 by 200 pixels is compact: its plot has less padding
+and no legend, and its tooltip names what is under the pointer. A pie at least
+360 pixels wide lists its slices beside it, as Excel does. A host can turn the
+status bar off with `[statusBar]="false"` for a small tile.
+
 M4's guarantee is tested directly: for random series with gaps and repeated x
 values, the line through the reduced points reaches exactly the same lowest and
 highest value in every pixel column as the line through every point.

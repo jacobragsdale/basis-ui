@@ -31,7 +31,7 @@ function card(page: Page, id: string): Locator {
 
 async function open(page: Page): Promise<void> {
   await page.goto("/?preset=charts");
-  await expect(page.locator("px-chart")).toHaveCount(12);
+  await expect(page.locator("px-chart")).toHaveCount(14);
   // Every chart has drawn its data once its status bar says what it shows.
   await expect(page.locator("px-chart .px-status-rows").filter({ hasText: "loading" })).toHaveCount(0, { timeout: 60_000 });
 }
@@ -53,7 +53,9 @@ test("every chart kind draws its data, with an accessible name and no errors", a
     "Horizontal bar chart of sector by long_short",
     "Histogram of beta by long_short",
     "Density of points of daily_pnl_usd",
-    "Heatmap of sector by asset_class"
+    "Heatmap of sector by asset_class",
+    "Donut chart of asset_class",
+    "Pie chart of sector"
   ];
   expect(names.map((n, i) => n.startsWith(kinds[i] ?? "?"))).toEqual(kinds.map(() => true));
   for (const canvas of await page.locator("px-chart canvas").all()) {
@@ -149,7 +151,7 @@ test("the wheel zooms, dragging pans, and a double-click or 0 shows everything",
 test("Shift and drag on the candles lists the selected days in the grid, and Escape lists them all again", async ({ page }) => {
   await open(page);
   const candles = card(page, "candles");
-  const grid = page.locator("section").filter({ has: page.locator("px-grid") });
+  const grid = page.locator('section[data-linked="candles"]');
   const rows = grid.locator(".px-status-rows");
   await expect(rows).toHaveText(/^[\d,]+ rows$/);
   const count = async (): Promise<number> => Number((await rows.textContent())?.replace(/\D/g, "") ?? "0");
@@ -287,4 +289,39 @@ test("the measure tool shows what the engine measured across a band, and Escape 
   // Escape puts it away.
   await plot.press("Escape");
   await expect(measured).toHaveCount(0);
+});
+
+test.describe("pies", () => {
+  test("a donut's slices are sized by the measure, and its legend notes each share", async ({ page }) => {
+    await open(page);
+    const donut = card(page, "donut");
+    await expect(donut.locator(".px-legend-entry")).toHaveText([/^Equity\s*\d+\.\d\d%$/, /^Bond/, /^Future/, /^Option/]);
+    // Past seven sectors the engine puts the rest in Other, last.
+    const pie = card(page, "pie");
+    await expect(pie.locator(".px-legend-entry")).toHaveCount(8);
+    await expect(pie.locator(".px-legend-entry").last()).toContainText("Other");
+  });
+
+  test("clicking a slice lists its positions, and clicking it again lists them all", async ({ page }) => {
+    await open(page);
+    const donut = card(page, "donut");
+    const grid = page.locator('section[data-linked="donut"] [role="grid"]');
+    await expect(grid).toHaveAttribute("aria-rowcount", "200000", { timeout: 60_000 });
+    const plot = donut.locator(".px-chart-plot");
+    await plot.scrollIntoViewIfNeeded();
+    const box = await plot.boundingBox();
+    if (box === null) {
+      throw new Error("no plot");
+    }
+    // Equity, the largest slice, starts at twelve o'clock: just right of it, on the ring.
+    const radius = Math.min(box.width, box.height) / 2 - 8;
+    const at = { x: box.width / 2 + 10, y: box.height / 2 - radius * 0.8 };
+    await plot.hover({ position: at });
+    await expect(donut.locator(".px-chart-tip")).toContainText("Equity");
+    await plot.click({ position: at });
+    await expect(page.locator('section[data-linked="donut"] h2')).toHaveText("Positions in Equity, the slice selected");
+    await expect.poll(async () => Number(await grid.getAttribute("aria-rowcount"))).toBeLessThan(200_000);
+    await plot.click({ position: at });
+    await expect(grid).toHaveAttribute("aria-rowcount", "200000");
+  });
 });
