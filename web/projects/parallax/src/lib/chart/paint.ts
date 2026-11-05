@@ -251,7 +251,7 @@ class Painter {
     const { plot } = model;
     ctx.font = this.theme.font;
     ctx.fillStyle = this.theme.muted;
-    ctx.strokeStyle = this.theme.gridLine;
+    ctx.strokeStyle = this.theme.borderColor;
     ctx.lineWidth = 1;
     // Gridlines follow the left axis only: hairlines, recessive.
     for (const tick of model.yAxes.find((a) => a.side === "left")?.ticks ?? []) {
@@ -274,7 +274,7 @@ class Painter {
       this.paneAxes(pane);
     }
     ctx.fillStyle = this.theme.muted;
-    ctx.strokeStyle = this.theme.gridLine;
+    ctx.strokeStyle = this.theme.borderColor;
     ctx.textAlign = "center";
     this.xLabels(model);
     this.horizontal(plotBottom(model), plot.x, plot.x + plot.w);
@@ -293,7 +293,7 @@ class Painter {
   private paneAxes(pane: Pane): void {
     const ctx = this.ctx;
     const { plot } = pane;
-    ctx.strokeStyle = this.theme.gridLine;
+    ctx.strokeStyle = this.theme.borderColor;
     ctx.lineWidth = 1;
     this.horizontal(plot.y - 5, 0, plot.x + plot.w);
     for (const tick of pane.axis.ticks) {

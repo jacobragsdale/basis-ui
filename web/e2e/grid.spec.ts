@@ -244,10 +244,58 @@ test("a copy beyond the cell limit is refused with a reason", async ({ page }) =
   await expect(page.locator(".px-status-message")).toContainText("cells", { timeout: 30_000 });
 });
 
-test("the dark theme sets its tokens", async ({ page }) => {
+test("the dark scheme sets its tokens", async ({ page }) => {
   await open(page, "preset=pivot&theme=dark");
-  const background = await page.locator("px-grid").evaluate((element) => getComputedStyle(element).getPropertyValue("--px-grid-bg").trim());
-  expect(background).toBe("#16181d");
+  const grid = page.locator("px-grid").first();
+  await expect(grid).toHaveAttribute("data-px-scheme", "dark");
+  await expect(grid).toHaveAttribute("data-px-theme", "standard");
+  const background = await grid.evaluate((element) => getComputedStyle(element).getPropertyValue("--_px-background").trim());
+  expect(background).toBe("rgb(22, 24, 29)");
+});
+
+/** The colour of the canvas's pixel at `x`, `y`, in CSS pixels, as `r,g,b`. */
+async function pixel(grid: Locator, x: number, y: number): Promise<string> {
+  return grid.locator("canvas.px-canvas").evaluate(
+    (canvas, at) => {
+      if (!(canvas instanceof HTMLCanvasElement)) {
+        throw new Error("not a canvas");
+      }
+      const ratio = window.devicePixelRatio;
+      const data = canvas.getContext("2d")?.getImageData(Math.round(at.x * ratio), Math.round(at.y * ratio), 1, 1).data;
+      return data === undefined ? "" : `${String(data[0])},${String(data[1])},${String(data[2])}`;
+    },
+    { x, y }
+  );
+}
+
+test("a token set on a wrapper or on :root reaches the canvas once the page's classes change", async ({ page }) => {
+  await open(page, "preset=trades");
+  const grid = page.locator("px-grid");
+  // The header's corner, left of its first title.
+  const header = (): Promise<string> => pixel(grid, 2, 2);
+  expect(await header()).toBe("232,235,240");
+  // A token on an element around the grid, as a host's wrapper would set it, then a dark class on <html>, as a host's
+  // theme switch would: the grid reads its tokens again without any input changing.
+  await page.locator("demo-root").evaluate((root) => {
+    if (root instanceof HTMLElement) {
+      root.style.setProperty("--px-header-background", "#ff0000");
+    }
+  });
+  await page.evaluate(() => {
+    document.documentElement.classList.add("dark");
+  });
+  await expect.poll(header).toBe("255,0,0");
+  // On :root the token is overridden by the wrapper's, and wins once the wrapper's is gone.
+  await page.addStyleTag({ content: ":root { --px-header-background: rgb(0, 0, 255); }" });
+  await page.locator("demo-root").evaluate((root) => {
+    if (root instanceof HTMLElement) {
+      root.style.removeProperty("--px-header-background");
+    }
+  });
+  await page.evaluate(() => {
+    document.documentElement.classList.remove("dark");
+  });
+  await expect.poll(header).toBe("0,0,255");
 });
 
 test.describe("px-pivot", () => {

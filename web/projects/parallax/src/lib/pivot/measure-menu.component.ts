@@ -46,7 +46,7 @@ const NEGATIVES: readonly Choice[] = [
       width: 100%;
       margin: 4px 0;
       border: 0;
-      border-top: 1px solid var(--px-grid-line);
+      border-top: 1px solid var(--_px-border-color);
     }
     .px-measure-menu .px-menu-fields {
       display: grid;
@@ -56,17 +56,17 @@ const NEGATIVES: readonly Choice[] = [
       padding: 6px 10px;
     }
     .px-measure-menu .px-menu-fields span {
-      color: var(--px-muted-fg);
+      color: var(--_px-muted);
     }
     .px-measure-menu .px-menu-fields select,
     .px-measure-menu .px-menu-fields input {
       width: 100%;
       height: 28px;
       padding: 0 6px;
-      border: 1px solid var(--px-control-border);
-      border-radius: calc(var(--px-radius) - 2px);
-      background: var(--px-control-bg);
-      color: var(--px-control-fg);
+      border: 1px solid var(--_px-control-border);
+      border-radius: calc(var(--_px-radius) - 2px);
+      background: var(--_px-control-background);
+      color: var(--_px-control-foreground);
       font: inherit;
     }
   `,

@@ -33,8 +33,9 @@ import {
 import { StatusBarComponent } from "../grid/status-bar.component";
 import { DRAWABLE_KINDS, checkLayout } from "../layout";
 import type { Layout, LayoutFilter, LayoutInput, LayoutScalar } from "../layout";
-import { CHART_COLORS, THEMES, installThemeStyles, readChartColors, readTheme } from "../theme";
-import type { ChartColors, Theme, ThemeName } from "../theme";
+import { CHART_COLORS, defaultTheme, readChartColors, readTheme, sameChartColors, sameTheme } from "../theme";
+import type { ChartColors, ParallaxTheme, Scheme, Theme } from "../theme";
+import { themed } from "../theming";
 import { ChartHeadComponent, ChartMeasureComponent, ChartNoteComponent, ChartTipComponent } from "./chart-parts.component";
 import { DrawingEditor, measureView } from "./drawing-editor";
 import type { PlacedReading } from "./chart-parts.component";
@@ -53,9 +54,9 @@ const CHART_STYLES = `
     flex-direction: column;
     height: 100%;
     min-height: 120px;
-    background: var(--px-grid-bg);
-    color: var(--px-grid-fg);
-    font: var(--px-font);
+    background: var(--_px-background);
+    color: var(--_px-foreground);
+    font: var(--_px-font-size) var(--_px-font-family);
   }
   px-chart .px-chart-head {
     display: flex;
@@ -81,26 +82,26 @@ const CHART_STYLES = `
   }
   px-chart .px-tool {
     padding: 1px 6px;
-    border: 1px solid var(--px-grid-line);
+    border: 1px solid var(--_px-border-color);
     border-radius: 4px;
     background: transparent;
-    color: var(--px-grid-fg);
+    color: var(--_px-foreground);
     font: inherit;
     font-size: 12px;
     cursor: pointer;
   }
   px-chart .px-tool[aria-pressed="true"] {
-    border-color: var(--px-selection-border);
-    background: var(--px-selection-bg);
+    border-color: var(--_px-selection-border);
+    background: var(--_px-selection-background);
   }
   px-chart .px-tool:disabled {
-    color: var(--px-muted-fg);
+    color: var(--_px-muted);
     cursor: default;
   }
   px-chart .px-chart-measure-band {
     position: absolute;
-    border: 1px dashed var(--px-selection-border);
-    background: var(--px-selection-bg);
+    border: 1px dashed var(--_px-selection-border);
+    background: var(--_px-selection-background);
     opacity: 0.6;
     pointer-events: none;
   }
@@ -108,10 +109,10 @@ const CHART_STYLES = `
     position: absolute;
     width: 220px;
     padding: 2px 6px;
-    border: 1px solid var(--px-selection-border);
+    border: 1px solid var(--_px-selection-border);
     border-radius: 4px;
-    background: var(--px-grid-bg);
-    color: var(--px-grid-fg);
+    background: var(--_px-background);
+    color: var(--_px-foreground);
     font: inherit;
     font-size: 12px;
   }
@@ -123,17 +124,17 @@ const CHART_STYLES = `
     border: 0;
     border-radius: 4px;
     background: transparent;
-    color: var(--px-grid-fg);
+    color: var(--_px-foreground);
     font: inherit;
     font-size: 12px;
     cursor: pointer;
   }
   px-chart .px-legend-entry[aria-pressed="false"] {
-    color: var(--px-muted-fg);
+    color: var(--_px-muted);
     text-decoration: line-through;
   }
   px-chart .px-legend-entry:hover {
-    background: var(--px-grid-stripe);
+    background: var(--_px-stripe);
   }
   px-chart .px-legend-key {
     display: inline-block;
@@ -160,7 +161,7 @@ const CHART_STYLES = `
     touch-action: none;
   }
   px-chart .px-chart-plot:focus-visible {
-    box-shadow: inset 0 0 0 2px var(--px-selection-border);
+    box-shadow: inset 0 0 0 2px var(--_px-selection-border);
   }
   px-chart .px-chart-plot.px-chart-panning {
     cursor: grabbing;
@@ -172,7 +173,7 @@ const CHART_STYLES = `
     cursor: pointer;
   }
   px-chart .px-legend-note {
-    color: var(--px-muted-fg);
+    color: var(--_px-muted);
     font-variant-numeric: tabular-nums;
   }
   px-chart.px-chart-side {
@@ -206,14 +207,14 @@ const CHART_STYLES = `
   px-chart .px-chart-crosshair {
     position: absolute;
     width: 1px;
-    background: var(--px-muted-fg);
+    background: var(--_px-muted);
     pointer-events: none;
   }
   px-chart .px-chart-brush {
     position: absolute;
-    background: var(--px-selection-bg);
-    border-left: 1px solid var(--px-selection-border);
-    border-right: 1px solid var(--px-selection-border);
+    background: var(--_px-selection-background);
+    border-left: 1px solid var(--_px-selection-border);
+    border-right: 1px solid var(--_px-selection-border);
     pointer-events: none;
   }
   px-chart .px-chart-tip {
@@ -221,10 +222,10 @@ const CHART_STYLES = `
     z-index: 2;
     max-width: 280px;
     padding: 6px 8px;
-    border: 1px solid var(--px-grid-line);
+    border: 1px solid var(--_px-border-color);
     border-radius: 4px;
-    background: var(--px-header-bg);
-    color: var(--px-header-fg);
+    background: var(--_px-header-background);
+    color: var(--_px-header-foreground);
     font-size: 12px;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
     pointer-events: none;
@@ -232,7 +233,7 @@ const CHART_STYLES = `
   }
   px-chart .px-tip-title {
     margin-bottom: 2px;
-    color: var(--px-muted-fg);
+    color: var(--_px-muted);
   }
   px-chart .px-tip-row {
     display: flex;
@@ -246,7 +247,7 @@ const CHART_STYLES = `
     height: 2px;
   }
   px-chart .px-tip-row span:last-child {
-    color: var(--px-muted-fg);
+    color: var(--_px-muted);
   }
   px-chart .px-chart-canvas {
     position: absolute;
@@ -260,7 +261,7 @@ const CHART_STYLES = `
     bottom: 8px;
     padding: 6px 8px;
     border-radius: 4px;
-    background: var(--px-danger);
+    background: var(--_px-danger);
     color: #fff;
     font-size: 12px;
   }
@@ -309,7 +310,7 @@ const KEYS: Readonly<Partial<Record<string, "in" | "out" | "left" | "right" | "a
   changeDetection: ChangeDetectionStrategy.OnPush,
   encapsulation: ViewEncapsulation.None,
   imports: [ChartHeadComponent, ChartMeasureComponent, ChartNoteComponent, ChartTipComponent, StatusBarComponent],
-  host: { "[attr.data-px-theme]": "theme()", "[class.px-chart-compact]": "compact()", "[class.px-chart-side]": "sideLegend()" },
+  host: { "[attr.data-px-theme]": "theming.theme().name", "[attr.data-px-scheme]": "theming.resolved()", "[class.px-chart-compact]": "compact()", "[class.px-chart-side]": "sideLegend()" },
   template: `
     <px-chart-head
       [entries]="legend()"
@@ -368,8 +369,12 @@ const KEYS: Readonly<Partial<Record<string, "in" | "out" | "left" | "right" | "a
 export class ChartComponent {
   /** The view and its chart. Bind it two ways with `[(layout)]`. */
   public readonly layout = model.required<LayoutInput>();
-  /** The light or dark theme. */
-  public readonly theme = input<ThemeName>("light");
+  /** The theme, from `defineTheme`; by default the one given to `provideParallax`, else the standard theme. A token set in CSS wins over it. */
+  public readonly theme = input<ParallaxTheme | undefined>(undefined);
+  /** The light or dark scheme, or `auto` to follow the system; by default the one given to `provideParallax`, else light. */
+  public readonly scheme = input<Scheme | undefined>(undefined);
+  /** The theme and scheme in effect. */
+  protected readonly theming = themed(this.theme, this.scheme);
   /**
    * The group whose crosshairs move together. By default, charts of the same dataset, x column and axis; `null`
    * keeps the crosshair to this chart.
@@ -399,8 +404,8 @@ export class ChartComponent {
   /** The selected group, by its label. */
   private readonly selected = signal<string | null>(null);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
-  private readonly colors = signal<ChartColors>(CHART_COLORS.light);
-  private readonly tokens = signal<Theme>(THEMES.light);
+  private readonly colors = signal<ChartColors>(CHART_COLORS.light, { equal: sameChartColors });
+  private readonly tokens = signal<Theme>(defaultTheme("light"), { equal: sameTheme });
   private readonly plot = viewChild.required<ElementRef<HTMLDivElement>>("plot");
   private readonly canvas = viewChild.required<ElementRef<HTMLCanvasElement>>("canvas");
   private readonly document = inject(DOCUMENT);
@@ -627,7 +632,6 @@ export class ChartComponent {
   });
 
   constructor() {
-    installThemeStyles(this.document);
     const destroyRef = inject(DestroyRef);
     afterNextRender(() => {
       const element = this.plot().nativeElement;
@@ -654,7 +658,9 @@ export class ChartComponent {
     });
     // The theme's tokens come from the page's styles, so they are read once rendered.
     afterRenderEffect(() => {
-      this.theme();
+      this.theming.theme();
+      this.theming.resolved();
+      this.theming.changes();
       const element = this.canvas().nativeElement;
       this.colors.set(readChartColors(element));
       this.tokens.set(readTheme(element));
@@ -685,6 +691,15 @@ export class ChartComponent {
         this.draw(model);
       }
     });
+  }
+
+  /**
+   * Reads the theme's tokens again and redraws if they changed. The chart notices its inputs, the system's colour
+   * scheme, fonts loading and changes to the attributes of `<html>` and `<body>` by itself; call this after changing
+   * a token any other way, such as a class on a wrapper.
+   */
+  public refreshTheme(): void {
+    this.theming.refresh();
   }
 
   /** The data's whole x range, which the engine sends with each frame, and zooming and panning stay within. */

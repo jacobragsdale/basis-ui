@@ -58,9 +58,9 @@ const STATUS_STYLES = `
     gap: 12px;
     min-height: 24px;
     padding: 0 8px;
-    border-top: 1px solid var(--px-grid-line);
-    background: var(--px-status-bg);
-    color: var(--px-status-fg);
+    border-top: 1px solid var(--_px-border-color);
+    background: var(--_px-status-background);
+    color: var(--_px-status-foreground);
     font-size: 12px;
     white-space: nowrap;
   }
@@ -76,14 +76,14 @@ const STATUS_STYLES = `
   }
   px-status-bar .px-badge-neutral {
     padding: 0 5px;
-    border: 1px solid var(--px-grid-line);
+    border: 1px solid var(--_px-border-color);
     color: inherit;
   }
   px-status-bar .px-badge-warning {
-    background: var(--px-warning);
+    background: var(--_px-warning);
   }
   px-status-bar .px-badge-danger {
-    background: var(--px-danger);
+    background: var(--_px-danger);
   }
   px-status-bar .px-status-info {
     width: 18px;
@@ -106,15 +106,15 @@ const STATUS_STYLES = `
     gap: 4px 12px;
     margin: 0;
     padding: 10px 12px;
-    border: 1px solid var(--px-grid-line);
+    border: 1px solid var(--_px-border-color);
     border-radius: 4px;
-    background: var(--px-grid-bg);
-    color: var(--px-grid-fg);
+    background: var(--_px-background);
+    color: var(--_px-foreground);
     white-space: normal;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
   }
   px-status-bar .px-info dt {
-    color: var(--px-muted-fg);
+    color: var(--_px-muted);
   }
   px-status-bar .px-info dd {
     margin: 0;

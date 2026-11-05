@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, input, signal } from "@angular/core";
 import { ChartComponent, GridComponent } from "parallax";
-import type { ChartSelection, Density, LayoutFilter, LayoutInput, ThemeName } from "parallax";
+import type { ChartSelection, Density, LayoutFilter, LayoutInput, ResolvedScheme } from "parallax";
 
 import { BLOTTER, BOOK } from "./small.component";
 
@@ -52,18 +52,18 @@ function withSelection(layout: LayoutInput, column: string, selection: ChartSele
       @for (t of tiles; track t.id) {
         <section [attr.data-tile]="t.id">
           <h2>{{ t.title }}</h2>
-          <px-chart [(layout)]="t.layout" [theme]="theme()" [statusBar]="false" (selectionChange)="select(t, $event)" />
+          <px-chart [(layout)]="t.layout" [scheme]="scheme()" [statusBar]="false" (selectionChange)="select(t, $event)" />
         </section>
       }
     </div>
     <div class="grids">
       <section data-table="book">
         <h2>Book <span>300 positions, held in this page</span></h2>
-        <px-grid [(layout)]="book" [theme]="theme()" [density]="density()" [toolbar]="{ group: false }" />
+        <px-grid [(layout)]="book" [scheme]="scheme()" [density]="density()" [toolbar]="{ group: false }" />
       </section>
       <section data-table="blotter">
         <h2>Blotter <span>500 trades, held on the server</span></h2>
-        <px-grid [(layout)]="blotter" [theme]="theme()" [density]="density()" [toolbar]="{ group: false }" />
+        <px-grid [(layout)]="blotter" [scheme]="scheme()" [density]="density()" [toolbar]="{ group: false }" />
       </section>
     </div>
   `,
@@ -118,7 +118,7 @@ function withSelection(layout: LayoutInput, column: string, selection: ChartSele
   `
 })
 export class DashboardComponent {
-  public readonly theme = input<ThemeName>("light");
+  public readonly scheme = input<ResolvedScheme>("light");
   public readonly density = input<Density>("compact");
 
   protected readonly book = signal<LayoutInput>(BOOK);

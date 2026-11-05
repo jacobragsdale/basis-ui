@@ -43,12 +43,12 @@ export function placement(
       max-height: calc(100vh - 8px);
       overflow: auto;
       padding: 4px;
-      border: 1px solid var(--px-control-border);
-      border-radius: var(--px-radius);
-      background: var(--px-control-bg);
-      color: var(--px-control-fg);
-      box-shadow: var(--px-shadow);
-      font: var(--px-font);
+      border: 1px solid var(--_px-control-border);
+      border-radius: var(--_px-radius);
+      background: var(--_px-control-background);
+      color: var(--_px-control-foreground);
+      box-shadow: var(--_px-shadow);
+      font: var(--_px-font-size) var(--_px-font-family);
       text-align: start;
     }
   `,

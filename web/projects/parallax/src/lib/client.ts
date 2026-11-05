@@ -5,6 +5,7 @@ import type { EnvironmentProviders } from "@angular/core";
 
 import { BrowserEngine, COPY_TIMEOUT_MS } from "./browser-engine";
 import { Connection } from "./connection";
+import type { ParallaxTheme, Scheme } from "./theme";
 
 /** Where the engine runs. */
 export interface ParallaxConfig {
@@ -28,6 +29,10 @@ export interface ParallaxConfig {
    * or not it opens a dataset held in the browser. Needs `worker`. Off by default.
    */
   readonly prewarm?: boolean;
+  /** The theme of every grid, pivot and chart that sets none itself. By default the standard theme. */
+  readonly theme?: ParallaxTheme;
+  /** The light or dark scheme of every component that sets none itself, or `auto` to follow the system. By default light. */
+  readonly scheme?: Scheme;
 }
 
 /** The connection a view of one dataset should use. */
@@ -38,6 +43,11 @@ export interface Placement {
 }
 
 const CONFIG = new InjectionToken<ParallaxConfig>("parallax config");
+
+/** The application's configuration, or null where `provideParallax` was not called, such as in a test of one component. */
+export function injectParallaxConfig(): ParallaxConfig | null {
+  return inject(CONFIG, { optional: true });
+}
 
 /** The HTTP base beside a server's WebSocket endpoint: `wss://host/app/ws` gives `https://host/app`. */
 export function httpBaseFor(socketUrl: string): string {

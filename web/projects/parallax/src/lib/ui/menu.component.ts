@@ -20,7 +20,7 @@ import { ChangeDetectionStrategy, Component, ElementRef, ViewEncapsulation, inje
       gap: 8px;
       padding: 6px 10px;
       border: 0;
-      border-radius: calc(var(--px-radius) - 2px);
+      border-radius: calc(var(--_px-radius) - 2px);
       background: transparent;
       color: inherit;
       font: inherit;
@@ -32,7 +32,7 @@ import { ChangeDetectionStrategy, Component, ElementRef, ViewEncapsulation, inje
     .px-menu [role="menuitem"]:focus-visible,
     .px-menu [role="menuitemcheckbox"]:hover,
     .px-menu [role="menuitemcheckbox"]:focus-visible {
-      background: var(--px-control-hover);
+      background: var(--_px-control-hover);
       outline: none;
     }
     .px-menu [role="menuitem"]:disabled {
@@ -41,14 +41,14 @@ import { ChangeDetectionStrategy, Component, ElementRef, ViewEncapsulation, inje
     }
     .px-menu .px-menu-note {
       margin-left: auto;
-      color: var(--px-muted-fg);
+      color: var(--_px-muted);
       font-size: 12px;
     }
     .px-menu hr {
       width: 100%;
       margin: 4px 0;
       border: 0;
-      border-top: 1px solid var(--px-grid-line);
+      border-top: 1px solid var(--_px-border-color);
     }
   `,
   template: `<ng-content />`

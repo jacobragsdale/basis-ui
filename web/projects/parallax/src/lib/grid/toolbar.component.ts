@@ -40,10 +40,10 @@ const TOOLBAR_STYLES = `
     align-items: center;
     gap: 6px;
     padding: 6px 8px;
-    border-bottom: 1px solid var(--px-grid-line);
-    background: var(--px-grid-bg);
-    color: var(--px-grid-fg);
-    font: var(--px-font);
+    border-bottom: 1px solid var(--_px-border-color);
+    background: var(--_px-background);
+    color: var(--_px-foreground);
+    font: var(--_px-font-size) var(--_px-font-family);
   }
   .px-toolbar .px-spring {
     flex: 1;
@@ -53,8 +53,8 @@ const TOOLBAR_STYLES = `
     display: contents;
   }
   .px-toolbar button[aria-pressed="true"] {
-    border-color: var(--px-accent);
-    color: var(--px-accent);
+    border-color: var(--_px-accent);
+    color: var(--_px-accent);
   }
   .px-toolbar .px-search {
     display: flex;
@@ -64,14 +64,14 @@ const TOOLBAR_STYLES = `
     min-width: 140px;
     height: 28px;
     padding: 0 6px 0 8px;
-    border: 1px solid var(--px-control-border);
-    border-radius: var(--px-radius);
-    background: var(--px-control-bg);
-    color: var(--px-muted-fg);
+    border: 1px solid var(--_px-control-border);
+    border-radius: var(--_px-radius);
+    background: var(--_px-control-background);
+    color: var(--_px-muted);
   }
   .px-toolbar .px-search:focus-within {
-    border-color: var(--px-accent);
-    box-shadow: 0 0 0 3px var(--px-focus);
+    border-color: var(--_px-accent);
+    box-shadow: 0 0 0 3px var(--_px-focus);
   }
   .px-toolbar .px-search input {
     flex: 1;
@@ -79,7 +79,7 @@ const TOOLBAR_STYLES = `
     border: 0;
     outline: none;
     background: transparent;
-    color: var(--px-control-fg);
+    color: var(--_px-control-foreground);
     font: inherit;
   }
   .px-toolbar .px-search input::-webkit-search-cancel-button {
@@ -91,19 +91,19 @@ const TOOLBAR_STYLES = `
     gap: 6px;
     height: 28px;
     padding: 0 10px;
-    border: 1px solid var(--px-control-border);
-    border-radius: var(--px-radius);
-    background: var(--px-control-bg);
-    color: var(--px-control-fg);
+    border: 1px solid var(--_px-control-border);
+    border-radius: var(--_px-radius);
+    background: var(--_px-control-background);
+    color: var(--_px-control-foreground);
     font: inherit;
     cursor: pointer;
   }
   .px-toolbar button:hover {
-    background: var(--px-control-hover);
+    background: var(--_px-control-hover);
   }
   .px-toolbar button:focus-visible {
     outline: none;
-    box-shadow: 0 0 0 3px var(--px-focus);
+    box-shadow: 0 0 0 3px var(--_px-focus);
   }
   .px-toolbar .px-icon-button {
     width: 22px;
@@ -135,8 +135,8 @@ const TOOLBAR_STYLES = `
     height: 24px;
     padding: 0 2px 0 10px;
     border-radius: 12px;
-    background: var(--px-chip-bg);
-    color: var(--px-control-fg);
+    background: var(--_px-chip-background);
+    color: var(--_px-control-foreground);
     font-size: 12px;
   }
   .px-toolbar .px-chip > span {
@@ -153,7 +153,7 @@ const TOOLBAR_STYLES = `
     padding: 0 6px;
     border: 0;
     background: transparent;
-    color: var(--px-accent);
+    color: var(--_px-accent);
   }
   .px-toolbar .px-link:hover {
     background: transparent;

@@ -41,11 +41,11 @@ test("the theme and row density follow their pickers and survive moving to anoth
   // A pivot, whose few thousand rows are short enough that the row height shows in the scroll height.
   await page.goto("/?preset=pivot");
   await ready(page);
-  const token = (): Promise<string> => page.locator("px-grid").evaluate((element) => getComputedStyle(element).getPropertyValue("--px-grid-bg").trim());
+  const token = (): Promise<string> => page.locator("px-grid").evaluate((element) => getComputedStyle(element).getPropertyValue("--_px-background").trim());
   const contentHeight = (): Promise<number> => page.locator(".px-scroll").evaluate((element) => element.scrollHeight);
-  expect(await token()).toBe("#ffffff");
+  expect(await token()).toBe("rgb(255, 255, 255)");
   await page.getByLabel("Theme").selectOption("dark");
-  await expect.poll(token).toBe("#16181d");
+  await expect.poll(token).toBe("rgb(22, 24, 29)");
   const compact = await contentHeight();
   await page.getByLabel("Row height").selectOption("comfortable");
   await expect.poll(contentHeight).toBeGreaterThan(compact);
@@ -54,7 +54,7 @@ test("the theme and row density follow their pickers and survive moving to anoth
   await expect(page.getByRole("link", { name: "Largest trades" })).toHaveAttribute("aria-current", "page");
   await expect(page.getByLabel("Theme")).toHaveValue("dark");
   await expect(page.getByLabel("Row height")).toHaveValue("comfortable");
-  expect(await token()).toBe("#16181d");
+  expect(await token()).toBe("rgb(22, 24, 29)");
 });
 
 test("the performance overlay measures the page and copies its report", async ({ page }) => {

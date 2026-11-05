@@ -23,16 +23,16 @@ import { withAllExpanded, withoutGroup } from "./edit";
       gap: 6px;
       min-height: 32px;
       padding: 2px 8px;
-      border-bottom: 1px solid var(--px-grid-line);
-      background: var(--px-grid-bg);
-      color: var(--px-muted-fg);
-      font: var(--px-font);
+      border-bottom: 1px solid var(--_px-border-color);
+      background: var(--_px-background);
+      color: var(--_px-muted);
+      font: var(--_px-font-size) var(--_px-font-family);
       font-size: 12px;
     }
     .px-group-panel[data-drop="true"] {
-      outline: 2px dashed var(--px-accent);
+      outline: 2px dashed var(--_px-accent);
       outline-offset: -3px;
-      background: var(--px-chip-bg);
+      background: var(--_px-chip-background);
     }
     .px-group-panel .px-chip {
       display: inline-flex;
@@ -40,10 +40,10 @@ import { withAllExpanded, withoutGroup } from "./edit";
       gap: 4px;
       height: 24px;
       padding: 0 2px 0 8px;
-      border: 1px solid var(--px-control-border);
+      border: 1px solid var(--_px-control-border);
       border-radius: 12px;
-      background: var(--px-control-bg);
-      color: var(--px-control-fg);
+      background: var(--_px-control-background);
+      color: var(--_px-control-foreground);
     }
     .px-group-panel .px-chip button,
     .px-group-panel .px-link {
@@ -60,7 +60,7 @@ import { withAllExpanded, withoutGroup } from "./edit";
       cursor: pointer;
     }
     .px-group-panel .px-link {
-      color: var(--px-accent);
+      color: var(--_px-accent);
     }
     .px-group-panel .px-spring {
       flex: 1;

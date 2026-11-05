@@ -35,10 +35,10 @@ interface Item {
     .px-column-chooser input[type="search"] {
       height: 28px;
       padding: 0 8px;
-      border: 1px solid var(--px-control-border);
-      border-radius: calc(var(--px-radius) - 2px);
-      background: var(--px-control-bg);
-      color: var(--px-control-fg);
+      border: 1px solid var(--_px-control-border);
+      border-radius: calc(var(--_px-radius) - 2px);
+      background: var(--_px-control-background);
+      color: var(--_px-control-foreground);
       font: inherit;
     }
     .px-column-chooser ul {
@@ -53,16 +53,16 @@ interface Item {
       align-items: center;
       gap: 4px;
       padding: 2px 4px;
-      border-radius: calc(var(--px-radius) - 2px);
+      border-radius: calc(var(--_px-radius) - 2px);
     }
     .px-column-chooser li:hover {
-      background: var(--px-control-hover);
+      background: var(--_px-control-hover);
     }
     .px-column-chooser li[data-drop="true"] {
-      box-shadow: inset 0 2px 0 var(--px-accent);
+      box-shadow: inset 0 2px 0 var(--_px-accent);
     }
     .px-column-chooser li > px-icon {
-      color: var(--px-muted-fg);
+      color: var(--_px-muted);
       cursor: grab;
     }
     .px-column-chooser label {
@@ -87,15 +87,15 @@ interface Item {
       border: 0;
       border-radius: 50%;
       background: transparent;
-      color: var(--px-muted-fg);
+      color: var(--_px-muted);
       cursor: pointer;
     }
     .px-column-chooser .px-pin[aria-pressed="true"] {
-      color: var(--px-accent);
+      color: var(--_px-accent);
     }
     .px-column-chooser .px-muted {
       margin: 0;
-      color: var(--px-muted-fg);
+      color: var(--_px-muted);
       font-size: 12px;
     }
   `,

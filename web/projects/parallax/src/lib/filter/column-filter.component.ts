@@ -88,10 +88,10 @@ function inputText(value: LayoutScalar | undefined): string {
     .px-column-filter input:not([type="checkbox"]) {
       height: 28px;
       padding: 0 6px;
-      border: 1px solid var(--px-control-border);
-      border-radius: calc(var(--px-radius) - 2px);
-      background: var(--px-control-bg);
-      color: var(--px-control-fg);
+      border: 1px solid var(--_px-control-border);
+      border-radius: calc(var(--_px-radius) - 2px);
+      background: var(--_px-control-background);
+      color: var(--_px-control-foreground);
       font: inherit;
     }
     .px-column-filter .px-row {
@@ -104,7 +104,7 @@ function inputText(value: LayoutScalar | undefined): string {
     }
     .px-column-filter .px-muted {
       margin: 0;
-      color: var(--px-muted-fg);
+      color: var(--_px-muted);
       font-size: 12px;
     }
     .px-column-filter px-value-picker ul {
@@ -131,7 +131,7 @@ function inputText(value: LayoutScalar | undefined): string {
       padding: 0;
       border: 0;
       background: transparent;
-      color: var(--px-accent);
+      color: var(--_px-accent);
       font: inherit;
       cursor: pointer;
     }

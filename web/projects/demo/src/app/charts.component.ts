@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, input, signal } from "@angular/core";
 import { ChartComponent, GridComponent } from "parallax";
-import type { ChartSelection, LayoutFilter, LayoutInput, ThemeName } from "parallax";
+import type { ChartSelection, LayoutFilter, LayoutInput, ResolvedScheme } from "parallax";
 
 /** A chart the page shows, with what it says. */
 interface Card {
@@ -44,18 +44,18 @@ function card(id: string, title: string, layout: LayoutInput, linked = false): C
     @for (c of cards; track c.id) {
       <section [attr.data-card]="c.id" [class.wide]="c.id === 'technical'">
         <h2>{{ c.title }}</h2>
-        <px-chart [(layout)]="c.layout" [theme]="theme()" (brushed)="brush(c, $event)" (selectionChange)="select(c, $event)" />
+        <px-chart [(layout)]="c.layout" [scheme]="scheme()" (brushed)="brush(c, $event)" (selectionChange)="select(c, $event)" />
       </section>
       @if (c.linked) {
         <section data-linked="candles">
           <h2>{{ rowsTitle() }}</h2>
-          <px-grid [(layout)]="rows" [theme]="theme()" />
+          <px-grid [(layout)]="rows" [scheme]="scheme()" />
         </section>
       }
       @if (c.id === "donut") {
         <section data-linked="donut">
           <h2>{{ positionsTitle() }}</h2>
-          <px-grid [(layout)]="positions" [theme]="theme()" />
+          <px-grid [(layout)]="positions" [scheme]="scheme()" />
         </section>
       }
     }
@@ -100,7 +100,7 @@ function card(id: string, title: string, layout: LayoutInput, linked = false): C
   `
 })
 export class ChartsComponent {
-  public readonly theme = input<ThemeName>("light");
+  public readonly scheme = input<ResolvedScheme>("light");
 
   /** The grid of QYE's days, narrowed by a brush on the candles. */
   protected readonly rows = signal<LayoutInput>(rowsLayout([]));

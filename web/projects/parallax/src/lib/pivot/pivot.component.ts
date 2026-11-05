@@ -5,7 +5,7 @@
  * clicking a value opens the rows behind its group in a drawer below.
  */
 
-import { ChangeDetectionStrategy, Component, DOCUMENT, ViewEncapsulation, computed, effect, inject, input, model, signal, untracked, viewChild } from "@angular/core";
+import { ChangeDetectionStrategy, Component, ViewEncapsulation, computed, effect, input, model, signal, untracked, viewChild } from "@angular/core";
 
 import type { DistinctValues } from "../connection";
 import { GridComponent } from "../grid/grid.component";
@@ -13,8 +13,8 @@ import type { Density, DrawStats, DrillRequest } from "../grid/grid.component";
 import type { ToolbarParts } from "../grid/toolbar.component";
 import { checkLayout } from "../layout";
 import type { Layout, LayoutInput } from "../layout";
-import { installThemeStyles } from "../theme";
-import type { ThemeName } from "../theme";
+import type { ParallaxTheme, Scheme } from "../theme";
+import { themed } from "../theming";
 import { drillLayout } from "./edit";
 import { PivotPanelComponent } from "./pivot-panel.component";
 import type { ValueSource } from "./value-picker.component";
@@ -29,17 +29,17 @@ const PIVOT_STYLES = `
     display: flex;
     height: 100%;
     min-height: 0;
-    font: var(--px-font);
-    color: var(--px-grid-fg);
-    background: var(--px-grid-bg);
+    font: var(--_px-font-size) var(--_px-font-family);
+    color: var(--_px-foreground);
+    background: var(--_px-background);
   }
   px-pivot .px-pivot-side {
     display: flex;
     flex-direction: column;
     width: 300px;
     min-width: 300px;
-    border-right: 1px solid var(--px-grid-line);
-    background: var(--px-status-bg);
+    border-right: 1px solid var(--_px-border-color);
+    background: var(--_px-status-background);
   }
   px-pivot .px-pivot-side[data-open="false"] {
     width: 28px;
@@ -61,14 +61,14 @@ const PIVOT_STYLES = `
   }
   px-pivot px-pivot-panel h3 {
     margin: 12px 0 6px;
-    color: var(--px-muted-fg);
+    color: var(--_px-muted);
     font-size: 11px;
     font-weight: 600;
     letter-spacing: 0.04em;
     text-transform: uppercase;
   }
   px-pivot .px-muted {
-    color: var(--px-muted-fg);
+    color: var(--_px-muted);
   }
   px-pivot .px-pivot-hint {
     margin: 8px 0 0;
@@ -84,10 +84,10 @@ const PIVOT_STYLES = `
   px-pivot input:not([type="checkbox"]) {
     max-width: 100%;
     padding: 2px 4px;
-    border: 1px solid var(--px-control-border);
-    border-radius: calc(var(--px-radius) - 2px);
-    background: var(--px-control-bg);
-    color: var(--px-control-fg);
+    border: 1px solid var(--_px-control-border);
+    border-radius: calc(var(--_px-radius) - 2px);
+    background: var(--_px-control-background);
+    color: var(--_px-control-foreground);
   }
   px-pivot button:disabled {
     opacity: 0.35;
@@ -107,9 +107,9 @@ const PIVOT_STYLES = `
     overflow: auto;
     margin: 0;
     padding: 2px 0;
-    border: 1px solid var(--px-grid-line);
-    border-radius: var(--px-radius);
-    background: var(--px-grid-bg);
+    border: 1px solid var(--_px-border-color);
+    border-radius: var(--_px-radius);
+    background: var(--_px-background);
     list-style: none;
   }
   px-pivot .px-field {
@@ -120,7 +120,7 @@ const PIVOT_STYLES = `
     cursor: grab;
   }
   px-pivot .px-field:hover {
-    background: var(--px-control-hover);
+    background: var(--_px-control-hover);
   }
   px-pivot .px-field label {
     display: flex;
@@ -137,7 +137,7 @@ const PIVOT_STYLES = `
     white-space: nowrap;
   }
   px-pivot .px-field-areas {
-    color: var(--px-muted-fg);
+    color: var(--_px-muted);
     font-size: 11px;
   }
   px-pivot .px-well h3 {
@@ -150,17 +150,17 @@ const PIVOT_STYLES = `
     min-height: 30px;
     margin: 0;
     padding: 3px;
-    border: 1px dashed var(--px-grid-line);
-    border-radius: var(--px-radius);
+    border: 1px dashed var(--_px-border-color);
+    border-radius: var(--_px-radius);
     list-style: none;
   }
   px-pivot .px-well-chips[data-drop="true"] {
-    border-color: var(--px-accent);
-    background: var(--px-chip-bg);
+    border-color: var(--_px-accent);
+    background: var(--_px-chip-background);
   }
   px-pivot .px-well-empty {
     padding: 4px 6px;
-    color: var(--px-muted-fg);
+    color: var(--_px-muted);
     font-size: 12px;
   }
   px-pivot .px-chip {
@@ -169,10 +169,10 @@ const PIVOT_STYLES = `
     gap: 2px;
     min-height: 26px;
     padding: 0 2px 0 4px;
-    border: 1px solid var(--px-control-border);
-    border-radius: calc(var(--px-radius) - 2px);
-    background: var(--px-control-bg);
-    color: var(--px-control-fg);
+    border: 1px solid var(--_px-control-border);
+    border-radius: calc(var(--_px-radius) - 2px);
+    background: var(--_px-control-background);
+    color: var(--_px-control-foreground);
     cursor: grab;
   }
   px-pivot .px-chip > span,
@@ -181,13 +181,13 @@ const PIVOT_STYLES = `
     min-width: 0;
   }
   px-pivot .px-chip > .px-icon:first-child {
-    color: var(--px-muted-fg);
+    color: var(--_px-muted);
   }
   px-pivot .px-drop-before {
-    box-shadow: 0 -2px 0 var(--px-accent);
+    box-shadow: 0 -2px 0 var(--_px-accent);
   }
   px-pivot .px-drop-end {
-    box-shadow: inset 0 -2px 0 var(--px-accent);
+    box-shadow: inset 0 -2px 0 var(--_px-accent);
   }
   px-pivot .px-chip-text {
     padding: 0 4px;
@@ -209,7 +209,7 @@ const PIVOT_STYLES = `
     cursor: pointer;
   }
   px-pivot .px-chip-button:hover {
-    background: var(--px-control-hover);
+    background: var(--_px-control-hover);
   }
   px-pivot .px-option {
     display: flex;
@@ -234,15 +234,15 @@ const PIVOT_STYLES = `
     flex-direction: column;
     height: 40%;
     min-height: 160px;
-    border-top: 2px solid var(--px-selection-border);
+    border-top: 2px solid var(--_px-selection-border);
   }
   px-pivot .px-drill header {
     display: flex;
     align-items: center;
     gap: 8px;
     padding: 4px 8px;
-    background: var(--px-header-bg);
-    color: var(--px-header-fg);
+    background: var(--_px-header-background);
+    color: var(--_px-header-foreground);
   }
   px-pivot .px-drill header span {
     flex: 1;
@@ -263,7 +263,7 @@ const PIVOT_STYLES = `
   changeDetection: ChangeDetectionStrategy.OnPush,
   encapsulation: ViewEncapsulation.None,
   imports: [GridComponent, PivotPanelComponent],
-  host: { "[attr.data-px-theme]": "theme()" },
+  host: { "[attr.data-px-theme]": "theming.theme().name", "[attr.data-px-scheme]": "theming.resolved()" },
   template: `
     <aside class="px-pivot-side" [attr.data-open]="panelOpen()">
       <button type="button" class="px-pivot-toggle" [attr.aria-expanded]="panelOpen()" [attr.aria-label]="panelOpen() ? 'Hide settings' : 'Show settings'" (click)="panelOpen.set(!panelOpen())">
@@ -274,14 +274,14 @@ const PIVOT_STYLES = `
       }
     </aside>
     <div class="px-pivot-main">
-      <px-grid #grid [(layout)]="layout" [theme]="theme()" [density]="density()" (drill)="openDrill($event)" />
+      <px-grid #grid [(layout)]="layout" [theme]="theming.theme()" [scheme]="theming.scheme()" [density]="density()" (drill)="openDrill($event)" />
       @if (drill(); as d) {
         <section class="px-drill" aria-label="Rows behind the group">
           <header>
             <span>Rows behind {{ d.label }}</span>
             <button type="button" aria-label="Close" (click)="drill.set(null)">×</button>
           </header>
-          <px-grid [layout]="d.layout" [theme]="theme()" [density]="density()" [toolbar]="drillTools" (layoutChange)="updateDrill($event)" />
+          <px-grid #drillGrid [layout]="d.layout" [theme]="theming.theme()" [scheme]="theming.scheme()" [density]="density()" [toolbar]="drillTools" (layoutChange)="updateDrill($event)" />
         </section>
       }
     </div>
@@ -291,16 +291,31 @@ const PIVOT_STYLES = `
 export class PivotComponent {
   /** The view. Bind it two ways with `[(layout)]`. */
   public readonly layout = model.required<LayoutInput>();
-  /** The theme's tokens; a host can override any of them on the element. */
-  public readonly theme = input<ThemeName>("light");
+  /** The theme, from `defineTheme`; by default the one given to `provideParallax`, else the standard theme. A token set in CSS wins over it. */
+  public readonly theme = input<ParallaxTheme | undefined>(undefined);
+  /** The light or dark scheme, or `auto` to follow the system; by default the one given to `provideParallax`, else light. */
+  public readonly scheme = input<Scheme | undefined>(undefined);
+  /** The theme and scheme in effect, which the pivot's grids share. */
+  protected readonly theming = themed(this.theme, this.scheme);
   /** How tightly rows are packed. */
   public readonly density = input<Density>("compact");
 
   private readonly gridRef = viewChild.required<GridComponent>("grid");
+  private readonly drillGridRef = viewChild<GridComponent>("drillGrid");
 
   /** The grid's drawing counters. */
   public drawStats(): DrawStats {
     return this.gridRef().drawStats();
+  }
+
+  /**
+   * Reads the theme's tokens again and redraws if they changed. The pivot notices its inputs, the system's colour
+   * scheme, fonts loading and changes to the attributes of `<html>` and `<body>` by itself; call this after changing
+   * a token any other way, such as a class on a wrapper.
+   */
+  public refreshTheme(): void {
+    this.gridRef().refreshTheme();
+    this.drillGridRef()?.refreshTheme();
   }
   protected readonly panelOpen = signal(true);
   /**
@@ -317,7 +332,6 @@ export class PivotComponent {
   protected readonly values: ValueSource = (column: string, search: string, limit: number): Promise<DistinctValues> => this.gridRef().distinctValues(column, search, limit);
 
   constructor() {
-    installThemeStyles(inject(DOCUMENT));
     // The drawer's rows follow from the pivot's filters and groups; once those
     // change it would show rows that no longer add up to the cells above, so it closes.
     effect(() => {

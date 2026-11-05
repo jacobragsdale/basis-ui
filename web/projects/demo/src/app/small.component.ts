@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, input, signal, viewChild } from "@angular/core";
 import { GridComponent } from "parallax";
-import type { Density, LayoutInput, ThemeName } from "parallax";
+import type { Density, LayoutInput, ResolvedScheme } from "parallax";
 
 import type { GridStats } from "./performance.component";
 
@@ -40,11 +40,11 @@ export const BLOTTER: LayoutInput = {
   template: `
     <section data-table="book">
       <h2>Book <span>300 positions, held in this page</span></h2>
-      <px-grid #bookGrid [(layout)]="book" [theme]="theme()" [density]="density()" height="auto" [maxHeight]="maxHeight" />
+      <px-grid #bookGrid [(layout)]="book" [scheme]="scheme()" [density]="density()" height="auto" [maxHeight]="maxHeight" />
     </section>
     <section data-table="blotter">
       <h2>Blotter <span>500 trades, held on the server</span></h2>
-      <px-grid #blotterGrid [(layout)]="blotter" [theme]="theme()" [density]="density()" height="auto" [maxHeight]="maxHeight" />
+      <px-grid #blotterGrid [(layout)]="blotter" [scheme]="scheme()" [density]="density()" height="auto" [maxHeight]="maxHeight" />
     </section>
   `,
   styles: `
@@ -78,7 +78,7 @@ export const BLOTTER: LayoutInput = {
   `
 })
 export class SmallComponent {
-  public readonly theme = input<ThemeName>("light");
+  public readonly scheme = input<ResolvedScheme>("light");
   public readonly density = input<Density>("compact");
 
   protected readonly book = signal<LayoutInput>(BOOK);

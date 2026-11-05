@@ -1,179 +1,90 @@
 /**
- * Design tokens. Every colour and font the grid uses is a CSS custom property,
- * defined once here for the light and dark themes. The values are emitted into a
- * cascade layer, so any rule a host writes for `px-grid` overrides them whatever
- * its specificity. Canvas drawing reads the computed values on every full redraw.
+ * Design tokens. Every colour, font and size the components draw with is a token, and each token has three CSS custom
+ * properties:
+ *
+ * - `--px-accent` is public. The library never declares it, so a value a host sets anywhere, on `:root`, on a wrapper
+ *   or on the element, wins over any theme.
+ * - `--_px-theme-accent` is a theme's value, which `defineTheme` declares for the components given that theme.
+ * - `--_px-accent` is the value in effect. Each component declares it as the public value, else the theme's, else the
+ *   default for its scheme. It is registered with `@property`, so `getComputedStyle` returns a concrete colour or
+ *   length, which the canvas draws with, even when the value is a `color-mix()`, a `calc()` or a `light-dark()`.
+ *
+ * Every declaration is in the `parallax` cascade layer, below any rule a host writes.
  */
 
-/** The tokens a grid draws with. */
-export interface Theme {
-  readonly font: string;
-  readonly background: string;
-  readonly stripe: string;
-  readonly foreground: string;
-  readonly muted: string;
-  readonly negative: string;
-  readonly totalForeground: string;
-  readonly headerBackground: string;
-  readonly headerForeground: string;
-  readonly gridLine: string;
-  readonly selection: string;
-  readonly selectionBorder: string;
-  readonly statusBackground: string;
-  readonly statusForeground: string;
-  readonly warning: string;
-  readonly danger: string;
+/** The light or dark set of defaults; `auto` follows the system's preference. */
+export type Scheme = "light" | "dark" | "auto";
+
+/** A scheme as drawn. */
+export type ResolvedScheme = Exclude<Scheme, "auto">;
+
+/** How a token's value is checked and registered. */
+type Syntax = "color" | "length" | "family" | "shadow";
+
+/** The `@property` syntax each kind registers with, if any, and the CSS property a host's value is checked against. */
+const SYNTAXES: Readonly<Record<Syntax, { readonly register: string | null; readonly check: string }>> = {
+  color: { register: "<color>", check: "color" },
+  length: { register: "<length>", check: "width" },
+  family: { register: null, check: "font-family" },
+  shadow: { register: null, check: "box-shadow" }
+};
+
+/** One token: its property after `--px-`, its kind, and its default in each scheme. */
+interface TokenSpec {
+  readonly property: string;
+  readonly syntax: Syntax;
+  readonly light: string;
+  readonly dark: string;
+}
+
+const FONT_FAMILY = "system-ui, -apple-system, 'Segoe UI', sans-serif";
+
+/** Every token but the charts' colours, by its name in a theme's parameters. */
+const SPECS = {
+  fontFamily: { property: "font-family", syntax: "family", light: FONT_FAMILY, dark: FONT_FAMILY },
+  fontSize: { property: "font-size", syntax: "length", light: "13px", dark: "13px" },
+  background: { property: "background", syntax: "color", light: "#ffffff", dark: "#16181d" },
+  stripe: { property: "stripe", syntax: "color", light: "#f6f7f9", dark: "#1c1f26" },
+  foreground: { property: "foreground", syntax: "color", light: "#1d2330", dark: "#e3e6ec" },
+  muted: { property: "muted", syntax: "color", light: "#667085", dark: "#8a93a3" },
+  negative: { property: "negative", syntax: "color", light: "#b42318", dark: "#ff7b72" },
+  totalForeground: { property: "total-foreground", syntax: "color", light: "#0b4ea2", dark: "#7cb7ff" },
+  headerBackground: { property: "header-background", syntax: "color", light: "#e8ebf0", dark: "#23262e" },
+  headerForeground: { property: "header-foreground", syntax: "color", light: "#1d2330", dark: "#e3e6ec" },
+  borderColor: { property: "border-color", syntax: "color", light: "#e3e6eb", dark: "#2b2f38" },
+  selectionBackground: { property: "selection-background", syntax: "color", light: "rgba(11, 78, 162, 0.14)", dark: "rgba(91, 155, 255, 0.25)" },
+  selectionBorder: { property: "selection-border", syntax: "color", light: "#0b4ea2", dark: "#5b9bff" },
+  statusBackground: { property: "status-background", syntax: "color", light: "#f2f4f7", dark: "#1c1f26" },
+  statusForeground: { property: "status-foreground", syntax: "color", light: "#344054", dark: "#b8bfcc" },
+  warning: { property: "warning", syntax: "color", light: "#b54708", dark: "#e0a400" },
+  danger: { property: "danger", syntax: "color", light: "#b42318", dark: "#ff7b72" },
   /** The background behind text that matches a search. */
-  readonly highlight: string;
+  highlight: { property: "highlight", syntax: "color", light: "#ffe58a", dark: "rgba(255, 214, 10, 0.38)" },
   /** Buttons, the toolbar's active parts and the drop target of a drag. */
-  readonly accent: string;
-  readonly controlBackground: string;
-  readonly controlForeground: string;
-  readonly controlBorder: string;
-  readonly controlHover: string;
+  accent: { property: "accent", syntax: "color", light: "#0b4ea2", dark: "#5b9bff" },
+  controlBackground: { property: "control-background", syntax: "color", light: "#ffffff", dark: "#1c1f26" },
+  controlForeground: { property: "control-foreground", syntax: "color", light: "#1d2330", dark: "#e3e6ec" },
+  controlBorder: { property: "control-border", syntax: "color", light: "#c9ced8", dark: "#3a3f4b" },
+  controlHover: { property: "control-hover", syntax: "color", light: "#eef1f6", dark: "#262a33" },
   /** The ring around a focused control. */
-  readonly focus: string;
+  focus: { property: "focus", syntax: "color", light: "rgba(11, 78, 162, 0.45)", dark: "rgba(91, 155, 255, 0.55)" },
   /** Under popovers and menus. */
-  readonly shadow: string;
-  readonly radius: string;
+  shadow: { property: "shadow", syntax: "shadow", light: "0 6px 18px rgba(16, 24, 40, 0.16)", dark: "0 6px 18px rgba(0, 0, 0, 0.5)" },
+  radius: { property: "radius", syntax: "length", light: "6px", dark: "6px" },
   /** Behind a filter chip. */
-  readonly chipBackground: string;
-}
+  chipBackground: { property: "chip-background", syntax: "color", light: "#e8eefb", dark: "#22324d" }
+} as const satisfies Readonly<Record<string, TokenSpec>>;
 
-/** The themes the library ships. */
-export type ThemeName = "light" | "dark";
+/** The name of a token in a theme's parameters, such as `accent` or `fontSize`. */
+export type TokenName = keyof typeof SPECS;
 
-/** The CSS custom property behind each token. */
-export const TOKENS: Readonly<Record<keyof Theme, string>> = {
-  font: "--px-font",
-  background: "--px-grid-bg",
-  stripe: "--px-grid-stripe",
-  foreground: "--px-grid-fg",
-  muted: "--px-muted-fg",
-  negative: "--px-negative",
-  totalForeground: "--px-total-fg",
-  headerBackground: "--px-header-bg",
-  headerForeground: "--px-header-fg",
-  gridLine: "--px-grid-line",
-  selection: "--px-selection-bg",
-  selectionBorder: "--px-selection-border",
-  statusBackground: "--px-status-bg",
-  statusForeground: "--px-status-fg",
-  warning: "--px-warning",
-  danger: "--px-danger",
-  highlight: "--px-highlight",
-  accent: "--px-accent",
-  controlBackground: "--px-control-bg",
-  controlForeground: "--px-control-fg",
-  controlBorder: "--px-control-border",
-  controlHover: "--px-control-hover",
-  focus: "--px-focus",
-  shadow: "--px-shadow",
-  radius: "--px-radius",
-  chipBackground: "--px-chip-bg"
-};
+/** The tokens whose values are lengths, which a theme may give as a number of pixels. */
+type LengthToken = { readonly [K in TokenName]: (typeof SPECS)[K]["syntax"] extends "length" ? K : never }[TokenName];
 
-const FONT = "13px system-ui, -apple-system, 'Segoe UI', sans-serif";
+/** The tokens in effect for one component, as the canvas draws with them, with `font` made of the size and the family. */
+export type Theme = Readonly<Record<TokenName, string>> & { readonly font: string };
 
-/** Token values by theme. */
-export const THEMES: Readonly<Record<ThemeName, Theme>> = {
-  light: {
-    font: FONT,
-    background: "#ffffff",
-    stripe: "#f6f7f9",
-    foreground: "#1d2330",
-    muted: "#667085",
-    negative: "#b42318",
-    totalForeground: "#0b4ea2",
-    headerBackground: "#e8ebf0",
-    headerForeground: "#1d2330",
-    gridLine: "#e3e6eb",
-    selection: "rgba(11, 78, 162, 0.14)",
-    selectionBorder: "#0b4ea2",
-    statusBackground: "#f2f4f7",
-    statusForeground: "#344054",
-    warning: "#b54708",
-    danger: "#b42318",
-    highlight: "#ffe58a",
-    accent: "#0b4ea2",
-    controlBackground: "#ffffff",
-    controlForeground: "#1d2330",
-    controlBorder: "#c9ced8",
-    controlHover: "#eef1f6",
-    focus: "rgba(11, 78, 162, 0.45)",
-    shadow: "0 6px 18px rgba(16, 24, 40, 0.16)",
-    radius: "6px",
-    chipBackground: "#e8eefb"
-  },
-  dark: {
-    font: FONT,
-    background: "#16181d",
-    stripe: "#1c1f26",
-    foreground: "#e3e6ec",
-    muted: "#8a93a3",
-    negative: "#ff7b72",
-    totalForeground: "#7cb7ff",
-    headerBackground: "#23262e",
-    headerForeground: "#e3e6ec",
-    gridLine: "#2b2f38",
-    selection: "rgba(91, 155, 255, 0.25)",
-    selectionBorder: "#5b9bff",
-    statusBackground: "#1c1f26",
-    statusForeground: "#b8bfcc",
-    warning: "#e0a400",
-    danger: "#ff7b72",
-    highlight: "rgba(255, 214, 10, 0.38)",
-    accent: "#5b9bff",
-    controlBackground: "#1c1f26",
-    controlForeground: "#e3e6ec",
-    controlBorder: "#3a3f4b",
-    controlHover: "#262a33",
-    focus: "rgba(91, 155, 255, 0.55)",
-    shadow: "0 6px 18px rgba(0, 0, 0, 0.5)",
-    radius: "6px",
-    chipBackground: "#22324d"
-  }
-};
-
-/** Returns `keys`, failing to compile unless it names every token. */
-function everyToken<const T extends readonly (keyof Theme)[]>(keys: T & (Exclude<keyof Theme, T[number]> extends never ? unknown : never)): T {
-  return keys;
-}
-
-const KEYS = everyToken([
-  "font",
-  "background",
-  "stripe",
-  "foreground",
-  "muted",
-  "negative",
-  "totalForeground",
-  "headerBackground",
-  "headerForeground",
-  "gridLine",
-  "selection",
-  "selectionBorder",
-  "statusBackground",
-  "statusForeground",
-  "warning",
-  "danger",
-  "highlight",
-  "accent",
-  "controlBackground",
-  "controlForeground",
-  "controlBorder",
-  "controlHover",
-  "focus",
-  "shadow",
-  "radius",
-  "chipBackground"
-]);
-
-function declarations(theme: Theme): string {
-  return KEYS.map((key) => `${TOKENS[key]}: ${theme[key]};`).join(" ");
-}
-
-/** The colours charts draw data with, beside the grid's tokens they share. */
+/** The colours charts draw data with, beside the tokens they share with the grid. */
 export interface ChartColors {
   /** Categorical slots, assigned to series in this order and never cycled. */
   readonly series: readonly string[];
@@ -188,8 +99,8 @@ export interface ChartColors {
   readonly negativeRamp: readonly string[];
 }
 
-/** Chart colours by theme: a categorical order checked for colour-vision deficiency on each theme's surface. */
-export const CHART_COLORS: Readonly<Record<ThemeName, ChartColors>> = {
+/** Chart colours by scheme: a categorical order checked for colour-vision deficiency on each scheme's surface. */
+export const CHART_COLORS: Readonly<Record<ResolvedScheme, ChartColors>> = {
   light: {
     series: ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300", "#6250d6", "#e34948"],
     up: "#1baf7a",
@@ -208,40 +119,87 @@ export const CHART_COLORS: Readonly<Record<ThemeName, ChartColors>> = {
   }
 };
 
-/** The custom property of each chart colour: `--px-series-1` to `--px-series-8`, `--px-ramp-1` to `--px-ramp-7`, and so on. */
-function chartDeclarations(colors: ChartColors): string {
-  const list = (name: string, values: readonly string[]): string => values.map((v, i) => `--px-${name}-${String(i + 1)}: ${v};`).join(" ");
+/** The charts' colours a theme may set, by their names in `ChartColors`. */
+type ChartParams = { readonly [K in keyof ChartColors]?: ChartColors[K] };
+
+/** A theme's values for some tokens: colours as CSS colours, lengths as CSS lengths or numbers of pixels. */
+export type ThemeParams = { readonly [K in TokenName]?: K extends LengthToken ? string | number : string } & ChartParams;
+
+/** What `defineTheme` makes a theme from. */
+export interface ThemeSpec {
+  /** Names the theme in the page's styles: lowercase letters, digits and hyphens, starting with a letter. */
+  readonly name: string;
+  /** A theme whose values this one starts from. */
+  readonly extends?: ParallaxTheme;
+  /** Values for both schemes. */
+  readonly params?: ThemeParams;
+  /** Values for the light scheme only, over `params`. */
+  readonly light?: ThemeParams;
+  /** Values for the dark scheme only, over `params`. */
+  readonly dark?: ThemeParams;
+}
+
+/** A named set of token values for each scheme, made by `defineTheme` and given to a component's `theme` input. */
+export interface ParallaxTheme {
+  readonly name: string;
+  /** The values the theme sets in the light scheme, by property after `--px-`, as CSS values. */
+  readonly light: Readonly<Record<string, string>>;
+  /** The values the theme sets in the dark scheme. */
+  readonly dark: Readonly<Record<string, string>>;
+}
+
+/** A token or chart colour as the stylesheet declares it: its property after `--px-`, kind and defaults. */
+interface Entry {
+  readonly property: string;
+  readonly syntax: Syntax;
+  readonly light: string;
+  readonly dark: string;
+}
+
+const TOKEN_NAMES = Object.keys(SPECS).filter((key): key is TokenName => key in SPECS);
+
+/** Every chart colour's property and defaults: `series-1` to `series-8`, `up`, `ramp-1` to `ramp-7`, and so on. */
+function chartEntries(): readonly Entry[] {
+  const { light, dark } = CHART_COLORS;
+  const list = (name: string, ofLight: readonly string[], ofDark: readonly string[]): Entry[] =>
+    ofLight.map((value, i) => ({ property: `${name}-${String(i + 1)}`, syntax: "color", light: value, dark: ofDark[i] ?? value }));
+  const one = (property: string, ofLight: string, ofDark: string): Entry => ({ property, syntax: "color", light: ofLight, dark: ofDark });
   return [
-    list("series", colors.series),
-    `--px-up: ${colors.up};`,
-    `--px-down: ${colors.down};`,
-    list("ramp", colors.ramp),
-    `--px-middle: ${colors.middle};`,
-    list("negative-ramp", colors.negativeRamp)
-  ].join(" ");
+    ...list("series", light.series, dark.series),
+    one("up", light.up, dark.up),
+    one("down", light.down, dark.down),
+    ...list("ramp", light.ramp, dark.ramp),
+    one("middle", light.middle, dark.middle),
+    ...list("negative-ramp", light.negativeRamp, dark.negativeRamp)
+  ];
 }
 
-/** Reads the chart colours in effect for `element`, falling back to the light theme's. */
-export function readChartColors(element: Element): ChartColors {
-  const style = getComputedStyle(element);
-  const fallback = CHART_COLORS.light;
-  const read = (name: string, otherwise: string): string => {
-    const value = style.getPropertyValue(`--px-${name}`).trim();
-    return value === "" ? otherwise : value;
-  };
-  const list = (name: string, values: readonly string[]): readonly string[] => values.map((v, i) => read(`${name}-${String(i + 1)}`, v));
-  return {
-    series: list("series", fallback.series),
-    up: read("up", fallback.up),
-    down: read("down", fallback.down),
-    ramp: list("ramp", fallback.ramp),
-    middle: read("middle", fallback.middle),
-    negativeRamp: list("negative-ramp", fallback.negativeRamp)
-  };
+/** Every custom property the stylesheet declares. */
+const ENTRIES: readonly Entry[] = [...TOKEN_NAMES.map((name) => SPECS[name]), ...chartEntries()];
+
+/** The components the tokens are declared on. */
+const HOSTS = ":is(px-grid, px-pivot, px-chart)";
+
+function resolved(entry: Entry, value: string): string {
+  return `--_px-${entry.property}: var(--px-${entry.property}, var(--_px-theme-${entry.property}, ${value}));`;
 }
 
-/** The stylesheet that defines the tokens for each theme, in the `parallax` layer. */
-export const THEME_STYLES = `@layer parallax { px-grid, px-pivot, px-chart { ${declarations(THEMES.light)} ${chartDeclarations(CHART_COLORS.light)} } px-grid[data-px-theme="dark"], px-pivot[data-px-theme="dark"], px-chart[data-px-theme="dark"] { ${declarations(THEMES.dark)} ${chartDeclarations(CHART_COLORS.dark)} } }`;
+/**
+ * The stylesheet that registers and declares every token: `@property` rules for the colours and lengths, then the
+ * light defaults on every component and the dark ones on components in the dark scheme.
+ */
+function baseStyles(): string {
+  const registered = ENTRIES.flatMap((entry) => {
+    const syntax = SYNTAXES[entry.syntax].register;
+    return syntax === null ? [] : [`@property --_px-${entry.property} { syntax: "${syntax}"; inherits: true; initial-value: ${entry.light}; }`];
+  });
+  const light = ENTRIES.map((entry) => resolved(entry, entry.light));
+  const dark = ENTRIES.filter((entry) => entry.dark !== entry.light).map((entry) => resolved(entry, entry.dark));
+  return [...registered, `@layer parallax { ${HOSTS} { ${light.join(" ")} } ${HOSTS}[data-px-scheme="dark"] { ${dark.join(" ")} } }`].join("\n");
+}
+
+/** The stylesheet that registers and declares every token. */
+export const THEME_STYLES = baseStyles();
 
 const STYLE_ID = "px-theme-tokens";
 
@@ -256,39 +214,191 @@ export function installThemeStyles(document: Document): void {
   document.head.append(style);
 }
 
-/** Reads the tokens in effect for `element`, falling back to the light theme. */
+/** A theme's parameters as CSS values by property: numbers become pixels, and each chart list one property per colour. */
+function declared(params: ThemeParams | undefined): Readonly<Record<string, string>> {
+  if (params === undefined) {
+    return {};
+  }
+  const values: Record<string, string> = {};
+  for (const name of TOKEN_NAMES) {
+    const value = params[name];
+    if (value !== undefined) {
+      values[SPECS[name].property] = typeof value === "number" ? `${String(value)}px` : value;
+    }
+  }
+  const list = (name: string, colors: readonly string[] | undefined): void => {
+    colors?.forEach((color, i) => {
+      values[`${name}-${String(i + 1)}`] = color;
+    });
+  };
+  list("series", params.series);
+  list("ramp", params.ramp);
+  list("negative-ramp", params.negativeRamp);
+  for (const [property, color] of [
+    ["up", params.up],
+    ["down", params.down],
+    ["middle", params.middle]
+  ] as const) {
+    if (color !== undefined) {
+      values[property] = color;
+    }
+  }
+  return values;
+}
+
+const THEME_NAME = /^[a-z][a-z0-9-]*$/;
+
+/** The themes defined so far, by name, to refuse a second, different theme of the same name. */
+const defined = new Map<string, string>();
+
+/**
+ * Makes a theme: values for some tokens, in both schemes or in one, over those of the theme it extends. Give it to a
+ * component's `theme` input, or to `provideParallax` for every component. A token a host sets in CSS still wins.
+ *
+ * Throws if `name` is not lowercase letters, digits and hyphens, or names a different theme already defined.
+ */
+export function defineTheme(spec: ThemeSpec): ParallaxTheme {
+  if (!THEME_NAME.test(spec.name)) {
+    throw new Error(`A theme's name must be lowercase letters, digits and hyphens, starting with a letter: "${spec.name}"`);
+  }
+  const both = declared(spec.params);
+  const theme: ParallaxTheme = { name: spec.name, light: { ...spec.extends?.light, ...both, ...declared(spec.light) }, dark: { ...spec.extends?.dark, ...both, ...declared(spec.dark) } };
+  const key = JSON.stringify([theme.light, theme.dark]);
+  const earlier = defined.get(spec.name);
+  if (earlier !== undefined && earlier !== key) {
+    throw new Error(`Another theme is already named "${spec.name}"`);
+  }
+  defined.set(spec.name, key);
+  return theme;
+}
+
+/** The library's own look: its defaults, unchanged. */
+export const standardTheme: ParallaxTheme = defineTheme({ name: "standard" });
+
+/** The stylesheet that declares a theme's values on the components given it, in each scheme. */
+export function themeStyles(theme: ParallaxTheme): string {
+  const rule = (scheme: ResolvedScheme, values: Readonly<Record<string, string>>): string => {
+    const declarations = Object.entries(values).map(([property, value]) => `--_px-theme-${property}: ${value};`);
+    return declarations.length === 0 ? "" : `${HOSTS}[data-px-theme="${theme.name}"][data-px-scheme="${scheme}"] { ${declarations.join(" ")} }`;
+  };
+  const rules = [rule("light", theme.light), rule("dark", theme.dark)].filter((r) => r !== "");
+  return rules.length === 0 ? "" : `@layer parallax { ${rules.join(" ")} }`;
+}
+
+/** Adds a theme's stylesheet to a document once. */
+export function installTheme(document: Document, theme: ParallaxTheme): void {
+  const id = `px-theme-${theme.name}`;
+  if (document.getElementById(id) !== null) {
+    return;
+  }
+  const style = document.createElement("style");
+  style.id = id;
+  style.textContent = themeStyles(theme);
+  document.head.append(style);
+}
+
+/** The defaults of a scheme, as `readTheme` returns them. */
+export function defaultTheme(scheme: ResolvedScheme): Theme {
+  return withFont(Object.fromEntries(TOKEN_NAMES.map((name) => [name, SPECS[name][scheme]])));
+}
+
+function withFont(values: Readonly<Record<string, string>>): Theme {
+  const value = (name: TokenName): string => values[name] ?? SPECS[name].light;
+  const tokens: Record<TokenName, string> = {
+    fontFamily: value("fontFamily"),
+    fontSize: value("fontSize"),
+    background: value("background"),
+    stripe: value("stripe"),
+    foreground: value("foreground"),
+    muted: value("muted"),
+    negative: value("negative"),
+    totalForeground: value("totalForeground"),
+    headerBackground: value("headerBackground"),
+    headerForeground: value("headerForeground"),
+    borderColor: value("borderColor"),
+    selectionBackground: value("selectionBackground"),
+    selectionBorder: value("selectionBorder"),
+    statusBackground: value("statusBackground"),
+    statusForeground: value("statusForeground"),
+    warning: value("warning"),
+    danger: value("danger"),
+    highlight: value("highlight"),
+    accent: value("accent"),
+    controlBackground: value("controlBackground"),
+    controlForeground: value("controlForeground"),
+    controlBorder: value("controlBorder"),
+    controlHover: value("controlHover"),
+    focus: value("focus"),
+    shadow: value("shadow"),
+    radius: value("radius"),
+    chipBackground: value("chipBackground")
+  };
+  return { ...tokens, font: `${tokens.fontSize} ${tokens.fontFamily}` };
+}
+
+/** The values a host set that CSS refuses, already warned about, so each is reported once. */
+const warned = new Set<string>();
+
+/** Warns, once, about a public token whose value CSS refuses, which the component draws without. */
+function check(style: CSSStyleDeclaration, entry: Entry): void {
+  const value = style.getPropertyValue(`--px-${entry.property}`).trim();
+  if (value === "" || typeof CSS === "undefined" || typeof CSS.supports !== "function" || CSS.supports(SYNTAXES[entry.syntax].check, value)) {
+    return;
+  }
+  const key = `${entry.property}: ${value}`;
+  if (!warned.has(key)) {
+    warned.add(key);
+    console.warn(`parallax: --px-${key} is not a valid value, so the theme's or the default is used`);
+  }
+}
+
+/** The scheme `element` is drawn in, from the nearest component's `data-px-scheme`. */
+function schemeOf(element: Element): ResolvedScheme {
+  return element.closest("[data-px-scheme]")?.getAttribute("data-px-scheme") === "dark" ? "dark" : "light";
+}
+
+/** Reads the tokens in effect for `element`, warning about any value a host set that CSS refuses. */
 export function readTheme(element: Element): Theme {
   const style = getComputedStyle(element);
-  const read = (key: keyof Theme): string => {
-    const value = style.getPropertyValue(TOKENS[key]).trim();
-    return value === "" ? THEMES.light[key] : value;
+  const scheme = schemeOf(element);
+  const values: Record<string, string> = {};
+  for (const name of TOKEN_NAMES) {
+    const entry = SPECS[name];
+    check(style, entry);
+    const value = style.getPropertyValue(`--_px-${entry.property}`).trim();
+    values[name] = value === "" ? entry[scheme] : value;
+  }
+  return withFont(values);
+}
+
+/** Reads the chart colours in effect for `element`, falling back to its scheme's defaults. */
+export function readChartColors(element: Element): ChartColors {
+  const style = getComputedStyle(element);
+  const fallback = CHART_COLORS[schemeOf(element)];
+  const read = (property: string, otherwise: string): string => {
+    const value = style.getPropertyValue(`--_px-${property}`).trim();
+    return value === "" ? otherwise : value;
   };
+  const list = (name: string, values: readonly string[]): readonly string[] => values.map((v, i) => read(`${name}-${String(i + 1)}`, v));
   return {
-    font: read("font"),
-    background: read("background"),
-    stripe: read("stripe"),
-    foreground: read("foreground"),
-    muted: read("muted"),
-    negative: read("negative"),
-    totalForeground: read("totalForeground"),
-    headerBackground: read("headerBackground"),
-    headerForeground: read("headerForeground"),
-    gridLine: read("gridLine"),
-    selection: read("selection"),
-    selectionBorder: read("selectionBorder"),
-    statusBackground: read("statusBackground"),
-    statusForeground: read("statusForeground"),
-    warning: read("warning"),
-    danger: read("danger"),
-    highlight: read("highlight"),
-    accent: read("accent"),
-    controlBackground: read("controlBackground"),
-    controlForeground: read("controlForeground"),
-    controlBorder: read("controlBorder"),
-    controlHover: read("controlHover"),
-    focus: read("focus"),
-    shadow: read("shadow"),
-    radius: read("radius"),
-    chipBackground: read("chipBackground")
+    series: list("series", fallback.series),
+    up: read("up", fallback.up),
+    down: read("down", fallback.down),
+    ramp: list("ramp", fallback.ramp),
+    middle: read("middle", fallback.middle),
+    negativeRamp: list("negative-ramp", fallback.negativeRamp)
   };
 }
+
+/** Whether two sets of tokens are the same, so that a change that alters none redraws nothing. */
+export function sameTheme(a: Theme, b: Theme): boolean {
+  return a.font === b.font && TOKEN_NAMES.every((name) => a[name] === b[name]);
+}
+
+/** Whether two sets of chart colours are the same. */
+export function sameChartColors(a: ChartColors, b: ChartColors): boolean {
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+
+/** Every token's public property, such as `--px-accent`, chart colours included: what a host or a theme can set. */
+export const TOKEN_PROPERTIES: readonly string[] = ENTRIES.map((entry) => `--px-${entry.property}`);

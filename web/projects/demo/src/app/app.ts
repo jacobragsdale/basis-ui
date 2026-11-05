@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, signal, viewChild } from "@angular/core";
 import { GridComponent, PivotComponent, decodeLayout, encodeLayout } from "parallax";
-import type { Density, LayoutInput, ThemeName } from "parallax";
+import type { Density, LayoutInput, ResolvedScheme } from "parallax";
 import * as z from "zod/mini";
 
 import { ChartsComponent } from "./charts.component";
@@ -156,18 +156,18 @@ function remember(name: string, value: string): void {
     <p class="about">{{ about() }}</p>
     <main>
       @if (charts()) {
-        <demo-charts [theme]="theme()" />
+        <demo-charts [scheme]="theme()" />
       } @else if (small()) {
-        <demo-small [theme]="theme()" [density]="density()" />
+        <demo-small [scheme]="theme()" [density]="density()" />
       } @else if (dashboard()) {
-        <demo-dashboard [theme]="theme()" [density]="density()" />
+        <demo-dashboard [scheme]="theme()" [density]="density()" />
       } @else if (technical()) {
-        <demo-technical [theme]="theme()" [density]="density()" />
+        <demo-technical [scheme]="theme()" [density]="density()" />
       } @else if (ready()) {
         @if (grouped()) {
-          <px-pivot [(layout)]="layout" [theme]="theme()" [density]="density()" />
+          <px-pivot [(layout)]="layout" [scheme]="theme()" [density]="density()" />
         } @else {
-          <px-grid [(layout)]="layout" [theme]="theme()" [density]="density()" />
+          <px-grid [(layout)]="layout" [scheme]="theme()" [density]="density()" />
         }
       }
     </main>
@@ -255,7 +255,7 @@ function remember(name: string, value: string): void {
 export class App {
   protected readonly search = readSearch();
   protected readonly layout = signal<LayoutInput>(PRESETS[this.search.preset].layout);
-  protected readonly theme = signal<ThemeName>(this.search.theme);
+  protected readonly theme = signal<ResolvedScheme>(this.search.theme);
   protected readonly density = signal<Density>(this.search.density);
   protected readonly performance = signal(this.search.performance === "on");
   protected readonly layoutJson = computed(() => JSON.stringify(this.layout(), null, 2));

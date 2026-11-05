@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, input, signal } from "@angular/core";
 import { ChartComponent, GridComponent } from "parallax";
-import type { Density, LayoutFilter, LayoutIndicator, LayoutInput, ThemeName } from "parallax";
+import type { Density, LayoutFilter, LayoutIndicator, LayoutInput, ResolvedScheme } from "parallax";
 
 const TICKERS = ["QYE", "ZREZ", "NV"] as const;
 type Ticker = (typeof TICKERS)[number];
@@ -142,10 +142,10 @@ function rowsLayout(s: Settings, brush: readonly LayoutFilter[]): LayoutInput {
         }
       </fieldset>
     </form>
-    <section class="chart"><px-chart [(layout)]="chart" [theme]="theme()" (brushed)="brush($event)" /></section>
+    <section class="chart"><px-chart [(layout)]="chart" [scheme]="scheme()" (brushed)="brush($event)" /></section>
     <section class="rows">
       <h2>{{ rowsTitle() }}</h2>
-      <px-grid [(layout)]="rows" [theme]="theme()" [density]="density()" />
+      <px-grid [(layout)]="rows" [scheme]="scheme()" [density]="density()" />
     </section>
   `,
   styles: `
@@ -204,7 +204,7 @@ function rowsLayout(s: Settings, brush: readonly LayoutFilter[]): LayoutInput {
   `
 })
 export class TechnicalComponent {
-  public readonly theme = input<ThemeName>("light");
+  public readonly scheme = input<ResolvedScheme>("light");
   public readonly density = input<Density>("compact");
 
   protected readonly tickers = TICKERS;

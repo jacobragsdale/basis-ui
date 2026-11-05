@@ -40,11 +40,11 @@ const ORDER: Readonly<Record<FieldKind, readonly [string, string]>> = {
       width: 100%;
       margin: 4px 0;
       border: 0;
-      border-top: 1px solid var(--px-grid-line);
+      border-top: 1px solid var(--_px-border-color);
     }
     .px-header-menu .px-menu-heading {
       margin: 4px 10px 0;
-      color: var(--px-muted-fg);
+      color: var(--_px-muted);
       font-size: 11px;
       font-weight: 600;
       letter-spacing: 0.04em;
@@ -62,10 +62,10 @@ const ORDER: Readonly<Record<FieldKind, readonly [string, string]>> = {
       height: 28px;
       min-width: 0;
       padding: 0 6px;
-      border: 1px solid var(--px-control-border);
-      border-radius: calc(var(--px-radius) - 2px);
-      background: var(--px-control-bg);
-      color: var(--px-control-fg);
+      border: 1px solid var(--_px-control-border);
+      border-radius: calc(var(--_px-radius) - 2px);
+      background: var(--_px-control-background);
+      color: var(--_px-control-foreground);
       font: inherit;
     }
   `,

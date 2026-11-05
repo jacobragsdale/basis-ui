@@ -20,7 +20,7 @@ export const appConfig: ApplicationConfig = { providers: [provideParallax({ url:
 import { GridComponent } from "@jacobragsdale/parallax";
 import type { LayoutInput } from "@jacobragsdale/parallax";
 
-@Component({ selector: "app-positions", imports: [GridComponent], template: `<px-grid [(layout)]="layout" theme="dark" />` })
+@Component({ selector: "app-positions", imports: [GridComponent], template: `<px-grid [(layout)]="layout" scheme="dark" />` })
 export class PositionsComponent {
   protected readonly layout = signal<LayoutInput>({
     dataset: "positions",
@@ -143,7 +143,8 @@ base, such as `https://api.host/px`; browser copies come from `/copy` there too.
 | Input       | Type                               | Default     | Meaning                                                               |
 | ----------- | ---------------------------------- | ----------- | --------------------------------------------------------------------- |
 | `layout`    | `LayoutInput`                      | required    | The view. Two-way: `[(layout)]`.                                      |
-| `theme`     | `"light" \| "dark"`                | `"light"`   | The token set.                                                        |
+| `theme`     | `ParallaxTheme`                    | standard    | A theme from `defineTheme`; by default `provideParallax`'s.           |
+| `scheme`    | `"light" \| "dark" \| "auto"`      | `"light"`   | The colour scheme; `auto` follows the system. Default as `theme`.     |
 | `density`   | `"compact" \| "comfortable"`       | `"compact"` | Row height: 24 or 30 pixels.                                          |
 | `toolbar`   | `boolean \| Partial<ToolbarParts>` | `true`      | The toolbar, or which of its parts show; grid only.                   |
 | `height`    | `"fill" \| "auto"`                 | `"fill"`    | Fill the container, or size to the rows up to `maxHeight`; grid only. |
@@ -151,12 +152,13 @@ base, such as `https://api.host/px`; browser copies come from `/copy` there too.
 
 `<px-chart>`:
 
-| Input       | Type                | Default   | Meaning                                                                  |
-| ----------- | ------------------- | --------- | ------------------------------------------------------------------------ |
-| `layout`    | `LayoutInput`       | required  | The view and its `chart` section. Two-way: `[(layout)]`.                 |
-| `theme`     | `"light" \| "dark"` | `"light"` | The token set.                                                           |
-| `sync`      | `string \| null`    | automatic | The group whose crosshairs move together; `null` keeps this chart's own. |
-| `statusBar` | `boolean`           | `true`    | Whether the status bar shows under the chart.                            |
+| Input       | Type                          | Default   | Meaning                                                                  |
+| ----------- | ----------------------------- | --------- | ------------------------------------------------------------------------ |
+| `layout`    | `LayoutInput`                 | required  | The view and its `chart` section. Two-way: `[(layout)]`.                 |
+| `theme`     | `ParallaxTheme`               | standard  | A theme from `defineTheme`; by default `provideParallax`'s.              |
+| `scheme`    | `"light" \| "dark" \| "auto"` | `"light"` | The colour scheme; `auto` follows the system. Default as `theme`.        |
+| `sync`      | `string \| null`              | automatic | The group whose crosshairs move together; `null` keeps this chart's own. |
+| `statusBar` | `boolean`                     | `true`    | Whether the status bar shows under the chart.                            |
 
 ## Outputs
 
@@ -181,12 +183,27 @@ base, such as `https://api.host/px`; browser copies come from `/copy` there too.
 
 ## Theme tokens
 
-Every colour and the font are CSS custom properties, such as `--px-grid-bg`,
-`--px-negative` and `--px-selection-bg`; `TOKENS` lists them all. Set any of
-them on `px-grid` to override the theme:
+Every colour, the font and the corner radius are CSS custom properties, such as `--px-accent`,
+`--px-background` and `--px-font-family`; `TOKEN_PROPERTIES` lists them all.
+Set any of them anywhere, on `:root`, on a wrapper or on the element, and it
+wins over the theme:
 
 ```css
-px-grid {
+:root {
   --px-negative: #c00;
+  --px-font-family: "IBM Plex Sans", sans-serif;
 }
 ```
+
+`defineTheme` makes a named theme from values for both schemes or for one,
+optionally extending another theme. Give it to a component's `theme` input, or
+to `provideParallax({ theme, scheme })` for every component:
+
+```ts
+export const acme = defineTheme({ name: "acme", params: { accent: "#7c3aed", radius: 8 }, dark: { accent: "#a78bfa" } });
+```
+
+The components read their tokens again when their inputs change, when an
+attribute of `<html>` or `<body>` changes (such as a dark class), when the
+system's colour scheme changes and when fonts load. After changing a token any
+other way, call `refreshTheme()` on the component.

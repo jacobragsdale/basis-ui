@@ -44,8 +44,9 @@ import type { FrameColumn, FrameData, RowKind, TreeRows } from "../frame";
 import { TREE_WIDTH_KEY, checkLayout, measureWidthKey } from "../layout";
 import type { Layout, LayoutInput, LayoutScalar } from "../layout";
 import { ParallaxClient } from "../client";
-import { installThemeStyles, readTheme } from "../theme";
-import type { Theme, ThemeName } from "../theme";
+import { readTheme, sameTheme } from "../theme";
+import type { ParallaxTheme, Scheme, Theme } from "../theme";
+import { themed } from "../theming";
 import { DEFAULT_TREE_WIDTH, DEFAULT_WIDTH, MIN_WIDTH, columnAt, flatGeometry, groupedGeometry, rowGeometry, screenX, scrolledColumns } from "./geometry";
 import type { ColumnGeometry } from "./geometry";
 import { groupPath, gridSource, withExpanded } from "./grid-source";
@@ -220,9 +221,9 @@ const GRID_STYLES = `
     height: 100%;
     min-height: 0;
     overflow: hidden;
-    font: var(--px-font);
-    color: var(--px-grid-fg);
-    background: var(--px-grid-bg);
+    font: var(--_px-font-size) var(--_px-font-family);
+    color: var(--_px-foreground);
+    background: var(--_px-background);
   }
   px-grid .px-body {
     position: relative;
@@ -239,7 +240,7 @@ const GRID_STYLES = `
     outline: none;
   }
   px-grid .px-scroll:focus-visible {
-    box-shadow: inset 0 0 0 2px var(--px-selection-border);
+    box-shadow: inset 0 0 0 2px var(--_px-selection-border);
   }
   px-grid .px-spacer {
     position: absolute;
@@ -256,7 +257,7 @@ const GRID_STYLES = `
     position: absolute;
     inset: auto 0 0 0;
     padding: 6px 10px;
-    background: var(--px-danger);
+    background: var(--_px-danger);
     color: #fff;
   }
   px-grid .px-visually-hidden {
@@ -276,10 +277,10 @@ const GRID_STYLES = `
     z-index: 2;
     max-width: 480px;
     padding: 4px 8px;
-    border: 1px solid var(--px-grid-line);
+    border: 1px solid var(--_px-border-color);
     border-radius: 3px;
-    background: var(--px-header-bg);
-    color: var(--px-header-fg);
+    background: var(--_px-header-background);
+    color: var(--_px-header-foreground);
     white-space: pre-wrap;
     word-break: break-word;
     pointer-events: none;
@@ -293,7 +294,7 @@ const GRID_STYLES = `
   changeDetection: ChangeDetectionStrategy.OnPush,
   encapsulation: ViewEncapsulation.None,
   imports: [ColumnMenuComponent, GridToolbarComponent, GroupPanelComponent, PopoverComponent, StatusBarComponent],
-  host: { "[attr.data-px-theme]": "theme()", "[class.px-auto-height]": "height() === 'auto'" },
+  host: { "[attr.data-px-theme]": "theming.theme().name", "[attr.data-px-scheme]": "theming.resolved()", "[class.px-auto-height]": "height() === 'auto'" },
   template: `
     @if (toolbarView(); as bar) {
       <px-grid-toolbar #toolbar [layout]="bar.layout" [fields]="fields()" [parts]="bar.parts" (changed)="layout.set($event)" (exported)="export($event)" />
@@ -366,8 +367,12 @@ const GRID_STYLES = `
 export class GridComponent {
   /** The view: dataset, grouping, sorting, formats and widths. Bind it two ways with `[(layout)]`. */
   public readonly layout = model.required<LayoutInput>();
-  /** The theme's tokens; a host can override any of them on the element. */
-  public readonly theme = input<ThemeName>("light");
+  /** The theme, from `defineTheme`; by default the one given to `provideParallax`, else the standard theme. A token set in CSS wins over it. */
+  public readonly theme = input<ParallaxTheme | undefined>(undefined);
+  /** The light or dark scheme, or `auto` to follow the system; by default the one given to `provideParallax`, else light. */
+  public readonly scheme = input<Scheme | undefined>(undefined);
+  /** The theme and scheme in effect. */
+  protected readonly theming = themed(this.theme, this.scheme);
   /** How tightly rows are packed. */
   public readonly density = input<Density>("compact");
   /** Fires when the user double-clicks a value in a grouped view, asking for the rows behind its group. */
@@ -510,7 +515,10 @@ export class GridComponent {
   /** Full text of cells drawn cut short, and notes for flagged cells, by cell key. */
   private notes = new Map<string, string>();
   private shape = "";
+  /** The tokens of the last full redraw. */
   private tokens: Theme | null = null;
+  /** The tokens in effect, read again whenever the theme may have changed; equal tokens leave it as it is. */
+  private readonly palette = signal<Theme | null>(null, { equal: (a, b) => a === b || (a !== null && b !== null && sameTheme(a, b)) });
   private readonly textWidths = new Map<string, number>();
   private pressed: { readonly hit: Hit; readonly x: number; readonly startWidth: number; readonly key: string } | null = null;
   private selecting = false;
@@ -527,7 +535,6 @@ export class GridComponent {
   private readonly client = inject(ParallaxClient);
 
   constructor() {
-    installThemeStyles(this.document);
     const destroyRef = inject(DestroyRef);
     // Measure once rendered and whenever the grid resizes; that also asks for the first rows.
     afterNextRender(() => {
@@ -570,9 +577,27 @@ export class GridComponent {
         }
       });
     });
+    // The tokens come from the page's styles, so they are read once rendered, and again whenever they may have changed.
+    afterRenderEffect(() => {
+      this.theming.theme();
+      this.theming.resolved();
+      this.theming.changes();
+      const tokens = readTheme(this.canvas().nativeElement);
+      untracked(() => {
+        const font = this.palette()?.font;
+        this.palette.set(tokens);
+        if (font !== undefined && font !== tokens.font) {
+          // Text measured in the old font is the wrong width now, so columns fitted to it are fitted again.
+          this.textWidths.clear();
+          this.fittedOver = new Map();
+          this.fitted.set({});
+          this.fitColumns(this.source.frame(), this.current());
+        }
+      });
+    });
     afterRenderEffect(() => {
       // Reading these tracks them; any change redraws.
-      this.theme();
+      this.palette();
       this.geometry();
       this.selection();
       this.draw(this.source.frame(), this.scrollTop(), this.scrollLeft(), this.viewportPx(), this.widthPx());
@@ -582,6 +607,20 @@ export class GridComponent {
   /** Drawing counters, for measurement. */
   public drawStats(): DrawStats {
     return this.stats;
+  }
+
+  /**
+   * Reads the theme's tokens again and redraws if they changed. The grid notices its inputs, the system's colour
+   * scheme, fonts loading and changes to the attributes of `<html>` and `<body>` by itself; call this after changing
+   * a token any other way, such as a class on a wrapper.
+   */
+  public refreshTheme(): void {
+    this.theming.refresh();
+  }
+
+  /** The tokens in effect, read now if they have not been yet. */
+  private currentTokens(): Theme {
+    return untracked(() => this.palette()) ?? readTheme(this.canvas().nativeElement);
   }
 
   /**
@@ -994,7 +1033,7 @@ export class GridComponent {
     if (layout === null || context === null) {
       return;
     }
-    context.font = (this.tokens ?? readTheme(this.canvas().nativeElement)).font;
+    context.font = this.currentTokens().font;
     const whole = frame.firstRow === 0 && frame.rowCount >= frame.totalRows;
     // A pivot's columns are fitted by measure: every column of one measure shares a width.
     const pivot = isPivot(layout);
@@ -1067,7 +1106,7 @@ export class GridComponent {
     if (frame === null || context === null) {
       return this.widthOf(column);
     }
-    context.font = (this.tokens ?? readTheme(this.canvas().nativeElement)).font;
+    context.font = this.currentTokens().font;
     let widest = 0;
     if (column === -1) {
       const tree = frame.tree;
@@ -1371,7 +1410,7 @@ export class GridComponent {
     const layout = this.current();
     const versions = frame === null ? null : [frame.configVersion.toString(), frame.loadVersion.toString(), frame.totalRows, frame.firstColumn];
     const decor = layout === null ? null : [layout.column_widths, layout.sort, layout.group_sort, layout.filters, layout.pinned, this.hoverHeader(), this.menu()?.column, this.drag()];
-    return JSON.stringify([at, versions, this.theme(), geometry.treePx, geometry.contentWidth, decor]);
+    return JSON.stringify([at, versions, geometry.treePx, geometry.contentWidth, decor]);
   }
 
   /** Visible rows the selection covered or now covers, which must be redrawn even if their text is unchanged. */
@@ -1397,8 +1436,8 @@ export class GridComponent {
     const stale = moved ? this.selectionRows(range, focus, at) : new Set<number>();
     this.drawnRange = range;
     this.drawnFocus = focus;
-    const full = this.tokens === null || shape !== this.shape;
-    const theme = full || this.tokens === null ? readTheme(this.canvas().nativeElement) : this.tokens;
+    const theme = this.palette() ?? readTheme(this.canvas().nativeElement);
+    const full = theme !== this.tokens || shape !== this.shape;
     this.tokens = theme;
     this.shape = shape;
     const search = frame === null ? "" : this.source.searchOf(frame);
@@ -1463,7 +1502,7 @@ export class GridComponent {
         Array.from({ length: geometry.pinned }, (_, i) => i)
       );
       if (pass.scrollLeft > 0) {
-        context.fillStyle = pass.theme.gridLine;
+        context.fillStyle = pass.theme.borderColor;
         context.fillRect(geometry.frozenPx - 1, top, 2, height);
       }
     }
@@ -1501,7 +1540,7 @@ export class GridComponent {
       context.fillStyle = theme.headerForeground;
       const title = layout === null || layout.group_by.length === 0 ? "Group" : layout.group_by.join(" › ");
       this.headerText(pass, title, this.sortMark(-1), 0, geometry.treePx);
-      context.fillStyle = theme.gridLine;
+      context.fillStyle = theme.borderColor;
       context.fillRect(geometry.treePx - 1, 0, 1, rowPx);
     }
     this.eachColumn(pass, 0, rowPx, (column) => {
@@ -1514,7 +1553,7 @@ export class GridComponent {
       context.fillStyle = theme.accent;
       context.fillRect(x - 1, 0, 3, rowPx);
     }
-    context.fillStyle = theme.gridLine;
+    context.fillStyle = theme.borderColor;
     context.fillRect(0, rowPx - 1, pass.width, 1);
   }
 
@@ -1537,7 +1576,7 @@ export class GridComponent {
     } else {
       this.drawMenuHeader(pass, column, { x, width, title }, look, open || lit ? (open ? "open" : "lit") : "rest");
     }
-    context.fillStyle = theme.gridLine;
+    context.fillStyle = theme.borderColor;
     context.fillRect(x + width - 1, 0, 1, rowPx);
   }
 
@@ -1626,7 +1665,7 @@ export class GridComponent {
       this.clipText(context, shown, x, geometry.width(column), y + rowPx / 2, data?.numeric === true && text !== "");
     });
     context.font = theme.font;
-    context.fillStyle = theme.gridLine;
+    context.fillStyle = theme.borderColor;
     context.fillRect(0, y, pass.width, 1);
   }
 
@@ -1647,7 +1686,7 @@ export class GridComponent {
     context.fillStyle = stripe;
     context.fillRect(x, y, width, rowPx);
     if (range !== null && contains(range, row, column)) {
-      context.fillStyle = theme.selection;
+      context.fillStyle = theme.selectionBackground;
       context.fillRect(x, y, width, rowPx);
     }
     if (focus !== null && focus.row === row && focus.column === column) {
@@ -1674,7 +1713,7 @@ export class GridComponent {
     if (this.clipText(context, text, left - PADDING, geometry.treePx - left + PADDING, y + rowPx / 2, false, marks, theme.highlight)) {
       this.notes.set(key, groupText(tree, local));
     }
-    context.fillStyle = theme.gridLine;
+    context.fillStyle = theme.borderColor;
     context.fillRect(geometry.treePx - 1, y, 1, rowPx);
     this.drawn.set(key, text);
     return 1;
@@ -1699,7 +1738,7 @@ export class GridComponent {
     context.fillStyle = style.color;
     const clipped = this.clipText(context, text, x, width, y + rowPx / 2, style.right, style.marks, theme.highlight);
     this.noteCell(key, FLAG_NOTES[flag] ?? (clipped ? text : null));
-    context.fillStyle = theme.gridLine;
+    context.fillStyle = theme.borderColor;
     context.fillRect(x + width - 1, y, 1, rowPx);
     this.drawn.set(key, text);
     return true;
