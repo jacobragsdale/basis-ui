@@ -122,7 +122,7 @@ jobs:
           cache: pnpm
           cache-dependency-path: web/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
-      # The generated protocol code must match proto/parallax.proto.
+      # The generated protocol code must match crates/parallax-protocol/proto/parallax.proto.
       - run: pnpm generate && git diff --exit-code -- projects/parallax/src/lib/proto
       # The browser engine: the worker's types and the package's wasm folder come from it.
       - run: rustup toolchain install
