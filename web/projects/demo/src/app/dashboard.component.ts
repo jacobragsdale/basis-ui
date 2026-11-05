@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, input, signal } from "@angular/core";
-import { ChartComponent, GridComponent } from "parallax";
-import type { ChartSelection, Density, LayoutInput, ResolvedScheme } from "parallax";
+import { ChartComponent, GridComponent, standardTheme } from "parallax";
+import type { ChartSelection, Density, LayoutInput, ParallaxTheme, Scheme } from "parallax";
 
 import { withSelection, withShare } from "./layouts";
 import { BLOTTER, BOOK } from "./small.component";
@@ -34,18 +34,18 @@ function tile(id: string, title: string, table: Table, layout: Omit<LayoutInput,
       @for (t of tiles; track t.id) {
         <section [attr.data-tile]="t.id">
           <h2>{{ t.title }}</h2>
-          <px-chart [(layout)]="t.layout" [scheme]="scheme()" [statusBar]="false" (selectionChange)="select(t, $event)" />
+          <px-chart [(layout)]="t.layout" [scheme]="scheme()" [theme]="theme()" [statusBar]="false" (selectionChange)="select(t, $event)" />
         </section>
       }
     </div>
     <div class="grids">
       <section data-table="book">
         <h2>Book <span>300 positions, held in this page</span></h2>
-        <px-grid [(layout)]="book" [scheme]="scheme()" [density]="density()" [toolbar]="{ group: false }" />
+        <px-grid [(layout)]="book" [scheme]="scheme()" [theme]="theme()" [density]="density()" [toolbar]="{ group: false }" />
       </section>
       <section data-table="blotter">
         <h2>Blotter <span>500 trades, held on the server</span></h2>
-        <px-grid [(layout)]="blotter" [scheme]="scheme()" [density]="density()" [toolbar]="{ group: false }" />
+        <px-grid [(layout)]="blotter" [scheme]="scheme()" [theme]="theme()" [density]="density()" [toolbar]="{ group: false }" />
       </section>
     </div>
   `,
@@ -74,12 +74,11 @@ function tile(id: string, title: string, table: Table, layout: Omit<LayoutInput,
       display: flex;
       flex-direction: column;
       min-height: 0;
-      border: 1px solid #d0d5dd;
-      border-radius: 6px;
+      border: 1px solid var(--demo-line);
+      border-radius: 10px;
+      background: var(--demo-card);
+      box-shadow: var(--demo-shadow);
       overflow: hidden;
-    }
-    :host-context(.dark) section {
-      border-color: #2c3240;
     }
     h2 {
       margin: 0;
@@ -90,7 +89,7 @@ function tile(id: string, title: string, table: Table, layout: Omit<LayoutInput,
     h2 span {
       margin-left: 6px;
       font-weight: normal;
-      color: #667085;
+      color: var(--demo-muted);
     }
     px-chart,
     px-grid {
@@ -105,7 +104,8 @@ function tile(id: string, title: string, table: Table, layout: Omit<LayoutInput,
   `
 })
 export class DashboardComponent {
-  public readonly scheme = input<ResolvedScheme>("light");
+  public readonly scheme = input<Scheme>("light");
+  public readonly theme = input<ParallaxTheme>(standardTheme);
   public readonly density = input<Density>("compact");
 
   protected readonly book = signal<LayoutInput>(BOOK);

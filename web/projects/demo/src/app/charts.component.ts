@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, input, signal } from "@angular/core";
-import { ChartComponent, GridComponent } from "parallax";
-import type { ChartSelection, LayoutFilter, LayoutInput, ResolvedScheme } from "parallax";
+import { ChartComponent, GridComponent, standardTheme } from "parallax";
+import type { ChartSelection, LayoutFilter, LayoutInput, ParallaxTheme, Scheme } from "parallax";
 
 /** A chart the page shows, with what it says. */
 interface Card {
@@ -44,18 +44,18 @@ function card(id: string, title: string, layout: LayoutInput, linked = false): C
     @for (c of cards; track c.id) {
       <section [attr.data-card]="c.id" [class.wide]="c.id === 'technical'">
         <h2>{{ c.title }}</h2>
-        <px-chart [(layout)]="c.layout" [scheme]="scheme()" (brushed)="brush(c, $event)" (selectionChange)="select(c, $event)" />
+        <px-chart [(layout)]="c.layout" [scheme]="scheme()" [theme]="theme()" (brushed)="brush(c, $event)" (selectionChange)="select(c, $event)" />
       </section>
       @if (c.linked) {
         <section data-linked="candles">
           <h2>{{ rowsTitle() }}</h2>
-          <px-grid [(layout)]="rows" [scheme]="scheme()" />
+          <px-grid [(layout)]="rows" [scheme]="scheme()" [theme]="theme()" />
         </section>
       }
       @if (c.id === "donut") {
         <section data-linked="donut">
           <h2>{{ positionsTitle() }}</h2>
-          <px-grid [(layout)]="positions" [scheme]="scheme()" />
+          <px-grid [(layout)]="positions" [scheme]="scheme()" [theme]="theme()" />
         </section>
       }
     }
@@ -79,12 +79,11 @@ function card(id: string, title: string, layout: LayoutInput, linked = false): C
       display: flex;
       flex-direction: column;
       min-height: 0;
-      border: 1px solid #d0d5dd;
-      border-radius: 6px;
+      border: 1px solid var(--demo-line);
+      border-radius: 10px;
+      background: var(--demo-card);
+      box-shadow: var(--demo-shadow);
       overflow: hidden;
-    }
-    :host-context(.dark) section {
-      border-color: #2c3240;
     }
     h2 {
       margin: 0;
@@ -105,7 +104,8 @@ function card(id: string, title: string, layout: LayoutInput, linked = false): C
   `
 })
 export class ChartsComponent {
-  public readonly scheme = input<ResolvedScheme>("light");
+  public readonly scheme = input<Scheme>("light");
+  public readonly theme = input<ParallaxTheme>(standardTheme);
 
   /** The grid of QYE's days, narrowed by a brush on the candles. */
   protected readonly rows = signal<LayoutInput>(rowsLayout([]));

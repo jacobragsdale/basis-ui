@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, input, signal } from "@angular/core";
-import { ChartComponent } from "parallax";
-import type { ChartSelection, LayoutFilter, LayoutInput, ResolvedScheme } from "parallax";
+import { ChartComponent, standardTheme } from "parallax";
+import type { ChartSelection, LayoutFilter, LayoutInput, ParallaxTheme, Scheme } from "parallax";
 
 import { withShare } from "./layouts";
 
@@ -120,7 +120,7 @@ function groupColumn(b: Breakdown): string | undefined {
           @for (c of part.charts; track c.key) {
             <section [attr.data-breakdown]="c.id" [attr.data-filtered]="c.filtered">
               <h3>{{ c.title }}</h3>
-              <px-chart [layout]="c.layout" [scheme]="scheme()" (selectionChange)="select(c.id, part.dataset, $event)" />
+              <px-chart [layout]="c.layout" [scheme]="scheme()" [theme]="theme()" (selectionChange)="select(c.id, part.dataset, $event)" />
             </section>
           }
         </div>
@@ -146,12 +146,9 @@ function groupColumn(b: Breakdown): string | undefined {
       font-weight: 600;
     }
     .hint {
-      color: #667085;
+      color: var(--demo-muted);
       font-size: 12px;
       font-weight: normal;
-    }
-    :host-context(.dark) .hint {
-      color: #8a93a3;
     }
     .chip {
       display: inline-flex;
@@ -161,15 +158,12 @@ function groupColumn(b: Breakdown): string | undefined {
       padding: 0 10px;
       border: 0;
       border-radius: 12px;
-      background: #e9effd;
+      background: var(--demo-chip);
       color: inherit;
       font: inherit;
       font-size: 12px;
       font-weight: normal;
       cursor: pointer;
-    }
-    :host-context(.dark) .chip {
-      background: #22324d;
     }
     .charts {
       display: grid;
@@ -181,12 +175,11 @@ function groupColumn(b: Breakdown): string | undefined {
       display: flex;
       flex-direction: column;
       min-height: 0;
-      border: 1px solid #d0d5dd;
-      border-radius: 8px;
+      border: 1px solid var(--demo-line);
+      border-radius: 10px;
+      background: var(--demo-card);
+      box-shadow: var(--demo-shadow);
       overflow: hidden;
-    }
-    :host-context(.dark) section {
-      border-color: #2c3240;
     }
     h3 {
       margin: 0;
@@ -201,7 +194,8 @@ function groupColumn(b: Breakdown): string | undefined {
   `
 })
 export class BreakdownsComponent {
-  public readonly scheme = input<ResolvedScheme>("light");
+  public readonly scheme = input<Scheme>("light");
+  public readonly theme = input<ParallaxTheme>(standardTheme);
 
   /** Each dataset's picked group, if any. */
   private readonly picks = signal<Readonly<Record<Dataset, Pick | null>>>({ positions: null, trades: null });

@@ -213,6 +213,12 @@ to `provideParallax({ theme, scheme })` for every component:
 export const acme = defineTheme({ name: "acme", params: { accent: "#7c3aed", radius: 8 }, dark: { accent: "#a78bfa" } });
 ```
 
+The library ships two themes: `standardTheme`, dense and the default, and
+`airyTheme`, with taller rows, wider padding and a rule between rows instead
+of stripes. A theme can extend either (`extends: airyTheme`), and a value can
+refer to another token with `token()`, such as
+`` `color-mix(in srgb, ${token("accent")} 10%, ${token("background")})` ``.
+
 The components read their tokens again when their inputs change, when an
 attribute of `<html>` or `<body>` changes (such as a dark class), when the
 system's colour scheme changes and when fonts load. After changing a token any

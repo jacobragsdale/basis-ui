@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { CHART_COLORS, THEME_STYLES, TOKEN_PROPERTIES, defaultTheme, defineTheme, readChartColors, readTheme, standardTheme, themeStyles } from "./theme";
+import { CHART_COLORS, THEME_STYLES, TOKEN_PROPERTIES, airyTheme, defaultTheme, defineTheme, readChartColors, readTheme, standardTheme, themeStyles, token } from "./theme";
 
 describe("the token stylesheet", () => {
   it("declares every token on each component, as the host's value, else the theme's, else the default", () => {
@@ -71,6 +71,21 @@ describe("defineTheme", () => {
     expect(css).toContain(':is(px-grid, px-pivot, px-chart)[data-px-theme="spec-styles"][data-px-scheme="light"] { --_px-theme-accent: #0000aa; }');
     expect(css).toContain(':is(px-grid, px-pivot, px-chart)[data-px-theme="spec-styles"][data-px-scheme="dark"] { --_px-theme-accent: #aaaaff; }');
     expect(themeStyles(standardTheme)).toBe("");
+  });
+});
+
+describe("the built-in themes", () => {
+  it("refers to another token's value by its resolved property", () => {
+    expect(token("foreground")).toBe("var(--_px-foreground)");
+    expect(token("rowHeight")).toBe("var(--_px-row-height)");
+  });
+
+  it("makes airy roomier in both schemes: taller rows, wider padding, a rule between rows instead of stripes", () => {
+    for (const scheme of [airyTheme.light, airyTheme.dark]) {
+      expect(scheme).toMatchObject({ "row-height": "30px", "cell-padding": "12px", stripe: "transparent", "column-border": "transparent" });
+      expect(scheme["row-border"]).toContain("var(--_px-foreground)");
+    }
+    expect(themeStyles(airyTheme)).toContain('[data-px-theme="airy"][data-px-scheme="dark"] {');
   });
 });
 

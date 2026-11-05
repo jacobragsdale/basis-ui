@@ -373,8 +373,39 @@ export function defineTheme(spec: ThemeSpec): ParallaxTheme {
   return theme;
 }
 
-/** The library's own look: its defaults, unchanged. */
+/**
+ * Another token's value, for a theme's value made from it, such as
+ * `color-mix(in srgb, ${token("foreground")} 8%, ${token("background")})`.
+ */
+export function token(name: TokenName): string {
+  return `var(--_px-${SPECS[name].property})`;
+}
+
+/** The library's own look, refined and dense: its defaults, unchanged. */
 export const standardTheme: ParallaxTheme = defineTheme({ name: "standard" });
+
+/**
+ * A roomier look: taller rows and header, wider padding, no lines between columns and a hairline between rows in
+ * place of stripes, a header on the grid's own background, and rounder corners.
+ */
+export const airyTheme: ParallaxTheme = defineTheme({
+  name: "airy",
+  params: {
+    spacing: 5,
+    rowHeight: 30,
+    headerHeight: 38,
+    cellPadding: 12,
+    controlHeight: 32,
+    radius: 8,
+    wrapperRadius: 12,
+    stripe: "transparent",
+    columnBorder: "transparent",
+    rowBorder: `color-mix(in srgb, ${token("foreground")} 8%, ${token("background")})`,
+    headerBackground: token("background"),
+    totalBackground: token("background"),
+    groupBackground: `color-mix(in srgb, ${token("accent")} 5%, ${token("background")})`
+  }
+});
 
 /** The stylesheet that declares a theme's values on the components given it, in each scheme. */
 export function themeStyles(theme: ParallaxTheme): string {

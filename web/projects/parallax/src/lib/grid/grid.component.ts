@@ -138,6 +138,15 @@ function invisible(color: string): boolean {
   return color === "transparent" || color === "rgba(0, 0, 0, 0)";
 }
 
+/**
+ * Whether a colour lets what is under it show, as `rgba()` and `color(… / alpha)` with an alpha below 1 do. A cell
+ * filled with one is filled with the background first, so that redrawing it never piles the colour up.
+ */
+function translucent(color: string): boolean {
+  const alpha = (/^rgba\((?:[^,]*,){3}\s*([\d.]+%?)\s*\)$/.exec(color) ?? /\/\s*([\d.]+%?)\s*\)$/.exec(color))?.[1];
+  return invisible(color) || (alpha !== undefined && (alpha.endsWith("%") ? Number.parseFloat(alpha) < 100 : Number(alpha) < 1));
+}
+
 /** How close to a header edge, in pixels, the pointer starts a resize. */
 const EDGE = 4;
 const TOOLTIP_DELAY_MS = 350;
@@ -1941,7 +1950,12 @@ export class GridComponent {
   /** Fills a cell's background, highlighting it if its row is under the pointer and marking it if it is selected. */
   private cellBackground(pass: Pass, row: number, column: number, x: number, y: number, width: number, stripe: string): void {
     const { context, theme, rowPx, range, focus, hover } = pass;
-    context.fillStyle = hover?.row === row ? hover.color : stripe;
+    const fill = hover?.row === row ? hover.color : stripe;
+    if (fill !== theme.background && translucent(fill)) {
+      context.fillStyle = theme.background;
+      context.fillRect(x, y, width, rowPx);
+    }
+    context.fillStyle = fill;
     context.fillRect(x, y, width, rowPx);
     if (range !== null && contains(range, row, column)) {
       context.fillStyle = theme.selectionBackground;

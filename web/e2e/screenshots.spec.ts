@@ -62,6 +62,16 @@ for (const theme of ["light", "dark"] as const) {
 }
 
 for (const theme of ["light", "dark"] as const) {
+  test(`the book's grid in the airy theme draws as in its screenshot, ${theme} theme`, async ({ page }) => {
+    await page.goto(`/?preset=small&look=airy&theme=${theme}`);
+    const book = page.locator('section[data-table="book"]');
+    await expect(book.locator('[role="grid"]')).toHaveAttribute("aria-rowcount", "300", { timeout: 60_000 });
+    await page.mouse.move(0, 0);
+    await expect(book).toHaveScreenshot(`grid-book-airy-${theme}.png`, { mask: [book.locator("px-status-bar")], animations: "disabled", caret: "hide", threshold: 0, maxDiffPixels: 0 });
+  });
+}
+
+for (const theme of ["light", "dark"] as const) {
   test(`the small tables' grids draw as in their screenshots, ${theme} theme`, async ({ page }) => {
     const errors: string[] = [];
     page.on("pageerror", (error) => errors.push(error.message));

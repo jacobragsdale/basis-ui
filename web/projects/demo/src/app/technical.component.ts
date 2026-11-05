@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, input, signal } from "@angular/core";
-import { ChartComponent, GridComponent } from "parallax";
-import type { Density, LayoutFilter, LayoutIndicator, LayoutInput, ResolvedScheme } from "parallax";
+import { ChartComponent, GridComponent, standardTheme } from "parallax";
+import type { Density, LayoutFilter, LayoutIndicator, LayoutInput, ParallaxTheme, Scheme } from "parallax";
 
 const TICKERS = ["QYE", "ZREZ", "NV"] as const;
 type Ticker = (typeof TICKERS)[number];
@@ -142,10 +142,10 @@ function rowsLayout(s: Settings, brush: readonly LayoutFilter[]): LayoutInput {
         }
       </fieldset>
     </form>
-    <section class="chart"><px-chart [(layout)]="chart" [scheme]="scheme()" (brushed)="brush($event)" /></section>
+    <section class="chart"><px-chart [(layout)]="chart" [scheme]="scheme()" [theme]="theme()" (brushed)="brush($event)" /></section>
     <section class="rows">
       <h2>{{ rowsTitle() }}</h2>
-      <px-grid [(layout)]="rows" [scheme]="scheme()" [density]="density()" />
+      <px-grid [(layout)]="rows" [scheme]="scheme()" [theme]="theme()" [density]="density()" />
     </section>
   `,
   styles: `
@@ -170,11 +170,10 @@ function rowsLayout(s: Settings, brush: readonly LayoutFilter[]): LayoutInput {
       gap: 4px 12px;
       margin: 0;
       padding: 2px 8px 4px;
-      border: 1px solid #d0d5dd;
-      border-radius: 6px;
-    }
-    :host-context(.dark) fieldset {
-      border-color: #2c3240;
+      border: 1px solid var(--demo-line);
+      border-radius: 10px;
+      background: var(--demo-card);
+      box-shadow: var(--demo-shadow);
     }
     legend {
       font-size: 12px;
@@ -183,12 +182,11 @@ function rowsLayout(s: Settings, brush: readonly LayoutFilter[]): LayoutInput {
       display: flex;
       flex-direction: column;
       min-height: 0;
-      border: 1px solid #d0d5dd;
-      border-radius: 6px;
+      border: 1px solid var(--demo-line);
+      border-radius: 10px;
+      background: var(--demo-card);
+      box-shadow: var(--demo-shadow);
       overflow: hidden;
-    }
-    :host-context(.dark) section {
-      border-color: #2c3240;
     }
     h2 {
       margin: 0;
@@ -209,7 +207,8 @@ function rowsLayout(s: Settings, brush: readonly LayoutFilter[]): LayoutInput {
   `
 })
 export class TechnicalComponent {
-  public readonly scheme = input<ResolvedScheme>("light");
+  public readonly scheme = input<Scheme>("light");
+  public readonly theme = input<ParallaxTheme>(standardTheme);
   public readonly density = input<Density>("compact");
 
   protected readonly tickers = TICKERS;

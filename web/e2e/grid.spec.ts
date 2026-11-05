@@ -310,7 +310,7 @@ test("a row height set on :root sizes the grid's rows, and comfortable rows add 
     document.body.classList.add("tall");
   });
   await expect.poll(contentHeight).toBe(rows * 40 + 46);
-  await page.getByLabel("Row height").selectOption("comfortable");
+  await page.getByLabel("Row height", { exact: true }).selectOption("comfortable");
   await expect.poll(contentHeight).toBe(rows * 46 + 52);
 });
 
@@ -322,7 +322,7 @@ test("light-dark() in a token follows the grid's scheme", async ({ page }) => {
     document.body.classList.add("branded");
   });
   await expect.poll(() => pixel(grid, 2, 2)).toBe("255,0,0");
-  await page.getByLabel("Theme").selectOption("dark");
+  await page.getByLabel("Scheme", { exact: true }).selectOption("dark");
   await expect.poll(() => pixel(grid, 2, 2)).toBe("0,0,255");
 });
 

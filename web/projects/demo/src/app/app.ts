@@ -1,12 +1,15 @@
 import { ChangeDetectionStrategy, Component, computed, signal, viewChild } from "@angular/core";
 import { GridComponent, PivotComponent, decodeLayout, encodeLayout } from "parallax";
-import type { Density, LayoutInput, ResolvedScheme } from "parallax";
+import type { Density, LayoutInput, Scheme } from "parallax";
 import * as z from "zod/mini";
 
 import { BreakdownsComponent } from "./breakdowns.component";
 import { ChartsComponent } from "./charts.component";
 import { DashboardComponent } from "./dashboard.component";
 import { TechnicalComponent } from "./technical.component";
+import { ThemeStudioComponent } from "./theme-studio.component";
+import { LOOKS, lookSchema } from "./themes";
+import type { Look } from "./themes";
 import { PerformanceComponent } from "./performance.component";
 import type { GridStats } from "./performance.component";
 import { SmallComponent } from "./small.component";
@@ -100,12 +103,13 @@ const PRESETS: Readonly<Record<PresetName, Preset>> = {
   }
 };
 
-const themeSchema = z.enum(["light", "dark"]);
+const themeSchema = z.enum(["light", "dark", "auto"]);
 const densitySchema = z.enum(["compact", "comfortable"]);
 
 const searchSchema = z.strictObject({
   preset: z._default(z.enum(PRESET_NAMES), "pivot"),
   theme: z._default(themeSchema, "light"),
+  look: z._default(lookSchema, "standard"),
   density: z._default(densitySchema, "compact"),
   performance: z._default(z.enum(["on", "off"]), "off"),
   layout: z.optional(z.string())
@@ -128,124 +132,251 @@ function remember(name: string, value: string): void {
 @Component({
   selector: "demo-root",
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: { "[class.dark]": "theme() === 'dark'" },
-  imports: [BreakdownsComponent, ChartsComponent, DashboardComponent, GridComponent, PivotComponent, PerformanceComponent, SmallComponent, TechnicalComponent],
+  host: { "[class.dark]": "theme() === 'dark'", "[class.auto]": "theme() === 'auto'" },
+  imports: [BreakdownsComponent, ChartsComponent, DashboardComponent, GridComponent, PivotComponent, PerformanceComponent, SmallComponent, TechnicalComponent, ThemeStudioComponent],
   template: `
     <header>
-      <strong>parallax</strong>
+      <span class="brand"><span class="mark" aria-hidden="true"></span>parallax</span>
       <nav aria-label="Views">
         @for (tab of tabs(); track tab.name) {
           <a [href]="tab.href" [attr.aria-current]="tab.current ? 'page' : null">{{ tab.title }}</a>
         }
       </nav>
-      <label
-        >Theme
-        <select [value]="theme()" (change)="setTheme($event)">
+      <div class="controls">
+        <label for="demo-look">Theme</label>
+        <select id="demo-look" (change)="setLook($event)">
+          @for (l of looks; track l.name) {
+            <option [value]="l.name" [selected]="l.name === look()">{{ l.title }}</option>
+          }
+        </select>
+        <label for="demo-scheme">Scheme</label>
+        <select id="demo-scheme" [value]="theme()" (change)="setTheme($event)">
           <option value="light">Light</option>
           <option value="dark">Dark</option>
+          <option value="auto">System</option>
         </select>
-      </label>
-      <label
-        >Row height
-        <select [value]="density()" (change)="setDensity($event)">
+        <label for="demo-density">Row height</label>
+        <select id="demo-density" [value]="density()" (change)="setDensity($event)">
           <option value="compact">Compact</option>
           <option value="comfortable">Comfortable</option>
         </select>
-      </label>
-      <button type="button" [disabled]="pageOfViews()" [title]="pageOfViews() ? 'This page holds several views of its own' : ''" (click)="share()">Copy link to this view</button>
-      <button type="button" [attr.aria-pressed]="performance()" (click)="togglePerformance()">Performance</button>
-      <span role="status">{{ note() }}</span>
-      <details [hidden]="pageOfViews()">
-        <summary>Layout</summary>
-        <pre data-testid="layout-json">{{ layoutJson() }}</pre>
-      </details>
+        <button type="button" [attr.aria-pressed]="studio()" (click)="studio.set(!studio())">Theme studio</button>
+        <button type="button" [attr.aria-pressed]="performance()" (click)="togglePerformance()">Performance</button>
+        <button type="button" [disabled]="pageOfViews()" [title]="pageOfViews() ? 'This page holds several views of its own' : ''" (click)="share()">Copy link to this view</button>
+        <details [hidden]="pageOfViews()">
+          <summary>Layout</summary>
+          <pre data-testid="layout-json">{{ layoutJson() }}</pre>
+        </details>
+        <span role="status">{{ note() }}</span>
+      </div>
     </header>
     <p class="about">{{ about() }}</p>
     <main>
       @if (charts()) {
-        <demo-charts [scheme]="theme()" />
+        <demo-charts [scheme]="theme()" [theme]="lookTheme()" />
       } @else if (small()) {
-        <demo-small [scheme]="theme()" [density]="density()" />
+        <demo-small [scheme]="theme()" [theme]="lookTheme()" [density]="density()" />
       } @else if (dashboard()) {
-        <demo-dashboard [scheme]="theme()" [density]="density()" />
+        <demo-dashboard [scheme]="theme()" [theme]="lookTheme()" [density]="density()" />
       } @else if (breakdowns()) {
-        <demo-breakdowns [scheme]="theme()" />
+        <demo-breakdowns [scheme]="theme()" [theme]="lookTheme()" />
       } @else if (technical()) {
-        <demo-technical [scheme]="theme()" [density]="density()" />
+        <demo-technical [scheme]="theme()" [theme]="lookTheme()" [density]="density()" />
       } @else if (ready()) {
         @if (grouped()) {
-          <px-pivot [(layout)]="layout" [scheme]="theme()" [density]="density()" />
+          <px-pivot [(layout)]="layout" [scheme]="theme()" [theme]="lookTheme()" [density]="density()" />
         } @else {
-          <px-grid [(layout)]="layout" [scheme]="theme()" [density]="density()" />
+          <px-grid [(layout)]="layout" [scheme]="theme()" [theme]="lookTheme()" [density]="density()" />
         }
       }
     </main>
+    <!-- Always there, so that a theme made in it applies from the first paint; hidden while closed. -->
+    <demo-theme-studio [hidden]="!studio()" (closed)="studio.set(false)" />
     @if (performance()) {
       <demo-performance [stats]="readStats" [context]="context()" />
     }
   `,
   styles: `
+    /* The demo's own colours, which its pages share; the accent follows a --px-accent set on the page. */
     :host {
+      --demo-page: #f4f5f7;
+      --demo-card: #ffffff;
+      --demo-fg: #1d2330;
+      --demo-muted: #667085;
+      --demo-line: #e1e3e8;
+      --demo-hover: #eceef2;
+      --demo-accent: var(--px-accent, #2563eb);
+      --demo-chip: color-mix(in srgb, var(--demo-accent) 12%, var(--demo-card));
+      --demo-shadow: 0 1px 2px rgba(16, 24, 40, 0.05);
       display: grid;
       grid-template-rows: auto auto 1fr;
       height: 100vh;
+      color-scheme: light;
       font:
         14px system-ui,
+        -apple-system,
+        "Segoe UI",
         sans-serif;
-      color: #1d2330;
-      background: #ffffff;
+      color: var(--demo-fg);
+      background: var(--demo-page);
     }
     :host(.dark) {
-      color: #e6e9ef;
-      background: #14171f;
+      --demo-page: #0e1014;
+      --demo-card: #16181d;
+      --demo-fg: #e3e6ec;
+      --demo-muted: #8a93a3;
+      --demo-line: #2a2e37;
+      --demo-hover: #22262e;
+      --demo-accent: var(--px-accent, #5b9bff);
+      --demo-shadow: none;
+      color-scheme: dark;
     }
-    :host(.dark) header {
-      border-bottom-color: #2c3240;
-    }
-    :host(.dark) nav a[aria-current="page"] {
-      background: #2c3240;
-    }
-    :host(.dark) .about {
-      color: #a3abbb;
-    }
-    :host(.dark) pre {
-      color: #e6e9ef;
-      background: #1b1f29;
-      border-color: #2c3240;
+    @media (prefers-color-scheme: dark) {
+      :host(.auto) {
+        --demo-page: #0e1014;
+        --demo-card: #16181d;
+        --demo-fg: #e3e6ec;
+        --demo-muted: #8a93a3;
+        --demo-line: #2a2e37;
+        --demo-hover: #22262e;
+        --demo-accent: var(--px-accent, #5b9bff);
+        --demo-shadow: none;
+        color-scheme: dark;
+      }
     }
     header {
       display: flex;
       flex-wrap: wrap;
       align-items: center;
-      gap: 8px 14px;
-      padding: 8px 12px;
-      border-bottom: 1px solid #d0d5dd;
+      gap: 8px 16px;
+      padding: 8px 16px;
+      border-bottom: 1px solid var(--demo-line);
+      background: var(--demo-card);
+    }
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 700;
+      font-size: 15px;
+      letter-spacing: -0.01em;
+    }
+    .mark {
+      width: 18px;
+      height: 18px;
+      border-radius: 5px;
+      background: linear-gradient(135deg, var(--demo-accent), color-mix(in srgb, var(--demo-accent) 45%, #14b8a6));
     }
     nav {
       display: flex;
-      gap: 4px;
+      flex-wrap: wrap;
+      gap: 2px;
     }
     nav a {
-      padding: 4px 8px;
-      color: inherit;
+      padding: 5px 10px;
+      border-radius: 6px;
+      color: var(--demo-muted);
       text-decoration: none;
-      border-radius: 4px;
+      font-size: 13px;
+    }
+    nav a:hover {
+      background: var(--demo-hover);
+      color: var(--demo-fg);
     }
     nav a[aria-current="page"] {
-      background: #e4e9f2;
+      background: var(--demo-chip);
+      color: var(--demo-accent);
       font-weight: 600;
+    }
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      margin-left: auto;
+    }
+    label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--demo-muted);
+      font-size: 12px;
+    }
+    select,
+    button,
+    summary {
+      height: 28px;
+      padding: 0 10px;
+      border: 1px solid var(--demo-line);
+      border-radius: 6px;
+      background-color: var(--demo-card);
+      color: var(--demo-fg);
+      font: inherit;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    select {
+      appearance: none;
+      padding-right: 26px;
+      background-image: linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(135deg, currentColor 50%, transparent 50%);
+      background-position:
+        calc(100% - 14px) 55%,
+        calc(100% - 9px) 55%;
+      background-size: 5px 5px;
+      background-repeat: no-repeat;
+    }
+    select:hover,
+    button:hover:not(:disabled),
+    summary:hover {
+      background-color: var(--demo-hover);
+    }
+    select:focus-visible,
+    button:focus-visible,
+    summary:focus-visible {
+      outline: 2px solid var(--demo-accent);
+      outline-offset: 1px;
+    }
+    button[aria-pressed="true"] {
+      border-color: color-mix(in srgb, var(--demo-accent) 45%, transparent);
+      background-color: var(--demo-chip);
+      color: var(--demo-accent);
+    }
+    button:disabled {
+      color: var(--demo-muted);
+      cursor: default;
+      opacity: 0.6;
+    }
+    [role="status"] {
+      color: var(--demo-muted);
+      font-size: 12px;
     }
     .about {
       margin: 0;
-      padding: 6px 12px;
-      color: #475467;
+      padding: 10px 16px 8px;
+      color: var(--demo-muted);
       font-size: 13px;
     }
     main {
       min-height: 0;
     }
+    /* A single grid or pivot fills the page below, inset like the cards of the other pages. */
+    main > px-grid,
+    main > px-pivot {
+      box-sizing: border-box;
+      height: calc(100% - 12px);
+      margin: 0 12px;
+      box-shadow: var(--demo-shadow);
+    }
     details {
       position: relative;
+    }
+    summary {
+      display: inline-flex;
+      align-items: center;
+      list-style: none;
+    }
+    summary::-webkit-details-marker {
+      display: none;
     }
     pre {
       position: absolute;
@@ -254,17 +385,27 @@ function remember(name: string, value: string): void {
       max-height: 60vh;
       overflow: auto;
       margin: 4px 0 0;
-      padding: 8px;
-      background: #fff;
-      border: 1px solid #d0d5dd;
+      padding: 10px;
+      border: 1px solid var(--demo-line);
+      border-radius: 8px;
+      background: var(--demo-card);
+      color: var(--demo-fg);
       font-size: 12px;
+      box-shadow: 0 12px 32px rgba(16, 24, 40, 0.18);
     }
   `
 })
 export class App {
   protected readonly search = readSearch();
   protected readonly layout = signal<LayoutInput>(PRESETS[this.search.preset].layout);
-  protected readonly theme = signal<ResolvedScheme>(this.search.theme);
+  /** The light or dark scheme, or the system's; the address bar calls it the theme, as it did before looks. */
+  protected readonly theme = signal<Scheme>(this.search.theme);
+  /** The look: one of the library's themes or the demo's own. */
+  protected readonly look = signal<Look>(this.search.look);
+  protected readonly lookTheme = computed(() => LOOKS[this.look()].theme);
+  protected readonly looks = lookSchema.options.map((name) => ({ name, title: LOOKS[name].title }));
+  /** Whether the theme studio is open. */
+  protected readonly studio = signal(false);
   protected readonly density = signal<Density>(this.search.density);
   protected readonly performance = signal(this.search.performance === "on");
   protected readonly layoutJson = computed(() => JSON.stringify(this.layout(), null, 2));
@@ -291,13 +432,13 @@ export class App {
   protected readonly about = computed(() => (this.search.layout === undefined ? PRESETS[this.search.preset].about : "A view opened from a shared link."));
   protected readonly tabs = computed(() =>
     PRESET_NAMES.map((name) => {
-      const params = new URLSearchParams({ preset: name, theme: this.theme(), density: this.density(), performance: this.performance() ? "on" : "off" });
+      const params = new URLSearchParams({ preset: name, theme: this.theme(), look: this.look(), density: this.density(), performance: this.performance() ? "on" : "off" });
       return { name, title: PRESETS[name].title, href: `?${params.toString()}`, current: this.search.layout === undefined && name === this.search.preset };
     })
   );
   protected readonly context = computed(() => {
     const showing = this.small() ? "book and blotter, grids" : `${this.layout().dataset ?? "no dataset"}, ${this.grouped() ? "pivot" : "grid"}`;
-    return `${showing}, ${this.theme()} theme, ${this.density()} rows`;
+    return `${showing}, ${this.theme()} theme, ${this.density()} rows, ${this.look()} look`;
   });
 
   private readonly grid = viewChild(GridComponent);
@@ -331,6 +472,14 @@ export class App {
     if (parsed.success) {
       this.theme.set(parsed.data);
       remember("theme", parsed.data);
+    }
+  }
+
+  protected setLook(event: Event): void {
+    const parsed = lookSchema.safeParse(event.target instanceof HTMLSelectElement ? event.target.value : null);
+    if (parsed.success) {
+      this.look.set(parsed.data);
+      remember("look", parsed.data);
     }
   }
 

@@ -44,16 +44,16 @@ test("the theme and row density follow their pickers and survive moving to anoth
   const token = (): Promise<string> => page.locator("px-grid").evaluate((element) => getComputedStyle(element).getPropertyValue("--_px-background").trim());
   const contentHeight = (): Promise<number> => page.locator(".px-scroll").evaluate((element) => element.scrollHeight);
   expect(await token()).toBe("rgb(255, 255, 255)");
-  await page.getByLabel("Theme").selectOption("dark");
+  await page.getByLabel("Scheme", { exact: true }).selectOption("dark");
   await expect.poll(token).toBe("rgb(22, 24, 29)");
   const compact = await contentHeight();
-  await page.getByLabel("Row height").selectOption("comfortable");
+  await page.getByLabel("Row height", { exact: true }).selectOption("comfortable");
   await expect.poll(contentHeight).toBeGreaterThan(compact);
   await page.getByRole("link", { name: "Largest trades" }).click();
   await ready(page);
   await expect(page.getByRole("link", { name: "Largest trades" })).toHaveAttribute("aria-current", "page");
-  await expect(page.getByLabel("Theme")).toHaveValue("dark");
-  await expect(page.getByLabel("Row height")).toHaveValue("comfortable");
+  await expect(page.getByLabel("Scheme", { exact: true })).toHaveValue("dark");
+  await expect(page.getByLabel("Row height", { exact: true })).toHaveValue("comfortable");
   expect(await token()).toBe("rgb(22, 24, 29)");
 });
 
@@ -248,5 +248,48 @@ test.describe("breakdowns", () => {
     await expect(chip).toHaveCount(0);
     await expect(page.locator('demo-breakdowns section[data-filtered="true"]')).toHaveCount(0);
     expect(errors).toEqual([]);
+  });
+});
+
+test.describe("themes", () => {
+  test("the theme picker gives every grid and chart its theme, and the address bar keeps it", async ({ page }) => {
+    await page.goto("/?preset=dashboard");
+    await ready(page);
+    const components = page.locator("px-grid, px-chart");
+    await expect(components.first()).toHaveAttribute("data-px-theme", "standard");
+    await page.getByLabel("Theme", { exact: true }).selectOption("airy");
+    for (const component of await components.all()) {
+      await expect(component).toHaveAttribute("data-px-theme", "airy");
+    }
+    // Airy's rows are 30 pixels tall where the standard theme's are 24.
+    const row = await page.locator('section[data-table="book"] px-grid').evaluate((element) => getComputedStyle(element).getPropertyValue("--_px-row-height").trim());
+    expect(row).toBe("30px");
+    await page.getByRole("link", { name: "Breakdowns" }).click();
+    await expect(page.locator("demo-breakdowns px-chart").first()).toHaveAttribute("data-px-theme", "airy");
+    await expect(page.getByLabel("Theme", { exact: true })).toHaveValue("airy");
+  });
+
+  test("the theme studio sets tokens on the page, which every component follows, and copies them as CSS", async ({ page }) => {
+    await page.goto("/?preset=small");
+    await ready(page);
+    await page.getByRole("button", { name: "Theme studio" }).click();
+    const studio = page.getByRole("dialog", { name: "Theme studio" });
+    await studio.getByLabel("Accent").fill("#7c3aed");
+    const accent = (): Promise<string> =>
+      page
+        .locator("px-grid")
+        .first()
+        .evaluate((element) => getComputedStyle(element).getPropertyValue("--_px-accent").trim());
+    await expect.poll(accent).toBe("rgb(124, 58, 237)");
+    await studio.getByRole("button", { name: "Copy CSS" }).click();
+    await expect(studio.getByRole("status")).toHaveText("CSS copied");
+    expect(await page.evaluate(() => navigator.clipboard.readText())).toContain("--px-accent: #7c3aed;");
+    // The theme stays for the next visit, and Reset takes it away.
+    await page.reload();
+    await ready(page);
+    await expect.poll(accent).toBe("rgb(124, 58, 237)");
+    await page.getByRole("button", { name: "Theme studio" }).click();
+    await studio.getByRole("button", { name: "Reset" }).click();
+    await expect.poll(accent).toBe("rgb(37, 99, 235)");
   });
 });
