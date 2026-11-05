@@ -150,7 +150,9 @@ const chartSchema = z.strictObject({
   compare: z._default(z.boolean(), false),
   events: orNull(name),
   // A pie is a ring, with the total in the middle, unless this is off.
-  donut: z._default(z.boolean(), true)
+  donut: z._default(z.boolean(), true),
+  // Values on bars and shares on slices, where they fit, unless this is off.
+  labels: z._default(z.boolean(), true)
 });
 
 /** The schema of a layout document. Unknown fields are errors, as in Rust. */

@@ -165,6 +165,8 @@ const SPECS = {
   headerBorder: derived("header-border", "color", "var(--_px-border-color)", "#e1e2e5"),
   /** Over the grid's totals row. */
   totalBorder: tinted("total-border", "foreground", 22, 26, "background", "#cbccd0"),
+  /** A chart's gridlines, fainter than its axis. */
+  gridline: tinted("gridline", "foreground", 8, 11, "background", "#ebebec"),
   /** The shadow at the edge of pinned columns once the rest scroll under them. */
   pinnedShadow: tinted("pinned-shadow", "foreground", 14, 40, "transparent", "rgba(29, 35, 48, 0.14)")
 } as const satisfies Readonly<Record<string, TokenSpec>>;
@@ -462,7 +464,8 @@ function withFont(values: Readonly<Record<string, string>>): Theme {
     rowBorder: value("rowBorder"),
     headerBorder: value("headerBorder"),
     totalBorder: value("totalBorder"),
-    pinnedShadow: value("pinnedShadow")
+    pinnedShadow: value("pinnedShadow"),
+    gridline: value("gridline")
   };
   return { ...tokens, font: `${tokens.fontSize} ${tokens.fontFamily}` };
 }

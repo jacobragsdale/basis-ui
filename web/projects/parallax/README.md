@@ -86,8 +86,10 @@ export class ExposureComponent {
 ```
 
 A pie is a donut unless `donut: false`; its second measure, shown as a share of
-the total, labels each slice. A chart smaller than 260 by 200 pixels drops its
-legend and padding.
+the total, labels each slice. Bars carry their values and slices their shares
+wherever they fit, unless `labels: false`. A donut's hole names the slice under
+the pointer. A chart smaller than 260 by 200 pixels drops its legend and
+padding.
 
 ## Run views in the browser
 

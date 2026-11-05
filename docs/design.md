@@ -442,9 +442,22 @@ drawing them. Clicking a bar or slice selects its group: the chart emits
 for a host to filter a linked view by, dims the other groups, and clears it on
 a second click. "Other" stands for several groups and selects nothing.
 
+Charts label what they can without crowding. Category labels along the bottom
+stay level if each fits its share of the width, break onto two lines between
+words if that makes them fit, and otherwise turn 45° and are cut to a share of
+the chart's height; only labels that would touch even turned are thinned out.
+Unless the layout's chart says `labels: false`, each bar carries its value just
+past its end, or just inside it in a contrasting ink, and the value axis leaves
+room for it; stacked bars carry none, since their segments' values would crowd.
+Each slice carries its share where the text fits between the hole and the rim,
+in white or near-black, whichever contrasts more with the slice. The slice
+under the pointer moves out, and a donut's hole names it in place of the total;
+the chart finds that slice in the model drawn without the movement, so the
+pointer never chases it.
+
 A chart smaller than 260 by 200 pixels is compact: its plot has less padding
 and no legend, and its tooltip names what is under the pointer. A pie at least
-360 pixels wide lists its slices beside it, as Excel does. A host can turn the
+360 pixels wide lists its slices beside it in a table, as Excel does. A host can turn the
 status bar off with `[statusBar]="false"` for a small tile.
 
 M4's guarantee is tested directly: for random series with gaps and repeated x

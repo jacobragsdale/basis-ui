@@ -359,6 +359,11 @@
           "$ref": "#/$defs/ChartKindName",
           "description": "What it draws."
         },
+        "labels": {
+          "default": true,
+          "description": "Writes each bar's value at its end, and each slice's share on it,\nwhere they fit.",
+          "type": "boolean"
+        },
         "log_y": {
           "default": false,
           "description": "A logarithmic y axis.",

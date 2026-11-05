@@ -8,6 +8,7 @@ import type { Theme } from "../theme";
 import { handles } from "./drawings";
 import type { Point, Shape } from "./drawings";
 import { plotBottom } from "./model";
+import { fitText, wrapText } from "./text";
 import type { ChartModel, Mark, Pane, Rect, ValueAxis } from "./model";
 
 /** The data end of a bar or column is rounded; its baseline stays square. */
@@ -19,46 +20,37 @@ const SLICE_GAP = 2;
 /** How faint the bars and slices of groups other than the selected one are. */
 const DIM = 0.3;
 
-/** Words in lines no wider than `width`, as `measure` measures them; a word wider than that has a line of its own. */
-export function wrapText(text: string, width: number, measure: (text: string) => number): readonly string[] {
-  const lines: string[] = [];
-  let line = "";
-  for (const word of text.split(" ")) {
-    const longer = line === "" ? word : `${line} ${word}`;
-    if (line !== "" && measure(longer) > width) {
-      lines.push(line);
-      line = word;
-    } else {
-      line = longer;
-    }
+/** A colour's relative luminance, from `rgb()`, `rgba()`, `#rrggbb` or `color(srgb …)`; null if it is none of those. */
+export function luminance(color: string): number | null {
+  const hex = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})/i.exec(color);
+  const rgb = /^rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)/i.exec(color);
+  const srgb = /^color\(srgb\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)/i.exec(color);
+  const channels =
+    hex !== null
+      ? [hex[1], hex[2], hex[3]].map((h) => Number.parseInt(h ?? "0", 16) / 255)
+      : rgb !== null
+        ? [rgb[1], rgb[2], rgb[3]].map((c) => Number(c) / 255)
+        : srgb !== null
+          ? [srgb[1], srgb[2], srgb[3]].map(Number)
+          : null;
+  if (channels === null) {
+    return null;
   }
-  return line === "" ? lines : [...lines, line];
+  const [r, g, b] = channels.map((c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
+  return 0.2126 * (r ?? 0) + 0.7152 * (g ?? 0) + 0.0722 * (b ?? 0);
 }
 
-/** `text` cut to fit `width`, ending in an ellipsis where it was cut. */
-export function fitText(text: string, width: number, measure: (text: string) => number): string {
-  if (measure(text) <= width) {
-    return text;
-  }
-  let cut = text.length;
-  while (cut > 0 && measure(`${text.slice(0, cut)}…`) > width) {
-    cut -= 1;
-  }
-  return cut === 0 ? "" : `${text.slice(0, cut).trimEnd()}…`;
+/** Near-black text, whose luminance `inkOn` compares with white's. */
+const DARK_INK = "#111827";
+const DARK_INK_LUMINANCE = 0.0092;
+
+/** White or near-black, whichever has the higher contrast with `color`; white if `color` can't be read. */
+export function inkOn(color: string): string {
+  const l = luminance(color);
+  return l === null || 1.05 / (l + 0.05) >= (l + 0.05) / (DARK_INK_LUMINANCE + 0.05) ? "#ffffff" : DARK_INK;
 }
 
-/**
- * The theme's font at `scale` times its size, with `weight`, for a donut's total; the font as it is if it names no
- * size in pixels.
- */
-export function scaledFont(font: string, scale: number, weight: string): string {
-  const match = /(\d+(?:\.\d+)?)px/.exec(font);
-  if (match?.[1] === undefined) {
-    return font;
-  }
-  const size = Math.round(Number(match[1]) * scale);
-  return `${weight} ${font.replace(match[0], `${String(size)}px`)}`;
-}
+export { fitText, wrapText } from "./text";
 
 type Side = "top" | "bottom" | "left" | "right" | "none";
 
@@ -77,12 +69,20 @@ function corners(side: Side, r: number): [number, number, number, number] {
   }
 }
 
+/** The height of a line of axis text, in pixels. */
+const LINE_HEIGHT = 15;
+
 /** Draws one model on one context. */
 class Painter {
+  /** Axis labels and data labels: the theme's small size. */
+  private readonly small: string;
+
   constructor(
     private readonly ctx: CanvasRenderingContext2D,
     private readonly theme: Theme
-  ) {}
+  ) {
+    this.small = `${theme.fontSizeSmall} ${theme.fontFamily}`;
+  }
 
   private rect(rect: Rect, side: Side): void {
     const r = Math.max(0, Math.min(RADIUS, rect.w / 2, rect.h / 2));
@@ -222,20 +222,49 @@ class Painter {
     }
   }
 
-  /** X-axis labels centred on their ticks, skipping any that would touch the one before. */
+  /**
+   * X-axis labels: centred on their ticks, skipping any that would touch the one before; broken onto lines under one
+   * another; or turned 45° to hang down and to the left from their ticks, cut to the model's room.
+   */
   private xLabels(model: ChartModel): void {
     const ctx = this.ctx;
+    const top = plotBottom(model) + 6;
+    const measure = (t: string): number => ctx.measureText(t).width;
     ctx.textAlign = "center";
     ctx.textBaseline = "top";
     let lastRight = Number.NEGATIVE_INFINITY;
     for (const tick of model.xTicks) {
-      const half = ctx.measureText(tick.label).width / 2;
+      if (tick.rotated === true) {
+        ctx.save();
+        ctx.translate(tick.px, top);
+        ctx.rotate(-Math.PI / 4);
+        ctx.textAlign = "right";
+        ctx.textBaseline = "middle";
+        // A label near the left edge is cut shorter, so that it stays on the canvas.
+        const room = Math.min(model.xLabelRoom ?? 0, (tick.px - 2) * Math.SQRT2);
+        ctx.fillText(fitText(tick.label, room, measure), 0, 0);
+        ctx.restore();
+        continue;
+      }
+      const lines = tick.lines ?? [tick.label];
+      const half = Math.max(...lines.map(measure)) / 2;
       if (tick.px - half < lastRight + 6 || tick.px - half < 0 || tick.px + half > model.width) {
         continue;
       }
-      ctx.fillText(tick.label, tick.px, plotBottom(model) + 6);
+      lines.forEach((line, i) => {
+        ctx.fillText(line, tick.px, top + i * LINE_HEIGHT);
+      });
       lastRight = tick.px + half;
     }
+  }
+
+  /** Vertical gridlines, where values run across. */
+  private vertical(x: number, from: number, to: number): void {
+    const at = Math.round(x) + 0.5;
+    this.ctx.beginPath();
+    this.ctx.moveTo(at, from);
+    this.ctx.lineTo(at, to);
+    this.ctx.stroke();
   }
 
   private horizontal(y: number, from: number, to: number): void {
@@ -249,13 +278,16 @@ class Painter {
   private axes(model: ChartModel): void {
     const ctx = this.ctx;
     const { plot } = model;
-    ctx.font = this.theme.font;
+    ctx.font = this.small;
     ctx.fillStyle = this.theme.muted;
-    ctx.strokeStyle = this.theme.borderColor;
+    ctx.strokeStyle = this.theme.gridline;
     ctx.lineWidth = 1;
-    // Gridlines follow the left axis only: hairlines, recessive.
+    // Gridlines follow the left axis only, or the values across: hairlines, recessive.
     for (const tick of model.yAxes.find((a) => a.side === "left")?.ticks ?? []) {
       this.horizontal(tick.px, plot.x, plot.x + plot.w);
+    }
+    for (const x of model.verticalGrid ?? []) {
+      this.vertical(x, plot.y, plot.y + plot.h);
     }
     ctx.textBaseline = "middle";
     for (const yAxis of model.yAxes) {
@@ -349,8 +381,90 @@ class Painter {
     for (const pane of model.panes) {
       this.clipped(pane.plot, pane.marks);
     }
+    this.dataLabels(model);
     this.events(model);
     this.centre(model);
+  }
+
+  /** Bars' values at their ends and slices' shares on them, each only where it fits. */
+  private dataLabels(model: ChartModel): void {
+    const ctx = this.ctx;
+    ctx.font = this.small;
+    for (const mark of model.marks) {
+      if (mark.kind === "rect" && mark.label !== undefined) {
+        ctx.globalAlpha = mark.dim === true ? DIM : 1;
+        this.barLabel(model, mark, mark.label);
+      } else if (mark.kind === "slice" && mark.label !== undefined) {
+        ctx.globalAlpha = mark.dim ? DIM : 1;
+        this.sliceLabel(mark, mark.label);
+      }
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  /**
+   * A bar's value just past its end if it is no wider than the bar's room and stays inside the plot, or else, for a
+   * bar that runs across, just inside its end, in the ink that reads on the bar, if the bar is long enough.
+   */
+  private barLabel(model: ChartModel, mark: Extract<Mark, { kind: "rect" }>, label: { readonly text: string; readonly room: number }): void {
+    const width = this.ctx.measureText(label.text).width;
+    if (mark.round === "top" || mark.round === "bottom") {
+      this.columnLabel(model, mark.rect, mark.round === "top", label, width);
+    } else if (mark.round === "left" || mark.round === "right") {
+      this.acrossLabel(model, mark, mark.round === "right", label.text, width);
+    }
+  }
+
+  /** An upright bar's value over its top, or under its bottom if it is negative, if it fits. */
+  private columnLabel(model: ChartModel, rect: Rect, up: boolean, label: { readonly text: string; readonly room: number }, width: number): void {
+    const ctx = this.ctx;
+    const { plot } = model;
+    const y = up ? rect.y - 4 : rect.y + rect.h + 4;
+    if (width > label.room || y - LINE_HEIGHT < plot.y - 2 || y + LINE_HEIGHT > plot.y + plot.h + 2) {
+      return;
+    }
+    ctx.fillStyle = this.theme.foreground;
+    ctx.textAlign = "center";
+    ctx.textBaseline = up ? "bottom" : "top";
+    ctx.fillText(label.text, rect.x + rect.w / 2, y);
+  }
+
+  /** A bar running across: its value past its end if that stays in the plot, else inside its end if it is long enough. */
+  private acrossLabel(model: ChartModel, mark: Extract<Mark, { kind: "rect" }>, right: boolean, text: string, width: number): void {
+    const ctx = this.ctx;
+    const { rect } = mark;
+    const { plot } = model;
+    const outside = right ? rect.x + rect.w + 4 : rect.x - 4;
+    const fitsOutside = right ? outside + width <= plot.x + plot.w : outside - width >= plot.x;
+    if (rect.h < LINE_HEIGHT - 4 || (!fitsOutside && rect.w < width + 12)) {
+      return;
+    }
+    ctx.fillStyle = fitsOutside ? this.theme.foreground : inkOn(mark.color);
+    ctx.textAlign = right === fitsOutside ? "left" : "right";
+    ctx.textBaseline = "middle";
+    const inside = right ? rect.x + rect.w - 6 : rect.x + 6;
+    ctx.fillText(text, fitsOutside ? outside : inside, rect.y + rect.h / 2);
+  }
+
+  /** A slice's share across its middle, in the ink that reads best on it, if the slice has room for it. */
+  private sliceLabel(mark: Extract<Mark, { kind: "slice" }>, text: string): void {
+    const ctx = this.ctx;
+    const middle = (mark.start + mark.end) / 2;
+    const radius = mark.inner > 0 ? (mark.inner + mark.outer) / 2 : mark.outer * 0.62;
+    // The level text's box, turned into the slice's frame: how far it reaches along the radius and across it.
+    const [width, height] = [ctx.measureText(text).width, LINE_HEIGHT];
+    const [cos, sin] = [Math.abs(Math.cos(middle)), Math.abs(Math.sin(middle))];
+    const along = width * cos + height * sin;
+    const across = width * sin + height * cos;
+    // Both must fit, with a margin: between the hole and the rim, and within the slice's arc at the label's radius.
+    const depth = 2 * Math.min(radius - mark.inner, mark.outer - radius);
+    if (along + 6 > depth || across + 6 > (mark.end - mark.start) * radius) {
+      return;
+    }
+    ctx.fillStyle = inkOn(mark.color);
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(text, mark.cx + Math.cos(middle) * radius, mark.cy + Math.sin(middle) * radius);
   }
 
   /** A slice, with a gap of the surface's colour along its edges where it meets its neighbours. */
@@ -385,20 +499,29 @@ class Painter {
     }
     const ctx = this.ctx;
     const room = slice.inner * 1.7;
+    // The value grows with the hole, from 16 pixels to 32, and steps down to the body's size if it is too wide.
+    const size = Math.max(16, Math.min(32, Math.round(slice.inner * 0.3)));
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.font = scaledFont(this.theme.font, 1.25, "600");
+    ctx.font = `600 ${String(size)}px ${this.theme.fontFamily}`;
     if (ctx.measureText(centre.value).width > room) {
       ctx.font = this.theme.font;
     }
     if (ctx.measureText(centre.value).width > room) {
       return;
     }
+    // The donut's own centre, not a slice's, which moves out under the pointer.
+    const [cx, cy] = [model.plot.x + model.plot.w / 2, model.plot.y + model.plot.h / 2];
+    const gap = Math.round(size * 0.35);
     ctx.fillStyle = this.theme.foreground;
-    ctx.fillText(centre.value, slice.cx, slice.cy - 8);
-    ctx.font = this.theme.font;
+    ctx.fillText(centre.value, cx, cy - gap);
+    ctx.font = size > 20 ? this.theme.font : this.small;
     ctx.fillStyle = this.theme.muted;
-    ctx.fillText(centre.label, slice.cx, slice.cy + 10);
+    ctx.fillText(
+      fitText(centre.label, room, (t) => ctx.measureText(t).width),
+      cx,
+      cy + gap + 4
+    );
   }
 
   /** Event markers: small triangles along the bottom of the price's plot, ringed in the surface colour. */

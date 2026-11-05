@@ -44,7 +44,7 @@ import type { PlotSize } from "./chart-source";
 import { brushFilters, categoryAt, eventRows, indicatorRows, markAt, panRange, readSeries, zoomRange } from "./interaction";
 import type { Range, Reading } from "./interaction";
 import { chartModel, describeChart, plotBottom } from "./model";
-import type { ChartModel } from "./model";
+import type { ChartModel, ModelInput } from "./model";
 import { paintChart } from "./paint";
 import { ChartSync } from "./sync";
 
@@ -83,7 +83,7 @@ const CHART_STYLES = `
   px-chart .px-tool {
     padding: 1px calc(var(--_px-spacing) * 1.5);
     border: 1px solid var(--_px-border-color);
-    border-radius: 4px;
+    border-radius: var(--_px-radius);
     background: transparent;
     color: var(--_px-foreground);
     font: inherit;
@@ -110,7 +110,7 @@ const CHART_STYLES = `
     width: 220px;
     padding: calc(var(--_px-spacing) * 0.5) calc(var(--_px-spacing) * 1.5);
     border: 1px solid var(--_px-selection-border);
-    border-radius: 4px;
+    border-radius: var(--_px-radius);
     background: var(--_px-background);
     color: var(--_px-foreground);
     font: inherit;
@@ -122,7 +122,7 @@ const CHART_STYLES = `
     gap: calc(var(--_px-spacing) * 1.5);
     padding: calc(var(--_px-spacing) * 0.5) var(--_px-spacing);
     border: 0;
-    border-radius: 4px;
+    border-radius: var(--_px-radius);
     background: transparent;
     color: var(--_px-foreground);
     font: inherit;
@@ -186,14 +186,21 @@ const CHART_STYLES = `
     max-height: 100%;
     overflow: auto;
   }
+  /* Beside a big pie, the legend is a table: key, label, and the share right-aligned in its own column. */
   px-chart.px-chart-side .px-chart-legend {
-    flex-direction: column;
-    flex-wrap: nowrap;
-    padding: calc(var(--_px-spacing) * 1.5) calc(var(--_px-spacing) * 2);
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    padding: calc(var(--_px-spacing) * 1.5) calc(var(--_px-spacing) * 3) calc(var(--_px-spacing) * 1.5) calc(var(--_px-spacing) * 2);
   }
   px-chart.px-chart-side .px-legend-entry {
-    justify-content: flex-start;
+    display: grid;
+    grid-column: 1 / -1;
+    grid-template-columns: subgrid;
     white-space: nowrap;
+    text-align: left;
+  }
+  px-chart.px-chart-side .px-legend-note {
+    text-align: right;
   }
   px-chart.px-chart-side .px-chart-plot {
     grid-area: plot;
@@ -223,7 +230,7 @@ const CHART_STYLES = `
     max-width: 280px;
     padding: calc(var(--_px-spacing) * 1.5) calc(var(--_px-spacing) * 2);
     border: 1px solid var(--_px-border-color);
-    border-radius: 4px;
+    border-radius: var(--_px-radius);
     background: var(--_px-header-background);
     color: var(--_px-header-foreground);
     font-size: var(--_px-font-size-small);
@@ -260,7 +267,7 @@ const CHART_STYLES = `
     right: 8px;
     bottom: 8px;
     padding: calc(var(--_px-spacing) * 1.5) calc(var(--_px-spacing) * 2);
-    border-radius: 4px;
+    border-radius: var(--_px-radius);
     background: var(--_px-danger);
     color: var(--_px-on-accent);
     font-size: var(--_px-font-size-small);
@@ -412,8 +419,8 @@ export class ChartComponent {
   private readonly measurer = this.document.createElement("canvas").getContext("2d");
   private readonly widths = new Map<string, number>();
 
-  /** The draw model of the latest data at the plot's size. */
-  protected readonly model = computed((): ChartModel | null => {
+  /** What the draw model is made from: the latest data at the plot's size, measured in the axes' font. */
+  private readonly modelInput = computed((): ModelInput | null => {
     const layout = this.current();
     const chart = layout?.chart ?? null;
     if (chart === null) {
@@ -421,18 +428,34 @@ export class ChartComponent {
     }
     const { width, height } = this.size();
     const tokens = this.tokens();
-    return chartModel({
+    const small = `${tokens.fontSizeSmall} ${tokens.fontFamily}`;
+    return {
       chart,
       width,
       height,
       colors: this.colors(),
       muted: tokens.muted,
-      measure: (text) => this.measure(text, tokens.font),
+      measure: (text) => this.measure(text, small),
       frame: this.source.frame(),
       categories: this.source.categories(),
       compact: this.compact(),
       selected: this.selected()
-    });
+    };
+  });
+  /** The draw model with no slice moved out, which finds the slice under the pointer. */
+  private readonly restingModel = computed((): ChartModel | null => {
+    const input = this.modelInput();
+    return input === null ? null : chartModel(input);
+  });
+  /** A pie's group under the pointer, whose slice moves out and whose value a donut's hole shows; null otherwise. */
+  private readonly hoveredSlice = computed(() => {
+    const [model, hover] = [this.restingModel(), this.hover()];
+    return model === null || hover === null || !model.marks.some((m) => m.kind === "slice") ? null : categoryAt(model, hover.x, hover.y);
+  });
+  /** The draw model: the resting one, or for a pie, the one with the slice under the pointer moved out. */
+  protected readonly model = computed((): ChartModel | null => {
+    const [input, hovered] = [this.modelInput(), this.hoveredSlice()];
+    return input === null || hovered === null ? this.restingModel() : chartModel({ ...input, hovered });
   });
 
   /** A compact chart has no room for a legend; its tooltip names what is under the pointer. */

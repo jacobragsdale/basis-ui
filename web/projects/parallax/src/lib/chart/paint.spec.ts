@@ -1,12 +1,20 @@
 import { describe, expect, it } from "vitest";
 
-import { fitText, scaledFont, wrapText } from "./paint";
+import { fitText, inkOn, luminance, wrapText } from "./paint";
 
-describe("scaledFont", () => {
-  it("scales the theme's size in pixels and sets a weight, and leaves a font without one alone", () => {
-    expect(scaledFont("13px system-ui, sans-serif", 1.25, "600")).toBe("600 16px system-ui, sans-serif");
-    expect(scaledFont("12.5px Arial", 2, "bold")).toBe("bold 25px Arial");
-    expect(scaledFont("caption", 2, "600")).toBe("caption");
+describe("inkOn", () => {
+  it("reads a colour's luminance from hex, rgb() and color(srgb), and nothing else", () => {
+    expect(luminance("#ffffff")).toBeCloseTo(1);
+    expect(luminance("rgb(0, 0, 0)")).toBe(0);
+    expect(luminance("color(srgb 1 1 1)")).toBeCloseTo(1);
+    expect(luminance("oklch(0.6 0.2 260)")).toBeNull();
+  });
+
+  it("writes white on dark and saturated colours, and near-black on light ones", () => {
+    expect(inkOn("#2a78d6")).toBe("#ffffff");
+    expect(inkOn("rgb(237, 161, 0)")).toBe("#111827");
+    expect(inkOn("#ffffff")).toBe("#111827");
+    expect(inkOn("unreadable")).toBe("#ffffff");
   });
 });
 

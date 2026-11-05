@@ -140,15 +140,52 @@ describe("chartModel", () => {
     ]
   );
 
-  it("caps bars at 24 px, rounds their data ends and keeps the baseline square", () => {
+  it("caps bars at 56 px, rounds their data ends and keeps the baseline square", () => {
     const model = chartModel(input(chart({ kind: "bar" }), { categories: groups }));
     const rects = kinds(model.marks, "rect");
     expect(rects.length).toBe(4);
-    expect(rects.every((r) => r.rect.w <= 24)).toBe(true);
+    expect(rects.every((r) => r.rect.w <= 56)).toBe(true);
     expect(rects.find((r) => r.hit.rows[0]?.value === "(4.00)")?.round).toBe("bottom");
     expect(model.xTicks.map((t) => t.label)).toEqual(["Atlas", "Cobalt"]);
     // Bars grow from zero.
     expect(model.yAxes[0]?.scale.domain[0]).toBeLessThanOrEqual(-4);
+  });
+
+  it("labels bars with their values and leaves room for them past the longest, except stacked bars", () => {
+    const model = chartModel(input(chart({ kind: "bar" }), { categories: groups }));
+    const rects = kinds(model.marks, "rect");
+    expect(rects.every((r) => r.label !== undefined && r.label.text === r.hit.rows[0]?.value)).toBe(true);
+    // The tallest bar stops a line short of the plot's top, where its label goes.
+    const top = Math.min(...rects.map((r) => r.rect.y));
+    expect(top - model.plot.y).toBeGreaterThanOrEqual(16);
+    const stacked = chartModel(input(chart({ kind: "bar", stacked: true }), { categories: groups }));
+    expect(kinds(stacked.marks, "rect").every((r) => r.label === undefined)).toBe(true);
+    const plain = chartModel(input(chart({ kind: "bar", labels: false }), { categories: groups }));
+    expect(kinds(plain.marks, "rect").every((r) => r.label === undefined)).toBe(true);
+  });
+
+  it("lays category labels level, on two lines, or turned, and thins them only when turned ones would touch", () => {
+    const labelled = (names: readonly string[], width = 400): ReturnType<typeof chartModel> =>
+      chartModel({ ...input(chart({ kind: "bar" }), { categories: cats(names, [{ label: "n", values: names.map(() => 1), texts: names.map(() => "1") }]) }), width });
+    // Short names fit level.
+    expect(labelled(["A", "B", "C"]).xTicks.every((t) => t.rotated === undefined && t.lines === undefined)).toBe(true);
+    // Two words each too wide for their share break onto two lines.
+    const wrapped = labelled(["North America", "Asia Pacific", "Latin America", "Middle East"], 300);
+    expect(wrapped.xTicks.map((t) => t.lines)).toEqual([
+      ["North", "America"],
+      ["Asia", "Pacific"],
+      ["Latin", "America"],
+      ["Middle", "East"]
+    ]);
+    // Long names turn, all of them, with room for the longest up to a limit.
+    const sectors = ["Communication Services", "Consumer Discretionary", "Consumer Staples", "Information Technology", "Real Estate", "Utilities"];
+    const turned = labelled(sectors);
+    expect(turned.xTicks.length).toBe(sectors.length);
+    expect(turned.xTicks.every((t) => t.rotated === true)).toBe(true);
+    expect(turned.xLabelRoom).toBeGreaterThan(60);
+    // So many that even turned labels would touch: every other one is drawn.
+    const many = labelled(Array.from({ length: 40 }, (_, i) => `Category number ${String(i)}`));
+    expect(many.xTicks.length).toBeLessThan(40);
   });
 
   it("stacks segments with a surface gap, and lays bars across when horizontal", () => {
@@ -159,7 +196,7 @@ describe("chartModel", () => {
     expect((equity?.y ?? 0) - ((bond?.y ?? 0) + (bond?.h ?? 0))).toBeCloseTo(2);
     const across = chartModel(input(chart({ kind: "bar", horizontal: true }), { categories: groups }));
     const rects = kinds(across.marks, "rect");
-    expect(rects.every((r) => r.rect.h <= 24)).toBe(true);
+    expect(rects.every((r) => r.rect.h <= 56)).toBe(true);
     expect(rects.find((r) => r.hit.rows[0]?.value === "10.00")?.round).toBe("right");
     expect(across.yLabels.map((l) => l.label)).toEqual(["Atlas", "Cobalt"]);
   });
@@ -277,6 +314,24 @@ describe("pies", () => {
     expect(slices.map((s) => s.hit.title)).toEqual(["Bond", "Other"]);
     expect((slices[0]?.end ?? 0) - (slices[0]?.start ?? 0)).toBeCloseTo(0.75 * 2 * Math.PI);
     expect(hidden.centre).toBeNull();
+  });
+
+  it("labels each slice with its share, unless labels are off", () => {
+    const labelled = kinds(chartModel(input(chart({ kind: "pie" }), { categories: classes })).marks, "slice");
+    expect(labelled.map((m) => m.label)).toEqual(["60.00%", "30.00%", "10.00%"]);
+    const plain = kinds(chartModel(input(chart({ kind: "pie", labels: false }), { categories: classes })).marks, "slice");
+    expect(plain.every((m) => m.label === undefined)).toBe(true);
+  });
+
+  it("moves the slice under the pointer out along its middle, and names it in the donut's hole", () => {
+    const resting = kinds(chartModel(input(chart({ kind: "pie" }), { categories: classes })).marks, "slice");
+    const model = chartModel({ ...input(chart({ kind: "pie" }), { categories: classes }), hovered: 1 });
+    const slices = kinds(model.marks, "slice");
+    // Bond runs from 60 % to 90 % of the way round from twelve o'clock, so its middle points to nine o'clock.
+    expect(slices[1]?.cx).toBeCloseTo((resting[1]?.cx ?? 0) - 5);
+    expect(slices[1]?.cy).toBeCloseTo(resting[1]?.cy ?? 0);
+    expect(slices[0]?.cx).toBe(resting[0]?.cx);
+    expect(model.centre).toEqual({ value: "30.00", label: "Bond" });
   });
 
   it("refuses negative values with a message, rather than drawing a share of a whole", () => {

@@ -20,6 +20,7 @@ import { PANE_GAP, indicatorStyles, paneDomain, paneHeight, paneScale, paneSpecs
 import type { IndicatorStyle, PaneSpec } from "./indicators";
 import { linearScale, logDomain, logScale, niceDomain, valueTicks } from "./scale";
 import type { Scale, ValueTick } from "./scale";
+import { wrapText } from "./text";
 
 /** A rectangle in CSS pixels. */
 export interface Rect {
@@ -60,6 +61,8 @@ export type Mark =
       readonly category?: number;
       /** Drawn faint, because another group is selected. */
       readonly dim?: boolean;
+      /** The bar's value, written at its end if it fits within `room` pixels across. */
+      readonly label?: { readonly text: string; readonly room: number };
     }
   /** A pie's slice: a ring's segment from `start` to `end`, in radians clockwise from three o'clock. */
   | {
@@ -76,6 +79,8 @@ export type Mark =
       /** The group the slice stands for, which clicking it selects; null for "Other", which stands for several. */
       readonly category: number | null;
       readonly dim: boolean;
+      /** The slice's share, written on it if it fits. */
+      readonly label?: string;
     }
   | { readonly kind: "cell"; readonly color: string; readonly rect: Rect; readonly hit: Hit | null }
   | {
@@ -109,10 +114,13 @@ export interface ValueAxis {
   readonly ticks: readonly ValueTick[];
 }
 
-/** A labelled tick on the category or x axis, in pixels. */
+/** A labelled tick on the category or x axis, in pixels; `rotated` labels hang down and to the left from their tick. */
 export interface AxisTick {
   readonly px: number;
   readonly label: string;
+  readonly rotated?: boolean;
+  /** A label broken between its words onto lines, which are drawn under one another. */
+  readonly lines?: readonly string[];
 }
 
 /** A pane of its own under the price, for one indicator, on the same x axis. */
@@ -146,8 +154,12 @@ export interface ChartModel {
   readonly indicators: readonly IndicatorStyle[];
   /** Rows the layout's events column marks, along the bottom of the price's plot. */
   readonly events: readonly EventMark[];
-  /** A donut's total, written in its hole. */
+  /** A donut's total, or the slice under the pointer, written in its hole. */
   readonly centre?: { readonly value: string; readonly label: string } | null;
+  /** The longest a turned category label may be, in pixels, before it is cut. */
+  readonly xLabelRoom?: number;
+  /** Where vertical gridlines run, for charts whose values run across, such as horizontal bars. */
+  readonly verticalGrid?: readonly number[];
 }
 
 /** An event marker: where, and what its tooltip says. */
@@ -205,6 +217,8 @@ export interface ModelInput {
   readonly compact?: boolean;
   /** The selected group, by its label; the others' bars and slices dim. */
   readonly selected?: string | null;
+  /** The group under the pointer, by its index: a pie's slice moves out, and a donut's hole names it. */
+  readonly hovered?: number | null;
 }
 
 const COUNT = new Intl.NumberFormat("en-US");
@@ -213,7 +227,12 @@ const PAD = 8;
 /** The padding of a compact chart. */
 const COMPACT_PAD = 4;
 const X_AXIS = 22;
-const MAX_BAR = 24;
+/** The thickest a bar of a grouped view is drawn, so that a big chart's bars are solid but a few bars don't fill it. */
+const MAX_BAR = 56;
+/** The widest a candle or an x-axis column is drawn. */
+const MAX_COLUMN = 24;
+/** The longest a turned category label is drawn, in pixels. */
+const MAX_LABEL = 120;
 const GAP = 2;
 const TICKS_PER_PX = 1 / 56;
 
@@ -280,12 +299,12 @@ function gutter(input: ModelInput, ticks: readonly ValueTick[]): number {
   return Math.ceil(Math.max(0, ...ticks.map((t) => input.measure(t.label)))) + padOf(input) + 2;
 }
 
-/** The plot area once the value axes' labels have room. */
-function plotFor(input: ModelInput, left: readonly ValueTick[], right: readonly ValueTick[] | null): Rect {
+/** The plot area once the value axes' labels have room, over an x axis `xAxis` pixels tall. */
+function plotFor(input: ModelInput, left: readonly ValueTick[], right: readonly ValueTick[] | null, xAxis = X_AXIS): Rect {
   const pad = padOf(input);
   const x = Math.max(gutter(input, left), input.minGutter ?? 0);
   const w = input.width - x - (right === null ? pad : gutter(input, right));
-  return { x, y: pad, w: Math.max(1, w), h: Math.max(1, input.height - pad - X_AXIS) };
+  return { x, y: pad, w: Math.max(1, w), h: Math.max(1, input.height - pad - xAxis) };
 }
 
 /** Re-ranges a scale onto a new pixel range, keeping its domain. */
@@ -599,14 +618,56 @@ function candleModel(input: ModelInput, frame: ChartFrameData, content: Content<
 /** A label's height where labels stack down the side. */
 const LINE = 16;
 
-/**
- * Category labels thinned so that they do not overlap: along an axis across, each needs its text's width; down the
- * side, each needs a line.
- */
-function categoryTicks(input: ModelInput, categories: readonly string[], position: (i: number) => number, length: number, across = true): readonly AxisTick[] {
-  const room = across ? Math.max(1, ...categories.map((c) => input.measure(c))) + PAD : LINE;
-  const every = Math.max(1, Math.ceil((room * categories.length) / Math.max(1, length)));
+/** Category labels down the side, thinned so that they do not overlap: each needs a line. */
+function sideTicks(categories: readonly string[], position: (i: number) => number, length: number): readonly AxisTick[] {
+  const every = Math.max(1, Math.ceil((LINE * categories.length) / Math.max(1, length)));
   return categories.flatMap((label, i) => (i % every === 0 ? [{ px: position(i), label }] : []));
+}
+
+/** How category labels fit along the bottom of a plot, and the height of the axis they need. */
+interface CategoryAxis {
+  readonly height: number;
+  /** Every how many categories a label is drawn. */
+  readonly every: number;
+  readonly rotated: boolean;
+  /** Each label's lines, when labels break between their words. */
+  readonly lines: readonly (readonly string[])[] | null;
+  /** The longest a turned label is drawn. */
+  readonly room: number;
+}
+
+/**
+ * Lays out category labels along a plot `length` pixels wide: level if each fits its share of the width; else on two
+ * lines, broken between words, if each then fits; else turned 45° and cut to a share of the chart's height. Only
+ * labels that would touch even turned are thinned out.
+ */
+function categoryAxis(input: ModelInput, categories: readonly string[], length: number): CategoryAxis {
+  const band = length / Math.max(1, categories.length);
+  const widest = Math.max(0, ...categories.map((c) => input.measure(c)));
+  if (widest + PAD <= band) {
+    return { height: X_AXIS, every: 1, rotated: false, lines: null, room: widest };
+  }
+  // Lines may come closer than level labels: they read as blocks.
+  const wrapped = categories.map((c) => wrapText(c, band - PAD / 2, input.measure));
+  if (wrapped.every((lines) => lines.length <= 2 && lines.every((line) => input.measure(line) + PAD / 2 <= band))) {
+    return { height: X_AXIS + LINE, every: 1, rotated: false, lines: wrapped, room: band - PAD / 2 };
+  }
+  // Turned, a label's line takes its height times √2 along the axis; closer than that, labels would touch.
+  const every = Math.max(1, Math.ceil((LINE * Math.SQRT2) / Math.max(1, band)));
+  const share = input.compact === true ? 0.25 : 0.4;
+  const room = Math.max(0, Math.min(widest, MAX_LABEL, input.height * share * Math.SQRT2 - LINE));
+  return { height: Math.max(X_AXIS, Math.ceil(6 + (room + LINE) / Math.SQRT2)), every, rotated: true, lines: null, room };
+}
+
+/** The ticks of `axis`'s labels, at `position`. */
+function categoryLabels(categories: readonly string[], position: (i: number) => number, axis: CategoryAxis): readonly AxisTick[] {
+  return categories.flatMap((label, i) => {
+    if (i % axis.every !== 0) {
+      return [];
+    }
+    const lines = axis.lines?.[i];
+    return [{ px: position(i), label, ...(axis.rotated ? { rotated: true } : {}), ...(lines === undefined ? {} : { lines }) }];
+  });
 }
 
 /** Where each bar of a category sits along its band, and how thick it is. */
@@ -641,25 +702,66 @@ function barRect(g: BarGeometry, start: number, v: number, across: number): { re
   return { kind: "rect", rect: { x: across, y: v > 0 ? low : low + inset, w: g.thickness, h: size }, round: v > 0 ? "top" : "bottom" };
 }
 
+/**
+ * The room at the end of the longest bar for its label, in pixels along the value axis: a line's height up a column,
+ * or the widest label's width beside a bar, at most a quarter of the plot. None when bars are unlabelled.
+ */
+function labelRoom(input: ModelInput, texts: readonly string[], horizontal: boolean, length: number): number {
+  if (!input.chart.labels || input.chart.stacked || texts.length === 0) {
+    return 0;
+  }
+  return horizontal ? Math.min(length / 4, Math.max(0, ...texts.map((t) => input.measure(t))) + 6) : LINE + 2;
+}
+
+/** A bar's label, its value within `room` pixels, unless bars are unlabelled, stacked or have no text. */
+function barLabel(input: ModelInput, text: string, room: number): { readonly label?: { readonly text: string; readonly room: number } } {
+  return input.chart.labels && !input.chart.stacked && text !== "" ? { label: { text, room } } : {};
+}
+
+/** Values stretched so that a scale over them leaves `room` of `length` pixels past the longest bar, for its label. */
+function withRoom(values: readonly number[], room: number, length: number): readonly number[] {
+  const scale = length / Math.max(1, length - room);
+  return room === 0 ? values : values.map((v) => v * scale);
+}
+
+/** The values a bar chart's scale covers: each bar's, or each stack's positive and negative sums. */
+function barExtent(data: CategoryData, visible: readonly { readonly s: CategoryData["series"][number] }[], stacked: boolean): readonly number[] {
+  // A missing value adds nothing to a stack.
+  const finite = (v: number | undefined): number => (v !== undefined && Number.isFinite(v) ? v : 0);
+  return stacked
+    ? data.categories.flatMap((_, c) => [visible.reduce((sum, { s }) => sum + Math.max(0, finite(s.values[c])), 0), visible.reduce((sum, { s }) => sum + Math.min(0, finite(s.values[c])), 0)])
+    : visible.flatMap(({ s }) => s.values);
+}
+
+/**
+ * A bar chart's plot over an x axis `xAxis` pixels tall, beside category labels `labelWidth` wide when bars run across,
+ * and its value scale over `totals`, with room past the longest bar for the label of `texts`' widest.
+ */
+function barPlot(input: ModelInput, totals: readonly number[], texts: readonly string[], labelWidth: number, xAxis: number): { readonly plot: Rect; readonly value: Scale } {
+  const horizontal = input.chart.horizontal;
+  const pad = padOf(input);
+  const length = horizontal ? input.width - labelWidth - pad : input.height - xAxis - pad;
+  const linear = { ...input, chart: { ...input.chart, log_y: false } };
+  const scale = valueScale(linear, withRoom(totals, labelRoom(input, texts, horizontal, length), length), [0, length], true);
+  const plot = horizontal
+    ? { x: labelWidth, y: pad, w: Math.max(1, input.width - labelWidth - pad), h: Math.max(1, input.height - pad - xAxis) }
+    : plotFor(input, axis("left", onto(scale, [input.height - xAxis, pad])).ticks, null, xAxis);
+  return { plot, value: horizontal ? onto(scale, [plot.x, plot.x + plot.w]) : onto(scale, [plot.y + plot.h, plot.y]) };
+}
+
 function barModel(input: ModelInput, data: CategoryData): ChartModel {
   const horizontal = input.chart.horizontal;
   const stacked = input.chart.stacked;
   const visible = data.series.map((s, i) => ({ s, i })).filter(({ s }) => !hidden(input, s.label));
-  // A stack's extent is its positive and negative sums; a missing value adds nothing.
-  const finite = (v: number | undefined): number => (v !== undefined && Number.isFinite(v) ? v : 0);
-  const totals = stacked
-    ? data.categories.flatMap((_, c) => [visible.reduce((sum, { s }) => sum + Math.max(0, finite(s.values[c])), 0), visible.reduce((sum, { s }) => sum + Math.min(0, finite(s.values[c])), 0)])
-    : visible.flatMap(({ s }) => s.values);
-  const pad = padOf(input);
-  const length = horizontal ? input.width - 2 * pad : input.height - X_AXIS - pad;
-  const scale = valueScale({ ...input, chart: { ...input.chart, log_y: false } }, totals, [0, length], true);
-  const labelWidth = horizontal ? Math.min(input.width / 3, Math.max(0, ...data.categories.map((c) => input.measure(c))) + pad + 2) : 0;
-  const plot = horizontal
-    ? { x: labelWidth, y: pad, w: Math.max(1, input.width - labelWidth - pad), h: Math.max(1, input.height - pad - X_AXIS) }
-    : plotFor(input, axis("left", onto(scale, [input.height - X_AXIS, pad])).ticks, null);
-  const value = horizontal ? onto(scale, [plot.x, plot.x + plot.w]) : onto(scale, [plot.y + plot.h, plot.y]);
+  const totals = barExtent(data, visible, stacked);
+  const texts = visible.flatMap(({ s }) => s.texts);
+  const labelWidth = horizontal ? Math.min(input.width * 0.45, Math.max(0, ...data.categories.map((c) => input.measure(c))) + padOf(input) + 2) : 0;
+  // Upright bars' labels may need a taller axis, which shortens the plot; their width barely changes with it.
+  const categoryRoom = horizontal ? null : categoryAxis(input, data.categories, barPlot(input, totals, texts, labelWidth, X_AXIS).plot.w);
+  const { plot, value } = barPlot(input, totals, texts, labelWidth, categoryRoom?.height ?? X_AXIS);
   const band = (horizontal ? plot.h : plot.w) / Math.max(1, data.categories.length);
   const slots = barSlots(band, visible.length, stacked);
+  const room = stacked || visible.length <= 1 ? band - 4 : slots.thickness + 2 * GAP;
   const marks: Mark[] = [];
   data.categories.forEach((category, c) => {
     const stack = { above: 0, below: 0 };
@@ -676,23 +778,28 @@ function barModel(input: ModelInput, data: CategoryData): ChartModel {
       const across = (horizontal ? plot.y : plot.x) + c * band + slots.offset(n);
       const geometry = { value, horizontal, stacked, thickness: slots.thickness };
       const selectable = data.others[c] !== true;
+      const text = s.texts[c] ?? "";
       marks.push({
         ...barRect(geometry, start, v, across),
         color: seriesColor(input, i),
-        hit: { title: category, rows: [{ label: s.label, value: s.texts[c] ?? "" }] },
+        hit: { title: category, rows: [{ label: s.label, value: text }] },
         ...(selectable ? { category: c } : {}),
-        dim: dimmed(input, category)
+        dim: dimmed(input, category),
+        ...barLabel(input, text, room)
       });
     });
   });
   const positions = (i: number): number => (horizontal ? plot.y : plot.x) + (i + 0.5) * band;
+  const across = horizontal ? valueTicks(value, Math.max(2, plot.w / 90)).map((t) => ({ px: t.px, label: t.label })) : [];
   return {
     width: input.width,
     height: input.height,
     plot,
-    xTicks: horizontal ? valueTicks(value, Math.max(2, plot.w / 90)).map((t) => ({ px: t.px, label: t.label })) : categoryTicks(input, data.categories, positions, plot.w),
-    yLabels: horizontal ? categoryTicks(input, data.categories, positions, plot.h, false) : [],
+    xTicks: categoryRoom === null ? across : categoryLabels(data.categories, positions, categoryRoom),
+    yLabels: horizontal ? sideTicks(data.categories, positions, plot.h) : [],
     yAxes: horizontal ? [] : [axis("left", value)],
+    xLabelRoom: categoryRoom?.room ?? 0,
+    verticalGrid: across.map((t) => t.px),
     x: null,
     marks,
     legend: legendOf(
@@ -712,6 +819,8 @@ export const PIE_SLICES = 7;
 
 /** A donut's hole, as a share of its radius. */
 const HOLE = 0.6;
+/** How far the slice under the pointer moves out, in pixels. */
+const POP = 5;
 
 /** A slice's colour: the categorical colours in the groups' order, and "Other" muted, as series past the eighth are. */
 function sliceColor(input: ModelInput, data: CategoryData, index: number): string {
@@ -722,6 +831,51 @@ function sliceColor(input: ModelInput, data: CategoryData, index: number): strin
 function pieLegend(input: ModelInput, data: CategoryData): readonly LegendEntry[] {
   const noted = data.series[1] ?? data.series[0];
   return data.categories.map((label, i) => ({ label, color: sliceColor(input, data, i), shape: "rect", hidden: hidden(input, label), note: noted?.texts[i] ?? "" }));
+}
+
+/** Where a pie is drawn, and how far a slice moves out from its centre. */
+interface PieGeometry {
+  readonly cx: number;
+  readonly cy: number;
+  readonly outer: number;
+  readonly inner: number;
+  readonly out: number;
+}
+
+/** The slice of group `i`, labelled with what the legend notes beside it: its share when the view has one. */
+function sliceMark(input: ModelInput, data: CategoryData, at: { readonly label: string; readonly i: number; readonly start: number; readonly end: number }, g: PieGeometry): Mark {
+  const { label, i, start, end } = at;
+  const hit = { title: label, rows: data.series.map((s) => ({ label: s.label, value: s.texts[i] ?? "" })) };
+  const middle = (start + end) / 2;
+  const text = (data.series[1] ?? data.series[0])?.texts[i] ?? "";
+  return {
+    kind: "slice",
+    color: sliceColor(input, data, i),
+    cx: g.cx + Math.cos(middle) * g.out,
+    cy: g.cy + Math.sin(middle) * g.out,
+    outer: g.outer,
+    inner: g.inner,
+    start,
+    end,
+    hit,
+    category: data.others[i] === true ? null : i,
+    dim: dimmed(input, label),
+    ...(input.chart.labels && text !== "" ? { label: text } : {})
+  };
+}
+
+/** What a donut's hole says: the slice under the pointer, or else the total while every group is shown. */
+function pieCentre(
+  input: ModelInput,
+  data: CategoryData,
+  first: CategoryData["series"][number],
+  pointed: { readonly label: string; readonly i: number } | undefined
+): { readonly value: string; readonly label: string } | null {
+  if (pointed !== undefined) {
+    return { value: first.texts[pointed.i] ?? "", label: pointed.label };
+  }
+  const whole = !data.categories.some((c) => hidden(input, c));
+  return whole && first.total !== null ? { value: first.total, label: "Total" } : null;
 }
 
 /**
@@ -739,19 +893,20 @@ function pieModel(input: ModelInput, data: CategoryData): ChartModel {
   const pad = padOf(input);
   const plot = { x: pad, y: pad, w: Math.max(1, input.width - 2 * pad), h: Math.max(1, input.height - 2 * pad) };
   const [cx, cy] = [plot.x + plot.w / 2, plot.y + plot.h / 2];
-  const outer = Math.max(1, Math.min(plot.w, plot.h) / 2);
+  // Room for the slice under the pointer to move out without leaving the plot.
+  const outer = Math.max(1, Math.min(plot.w, plot.h) / 2 - POP);
   const inner = input.chart.donut ? outer * HOLE : 0;
   const shown = data.categories.map((label, i) => ({ label, i, v: first.values[i] ?? Number.NaN })).filter(({ label, v }) => Number.isFinite(v) && v > 0 && !hidden(input, label));
   const sum = shown.reduce((total, { v }) => total + v, 0);
+  const hovered = input.hovered ?? null;
   let angle = -Math.PI / 2;
   const marks: Mark[] = shown.map(({ label, i, v }) => {
     const start = angle;
     angle += (v / sum) * 2 * Math.PI;
-    const hit = { title: label, rows: data.series.map((s) => ({ label: s.label, value: s.texts[i] ?? "" })) };
-    const category = data.others[i] === true ? null : i;
-    return { kind: "slice", color: sliceColor(input, data, i), cx, cy, outer, inner, start, end: angle, hit, category, dim: dimmed(input, label) };
+    // The slice under the pointer moves out from the centre, along its middle.
+    const out = i === hovered && shown.length > 1 ? POP : 0;
+    return sliceMark(input, data, { label, i, start, end: angle }, { cx, cy, outer, inner, out });
   });
-  const whole = !data.categories.some((c) => hidden(input, c));
   return {
     width: input.width,
     height: input.height,
@@ -766,7 +921,7 @@ function pieModel(input: ModelInput, data: CategoryData): ChartModel {
     panes: [],
     indicators: [],
     events: [],
-    centre: input.chart.donut && whole && first.total !== null && marks.length > 0 ? { value: first.total, label: "Total" } : null
+    centre: input.chart.donut && marks.length > 0 ? pieCentre(input, data, first, hovered === null ? undefined : shown.find(({ i }) => i === hovered)) : null
   };
 }
 
@@ -794,7 +949,9 @@ function heatmapModel(input: ModelInput, data: CategoryData): ChartModel {
     false
   ) ?? [0, 1];
   const labelWidth = Math.min(input.width / 3, Math.max(0, ...rows.map((s) => input.measure(s.label))) + padOf(input) + 2);
-  const plot = { x: labelWidth, y: padOf(input), w: Math.max(1, input.width - labelWidth - padOf(input)), h: Math.max(1, input.height - padOf(input) - X_AXIS) };
+  const width = Math.max(1, input.width - labelWidth - padOf(input));
+  const categoryRoom = categoryAxis(input, data.categories, width);
+  const plot = { x: labelWidth, y: padOf(input), w: width, h: Math.max(1, input.height - padOf(input) - categoryRoom.height) };
   const [cw, ch] = [plot.w / Math.max(1, data.categories.length), plot.h / Math.max(1, rows.length)];
   const marks: Mark[] = [];
   rows.forEach((s, r) => {
@@ -811,7 +968,8 @@ function heatmapModel(input: ModelInput, data: CategoryData): ChartModel {
     width: input.width,
     height: input.height,
     plot,
-    xTicks: categoryTicks(input, data.categories, (i) => plot.x + (i + 0.5) * cw, plot.w),
+    xTicks: categoryLabels(data.categories, (i) => plot.x + (i + 0.5) * cw, categoryRoom),
+    xLabelRoom: categoryRoom.room,
     yLabels: rows.map((s, r) => ({ px: plot.y + (r + 0.5) * ch, label: s.label })),
     yAxes: [],
     x: null,
@@ -948,9 +1106,9 @@ function signedColumns(input: ModelInput, xs: Float64Array, ys: Float64Array, x:
   ];
 }
 
-/** A bar's width in `space` pixels: most of it, at least a pixel and at most a bar's thickness. */
+/** A column's width in `space` pixels: most of it, at least a pixel and at most `MAX_COLUMN`. */
 function columnWidth(space: number): number {
-  return Math.max(1, Math.min(MAX_BAR, space * 0.7));
+  return Math.max(1, Math.min(MAX_COLUMN, space * 0.7));
 }
 
 /** Each candle's volume, as wide as the candle, in its direction's colour. */

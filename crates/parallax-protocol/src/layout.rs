@@ -470,6 +470,10 @@ pub struct LayoutChart {
     /// Draws a pie chart as a ring, with the total in its centre.
     #[serde(default = "yes")]
     pub donut: bool,
+    /// Writes each bar's value at its end, and each slice's share on it,
+    /// where they fit.
+    #[serde(default = "yes")]
+    pub labels: bool,
 }
 
 impl LayoutChart {
@@ -1619,8 +1623,10 @@ mod tests {
         assert!(layout.pinned.is_empty() && layout.titles.is_empty() && layout.totals.is_empty());
         assert!(!layout.detail);
         assert!(layout.filters[0].columns.is_empty());
-        // A pie is a ring unless it says otherwise; version 1 had none.
-        assert!(layout.chart.unwrap().donut);
+        // A pie is a ring, and bars and slices are labelled, unless they say
+        // otherwise; version 1 had neither.
+        let chart = layout.chart.unwrap();
+        assert!(chart.donut && chart.labels);
     }
 
     #[test]
@@ -1789,6 +1795,7 @@ mod tests {
             Layout::from_json(candles).unwrap(),
             Layout::from_json(r#"{"chart": {"kind": "bar"}}"#).unwrap(),
             Layout::from_json(r#"{"chart": {"kind": "pie", "donut": false}}"#).unwrap(),
+            Layout::from_json(r#"{"chart": {"kind": "bar", "labels": false}}"#).unwrap(),
         ]
         .iter()
         .map(|l| serde_json::to_value(l).unwrap())
