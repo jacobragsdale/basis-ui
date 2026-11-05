@@ -420,7 +420,9 @@ class Painter {
     const ctx = this.ctx;
     const { plot } = model;
     const y = up ? rect.y - 4 : rect.y + rect.h + 4;
-    if (width > label.room || y - LINE_HEIGHT < plot.y - 2 || y + LINE_HEIGHT > plot.y + plot.h + 2) {
+    // A label over a bar must stay below the plot's top, and one under a negative bar above its bottom.
+    const inside = up ? y - LINE_HEIGHT >= plot.y - 2 : y + LINE_HEIGHT <= plot.y + plot.h + 2;
+    if (width > label.room || !inside) {
       return;
     }
     ctx.fillStyle = this.theme.foreground;
