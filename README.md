@@ -61,6 +61,8 @@ them.
   the correctness rules, and why each choice was made.
 - [Roadmap](docs/roadmap.md) lists the milestones, the build order and the
   performance budgets.
+- [Themes](docs/theming.md) shows how to apply your own theme, and lists
+  every design token.
 - [Deferred work](docs/future.md) records what was left out, and why.
 - [The grid experiment](docs/grid-experiment.md) records why the grid draws on
   a canvas, with the measurements.

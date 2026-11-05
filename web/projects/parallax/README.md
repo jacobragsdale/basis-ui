@@ -219,6 +219,8 @@ of stripes. A theme can extend either (`extends: airyTheme`), and a value can
 refer to another token with `token()`, such as
 `` `color-mix(in srgb, ${token("accent")} 10%, ${token("background")})` ``.
 
+[Themes](../../../docs/theming.md) lists every token with its defaults.
+
 The components read their tokens again when their inputs change, when an
 attribute of `<html>` or `<body>` changes (such as a dark class), when the
 system's colour scheme changes and when fonts load. After changing a token any

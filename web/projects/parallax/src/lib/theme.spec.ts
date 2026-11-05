@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { CHART_COLORS, THEME_STYLES, TOKEN_PROPERTIES, airyTheme, defaultTheme, defineTheme, readChartColors, readTheme, standardTheme, themeStyles, token } from "./theme";
@@ -71,6 +73,20 @@ describe("defineTheme", () => {
     expect(css).toContain(':is(px-grid, px-pivot, px-chart)[data-px-theme="spec-styles"][data-px-scheme="light"] { --_px-theme-accent: #0000aa; }');
     expect(css).toContain(':is(px-grid, px-pivot, px-chart)[data-px-theme="spec-styles"][data-px-scheme="dark"] { --_px-theme-accent: #aaaaff; }');
     expect(themeStyles(standardTheme)).toBe("");
+  });
+});
+
+describe("the theming docs", () => {
+  it("list every token in their reference", () => {
+    // The tests run from web/, beside docs/.
+    const doc = readFileSync("../docs/theming.md", "utf8");
+    const charts = /^--px-(series|ramp|negative-ramp)-\d$|^--px-(up|down|middle)$/;
+    for (const property of TOKEN_PROPERTIES.filter((p) => !charts.test(p))) {
+      expect(doc).toContain(`| \`${property}\` |`);
+    }
+    for (const property of ["--px-series-1", "--px-ramp-1", "--px-negative-ramp-1", "--px-up", "--px-middle"]) {
+      expect(doc).toContain(`\`${property}`);
+    }
   });
 });
 

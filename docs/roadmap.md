@@ -12,6 +12,7 @@ behind the design, see [How parallax is designed](design.md).
 | 2 | Charts: line, area, bar (vertical or horizontal, grouped or stacked), scatter as density, heatmap, histogram, candlestick and OHLC. Crosshair with synced tooltips, wheel and drag zoom and pan, a range brush that filters linked views, legend toggling, two y-axes, log scale, and a trading-time axis driven by a per-dataset trading calendar. |
 | 3 | Technical-analysis tools, described in [Milestone 3 tools](#milestone-3-tools). |
 | 4 | Grids and pivots for everyday use: search, Excel-style column filters, hiding, reordering and pinning columns, a totals row, grouping from the grid, export from a toolbar, a reworked pivot field list, pie and donut charts, and tables of a few hundred rows that feel instant. |
+| 5 | A prettier default look and themes anyone can make: every colour, font, size and border a token, settable in CSS anywhere or with `defineTheme`; light, dark and system schemes; a second built-in theme, Airy; labels on bars and slices; and a demo with big breakdown charts and a theme studio. |
 
 Releases are semver 0.x until milestone 3. Each milestone publishes
 `@jacobragsdale/parallax` to npm and the `parallax-*` crates to crates.io.
@@ -66,6 +67,28 @@ checked at every step after.
 13. The pivot's field list, toolbar and header menus.
 14. Pie and donut charts, small charts, and filtering a grid from a chart.
 15. The demo, the documentation and the release.
+
+## Milestone 5 build order
+
+Steps 1 and 2 change no pixel: every screenshot stays the same, which shows the
+new token mechanism draws exactly what the old one did.
+
+1. The token mechanism, with today's values: public `--px-*` properties a host
+   sets anywhere, themes made with `defineTheme`, resolved properties
+   registered with `@property`, the `theme` and `scheme` inputs, and a watcher
+   that tells the canvas when tokens may have changed.
+2. Sizes, fonts and borders as tokens, still with today's values; the grid's
+   header gets its own height.
+3. The refined dense look for the grid, the pivot and their controls: derived
+   colours, a taller header, row hover, drawn glyphs, frames, themed native
+   controls and a toolbar that keeps to one line.
+4. Chart polish and `chart.labels`: category labels that turn rather than
+   vanish, values on bars, shares on slices, a slice that moves out under the
+   pointer.
+5. The demo's Breakdowns tab of big pies, donuts and bars, and bigger
+   dashboard tiles.
+6. The Airy theme, the demo's shell and the theme studio.
+7. [Themes](theming.md), the design notes and the release checks.
 
 ## Milestone 1 build order
 
@@ -269,6 +292,25 @@ cache took 151 ms and 171 ms when measured again on their own, so the 263 ms
 was mostly noise, but they are slower than after step 2's 138 ms. Why hasn't
 been measured; the demo's bundle grew from about 600 kB to 723 kB over the
 milestone.
+
+At the end of milestone 5, on 2026-11-04, with the new look, by the same
+method:
+
+| Table | Held | First rows, empty cache | First rows, cached | Sort, median and p95 |
+|---|---|---|---|---|
+| `book`, 300 positions | in the browser | 152 ms | 110 ms | 29 ms, 32 ms |
+| `blotter`, 500 trades | on the server | 145 ms | 90 ms | 36 ms, 41 ms |
+| `trades`, 1,000,000 trades | on the server | 155 ms | 102 ms | 31 ms, 36 ms |
+
+Unthrottled, the figures were 64 ms, 52 ms and 19 ms for the book; 32 ms,
+15 ms and 21 ms for the blotter; and 39 ms, 29 ms and 27 ms for the trades.
+Sorts are unchanged. The book's first rows with an empty cache are 2 ms over
+the budget: they were 147 ms at the end of milestone 4 and 150 ms and 152 ms
+after milestone 5's first two steps, which change no pixel, so the margin was
+already gone. An interleaved comparison of steps 2 and 3, fifteen cached loads
+each, put the new look's cost at about 5 ms for the book and 8 ms for the
+blotter, throttled; no single part of it accounted for that. See
+[Deferred work](future.md).
 
 A budget for live updates, 10,000 row updates per second with a p99 of
 ≤ 250 ms from update to screen, waits until a streaming source exists. See

@@ -80,6 +80,30 @@ Left out of milestone 4 (2026-11-03 to 2026-11-04), for the reasons given.
   selection into a grid filter; removing that filter's chip in the grid leaves
   the chart's selection showing until it is clicked again.
 
+Left out of milestone 5 (2026-11-04), for the reasons given.
+
+- **Two-tier pivot column headers.** A split pivot's headers read
+  `Bond | sum(market_value_usd)`; a row of split values over a row of measures
+  would read better. The engine makes the titles, and the export shares them,
+  so the change belongs in both.
+- **Friendlier default measure titles.** The field list says "Sum of
+  market_value_usd" where the header says `sum(market_value_usd)`. Making them
+  agree is also an engine and export change.
+- **Animation on the canvas.** Transitions would redraw every frame, and on a
+  Citrix desktop every frame crosses the network.
+- **Bundled fonts.** The components use the system's fonts, which are Segoe UI
+  on the Windows desktops parallax targets; any other font is a one-line token.
+  Bundling one would make every application serve the files.
+- **Light and dark values in the theme studio.** The demo's studio sets one
+  value for both schemes; `light-dark()` in CSS, or `light` and `dark` in
+  `defineTheme`, give each its own.
+- **Startup cost of the new look.** With the refined look, a small table's
+  first rows came about 5 to 8 ms later at a 4× CPU throttle, about 2 ms
+  unthrottled, in an interleaved comparison with the previous build. Switching
+  off the toolbar's container query, the `color-mix()` derivations or the
+  themed scrollbars one at a time didn't single out a cause; the budgets are
+  still met.
+
 ## Clients
 
 - **Python package with Streamlit and Dash components.** Python is dropped for

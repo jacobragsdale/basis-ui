@@ -817,11 +817,46 @@ when the source was read and how long ago. It also flags NaN values the load
 turned blank, and a failed refresh with its time. An info button lists the load
 details.
 
-Themes are design tokens defined once in the library, for a light and a dark
-theme, and emitted as CSS custom properties in a cascade layer named
-`parallax`. Any rule a host writes for `px-grid` therefore overrides them,
-whatever its specificity. Canvas renderers read the computed values and redraw
-when the theme changes. Compact and comfortable densities set the row height.
+### Themes
+
+Every colour, font, size and border the components draw is a design token,
+listed once in `theme.ts` with its defaults for the light and dark schemes; the
+library's stylesheet, the TypeScript types and `readTheme` are all generated
+from that list. [Themes](theming.md) lists the tokens and shows how to apply
+your own.
+
+Each token has three custom properties. The public one, `--px-accent`, is never
+declared by the library, so a value a host sets anywhere wins: on `:root`, on a
+wrapper or on the element, whatever its specificity. A theme made with
+`defineTheme` declares `--_px-theme-accent` on the components given it. Each
+component then declares `--_px-accent` as the first of the two that is set,
+else the scheme's default. Had the library declared the public property on the
+component, as it once did, a value on `:root` or a wrapper would have lost to
+it, and only rules naming the components would have worked.
+
+Most defaults derive from a few tokens with `color-mix()` and `calc()`: the
+borders, the header, stripes, selections, focus rings and chips mix the
+accent, background and foreground, and paddings are multiples of the spacing
+unit. A theme of three colours is therefore consistent throughout, and any
+derived token can still be set on its own.
+
+The canvas can't draw with `var()`, `calc()` or `light-dark()`, so the
+resolved properties are registered with `@property` as colours and lengths.
+`getComputedStyle` then returns concrete values, which the canvas draws with
+as they are. CSS can't announce that a computed value changed, so a shared
+watcher counts the page changes that usually mean a new theme: an attribute of
+`<html>` or `<body>` changing, the system's colour scheme changing, and fonts
+loading. The components read their tokens again then, and when their inputs
+change; `refreshTheme()` covers anything else. Reading tokens on every redraw
+would cost a style recalculation per frame, and Citrix desktops have no cycles
+to spare. Text widths are cached per font, so a theme that changes the font
+measures again.
+
+Comfortable density adds a fixed 6 px to the row and header heights, whatever
+the theme sets, so the two choices are independent. The row under the pointer
+is highlighted by redrawing that row's cells only: a full redraw at every
+pointer movement would send most of the grid across a remote-display protocol
+each time.
 
 ## Excel export
 
