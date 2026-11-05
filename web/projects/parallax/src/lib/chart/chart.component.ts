@@ -165,6 +165,9 @@ const CHART_STYLES = `
   px-chart .px-chart-plot.px-chart-panning {
     cursor: grabbing;
   }
+  px-chart px-status-bar[hidden] {
+    display: none;
+  }
   px-chart .px-chart-plot.px-chart-pick {
     cursor: pointer;
   }

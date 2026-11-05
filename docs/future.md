@@ -50,6 +50,36 @@ research already done.
 - **Screen-reader accessibility.** Not required for the first milestone. The
   grid experiment's choice between canvas and DOM affects the cost.
 
+## Grids, pivots and charts
+
+Left out of milestone 4 (2026-11-03 to 2026-11-04), for the reasons given.
+
+- **Searching the display text of number columns.** Search tests each
+  dictionary entry of a text column once, which is what keeps it fast; number
+  columns have no dictionary, and their text depends on the format. A search
+  for "1.5M" would have to format every value first.
+- **A date tree in the filter list.** Excel groups dates by year, month and
+  day. The list shows each date as a value for now.
+- **Exporting only the selected cells.** Export writes the whole view, which is
+  what the screen's filters, search and totals describe; copying covers a
+  selection.
+- **Running sessions concurrently on one socket.** One socket runs one message
+  at a time, so a small grid can wait behind a heavy rebuild on the same page.
+  The overlay's report hasn't shown it mattering.
+- **Opening a browser-held view on the server while its copy loads.** The first
+  rows of a browser-held table wait for the worker and the copy. Prewarming made
+  the wait small enough to meet the budget.
+- **Hiding a grouped column.** DevExtreme hides a column from the data area
+  when the grid is grouped by it (`showWhenGrouped`); parallax keeps it shown,
+  so the export and the clipboard keep every column. Whether to follow
+  DevExtreme is a choice for the users.
+- **Selecting a chart's group from the keyboard.** A bar or slice is selected
+  by clicking it. The legend's buttons, which the keyboard reaches, hide and
+  show groups rather than select them.
+- **A chart's selection following its linked grid.** The dashboard turns a
+  selection into a grid filter; removing that filter's chip in the grid leaves
+  the chart's selection showing until it is clicked again.
+
 ## Clients
 
 - **Python package with Streamlit and Dash components.** Python is dropped for

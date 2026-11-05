@@ -251,6 +251,25 @@ took 153 ms and 155 ms.
   is in flight at a time, and only the newest waits, so the value picker
   searches on every keystroke instead of after a 200 ms pause.
 
+At the end of the milestone, on 2026-11-04, with everything it added to the
+grid (the toolbar, header menus, fitted widths, totals rows and pinned columns),
+by the same method:
+
+| Table | Held | First rows, empty cache | First rows, cached | Sort, median and p95 |
+|---|---|---|---|---|
+| `book`, 300 positions | in the browser | 147 ms | 107 ms | 30 ms, 35 ms |
+| `blotter`, 500 trades | on the server | 132 ms | 91 ms | 37 ms, 40 ms |
+| `trades`, 1,000,000 trades | on the server | 263 ms | 99 ms | 31 ms, 35 ms |
+
+Unthrottled, the figures were 60 ms, 51 ms and 19 ms for the book; 30 ms,
+15 ms and 21 ms for the blotter; and 41 ms, 29 ms and 27 ms for the trades.
+The small tables still meet both budgets, though the blotter's first rows came
+within 10 ms of theirs in a second run. The trades' first rows with an empty
+cache took 151 ms and 171 ms when measured again on their own, so the 263 ms
+was mostly noise, but they are slower than after step 2's 138 ms. Why hasn't
+been measured; the demo's bundle grew from about 600 kB to 723 kB over the
+milestone.
+
 A budget for live updates, 10,000 row updates per second with a p99 of
 ≤ 250 ms from update to screen, waits until a streaming source exists. See
 [Deferred work](future.md).

@@ -1,7 +1,7 @@
 # @jacobragsdale/parallax
 
-Angular components for the parallax engine: a data grid and pivot table drawn
-on a Canvas 2D surface, for desktops without a GPU. The design and its
+Angular components for the parallax engine: a data grid, a pivot table and
+charts drawn on a Canvas 2D surface, for desktops without a GPU. The design and its
 correctness rules are in [How parallax is designed](../../../docs/design.md).
 
 ## Show a view
@@ -50,6 +50,44 @@ its group in a drawer you can search and export.
 ```html
 <px-pivot [(layout)]="layout" />
 ```
+
+## Filter a grid from a chart
+
+`<px-chart>` draws the chart in a layout's `chart` section. Clicking a bar or
+slice of a chart of grouped data selects its group, and the chart emits
+`selectionChange` with the group column and the group's exact key, or `null`
+when the selection is cleared:
+
+```ts
+@Component({
+  imports: [ChartComponent, GridComponent],
+  template: `
+    <px-chart [(layout)]="byClass" [statusBar]="false" (selectionChange)="pick($event)" />
+    <px-grid [(layout)]="positions" />
+  `
+})
+export class ExposureComponent {
+  protected readonly byClass = signal<LayoutInput>({
+    dataset: "positions",
+    group_by: ["asset_class"],
+    measures: [
+      { column: "notional_usd", aggregate: "sum" },
+      { column: "notional_usd", aggregate: "sum", show_as: "percent_of_grand_total" }
+    ],
+    chart: { kind: "pie" }
+  });
+  protected readonly positions = signal<LayoutInput>({ dataset: "positions" });
+
+  protected pick(selection: ChartSelection | null): void {
+    const filters = selection === null ? [] : [{ column: selection.column, op: "eq" as const, value: selection.value }];
+    this.positions.set({ dataset: "positions", filters });
+  }
+}
+```
+
+A pie is a donut unless `donut: false`; its second measure, shown as a share of
+the total, labels each slice. A chart smaller than 260 by 200 pixels drops its
+legend and padding.
 
 ## Run views in the browser
 
@@ -100,11 +138,34 @@ base, such as `https://api.host/px`; browser copies come from `/copy` there too.
 
 ## Inputs
 
-| Input     | Type                         | Default     | Meaning                          |
-| --------- | ---------------------------- | ----------- | -------------------------------- |
-| `layout`  | `LayoutInput`                | required    | The view. Two-way: `[(layout)]`. |
-| `theme`   | `"light" \| "dark"`          | `"light"`   | The token set.                   |
-| `density` | `"compact" \| "comfortable"` | `"compact"` | Row height: 24 or 30 pixels.     |
+`<px-grid>` and `<px-pivot>`:
+
+| Input       | Type                               | Default     | Meaning                                                               |
+| ----------- | ---------------------------------- | ----------- | --------------------------------------------------------------------- |
+| `layout`    | `LayoutInput`                      | required    | The view. Two-way: `[(layout)]`.                                      |
+| `theme`     | `"light" \| "dark"`                | `"light"`   | The token set.                                                        |
+| `density`   | `"compact" \| "comfortable"`       | `"compact"` | Row height: 24 or 30 pixels.                                          |
+| `toolbar`   | `boolean \| Partial<ToolbarParts>` | `true`      | The toolbar, or which of its parts show; grid only.                   |
+| `height`    | `"fill" \| "auto"`                 | `"fill"`    | Fill the container, or size to the rows up to `maxHeight`; grid only. |
+| `maxHeight` | `number`                           | `480`       | The tallest an `auto` grid's rows grow before they scroll; grid only. |
+
+`<px-chart>`:
+
+| Input       | Type                | Default   | Meaning                                                                  |
+| ----------- | ------------------- | --------- | ------------------------------------------------------------------------ |
+| `layout`    | `LayoutInput`       | required  | The view and its `chart` section. Two-way: `[(layout)]`.                 |
+| `theme`     | `"light" \| "dark"` | `"light"` | The token set.                                                           |
+| `sync`      | `string \| null`    | automatic | The group whose crosshairs move together; `null` keeps this chart's own. |
+| `statusBar` | `boolean`           | `true`    | Whether the status bar shows under the chart.                            |
+
+## Outputs
+
+| Output            | Of              | Emits                                                              |
+| ----------------- | --------------- | ------------------------------------------------------------------ |
+| `layoutChange`    | every component | The edited layout, for `[(layout)]`.                               |
+| `drill`           | `<px-grid>`     | A pivot cell double-clicked, with its group path.                  |
+| `brushed`         | `<px-chart>`    | The filters of a range brushed with Shift and drag, or `null`.     |
+| `selectionChange` | `<px-chart>`    | The group of a bar or slice clicked, or `null` when it is cleared. |
 
 ## Keys
 
@@ -112,6 +173,8 @@ base, such as `https://api.host/px`; browser copies come from `/copy` there too.
 | ------------------------------------- | ------------------------------------------------------------ |
 | Arrows, Page Up, Page Down, Home, End | Move the selection; Shift extends it, Ctrl jumps to the edge |
 | Ctrl+A                                | Select every cell                                            |
+| Ctrl+F                                | Put the cursor in the grid's search                          |
+| Alt+Down                              | Open the focused column's menu                               |
 | Ctrl+C                                | Copy the selection as tab-separated text with every digit    |
 | Enter or Space on a group             | Expand or collapse it                                        |
 | Escape                                | Clear the selection                                          |

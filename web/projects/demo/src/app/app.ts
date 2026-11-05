@@ -4,6 +4,7 @@ import type { Density, LayoutInput, ThemeName } from "parallax";
 import * as z from "zod/mini";
 
 import { ChartsComponent } from "./charts.component";
+import { DashboardComponent } from "./dashboard.component";
 import { TechnicalComponent } from "./technical.component";
 import { PerformanceComponent } from "./performance.component";
 import type { GridStats } from "./performance.component";
@@ -24,7 +25,7 @@ const REFERENCE_PIVOT = {
 } as const satisfies LayoutInput;
 
 /** The views the demo opens, in the order of their tabs. */
-const PRESET_NAMES = ["pivot", "browser", "trades", "sorted", "prices", "small", "charts", "technical"] as const;
+const PRESET_NAMES = ["pivot", "browser", "trades", "sorted", "prices", "small", "dashboard", "charts", "technical"] as const;
 
 type PresetName = (typeof PRESET_NAMES)[number];
 
@@ -49,13 +50,28 @@ const PRESETS: Readonly<Record<PresetName, Preset>> = {
   },
   sorted: {
     title: "Largest trades",
-    about: "The trades sorted by gross amount, largest first, with amounts shown exactly.",
-    layout: { dataset: "trades", sort: [{ column: "gross_amount_local", descending: true }] }
+    about:
+      "The trades sorted by gross amount, largest first, with amounts shown exactly. The trade's id and ticker stay pinned at the left, and the footer counts the trades and totals their quantities.",
+    layout: {
+      dataset: "trades",
+      sort: [{ column: "gross_amount_local", descending: true }],
+      pinned: ["trade_id", "ticker"],
+      totals: [
+        { column: "trade_id", aggregate: "count" },
+        { column: "quantity", aggregate: "sum" }
+      ]
+    }
   },
   small: {
     title: "Small tables",
     about:
       "Two tables of a few hundred rows, the size most tables are: 300 positions held in this page and run by the WebAssembly engine, and 500 trades held on the server. Every change should feel instant; open Performance to time each one from the click or keystroke to the screen.",
+    layout: { dataset: "book" }
+  },
+  dashboard: {
+    title: "Dashboard",
+    about:
+      "Small charts over the two small tables, with their grids below: click a slice or bar to filter its table's grid to that group, and again to show every row. Export writes what the grid shows.",
     layout: { dataset: "book" }
   },
   charts: {
@@ -106,7 +122,7 @@ function remember(name: string, value: string): void {
   selector: "demo-root",
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { "[class.dark]": "theme() === 'dark'" },
-  imports: [ChartsComponent, GridComponent, PivotComponent, PerformanceComponent, SmallComponent, TechnicalComponent],
+  imports: [ChartsComponent, DashboardComponent, GridComponent, PivotComponent, PerformanceComponent, SmallComponent, TechnicalComponent],
   template: `
     <header>
       <strong>parallax</strong>
@@ -143,6 +159,8 @@ function remember(name: string, value: string): void {
         <demo-charts [theme]="theme()" />
       } @else if (small()) {
         <demo-small [theme]="theme()" [density]="density()" />
+      } @else if (dashboard()) {
+        <demo-dashboard [theme]="theme()" [density]="density()" />
       } @else if (technical()) {
         <demo-technical [theme]="theme()" [density]="density()" />
       } @else if (ready()) {
@@ -253,8 +271,10 @@ export class App {
   protected readonly technical = computed(() => this.search.preset === "technical" && this.search.layout === undefined);
   /** The small-tables page, which shows two grids. */
   protected readonly small = computed(() => this.search.preset === "small" && this.search.layout === undefined);
+  /** The dashboard, of small charts over the small tables and their grids. */
+  protected readonly dashboard = computed(() => this.search.preset === "dashboard" && this.search.layout === undefined);
   /** A page of views of its own, which the header's link and layout cannot describe. */
-  protected readonly pageOfViews = computed(() => this.charts() || this.technical() || this.small());
+  protected readonly pageOfViews = computed(() => this.charts() || this.technical() || this.small() || this.dashboard());
   /** False while a linked layout is being read, so the preset never opens in its place. */
   protected readonly ready = signal(this.search.layout === undefined);
   protected readonly about = computed(() => (this.search.layout === undefined ? PRESETS[this.search.preset].about : "A view opened from a shared link."));

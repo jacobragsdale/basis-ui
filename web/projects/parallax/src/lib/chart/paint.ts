@@ -19,6 +19,34 @@ const SLICE_GAP = 2;
 /** How faint the bars and slices of groups other than the selected one are. */
 const DIM = 0.3;
 
+/** Words in lines no wider than `width`, as `measure` measures them; a word wider than that has a line of its own. */
+export function wrapText(text: string, width: number, measure: (text: string) => number): readonly string[] {
+  const lines: string[] = [];
+  let line = "";
+  for (const word of text.split(" ")) {
+    const longer = line === "" ? word : `${line} ${word}`;
+    if (line !== "" && measure(longer) > width) {
+      lines.push(line);
+      line = word;
+    } else {
+      line = longer;
+    }
+  }
+  return line === "" ? lines : [...lines, line];
+}
+
+/** `text` cut to fit `width`, ending in an ellipsis where it was cut. */
+export function fitText(text: string, width: number, measure: (text: string) => number): string {
+  if (measure(text) <= width) {
+    return text;
+  }
+  let cut = text.length;
+  while (cut > 0 && measure(`${text.slice(0, cut)}…`) > width) {
+    cut -= 1;
+  }
+  return cut === 0 ? "" : `${text.slice(0, cut).trimEnd()}…`;
+}
+
 /**
  * The theme's font at `scale` times its size, with `weight`, for a donut's total; the font as it is if it names no
  * size in pixels.
@@ -234,8 +262,13 @@ class Painter {
       this.labels(yAxis, plot);
     }
     ctx.textAlign = "right";
+    // A label wider than its gutter is cut at its end, so that it still reads from its start.
     for (const label of model.yLabels) {
-      ctx.fillText(label.label, plot.x - 6, label.px);
+      ctx.fillText(
+        fitText(label.label, plot.x - 8, (t) => ctx.measureText(t).width),
+        plot.x - 6,
+        label.px
+      );
     }
     for (const pane of model.panes) {
       this.paneAxes(pane);
@@ -301,7 +334,11 @@ class Painter {
       ctx.fillStyle = this.theme.muted;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText(model.empty, model.width / 2, model.height / 2);
+      // A narrow tile wraps the message rather than cut it.
+      const lines = wrapText(model.empty, Math.max(40, model.width - 16), (t) => ctx.measureText(t).width);
+      lines.forEach((line, i) => {
+        ctx.fillText(line, model.width / 2, model.height / 2 + (i - (lines.length - 1) / 2) * 16);
+      });
       return;
     }
     // A pie has no axes, nor a baseline under it.

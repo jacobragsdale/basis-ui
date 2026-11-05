@@ -542,8 +542,8 @@ test.describe("header menu", () => {
     const section = page.locator('section[data-table="book"]');
     const grid = section.locator('[role="grid"]');
     await expect(grid).toHaveAttribute("aria-rowcount", "300", { timeout: 60_000 });
-    // The book's third column is the fund, which is text; its funnel is at the right of its header.
-    const fund = await headerOf(page, section, 2);
+    // The book's second column, after its pinned ticker, is the fund, which is text; its funnel is at the right of its header.
+    const fund = await headerOf(page, section, 1);
     expect(fund.name).toBe("fund");
     await section.locator("canvas.px-canvas").click({ position: { x: fund.right - 10, y: 12 } });
     const menu = page.locator("px-header-menu");
@@ -592,15 +592,19 @@ test.describe("columns", () => {
     await expect(page.locator("px-header-menu")).toHaveAttribute("aria-label", "Column fund");
   });
 
-  test("Totals adds a totals row, which the grid also says in text", async ({ page }) => {
+  test("the totals row, which the grid also says in text, goes and comes back with Totals", async ({ page }) => {
     await page.goto("/?preset=small");
     const section = page.locator('section[data-table="blotter"]');
     await expect(section.locator('[role="grid"]')).toHaveAttribute("aria-rowcount", "500", { timeout: 60_000 });
-    await section.getByRole("button", { name: "Totals" }).click();
-    await expect(section.getByRole("button", { name: "Totals" })).toHaveAttribute("aria-pressed", "true");
-    await expect(section.getByRole("status", { name: "Totals row" })).toContainText(/Totals\. .+: [\d,.()-]+/);
-    await section.getByRole("button", { name: "Totals" }).click();
+    // The blotter counts its trades and totals their quantities.
+    const totals = section.getByRole("button", { name: "Totals" });
+    await expect(totals).toHaveAttribute("aria-pressed", "true");
+    await expect(section.getByRole("status", { name: "Totals row" })).toContainText(/^Totals\. trade_id: 500; quantity: [\d,.]+/);
+    await totals.click();
     await expect(section.getByRole("status", { name: "Totals row" })).toHaveCount(0);
+    await totals.click();
+    await expect(totals).toHaveAttribute("aria-pressed", "true");
+    await expect(section.getByRole("status", { name: "Totals row" })).toContainText(/Totals\. .+: [\d,.()-]+/);
   });
 
   test("dragging a header moves its column; a click still sorts", async ({ page }) => {
@@ -628,9 +632,9 @@ test.describe("grouping", () => {
     const section = await blotter(page);
     const grid = section.locator('[role="grid"]');
     const panel = section.locator("px-group-panel");
-    // The blotter's sixth column is the fund; its menu groups by it.
+    // The blotter's fourth column is the fund; its menu groups by it.
     await section.locator("canvas.px-canvas").click({ position: { x: 40, y: 40 } });
-    for (let i = 0; i < 5; i += 1) {
+    for (let i = 0; i < 3; i += 1) {
       await page.keyboard.press("ArrowRight");
     }
     await page.keyboard.press("Alt+ArrowDown");

@@ -17,7 +17,7 @@ test("every view opens from its tab, and the browser-held ones say so", async ({
   await page.goto("/");
   await ready(page);
   const titles = await page.getByRole("navigation", { name: "Views" }).getByRole("link").allTextContents();
-  expect(titles).toEqual(["Positions pivot", "Pivot in the browser", "1,000,000 trades", "Largest trades", "Daily prices", "Small tables", "Charts", "Technical analysis"]);
+  expect(titles).toEqual(["Positions pivot", "Pivot in the browser", "1,000,000 trades", "Largest trades", "Daily prices", "Small tables", "Dashboard", "Charts", "Technical analysis"]);
   for (const [title, where] of [
     ["1,000,000 trades", null],
     ["Daily prices", "in browser"],
@@ -149,7 +149,8 @@ test("a table of a few hundred rows is held whole, so scrolling it and copying f
   if (box === null) {
     throw new Error("the blotter's canvas is not on the page");
   }
-  await canvas.click({ position: { x: 40, y: box.height - 12 } });
+  // The last row sits just above the totals row.
+  await canvas.click({ position: { x: 40, y: box.height - 36 } });
   await page.keyboard.press("ControlOrMeta+c");
   await expect(blotter.locator(".px-status-message")).toContainText("Copied");
   expect(await page.evaluate(() => navigator.clipboard.readText())).toMatch(/\S/);
@@ -158,4 +159,50 @@ test("a table of a few hundred rows is held whole, so scrolling it and copying f
   });
   await page.waitForTimeout(300);
   expect(sent).toBe(quiet);
+});
+
+test.describe("dashboard", () => {
+  /** The middle of a donut tile's largest slice, which starts at twelve o'clock, on its ring. */
+  async function largestSlice(page: Page, tile: string): Promise<{ readonly plot: Locator; readonly at: { readonly x: number; readonly y: number } }> {
+    const plot = page.locator(`section[data-tile="${tile}"] .px-chart-plot`);
+    const box = await plot.boundingBox();
+    if (box === null) {
+      throw new Error(`no ${tile} chart`);
+    }
+    const radius = Math.min(box.width, box.height) / 2 - 4;
+    return { plot, at: { x: box.width / 2 + 6, y: box.height / 2 - radius * 0.8 } };
+  }
+
+  test("a slice clicked filters its table's grid, whose export holds the rows shown, and a second click shows them all", async ({ page }) => {
+    const errors: string[] = [];
+    page.on("pageerror", (error) => errors.push(error.message));
+    await page.goto("/?preset=dashboard");
+    const book = page.locator('section[data-table="book"]');
+    const grid = book.locator('[role="grid"]');
+    await expect(grid).toHaveAttribute("aria-rowcount", "300", { timeout: 120_000 });
+    await expect(page.locator("demo-dashboard px-chart")).toHaveCount(5);
+    await expect(page.locator("demo-dashboard .px-error")).toHaveCount(0);
+    // Small tiles keep no status bar of their own.
+    for (const bar of await page.locator("demo-dashboard px-chart px-status-bar").all()) {
+      await expect(bar).toBeHidden();
+    }
+    const { plot, at } = await largestSlice(page, "asset-class");
+    await plot.click({ position: at });
+    await expect(book.locator("px-grid-toolbar .px-chip")).toHaveText(["asset_class = Equity"]);
+    const shown = Number(await grid.getAttribute("aria-rowcount"));
+    expect(shown).toBeLessThan(300);
+    const download = page.waitForEvent("download", { timeout: 60_000 });
+    await book.getByRole("button", { name: "More export formats" }).click();
+    await book.getByRole("menuitem", { name: /CSV/ }).click();
+    const text = await import("node:fs").then(async (fs) => fs.readFileSync(await (await download).path(), "utf8"));
+    expect(text.trim().split("\n").length).toBe(shown + 1);
+    await plot.click({ position: at });
+    await expect(grid).toHaveAttribute("aria-rowcount", "300");
+    await expect(book.locator("px-grid-toolbar .px-chip")).toHaveCount(0);
+    // The blotter's chart filters the blotter.
+    const side = await largestSlice(page, "trades-by-side");
+    await side.plot.click({ position: side.at });
+    await expect(page.locator('section[data-table="blotter"] px-grid-toolbar .px-chip')).toHaveText(["side = Buy"]);
+    expect(errors).toEqual([]);
+  });
 });
