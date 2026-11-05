@@ -62,7 +62,7 @@ const CHART_STYLES = `
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 4px 12px;
+    gap: var(--_px-spacing) calc(var(--_px-spacing) * 3);
   }
   px-chart .px-chart-head:empty {
     display: none;
@@ -70,24 +70,24 @@ const CHART_STYLES = `
   px-chart .px-chart-legend {
     display: flex;
     flex-wrap: wrap;
-    gap: 2px 12px;
-    padding: 6px 8px 0;
+    gap: calc(var(--_px-spacing) * 0.5) calc(var(--_px-spacing) * 3);
+    padding: calc(var(--_px-spacing) * 1.5) calc(var(--_px-spacing) * 2) 0;
   }
   px-chart .px-chart-tools {
     display: flex;
     flex-wrap: wrap;
-    gap: 4px;
+    gap: var(--_px-spacing);
     margin-left: auto;
-    padding: 6px 8px 0;
+    padding: calc(var(--_px-spacing) * 1.5) calc(var(--_px-spacing) * 2) 0;
   }
   px-chart .px-tool {
-    padding: 1px 6px;
+    padding: 1px calc(var(--_px-spacing) * 1.5);
     border: 1px solid var(--_px-border-color);
     border-radius: 4px;
     background: transparent;
     color: var(--_px-foreground);
     font: inherit;
-    font-size: 12px;
+    font-size: var(--_px-font-size-small);
     cursor: pointer;
   }
   px-chart .px-tool[aria-pressed="true"] {
@@ -108,25 +108,25 @@ const CHART_STYLES = `
   px-chart .px-chart-note-input {
     position: absolute;
     width: 220px;
-    padding: 2px 6px;
+    padding: calc(var(--_px-spacing) * 0.5) calc(var(--_px-spacing) * 1.5);
     border: 1px solid var(--_px-selection-border);
     border-radius: 4px;
     background: var(--_px-background);
     color: var(--_px-foreground);
     font: inherit;
-    font-size: 12px;
+    font-size: var(--_px-font-size-small);
   }
   px-chart .px-legend-entry {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 2px 4px;
+    gap: calc(var(--_px-spacing) * 1.5);
+    padding: calc(var(--_px-spacing) * 0.5) var(--_px-spacing);
     border: 0;
     border-radius: 4px;
     background: transparent;
     color: var(--_px-foreground);
     font: inherit;
-    font-size: 12px;
+    font-size: var(--_px-font-size-small);
     cursor: pointer;
   }
   px-chart .px-legend-entry[aria-pressed="false"] {
@@ -189,7 +189,7 @@ const CHART_STYLES = `
   px-chart.px-chart-side .px-chart-legend {
     flex-direction: column;
     flex-wrap: nowrap;
-    padding: 6px 8px;
+    padding: calc(var(--_px-spacing) * 1.5) calc(var(--_px-spacing) * 2);
   }
   px-chart.px-chart-side .px-legend-entry {
     justify-content: flex-start;
@@ -221,24 +221,24 @@ const CHART_STYLES = `
     position: absolute;
     z-index: 2;
     max-width: 280px;
-    padding: 6px 8px;
+    padding: calc(var(--_px-spacing) * 1.5) calc(var(--_px-spacing) * 2);
     border: 1px solid var(--_px-border-color);
     border-radius: 4px;
     background: var(--_px-header-background);
     color: var(--_px-header-foreground);
-    font-size: 12px;
+    font-size: var(--_px-font-size-small);
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
     pointer-events: none;
     white-space: nowrap;
   }
   px-chart .px-tip-title {
-    margin-bottom: 2px;
+    margin-bottom: calc(var(--_px-spacing) * 0.5);
     color: var(--_px-muted);
   }
   px-chart .px-tip-row {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: calc(var(--_px-spacing) * 1.5);
     font-variant-numeric: tabular-nums;
   }
   px-chart .px-tip-key {
@@ -259,11 +259,11 @@ const CHART_STYLES = `
     left: 8px;
     right: 8px;
     bottom: 8px;
-    padding: 6px 8px;
+    padding: calc(var(--_px-spacing) * 1.5) calc(var(--_px-spacing) * 2);
     border-radius: 4px;
     background: var(--_px-danger);
     color: #fff;
-    font-size: 12px;
+    font-size: var(--_px-font-size-small);
   }
 `;
 

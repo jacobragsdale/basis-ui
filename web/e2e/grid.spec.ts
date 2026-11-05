@@ -298,6 +298,22 @@ test("a token set on a wrapper or on :root reaches the canvas once the page's cl
   await expect.poll(header).toBe("0,0,255");
 });
 
+test("a row height set on :root sizes the grid's rows, and comfortable rows add their step to it", async ({ page }) => {
+  await open(page, "preset=pivot");
+  const scroll = page.locator(".px-scroll").first();
+  const rows = await rowCount(page);
+  const contentHeight = (): Promise<number> => scroll.evaluate((element) => element.scrollHeight);
+  // The header is a row high, and the rows below it.
+  expect(await contentHeight()).toBe((rows + 1) * 24);
+  await page.addStyleTag({ content: ":root { --px-row-height: 40px; }" });
+  await page.evaluate(() => {
+    document.body.classList.add("tall");
+  });
+  await expect.poll(contentHeight).toBe((rows + 1) * 40);
+  await page.getByLabel("Row height").selectOption("comfortable");
+  await expect.poll(contentHeight).toBe((rows + 1) * 46);
+});
+
 test.describe("px-pivot", () => {
   test("removing a row group from the settings regroups the pivot", async ({ page }) => {
     await open(page, "preset=pivot");

@@ -6,7 +6,7 @@ describe("the token stylesheet", () => {
   it("declares every token on each component, as the host's value, else the theme's, else the default", () => {
     for (const property of TOKEN_PROPERTIES) {
       const name = property.slice("--px-".length);
-      expect(THEME_STYLES).toContain(`--_px-${name}: var(--px-${name}, var(--_px-theme-${name}, `);
+      expect(THEME_STYLES).toMatch(new RegExp(`--_px-${name}: (calc\\()?var\\(--px-${name}, var\\(--_px-theme-${name}, `));
     }
     expect(THEME_STYLES).toContain("@layer parallax { :is(px-grid, px-pivot, px-chart) {");
   });
@@ -17,6 +17,16 @@ describe("the token stylesheet", () => {
     expect(THEME_STYLES).toContain('@property --_px-series-1 { syntax: "<color>"; inherits: true; initial-value: #2a78d6; }');
     expect(THEME_STYLES).not.toContain("@property --_px-font-family");
     expect(THEME_STYLES).not.toContain("@property --_px-shadow");
+  });
+
+  it("adds the density's step to the row and header heights, whoever sets them, and derives sizes from other tokens", () => {
+    expect(THEME_STYLES).toContain('[data-px-density="comfortable"] { --_px-density-step: 6px; }');
+    expect(THEME_STYLES).toContain("--_px-row-height: calc(var(--px-row-height, var(--_px-theme-row-height, 24px)) + var(--_px-density-step, 0px));");
+    expect(THEME_STYLES).toContain(
+      "--_px-header-height: calc(var(--px-header-height, var(--_px-theme-header-height, var(--px-row-height, var(--_px-theme-row-height, 24px)))) + var(--_px-density-step, 0px));"
+    );
+    expect(THEME_STYLES).toContain("--_px-cell-padding: var(--px-cell-padding, var(--_px-theme-cell-padding, calc(var(--_px-spacing) * 1.5)));");
+    expect(THEME_STYLES).toContain('@property --_px-cell-padding { syntax: "<length>"; inherits: true; initial-value: 6px; }');
   });
 
   it("declares the dark defaults only where they differ from the light ones", () => {

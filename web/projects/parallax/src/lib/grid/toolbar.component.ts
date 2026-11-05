@@ -38,8 +38,8 @@ const TOOLBAR_STYLES = `
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 6px;
-    padding: 6px 8px;
+    gap: calc(var(--_px-spacing) * 1.5);
+    padding: calc(var(--_px-spacing) * 1.5) calc(var(--_px-spacing) * 2);
     border-bottom: 1px solid var(--_px-border-color);
     background: var(--_px-background);
     color: var(--_px-foreground);
@@ -59,11 +59,11 @@ const TOOLBAR_STYLES = `
   .px-toolbar .px-search {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: calc(var(--_px-spacing) * 1.5);
     flex: 0 1 240px;
     min-width: 140px;
-    height: 28px;
-    padding: 0 6px 0 8px;
+    height: var(--_px-control-height);
+    padding: 0 calc(var(--_px-spacing) * 1.5) 0 calc(var(--_px-spacing) * 2);
     border: 1px solid var(--_px-control-border);
     border-radius: var(--_px-radius);
     background: var(--_px-control-background);
@@ -88,9 +88,9 @@ const TOOLBAR_STYLES = `
   .px-toolbar button {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    height: 28px;
-    padding: 0 10px;
+    gap: calc(var(--_px-spacing) * 1.5);
+    height: var(--_px-control-height);
+    padding: 0 calc(var(--_px-spacing) * 2.5);
     border: 1px solid var(--_px-control-border);
     border-radius: var(--_px-radius);
     background: var(--_px-control-background);
@@ -123,21 +123,21 @@ const TOOLBAR_STYLES = `
   }
   .px-toolbar .px-split > button:last-child {
     margin-left: -1px;
-    padding: 0 6px;
+    padding: 0 calc(var(--_px-spacing) * 1.5);
     border-top-left-radius: 0;
     border-bottom-left-radius: 0;
   }
   .px-toolbar .px-chip {
     display: inline-flex;
     align-items: center;
-    gap: 2px;
+    gap: calc(var(--_px-spacing) * 0.5);
     max-width: 320px;
     height: 24px;
-    padding: 0 2px 0 10px;
+    padding: 0 calc(var(--_px-spacing) * 0.5) 0 calc(var(--_px-spacing) * 2.5);
     border-radius: 12px;
     background: var(--_px-chip-background);
     color: var(--_px-control-foreground);
-    font-size: 12px;
+    font-size: var(--_px-font-size-small);
   }
   .px-toolbar .px-chip > span {
     overflow: hidden;
@@ -150,7 +150,7 @@ const TOOLBAR_STYLES = `
   }
   .px-toolbar .px-link {
     height: 24px;
-    padding: 0 6px;
+    padding: 0 calc(var(--_px-spacing) * 1.5);
     border: 0;
     background: transparent;
     color: var(--_px-accent);

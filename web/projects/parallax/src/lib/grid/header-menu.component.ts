@@ -38,14 +38,14 @@ const ORDER: Readonly<Record<FieldKind, readonly [string, string]>> = {
     }
     .px-header-menu hr {
       width: 100%;
-      margin: 4px 0;
+      margin: var(--_px-spacing) 0;
       border: 0;
       border-top: 1px solid var(--_px-border-color);
     }
     .px-header-menu .px-menu-heading {
-      margin: 4px 10px 0;
+      margin: var(--_px-spacing) calc(var(--_px-spacing) * 2.5) 0;
       color: var(--_px-muted);
-      font-size: 11px;
+      font-size: calc(var(--_px-font-size-small) - 1px);
       font-weight: 600;
       letter-spacing: 0.04em;
       text-transform: uppercase;
@@ -53,15 +53,15 @@ const ORDER: Readonly<Record<FieldKind, readonly [string, string]>> = {
     .px-header-menu .px-menu-fields {
       display: grid;
       grid-template-columns: auto 1fr;
-      gap: 6px 8px;
+      gap: calc(var(--_px-spacing) * 1.5) calc(var(--_px-spacing) * 2);
       align-items: center;
-      padding: 4px 10px 6px;
+      padding: var(--_px-spacing) calc(var(--_px-spacing) * 2.5) calc(var(--_px-spacing) * 1.5);
     }
     .px-header-menu .px-menu-fields input,
     .px-header-menu .px-menu-fields select {
-      height: 28px;
+      height: var(--_px-control-height);
       min-width: 0;
-      padding: 0 6px;
+      padding: 0 calc(var(--_px-spacing) * 1.5);
       border: 1px solid var(--_px-control-border);
       border-radius: calc(var(--_px-radius) - 2px);
       background: var(--_px-control-background);

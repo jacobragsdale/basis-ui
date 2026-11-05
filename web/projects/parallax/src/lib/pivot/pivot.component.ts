@@ -47,7 +47,7 @@ const PIVOT_STYLES = `
   }
   px-pivot .px-pivot-toggle {
     align-self: flex-end;
-    margin: 4px;
+    margin: var(--_px-spacing);
     border: 0;
     background: transparent;
     color: inherit;
@@ -57,12 +57,12 @@ const PIVOT_STYLES = `
   px-pivot px-pivot-panel {
     display: block;
     overflow: auto;
-    padding: 0 10px 10px;
+    padding: 0 calc(var(--_px-spacing) * 2.5) calc(var(--_px-spacing) * 2.5);
   }
   px-pivot px-pivot-panel h3 {
-    margin: 12px 0 6px;
+    margin: calc(var(--_px-spacing) * 3) 0 calc(var(--_px-spacing) * 1.5);
     color: var(--_px-muted);
-    font-size: 11px;
+    font-size: calc(var(--_px-font-size-small) - 1px);
     font-weight: 600;
     letter-spacing: 0.04em;
     text-transform: uppercase;
@@ -71,8 +71,8 @@ const PIVOT_STYLES = `
     color: var(--_px-muted);
   }
   px-pivot .px-pivot-hint {
-    margin: 8px 0 0;
-    font-size: 12px;
+    margin: calc(var(--_px-spacing) * 2) 0 0;
+    font-size: var(--_px-font-size-small);
   }
   px-pivot button,
   px-pivot select,
@@ -83,7 +83,7 @@ const PIVOT_STYLES = `
   px-pivot select,
   px-pivot input:not([type="checkbox"]) {
     max-width: 100%;
-    padding: 2px 4px;
+    padding: calc(var(--_px-spacing) * 0.5) var(--_px-spacing);
     border: 1px solid var(--_px-control-border);
     border-radius: calc(var(--_px-radius) - 2px);
     background: var(--_px-control-background);
@@ -96,17 +96,17 @@ const PIVOT_STYLES = `
   px-pivot .px-field-list {
     display: flex;
     flex-direction: column;
-    gap: 4px;
-    margin-top: 8px;
+    gap: var(--_px-spacing);
+    margin-top: calc(var(--_px-spacing) * 2);
   }
   px-pivot .px-field-search {
-    height: 28px;
+    height: var(--_px-control-height);
   }
   px-pivot .px-field-list ul {
     max-height: 220px;
     overflow: auto;
     margin: 0;
-    padding: 2px 0;
+    padding: calc(var(--_px-spacing) * 0.5) 0;
     border: 1px solid var(--_px-border-color);
     border-radius: var(--_px-radius);
     background: var(--_px-background);
@@ -115,8 +115,8 @@ const PIVOT_STYLES = `
   px-pivot .px-field {
     display: flex;
     align-items: center;
-    gap: 4px;
-    padding: 1px 4px 1px 6px;
+    gap: var(--_px-spacing);
+    padding: 1px var(--_px-spacing) 1px calc(var(--_px-spacing) * 1.5);
     cursor: grab;
   }
   px-pivot .px-field:hover {
@@ -126,7 +126,7 @@ const PIVOT_STYLES = `
     display: flex;
     flex: 1;
     align-items: center;
-    gap: 6px;
+    gap: calc(var(--_px-spacing) * 1.5);
     min-width: 0;
   }
   px-pivot .px-field label span,
@@ -138,18 +138,18 @@ const PIVOT_STYLES = `
   }
   px-pivot .px-field-areas {
     color: var(--_px-muted);
-    font-size: 11px;
+    font-size: calc(var(--_px-font-size-small) - 1px);
   }
   px-pivot .px-well h3 {
-    margin: 10px 0 4px;
+    margin: calc(var(--_px-spacing) * 2.5) 0 var(--_px-spacing);
   }
   px-pivot .px-well-chips {
     display: flex;
     flex-direction: column;
-    gap: 3px;
+    gap: calc(var(--_px-spacing) * 0.75);
     min-height: 30px;
     margin: 0;
-    padding: 3px;
+    padding: calc(var(--_px-spacing) * 0.75);
     border: 1px dashed var(--_px-border-color);
     border-radius: var(--_px-radius);
     list-style: none;
@@ -159,16 +159,16 @@ const PIVOT_STYLES = `
     background: var(--_px-chip-background);
   }
   px-pivot .px-well-empty {
-    padding: 4px 6px;
+    padding: var(--_px-spacing) calc(var(--_px-spacing) * 1.5);
     color: var(--_px-muted);
-    font-size: 12px;
+    font-size: var(--_px-font-size-small);
   }
   px-pivot .px-chip {
     display: flex;
     align-items: center;
-    gap: 2px;
+    gap: calc(var(--_px-spacing) * 0.5);
     min-height: 26px;
-    padding: 0 2px 0 4px;
+    padding: 0 calc(var(--_px-spacing) * 0.5) 0 var(--_px-spacing);
     border: 1px solid var(--_px-control-border);
     border-radius: calc(var(--_px-radius) - 2px);
     background: var(--_px-control-background);
@@ -190,7 +190,7 @@ const PIVOT_STYLES = `
     box-shadow: inset 0 -2px 0 var(--_px-accent);
   }
   px-pivot .px-chip-text {
-    padding: 0 4px;
+    padding: 0 var(--_px-spacing);
     border: 0;
     background: transparent;
     text-align: left;
@@ -214,8 +214,8 @@ const PIVOT_STYLES = `
   px-pivot .px-option {
     display: flex;
     align-items: center;
-    gap: 6px;
-    margin-bottom: 6px;
+    gap: calc(var(--_px-spacing) * 1.5);
+    margin-bottom: calc(var(--_px-spacing) * 1.5);
   }
   px-pivot .px-option input[type="number"] {
     width: 56px;
@@ -239,8 +239,8 @@ const PIVOT_STYLES = `
   px-pivot .px-drill header {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 4px 8px;
+    gap: calc(var(--_px-spacing) * 2);
+    padding: var(--_px-spacing) calc(var(--_px-spacing) * 2);
     background: var(--_px-header-background);
     color: var(--_px-header-foreground);
   }

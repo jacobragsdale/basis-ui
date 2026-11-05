@@ -55,13 +55,13 @@ const STATUS_STYLES = `
     position: relative;
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: calc(var(--_px-spacing) * 3);
     min-height: 24px;
-    padding: 0 8px;
+    padding: 0 calc(var(--_px-spacing) * 2);
     border-top: 1px solid var(--_px-border-color);
     background: var(--_px-status-background);
     color: var(--_px-status-foreground);
-    font-size: 12px;
+    font-size: var(--_px-font-size-small);
     white-space: nowrap;
   }
   px-status-bar .px-status-message {
@@ -70,12 +70,12 @@ const STATUS_STYLES = `
     text-overflow: ellipsis;
   }
   px-status-bar .px-badge {
-    padding: 1px 6px;
+    padding: 1px calc(var(--_px-spacing) * 1.5);
     border-radius: 8px;
     color: #fff;
   }
   px-status-bar .px-badge-neutral {
-    padding: 0 5px;
+    padding: 0 calc(var(--_px-spacing) * 1.25);
     border: 1px solid var(--_px-border-color);
     color: inherit;
   }
@@ -103,9 +103,9 @@ const STATUS_STYLES = `
     z-index: 3;
     display: grid;
     grid-template-columns: auto auto;
-    gap: 4px 12px;
+    gap: var(--_px-spacing) calc(var(--_px-spacing) * 3);
     margin: 0;
-    padding: 10px 12px;
+    padding: calc(var(--_px-spacing) * 2.5) calc(var(--_px-spacing) * 3);
     border: 1px solid var(--_px-border-color);
     border-radius: 4px;
     background: var(--_px-background);

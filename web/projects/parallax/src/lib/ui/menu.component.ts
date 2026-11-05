@@ -17,8 +17,8 @@ import { ChangeDetectionStrategy, Component, ElementRef, ViewEncapsulation, inje
     .px-menu [role="menuitemcheckbox"] {
       display: flex;
       align-items: center;
-      gap: 8px;
-      padding: 6px 10px;
+      gap: calc(var(--_px-spacing) * 2);
+      padding: calc(var(--_px-spacing) * 1.5) calc(var(--_px-spacing) * 2.5);
       border: 0;
       border-radius: calc(var(--_px-radius) - 2px);
       background: transparent;
@@ -42,11 +42,11 @@ import { ChangeDetectionStrategy, Component, ElementRef, ViewEncapsulation, inje
     .px-menu .px-menu-note {
       margin-left: auto;
       color: var(--_px-muted);
-      font-size: 12px;
+      font-size: var(--_px-font-size-small);
     }
     .px-menu hr {
       width: 100%;
-      margin: 4px 0;
+      margin: var(--_px-spacing) 0;
       border: 0;
       border-top: 1px solid var(--_px-border-color);
     }

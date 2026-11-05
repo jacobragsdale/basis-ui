@@ -80,6 +80,16 @@ describe("rowGeometry", () => {
     expect(rows.scrollTopFor(10, 600)).toBe(240);
   });
 
+  it("adds a header that never scrolls to the scrolled height, and maps rows past it", () => {
+    const rows = rowGeometry(1000, 24, 30);
+    expect(rows.spacerPx).toBe(1000 * 24 + 30);
+    expect(rows.firstRow(240, 600)).toBe(10);
+    const many = rowGeometry(20_000_000, 24, 30);
+    for (const row of [0, 12_345, 19_999_970]) {
+      expect(many.firstRow(many.scrollTopFor(row, 600), 600)).toBe(row);
+    }
+  });
+
   it("scales when there are too many rows to scroll natively", () => {
     const rows = rowGeometry(20_000_000, 24);
     expect(rows.spacerPx).toBeLessThan(20_000_000 * 24);

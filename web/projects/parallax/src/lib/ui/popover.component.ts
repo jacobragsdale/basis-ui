@@ -42,7 +42,7 @@ export function placement(
       max-width: min(420px, calc(100vw - 8px));
       max-height: calc(100vh - 8px);
       overflow: auto;
-      padding: 4px;
+      padding: var(--_px-spacing);
       border: 1px solid var(--_px-control-border);
       border-radius: var(--_px-radius);
       background: var(--_px-control-background);

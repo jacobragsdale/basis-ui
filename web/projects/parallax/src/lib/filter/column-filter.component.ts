@@ -81,13 +81,13 @@ function inputText(value: LayoutScalar | undefined): string {
     .px-column-filter {
       display: flex;
       flex-direction: column;
-      gap: 6px;
-      padding: 4px 6px;
+      gap: calc(var(--_px-spacing) * 1.5);
+      padding: var(--_px-spacing) calc(var(--_px-spacing) * 1.5);
     }
     .px-column-filter select,
     .px-column-filter input:not([type="checkbox"]) {
-      height: 28px;
-      padding: 0 6px;
+      height: var(--_px-control-height);
+      padding: 0 calc(var(--_px-spacing) * 1.5);
       border: 1px solid var(--_px-control-border);
       border-radius: calc(var(--_px-radius) - 2px);
       background: var(--_px-control-background);
@@ -96,7 +96,7 @@ function inputText(value: LayoutScalar | undefined): string {
     }
     .px-column-filter .px-row {
       display: flex;
-      gap: 6px;
+      gap: calc(var(--_px-spacing) * 1.5);
     }
     .px-column-filter .px-row > input {
       flex: 1;
@@ -105,20 +105,20 @@ function inputText(value: LayoutScalar | undefined): string {
     .px-column-filter .px-muted {
       margin: 0;
       color: var(--_px-muted);
-      font-size: 12px;
+      font-size: var(--_px-font-size-small);
     }
     .px-column-filter px-value-picker ul {
       max-height: 220px;
       overflow: auto;
-      margin: 4px 0 0;
+      margin: var(--_px-spacing) 0 0;
       padding: 0;
       list-style: none;
     }
     .px-column-filter px-value-picker label {
       display: flex;
-      gap: 6px;
+      gap: calc(var(--_px-spacing) * 1.5);
       align-items: center;
-      padding: 2px 0;
+      padding: calc(var(--_px-spacing) * 0.5) 0;
     }
     .px-column-filter px-value-picker label > span:first-of-type {
       flex: 1;

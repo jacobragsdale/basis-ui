@@ -132,13 +132,13 @@ export interface RowGeometry {
   readonly scrollTopFor: (row: number, viewportPx: number) => number;
 }
 
-/** Computes scroll geometry for `rows` rows of `rowPx` pixels. */
-export function rowGeometry(rows: number, rowPx: number): RowGeometry {
-  const natural = rows * rowPx;
+/** Computes scroll geometry for `rows` rows of `rowPx` pixels, under a header `headerPx` tall that never scrolls. */
+export function rowGeometry(rows: number, rowPx: number, headerPx = 0): RowGeometry {
+  const natural = rows * rowPx + headerPx;
   if (natural <= MAX_SCROLL_PX) {
     return { spacerPx: natural, firstRow: (top) => Math.floor(top / rowPx), offset: (top) => -(top % rowPx), scrollTopFor: (row) => row * rowPx };
   }
-  const span = (viewport: number): number => Math.max(0, rows - viewport / rowPx);
+  const span = (viewport: number): number => Math.max(0, rows - (viewport - headerPx) / rowPx);
   return {
     spacerPx: MAX_SCROLL_PX,
     firstRow: (top, viewport) => {

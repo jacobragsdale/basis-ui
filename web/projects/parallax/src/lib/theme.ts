@@ -19,25 +19,42 @@ export type Scheme = "light" | "dark" | "auto";
 export type ResolvedScheme = Exclude<Scheme, "auto">;
 
 /** How a token's value is checked and registered. */
-type Syntax = "color" | "length" | "family" | "shadow";
+type Syntax = "color" | "length" | "family" | "weight" | "shadow";
 
 /** The `@property` syntax each kind registers with, if any, and the CSS property a host's value is checked against. */
 const SYNTAXES: Readonly<Record<Syntax, { readonly register: string | null; readonly check: string }>> = {
   color: { register: "<color>", check: "color" },
   length: { register: "<length>", check: "width" },
   family: { register: null, check: "font-family" },
+  weight: { register: null, check: "font-weight" },
   shadow: { register: null, check: "box-shadow" }
 };
 
-/** One token: its property after `--px-`, its kind, and its default in each scheme. */
+/**
+ * One token: its property after `--px-`, its kind, and its default in each scheme. A default may be an expression of
+ * other tokens, such as a `calc()`; `initial` is then the value it registers with, which must be a plain value.
+ * `stepped` lengths grow by the density's step, so a comfortable grid's rows are taller in any theme.
+ */
 interface TokenSpec {
   readonly property: string;
   readonly syntax: Syntax;
   readonly light: string;
   readonly dark: string;
+  readonly initial?: string;
+  readonly stepped?: boolean;
 }
 
 const FONT_FAMILY = "system-ui, -apple-system, 'Segoe UI', sans-serif";
+
+/** The value a host or a theme gives the token `property`, else `otherwise`: what a default derived from it reads. */
+function given(property: string, otherwise: string): string {
+  return `var(--px-${property}, var(--_px-theme-${property}, ${otherwise}))`;
+}
+
+/** How many of the spacing unit, as a length. */
+function spaced(units: number): string {
+  return `calc(var(--_px-spacing) * ${String(units)})`;
+}
 
 /** Every token but the charts' colours, by its name in a theme's parameters. */
 const SPECS = {
@@ -72,7 +89,34 @@ const SPECS = {
   shadow: { property: "shadow", syntax: "shadow", light: "0 6px 18px rgba(16, 24, 40, 0.16)", dark: "0 6px 18px rgba(0, 0, 0, 0.5)" },
   radius: { property: "radius", syntax: "length", light: "6px", dark: "6px" },
   /** Behind a filter chip. */
-  chipBackground: { property: "chip-background", syntax: "color", light: "#e8eefb", dark: "#22324d" }
+  chipBackground: { property: "chip-background", syntax: "color", light: "#e8eefb", dark: "#22324d" },
+  /** The unit every gap, margin and padding is a multiple of. */
+  spacing: { property: "spacing", syntax: "length", light: "4px", dark: "4px" },
+  /** A grid row, before the density's step. */
+  rowHeight: { property: "row-height", syntax: "length", light: "24px", dark: "24px", stepped: true },
+  /** The grid's header, before the density's step. */
+  headerHeight: { property: "header-height", syntax: "length", light: given("row-height", "24px"), dark: given("row-height", "24px"), initial: "24px", stepped: true },
+  /** Between a cell's edge and its text. */
+  cellPadding: { property: "cell-padding", syntax: "length", light: spaced(1.5), dark: spaced(1.5), initial: "6px" },
+  /** How far each level of a group column's tree is indented. */
+  indent: { property: "indent", syntax: "length", light: "14px", dark: "14px" },
+  /** Icons in toolbars and menus; the grid's header draws them at seven eighths of this. */
+  iconSize: { property: "icon-size", syntax: "length", light: "16px", dark: "16px" },
+  /** Buttons, inputs and selects. */
+  controlHeight: { property: "control-height", syntax: "length", light: "28px", dark: "28px" },
+  /** Status bars, chips, legends and notes. */
+  fontSizeSmall: { property: "font-size-small", syntax: "length", light: "calc(var(--_px-font-size) - 1px)", dark: "calc(var(--_px-font-size) - 1px)", initial: "12px" },
+  headerFontWeight: { property: "header-font-weight", syntax: "weight", light: "400", dark: "400" },
+  /** The totals row's. */
+  totalFontWeight: { property: "total-font-weight", syntax: "weight", light: "600", dark: "600" },
+  /** Between the grid's columns. */
+  columnBorder: { property: "column-border", syntax: "color", light: "var(--_px-border-color)", dark: "var(--_px-border-color)", initial: "#e3e6eb" },
+  /** Between the grid's rows; transparent draws none. */
+  rowBorder: { property: "row-border", syntax: "color", light: "transparent", dark: "transparent" },
+  /** Under the grid's header. */
+  headerBorder: { property: "header-border", syntax: "color", light: "var(--_px-border-color)", dark: "var(--_px-border-color)", initial: "#e3e6eb" },
+  /** Over the grid's totals row. */
+  totalBorder: { property: "total-border", syntax: "color", light: "var(--_px-border-color)", dark: "var(--_px-border-color)", initial: "#e3e6eb" }
 } as const satisfies Readonly<Record<string, TokenSpec>>;
 
 /** The name of a token in a theme's parameters, such as `accent` or `fontSize`. */
@@ -148,13 +192,8 @@ export interface ParallaxTheme {
   readonly dark: Readonly<Record<string, string>>;
 }
 
-/** A token or chart colour as the stylesheet declares it: its property after `--px-`, kind and defaults. */
-interface Entry {
-  readonly property: string;
-  readonly syntax: Syntax;
-  readonly light: string;
-  readonly dark: string;
-}
+/** A token or chart colour as the stylesheet declares it. */
+type Entry = TokenSpec;
 
 const TOKEN_NAMES = Object.keys(SPECS).filter((key): key is TokenName => key in SPECS);
 
@@ -177,11 +216,15 @@ function chartEntries(): readonly Entry[] {
 /** Every custom property the stylesheet declares. */
 const ENTRIES: readonly Entry[] = [...TOKEN_NAMES.map((name) => SPECS[name]), ...chartEntries()];
 
+/** How much taller a comfortable grid's rows and header are than a compact one's, in pixels. */
+export const DENSITY_STEP = 6;
+
 /** The components the tokens are declared on. */
 const HOSTS = ":is(px-grid, px-pivot, px-chart)";
 
 function resolved(entry: Entry, value: string): string {
-  return `--_px-${entry.property}: var(--px-${entry.property}, var(--_px-theme-${entry.property}, ${value}));`;
+  const own = given(entry.property, value);
+  return `--_px-${entry.property}: ${entry.stepped === true ? `calc(${own} + var(--_px-density-step, 0px))` : own};`;
 }
 
 /**
@@ -191,11 +234,12 @@ function resolved(entry: Entry, value: string): string {
 function baseStyles(): string {
   const registered = ENTRIES.flatMap((entry) => {
     const syntax = SYNTAXES[entry.syntax].register;
-    return syntax === null ? [] : [`@property --_px-${entry.property} { syntax: "${syntax}"; inherits: true; initial-value: ${entry.light}; }`];
+    return syntax === null ? [] : [`@property --_px-${entry.property} { syntax: "${syntax}"; inherits: true; initial-value: ${entry.initial ?? entry.light}; }`];
   });
   const light = ENTRIES.map((entry) => resolved(entry, entry.light));
   const dark = ENTRIES.filter((entry) => entry.dark !== entry.light).map((entry) => resolved(entry, entry.dark));
-  return [...registered, `@layer parallax { ${HOSTS} { ${light.join(" ")} } ${HOSTS}[data-px-scheme="dark"] { ${dark.join(" ")} } }`].join("\n");
+  const comfortable = `${HOSTS}[data-px-density="comfortable"] { --_px-density-step: ${String(DENSITY_STEP)}px; }`;
+  return [...registered, `@layer parallax { ${HOSTS} { ${light.join(" ")} } ${HOSTS}[data-px-scheme="dark"] { ${dark.join(" ")} } ${comfortable} }`].join("\n");
 }
 
 /** The stylesheet that registers and declares every token. */
@@ -297,9 +341,17 @@ export function installTheme(document: Document, theme: ParallaxTheme): void {
   document.head.append(style);
 }
 
-/** The defaults of a scheme, as `readTheme` returns them. */
+/**
+ * A token's default as a plain value, for drawing before the stylesheet applies: a default derived from other tokens
+ * gives the value it registers with, which is the light scheme's.
+ */
+function plain(entry: Entry, scheme: ResolvedScheme): string {
+  return entry.initial ?? entry[scheme];
+}
+
+/** The defaults of a scheme as plain values, as `readTheme` returns them before the stylesheet applies. */
 export function defaultTheme(scheme: ResolvedScheme): Theme {
-  return withFont(Object.fromEntries(TOKEN_NAMES.map((name) => [name, SPECS[name][scheme]])));
+  return withFont(Object.fromEntries(TOKEN_NAMES.map((name) => [name, plain(SPECS[name], scheme)])));
 }
 
 function withFont(values: Readonly<Record<string, string>>): Theme {
@@ -331,7 +383,21 @@ function withFont(values: Readonly<Record<string, string>>): Theme {
     focus: value("focus"),
     shadow: value("shadow"),
     radius: value("radius"),
-    chipBackground: value("chipBackground")
+    chipBackground: value("chipBackground"),
+    spacing: value("spacing"),
+    rowHeight: value("rowHeight"),
+    headerHeight: value("headerHeight"),
+    cellPadding: value("cellPadding"),
+    indent: value("indent"),
+    iconSize: value("iconSize"),
+    controlHeight: value("controlHeight"),
+    fontSizeSmall: value("fontSizeSmall"),
+    headerFontWeight: value("headerFontWeight"),
+    totalFontWeight: value("totalFontWeight"),
+    columnBorder: value("columnBorder"),
+    rowBorder: value("rowBorder"),
+    headerBorder: value("headerBorder"),
+    totalBorder: value("totalBorder")
   };
   return { ...tokens, font: `${tokens.fontSize} ${tokens.fontFamily}` };
 }
@@ -366,7 +432,7 @@ export function readTheme(element: Element): Theme {
     const entry = SPECS[name];
     check(style, entry);
     const value = style.getPropertyValue(`--_px-${entry.property}`).trim();
-    values[name] = value === "" ? entry[scheme] : value;
+    values[name] = value === "" ? plain(entry, scheme) : value;
   }
   return withFont(values);
 }

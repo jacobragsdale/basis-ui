@@ -44,7 +44,7 @@ import type { FrameColumn, FrameData, RowKind, TreeRows } from "../frame";
 import { TREE_WIDTH_KEY, checkLayout, measureWidthKey } from "../layout";
 import type { Layout, LayoutInput, LayoutScalar } from "../layout";
 import { ParallaxClient } from "../client";
-import { readTheme, sameTheme } from "../theme";
+import { DENSITY_STEP, defaultTheme, readTheme, sameTheme } from "../theme";
 import type { ParallaxTheme, Scheme, Theme } from "../theme";
 import { themed } from "../theming";
 import { DEFAULT_TREE_WIDTH, DEFAULT_WIDTH, MIN_WIDTH, columnAt, flatGeometry, groupedGeometry, rowGeometry, screenX, scrolledColumns } from "./geometry";
@@ -90,14 +90,48 @@ export interface DrillRequest {
 /** The message a refused export posts from its hidden frame. */
 const exportRefusal = z.strictObject({ source: z.literal("parallax-export"), token: z.string(), error: z.string() });
 
-/** Row heights by density. */
-const ROW_HEIGHTS = { compact: 24, comfortable: 30 } as const;
+/** How tightly rows are packed: a comfortable grid's rows and header are taller by `DENSITY_STEP` pixels. */
+export type Density = "compact" | "comfortable";
 
-/** How tightly rows are packed. */
-export type Density = keyof typeof ROW_HEIGHTS;
+/** The sizes a grid draws with, in CSS pixels, from its tokens. */
+interface Metrics {
+  readonly rowPx: number;
+  readonly headerPx: number;
+  /** Between a cell's edge and its text. */
+  readonly padding: number;
+  /** Each level of the group column's tree. */
+  readonly indent: number;
+  /** The header's icons: the funnel, the pin and a measure's chevron. */
+  readonly iconPx: number;
+  /** The room a header keeps at its right for the funnel that opens the column's menu. */
+  readonly funnelPx: number;
+}
 
-const PADDING = 6;
-const INDENT = 14;
+/** A length token in pixels, or `otherwise` if it is not one. */
+function pixels(value: string, otherwise: number): number {
+  const parsed = Number.parseFloat(value);
+  return Number.isFinite(parsed) ? parsed : otherwise;
+}
+
+/** The sizes `tokens` give; `step` is added to the heights, for a grid drawn before its tokens are read. */
+function metricsOf(tokens: Theme, step = 0): Metrics {
+  const iconPx = pixels(tokens.iconSize, 16) * 0.875;
+  const padding = pixels(tokens.cellPadding, 6);
+  return {
+    rowPx: Math.max(1, Math.round(pixels(tokens.rowHeight, 24) + step)),
+    headerPx: Math.max(1, Math.round(pixels(tokens.headerHeight, 24) + step)),
+    padding,
+    indent: pixels(tokens.indent, 14),
+    iconPx,
+    funnelPx: iconPx + padding
+  };
+}
+
+/** Whether a colour draws nothing, so the line it would draw can be skipped. */
+function invisible(color: string): boolean {
+  return color === "transparent" || color === "rgba(0, 0, 0, 0)";
+}
+
 /** The width of the expand marker, which a click toggles. */
 const MARKER_WIDTH = 14;
 /** How close to a header edge, in pixels, the pointer starts a resize. */
@@ -107,8 +141,6 @@ const TOOLTIP_DELAY_MS = 350;
 const DRAG_THRESHOLD = 6;
 /** The widest a column is fitted to its values; wider ones are cut, and can be widened by hand. */
 const MAX_FITTED = 320;
-/** The room a header keeps at its right for the funnel that opens the column's menu. */
-const FUNNEL_WIDTH = 20;
 /** The icons a header draws, as SVG path data on a 16-unit square. */
 const FUNNEL_PATH = "M2.5 3h11L9.25 8.25v4.75l-2.5-1.25V8.25z";
 const PIN_PATH = "M5.5 2.5h5M6.5 2.5v4l-2 2.5h7l-2-2.5v-4M8 9v5";
@@ -150,6 +182,9 @@ interface Pass {
   readonly context: CanvasRenderingContext2D;
   readonly theme: Theme;
   readonly rowPx: number;
+  readonly headerPx: number;
+  /** The line under each row, or null for none. */
+  readonly rowRule: string | null;
   readonly full: boolean;
   readonly geometry: ColumnGeometry;
   readonly scrollLeft: number;
@@ -256,7 +291,7 @@ const GRID_STYLES = `
   px-grid .px-error {
     position: absolute;
     inset: auto 0 0 0;
-    padding: 6px 10px;
+    padding: calc(var(--_px-spacing) * 1.5) calc(var(--_px-spacing) * 2.5);
     background: var(--_px-danger);
     color: #fff;
   }
@@ -276,7 +311,7 @@ const GRID_STYLES = `
     position: absolute;
     z-index: 2;
     max-width: 480px;
-    padding: 4px 8px;
+    padding: var(--_px-spacing) calc(var(--_px-spacing) * 2);
     border: 1px solid var(--_px-border-color);
     border-radius: 3px;
     background: var(--_px-header-background);
@@ -294,7 +329,7 @@ const GRID_STYLES = `
   changeDetection: ChangeDetectionStrategy.OnPush,
   encapsulation: ViewEncapsulation.None,
   imports: [ColumnMenuComponent, GridToolbarComponent, GroupPanelComponent, PopoverComponent, StatusBarComponent],
-  host: { "[attr.data-px-theme]": "theming.theme().name", "[attr.data-px-scheme]": "theming.resolved()", "[class.px-auto-height]": "height() === 'auto'" },
+  host: { "[attr.data-px-theme]": "theming.theme().name", "[attr.data-px-scheme]": "theming.resolved()", "[attr.data-px-density]": "density()", "[class.px-auto-height]": "height() === 'auto'" },
   template: `
     @if (toolbarView(); as bar) {
       <px-grid-toolbar #toolbar [layout]="bar.layout" [fields]="fields()" [parts]="bar.parts" (changed)="layout.set($event)" (exported)="export($event)" />
@@ -393,7 +428,7 @@ export class GridComponent {
     }
     // Room for a horizontal scrollbar, so it never covers the last row.
     const scrollbar = this.geometry().contentWidth > this.widthPx() ? 14 : 2;
-    return Math.min(this.maxHeight(), (this.totalRows() + 1 + this.footer()) * this.rowHeight() + scrollbar);
+    return Math.min(this.maxHeight(), (this.totalRows() + this.footer()) * this.rowHeight() + this.headerHeight() + scrollbar);
   });
   protected readonly toolbarParts = computed((): ToolbarParts | null => {
     const setting = this.toolbar();
@@ -470,11 +505,17 @@ export class GridComponent {
   protected readonly tooltip = signal<{ readonly x: number; readonly y: number; readonly text: string } | null>(null);
   protected readonly message = signal("");
 
-  protected readonly rowHeight = computed(() => ROW_HEIGHTS[this.density()]);
+  /** The sizes the tokens give, or the defaults until they are read. */
+  protected readonly metrics = computed(() => {
+    const tokens = this.palette();
+    return tokens === null ? metricsOf(defaultTheme("light"), this.density() === "comfortable" ? DENSITY_STEP : 0) : metricsOf(tokens);
+  });
+  protected readonly rowHeight = computed(() => this.metrics().rowPx);
+  protected readonly headerHeight = computed(() => this.metrics().headerPx);
   protected readonly totalRows = computed(() => this.source.frame()?.totalRows ?? 0);
   /** A footer row for the totals, when the view has them. */
   protected readonly footer = computed(() => ((this.source.frame()?.totals ?? null) === null ? 0 : 1));
-  private readonly rows = computed(() => rowGeometry(this.totalRows() + 1 + this.footer(), this.rowHeight()));
+  private readonly rows = computed(() => rowGeometry(this.totalRows() + this.footer(), this.rowHeight(), this.headerHeight()));
   /** The totals row as text, for screen readers, which cannot read the canvas: each total with its column's title. */
   protected readonly totalsText = computed(() => {
     const totals = this.source.frame()?.totals ?? null;
@@ -519,7 +560,12 @@ export class GridComponent {
   private tokens: Theme | null = null;
   /** The tokens in effect, read again whenever the theme may have changed; equal tokens leave it as it is. */
   private readonly palette = signal<Theme | null>(null, { equal: (a, b) => a === b || (a !== null && b !== null && sameTheme(a, b)) });
-  private readonly textWidths = new Map<string, number>();
+  /** Measured text widths, by font and then text. */
+  private readonly textWidths = new Map<string, Map<string, number>>();
+  /** The font the drawing context was last given, which `measure` measures in. */
+  private font = "";
+  /** The padding of the pass being drawn. */
+  private padding = 6;
   private pressed: { readonly hit: Hit; readonly x: number; readonly startWidth: number; readonly key: string } | null = null;
   private selecting = false;
   /** The selection as last drawn, to find the rows a new selection changes. */
@@ -570,7 +616,7 @@ export class GridComponent {
         if (rows === null || rows >= before) {
           return;
         }
-        const first = rowGeometry(before + 1, this.rowHeight()).firstRow(this.scrollTop(), this.viewportPx());
+        const first = rowGeometry(before, this.rowHeight(), this.headerHeight()).firstRow(this.scrollTop(), this.viewportPx());
         if (rows <= first) {
           this.scroll().nativeElement.scrollTop = 0;
           this.scrollTop.set(0);
@@ -582,6 +628,7 @@ export class GridComponent {
       this.theming.theme();
       this.theming.resolved();
       this.theming.changes();
+      this.density();
       const tokens = readTheme(this.canvas().nativeElement);
       untracked(() => {
         const font = this.palette()?.font;
@@ -713,7 +760,7 @@ export class GridComponent {
   private reveal(cell: CellRef): void {
     const element = this.scroll().nativeElement;
     const rowPx = this.rowHeight();
-    const visibleRows = Math.max(1, Math.floor(element.clientHeight / rowPx) - 1);
+    const visibleRows = Math.max(1, Math.floor((element.clientHeight - this.headerHeight()) / rowPx));
     const first = this.firstVisibleRow();
     if (cell.row < first) {
       element.scrollTop = this.rows().scrollTopFor(cell.row, element.clientHeight);
@@ -734,12 +781,12 @@ export class GridComponent {
   // ---- Pointer -----------------------------------------------------------
 
   private hit(x: number, y: number): Hit {
-    const rowPx = this.rowHeight();
+    const { rowPx, headerPx } = this.metrics();
     const geometry = this.geometry();
-    const header = y < rowPx;
+    const header = y < headerPx;
     // The totals footer at the bottom is not a row of the view.
     const onFooter = this.footer() > 0 && y >= this.viewportPx() - rowPx;
-    const row = header || onFooter ? null : this.firstVisibleRow() + Math.floor((y - rowPx) / rowPx);
+    const row = header || onFooter ? null : this.firstVisibleRow() + Math.floor((y - headerPx) / rowPx);
     const column = columnAt(geometry, x, this.scrollLeft());
     let edge: number | null = null;
     if (column === -1) {
@@ -769,7 +816,7 @@ export class GridComponent {
     if (x - left <= EDGE && column > 0) {
       return column - 1;
     }
-    return right - x <= FUNNEL_WIDTH && this.hasMenu(column) ? "funnel" : null;
+    return right - x <= this.metrics().funnelPx && this.hasMenu(column) ? "funnel" : null;
   }
 
   private widthKeyOf(column: number): string {
@@ -868,7 +915,8 @@ export class GridComponent {
     if (frame === null || tree === null || local < 0 || local >= frame.rowCount || tree.expanded(local) === null) {
       return false;
     }
-    const left = PADDING + tree.depth(local) * INDENT;
+    const { padding, indent } = this.metrics();
+    const left = padding + tree.depth(local) * indent;
     return x >= left - 4 && x <= left + MARKER_WIDTH;
   }
 
@@ -1013,7 +1061,7 @@ export class GridComponent {
     }
     const geometry = this.geometry();
     this.clearTooltip();
-    this.menu.set({ column, name: name ?? "", measure, left: screenX(geometry, column, this.scrollLeft()), top: 0, width: geometry.width(column), height: this.rowHeight() });
+    this.menu.set({ column, name: name ?? "", measure, left: screenX(geometry, column, this.scrollLeft()), top: 0, width: geometry.width(column), height: this.headerHeight() });
   }
 
   /**
@@ -1033,7 +1081,7 @@ export class GridComponent {
     if (layout === null || context === null) {
       return;
     }
-    context.font = this.currentTokens().font;
+    this.useFont(context, this.currentTokens().font);
     const whole = frame.firstRow === 0 && frame.rowCount >= frame.totalRows;
     // A pivot's columns are fitted by measure: every column of one measure shares a width.
     const pivot = isPivot(layout);
@@ -1074,12 +1122,13 @@ export class GridComponent {
    * their values and are never narrower than the default.
    */
   private fittedWidth(context: CanvasRenderingContext2D, data: FrameColumn, rows: number, title: boolean): number {
+    const { padding, funnelPx, iconPx } = untracked(this.metrics);
     // Room for the title, a sort mark with its priority, the funnel and a pin.
-    let widest = title ? this.measure(context, `${data.title} ▲2`) + FUNNEL_WIDTH + 16 : DEFAULT_WIDTH - 2 * PADDING - 2;
+    let widest = title ? this.measure(context, `${data.title} ▲2`) + funnelPx + iconPx + 2 : DEFAULT_WIDTH - 2 * padding - 2;
     for (let local = 0; local < rows; local += 1) {
       widest = Math.max(widest, this.measure(context, data.text(local)));
     }
-    return Math.min(MAX_FITTED, Math.max(MIN_WIDTH, Math.ceil(widest + 2 * PADDING + 2)));
+    return Math.min(MAX_FITTED, Math.max(MIN_WIDTH, Math.ceil(widest + 2 * padding + 2)));
   }
 
   protected fitColumn(column: number): void {
@@ -1106,14 +1155,15 @@ export class GridComponent {
     if (frame === null || context === null) {
       return this.widthOf(column);
     }
-    context.font = this.currentTokens().font;
+    this.useFont(context, this.currentTokens().font);
+    const { padding, indent } = untracked(this.metrics);
     let widest = 0;
     if (column === -1) {
       const tree = frame.tree;
       for (let local = 0; local < frame.rowCount && tree !== null; local += 1) {
-        widest = Math.max(widest, tree.depth(local) * INDENT + this.measure(context, `▾ ${groupText(tree, local)}`));
+        widest = Math.max(widest, tree.depth(local) * indent + this.measure(context, `▾ ${groupText(tree, local)}`));
       }
-      return Math.max(DEFAULT_TREE_WIDTH / 2, widest + 2 * PADDING);
+      return Math.max(DEFAULT_TREE_WIDTH / 2, widest + 2 * padding);
     }
     const data = frame.columns[column - frame.firstColumn];
     if (data === undefined) {
@@ -1123,7 +1173,7 @@ export class GridComponent {
     for (let local = 0; local < frame.rowCount; local += 1) {
       widest = Math.max(widest, this.measure(context, data.text(local)));
     }
-    return widest + 2 * PADDING + 2;
+    return widest + 2 * padding + 2;
   }
 
   /** Cycles a column's sort: ascending, descending, then off. Shift adds it to the sorts of a flat view. */
@@ -1332,14 +1382,26 @@ export class GridComponent {
 
   // ---- Drawing -----------------------------------------------------------
 
+  /** Sets the context's font, which `measure` then measures in. */
+  private useFont(canvas: CanvasRenderingContext2D, font: string): void {
+    const context = canvas;
+    context.font = font;
+    this.font = font;
+  }
+
   private measure(context: CanvasRenderingContext2D, text: string): number {
-    let width = this.textWidths.get(text);
+    let widths = this.textWidths.get(this.font);
+    if (widths === undefined) {
+      widths = new Map();
+      this.textWidths.set(this.font, widths);
+    }
+    let width = widths.get(text);
     if (width === undefined) {
       width = context.measureText(text).width;
-      if (this.textWidths.size > 50_000) {
-        this.textWidths.clear();
+      if (widths.size > 50_000) {
+        widths.clear();
       }
-      this.textWidths.set(text, width);
+      widths.set(text, width);
     }
     return width;
   }
@@ -1444,9 +1506,28 @@ export class GridComponent {
     const layout = this.current();
     const searched: ReadonlySet<string> = search === "" || layout === null ? new Set() : new Set(searchColumns(layout, this.fields()));
     const labelsSearched = layout?.group_by.some((g) => searched.has(g)) ?? false;
-    const pass: Pass = { context: target, theme, rowPx: this.rowHeight(), full, geometry, scrollLeft: at.scrollLeft, width: at.width, range, focus, stale, search, searched, labelsSearched };
+    const metrics = this.metrics();
+    this.padding = metrics.padding;
+    const rowRule = invisible(theme.rowBorder) ? null : theme.rowBorder;
+    const pass: Pass = {
+      context: target,
+      theme,
+      rowPx: metrics.rowPx,
+      headerPx: metrics.headerPx,
+      rowRule,
+      full,
+      geometry,
+      scrollLeft: at.scrollLeft,
+      width: at.width,
+      range,
+      focus,
+      stale,
+      search,
+      searched,
+      labelsSearched
+    };
     const { context } = pass;
-    context.font = theme.font;
+    this.useFont(context, theme.font);
     context.textBaseline = "middle";
     if (full) {
       this.drawn = new Map();
@@ -1462,11 +1543,11 @@ export class GridComponent {
 
   private drawRows(pass: Pass, frame: FrameData, first: number, height: number): number {
     let cells = 0;
-    const visible = Math.ceil(height / pass.rowPx);
+    const visible = Math.ceil((height - pass.headerPx) / pass.rowPx);
     for (let i = 0; i < visible; i += 1) {
       const row = first + i;
       const local = row - frame.firstRow;
-      const y = pass.rowPx * (i + 1);
+      const y = pass.headerPx + pass.rowPx * i;
       if (local >= 0 && local < frame.rowCount) {
         cells += this.drawRow(pass, frame, local, row, y);
         this.drawnRows.add(row);
@@ -1532,34 +1613,36 @@ export class GridComponent {
   }
 
   private drawHeader(pass: Pass, frame: FrameData | null): void {
-    const { context, theme, rowPx, geometry } = pass;
+    const { context, theme, headerPx, geometry } = pass;
     context.fillStyle = theme.headerBackground;
-    context.fillRect(0, 0, pass.width, rowPx);
+    context.fillRect(0, 0, pass.width, headerPx);
+    this.useFont(context, `${theme.headerFontWeight} ${theme.font}`);
     const layout = this.current();
     if (geometry.treePx > 0) {
       context.fillStyle = theme.headerForeground;
       const title = layout === null || layout.group_by.length === 0 ? "Group" : layout.group_by.join(" › ");
       this.headerText(pass, title, this.sortMark(-1), 0, geometry.treePx);
-      context.fillStyle = theme.borderColor;
-      context.fillRect(geometry.treePx - 1, 0, 1, rowPx);
+      context.fillStyle = theme.columnBorder;
+      context.fillRect(geometry.treePx - 1, 0, 1, headerPx);
     }
-    this.eachColumn(pass, 0, rowPx, (column) => {
+    this.eachColumn(pass, 0, headerPx, (column) => {
       this.drawColumnHeader(pass, frame, layout, column);
     });
+    this.useFont(context, theme.font);
     const drag = this.drag();
     if (drag !== null && geometry.count > 0) {
       const at = Math.min(drag.before, geometry.count);
       const x = at < geometry.count ? screenX(geometry, at, pass.scrollLeft) : screenX(geometry, at - 1, pass.scrollLeft) + geometry.width(at - 1);
       context.fillStyle = theme.accent;
-      context.fillRect(x - 1, 0, 3, rowPx);
+      context.fillRect(x - 1, 0, 3, headerPx);
     }
-    context.fillStyle = theme.borderColor;
-    context.fillRect(0, rowPx - 1, pass.width, 1);
+    context.fillStyle = theme.headerBorder;
+    context.fillRect(0, headerPx - 1, pass.width, 1);
   }
 
   /** Draws data column `column`'s header: its title, sort mark, and for a column with a menu, its funnel and pin. */
   private drawColumnHeader(pass: Pass, frame: FrameData | null, layout: Layout | null, column: number): void {
-    const { context, theme, rowPx, geometry } = pass;
+    const { context, theme, headerPx, geometry } = pass;
     const x = screenX(geometry, column, pass.scrollLeft);
     const width = geometry.width(column);
     const title = (frame === null ? undefined : frame.columns[column - frame.firstColumn])?.title ?? "";
@@ -1568,7 +1651,7 @@ export class GridComponent {
     const lit = open || column === this.hoverHeader() || column === this.drag()?.from;
     if (lit) {
       context.fillStyle = theme.controlHover;
-      context.fillRect(x, 0, width, rowPx);
+      context.fillRect(x, 0, width, headerPx);
     }
     context.fillStyle = theme.headerForeground;
     if (look === null) {
@@ -1576,8 +1659,8 @@ export class GridComponent {
     } else {
       this.drawMenuHeader(pass, column, { x, width, title }, look, open || lit ? (open ? "open" : "lit") : "rest");
     }
-    context.fillStyle = theme.borderColor;
-    context.fillRect(x + width - 1, 0, 1, rowPx);
+    context.fillStyle = theme.columnBorder;
+    context.fillRect(x + width - 1, 0, 1, headerPx);
   }
 
   /** How a header with a menu shows its column's state: filtered, pinned, and the mark that opens it; null without a menu. */
@@ -1601,23 +1684,25 @@ export class GridComponent {
     state: "open" | "lit" | "rest"
   ): void {
     const { filtered, pinned } = look;
-    const { context, theme, rowPx } = pass;
-    const indent = pinned ? 16 : 0;
+    const { context, theme, headerPx } = pass;
+    const { iconPx, funnelPx, padding } = this.metrics();
+    const indent = pinned ? iconPx + 2 : 0;
+    const top = headerPx / 2 - iconPx / 2;
     if (pinned) {
-      this.icon(context, PIN_PATH, at.x + PADDING - 2, rowPx / 2 - 7, theme.muted, false);
+      this.icon(context, PIN_PATH, at.x + padding - 2, top, iconPx, theme.muted, false);
     }
     context.fillStyle = theme.headerForeground;
-    this.headerText(pass, at.title, this.sortMark(column), at.x + indent, at.width - indent - FUNNEL_WIDTH + PADDING);
+    this.headerText(pass, at.title, this.sortMark(column), at.x + indent, at.width - indent - funnelPx + padding);
     const color = filtered || state === "open" ? theme.accent : state === "lit" ? theme.headerForeground : theme.muted;
-    this.icon(context, look.mark, at.x + at.width - FUNNEL_WIDTH, rowPx / 2 - 7, color, filtered);
+    this.icon(context, look.mark, at.x + at.width - funnelPx, top, iconPx, color, filtered);
   }
 
-  /** Draws an icon's path, 14 px square, with its top left at `x`, `y`. */
-  private icon(canvas: CanvasRenderingContext2D, path: string, x: number, y: number, color: string, filled: boolean): void {
+  /** Draws an icon's path, `size` pixels square, with its top left at `x`, `y`. */
+  private icon(canvas: CanvasRenderingContext2D, path: string, x: number, y: number, size: number, color: string, filled: boolean): void {
     const context = canvas;
     context.save();
     context.translate(x, y);
-    context.scale(0.875, 0.875);
+    context.scale(size / 16, size / 16);
     const shape = new Path2D(path);
     context.lineWidth = 1.5;
     context.lineCap = "round";
@@ -1632,11 +1717,11 @@ export class GridComponent {
   }
 
   private headerText(pass: Pass, title: string, mark: string, x: number, width: number): void {
-    const { context, rowPx } = pass;
+    const { context, headerPx } = pass;
     const markWidth = mark === "" ? 0 : this.measure(context, mark) + 4;
-    this.clipText(context, title, x, width - markWidth, rowPx / 2, false);
+    this.clipText(context, title, x, width - markWidth, headerPx / 2, false);
     if (mark !== "") {
-      context.fillText(mark, x + width - PADDING - markWidth + 4, rowPx / 2);
+      context.fillText(mark, x + width - this.padding - markWidth + 4, headerPx / 2);
     }
   }
 
@@ -1650,7 +1735,7 @@ export class GridComponent {
     const y = height - rowPx;
     context.fillStyle = theme.headerBackground;
     context.fillRect(0, y, pass.width, rowPx);
-    context.font = `600 ${theme.font}`;
+    this.useFont(context, `${theme.totalFontWeight} ${theme.font}`);
     if (geometry.treePx > 0) {
       context.fillStyle = theme.headerForeground;
       this.clipText(context, "Total", 0, geometry.treePx, y + rowPx / 2, false);
@@ -1664,8 +1749,8 @@ export class GridComponent {
       context.fillStyle = data !== undefined && data.flag(0) !== CellFlag.Ok ? theme.muted : data?.numeric === true && isNegativeText(text) ? theme.negative : theme.headerForeground;
       this.clipText(context, shown, x, geometry.width(column), y + rowPx / 2, data?.numeric === true && text !== "");
     });
-    context.font = theme.font;
-    context.fillStyle = theme.borderColor;
+    this.useFont(context, theme.font);
+    context.fillStyle = theme.totalBorder;
     context.fillRect(0, y, pass.width, 1);
   }
 
@@ -1708,12 +1793,14 @@ export class GridComponent {
     const { context, theme, rowPx, geometry } = pass;
     this.cellBackground(pass, row, -1, 0, y, geometry.treePx, stripe);
     context.fillStyle = tree.kind(local) === "total" ? theme.totalForeground : theme.foreground;
-    const left = PADDING + depth * INDENT;
+    const { padding, indent } = this.metrics();
+    const left = padding + depth * indent;
     const marks = pass.labelsSearched ? highlightRanges(tree.label(local), pass.search).map(([a, b]) => [a + marker.length, b + marker.length] as const) : NO_MARKS;
-    if (this.clipText(context, text, left - PADDING, geometry.treePx - left + PADDING, y + rowPx / 2, false, marks, theme.highlight)) {
+    if (this.clipText(context, text, left - padding, geometry.treePx - left + padding, y + rowPx / 2, false, marks, theme.highlight)) {
       this.notes.set(key, groupText(tree, local));
     }
-    context.fillStyle = theme.borderColor;
+    this.rowRule(pass, 0, y, geometry.treePx);
+    context.fillStyle = theme.columnBorder;
     context.fillRect(geometry.treePx - 1, y, 1, rowPx);
     this.drawn.set(key, text);
     return 1;
@@ -1738,10 +1825,20 @@ export class GridComponent {
     context.fillStyle = style.color;
     const clipped = this.clipText(context, text, x, width, y + rowPx / 2, style.right, style.marks, theme.highlight);
     this.noteCell(key, FLAG_NOTES[flag] ?? (clipped ? text : null));
-    context.fillStyle = theme.borderColor;
+    this.rowRule(pass, x, y, width);
+    context.fillStyle = theme.columnBorder;
     context.fillRect(x + width - 1, y, 1, rowPx);
     this.drawn.set(key, text);
     return true;
+  }
+
+  /** Draws the line under a cell of the row at `y`, if the theme has one. */
+  private rowRule(pass: Pass, x: number, y: number, width: number): void {
+    const { context, rowRule, rowPx } = pass;
+    if (rowRule !== null) {
+      context.fillStyle = rowRule;
+      context.fillRect(x, y + rowPx - 1, width, 1);
+    }
   }
 
   /** Keeps what a cell's tooltip says, or forgets it when null. */
@@ -1758,13 +1855,14 @@ export class GridComponent {
    * `true` if it did not fit and was cut or replaced by `###`.
    */
   private clipText(context: CanvasRenderingContext2D, text: string, x: number, width: number, y: number, numeric: boolean, marks = NO_MARKS, markColor = ""): boolean {
-    const room = width - 2 * PADDING;
+    const padding = this.padding;
+    const room = width - 2 * padding;
     const measured = this.measure(context, text);
     if (numeric) {
       const fits = measured <= room;
       const shown = fits ? text : "###";
       const w = fits ? measured : this.measure(context, shown);
-      context.fillText(shown, x + width - PADDING - w, y);
+      context.fillText(shown, x + width - padding - w, y);
       return !fits;
     }
     const fits = measured <= room;
@@ -1772,8 +1870,8 @@ export class GridComponent {
     while (!fits && cut > 0 && this.measure(context, `${text.slice(0, cut)}…`) > room) {
       cut -= 1;
     }
-    this.mark(context, text, cut, x + PADDING, y, marks, markColor);
-    context.fillText(fits ? text : `${text.slice(0, cut)}…`, x + PADDING, y);
+    this.mark(context, text, cut, x + padding, y, marks, markColor);
+    context.fillText(fits ? text : `${text.slice(0, cut)}…`, x + padding, y);
     return !fits;
   }
 

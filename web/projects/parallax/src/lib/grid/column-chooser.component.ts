@@ -28,13 +28,13 @@ interface Item {
     .px-column-chooser {
       display: flex;
       flex-direction: column;
-      gap: 6px;
+      gap: calc(var(--_px-spacing) * 1.5);
       width: 280px;
-      padding: 4px;
+      padding: var(--_px-spacing);
     }
     .px-column-chooser input[type="search"] {
-      height: 28px;
-      padding: 0 8px;
+      height: var(--_px-control-height);
+      padding: 0 calc(var(--_px-spacing) * 2);
       border: 1px solid var(--_px-control-border);
       border-radius: calc(var(--_px-radius) - 2px);
       background: var(--_px-control-background);
@@ -51,8 +51,8 @@ interface Item {
     .px-column-chooser li {
       display: flex;
       align-items: center;
-      gap: 4px;
-      padding: 2px 4px;
+      gap: var(--_px-spacing);
+      padding: calc(var(--_px-spacing) * 0.5) var(--_px-spacing);
       border-radius: calc(var(--_px-radius) - 2px);
     }
     .px-column-chooser li:hover {
@@ -68,7 +68,7 @@ interface Item {
     .px-column-chooser label {
       display: flex;
       flex: 1;
-      gap: 6px;
+      gap: calc(var(--_px-spacing) * 1.5);
       align-items: center;
       min-width: 0;
     }
@@ -96,7 +96,7 @@ interface Item {
     .px-column-chooser .px-muted {
       margin: 0;
       color: var(--_px-muted);
-      font-size: 12px;
+      font-size: var(--_px-font-size-small);
     }
   `,
   template: `

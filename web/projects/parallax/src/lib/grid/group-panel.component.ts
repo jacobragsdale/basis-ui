@@ -20,14 +20,14 @@ import { withAllExpanded, withoutGroup } from "./edit";
       display: flex;
       flex-wrap: wrap;
       align-items: center;
-      gap: 6px;
+      gap: calc(var(--_px-spacing) * 1.5);
       min-height: 32px;
-      padding: 2px 8px;
+      padding: calc(var(--_px-spacing) * 0.5) calc(var(--_px-spacing) * 2);
       border-bottom: 1px solid var(--_px-border-color);
       background: var(--_px-background);
       color: var(--_px-muted);
       font: var(--_px-font-size) var(--_px-font-family);
-      font-size: 12px;
+      font-size: var(--_px-font-size-small);
     }
     .px-group-panel[data-drop="true"] {
       outline: 2px dashed var(--_px-accent);
@@ -37,9 +37,9 @@ import { withAllExpanded, withoutGroup } from "./edit";
     .px-group-panel .px-chip {
       display: inline-flex;
       align-items: center;
-      gap: 4px;
+      gap: var(--_px-spacing);
       height: 24px;
-      padding: 0 2px 0 8px;
+      padding: 0 calc(var(--_px-spacing) * 0.5) 0 calc(var(--_px-spacing) * 2);
       border: 1px solid var(--_px-control-border);
       border-radius: 12px;
       background: var(--_px-control-background);
@@ -50,7 +50,7 @@ import { withAllExpanded, withoutGroup } from "./edit";
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      padding: 0 4px;
+      padding: 0 var(--_px-spacing);
       height: 22px;
       border: 0;
       border-radius: 11px;

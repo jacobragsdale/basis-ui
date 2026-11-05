@@ -145,7 +145,7 @@ base, such as `https://api.host/px`; browser copies come from `/copy` there too.
 | `layout`    | `LayoutInput`                      | required    | The view. Two-way: `[(layout)]`.                                      |
 | `theme`     | `ParallaxTheme`                    | standard    | A theme from `defineTheme`; by default `provideParallax`'s.           |
 | `scheme`    | `"light" \| "dark" \| "auto"`      | `"light"`   | The colour scheme; `auto` follows the system. Default as `theme`.     |
-| `density`   | `"compact" \| "comfortable"`       | `"compact"` | Row height: 24 or 30 pixels.                                          |
+| `density`   | `"compact" \| "comfortable"`       | `"compact"` | Comfortable adds 6 pixels to the theme's row and header heights.      |
 | `toolbar`   | `boolean \| Partial<ToolbarParts>` | `true`      | The toolbar, or which of its parts show; grid only.                   |
 | `height`    | `"fill" \| "auto"`                 | `"fill"`    | Fill the container, or size to the rows up to `maxHeight`; grid only. |
 | `maxHeight` | `number`                           | `480`       | The tallest an `auto` grid's rows grow before they scroll; grid only. |
@@ -183,8 +183,9 @@ base, such as `https://api.host/px`; browser copies come from `/copy` there too.
 
 ## Theme tokens
 
-Every colour, the font and the corner radius are CSS custom properties, such as `--px-accent`,
-`--px-background` and `--px-font-family`; `TOKEN_PROPERTIES` lists them all.
+Every colour, font, size and border is a CSS custom property, such as
+`--px-accent`, `--px-font-family`, `--px-spacing` and `--px-row-height`;
+`TOKEN_PROPERTIES` lists them all.
 Set any of them anywhere, on `:root`, on a wrapper or on the element, and it
 wins over the theme:
 

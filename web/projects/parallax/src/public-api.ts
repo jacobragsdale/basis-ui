@@ -30,7 +30,7 @@ export {
   parseLayout
 } from "./lib/layout";
 export type { FilterOp, Layout, LayoutChart, LayoutCheck, LayoutFilter, LayoutAnchor, LayoutDrawing, LayoutFormat, LayoutIndicator, LayoutInput, LayoutMeasure, LayoutScalar } from "./lib/layout";
-export { CHART_COLORS, TOKEN_PROPERTIES, defaultTheme, defineTheme, readChartColors, readTheme, standardTheme, themeStyles } from "./lib/theme";
+export { CHART_COLORS, DENSITY_STEP, TOKEN_PROPERTIES, defineTheme, readChartColors, readTheme, standardTheme, themeStyles } from "./lib/theme";
 export type { ChartColors, ParallaxTheme, ResolvedScheme, Scheme, Theme, ThemeParams, ThemeSpec, TokenName } from "./lib/theme";
 export { ThemeWatcher } from "./lib/theming";
 export { GridComponent } from "./lib/grid/grid.component";

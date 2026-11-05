@@ -44,16 +44,16 @@ const NEGATIVES: readonly Choice[] = [
     }
     .px-measure-menu hr {
       width: 100%;
-      margin: 4px 0;
+      margin: var(--_px-spacing) 0;
       border: 0;
       border-top: 1px solid var(--_px-border-color);
     }
     .px-measure-menu .px-menu-fields {
       display: grid;
       grid-template-columns: auto 1fr;
-      gap: 6px 8px;
+      gap: calc(var(--_px-spacing) * 1.5) calc(var(--_px-spacing) * 2);
       align-items: center;
-      padding: 6px 10px;
+      padding: calc(var(--_px-spacing) * 1.5) calc(var(--_px-spacing) * 2.5);
     }
     .px-measure-menu .px-menu-fields span {
       color: var(--_px-muted);
@@ -61,8 +61,8 @@ const NEGATIVES: readonly Choice[] = [
     .px-measure-menu .px-menu-fields select,
     .px-measure-menu .px-menu-fields input {
       width: 100%;
-      height: 28px;
-      padding: 0 6px;
+      height: var(--_px-control-height);
+      padding: 0 calc(var(--_px-spacing) * 1.5);
       border: 1px solid var(--_px-control-border);
       border-radius: calc(var(--_px-radius) - 2px);
       background: var(--_px-control-background);

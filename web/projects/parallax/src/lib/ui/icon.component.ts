@@ -31,8 +31,8 @@ const PATHS: Readonly<Record<IconName, readonly string[]>> = {
     .px-icon {
       display: inline-flex;
       flex: none;
-      width: 16px;
-      height: 16px;
+      width: var(--_px-icon-size);
+      height: var(--_px-icon-size);
     }
     .px-icon svg {
       width: 100%;
