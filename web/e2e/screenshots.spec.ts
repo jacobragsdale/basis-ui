@@ -1,7 +1,7 @@
 /**
- * Every chart in the demo and the small tables' grids, in both themes, compared pixel for pixel with the screenshots in
- * `e2e/screenshots`. Fonts and text rendering differ between machines, so these run only in the pinned Playwright
- * image: run them with `pnpm screenshots`, and take new ones with `pnpm screenshots --update-snapshots`.
+ * Every chart in the demo, the breakdowns and the small tables' grids, in both themes, compared pixel for pixel with
+ * the screenshots in `e2e/screenshots`. Fonts and text rendering differ between machines, so these run only in the
+ * pinned Playwright image: run them with `pnpm screenshots`, and take new ones with `pnpm screenshots --update-snapshots`.
  */
 
 import { expect, test } from "@playwright/test";
@@ -27,6 +27,23 @@ for (const theme of ["light", "dark"] as const) {
       // The status bar tells when the data was read, which changes with every run. In the pinned image drawing is
       // deterministic, so every pixel must match exactly: the default tolerance misses a change of a light wash.
       await expect(chart).toHaveScreenshot(`${id}-${theme}.png`, { mask: [chart.locator("px-status-bar")], animations: "disabled", caret: "hide", threshold: 0, maxDiffPixels: 0 });
+    }
+    expect(errors).toEqual([]);
+  });
+}
+
+for (const theme of ["light", "dark"] as const) {
+  test(`every breakdown draws as in its screenshot, ${theme} theme`, async ({ page }) => {
+    const errors: string[] = [];
+    page.on("pageerror", (error) => errors.push(error.message));
+    await page.goto(`/?preset=breakdowns&theme=${theme}`);
+    const sections = page.locator("demo-breakdowns section[data-breakdown]");
+    await expect(sections).toHaveCount(10);
+    await expect(page.locator("demo-breakdowns .px-status-rows").filter({ hasText: "loading" })).toHaveCount(0, { timeout: 120_000 });
+    for (const section of await sections.all()) {
+      await section.scrollIntoViewIfNeeded();
+      const id = (await section.getAttribute("data-breakdown")) ?? "";
+      await expect(section).toHaveScreenshot(`breakdown-${id}-${theme}.png`, { mask: [section.locator("px-status-bar")], animations: "disabled", caret: "hide", threshold: 0, maxDiffPixels: 0 });
     }
     expect(errors).toEqual([]);
   });

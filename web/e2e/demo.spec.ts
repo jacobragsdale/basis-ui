@@ -17,7 +17,7 @@ test("every view opens from its tab, and the browser-held ones say so", async ({
   await page.goto("/");
   await ready(page);
   const titles = await page.getByRole("navigation", { name: "Views" }).getByRole("link").allTextContents();
-  expect(titles).toEqual(["Positions pivot", "Pivot in the browser", "1,000,000 trades", "Largest trades", "Daily prices", "Small tables", "Dashboard", "Charts", "Technical analysis"]);
+  expect(titles).toEqual(["Positions pivot", "Pivot in the browser", "1,000,000 trades", "Largest trades", "Daily prices", "Small tables", "Dashboard", "Breakdowns", "Charts", "Technical analysis"]);
   for (const [title, where] of [
     ["1,000,000 trades", null],
     ["Daily prices", "in browser"],
@@ -203,6 +203,50 @@ test.describe("dashboard", () => {
     const side = await largestSlice(page, "trades-by-side");
     await side.plot.click({ position: side.at });
     await expect(page.locator('section[data-table="blotter"] px-grid-toolbar .px-chip')).toHaveText(["side = Buy"]);
+    expect(errors).toEqual([]);
+  });
+});
+
+test.describe("breakdowns", () => {
+  /** A point on the largest slice of a pie, which starts at twelve o'clock, inside its rim. */
+  async function largestSlice(page: Page, chart: string): Promise<{ readonly plot: Locator; readonly at: { readonly x: number; readonly y: number } }> {
+    const plot = page.locator(`section[data-breakdown="${chart}"] .px-chart-plot`);
+    const box = await plot.boundingBox();
+    if (box === null) {
+      throw new Error(`no ${chart} chart`);
+    }
+    const radius = Math.min(box.width, box.height) / 2 - 16;
+    return { plot, at: { x: box.width / 2 + 10, y: box.height / 2 - radius * 0.8 } };
+  }
+
+  test("draws ten big pies, donuts and bars, and a click narrows the other charts of its dataset until its chip clears it", async ({ page }) => {
+    const errors: string[] = [];
+    page.on("pageerror", (error) => errors.push(error.message));
+    await page.goto("/?preset=breakdowns");
+    const sections = page.locator("demo-breakdowns section[data-breakdown]");
+    await expect(sections).toHaveCount(10);
+    await expect(page.locator("demo-breakdowns .px-status-rows").filter({ hasText: "loading" })).toHaveCount(0, { timeout: 120_000 });
+    await expect(page.locator("demo-breakdowns .px-error")).toHaveCount(0);
+    expect((await sections.first().boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(400);
+    const filtered = (id: string): Locator => page.locator(`section[data-breakdown="${id}"]`);
+    // The largest region, North America, narrows every other positions chart, and none of the trades'.
+    const region = await largestSlice(page, "notional-by-region");
+    await region.plot.click({ position: region.at });
+    const chip = page.locator('[data-dataset="positions"] .chip');
+    await expect(chip).toContainText("region: North America");
+    await expect(filtered("pnl-by-strategy")).toHaveAttribute("data-filtered", "true");
+    await expect(filtered("notional-by-region")).toHaveAttribute("data-filtered", "false");
+    await expect(filtered("trades-by-status")).toHaveAttribute("data-filtered", "false");
+    await expect(page.locator('[data-dataset="trades"] .chip')).toHaveCount(0);
+    // Another chart's pick replaces it: the region donut is narrowed now, to the largest fund.
+    const fund = await largestSlice(page, "positions-by-fund");
+    await fund.plot.click({ position: fund.at });
+    await expect(chip).toContainText("fund: ");
+    await expect(filtered("notional-by-region")).toHaveAttribute("data-filtered", "true");
+    await expect(filtered("positions-by-fund")).toHaveAttribute("data-filtered", "false");
+    await chip.click();
+    await expect(chip).toHaveCount(0);
+    await expect(page.locator('demo-breakdowns section[data-filtered="true"]')).toHaveCount(0);
     expect(errors).toEqual([]);
   });
 });

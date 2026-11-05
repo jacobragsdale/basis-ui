@@ -1,7 +1,8 @@
 import { ChangeDetectionStrategy, Component, input, signal } from "@angular/core";
 import { ChartComponent, GridComponent } from "parallax";
-import type { ChartSelection, Density, LayoutFilter, LayoutInput, ResolvedScheme } from "parallax";
+import type { ChartSelection, Density, LayoutInput, ResolvedScheme } from "parallax";
 
+import { withSelection, withShare } from "./layouts";
 import { BLOTTER, BOOK } from "./small.component";
 
 /** Which small table a tile charts, and so which grid its selection filters. */
@@ -18,25 +19,6 @@ interface Tile {
 
 function tile(id: string, title: string, table: Table, layout: Omit<LayoutInput, "dataset">): Tile {
   return { id, title, table, layout: signal<LayoutInput>({ dataset: table, ...layout }) };
-}
-
-/** A measure and its share of the whole, which a donut's legend and tooltip read. */
-function withShare(column: string | null): LayoutInput["measures"] {
-  const aggregate = column === null ? ("count_all" as const) : ("sum" as const);
-  return [
-    { column, aggregate },
-    { column, aggregate, show_as: "percent_of_grand_total" }
-  ];
-}
-
-/**
- * The layout with `column`'s own filters replaced by one keeping `selection`, or by none when the selection is
- * cleared; a search and the filters on other columns stay as the user set them.
- */
-function withSelection(layout: LayoutInput, column: string, selection: ChartSelection | null): LayoutInput {
-  const others = (layout.filters ?? []).filter((f) => f.column !== column || (f.columns ?? []).length > 0);
-  const kept: LayoutFilter[] = selection === null ? [] : [{ column, op: "eq", value: selection.value, values: [], columns: [] }];
-  return { ...layout, filters: [...others, ...kept] };
 }
 
 /**
@@ -78,8 +60,8 @@ function withSelection(layout: LayoutInput, column: string, selection: ChartSele
     }
     .tiles {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-      grid-auto-rows: 250px;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      grid-auto-rows: 320px;
       gap: 12px;
     }
     .grids {

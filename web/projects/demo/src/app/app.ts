@@ -3,6 +3,7 @@ import { GridComponent, PivotComponent, decodeLayout, encodeLayout } from "paral
 import type { Density, LayoutInput, ResolvedScheme } from "parallax";
 import * as z from "zod/mini";
 
+import { BreakdownsComponent } from "./breakdowns.component";
 import { ChartsComponent } from "./charts.component";
 import { DashboardComponent } from "./dashboard.component";
 import { TechnicalComponent } from "./technical.component";
@@ -25,7 +26,7 @@ const REFERENCE_PIVOT = {
 } as const satisfies LayoutInput;
 
 /** The views the demo opens, in the order of their tabs. */
-const PRESET_NAMES = ["pivot", "browser", "trades", "sorted", "prices", "small", "dashboard", "charts", "technical"] as const;
+const PRESET_NAMES = ["pivot", "browser", "trades", "sorted", "prices", "small", "dashboard", "breakdowns", "charts", "technical"] as const;
 
 type PresetName = (typeof PRESET_NAMES)[number];
 
@@ -73,6 +74,12 @@ const PRESETS: Readonly<Record<PresetName, Preset>> = {
     about:
       "Small charts over the two small tables, with their grids below: click a slice or bar to filter its table's grid to that group, and again to show every row. Export writes what the grid shows.",
     layout: { dataset: "book" }
+  },
+  breakdowns: {
+    title: "Breakdowns",
+    about:
+      "Big pies, donuts and bars over the 200,000 positions and the million trades on the server. Bars carry their values and slices their shares; hover a slice to see it in the donut's hole. Click a slice or bar to narrow every other chart of the same dataset to that group, and its chip to show them all again.",
+    layout: { dataset: "positions" }
   },
   charts: {
     title: "Charts",
@@ -122,7 +129,7 @@ function remember(name: string, value: string): void {
   selector: "demo-root",
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { "[class.dark]": "theme() === 'dark'" },
-  imports: [ChartsComponent, DashboardComponent, GridComponent, PivotComponent, PerformanceComponent, SmallComponent, TechnicalComponent],
+  imports: [BreakdownsComponent, ChartsComponent, DashboardComponent, GridComponent, PivotComponent, PerformanceComponent, SmallComponent, TechnicalComponent],
   template: `
     <header>
       <strong>parallax</strong>
@@ -161,6 +168,8 @@ function remember(name: string, value: string): void {
         <demo-small [scheme]="theme()" [density]="density()" />
       } @else if (dashboard()) {
         <demo-dashboard [scheme]="theme()" [density]="density()" />
+      } @else if (breakdowns()) {
+        <demo-breakdowns [scheme]="theme()" />
       } @else if (technical()) {
         <demo-technical [scheme]="theme()" [density]="density()" />
       } @else if (ready()) {
@@ -269,12 +278,14 @@ export class App {
   protected readonly charts = computed(() => this.search.preset === "charts" && this.search.layout === undefined);
   /** The technical-analysis page, which has its own controls. */
   protected readonly technical = computed(() => this.search.preset === "technical" && this.search.layout === undefined);
+  /** The page of big pies, donuts and bars. */
+  protected readonly breakdowns = computed(() => this.search.preset === "breakdowns" && this.search.layout === undefined);
   /** The small-tables page, which shows two grids. */
   protected readonly small = computed(() => this.search.preset === "small" && this.search.layout === undefined);
   /** The dashboard, of small charts over the small tables and their grids. */
   protected readonly dashboard = computed(() => this.search.preset === "dashboard" && this.search.layout === undefined);
   /** A page of views of its own, which the header's link and layout cannot describe. */
-  protected readonly pageOfViews = computed(() => this.charts() || this.technical() || this.small() || this.dashboard());
+  protected readonly pageOfViews = computed(() => this.charts() || this.technical() || this.small() || this.dashboard() || this.breakdowns());
   /** False while a linked layout is being read, so the preset never opens in its place. */
   protected readonly ready = signal(this.search.layout === undefined);
   protected readonly about = computed(() => (this.search.layout === undefined ? PRESETS[this.search.preset].about : "A view opened from a shared link."));
