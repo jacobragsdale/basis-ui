@@ -1,7 +1,7 @@
 /** Words for the pivot settings, by the layout's names. */
 
 import type { FieldKind, SourceField } from "../grid/grid-source";
-import type { LayoutMeasure, LayoutScalar } from "../layout";
+import type { LayoutMeasure } from "../layout";
 
 const LABELS: Readonly<Record<string, string>> = {
   count: "Count",
@@ -72,9 +72,4 @@ export const NUMERIC_AGGREGATES: readonly LayoutMeasure["aggregate"][] = ["sum",
 /** A short name for a measure, such as "Sum of pnl". */
 export function measureName(m: LayoutMeasure): string {
   return m.aggregate === "count_all" ? "Count rows" : `${label(m.aggregate)} of ${m.column ?? "?"}`;
-}
-
-/** A filter operand as text; null is empty. */
-export function operandText(value: LayoutScalar): string {
-  return value === null ? "" : String(value);
 }

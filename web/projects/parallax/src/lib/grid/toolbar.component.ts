@@ -7,8 +7,9 @@ import { ChangeDetectionStrategy, Component, ViewEncapsulation, computed, input,
 
 import type { Layout } from "../layout";
 import { ExportButtonComponent } from "../ui/export-button.component";
+import { IconComponent } from "../ui/icon.component";
 import { ColumnToolsComponent } from "./column-tools.component";
-import { searchColumns, withSearch } from "./edit";
+import { searchColumns, withAllExpanded, withSearch } from "./edit";
 import { FilterChipsComponent } from "./filter-chips.component";
 import type { SourceField } from "./grid-source";
 import { SearchBoxComponent } from "./search-box.component";
@@ -24,10 +25,12 @@ export interface ToolbarParts {
   readonly export: boolean;
   /** The strip above the grid where its groups show, and headers are dropped to group by them. */
   readonly group: boolean;
+  /** Expand all and Collapse all, for a pivot's groups; a grid's groups have them in the group panel. */
+  readonly expand: boolean;
 }
 
 /** Every part shown. */
-export const ALL_PARTS: ToolbarParts = { search: true, chips: true, columns: true, totals: true, export: true, group: true };
+export const ALL_PARTS: ToolbarParts = { search: true, chips: true, columns: true, totals: true, export: true, group: true, expand: true };
 
 /** The toolbar's look, shared by grids and pivots. */
 const TOOLBAR_STYLES = `
@@ -162,7 +165,7 @@ const TOOLBAR_STYLES = `
   selector: "px-grid-toolbar",
   changeDetection: ChangeDetectionStrategy.OnPush,
   encapsulation: ViewEncapsulation.None,
-  imports: [ColumnToolsComponent, ExportButtonComponent, FilterChipsComponent, SearchBoxComponent],
+  imports: [ColumnToolsComponent, ExportButtonComponent, FilterChipsComponent, IconComponent, SearchBoxComponent],
   host: { class: "px-toolbar", role: "toolbar", "aria-label": "Grid tools" },
   styles: TOOLBAR_STYLES,
   template: `
@@ -173,6 +176,10 @@ const TOOLBAR_STYLES = `
       <px-filter-chips [layout]="layout()" (changed)="changed.emit($event)" />
     }
     <span class="px-spring"></span>
+    @if (expandable()) {
+      <button type="button" (click)="changed.emit(withAllExpanded(layout(), true))"><px-icon name="expand" />Expand all</button>
+      <button type="button" (click)="changed.emit(withAllExpanded(layout(), false))"><px-icon name="collapse" />Collapse all</button>
+    }
     <ng-content />
     <px-column-tools [layout]="layout()" [fields]="fields()" [columns]="parts().columns" [totals]="parts().totals" (changed)="changed.emit($event)" />
     @if (parts().export) {
@@ -193,6 +200,9 @@ export class GridToolbarComponent {
   public readonly exported = output<"xlsx" | "csv">();
 
   protected readonly withSearch = withSearch;
+  protected readonly withAllExpanded = withAllExpanded;
+  /** A pivot's groups open and close from here; a grid's, from its group panel. */
+  protected readonly expandable = computed(() => this.parts().expand && this.layout().group_by.length > 0 && !this.layout().detail);
   private readonly searchBox = viewChild<SearchBoxComponent>("search");
 
   private readonly searched = computed(() => searchColumns(this.layout(), this.fields()));

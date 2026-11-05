@@ -740,19 +740,42 @@ on screen is fetched first, up to 1,000,000 cells, without moving the view.
 Hovering over a cell whose text was cut, a `###`, or a flagged cell shows the
 full text or what the flag means.
 
-`<px-pivot>` puts the pivot's settings beside a grid: row and column groups in
-order, values with their aggregate and how they are shown, filters, the levels
-open by default, and top-N. Removing or moving a value renumbers everything that
-referred to it by position: the group sort, aggregate filters, top-N and column
-widths. A filter picks its values from a list of the column's values, which
-the engine computes under the view's other filters, as a spreadsheet's filter
-list does; text columns can search it. "(blank)" can be picked too: an "is one
-of" list may name null, and then matches blanks. A filter stays out of the
-layout until it names a value, because an empty "is one of" would hide every
-row. Double-clicking a value opens the rows behind its cell in a drawer: a flat
-view with the pivot's filters plus one filter per group level and per
-column-pivot level. The drawer closes when the pivot's filters or groups
-change, since its rows would no longer add up to the cells above.
+`<px-pivot>` puts a field list beside a grid, laid out as Excel's PivotTable
+field list is, since that is the pivot its users already know. The dataset's
+fields are listed with a search, ticked when the pivot uses them, and dragged
+into the Filters, Columns, Rows and Values areas, or between them; a drop line
+shows where a field lands. Ticking a field puts it where Excel does, numbers on
+Values and anything else on Rows, and unticking takes it out of every area.
+Dragging is never required: each field has a menu that adds it to any area, and
+each chip has a menu and a remove button. A field groups one way, so moving it
+to Columns takes it out of Rows. Removing or moving a value renumbers everything
+that referred to it by position: the group sort, aggregate filters, top-N and
+column widths.
+
+A value's menu sets its aggregate, column, how it is shown (as a value or a
+share of a total), and its number format: decimals, thousands, millions or
+billions, and how negatives read. The same menu opens from the value's header in
+the grid, where it also sorts the groups by the value. A pivot's columns fit
+their values, every column of one value sharing a width, so totals don't read
+`###`; their titles, which name the pivot values and the value, don't widen
+them.
+
+Filters use the grid's own filter editor, so a pivot filters as a header menu
+does: a list of the column's values with their counts, which the engine computes
+under the view's other filters, as a spreadsheet's filter list does, or a
+condition. "(blank)" can be picked too: an "is one of" list may name null, and
+then matches blanks. A field dropped on Filters shows "(All)" with its list open,
+and stays out of the layout until it names a value, because an empty "is one
+of" would hide every row. The pivot's toolbar has the grid's search, chips and
+export, plus Expand all and Collapse all.
+
+Double-clicking a value opens the rows behind its cell in a drawer: a flat view
+with the pivot's filters plus one filter per group level and per column-pivot
+level. The drawer has its own toolbar, to search those rows, choose their
+columns and export them. Its filters are what put the rows there, so they show
+in its title rather than as chips to remove. The drawer closes when the pivot's
+filters or groups change, since its rows would no longer add up to the cells
+above.
 
 A layout also travels as a link: `encodeLayout` deflates it into a URL
 parameter, and `decodeLayout` checks it against the schema, so an edited link

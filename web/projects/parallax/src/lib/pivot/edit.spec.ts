@@ -1,7 +1,28 @@
 import { describe, expect, it } from "vitest";
 
 import { parseLayout } from "../layout";
-import { addGroup, addMeasure, drillLayout, filterValue, measure, moveGroup, moveMeasure, operandOf, removeGroup, removeMeasure, setExpandDepth } from "./edit";
+import type { SourceField } from "../grid/grid-source";
+import {
+  addGroup,
+  addMeasure,
+  areasOf,
+  drillLayout,
+  filterValue,
+  measure,
+  measureSort,
+  moveChip,
+  moveGroup,
+  moveMeasure,
+  operandOf,
+  placeField,
+  removeGroup,
+  removeMeasure,
+  setExpandDepth,
+  withField,
+  withMeasureFormat,
+  withMeasureSort,
+  withoutField
+} from "./edit";
 
 const base = parseLayout({
   dataset: "positions",
@@ -116,5 +137,71 @@ describe("drillLayout", () => {
 
   it("drills into every row for the grand total", () => {
     expect(drillLayout(base, []).filters).toEqual(base.filters);
+  });
+});
+
+describe("the field list", () => {
+  const fields: readonly SourceField[] = [
+    { name: "fund", kind: "text" },
+    { name: "strategy", kind: "text" },
+    { name: "asset_class", kind: "text" },
+    { name: "market_value_usd", kind: "float" },
+    { name: "daily_pnl_usd", kind: "float" },
+    { name: "quantity", kind: "decimal" }
+  ];
+  const field = (name: string): SourceField => fields.find((f) => f.name === name) ?? { name, kind: "text" };
+
+  it("puts a field in an area: a group leaves the other axis, and a value is a new sum or count", () => {
+    expect(placeField(base, field("asset_class"), "rows", 1)).toMatchObject({ group_by: ["fund", "asset_class", "strategy"], split_by: [], expanded: [] });
+    expect(placeField(base, field("fund"), "rows", null).group_by).toEqual(["strategy", "fund"]);
+    const valued = placeField(base, field("quantity"), "values", 0);
+    expect(valued.measures.map((m) => [m.aggregate, m.column])).toEqual([
+      ["sum", "quantity"],
+      ["sum", "market_value_usd"],
+      ["sum", "daily_pnl_usd"],
+      ["count_all", null]
+    ]);
+    // Measures named by position follow: the sort was by measure 1 and top-N by measure 2.
+    expect(valued.group_sort.by).toEqual({ measure: 2 });
+    expect(valued.top_n?.measure).toBe(3);
+    expect(placeField(base, field("fund"), "values").measures.at(-1)).toMatchObject({ aggregate: "count", column: "fund" });
+  });
+
+  it("moves chips within an area and between areas, as the drop point shows them", () => {
+    expect(moveChip(base, { area: "rows", index: 0 }, "rows", null, fields).group_by).toEqual(["strategy", "fund"]);
+    expect(moveChip(base, { area: "rows", index: 1 }, "rows", 0, fields).group_by).toEqual(["strategy", "fund"]);
+    expect(moveChip(base, { area: "rows", index: 0 }, "rows", 1, fields)).toBe(base);
+    expect(moveChip(base, { area: "rows", index: 1 }, "columns", 0, fields)).toMatchObject({ group_by: ["fund"], split_by: ["strategy", "asset_class"] });
+    expect(moveChip(base, { area: "values", index: 2 }, "values", 0, fields).measures.map((m) => m.aggregate)).toEqual(["count_all", "sum", "sum"]);
+    const grouped = moveChip(base, { area: "values", index: 1 }, "rows", null, fields);
+    expect(grouped.group_by).toEqual(["fund", "strategy", "daily_pnl_usd"]);
+    expect(grouped.measures).toHaveLength(2);
+    // A count of rows has no column to group by.
+    expect(moveChip(base, { area: "values", index: 2 }, "rows", null, fields)).toBe(base);
+  });
+
+  it("ticks a field into Rows or Values, and unticking takes it out of every area", () => {
+    expect(withField(base, field("asset_class"))).toMatchObject({ group_by: ["fund", "strategy", "asset_class"], split_by: [] });
+    expect(withField(base, field("quantity")).measures).toHaveLength(4);
+    const filtered = { ...base, filters: [{ column: "fund", op: "eq" as const, value: "Atlas", values: [], columns: [] }] };
+    expect(areasOf(filtered, "fund")).toEqual(["rows", "filters"]);
+    expect(areasOf(base, "market_value_usd")).toEqual(["values"]);
+    const without = withoutField(filtered, "fund");
+    expect(without).toMatchObject({ group_by: ["strategy"], filters: [] });
+    expect(withoutField(base, "market_value_usd").measures.map((m) => m.column)).toEqual(["daily_pnl_usd", null]);
+  });
+
+  it("formats a measure, and back at every default it has no format", () => {
+    const millions = withMeasureFormat(base, 0, { abbreviate: "millions", decimals: 1 });
+    expect(millions.measures[0]?.format).toMatchObject({ abbreviate: "millions", decimals: 1, negative: "minus" });
+    expect(withMeasureFormat(millions, 0, { abbreviate: null, decimals: null }).measures[0]?.format).toBeNull();
+  });
+
+  it("sorts the groups by a measure, or by their keys again", () => {
+    expect(measureSort(base, 1)).toBe("descending");
+    expect(measureSort(base, 0)).toBeNull();
+    const ascending = withMeasureSort(base, 0, false);
+    expect(measureSort(ascending, 0)).toBe("ascending");
+    expect(withMeasureSort(ascending, 0, null).group_sort).toEqual({ by: "key", descending: false });
   });
 });

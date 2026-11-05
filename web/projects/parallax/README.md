@@ -41,9 +41,11 @@ layout read from storage or a URL before it is used.
 
 ## Show a pivot with its settings
 
-`<px-pivot>` takes the same layout and adds a settings panel beside the grid:
-row and column groups, values, filters picked from the column's values, open
-levels and top-N. Double-clicking a value opens the rows behind its group.
+`<px-pivot>` takes the same layout and adds a field list beside the grid, as
+Excel's PivotTable has: drag fields into Filters, Columns, Rows and Values, or
+use their menus. A value's menu, also on its header, sets its aggregate, how it
+is shown and its number format. Double-clicking a value opens the rows behind
+its group in a drawer you can search and export.
 
 ```html
 <px-pivot [(layout)]="layout" />

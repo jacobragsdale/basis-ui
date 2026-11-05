@@ -10,6 +10,7 @@ import { ChangeDetectionStrategy, Component, DOCUMENT, ViewEncapsulation, comput
 import type { DistinctValues } from "../connection";
 import { GridComponent } from "../grid/grid.component";
 import type { Density, DrawStats, DrillRequest } from "../grid/grid.component";
+import type { ToolbarParts } from "../grid/toolbar.component";
 import { checkLayout } from "../layout";
 import type { Layout, LayoutInput } from "../layout";
 import { installThemeStyles } from "../theme";
@@ -66,28 +67,12 @@ const PIVOT_STYLES = `
     letter-spacing: 0.04em;
     text-transform: uppercase;
   }
-  px-pivot .px-chips {
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-    margin: 0 0 6px;
-    padding: 0;
-    list-style: none;
+  px-pivot .px-muted {
+    color: var(--px-muted-fg);
   }
-  px-pivot .px-chip {
-    display: flex;
-    align-items: center;
-    gap: 2px;
-    padding: 2px 4px 2px 8px;
-    border: 1px solid var(--px-grid-line);
-    border-radius: 3px;
-    background: var(--px-grid-bg);
-  }
-  px-pivot .px-chip span {
-    flex: 1;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+  px-pivot .px-pivot-hint {
+    margin: 8px 0 0;
+    font-size: 12px;
   }
   px-pivot button,
   px-pivot select,
@@ -99,44 +84,132 @@ const PIVOT_STYLES = `
   px-pivot input:not([type="checkbox"]) {
     max-width: 100%;
     padding: 2px 4px;
-    border: 1px solid var(--px-grid-line);
-    border-radius: 3px;
-    background: var(--px-grid-bg);
-  }
-  px-pivot .px-chip button,
-  px-pivot .px-row-buttons button {
-    padding: 0 4px;
-    border: 0;
-    background: transparent;
-    cursor: pointer;
+    border: 1px solid var(--px-control-border);
+    border-radius: calc(var(--px-radius) - 2px);
+    background: var(--px-control-bg);
+    color: var(--px-control-fg);
   }
   px-pivot button:disabled {
     opacity: 0.35;
     cursor: default;
   }
-  px-pivot .px-measure,
-  px-pivot .px-filter {
-    position: relative;
+  px-pivot .px-field-list {
     display: flex;
-    flex-wrap: wrap;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 8px;
+  }
+  px-pivot .px-field-search {
+    height: 28px;
+  }
+  px-pivot .px-field-list ul {
+    max-height: 220px;
+    overflow: auto;
+    margin: 0;
+    padding: 2px 0;
+    border: 1px solid var(--px-grid-line);
+    border-radius: var(--px-radius);
+    background: var(--px-grid-bg);
+    list-style: none;
+  }
+  px-pivot .px-field {
+    display: flex;
     align-items: center;
     gap: 4px;
-    margin-bottom: 6px;
-    padding: 6px;
-    border: 1px solid var(--px-grid-line);
-    border-radius: 3px;
-    background: var(--px-grid-bg);
+    padding: 1px 4px 1px 6px;
+    cursor: grab;
   }
-  px-pivot .px-row-buttons {
-    margin-left: auto;
+  px-pivot .px-field:hover {
+    background: var(--px-control-hover);
   }
-  px-pivot .px-add,
-  px-pivot .px-values {
-    padding: 2px 8px;
+  px-pivot .px-field label {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+  }
+  px-pivot .px-field label span,
+  px-pivot .px-chip span,
+  px-pivot .px-chip-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  px-pivot .px-field-areas {
+    color: var(--px-muted-fg);
+    font-size: 11px;
+  }
+  px-pivot .px-well h3 {
+    margin: 10px 0 4px;
+  }
+  px-pivot .px-well-chips {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-height: 30px;
+    margin: 0;
+    padding: 3px;
     border: 1px dashed var(--px-grid-line);
-    border-radius: 3px;
+    border-radius: var(--px-radius);
+    list-style: none;
+  }
+  px-pivot .px-well-chips[data-drop="true"] {
+    border-color: var(--px-accent);
+    background: var(--px-chip-bg);
+  }
+  px-pivot .px-well-empty {
+    padding: 4px 6px;
+    color: var(--px-muted-fg);
+    font-size: 12px;
+  }
+  px-pivot .px-chip {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    min-height: 26px;
+    padding: 0 2px 0 4px;
+    border: 1px solid var(--px-control-border);
+    border-radius: calc(var(--px-radius) - 2px);
+    background: var(--px-control-bg);
+    color: var(--px-control-fg);
+    cursor: grab;
+  }
+  px-pivot .px-chip > span,
+  px-pivot .px-chip-text {
+    flex: 1;
+    min-width: 0;
+  }
+  px-pivot .px-chip > .px-icon:first-child {
+    color: var(--px-muted-fg);
+  }
+  px-pivot .px-drop-before {
+    box-shadow: 0 -2px 0 var(--px-accent);
+  }
+  px-pivot .px-drop-end {
+    box-shadow: inset 0 -2px 0 var(--px-accent);
+  }
+  px-pivot .px-chip-text {
+    padding: 0 4px;
+    border: 0;
+    background: transparent;
+    text-align: left;
+    cursor: pointer;
+  }
+  px-pivot .px-chip-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
     background: transparent;
     cursor: pointer;
+  }
+  px-pivot .px-chip-button:hover {
+    background: var(--px-control-hover);
   }
   px-pivot .px-option {
     display: flex;
@@ -146,37 +219,6 @@ const PIVOT_STYLES = `
   }
   px-pivot .px-option input[type="number"] {
     width: 56px;
-  }
-  px-pivot .px-popover {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    z-index: 4;
-    display: block;
-    width: 260px;
-    padding: 6px;
-    border: 1px solid var(--px-grid-line);
-    border-radius: 3px;
-    background: var(--px-grid-bg);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
-  }
-  px-pivot .px-popover ul {
-    max-height: 240px;
-    overflow: auto;
-    margin: 6px 0 0;
-    padding: 0;
-    list-style: none;
-  }
-  px-pivot .px-popover label {
-    display: flex;
-    gap: 6px;
-    align-items: center;
-  }
-  px-pivot .px-popover label span:first-of-type {
-    flex: 1;
-  }
-  px-pivot .px-muted {
-    color: var(--px-muted-fg);
   }
   px-pivot .px-pivot-main {
     display: flex;
@@ -239,7 +281,7 @@ const PIVOT_STYLES = `
             <span>Rows behind {{ d.label }}</span>
             <button type="button" aria-label="Close" (click)="drill.set(null)">×</button>
           </header>
-          <px-grid [layout]="d.layout" [theme]="theme()" [density]="density()" (layoutChange)="updateDrill($event)" />
+          <px-grid [layout]="d.layout" [theme]="theme()" [density]="density()" [toolbar]="drillTools" (layoutChange)="updateDrill($event)" />
         </section>
       }
     </div>
@@ -261,6 +303,11 @@ export class PivotComponent {
     return this.gridRef().drawStats();
   }
   protected readonly panelOpen = signal(true);
+  /**
+   * The drawer's rows are found, searched and exported from its toolbar. Its filters are what put the rows behind the
+   * group, so they show in the drawer's title rather than as chips to remove, and its rows aren't grouped again.
+   */
+  protected readonly drillTools: Partial<ToolbarParts> = { chips: false, group: false };
   protected readonly drill = signal<{ readonly label: string; readonly layout: Layout; readonly source: string } | null>(null);
   protected readonly current = computed((): Layout | null => {
     const checked = checkLayout(this.layout());

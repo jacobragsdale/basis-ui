@@ -68,6 +68,13 @@ function savedWidth(value: unknown, column: string): number | null {
   return typeof width === "number" ? width : null;
 }
 
+/** Opens a filter on a pivot's field from the field list; its value list opens at once. */
+async function filterBy(page: Page, field: string): Promise<Locator> {
+  await page.getByRole("button", { name: `Add ${field} to` }).click();
+  await page.getByRole("menuitem", { name: "Add to Filters" }).click();
+  return page.locator("px-column-filter");
+}
+
 /** The length of a list in a layout, such as its sorts, or -1 if it has none. */
 function lengthOf(value: unknown, key: string): number {
   if (typeof value !== "object" || value === null) {
@@ -252,10 +259,11 @@ test.describe("px-pivot", () => {
     await expect.poll(() => rowCount(page)).toBeLessThan(before);
   });
 
-  test("a value added in the settings becomes a column", async ({ page }) => {
+  test("a value added from a field's menu becomes a column", async ({ page }) => {
     await open(page, "preset=pivot");
-    await page.getByRole("button", { name: "Add value" }).click();
-    await expect.poll(async () => layout(page)).toMatchObject({ measures: [{}, {}, {}, {}] });
+    await page.getByRole("button", { name: "Add quantity to" }).click();
+    await page.getByRole("menuitem", { name: "Add to Values" }).click();
+    await expect.poll(async () => layout(page)).toMatchObject({ measures: [{}, {}, {}, { aggregate: "sum", column: "quantity" }] });
     await expect(page.locator(".px-error")).toHaveCount(0);
   });
 
@@ -263,13 +271,13 @@ test.describe("px-pivot", () => {
     await open(page, "preset=pivot");
     const before = await rowCount(page);
     // A new filter opens its value list at once.
-    await page.getByRole("button", { name: "Add filter" }).click();
-    const first = page.locator(".px-popover input[type=checkbox]").first();
+    const editor = await filterBy(page, "fund");
+    const first = editor.locator("input[type=checkbox]").first();
     await expect(first).toBeVisible({ timeout: 30_000 });
     await first.check();
     await expect.poll(() => rowCount(page)).toBeLessThan(before);
     // The list stays open, so a second value can be ticked straight away.
-    await expect(page.locator(".px-popover input[type=checkbox]").nth(1)).toBeVisible();
+    await expect(editor.locator("input[type=checkbox]").nth(1)).toBeVisible();
     expect(await layout(page)).toMatchObject({ filters: [{ op: "in", values: [expect.any(String)] }] });
   });
 
@@ -281,8 +289,7 @@ test.describe("px-pivot", () => {
       element.scrollTo({ top: element.scrollHeight });
     });
     await expect.poll(() => scroll.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
-    await page.getByRole("button", { name: "Add filter" }).click();
-    const first = page.locator(".px-popover input[type=checkbox]").first();
+    const first = (await filterBy(page, "fund")).locator("input[type=checkbox]").first();
     await expect(first).toBeVisible({ timeout: 30_000 });
     await first.check();
     await expect.poll(() => rowCount(page)).toBeLessThan(before / 2);
@@ -330,24 +337,85 @@ test.describe("px-pivot", () => {
     // sector has blanks in the generated positions.
     await page.getByRole("button", { name: "Remove fund" }).click();
     await page.getByRole("button", { name: "Remove strategy" }).click();
-    await page.getByRole("button", { name: "Add filter" }).click();
-    const blank = page.locator(".px-popover label", { hasText: "(blank)" }).locator("input");
+    const blank = (await filterBy(page, "sector")).locator("label", { hasText: "(blank)" }).locator("input");
     await expect(blank).toBeVisible({ timeout: 30_000 });
     await blank.check();
     await expect.poll(async () => layout(page)).toMatchObject({ filters: [{ column: "sector", op: "in", values: [null] }] });
     await expect(page.locator(".px-error")).toHaveCount(0);
   });
 
-  test("changing a filter to a list keeps every row until a value is picked", async ({ page }) => {
+  test("a filter keeps every row until a value is picked, and its chip stays to pick one", async ({ page }) => {
     await open(page, "preset=pivot");
     const before = await rowCount(page);
-    await page.getByRole("button", { name: "Add filter" }).click();
-    await page.locator(".px-popover input[type=checkbox]").first().check();
+    const first = (await filterBy(page, "fund")).locator("input[type=checkbox]").first();
+    await expect(page.locator("px-pivot-filter-well .px-chip")).toHaveText(["fund: (All)"]);
+    expect(lengthOf(await layout(page), "filters")).toBeLessThanOrEqual(0);
+    await first.check();
     await expect.poll(() => rowCount(page)).toBeLessThan(before);
-    // Moving the committed filter to another column clears its values, so it becomes a draft again.
-    await page.getByRole("combobox", { name: "Filter column" }).first().selectOption("strategy");
+    // With its last value unticked the filter keeps every row again, and leaves the layout.
+    await first.uncheck();
     await expect.poll(() => rowCount(page)).toBe(before);
-    expect(await layout(page)).toMatchObject({ filters: [] });
+    expect(lengthOf(await layout(page), "filters")).toBe(0);
+    await expect(page.locator("px-pivot-filter-well .px-chip")).toHaveText(["fund: (All)"]);
+  });
+
+  test("dragging fields between the areas regroups the pivot", async ({ page }) => {
+    await open(page, "preset=pivot");
+    const columns = page.locator("px-pivot-well", { has: page.getByRole("heading", { name: "Columns" }) });
+    const rows = page.locator("px-pivot-well", { has: page.getByRole("heading", { name: "Rows" }) });
+    // Found with the field search, and dropped below the last chip, it goes at the end.
+    await page.getByRole("searchbox", { name: "Find a field" }).fill("long");
+    await page.locator(".px-field", { hasText: "long_short" }).dragTo(columns.locator(".px-well-chips"), { targetPosition: { x: 20, y: 31 } });
+    await expect.poll(async () => listOf(await layout(page), "split_by")).toEqual(["asset_class", "long_short"]);
+    // A chip dragged from Rows to Columns leaves the rows.
+    await rows.locator(".px-chip", { hasText: "strategy" }).dragTo(columns.locator(".px-chip", { hasText: "asset_class" }), { targetPosition: { x: 20, y: 2 } });
+    await expect.poll(async () => listOf(await layout(page), "split_by")).toEqual(["strategy", "asset_class", "long_short"]);
+    expect(listOf(await layout(page), "group_by")).toEqual(["fund", "sector", "ticker"]);
+    // Unticking a field takes it out of every area.
+    await page.locator(".px-field", { hasText: "long_short" }).first().getByRole("checkbox").uncheck();
+    await expect.poll(async () => listOf(await layout(page), "split_by")).toEqual(["strategy", "asset_class"]);
+    await expect(page.locator(".px-error")).toHaveCount(0);
+  });
+
+  test("a measure's header opens its menu, which sorts the groups by it and shows it as a share", async ({ page }) => {
+    await open(page, "preset=pivot");
+    const canvas = page.locator(".px-pivot-main > px-grid canvas.px-canvas");
+    await canvas.click({ position: { x: 320, y: ROW * 2 + ROW / 2 } });
+    await page.keyboard.press("Alt+ArrowDown");
+    const menu = page.locator("px-measure-menu");
+    await expect(menu).toHaveAttribute("aria-label", "Value Sum of market_value_usd");
+    await expect(menu.getByRole("menuitem").first()).toBeFocused();
+    await menu.getByRole("menuitem", { name: "Sort largest first" }).click();
+    await expect.poll(async () => layout(page)).toMatchObject({ group_sort: { by: { measure: 0 }, descending: true } });
+    await page.keyboard.press("Alt+ArrowDown");
+    await page.locator("px-measure-menu").getByRole("combobox", { name: "Show as" }).selectOption("percent_of_grand_total");
+    await expect.poll(async () => layout(page)).toMatchObject({ measures: [{ show_as: "percent_of_grand_total" }, {}, {}] });
+    await expect(page.locator(".px-error")).toHaveCount(0);
+  });
+
+  test("Collapse all and Expand all close and open every group", async ({ page }) => {
+    await open(page, "preset=pivot");
+    const before = await rowCount(page);
+    await page.getByRole("button", { name: "Collapse all" }).click();
+    await expect.poll(() => rowCount(page)).toBeLessThan(20);
+    expect(await layout(page)).toMatchObject({ expand_depth: 0, expanded: [] });
+    await page.getByRole("button", { name: "Expand all" }).click();
+    await expect.poll(() => rowCount(page)).toBeGreaterThanOrEqual(before);
+    expect(await layout(page)).toMatchObject({ expand_depth: 4 });
+  });
+
+  test("the drawer's toolbar searches the rows behind a value", async ({ page }) => {
+    await open(page, "preset=pivot");
+    await page.locator(".px-pivot-main > px-grid canvas.px-canvas").dblclick({ position: { x: 320, y: ROW * 2 + ROW / 2 } });
+    const drawer = page.locator(".px-drill");
+    const grid = drawer.locator('[role="grid"]');
+    await expect(grid).toHaveAttribute("aria-rowcount", /^[1-9]\d*$/, { timeout: 30_000 });
+    const all = Number(await grid.getAttribute("aria-rowcount"));
+    // Its filters are what put the rows there, so they show in its title rather than as chips.
+    await expect(drawer.locator("px-grid-toolbar .px-chip")).toHaveCount(0);
+    await drawer.getByRole("searchbox", { name: "Search the grid" }).fill("Merger");
+    await expect.poll(async () => Number(await grid.getAttribute("aria-rowcount"))).toBeLessThan(all);
+    await expect(drawer.getByRole("button", { name: "Export", exact: true })).toBeVisible();
   });
 });
 
@@ -421,9 +489,9 @@ test.describe("toolbar", () => {
   test("a filter's chip says what it keeps, and removes it", async ({ page }) => {
     await open(page, "preset=pivot");
     const before = await rowCount(page);
-    await page.getByRole("button", { name: "Add filter" }).click();
-    await page.locator(".px-popover input[type=checkbox]").first().check();
+    await (await filterBy(page, "fund")).locator("input[type=checkbox]").first().check();
     await expect.poll(() => rowCount(page)).toBeLessThan(before);
+    await page.keyboard.press("Escape");
     const chip = page.locator("px-grid-toolbar .px-chip").first();
     await expect(chip).toContainText(":");
     await chip.getByRole("button", { name: /^Remove the filter/ }).click();

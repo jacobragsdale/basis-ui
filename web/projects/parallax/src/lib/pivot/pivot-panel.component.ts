@@ -1,55 +1,44 @@
-/** The pivot's settings: row and column groups, values, filters and options. */
+/**
+ * The pivot's settings, as Excel's PivotTable field list lays them out: the searchable fields, then the Filters,
+ * Columns, Rows and Values areas they are dragged into, then the options. The panel keeps what is being dragged and
+ * turns each drop into a layout.
+ */
 
-import { ChangeDetectionStrategy, Component, computed, input, output, signal } from "@angular/core";
+import { ChangeDetectionStrategy, Component, input, output, signal, viewChild } from "@angular/core";
 
-import type { Layout, LayoutFilter } from "../layout";
-import { PivotAxisComponent } from "./axis.component";
-import { addFilter, addMeasure, filter, measure, operandOf, removeFilter, updateFilter } from "./edit";
-import { PivotFilterComponent } from "./filter.component";
-import { NUMERIC_KINDS } from "./labels";
-import type { PivotField } from "./labels";
-import { PivotMeasureComponent } from "./measure.component";
+import type { SourceField } from "../grid/grid-source";
+import type { Layout } from "../layout";
+import type { Dragged } from "./drag";
+import { chipColumn, moveChip, placeField, removeChip } from "./edit";
+import type { ChipArea } from "./edit";
+import { PivotFieldListComponent } from "./field-list.component";
+import { PivotFilterWellComponent } from "./filter-well.component";
 import { PivotOptionsComponent } from "./options.component";
 import type { ValueSource } from "./value-picker.component";
-
-/** Whether a filter says what to match: an empty list or a missing value would hide every row. */
-function complete(f: LayoutFilter): boolean {
-  const operand = operandOf(f.op);
-  return operand === "none" || (operand === "one" ? f.value !== null : f.values.length > 0);
-}
+import { PivotWellComponent } from "./well.component";
 
 @Component({
   selector: "px-pivot-panel",
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [PivotAxisComponent, PivotMeasureComponent, PivotFilterComponent, PivotOptionsComponent],
+  imports: [PivotFieldListComponent, PivotFilterWellComponent, PivotOptionsComponent, PivotWellComponent],
   template: `
-    <px-pivot-axis title="Rows" axis="group_by" [layout]="layout()" [fields]="groupable()" (changed)="changed.emit($event)" />
-    <px-pivot-axis title="Columns" axis="split_by" [layout]="layout()" [fields]="groupable()" (changed)="changed.emit($event)" />
-    <section aria-label="Values">
-      <h3>Values</h3>
-      @for (m of layout().measures; track $index) {
-        <px-pivot-measure class="px-measure" [layout]="layout()" [index]="$index" [fields]="fields()" (changed)="changed.emit($event)" />
-      }
-      <button type="button" class="px-add" (click)="addValue()">Add value</button>
-    </section>
-    <section aria-label="Filters">
-      <h3>Filters</h3>
-      @for (f of layout().filters; track $index) {
-        <px-pivot-filter
-          class="px-filter"
-          [filter]="f"
-          [startPicking]="$index === picking()"
-          [fields]="fields()"
-          [source]="source()"
-          (changed)="editFilter($index, $event)"
-          (removed)="changed.emit(removeFilter(layout(), $index))"
-        />
-      }
-      @if (draft(); as d) {
-        <px-pivot-filter class="px-filter" [filter]="d" [startPicking]="true" [fields]="fields()" [source]="source()" (changed)="editDraft($event)" (removed)="draft.set(null)" />
-      }
-      <button type="button" class="px-add" [disabled]="fields().length === 0 || draft() !== null" (click)="addOneFilter()">Add filter</button>
-    </section>
+    <px-pivot-field-list [layout]="layout()" [fields]="fields()" (changed)="changed.emit($event)" (dragStart)="dragging.set($event)" (dragEnd)="dragging.set(null)" (filterBy)="filterBy($event)" />
+    <p class="px-muted px-pivot-hint">Drag fields between the areas below, or use their menus.</p>
+    <px-pivot-filter-well [layout]="layout()" [fields]="fields()" [source]="source()" [dragging]="dragging()" (changed)="changed.emit($event)" (dropped)="dropOnFilters()" />
+    @for (well of wells; track well.area) {
+      <px-pivot-well
+        [area]="well.area"
+        [title]="well.title"
+        [layout]="layout()"
+        [fields]="fields()"
+        [dragging]="dragging()"
+        (changed)="changed.emit($event)"
+        (dragStart)="dragging.set($event)"
+        (dragEnd)="dragging.set(null)"
+        (dropped)="drop(well.area, $event)"
+        (filterBy)="filterBy($event)"
+      />
+    }
     <section aria-label="Options">
       <h3>Options</h3>
       <px-pivot-options [layout]="layout()" (changed)="changed.emit($event)" />
@@ -60,54 +49,52 @@ export class PivotPanelComponent {
   /** The layout being edited. */
   public readonly layout = input.required<Layout>();
   /** The dataset's columns. */
-  public readonly fields = input.required<readonly PivotField[]>();
+  public readonly fields = input.required<readonly SourceField[]>();
   /** Where filter pick-list values come from. */
   public readonly source = input.required<ValueSource>();
   /** Fires with each edited layout. */
   public readonly changed = output<Layout>();
 
-  /** A filter being set up, kept out of the layout until it has a value: an empty "is one of" would hide every row. */
-  protected readonly draft = signal<LayoutFilter | null>(null);
-  protected readonly removeFilter = removeFilter;
-  /** The filter whose value list stays open after its draft was added. */
-  protected readonly picking = signal<number | null>(null);
+  protected readonly wells: readonly { readonly area: ChipArea; readonly title: string }[] = [
+    { area: "columns", title: "Columns" },
+    { area: "rows", title: "Rows" },
+    { area: "values", title: "Values" }
+  ];
+  /** The field or chip being dragged. */
+  protected readonly dragging = signal<Dragged | null>(null);
+  private readonly filters = viewChild.required(PivotFilterWellComponent);
 
-  /** Columns worth grouping by: anything but doubles, whose values rarely repeat. */
-  protected readonly groupable = computed(() => this.fields().filter((f) => f.kind !== "float"));
-
-  protected addValue(): void {
-    const column = this.fields().find((f) => NUMERIC_KINDS.includes(f.kind))?.name ?? null;
-    this.changed.emit(addMeasure(this.layout(), column === null ? measure("count_all", null) : measure("sum", column)));
-  }
-
-  /** Adds a filter on the outermost row group, or else the first text column, as a pick-list. */
-  protected addOneFilter(): void {
-    const fields = this.fields();
-    const outer = this.layout().group_by[0];
-    const first = fields.find((f) => f.name === outer) ?? fields.find((f) => f.kind === "text") ?? fields[0];
-    if (first !== undefined) {
-      this.draft.set(filter(first.name, first.kind === "text" ? "in" : "eq"));
+  /** Puts what was dragged in an area, before chip `at` or at the end. */
+  protected drop(area: ChipArea, at: number | null): void {
+    const dragged = this.dragging();
+    this.dragging.set(null);
+    const layout = this.layout();
+    if (dragged?.kind === "chip") {
+      this.changed.emit(moveChip(layout, dragged.chip, area, at, this.fields()));
+      return;
+    }
+    const field = this.fields().find((f) => f.name === dragged?.column);
+    if (field !== undefined) {
+      this.changed.emit(placeField(layout, field, area, at));
     }
   }
 
-  /** Edits a filter in the layout; one that no longer says what to match goes back to being a draft. */
-  protected editFilter(index: number, edited: LayoutFilter): void {
-    if (complete(edited)) {
-      this.changed.emit(updateFilter(this.layout(), index, edited));
-    } else {
-      this.draft.set(edited);
-      this.changed.emit(removeFilter(this.layout(), index));
+  /** Filters by what was dropped on Filters; a chip moves there, as in Excel. */
+  protected dropOnFilters(): void {
+    const dragged = this.dragging();
+    this.dragging.set(null);
+    if (dragged?.kind === "field") {
+      this.filterBy(dragged.column);
+      return;
+    }
+    const column = dragged === null ? null : chipColumn(this.layout(), dragged.chip);
+    if (dragged !== null && column !== null) {
+      this.changed.emit(removeChip(this.layout(), dragged.chip));
+      this.filterBy(column);
     }
   }
 
-  /** Adds the draft to the layout once it says what to match. */
-  protected editDraft(edited: LayoutFilter): void {
-    if (complete(edited)) {
-      this.draft.set(null);
-      this.picking.set(this.layout().filters.length);
-      this.changed.emit(addFilter(this.layout(), edited));
-    } else {
-      this.draft.set(edited);
-    }
+  protected filterBy(column: string): void {
+    this.filters().add(column);
   }
 }

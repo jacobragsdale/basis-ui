@@ -41,7 +41,7 @@ import type { DistinctValues, Viewport } from "../connection";
 import { isNegativeText } from "../format";
 import { CellFlag } from "../frame";
 import type { FrameColumn, FrameData, RowKind, TreeRows } from "../frame";
-import { TREE_WIDTH_KEY, checkLayout } from "../layout";
+import { TREE_WIDTH_KEY, checkLayout, measureWidthKey } from "../layout";
 import type { Layout, LayoutInput, LayoutScalar } from "../layout";
 import { ParallaxClient } from "../client";
 import { installThemeStyles, readTheme } from "../theme";
@@ -51,7 +51,7 @@ import type { ColumnGeometry } from "./geometry";
 import { groupPath, gridSource, withExpanded } from "./grid-source";
 import { highlightRanges, isFiltered, searchColumns, shownColumns, withColumnBefore, withGroupedBy } from "./edit";
 import { GroupPanelComponent } from "./group-panel.component";
-import { HeaderMenuComponent } from "./header-menu.component";
+import { ColumnMenuComponent } from "./column-menu.component";
 import { PopoverComponent } from "../ui/popover.component";
 import { contains, moveFocus, rangeOf, selectAll, toTsv } from "./selection";
 import type { CellRange, CellRef, Extent, Selection } from "./selection";
@@ -111,6 +111,8 @@ const FUNNEL_WIDTH = 20;
 /** The icons a header draws, as SVG path data on a 16-unit square. */
 const FUNNEL_PATH = "M2.5 3h11L9.25 8.25v4.75l-2.5-1.25V8.25z";
 const PIN_PATH = "M5.5 2.5h5M6.5 2.5v4l-2 2.5h7l-2-2.5v-4M8 9v5";
+/** The mark of a pivot measure's menu, where a column has its funnel: a measure is not filtered from its header. */
+const CHEVRON_PATH = "M4 6l4 4 4-4";
 
 const FLAG_NOTES: Readonly<Record<CellFlag, string | null>> = {
   [CellFlag.Ok]: null,
@@ -290,7 +292,7 @@ const GRID_STYLES = `
   selector: "px-grid",
   changeDetection: ChangeDetectionStrategy.OnPush,
   encapsulation: ViewEncapsulation.None,
-  imports: [GridToolbarComponent, GroupPanelComponent, HeaderMenuComponent, PopoverComponent, StatusBarComponent],
+  imports: [ColumnMenuComponent, GridToolbarComponent, GroupPanelComponent, PopoverComponent, StatusBarComponent],
   host: { "[attr.data-px-theme]": "theme()", "[class.px-auto-height]": "height() === 'auto'" },
   template: `
     @if (toolbarView(); as bar) {
@@ -329,7 +331,16 @@ const GRID_STYLES = `
       @if (menuView(); as m) {
         <div #menuAnchor class="px-menu-anchor" [style.left.px]="m.left" [style.top.px]="m.top" [style.width.px]="m.width" [style.height.px]="m.height"></div>
         <px-popover [anchor]="menuAnchor" [restore]="scroll" alignTo="end" (closed)="menu.set(null)">
-          <px-header-menu [layout]="m.layout" [column]="m.name" [fields]="fields()" [source]="values" (changed)="layout.set($event)" (fit)="fitColumn(m.column)" (done)="menu.set(null)" />
+          <px-column-menu
+            [layout]="m.layout"
+            [column]="m.name"
+            [measure]="m.measure"
+            [fields]="fields()"
+            [source]="values"
+            (changed)="layout.set($event)"
+            (fit)="fitColumn(m.column)"
+            (done)="menu.set(null)"
+          />
         </px-popover>
       }
       <div class="px-visually-hidden" role="status" aria-label="Totals row" [hidden]="totalsText() === null">{{ totalsText() }}</div>
@@ -397,7 +408,16 @@ export class GridComponent {
     return parts === null || layout === null ? null : { parts, layout };
   });
   /** The column whose menu is open, and where its header is, over the grid's body. */
-  protected readonly menu = signal<{ readonly column: number; readonly name: string; readonly left: number; readonly top: number; readonly width: number; readonly height: number } | null>(null);
+  /** The open header menu: its data column, and the source column it edits or, for a pivot, the measure. */
+  protected readonly menu = signal<{
+    readonly column: number;
+    readonly name: string;
+    readonly measure: number | null;
+    readonly left: number;
+    readonly top: number;
+    readonly width: number;
+    readonly height: number;
+  } | null>(null);
   protected readonly menuView = computed(() => {
     const menu = this.menu();
     const layout = this.current();
@@ -470,7 +490,8 @@ export class GridComponent {
     const live = this.liveWidth();
     const widths = { ...(layout?.column_widths ?? {}), ...(live === null ? {} : { [live.key]: live.width }) };
     if (layout !== null && isPivot(layout)) {
-      return groupedGeometry(count, layout.measures.length, widths);
+      // A measure's columns, one under each pivot value, share its fitted width, and a width the user set wins.
+      return groupedGeometry(count, layout.measures.length, { ...this.fitted(), ...widths });
     }
     const names = layout === null ? this.source.fields().map((f) => f.name) : shownColumns(layout, this.source.fields());
     const pinned = layout === null ? 0 : layout.pinned.filter((c) => names.includes(c)).length;
@@ -709,7 +730,7 @@ export class GridComponent {
     if (x - left <= EDGE && column > 0) {
       return column - 1;
     }
-    return right - x <= FUNNEL_WIDTH && this.menuColumn(column) !== null ? "funnel" : null;
+    return right - x <= FUNNEL_WIDTH && this.hasMenu(column) ? "funnel" : null;
   }
 
   private widthKeyOf(column: number): string {
@@ -758,7 +779,7 @@ export class GridComponent {
       return this.toolbarRef()?.focusSearch() === true;
     }
     const focus = this.selection()?.focus;
-    if (event.altKey && event.key === "ArrowDown" && focus !== undefined && this.menuColumn(focus.column) !== null) {
+    if (event.altKey && event.key === "ArrowDown" && focus !== undefined && this.hasMenu(focus.column)) {
       this.openMenu(focus.column);
       return true;
     }
@@ -930,15 +951,30 @@ export class GridComponent {
     return this.geometry().widthKey(column);
   }
 
-  /** Opens data column `column`'s menu below its header. */
+  /** The measure a pivot's data column shows, whose menu its header opens; null for any other column. */
+  private menuMeasure(column: number): number | null {
+    const layout = this.current();
+    if (layout === null || !isPivot(layout) || layout.measures.length === 0 || column < 0 || column >= this.geometry().count) {
+      return null;
+    }
+    return column % layout.measures.length;
+  }
+
+  /** Whether data column `column`'s header opens a menu. */
+  private hasMenu(column: number): boolean {
+    return this.menuColumn(column) !== null || this.menuMeasure(column) !== null;
+  }
+
+  /** Opens data column `column`'s menu below its header: a column's, or a pivot measure's. */
   private openMenu(column: number): void {
     const name = this.menuColumn(column);
-    if (name === null) {
+    const measure = this.menuMeasure(column);
+    if (name === null && measure === null) {
       return;
     }
     const geometry = this.geometry();
     this.clearTooltip();
-    this.menu.set({ column, name, left: screenX(geometry, column, this.scrollLeft()), top: 0, width: geometry.width(column), height: this.rowHeight() });
+    this.menu.set({ column, name: name ?? "", measure, left: screenX(geometry, column, this.scrollLeft()), top: 0, width: geometry.width(column), height: this.rowHeight() });
   }
 
   /**
@@ -955,21 +991,26 @@ export class GridComponent {
       return;
     }
     const context = this.canvas().nativeElement.getContext("2d");
-    if (layout === null || context === null || isPivot(layout)) {
+    if (layout === null || context === null) {
       return;
     }
     context.font = (this.tokens ?? readTheme(this.canvas().nativeElement)).font;
     const whole = frame.firstRow === 0 && frame.rowCount >= frame.totalRows;
+    // A pivot's columns are fitted by measure: every column of one measure shares a width.
+    const pivot = isPivot(layout);
+    const period = Math.max(1, layout.measures.length);
+    const keys = frame.columns.map((data, i) => (pivot ? measureWidthKey((frame.firstColumn + i) % period) : data.name));
+    const due = new Set(keys.filter((key) => this.needsFit(layout, key, whole, frame.rowCount)));
     let fitted = this.fitted();
-    for (const data of frame.columns) {
-      if (!this.needsFit(layout, data.name, whole, frame.rowCount)) {
-        continue;
+    frame.columns.forEach((data, i) => {
+      const key = keys[i] ?? data.name;
+      const width = due.has(key) ? this.fittedWidth(context, data, frame.rowCount, !pivot) : 0;
+      if (width > (fitted[key] ?? 0)) {
+        fitted = { ...fitted, [key]: width };
       }
-      this.fittedOver.set(data.name, frame.rowCount);
-      const width = this.fittedWidth(context, data, frame.rowCount);
-      if (width > (fitted[data.name] ?? 0)) {
-        fitted = { ...fitted, [data.name]: width };
-      }
+    });
+    for (const key of due) {
+      this.fittedOver.set(key, frame.rowCount);
     }
     if (fitted !== this.fitted()) {
       this.fitted.set(fitted);
@@ -988,10 +1029,14 @@ export class GridComponent {
     return over === undefined || (whole && over < rows);
   }
 
-  /** The width that shows a column's title, with room for its marks, and its first `rows` values, up to a limit. */
-  private fittedWidth(context: CanvasRenderingContext2D, data: FrameColumn, rows: number): number {
+  /**
+   * The width that shows a column's first `rows` values and, with `title`, its title with room for its marks, up to a
+   * limit. A pivot's titles name the pivot values and the measure, and would make every column wide, so its columns fit
+   * their values and are never narrower than the default.
+   */
+  private fittedWidth(context: CanvasRenderingContext2D, data: FrameColumn, rows: number, title: boolean): number {
     // Room for the title, a sort mark with its priority, the funnel and a pin.
-    let widest = this.measure(context, `${data.title} ▲2`) + FUNNEL_WIDTH + 16;
+    let widest = title ? this.measure(context, `${data.title} ▲2`) + FUNNEL_WIDTH + 16 : DEFAULT_WIDTH - 2 * PADDING - 2;
     for (let local = 0; local < rows; local += 1) {
       widest = Math.max(widest, this.measure(context, data.text(local)));
     }
@@ -1479,7 +1524,7 @@ export class GridComponent {
     const x = screenX(geometry, column, pass.scrollLeft);
     const width = geometry.width(column);
     const title = (frame === null ? undefined : frame.columns[column - frame.firstColumn])?.title ?? "";
-    const name = this.menuColumn(column);
+    const look = this.headerLook(column, layout);
     const open = column === this.menu()?.column;
     const lit = open || column === this.hoverHeader() || column === this.drag()?.from;
     if (lit) {
@@ -1487,24 +1532,36 @@ export class GridComponent {
       context.fillRect(x, 0, width, rowPx);
     }
     context.fillStyle = theme.headerForeground;
-    if (name === null || layout === null) {
+    if (look === null) {
       this.headerText(pass, title, this.sortMark(column), x, width);
     } else {
-      this.drawMenuHeader(pass, column, { x, width, title }, isFiltered(layout, name), layout.pinned.includes(name), open || lit ? (open ? "open" : "lit") : "rest");
+      this.drawMenuHeader(pass, column, { x, width, title }, look, open || lit ? (open ? "open" : "lit") : "rest");
     }
     context.fillStyle = theme.gridLine;
     context.fillRect(x + width - 1, 0, 1, rowPx);
   }
 
-  /** Draws the header of a column with a menu: a pin mark if pinned, the title and sort mark, and the funnel. */
+  /** How a header with a menu shows its column's state: filtered, pinned, and the mark that opens it; null without a menu. */
+  private headerLook(column: number, layout: Layout | null): { readonly filtered: boolean; readonly pinned: boolean; readonly mark: string } | null {
+    const name = this.menuColumn(column);
+    if (layout === null) {
+      return null;
+    }
+    if (name !== null) {
+      return { filtered: isFiltered(layout, name), pinned: layout.pinned.includes(name), mark: FUNNEL_PATH };
+    }
+    return this.menuMeasure(column) === null ? null : { filtered: false, pinned: false, mark: CHEVRON_PATH };
+  }
+
+  /** Draws the header of a column with a menu: a pin mark if pinned, the title and sort mark, and the menu's mark. */
   private drawMenuHeader(
     pass: Pass,
     column: number,
     at: { readonly x: number; readonly width: number; readonly title: string },
-    filtered: boolean,
-    pinned: boolean,
+    look: { readonly filtered: boolean; readonly pinned: boolean; readonly mark: string },
     state: "open" | "lit" | "rest"
   ): void {
+    const { filtered, pinned } = look;
     const { context, theme, rowPx } = pass;
     const indent = pinned ? 16 : 0;
     if (pinned) {
@@ -1513,7 +1570,7 @@ export class GridComponent {
     context.fillStyle = theme.headerForeground;
     this.headerText(pass, at.title, this.sortMark(column), at.x + indent, at.width - indent - FUNNEL_WIDTH + PADDING);
     const color = filtered || state === "open" ? theme.accent : state === "lit" ? theme.headerForeground : theme.muted;
-    this.icon(context, FUNNEL_PATH, at.x + at.width - FUNNEL_WIDTH, rowPx / 2 - 7, color, filtered);
+    this.icon(context, look.mark, at.x + at.width - FUNNEL_WIDTH, rowPx / 2 - 7, color, filtered);
   }
 
   /** Draws an icon's path, 14 px square, with its top left at `x`, `y`. */
