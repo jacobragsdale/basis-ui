@@ -12,7 +12,7 @@ use parallax_protocol::v1::{
     server_message::Body,
 };
 use parallax_server::sources::{GeneratedKind, Generator};
-use parallax_server::{Dataset, RefreshPolicy, Registry, router};
+use parallax_server::{Dataset, KEEPALIVE, RefreshPolicy, Registry, router};
 use parallax_session::{Catalog, ConnectionContext};
 use prost::Message;
 use tokio_tungstenite::tungstenite::Message as Ws;
@@ -136,6 +136,31 @@ async fn clients_get_frames_and_pushed_refreshes() {
     };
     assert_eq!((pushed.load_version, pushed.pushed), (2, true));
     assert_ne!(pushed.batch, first.batch, "new values reached the client");
+}
+
+/// Proxies close a WebSocket that carries nothing for a while, so the server pings
+/// an idle connection. The clock is paused: it jumps ahead whenever every task waits.
+#[tokio::test(start_paused = true)]
+async fn an_idle_connection_is_pinged() {
+    let registry = Arc::new(Registry::new(vec![positions_dataset(10)]));
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let address = listener.local_addr().unwrap();
+    tokio::spawn(axum::serve(listener, router(registry)).into_future());
+    let (mut ws, _) = tokio_tungstenite::connect_async(format!("ws://{address}/ws"))
+        .await
+        .unwrap();
+
+    let connected = tokio::time::Instant::now();
+    let message = tokio::time::timeout(KEEPALIVE * 2, ws.next())
+        .await
+        .expect("a ping in time")
+        .expect("open socket")
+        .expect("valid frame");
+    assert!(
+        matches!(message, Ws::Ping(_)),
+        "expected a ping: {message:?}"
+    );
+    assert!(connected.elapsed() >= KEEPALIVE);
 }
 
 #[tokio::test]

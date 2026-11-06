@@ -55,6 +55,21 @@ older build. After an intended change to how charts look, run
 `pnpm screenshots --update-snapshots`, look at the new screenshots, and commit
 them.
 
+### In a container
+
+The `Dockerfile` builds the same demo into one image, with nothing to install
+but Docker. One process serves the app, the protocol and the generated data,
+with the datasets in `examples/container.toml`:
+
+```sh
+docker build -t parallax .
+docker run --rm -p 8080:8080 parallax
+```
+
+Then open <http://localhost:8080>. The server pings every WebSocket every 30
+seconds, so a proxy in front, such as a Cloudflare Tunnel, keeps an idle tab's
+connection open.
+
 ## Documentation
 
 - [How parallax is designed](docs/design.md) explains the architecture and

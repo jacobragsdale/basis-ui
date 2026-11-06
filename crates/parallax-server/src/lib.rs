@@ -9,7 +9,8 @@
 //!
 //! Routes:
 //!
-//! - `GET /ws` upgrades to the protocol: binary protobuf messages in both directions.
+//! - `GET /ws` upgrades to the protocol: binary protobuf messages in both directions,
+//!   and a ping from the server every [`KEEPALIVE`].
 //! - `POST /invalidate/{dataset}` reloads every cached table of a dataset now.
 //! - `POST /export` downloads a view as an Excel workbook or a CSV file; see
 //!   [`export`].
@@ -123,15 +124,30 @@ async fn upgrade(
         .on_upgrade(move |socket| serve(socket, registry, context))
 }
 
-/// Runs one connection: protocol messages from the client, and refreshes whenever
-/// a table reloads.
+/// How often a connection pings its client. Proxies close a WebSocket that carries
+/// nothing for a while (Cloudflare after about 100 seconds), and a view that is
+/// open but untouched sends nothing. Browsers answer pings without the page's
+/// code seeing them.
+pub const KEEPALIVE: Duration = Duration::from_secs(30);
+
+/// Runs one connection: protocol messages from the client, refreshes whenever a
+/// table reloads, and a ping every [`KEEPALIVE`].
 async fn serve(socket: WebSocket, registry: Arc<Registry>, context: ConnectionContext) {
     let (mut sink, mut stream) = socket.split();
     let mut changes = registry.subscribe();
     let catalog: Arc<dyn Catalog> = Arc::clone(&registry) as Arc<dyn Catalog>;
     let mut session = Some(Session::with_context(catalog, context));
+    let mut keepalive =
+        tokio::time::interval_at(tokio::time::Instant::now() + KEEPALIVE, KEEPALIVE);
+    keepalive.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
     loop {
         let replies: Option<Vec<Vec<u8>>> = tokio::select! {
+            _ = keepalive.tick() => {
+                if sink.send(WsMessage::Ping(axum::body::Bytes::new())).await.is_err() {
+                    return;
+                }
+                continue;
+            },
             incoming = stream.next() => match incoming {
                 Some(Ok(WsMessage::Binary(bytes))) => {
                     on_session(&mut session, move |s| s.handle_bytes(&bytes)).await

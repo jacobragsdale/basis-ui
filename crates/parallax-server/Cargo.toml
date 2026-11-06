@@ -40,6 +40,7 @@ odbc = ["parallax-sources/odbc"]
 mongodb = ["parallax-sources/mongodb"]
 
 [dev-dependencies]
+tokio = { version = "1.54", features = ["test-util"] }
 tokio-tungstenite = "0.29"
 tower = { version = "0.5", features = ["util"] }
 
