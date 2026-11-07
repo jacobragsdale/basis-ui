@@ -72,6 +72,29 @@ server, and the status bar says why.
 A copy is fetched once per page: a reload on the server reaches it when the page
 reloads, and its status bar shows the copy's age meanwhile.
 
+An app can also load its own data into the browser, with no parallax server:
+Arrow IPC stream bytes it fetched from its API move to the worker in the
+message's transfer list, so they are never copied between threads, and the
+engine decodes them in place, its arrays pointing into the bytes rather than a
+second copy of them. Views of such a dataset are placed by the load's answer,
+since the worker's welcome is sent before any load. Spike 0.3 set the limit of
+one such table at 150,000 rows and 70 MB of Arrow, where the reference pivot
+meets its 500 ms budget on a slow desktop; `MAX_ROWS` and `MAX_ARROW_BYTES` in
+the browser engine hold them. The bytes are checked before they leave the page,
+and the rows are counted from the stream's batch headers before any data is
+decoded, so a larger load fails with a message naming the limit and the size
+before it costs memory. The load's status is the app's to give: its API writes
+when it read the source, and the NaNs it turned blank, in the schema metadata
+under `parallax.load`.
+
+WebAssembly memory grows and never shrinks, and a load or export past it ends
+in a trap that says only `unreachable`. A trap leaves the engine half-changed
+and borrowed, so every later call would fail; the worker therefore reports it
+and answers nothing more, and the page ends the worker, which frees all its
+memory, fails every waiting request and open view with the reason, and starts
+an empty one. The release build drops the module's name section, a quarter of
+its bytes, which only stack traces use.
+
 The browser build is single-threaded and stays under the 4 GB limit of 32-bit
 WebAssembly. Going further would cost a lot:
 
@@ -865,6 +888,17 @@ because VDI memory is scarce: the page posts the layout in a form to
 `POST /export`, and the browser saves the answer to disk instead of holding it.
 An export runs the layout through the same engine and formatter as the screen,
 so it holds the same numbers.
+
+A view of data the app loaded into the browser is exported by the browser's
+worker, which already holds the table, from the same code compiled to
+WebAssembly. The browser has no file system for `rust_xlsxwriter`'s temporary
+files, so there every sheet is held in memory, at about 190 bytes a cell that
+WebAssembly never returns, and the workbook takes its timestamps from
+JavaScript's clock. An Excel export there is capped at 1,000,000 cells, about
+190 MB beside a table at the row limit, and a larger view is refused with a
+reason that says to export CSV. CSV reaches the page in chunks of about 1 MB as
+it is written, and the page joins them into one file, so the export is never
+held whole in WebAssembly memory as well as in the page.
 
 - Cells hold real numbers, with Excel number formats that show the digits the
   screen shows. A negative value that rounds to zero gets a format without a

@@ -64,6 +64,8 @@ export interface ExpandedEntry {
 export interface ViewPlacement {
   readonly location: EngineLocation;
   readonly fallback: string | null;
+  /** Whether the view runs on a table the app loaded into the browser, whose exports the browser writes. */
+  readonly loaded: boolean;
 }
 
 /** The grid's view of a source: what to draw and how to ask for more. */
@@ -212,12 +214,12 @@ export function gridSource(layout: Signal<Layout | null>): GridSource {
     openedAtMs = performance.now();
     const mine = generation;
     client.connectionFor(next.dataset, next.parameters).then(
-      ({ connection, fallback }) => {
+      ({ connection, fallback, loaded }) => {
         // The layout changed or the grid went away while connecting.
         if (destroyed || mine !== generation) {
           return;
         }
-        placement.set({ location: connection.location, fallback });
+        placement.set({ location: connection.location, fallback, loaded });
         const view = connection.open(
           next.dataset,
           JSON.stringify(next),

@@ -4,8 +4,8 @@
 
 export { copyUrlFor, exportUrlFor, httpBaseFor, placeView, provideParallax, ParallaxClient } from "./lib/client";
 export type { CopyingEngine, ParallaxConfig, Placement } from "./lib/client";
-export { BrowserEngine, COPY_TIMEOUT_MS } from "./lib/browser-engine";
-export type { WorkerPort } from "./lib/browser-engine";
+export { BrowserEngine, COPY_TIMEOUT_MS, EXPORT_TYPES, MAX_ARROW_BYTES, MAX_ROWS, MAX_XLSX_CELLS, trapReason } from "./lib/browser-engine";
+export type { ExportFormat, LoadOptions, Loaded, WorkerPort } from "./lib/browser-engine";
 export { Connection, ViewHandle } from "./lib/connection";
 export type { ChartWindow, DistinctValues, EngineLocation, Measurement, Transport, Viewport, ViewListener } from "./lib/connection";
 export { decodeChartFrame } from "./lib/chart-frame";

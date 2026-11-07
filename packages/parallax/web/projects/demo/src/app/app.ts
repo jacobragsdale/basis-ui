@@ -13,6 +13,7 @@ import type { Look } from "./themes";
 import { PerformanceComponent } from "./performance.component";
 import type { GridStats } from "./performance.component";
 import { SmallComponent } from "./small.component";
+import { SAMPLE, SourceComponent } from "./source.component";
 
 /** A view the demo opens, and what it shows off. */
 interface Preset {
@@ -29,7 +30,7 @@ const REFERENCE_PIVOT = {
 } as const satisfies LayoutInput;
 
 /** The views the demo opens, in the order of their tabs. */
-const PRESET_NAMES = ["pivot", "browser", "trades", "sorted", "prices", "small", "dashboard", "breakdowns", "charts", "technical"] as const;
+const PRESET_NAMES = ["pivot", "browser", "source", "trades", "sorted", "prices", "small", "dashboard", "breakdowns", "charts", "technical"] as const;
 
 type PresetName = (typeof PRESET_NAMES)[number];
 
@@ -46,6 +47,12 @@ const PRESETS: Readonly<Record<PresetName, Preset>> = {
     about:
       "The same positions, copied into this page and pivoted by the same engine compiled to WebAssembly in a worker. Every change is answered without the server; the cells match the server pivot exactly.",
     layout: { dataset: "positions_browser", ...REFERENCE_PIVOT }
+  },
+  source: {
+    title: "Data from the app",
+    about:
+      "Data the app loads itself, as from its own API: the Arrow bytes move into this page's worker, and every view and export of them runs there, with no server. The API says when it read the data and which NaNs it blanked. Open an Arrow stream file to load your own.",
+    layout: { dataset: SAMPLE }
   },
   trades: {
     title: "1,000,000 trades",
@@ -133,7 +140,7 @@ function remember(name: string, value: string): void {
   selector: "demo-root",
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { "[class.dark]": "theme() === 'dark'", "[class.auto]": "theme() === 'auto'" },
-  imports: [BreakdownsComponent, ChartsComponent, DashboardComponent, GridComponent, PivotComponent, PerformanceComponent, SmallComponent, TechnicalComponent, ThemeStudioComponent],
+  imports: [BreakdownsComponent, ChartsComponent, DashboardComponent, GridComponent, PivotComponent, PerformanceComponent, SmallComponent, SourceComponent, TechnicalComponent, ThemeStudioComponent],
   template: `
     <header>
       <span class="brand"><span class="mark" aria-hidden="true"></span>parallax</span>
@@ -176,6 +183,8 @@ function remember(name: string, value: string): void {
         <demo-charts [scheme]="theme()" [theme]="lookTheme()" />
       } @else if (small()) {
         <demo-small [scheme]="theme()" [theme]="lookTheme()" [density]="density()" />
+      } @else if (source()) {
+        <demo-source [scheme]="theme()" [theme]="lookTheme()" [density]="density()" />
       } @else if (dashboard()) {
         <demo-dashboard [scheme]="theme()" [theme]="lookTheme()" [density]="density()" />
       } @else if (breakdowns()) {
@@ -421,12 +430,14 @@ export class App {
   protected readonly technical = computed(() => this.search.preset === "technical" && this.search.layout === undefined);
   /** The page of big pies, donuts and bars. */
   protected readonly breakdowns = computed(() => this.search.preset === "breakdowns" && this.search.layout === undefined);
+  /** The page of data the app loads itself, which has its own controls. */
+  protected readonly source = computed(() => this.search.preset === "source" && this.search.layout === undefined);
   /** The small-tables page, which shows two grids. */
   protected readonly small = computed(() => this.search.preset === "small" && this.search.layout === undefined);
   /** The dashboard, of small charts over the small tables and their grids. */
   protected readonly dashboard = computed(() => this.search.preset === "dashboard" && this.search.layout === undefined);
   /** A page of views of its own, which the header's link and layout cannot describe. */
-  protected readonly pageOfViews = computed(() => this.charts() || this.technical() || this.small() || this.dashboard() || this.breakdowns());
+  protected readonly pageOfViews = computed(() => this.charts() || this.technical() || this.small() || this.dashboard() || this.breakdowns() || this.source());
   /** False while a linked layout is being read, so the preset never opens in its place. */
   protected readonly ready = signal(this.search.layout === undefined);
   protected readonly about = computed(() => (this.search.layout === undefined ? PRESETS[this.search.preset].about : "A view opened from a shared link."));

@@ -13,8 +13,17 @@ arrow-schema.workspace = true
 jiff.workspace = true
 parallax-engine.workspace = true
 parallax-protocol.workspace = true
-rust_xlsxwriter = { version = "0.102", default-features = false, features = ["constant_memory", "ryu"] }
 thiserror.workspace = true
+
+# Natively, large sheets stream through temporary files. The browser has no file
+# system, so in WebAssembly every sheet is held in memory, and the workbook's
+# timestamps come from JavaScript's clock; without the `wasm` feature
+# `SystemTime::now()` panics there.
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+rust_xlsxwriter = { version = "0.102", default-features = false, features = ["constant_memory", "ryu"] }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+rust_xlsxwriter = { version = "0.102", default-features = false, features = ["ryu", "wasm"] }
 
 [dev-dependencies]
 calamine = "0.38"

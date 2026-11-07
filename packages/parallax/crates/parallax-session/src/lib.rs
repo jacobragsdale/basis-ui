@@ -35,10 +35,12 @@ use prost::Message;
 
 mod chart;
 mod copy;
+mod load;
 #[cfg(feature = "testing")]
 pub mod testing;
 
 pub use copy::COPY_METADATA;
+pub use load::{LOAD_METADATA, LoadStatus};
 
 /// How many recent change sets a table keeps for views that are behind.
 const HISTORY: usize = 16;

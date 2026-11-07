@@ -149,7 +149,7 @@ The design envelope covers:
 | Quantity | Design target |
 |---|---|
 | Largest table held on the server | 20 million rows × 60 columns |
-| Largest table held in the browser | 5 million rows × 40 columns |
+| Largest table held in the browser | 150,000 rows × 40 columns, 70 MB of Arrow (was 5 million) |
 | Distinct values in a text column | about 10,000 |
 | Concurrent users per server | 50 |
 
@@ -171,6 +171,16 @@ for these numbers.
 
 On the build host, single-threaded, an Excel export of 1,000,000 generated
 positions by 40 columns took 28.0 s and the same CSV 8.1 s (2026-11-02).
+
+Basis-ui's spike 0.3 (2026-11-07) measured both limits in the browser, where
+32-bit WebAssembly holds 4 GB. Five million rows would need 9.4 GB, and the
+reference pivot met its 500 ms budget under a rough 4x CPU proxy up to 150,000
+rows, so the browser engine refuses a table of more than 150,000 rows or 70 MB
+of Arrow. The export budget therefore covers at most 150,000 rows there. An
+Excel sheet is held in memory in the browser, at about 190 bytes a cell, so
+Excel exports there stop at 1,000,000 cells, which took 1.1 s for 25,000 rows by
+40 columns; larger views export as CSV, which took 1.2 s for 100,000 rows by 40
+columns.
 
 Grouped views build on 16 threads of the build host. Its timings vary about
 twofold under load, so these are the best of three runs (2026-11-02):
