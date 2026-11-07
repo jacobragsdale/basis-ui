@@ -95,7 +95,10 @@ basis-ui adds one lint plugin, `@shadcn/lint`, described below:
   features or forced file splits: `eslint/no-ternary`, `oxc/no-optional-chaining`, `react/jsx-max-depth`,
   `react/no-multi-comp`, `eslint/sort-imports`, and on tests `vitest/require-test-timeout` and
   `vitest/prefer-expect-assertions` are off; `eslint/no-magic-numbers` ignores -1, 0, 1, 2 and 100 and is off on tests;
-  `import/max-dependencies` allows 20.
+  `import/max-dependencies` allows 20. The same day five more went, for obstructing basis-ui's own code without
+  catching a bug: `eslint/capitalized-comments` and `eslint/sort-keys` are off, `eslint/id-length` allows `l`, `c`, `h`,
+  `x`, `y` and `i`, `unicorn/no-useless-promise-resolve-reject` is off, and `eslint/max-lines-per-function` is off on
+  tests.
 - Oxfmt with its defaults.
 
 Two guarantees need more than Oxlint's built-in rules. Components the React Compiler cannot optimize fail the build,

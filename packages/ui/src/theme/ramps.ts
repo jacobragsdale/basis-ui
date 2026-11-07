@@ -55,7 +55,6 @@ function stepTone(step: Step): StepTone {
 /** A colour at the given lightness on a hue, with its chroma reduced until it fits the sRGB gamut. */
 function tone(name: HueName, lightness: number, share = 1): Oklch {
   const { chroma, hue } = hues[name];
-  // oxlint-disable-next-line eslint/id-length -- culori names OKLCH's channels l, c and h, and Oxfmt unquotes keys.
   const wanted: Oklch = { c: chroma * share, h: hue, l: lightness, mode: "oklch" };
   // Citrix desktops display sRGB, so a colour outside it would be clipped unpredictably; reduce its chroma instead.
   return clampChroma(wanted, "oklch", "rgb");
