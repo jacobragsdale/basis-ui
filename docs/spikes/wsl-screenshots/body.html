@@ -1,0 +1,111 @@
+<div class="min-h-screen bg-background p-6 font-sans text-foreground">
+  <div class="mb-4 flex gap-2">
+    <div class="rounded-md bg-env-dev px-3 py-1 text-sm text-env-dev-foreground">DEV</div>
+    <div class="rounded-md bg-env-qa px-3 py-1 text-sm text-env-qa-foreground">QA</div>
+    <div class="rounded-md bg-env-prod px-3 py-1 text-sm text-env-prod-foreground">PROD</div>
+  </div>
+  <div class="grid grid-cols-2 gap-4">
+    <div class="rounded-lg border border-border bg-card p-4 text-card-foreground shadow-sm">
+      <div class="text-lg font-semibold">Positions</div>
+      <div class="mb-3 text-sm text-muted-foreground">As of 2026-11-06 16:00 New York</div>
+      <div class="mb-3 flex gap-2">
+        <button class="rounded-md bg-primary px-3 py-1.5 text-sm text-primary-foreground">
+          Rebalance
+        </button>
+        <button class="rounded-md bg-secondary px-3 py-1.5 text-sm text-secondary-foreground">
+          Export
+        </button>
+        <button class="rounded-md bg-destructive px-3 py-1.5 text-sm text-destructive-foreground">
+          Cancel orders
+        </button>
+        <button class="rounded-md border border-input px-3 py-1.5 text-sm ring-2 ring-ring">
+          Focused
+        </button>
+      </div>
+      <input
+        class="mb-3 w-full rounded-md border border-input bg-card px-3 py-1.5 text-sm"
+        value="CUSIP 912828XG0"
+      />
+      <table class="w-full text-sm tabular-nums">
+        <tr class="border-b border-border text-muted-foreground">
+          <td class="py-1">Security</td>
+          <td class="text-right">P&amp;L</td>
+        </tr>
+        <tr class="border-b border-border">
+          <td class="py-1">UST 4.25 2034</td>
+          <td class="text-right text-gain">+12,450.00</td>
+        </tr>
+        <tr class="border-b border-border bg-selection">
+          <td class="py-1">NYC GO 5.00 2041</td>
+          <td class="text-right text-loss">(3,210.55)</td>
+        </tr>
+        <tr class="border-b border-border">
+          <td class="py-1"><span class="bg-highlight">CA</span> GO 4.00 2039</td>
+          <td class="text-right text-gain">+880.10</td>
+        </tr>
+      </table>
+      <div class="mt-3 text-sm"><a class="text-primary underline">View all positions</a></div>
+    </div>
+    <div class="flex flex-col gap-2">
+      <div class="rounded-md bg-success-subtle p-3 text-sm">
+        <span class="font-semibold text-success">Settled.</span> All trades matched.
+      </div>
+      <div class="rounded-md bg-warning-subtle p-3 text-sm">
+        <span class="font-semibold text-warning">Stale.</span> Prices are 20 minutes old.
+      </div>
+      <div class="rounded-md bg-destructive-subtle p-3 text-sm">
+        <span class="font-semibold text-destructive">Rejected.</span> Order breaches the issuer
+        limit.
+      </div>
+      <div class="rounded-md bg-info-subtle p-3 text-sm">
+        <span class="font-semibold text-info">Note.</span> The model reruns at 17:00.
+      </div>
+      <div class="flex gap-2">
+        <span class="rounded-md bg-success px-2 text-xs text-success-foreground">Filled</span>
+        <span class="rounded-md bg-warning px-2 text-xs text-warning-foreground">Partial</span>
+        <span class="rounded-md bg-info px-2 text-xs text-info-foreground">Working</span>
+        <span class="rounded-md bg-muted px-2 text-xs text-muted-foreground">Draft</span>
+      </div>
+      <div class="rounded-lg bg-popover p-3 text-sm text-popover-foreground shadow-md">
+        Popover with <span class="font-mono">font-mono 0.1234</span>
+      </div>
+      <div class="flex gap-1">
+        CHART
+        <div class="h-6 w-8 bg-chart-1"></div>
+        <div class="h-6 w-8 bg-chart-2"></div>
+        <div class="h-6 w-8 bg-chart-3"></div>
+        <div class="h-6 w-8 bg-chart-4"></div>
+        <div class="h-6 w-8 bg-chart-5"></div>
+        <div class="h-6 w-8 bg-chart-6"></div>
+        <div class="h-6 w-8 bg-chart-7"></div>
+        <div class="h-6 w-8 bg-chart-8"></div>
+      </div>
+      <div class="flex gap-0">
+        SEQ
+        <div class="h-6 w-6 bg-seq-1"></div>
+        <div class="h-6 w-6 bg-seq-2"></div>
+        <div class="h-6 w-6 bg-seq-3"></div>
+        <div class="h-6 w-6 bg-seq-4"></div>
+        <div class="h-6 w-6 bg-seq-5"></div>
+        <div class="h-6 w-6 bg-seq-6"></div>
+        <div class="h-6 w-6 bg-seq-7"></div>
+        <div class="h-6 w-6 bg-seq-8"></div>
+        <div class="h-6 w-6 bg-seq-9"></div>
+      </div>
+      <div class="flex gap-0">
+        DIV
+        <div class="h-6 w-6 bg-div-1"></div>
+        <div class="h-6 w-6 bg-div-2"></div>
+        <div class="h-6 w-6 bg-div-3"></div>
+        <div class="h-6 w-6 bg-div-4"></div>
+        <div class="h-6 w-6 bg-div-5"></div>
+        <div class="h-6 w-6 bg-div-6"></div>
+        <div class="h-6 w-6 bg-div-7"></div>
+        <div class="h-6 w-6 bg-div-8"></div>
+        <div class="h-6 w-6 bg-div-9"></div>
+        <div class="h-6 w-6 bg-div-10"></div>
+        <div class="h-6 w-6 bg-div-11"></div>
+      </div>
+    </div>
+  </div>
+</div>
