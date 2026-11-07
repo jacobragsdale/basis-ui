@@ -1,5 +1,20 @@
 // @basis/ui's entry point. The components, app shell and preset arrive in later roadmap steps.
 export {
+  FormatError,
+  createFormatter,
+  defaultZone,
+  maxDecimals,
+  nullText,
+  outOfRangeText,
+  undefinedText,
+  type Abbreviation,
+  type Format,
+  type FormatErrorReason,
+  type Formatter,
+  type Negative,
+  type TimePrecision,
+} from "./format/format.ts";
+export {
   applyPreferences,
   defaultPreferences,
   followPreferences,
