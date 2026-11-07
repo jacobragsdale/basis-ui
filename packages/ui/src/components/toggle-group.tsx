@@ -17,10 +17,14 @@ import type { ReactElement } from "react";
 
 import type { VariantProps } from "#vendor/cva/cva.ts";
 
-import { toggleVariants as toggleGroupItemVariants } from "./toggle-variants.ts";
-import type { toggleVariants as toggleGroupVariants } from "./toggle-variants.ts";
+// oxlint-disable-next-line typescript/consistent-type-imports -- `@shadcn/lint` reads no type-only import, and this value import is how its errors on ToggleGroup list Toggle's variants and sizes.
+import {
+  toggleVariants as toggleGroupItemVariants,
+  toggleVariants as toggleGroupVariants,
+} from "./toggle-variants.ts";
 
-type Orientation = "horizontal" | "vertical";
+/** A group's direction, Base UI's: `horizontal` or `vertical`. */
+type Orientation = NonNullable<ToggleGroupPrimitive.Props["orientation"]>;
 
 interface ToggleGroupSettings extends VariantProps<typeof toggleGroupVariants> {
   readonly spacing: number;

@@ -75,7 +75,7 @@ function InputGroupButton({
   Pick<VariantProps<typeof buttonVariants>, "variant"> &
   VariantProps<typeof inputGroupButtonVariants> & {
     readonly className?: string;
-    readonly type?: "button" | "submit" | "reset";
+    readonly type?: ComponentProps<"button">["type"];
   }): ReactElement {
   return (
     <ButtonPrimitive
