@@ -15,6 +15,14 @@ export {
   type TimePrecision,
 } from "./format/format.ts";
 export {
+  amountSuffixes,
+  parSuffixes,
+  parseAmount,
+  rateSuffixes,
+  type ParseResult,
+  type Suffixes,
+} from "./format/parse.ts";
+export {
   applyPreferences,
   defaultPreferences,
   followPreferences,
