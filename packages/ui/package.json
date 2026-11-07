@@ -86,6 +86,7 @@
     "@rolldown/plugin-babel": "catalog:",
     "@shadcn/lint": "catalog:",
     "@tailwindcss/vite": "catalog:",
+    "@tanstack/react-table": "catalog:",
     "@vitejs/plugin-react": "catalog:",
     "@vitest/browser-playwright": "catalog:",
     "babel-plugin-react-compiler": "catalog:",

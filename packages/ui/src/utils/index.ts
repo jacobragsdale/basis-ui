@@ -39,3 +39,4 @@ export {
 } from "./timing.ts";
 export { assertNever, invariant, isPresent } from "./guards.ts";
 export { downloadBlob, toCsv, toTsv, type Cell, type Column } from "./export.ts";
+export { parseCsv, type CsvReading, type CsvRecord } from "./parse-csv.ts";

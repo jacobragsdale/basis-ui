@@ -17,9 +17,9 @@ interface ErrorAlertProps {
   /** The error to show, such as a query's or a mutation's `error`; with `null` or `undefined` nothing renders. */
   readonly error: unknown;
   /** Adds a "Try again" button that calls it, such as a query's `refetch`. */
-  readonly onRetry?: () => void;
+  readonly onRetry?: (() => void) | undefined;
   /** Places the alert, as with `mb-4`; its look is fixed. */
-  readonly className?: string;
+  readonly className?: string | undefined;
 }
 
 /** A destructive Alert describing `error`, announced at once to a screen reader and named by its title. */

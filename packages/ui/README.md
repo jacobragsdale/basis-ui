@@ -532,6 +532,158 @@ counted from `asOf`, the last business day before today unless set. `presets` pi
 
 Pass `today` to fix the date both pickers count from, as the gallery and tests do.
 
+## Showing and taking data
+
+`DataTable`, `EntityPicker`, `SecurityPicker` and `FileImport` are the firm's components for small tables, searching
+for an entity, and importing a CSV file. The gallery's data page shows each, with its tests beside it.
+
+### DataTable
+
+`DataTable` is TanStack Table v9 drawn on `Table`'s parts, for a few hundred rows whose cells hold links and buttons.
+Declare each column's `value`, which it sorts, filters, copies and exports by, and draw the cell with `cell` when the
+value's text is not enough:
+
+```tsx
+import { DataTable, Money } from "@basis/ui";
+import type { DataTableColumn } from "@basis/ui";
+
+const columns: readonly DataTableColumn<Position>[] = [
+  {
+    id: "cusip",
+    header: "CUSIP",
+    value: (row) => row.cusip,
+    cell: (row) => <Link to={`/bonds/${row.cusip}`}>{row.cusip}</Link>,
+  },
+  { id: "par", header: "Par", variant: "numeric", value: (row) => row.par },
+  {
+    id: "price",
+    header: "Price",
+    variant: "numeric",
+    value: (row) => row.price,
+    cell: (row) => <Money value={row.price} />,
+  },
+];
+
+<DataTable
+  label="Positions"
+  columns={columns}
+  data={positions.data?.data}
+  getRowId={(row) => row.id}
+  loading={positions.isPending}
+  error={positions.error}
+  onRetry={() => {
+    positions.refetch().catch(reportError);
+  }}
+  selectable
+  rowActions={(row) => [{ label: "Allocate", onSelect: () => allocate(row) }]}
+  pageSize={25}
+/>;
+```
+
+- **Columns.** A column with `variant: "numeric"` takes a number as the API sends it, decimal text, a `Decimal`, a
+  double or a bigint, and aligns right in tabular figures, its heading too; it sorts by value and exports as a number.
+  Any other column's value is text, a boolean or a number. `sortable`, `hideable` and `filterable` are on unless set
+  to `false`.
+- **Sorting.** A heading sorts its column ascending, then descending, then not at all; Shift adds the column to the
+  sort, and each sorted heading shows its place. Missing values sort last either way.
+- **Selection.** `selectable` adds a checkbox to each row, named after the row (`rowLabel`, the first column's value
+  unless set), and one to the heading, which selects every row the filter shows, on every page. Shift with a click
+  selects a range. `onSelectionChange` hears the selected rows.
+- **Toolbar.** The text filter searches the columns' values, ignoring case. The columns menu hides and shows
+  columns. Copy puts the selected rows on the clipboard as TSV, which pastes into a spreadsheet's cells; Export CSV
+  saves the rows the filter shows as `label.csv` (`exportName` to change it). Both write the columns showing, through
+  `toTsv` and `toCsv`, which write a text cell that starts with `=`, `+`, `-` or `@` as text, not a formula.
+- **States.** `loading` shows placeholder rows and marks the table busy; an `error` shows over the table, or alone
+  while there are no rows; an empty table says so, in `empty`'s words when set.
+- **The row cap.** A DataTable draws every row it holds into the page. Past its cap, 2,000 rows unless `rowCap` says
+  otherwise, it draws nothing, shows one error that names the cap and says to use parallax's `<Grid>`, and reports
+  the error to telemetry. Data that size belongs in the grid, which draws only the rows on screen.
+
+### EntityPicker and SecurityPicker
+
+`EntityPicker` is a combobox that searches through a function the app passes, normally the generated client's
+function for a search route, with the `signal` passed on so that a search a newer text replaced is aborted:
+
+```tsx
+import { EntityPicker, Field, FieldLabel } from "@basis/ui";
+import { searchIssuers } from "#api/client.ts";
+
+<Field>
+  <FieldLabel htmlFor="issuer">Issuer</FieldLabel>
+  <EntityPicker
+    id="issuer"
+    search={async (text, signal) => (await searchIssuers({ q: text }, { signal })).data}
+    itemKey={(issuer) => issuer.id}
+    itemLabel={(issuer) => issuer.name}
+    onValueChange={setIssuer}
+  />
+</Field>;
+```
+
+It searches once typing has stopped for `debounceMs`, 250 ms unless set, and at least `minLength` characters are
+typed. Each text is a query on the app's query client, so a search retries, reports and signs the user out as every
+other read does, a text searched a moment ago answers at once, and only the last text's results show. It needs a
+`QueryClientProvider` above it, which `BasisApp` is. `queryKey` puts the searches under the generated client's key
+for the route; unless set, each picker keeps its own. `validate` refuses a text before it is sent, with the reason the
+picker shows. The popup's status line says what the picker is doing, politely to a screen reader: waiting for text,
+searching, why the text cannot be searched, the error, or that nothing matched. The arrow keys move through the results
+and Enter chooses one; `multiple` chooses several, shown as chips, each with a button that removes it.
+
+`SecurityPicker` is an EntityPicker whose text is a CUSIP, an ISIN or a SEDOL (`kinds` narrows them). It reads the
+text by its length with `parseSecurityIdentifier` from `@basis/ui/securities`, checks it, check digit and all, and
+searches only for a valid identifier, which its `search` receives with its kind; otherwise it says why, such as
+`"91282CRF1" is not a CUSIP: its check digit should be 0; look for a mistyped character.`
+
+```tsx
+<SecurityPicker
+  id="security"
+  search={async (identifier, signal) =>
+    (await findSecurities({ [identifier.kind]: identifier.value }, { signal })).data
+  }
+  itemKey={(security) => security.cusip}
+  itemLabel={(security) => security.description}
+/>
+```
+
+### FileImport
+
+`FileImport` takes a CSV file through its drop zone or its file button, reads it in the browser with `parseCsv` from
+`@basis/ui/utils` (RFC 4180: quoted fields, doubled quotes, line breaks inside quotes, and a header row), maps its
+columns by their headers to the app's Zod schema, and previews every row with each refused cell marked and its reason
+in words. Confirming hands `onImport` only the valid rows, typed by the schema:
+
+```tsx
+import { FileImport, amountSchema, parSuffixes } from "@basis/ui";
+import { isCusip } from "@basis/ui/securities";
+
+const positionRow = z.object({
+  cusip: z.string().refine(isCusip, "Not a CUSIP."),
+  par: amountSchema(parSuffixes),
+  book: z.enum(["Rates", "Credit"]).optional(),
+});
+
+<FileImport
+  schema={positionRow}
+  headers={{ par: ["Par", "Par amount"] }}
+  onImport={async (rows) => {
+    await createPositions.mutateAsync({ data: rows });
+  }}
+/>;
+```
+
+- **Headers.** A column matches a key by the key itself or a header `headers` gives it, ignoring case, spaces and
+  punctuation, so `Par Amount` and `par_amount` match `"Par amount"`. A column the schema lacks is ignored and named in
+  the preview; a column it needs and the file lacks refuses the file.
+- **Cells.** The schema reads text, as a CSV's cells are: `z.coerce.number()`, `amountSchema(...)`, `z.enum(...)`. An
+  empty cell is a missing value, which an optional field takes and a required one refuses as empty.
+- **Limits.** The drop zone states them: 5 MB and 10,000 rows unless `maxBytes` and `maxRows` say otherwise. A file
+  over either, one that is not CSV, or one that is not valid CSV is refused with the reason and what to do.
+- **Excel.** An Excel workbook is refused with how to save it as CSV. Reading xlsx waits on the design's measurement of
+  a Rust reader against the JavaScript ones ([Rust and WebAssembly](../../docs/design.md#rust-and-webassembly)). The
+  text is read as UTF-8, as Excel's "CSV UTF-8" saves it, or as Windows-1252, as its plain "CSV" does.
+- **Importing.** While `onImport`'s promise is pending the button waits; if it rejects, its error shows over the
+  preview, which stays for another try.
+
 ## Using the icons
 
 `@basis/ui` exports a set of lucide's icons under lucide-react's names with the `Icon` suffix: each icon's current
@@ -571,6 +723,8 @@ import { debounce, sortBy, toCsv } from "@basis/ui/utils";
 - `utils` follows es-toolkit's signatures, and differs where the types would otherwise lie or lodash surprises:
   `keyBy`, `countBy` and `fromEntries` return `Partial` records, `zip` types the `undefined` it pads with, `throttle`
   never calls twice within its wait, and `sortBy` puts missing values last in either order.
+- `parseCsv` reads CSV as RFC 4180 writes it, strictly: a quoted field that never closes, or a stray double quote,
+  is an error naming its line, rather than a guess that shifts every column after it.
 
 The tests check `Decimal` and `sumPrecise` against `tests/fixtures/numbers.json`, which
 `tests/fixtures/generate_numbers.py` writes with Python's `decimal` module. After changing the generator, rewrite the
@@ -633,6 +787,14 @@ if (reading.ok) {
 } else {
   showError(reading.reason);
 }
+```
+
+`parseSecurityIdentifier` reads text that may be any of the three, telling them apart by their lengths, 9, 12 and 7,
+and returns the identifier with its kind, as `SecurityPicker` does:
+
+```ts
+parseSecurityIdentifier("US91282CRF04"); // { ok: true, value: { kind: "isin", value: "US91282CRF04" } }
+parseSecurityIdentifier("91282CRF1", ["cusip"]); // { ok: false, reason: '"91282CRF1" is not a CUSIP: ...' }
 ```
 
 ## Adding a component

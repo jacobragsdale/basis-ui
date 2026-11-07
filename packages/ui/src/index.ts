@@ -370,6 +370,34 @@ export type { DateTimePart, DateTimeValue } from "./components/date-time-text.ts
 export { Bps, Money, Num, Pct, Price32 } from "./components/num.tsx";
 export type { BpsUnit, DecimalLike, NumericValue, PercentUnit } from "./components/num-text.ts";
 
+// Data: the firm's own components for small tables, searching for an entity, and importing a CSV file.
+export { DataTable, type DataTableProps } from "./components/data-table.tsx";
+export type {
+  DataTableColumn,
+  DataTableNumericColumn,
+  DataTableRowAction,
+  DataTableSort,
+  DataTableTextColumn,
+} from "./components/data-table-columns.ts";
+export { EntityPicker } from "./components/entity-picker.tsx";
+export type {
+  EntityPickerProps,
+  MultipleEntityPickerProps,
+  SingleEntityPickerProps,
+} from "./components/entity-picker-props.ts";
+export type { EntitySearch } from "./components/entity-search.ts";
+export {
+  SecurityPicker,
+  type SecurityPickerProps,
+  type SecuritySearch,
+} from "./components/security-picker.tsx";
+export type {
+  SecurityIdentifier,
+  SecurityIdentifierKind,
+} from "./securities/security-identifier.ts";
+export { FileImport, type FileImportProps } from "./components/file-import.tsx";
+export type { ImportHeaders, ImportSchema } from "./components/file-import-rows.ts";
+
 export type { CssVariable } from "./components/css-variables.ts";
 
 /* The icons, copied from lucide-react 1.70.0: each under every name lucide-react gives it with the `Icon` suffix, its

@@ -147,7 +147,9 @@ function isMissing(value: unknown): boolean {
   );
 }
 
-function compareValues(left: unknown, right: unknown, order: SortOrder): number {
+/** How two values order, by the rules `sortBy` applies to each key: ascending unless `order` says otherwise, with
+ * missing values last either way. */
+function compareValues(left: unknown, right: unknown, order: SortOrder = "asc"): number {
   const leftMissing = isMissing(left);
   const rightMissing = isMissing(right);
   if (leftMissing || rightMissing) {
@@ -192,5 +194,5 @@ function sortBy<TItem>(
   return sorted.map(({ item }) => item);
 }
 
-export { sortBy };
+export { compareValues, isMissing, sortBy };
 export type { SortBy, SortCriterion, SortKey, SortOrder, SortValue };

@@ -103,6 +103,11 @@ describe("Table", () => {
     expect(selected === null ? "" : getComputedStyle(selected).backgroundColor).toBe(
       computedColour("var(--selection)"),
     );
-    expect(plain === null ? "" : getComputedStyle(plain).backgroundColor).toBe("rgba(0, 0, 0, 0)");
+    // The pointer an earlier test left over a row would hover it, so it moves to the caption, and the poll waits out
+    // the row's colour transition.
+    await screen.getByText("Top positions").hover();
+    await expect
+      .poll(() => (plain === null ? "" : getComputedStyle(plain).backgroundColor))
+      .toBe("rgba(0, 0, 0, 0)");
   });
 });

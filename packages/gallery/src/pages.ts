@@ -4,6 +4,7 @@
 import type { ReactElement } from "react";
 
 import { AppShell } from "./pages/app-shell.tsx";
+import { Data } from "./pages/data.tsx";
 import { FeedbackAndDisplay } from "./pages/feedback-and-display.tsx";
 import { FormsAndInputs } from "./pages/forms-and-inputs.tsx";
 import { Icons } from "./pages/icons.tsx";
@@ -24,6 +25,7 @@ const pages: readonly [GalleryPage, ...GalleryPage[]] = [
   { Content: NavigationAndLayout, id: "navigation-and-layout", title: "Navigation and layout" },
   { Content: FeedbackAndDisplay, id: "feedback-and-display", title: "Feedback and display" },
   { Content: NumbersAndDates, id: "numbers-and-dates", title: "Numbers and dates" },
+  { Content: Data, id: "data", title: "Data" },
   { Content: AppShell, id: "app-shell", title: "App shell" },
   { Content: Icons, id: "icons", title: "Icons" },
 ];
