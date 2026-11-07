@@ -258,10 +258,11 @@ y="exposure" />`, builds the Arrow table itself, so a ten-bar chart does not fee
 readers, so every chart carries a text alternative.
 
 Recharts, the most used React chart library and what shadcn's Chart wraps, draws one SVG element per mark on the main
-thread, and has no financial charts. Its line and bar charts are 118 kB gzipped, against parallax's 1.07 MB of wasm,
-which a page whose only chart is small still downloads, once, before the browser caches it. Spike 0.3 measures that
-download, the compile and the first chart's time on a Citrix desktop. If a chart-only page is too slow, Recharts behind
-a cap on its points is the fallback.
+thread, and has no financial charts. Its line and bar charts are 118 kB gzipped. Parallax's wasm, export included, is
+1.01 MB brotli, which a page whose only chart is small still downloads, once, before the browser caches it. In spike
+0.3 such a page drew its chart 89 ms after navigation cold and 57 ms warm on the build host, and 506 ms and 320 ms with
+its CPU held to a quarter, a rough stand-in for a Citrix desktop. That needs no Recharts; the Citrix repeat confirms it,
+and if a chart-only page proves too slow there, Recharts behind a cap on its points is the fallback.
 
 ## Rust and WebAssembly
 
@@ -304,11 +305,17 @@ client. Its server and connectors are deleted: the WebSocket server, the dataset
 rules and the SQL registry, the SQL Server, Oracle, Mongo, Parquet and HTTP connectors, the NFS cache, ODBC and Oracle
 Instant Client, and CI's three database containers. About 3,000 lines of Rust go, and about 15,000 stay: the engine, the
 session layer, the protocol between the page and its worker, and the wasm wrapper. Excel export moves into the wasm
-build.
+build, where each xlsx cell holds about 190 bytes of memory that is never returned, so xlsx stops at 1,000,000 cells
+and larger exports are CSV, written in chunks.
 
 The reason is the data's size. The firm's tables are not millions of rows, so a server that holds data the browser
-cannot is cost without benefit, and every app would have needed one deployed beside it. A documented row limit, measured
-on a Citrix desktop, replaces it: a larger load fails with a message saying so. React components replace the 44 Angular
+cannot is cost without benefit, and every app would have needed one deployed beside it. A documented limit replaces it,
+and a larger load fails before it starts, with a message that names the limit. Spike 0.3 set it at 150,000 rows of a
+positions-shaped table and 70 MB of Arrow, whichever comes first: time follows rows and memory follows bytes. At 150,000
+rows the reference pivot met its 500 ms budget with the CPU held to a quarter, and the engine held 350 MB. The Citrix
+repeat moves the limit to what a desktop's own browser meets, and restates parallax's 300 MB memory budget, written for
+views held on a server, for tables held in the browser. A load past the engine's memory traps the wasm, so the worker
+treats a trap as fatal: it fails every view with the reason and starts again. React components replace the 44 Angular
 files of its web layer; the canvas renderers, the formatter, the charts and the technical-analysis tools stay, as do the
 DuckDB and Perspective comparisons that test the engine's numbers. App developers install one npm package with the wasm
 built into it, and Rust stays inside this repo's build. Parallax keeps its Apache-2.0 license.
@@ -368,7 +375,9 @@ Each fact was checked on 2026-11-06 against the source named, unless it says sec
 | Vite+ 1.5.0 pins `oxlint` 1.91.0 and `@oxlint/plugins` 1.91.0; its lint configuration lives in `vite.config.ts`'s `lint` block, which takes `jsPlugins`, `typeAware` and `typeCheck`                                                                                                   | npm registry; viteplus.dev/guide/lint                           |
 | Oxlint's JS plugins have been alpha since 2026-03-11; no stable release was found                                                                                                                                                                                                      | oxc.rs blog; the absence of a stable release is secondhand      |
 | The React Compiler's lint lists React Hook Form's `useForm` as an incompatible library, because the compiler memoizes what `watch()` returns                                                                                                                                           | facebook/react issue #29144 and pull request #35465, secondhand |
-| Parallax's wasm build is 5.0 MB, or 1.07 MB gzipped; Recharts 3.10.1's line and bar charts bundle to 408 kB minified, or 118 kB gzipped, without React                                                                                                                                 | Measured here on 2026-11-06                                     |
+| Parallax's wasm build was 5.0 MB, or 1.07 MB gzipped, before export moved in, and is 1.01 MB brotli with it; Recharts 3.10.1's line and bar charts bundle to 408 kB minified, or 118 kB gzipped, without React                                                                         | Measured here on 2026-11-06 and in spike 0.3                    |
+| Chromium's CDP CPU throttling does not reach Web Workers, so throttled figures for a worker-held engine need a CPU quota on the whole browser                                                                                                                                          | Spike 0.3                                                       |
+| Parallax's engine holds about four times a table's Arrow size in memory, and an xlsx written in wasm about 190 bytes a cell, which WebAssembly never returns                                                                                                                           | Spike 0.3                                                       |
 
 ## Not yet verified
 
@@ -379,6 +388,7 @@ Each item is a spike in [Phase 0 of the roadmap](roadmap.md#phase-0-spikes):
 - that Vite+'s hooks install on a fresh clone on Windows and in WSL (they do on Linux; Vite+ issue #2252 reports a
   case where they do not on Windows);
 - that screenshots of the same page match between two Citrix desktops' WSL setups;
-- that rust_xlsxwriter builds for wasm, and how many rows parallax holds on a Citrix desktop;
-- how long parallax's wasm takes to download, compile and draw a first chart on a Citrix desktop;
+- how many rows parallax holds on a Citrix desktop, and how much memory the tab may use there (spike 0.3's Citrix
+  repeat);
+- how long parallax's wasm takes to download, compile and draw a first chart on a Citrix desktop (the same repeat);
 - that the firm's apps share a parent domain, for the cookie that holds the mode and density.
