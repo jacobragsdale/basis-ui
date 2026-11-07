@@ -4,7 +4,70 @@
 
 // Forms and inputs. Each family's agent edits only its family's block, so families built at once do not collide.
 export { Button } from "./components/button.tsx";
+export { ButtonGroup, ButtonGroupSeparator, ButtonGroupText } from "./components/button-group.tsx";
 export { ButtonLink } from "./components/button-link.ts";
+export { Checkbox } from "./components/checkbox.tsx";
+export {
+  Combobox,
+  ComboboxCollection,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxGroup,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxLabel,
+  ComboboxList,
+  ComboboxSeparator,
+  ComboboxTrigger,
+  ComboboxValue,
+} from "./components/combobox.tsx";
+export { useComboboxAnchor } from "./components/combobox-anchor.ts";
+export { ComboboxChip, ComboboxChips, ComboboxChipsInput } from "./components/combobox-chips.tsx";
+export {
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+  FieldLegend,
+  FieldSeparator,
+  FieldSet,
+  FieldTitle,
+} from "./components/field.tsx";
+export { Input } from "./components/input.tsx";
+export {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
+  InputGroupText,
+  InputGroupTextarea,
+} from "./components/input-group.tsx";
+export { Label } from "./components/label.tsx";
+export {
+  NativeSelect,
+  NativeSelectOptGroup,
+  NativeSelectOption,
+} from "./components/native-select.tsx";
+export { RadioGroup, RadioGroupItem } from "./components/radio-group.tsx";
+export {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectScrollDownButton,
+  SelectScrollUpButton,
+  SelectSeparator,
+  SelectTrigger,
+  SelectValue,
+} from "./components/select.tsx";
+export { Slider } from "./components/slider.tsx";
+export { Switch } from "./components/switch.tsx";
+export { Textarea } from "./components/textarea.tsx";
+export { Toggle } from "./components/toggle.tsx";
+export { ToggleGroup, ToggleGroupItem } from "./components/toggle-group.tsx";
 
 // Overlays and menus: none yet.
 
@@ -172,7 +235,7 @@ export {
   pointerPath,
   problemSchema,
   validationProblemSchema,
-  type FieldError,
+  type FieldError as ProblemFieldError,
   type Problem,
   type ValidationProblem,
 } from "./api/problem.ts";

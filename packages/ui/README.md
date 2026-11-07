@@ -100,7 +100,60 @@ it.
 class `w-(--fill)`. `@basis/ui`'s types let `style` take a variable.
 
 The components already keep WCAG 2.2's 24 px minimum target in the compact density: every control shorter than `h-8`
-carries `min-h-target` and `min-w-target`.
+carries `min-h-target` and `min-w-target`. A control drawn smaller than that, such as Checkbox's 16 px box, Switch's
+track or Slider's thumb, is a 24 px target with its shape drawn inside it, so it keeps shadcn's look.
+
+## Building a form
+
+A form's state is TanStack Form's, its schema Zod's, and its look `Field`'s. Each field passes `data-invalid` to
+`Field`, `aria-invalid` to its control, and its errors to `FieldError`, which shows them in words, as a line or a
+list, so an invalid field is never told by colour alone:
+
+```tsx
+import { Field, FieldError, FieldLabel, Input, fieldErrors } from "@basis/ui";
+import { useForm } from "@tanstack/react-form";
+
+const form = useForm({
+  defaultValues: { cusip: "" },
+  validators: {
+    onChange: orderSchema,
+    // A 422's errors, on the fields their JSON Pointers name.
+    onSubmitAsync: async ({ value }) => {
+      const problem = await placeOrder(value);
+      return problem === undefined
+        ? undefined
+        : { fields: Object.fromEntries(fieldErrors(problem)) };
+    },
+  },
+});
+
+<form.Field name="cusip">
+  {(field) => {
+    const invalid = field.state.meta.isTouched && !field.state.meta.isValid;
+    return (
+      <Field data-invalid={invalid}>
+        <FieldLabel htmlFor="cusip">CUSIP</FieldLabel>
+        <Input
+          id="cusip"
+          value={field.state.value}
+          onBlur={field.handleBlur}
+          onChange={(event) => {
+            field.handleChange(event.target.value);
+          }}
+          aria-invalid={invalid}
+          aria-describedby="cusip-error"
+        />
+        <FieldError id="cusip-error" errors={invalid ? field.state.meta.errors : undefined} />
+      </Field>
+    );
+  }}
+</form.Field>;
+```
+
+`FieldError` takes a schema's issues, the strings `fieldErrors` returns, and the lists TanStack Form types a form
+validator's field errors as. `fieldErrors` names a field by a dotted path, such as `legs.0.price`, which matches a
+TanStack Form field's name only where the path holds no array index: TanStack Form writes that one `legs[0].price`.
+The gallery's forms and inputs page holds a whole order ticket, with its tests.
 
 ## Using the icons
 
@@ -212,6 +265,14 @@ if (reading.ok) {
    `dark:` class with a token and every arbitrary value with the theme's scales and opacity modifiers. Merge classes
    with `cn` from the `cn` package, as shadcn does; take `cva` from `#vendor/cva/cva.ts`, and each icon from its file
    in `src/vendor/lucide`, such as `#vendor/lucide/chevron-down.tsx`.
+
+   shadcn's source names its look in `cn-*` classes that its styles define; the components here take its nova style's,
+   as `@jacobragsdale/ui`'s do. shadcn's Tailwind setup also brings `tw-animate-css` and the variants in
+   `shadcn/tailwind.css`, and the theme has neither: write `data-[orientation=horizontal]:` for `data-horizontal:`,
+   since Tailwind still generates the latter and the lint passes it, but it never matches Base UI's attributes; and
+   fade or scale a popup with `transition` and Base UI's `data-starting-style` and `data-ending-style` in place of
+   `animate-in`, `fade-in-0` and `zoom-in-95`.
+
 2. Put its `cva` classes in `src/components/NAME-variants.ts`, each named after the component or part it styles, such
    as `buttonVariants` for `Button` or `selectTriggerVariants` for `SelectTrigger`: `@shadcn/lint` finds a component's
    variants by that name, and a component file exports only components (`react/only-export-components`). A part with
@@ -237,6 +298,8 @@ if (reading.ok) {
    rules of React, and the gallery uses the build, not the source.
 7. Show every variant and size on its family's gallery page in `packages/gallery/src/pages`, and test it in the page's
    test file: its role and accessible name, its variants, and, for a control, its 24 px target in the compact density.
+   Leave no popup open on the page: an open Base UI Select or Combobox hides the rest of the page from assistive
+   technology, and an open Select takes the focus, so the page would load scrolled to it. The tests open them instead.
 
 ## Adding an icon
 

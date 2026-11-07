@@ -12,6 +12,7 @@ catalog:
   "@shadcn/lint": 0.2.5
   "@tailwindcss/node": 4.3.5
   "@tailwindcss/vite": 4.3.5
+  "@tanstack/react-form": 1.33.5
   "@types/culori": 4.0.1
   "@types/node": 26.6.6
   "@types/react": 19.3.0
