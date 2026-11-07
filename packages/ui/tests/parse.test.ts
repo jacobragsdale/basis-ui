@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vite-plus/test";
 
-import { amountSuffixes, parSuffixes, parseAmount, rateSuffixes } from "../src/index.ts";
+import { amountSuffixes, parSuffixes, parseAmount, rateSuffixes } from "#index.ts";
 
 describe("amounts", () => {
   test.each([

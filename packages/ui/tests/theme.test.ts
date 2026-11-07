@@ -1,35 +1,35 @@
 import { readdirSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import path from "node:path";
 
 import { compile } from "@tailwindcss/node";
 import {
+  converter,
   differenceEuclidean,
   filterDeficiencyDeuter,
   filterDeficiencyProt,
   filterDeficiencyTrit,
-  type Color,
-  converter,
   wcagContrast,
 } from "culori";
+import type { Color } from "culori";
 import { describe, expect, test } from "vite-plus/test";
 
-import { colourOf, themeCss } from "../src/theme/css.ts";
-import type { Mode } from "../src/theme/ramps.ts";
-import { tokenNames } from "../src/theme/tokens.ts";
+import { colourOf, themeCss } from "#theme/css.ts";
+import type { Mode } from "#theme/ramps.ts";
+import { tokenNames } from "#theme/tokens.ts";
 
 const modes: readonly Mode[] = ["light", "dark"];
 const source = new URL("../src/", import.meta.url).pathname;
-const committed = readFileSync(join(source, "styles/theme.css"), "utf8");
+const committed = readFileSync(path.join(source, "styles/theme.css"), "utf8");
 
 // OKLab distance scaled by 100, the scale the reference palette's thresholds use.
 const distance = differenceEuclidean("oklab");
-function delta(a: Color, b: Color): number {
-  return distance(a, b) * 100;
+function delta(first: Color, second: Color): number {
+  return distance(first, second) * 100;
 }
 
 const deficiencies = {
-  protanopia: filterDeficiencyProt(1),
   deuteranopia: filterDeficiencyDeuter(1),
+  protanopia: filterDeficiencyProt(1),
   tritanopia: filterDeficiencyTrit(1),
 } as const;
 
@@ -37,6 +37,17 @@ const toOklch = converter("oklch");
 
 function lightness(colour: Color): number {
   return toOklch(colour).l;
+}
+
+/** The CSS Tailwind generates for `candidates` with the theme. */
+async function build(candidates: readonly string[]): Promise<string> {
+  const compiler = await compile(`@import "tailwindcss";\n@import "./styles/theme.css";\n`, {
+    base: source,
+    onDependency: () => {
+      // Tailwind reports each file it reads; these tests watch none.
+    },
+  });
+  return compiler.build([...candidates]);
 }
 
 test("the committed theme.css is what the inputs produce (run `vp run @basis/ui#theme` after changing them)", () => {
@@ -49,9 +60,9 @@ test("every token is defined in both modes, and nothing outside theme.css define
     expect(light, `--${name} in :root`).toContain(`  --${name}: `);
     expect(dark, `--${name} in .dark`).toContain(`  --${name}: `);
   }
-  const others = readdirSync(source, { recursive: true, encoding: "utf8" })
-    .filter((path) => path.endsWith(".css") && !path.endsWith("theme.css"))
-    .filter((path) => /^\s*--[a-z]/m.test(readFileSync(join(source, path), "utf8")));
+  const others = readdirSync(source, { encoding: "utf8", recursive: true })
+    .filter((file) => file.endsWith(".css") && !file.endsWith("theme.css"))
+    .filter((file) => /^\s*--[a-z]/mu.test(readFileSync(path.join(source, file), "utf8")));
   expect(others, "CSS files that declare custom properties").toEqual([]);
 });
 
@@ -113,16 +124,19 @@ describe.each(modes)("contrast in %s mode", (mode) => {
 });
 
 describe.each(modes)("chart colours in %s mode", (mode) => {
-  const series = Array.from({ length: 8 }, (_, index) =>
+  const series = Array.from({ length: 8 }, (_slot, index) =>
     colourOf(`chart-${String(index + 1)}`, mode),
   );
-  const adjacent = series
-    .slice(1)
-    .map((colour, index) => [index + 1, index + 2, series[index], colour] as const);
+  const adjacent = series.slice(1).map((colour, index) => ({
+    first: series[index],
+    firstNumber: index + 1,
+    second: colour,
+    secondNumber: index + 2,
+  }));
 
   test.each(adjacent)(
-    "chart-%i and chart-%i stay 15 apart to normal vision",
-    (_a, _b, first, second) => {
+    "chart-$firstNumber and chart-$secondNumber stay 15 apart to normal vision",
+    ({ first, second }) => {
       if (first === undefined) {
         throw new Error("The chart series list is shorter than eight.");
       }
@@ -133,7 +147,7 @@ describe.each(modes)("chart colours in %s mode", (mode) => {
   test.each(Object.entries(deficiencies))(
     "adjacent series stay 8 apart under %s",
     (_name, simulate) => {
-      for (const [, , first, second] of adjacent) {
+      for (const { first, second } of adjacent) {
         if (first === undefined) {
           throw new Error("The chart series list is shorter than eight.");
         }
@@ -157,14 +171,6 @@ describe.each(modes)("gain and loss in %s mode", (mode) => {
 });
 
 describe("the theme under Tailwind", () => {
-  async function build(candidates: readonly string[]): Promise<string> {
-    const compiler = await compile(`@import "tailwindcss";\n@import "./styles/theme.css";\n`, {
-      base: source,
-      onDependency: () => {},
-    });
-    return compiler.build([...candidates]);
-  }
-
   test("every token is a colour utility", async () => {
     const css = await build(tokenNames.map((name) => `bg-${name}`));
     for (const name of tokenNames) {

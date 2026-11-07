@@ -10,12 +10,24 @@
   },
   "files": [
     "dist",
-    "src/styles"
+    "src/styles",
+    "config"
   ],
   "type": "module",
+  "imports": {
+    "#*": "./src/*"
+  },
   "exports": {
-    ".": "./dist/index.mjs",
+    ".": {
+      "types": "./dist/index.d.mts",
+      "default": "./dist/index.mjs"
+    },
+    "./preset": {
+      "types": "./dist/preset/index.d.mts",
+      "default": "./dist/preset/index.mjs"
+    },
     "./theme.css": "./src/styles/theme.css",
+    "./tsconfig.json": "./config/tsconfig.json",
     "./package.json": "./package.json"
   },
   "scripts": {
@@ -24,8 +36,16 @@
     "theme": "node scripts/build-theme.ts"
   },
   "dependencies": {
+    "@babel/core": "catalog:",
     "@fontsource-variable/inter": "catalog:",
     "@fontsource-variable/jetbrains-mono": "catalog:",
+    "@rolldown/plugin-babel": "catalog:",
+    "@shadcn/lint": "catalog:",
+    "@tailwindcss/vite": "catalog:",
+    "@vitejs/plugin-react": "catalog:",
+    "@vitest/browser-playwright": "catalog:",
+    "babel-plugin-react-compiler": "catalog:",
+    "playwright": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
@@ -36,5 +56,8 @@
     "tailwindcss": "catalog:",
     "typescript": "catalog:",
     "vite-plus": "catalog:"
+  },
+  "peerDependencies": {
+    "vite-plus": "1.5.0"
   }
 }
