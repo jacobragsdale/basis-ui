@@ -1,66 +1,42 @@
-/* The navigation and layout family: Card so far, at both sizes, with and without its optional parts. */
+/* The navigation and layout family, in the design's order: Sidebar, Navigation Menu, Tabs, Breadcrumb, Pagination,
+ * Accordion, Collapsible, Resizable, Scroll Area, Separator, Aspect Ratio, Card and Item, each in its section's module
+ * under navigation-and-layout/ with its tests beside it. Menus and sheets are shown closed, since an open popup hides
+ * the rest of the page from screen readers; the tests open them. */
 
-import {
-  Badge,
-  Button,
-  Card,
-  CardAction,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@basis/ui";
 import type { ReactElement } from "react";
 
-import { Section } from "./section.tsx";
-
-const cardSizes = ["default", "sm"] as const;
-
-function CardSection(): ReactElement {
-  return (
-    <Section
-      title="Card"
-      description="A raised panel that groups one subject's content. size=sm tightens its spacing."
-    >
-      <div className="grid items-start gap-4 md:grid-cols-2">
-        {cardSizes.map((size) => (
-          <Card key={size} size={size}>
-            <CardHeader>
-              <CardTitle>Desk exposure</CardTitle>
-              <CardDescription>As of the close, size {size}</CardDescription>
-              <CardAction>
-                <Badge variant="info">Indicative</Badge>
-              </CardAction>
-            </CardHeader>
-            <CardContent>
-              <p>Net exposure is within the desk&apos;s limit for every sector.</p>
-            </CardContent>
-            <CardFooter>
-              <Button variant="outline" size="sm">
-                Open positions
-              </Button>
-            </CardFooter>
-          </Card>
-        ))}
-        <Card>
-          <CardHeader>
-            <CardTitle>A title and a description</CardTitle>
-            <CardDescription>With no action, content or footer</CardDescription>
-          </CardHeader>
-        </Card>
-        <Card>
-          <CardContent>
-            <p>Content alone, with no header or footer.</p>
-          </CardContent>
-        </Card>
-      </div>
-    </Section>
-  );
-}
+import { CardSection } from "./navigation-and-layout/card.tsx";
+import { AccordionSection, CollapsibleSection } from "./navigation-and-layout/disclosure.tsx";
+import { ItemSection } from "./navigation-and-layout/item.tsx";
+import {
+  AspectRatioSection,
+  ScrollAreaSection,
+  SeparatorSection,
+} from "./navigation-and-layout/layout.tsx";
+import { BreadcrumbSection, PaginationSection } from "./navigation-and-layout/links.tsx";
+import { NavigationMenuSection } from "./navigation-and-layout/navigation-menu.tsx";
+import { ResizableSection } from "./navigation-and-layout/resizable.tsx";
+import { SidebarSection } from "./navigation-and-layout/sidebar.tsx";
+import { TabsSection } from "./navigation-and-layout/tabs.tsx";
 
 function NavigationAndLayout(): ReactElement {
-  return <CardSection />;
+  return (
+    <>
+      <SidebarSection />
+      <NavigationMenuSection />
+      <TabsSection />
+      <BreadcrumbSection />
+      <PaginationSection />
+      <AccordionSection />
+      <CollapsibleSection />
+      <ResizableSection />
+      <ScrollAreaSection />
+      <SeparatorSection />
+      <AspectRatioSection />
+      <CardSection />
+      <ItemSection />
+    </>
+  );
 }
 
 export { NavigationAndLayout };
