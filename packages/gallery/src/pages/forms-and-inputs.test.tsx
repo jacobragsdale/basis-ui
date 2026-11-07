@@ -6,6 +6,7 @@ import { describe, expect, test } from "vite-plus/test";
 import { render } from "vitest-browser-react";
 
 import { FormsAndInputs } from "./forms-and-inputs.tsx";
+import { inCompactDensity, lookOf } from "./forms-and-inputs/test-helpers.ts";
 
 const variants = ["default", "secondary", "outline", "ghost", "destructive", "link"] as const;
 
@@ -23,16 +24,6 @@ const iconSizes = [
   ["icon-lg", 36],
 ] as const;
 const allSizes = [...textSizes, ...iconSizes].map(([size]) => size);
-
-/** Runs `check` with the page in the compact density, then puts the comfortable density back. */
-async function inCompactDensity(check: () => Promise<void>): Promise<void> {
-  document.documentElement.dataset["density"] = "compact";
-  try {
-    await check();
-  } finally {
-    delete document.documentElement.dataset["density"];
-  }
-}
 
 describe("Button", () => {
   test("is a button named by its text", async () => {
@@ -133,12 +124,6 @@ function RouterLink({
   );
 }
 
-/** The computed look that tells one variant from another. */
-function lookOf(element: Element): string {
-  const style = getComputedStyle(element);
-  return [style.backgroundColor, style.color, style.borderColor, style.height].join(" ");
-}
-
 describe("ButtonLink", () => {
   test("is a link named by its text, to its href, marked as a button with its variant and size", async () => {
     const screen = await render(
@@ -209,7 +194,40 @@ describe("ButtonLink", () => {
   );
 });
 
+/** The family's components in the design's order, each a section of the page, and the form that uses them. */
+const sections = [
+  "Button",
+  "ButtonLink",
+  "ButtonGroup",
+  "Input",
+  "InputGroup",
+  "Textarea",
+  "Field",
+  "Label",
+  "Checkbox",
+  "RadioGroup",
+  "Switch",
+  "Slider",
+  "Select",
+  "NativeSelect",
+  "Combobox",
+  "Toggle",
+  "ToggleGroup",
+  "A form on TanStack Form",
+];
+
 describe("the forms and inputs page", () => {
+  test("shows a section for each component, in the design's order", async () => {
+    const screen = await render(<FormsAndInputs />);
+    const headings = screen.getByRole("heading", { level: 2 }).all();
+    expect(headings.map((heading) => heading.element().textContent)).toStrictEqual(sections);
+    await Promise.all(
+      sections.map(async (title) =>
+        expect.element(screen.getByRole("region", { name: title })).toBeVisible(),
+      ),
+    );
+  });
+
   test("shows every Button variant at every size", async () => {
     const screen = await render(<FormsAndInputs />);
     const perVariant = variants.length * textSizes.length;
