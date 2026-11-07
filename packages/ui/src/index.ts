@@ -1,4 +1,9 @@
-// @basis/ui's entry point. The components, app shell and preset arrive in later roadmap steps.
+// @basis/ui's entry point. The app shell arrives in a later roadmap step.
+// The components, one barrel per family, so that families built at once never edit the same file.
+export * from "./components/feedback-and-display.ts";
+export * from "./components/forms-and-inputs.ts";
+export * from "./components/navigation-and-layout.ts";
+export type { CssVariable } from "./components/css-variables.ts";
 export {
   FormatError,
   createFormatter,

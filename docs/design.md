@@ -224,7 +224,9 @@ reads the package's theme.
    | `chart-1` to `chart-8`, a sequential scale and a diverging scale                             | Chart series in order, heatmaps and conditional formatting. Parallax's canvases read the same tokens.                                                            |
 
 3. **Scales.** Spacing derives from Tailwind's single `--spacing` variable, so the compact density sets it smaller and
-   every control's height follows. Type runs down to `text-2xs`, for axes and dense labels, and number components use
+   every control's height follows. One spacing value stays fixed, `--spacing-target` at 24 pixels, whose `min-h-target`
+   and `min-w-target` every control shorter than `h-8` carries, so the compact density keeps WCAG 2.2's minimum target
+   size. Type runs down to `text-2xs`, for axes and dense labels, and number components use
    tabular figures. There are two shadows, both subtle. Citrix desktops draw on the CPU, so the theme removes the blur
    scale, which makes `blur-sm` and `backdrop-blur-md` unknown classes; the other filter utilities have no scale to
    remove and stay out of the components by review. Transitions are short and stop under

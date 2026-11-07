@@ -4,7 +4,7 @@
 import { parse } from "culori";
 import type { Color, Oklch } from "culori";
 
-import { fonts, radius, spacing } from "./inputs.ts";
+import { fonts, radius, spacing, targetSize } from "./inputs.ts";
 import { rampStep, tone } from "./ramps.ts";
 import type { Mode } from "./ramps.ts";
 import { tokens } from "./tokens.ts";
@@ -113,6 +113,7 @@ function scales(): string {
   --shadow-sm: 0 1px 2px 0 oklch(0 0 0 / 0.06);
   --shadow-md: 0 2px 6px -1px oklch(0 0 0 / 0.1);
   --spacing: ${spacing.comfortable};
+  --spacing-target: ${targetSize};
   --text-2xs: 0.625rem;
   --text-2xs--line-height: 0.875rem;
   --font-sans: ${fonts.sans};

@@ -1,0 +1,20 @@
+/* @basis/ui's stylesheet, and the whole of an app's CSS: `@import "@basis/ui/styles.css";`. It brings Tailwind, the
+   theme, and the classes @basis/ui's components use. Tailwind does not scan node_modules, so the `@source` below points
+   it at the built components wherever the package is installed. */
+
+@import "tailwindcss";
+@import "./theme.css";
+
+@source "../../dist";
+
+/* shadcn's base styles, which its components assume: lines and outlines take the theme's colours rather than the
+   text colour, and the page sits on the theme's background. */
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
