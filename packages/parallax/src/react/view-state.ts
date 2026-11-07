@@ -39,12 +39,22 @@ const opening: ViewState = { ...blank, status: "opening" };
 /** A change to a view's state. */
 type Change = (state: ViewState) => ViewState;
 
+/** What a view's listener reports to. */
+interface ListenerParts {
+  readonly change: (next: Change) => void;
+  readonly isClosed: () => boolean;
+  /** Takes a chart's reduction before the state does, returning whether it took it. */
+  readonly takeChart: (chart: ChartFrameData) => boolean;
+}
+
 /** The listener that turns what the engine sends a view into changes of its state. An error fails a view that is
  * closed, or that never opened; one for a view already open is a refused change, and the view stays open. */
-function listenerFor(change: (next: Change) => void, isClosed: () => boolean): ViewListener {
+function listenerFor({ change, isClosed, takeChart }: ListenerParts): ViewListener {
   return {
     chart: (chart) => {
-      change((state) => ({ ...state, chart }));
+      if (!takeChart(chart)) {
+        change((state) => ({ ...state, chart }));
+      }
     },
     error: (error) => {
       change((state) => ({

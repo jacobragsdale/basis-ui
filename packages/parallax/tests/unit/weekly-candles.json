@@ -1,0 +1,18 @@
+{
+  "interval": "week",
+  "from": [0, 5],
+  "to": [5, 10],
+  "open": [10, 12],
+  "high": [13, 13],
+  "low": [9, 10],
+  "close": [12, 11],
+  "volume": [3000, 1000],
+  "xText": ["week 0", "week 5"],
+  "openText": ["10", "12"],
+  "highText": ["13", "13"],
+  "lowText": ["9", "10"],
+  "closeText": ["12", "11"],
+  "volumeText": ["3,000", "1,000"],
+  "xJson": ["0", "5"],
+  "endJson": ["5", "10"]
+}

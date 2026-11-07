@@ -21,7 +21,15 @@ the tests.
 The app is a basis-ui app, on `@basis/ui`'s preset, which this package depends
 on at its own version.
 
-1. Start the engine's worker in a provider around the part of the app that
+1. Add parallax's stylesheet to the app's `src/styles.css`, after
+   `@basis/ui`'s, so that Tailwind generates the classes its components use:
+
+   ```css
+   @import "@basis/ui/styles.css";
+   @import "@basis/parallax/styles.css";
+   ```
+
+2. Start the engine's worker in a provider around the part of the app that
    shows parallax. Vite bundles the worker and the engine beside it from the
    `?worker` import:
 
@@ -44,7 +52,7 @@ on at its own version.
    page under the provider then downloads the engine, about 1 MB compressed.
    Unmounting the provider ends the worker and frees its memory.
 
-2. Load a dataset and open a view of it:
+3. Load a dataset and open a view of it:
 
    ```tsx
    import { useDataset, useView } from "@basis/parallax";
@@ -65,8 +73,63 @@ on at its own version.
    }
    ```
 
-   Step 2.6's grid, pivot and chart components take the view and draw its
-   frames.
+   Step 2.6's grid, pivot and chart components take the dataset and a layout,
+   and draw the view's frames.
+
+## Draw a chart
+
+`<Chart>` draws every chart of the firm's apps on a Canvas 2D surface: line,
+area, bar (across, stacked, or on two axes), scatter as a density, heatmap,
+histogram, candlestick, OHLC, pie and donut, on a value or trading-time axis,
+with technical-analysis indicators and panes, drawings, a compare mode and
+events. Give it a dataset that `useDataset` loads and a layout whose `chart`
+section says what to draw:
+
+```tsx
+import { Chart } from "@basis/parallax";
+
+<Chart
+  dataset={prices}
+  layout={{
+    filters: [{ column: "ticker", op: "eq", value: "UST10Y" }],
+    chart: {
+      kind: "candlestick",
+      x: "date",
+      axis: "trading",
+      ohlc: { open: "open", high: "high", low: "low", close: "close" },
+      indicators: [{ kind: "sma", period: 50 }, { kind: "rsi" }],
+    },
+  }}
+  onBrush={(filters) => setDays(filters)}
+/>;
+```
+
+A small chart takes the rows the page already holds, and loads them as a table
+of its own, in their order:
+
+```tsx
+<Chart rows={exposures} kind="bar" x="sector" y="exposure" />
+```
+
+| Prop                     | What it does                                                                                                                                                       |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `dataset`, `layout`      | The data and the view of it; the layout's `chart` section says what to draw                                                                                       |
+| `rows`, `kind`, `x`, `y` | The small-data form: the rows, a value per column, and what to draw of them; `series` splits them, `settings` adds chart settings and `formats` formats the values |
+| `onLayoutChange`         | The layout the chart changed: a series hidden from the legend, a zoom, a drawing. Without it, the chart keeps its own changes until its `layout` changes           |
+| `onBrush`                | The filters a Shift-drag selects, for a linked view; null once Escape clears it                                                                                    |
+| `onSelect`               | The group of a bar or slice clicked, for a linked view; null once the selection is cleared                                                                        |
+| `sync`                   | The group whose crosshairs move together: charts of the same dataset, x column and axis by default; null keeps the crosshair to this chart                        |
+| `status`                 | The status line under the chart: what it draws, and when the source was read. On by default                                                                       |
+| `label`                  | The chart's name for a screen reader, in place of what it says it draws                                                                                            |
+
+The wheel and `+` and `-` zoom, a drag and the arrows pan, a double-click and
+`0` show everything, Delete removes the selected drawing, and Escape drops a
+drawing in progress, then the brush. The pointer, the wheel and the engine's
+frames redraw the canvas without a React render: the chart draws outside
+React, through its view's handle, and renders again only when its chrome
+changes. The plot carries the chart's text alternative: its name says what the
+chart draws, and its description the values it shows, as the engine wrote
+them.
 
 ## The React API
 
@@ -74,7 +137,8 @@ on at its own version.
 | -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `<ParallaxProvider>`             | Starts the engine's worker for the tree inside it (`worker`, `prewarm`), and gives parallax its theme (`theme`, `basisTheme` by default) and scheme (`scheme`, the page's mode by default)                                                         |
 | `useDataset(name, source, opts)` | Loads Arrow IPC stream bytes, or a function that returns them, as `name`, and returns the load's `status` (`idle`, `loading`, `loaded` or `failed`), `rows`, `error` and `reload()`. `opts` are the load's primary key and times                  |
-| `useView(dataset, layout, opts)` | Opens a view of the dataset as the layout describes it, and returns its `status` (`waiting`, `opening`, `open` or `failed`), its latest `frame` and `chart`, its table's status, its `error`, and its `handle`. `opts` are the viewport and chart window |
+| `useView(dataset, layout, opts)` | Opens a view of the dataset as the layout describes it, and returns its `status` (`waiting`, `opening`, `open` or `failed`), its latest `frame` and `chart`, its table's status, its `error`, and its `handle`. `opts` are the viewport (null for a chart the engine reduces, which has no rows), the chart window, and `onChart`, which takes each reduction in place of `chart`, so a canvas can paint it without a React render |
+| `<Chart>`                        | A chart of a dataset as a layout describes it, or of rows the page holds; see [Draw a chart](#draw-a-chart)                                                                                                                                        |
 | `useParallaxTheme()`             | The theme a component draws in, the `attributes` its element carries, and `read(element)`, which reads the tokens in effect and changes whenever they may have                                                                                     |
 
 A changed layout updates the open view in place, and a changed viewport or chart

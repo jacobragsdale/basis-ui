@@ -1,0 +1,152 @@
+{
+  "technical": {
+    "x": 1,
+    "y": 54,
+    "width": 1374,
+    "height": 612
+  },
+  "compare": {
+    "x": 1,
+    "y": 85,
+    "width": 680,
+    "height": 229
+  },
+  "closes-log": {
+    "x": 1,
+    "y": 85,
+    "width": 680,
+    "height": 229
+  },
+  "candles": {
+    "x": 1,
+    "y": 54,
+    "width": 680,
+    "height": 260
+  },
+  "close-and-volume": {
+    "x": 1,
+    "y": 54,
+    "width": 680,
+    "height": 260
+  },
+  "ohlc": {
+    "x": 1,
+    "y": 54,
+    "width": 680,
+    "height": 260
+  },
+  "area": {
+    "x": 1,
+    "y": 54,
+    "width": 680,
+    "height": 260
+  },
+  "stacked-bars": {
+    "x": 1,
+    "y": 54,
+    "width": 680,
+    "height": 260
+  },
+  "horizontal-bars": {
+    "x": 1,
+    "y": 54,
+    "width": 680,
+    "height": 260
+  },
+  "histogram": {
+    "x": 1,
+    "y": 54,
+    "width": 680,
+    "height": 260
+  },
+  "density": {
+    "x": 1,
+    "y": 27,
+    "width": 680,
+    "height": 287
+  },
+  "heatmap": {
+    "x": 1,
+    "y": 27,
+    "width": 680,
+    "height": 287
+  },
+  "donut": {
+    "x": 1,
+    "y": 27,
+    "width": 555,
+    "height": 287
+  },
+  "pie": {
+    "x": 1,
+    "y": 27,
+    "width": 460,
+    "height": 287
+  },
+  "breakdown-notional-by-region": {
+    "x": 1,
+    "y": 29,
+    "width": 515,
+    "height": 385
+  },
+  "breakdown-positions-by-fund": {
+    "x": 1,
+    "y": 29,
+    "width": 446,
+    "height": 385
+  },
+  "breakdown-notional-by-currency": {
+    "x": 1,
+    "y": 29,
+    "width": 561,
+    "height": 385
+  },
+  "breakdown-pnl-by-strategy": {
+    "x": 1,
+    "y": 29,
+    "width": 680,
+    "height": 385
+  },
+  "breakdown-largest-tickers": {
+    "x": 1,
+    "y": 29,
+    "width": 680,
+    "height": 385
+  },
+  "breakdown-notional-by-fund-and-class": {
+    "x": 1,
+    "y": 56,
+    "width": 680,
+    "height": 358
+  },
+  "breakdown-long-short-by-region": {
+    "x": 1,
+    "y": 56,
+    "width": 680,
+    "height": 358
+  },
+  "breakdown-trades-by-status": {
+    "x": 1,
+    "y": 29,
+    "width": 521,
+    "height": 385
+  },
+  "breakdown-trades-by-broker": {
+    "x": 1,
+    "y": 29,
+    "width": 680,
+    "height": 385
+  },
+  "breakdown-trades-by-order-type": {
+    "x": 1,
+    "y": 29,
+    "width": 553,
+    "height": 385
+  },
+  "technical-page": {
+    "x": 1,
+    "y": 28,
+    "width": 1374,
+    "height": 394
+  }
+}

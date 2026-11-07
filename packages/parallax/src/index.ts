@@ -19,6 +19,17 @@ export {
   type ParallaxTokens,
 } from "./react/use-theme.ts";
 
+// The charts.
+export {
+  Chart,
+  type ChartProps,
+  type DatasetChartProps,
+  type RowsChartProps,
+} from "./chart/chart.tsx";
+export type { ChartOptions } from "./chart/chart-view.tsx";
+export type { ChartSelection } from "./chart/scene.ts";
+export type { ChartRow, ChartSettings, ChartValue } from "./chart/small-data.ts";
+
 // The engine, its worker and its protocol.
 export {
   ParallaxClient,

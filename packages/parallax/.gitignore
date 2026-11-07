@@ -8,3 +8,5 @@ __pycache__/
 # package type-checks before the engine is built, and CI checks it still matches.
 /wasm/*
 !/wasm/parallax_wasm.d.ts
+# The datasets the end-to-end specs load, which tests/e2e/charts/run.ts writes with parallax-datagen.
+/tests/e2e/charts/data/

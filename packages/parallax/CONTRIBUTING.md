@@ -50,6 +50,7 @@ vp run @basis/ui#build        # first: the package type-checks against it
 vp run @basis/parallax#wasm   # the engine for the browser, into wasm/
 vp run @basis/parallax#build  # vp pack: dist/, the engine and its worker included
 vp run @basis/parallax#test   # unit tests in Node, browser tests in Chromium
+vp run @basis/parallax#charts-e2e  # the charts' end-to-end specs and screenshots, in Docker
 ```
 
 `wasm` builds `parallax-wasm` for `wasm32-unknown-unknown` in release and runs
@@ -60,6 +61,19 @@ replays it from its cache until the Rust changes. `build` runs it first, and
 `test` runs `build` first, since the browser tests run the built worker as an
 app gets it. The browser tests need the Chromium that `@basis/ui`'s preset
 pins: `vp exec --filter @basis/ui playwright install chromium`.
+
+`charts-e2e` runs the React charts' Playwright specs in `tests/e2e/charts`
+against a small React app, the harness in `tests/e2e/charts/harness`, over the
+Angular demo's datasets, which it writes with `parallax-datagen` into
+`tests/e2e/charts/data` when they are
+missing. Text renders differently from one machine to the next, so it runs
+Playwright in the Docker image `mcr.microsoft.com/playwright` of the installed
+`@playwright/test` version, the Angular layer's, against the harness it builds
+and serves from this machine, and compares screenshots at threshold 0. Its
+parity spec compares each chart's canvas pixel for pixel with the Angular
+layer's screenshots, until step 2.7 deletes them. After an intended change to
+how charts look, run `node tests/e2e/charts/run.ts --update-snapshots`, look at the
+new screenshots, and commit them.
 
 wasm-bindgen's output in `wasm/` is ignored by git, except its declaration of
 the glue, `wasm/parallax_wasm.d.ts`, which is committed so that the package

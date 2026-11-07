@@ -1,0 +1,286 @@
+/* The pointer, wheel and keys on a chart's plot: hovering reads, dragging pans, Shift and drag brushes, the wheel and
+ * the keys zoom, a click selects a bar or a slice, and a press with a drawing tool draws. The listeners are the DOM's
+ * own, not React's: the wheel must be able to stop the page scrolling, and nothing here renders. Presses and keys in a
+ * note's text box are the box's, not the plot's. */
+
+import type { DrawingEditor } from "./drawing-editor.ts";
+import type { ChartModel, Point } from "./model-types.ts";
+import { keyed, keys, zoomIn, zoomOut } from "./pointer-keys.ts";
+import { panRange, zoomRange } from "./range.ts";
+import type { Range } from "./range.ts";
+import type { ChartZoom } from "./zoom.ts";
+
+/** The events the plot listens to. */
+const listened = [
+  "pointerdown",
+  "pointermove",
+  "pointerup",
+  "pointercancel",
+  "pointerleave",
+  "wheel",
+  "click",
+  "dblclick",
+  "keydown",
+] as const;
+
+/** What the pointer acts on: the chart's scene. */
+interface PointerScene {
+  readonly zoom: ChartZoom;
+  readonly editor: DrawingEditor;
+  readonly model: () => ChartModel | null;
+  readonly extent: () => Range | null;
+  /** The pointer over the plot, or null once it leaves. */
+  readonly hoverAt: (at: Point | null) => void;
+  readonly setPanning: (panning: boolean) => void;
+  /** Shows a brush being dragged, in axis positions, or none. */
+  readonly brush: (range: Range | null) => void;
+  /** The brush is let go: it snaps to what it selects, and says so. */
+  readonly brushDone: () => void;
+  readonly clearBrush: () => void;
+  /** A click at a point, which selects a bar's or a slice's group. */
+  readonly pick: (at: Point) => void;
+}
+
+/** A drag under way: where it started, whether it brushes, the range it started on, and axis units per pixel. */
+interface Drag {
+  readonly start: number;
+  readonly brush: boolean;
+  readonly range: Range;
+  readonly perPixel: number;
+}
+
+/** The plot's listeners, and the drag they track. */
+class ChartPointer implements EventListenerObject {
+  readonly #scene: PointerScene;
+  readonly #plot: HTMLElement;
+  #drag: Drag | null = null;
+  /** What each pointer event does. */
+  readonly #pointerHandlers: Readonly<Partial<Record<string, (event: PointerEvent) => void>>> = {
+    pointercancel: (event) => {
+      this.#cancel(event);
+    },
+    pointerdown: (event) => {
+      this.#down(event);
+    },
+    pointerleave: () => {
+      this.#scene.hoverAt(null);
+    },
+    pointermove: (event) => {
+      this.#move(event);
+    },
+    pointerup: (event) => {
+      this.#up(event);
+    },
+  };
+
+  public constructor(scene: PointerScene, plot: HTMLElement) {
+    this.#scene = scene;
+    this.#plot = plot;
+  }
+
+  /** Listens to the plot, until the returned function is called. */
+  public attach(): () => void {
+    const controller = new AbortController();
+    for (const type of listened) {
+      this.#plot.addEventListener(type, this, { passive: false, signal: controller.signal });
+    }
+    return (): void => {
+      controller.abort();
+    };
+  }
+
+  /** Hands each event the plot listens to to its handler. */
+  public handleEvent(event: Event): void {
+    if (event instanceof PointerEvent) {
+      this.#pointer(event);
+    } else if (event instanceof WheelEvent) {
+      this.#wheel(event);
+    } else if (event instanceof KeyboardEvent) {
+      this.#key(event);
+    } else if (event instanceof MouseEvent) {
+      this.#mouse(event);
+    }
+  }
+
+  #pointer(event: PointerEvent): void {
+    const handle = this.#pointerHandlers[event.type];
+    if (handle === undefined) {
+      // A click is a pointer event in Chrome.
+      this.#mouse(event);
+    } else {
+      handle(event);
+    }
+  }
+
+  /** A click selects a bar's or slice's group; a double-click shows everything again. */
+  #mouse(event: MouseEvent): void {
+    if (!this.#onPlot(event)) {
+      return;
+    }
+    if (event.type === "dblclick") {
+      this.#scene.zoom.reset();
+    } else if (event.type === "click") {
+      this.#scene.pick(this.#local(event));
+    }
+  }
+
+  /** Whether an event happened on the plot itself, or its canvas, rather than in a note's box over it. */
+  #onPlot(event: Event): boolean {
+    return event.target === this.#plot || event.target instanceof HTMLCanvasElement;
+  }
+
+  #local(event: MouseEvent): Point {
+    const rect = this.#plot.getBoundingClientRect();
+    return { x: event.clientX - rect.left, y: event.clientY - rect.top };
+  }
+
+  /** The model and range a press on the plot drags over, or null where it cannot drag. */
+  #draggable(event: PointerEvent): { readonly model: ChartModel; readonly range: Range } | null {
+    const model = this.#scene.model();
+    const range = this.#scene.zoom.shown();
+    return !this.#onPlot(event) ||
+      event.button !== 0 ||
+      model?.x === null ||
+      model === null ||
+      range === null
+      ? null
+      : { model, range };
+  }
+
+  /** Starts panning, or with Shift a brush; a press that makes, picks or grabs a drawing is neither. */
+  #down(event: PointerEvent): void {
+    const target = this.#draggable(event);
+    if (target === null) {
+      return;
+    }
+    this.#plot.setPointerCapture(event.pointerId);
+    const at = this.#local(event);
+    if (!event.shiftKey && this.#scene.editor.down(at)) {
+      this.#tookPress(event);
+      return;
+    }
+    this.#began(target, { brush: event.shiftKey, start: at.x });
+  }
+
+  /** A press the drawing editor took: the plot takes the keyboard, so Delete and Escape reach the drawing, and the
+   * press's own default, which would focus the plot after a note's box has taken the focus, is stopped. */
+  #tookPress(event: PointerEvent): void {
+    event.preventDefault();
+    this.#plot.focus();
+  }
+
+  /** A pan or a brush begins at `start`, over the range shown. */
+  #began(
+    { model, range }: { readonly model: ChartModel; readonly range: Range },
+    { brush, start }: { readonly brush: boolean; readonly start: number },
+  ): void {
+    const perPixel = (range[1] - range[0]) / model.plot.width;
+    this.#drag = { brush, perPixel, range, start };
+    if (brush) {
+      this.#scene.brush(null);
+    } else {
+      this.#scene.setPanning(true);
+    }
+  }
+
+  #move(event: PointerEvent): void {
+    const scene = this.#scene;
+    const at = this.#local(event);
+    scene.hoverAt(at);
+    const drag = this.#drag;
+    const x = scene.model()?.x ?? null;
+    if (scene.editor.move(at) || drag === null || x === null) {
+      return;
+    }
+    if (drag.brush) {
+      scene.brush([x.invert(drag.start), x.invert(at.x)]);
+    } else {
+      scene.zoom.schedule(
+        panRange(drag.range, (drag.start - at.x) * drag.perPixel, scene.extent()),
+      );
+    }
+  }
+
+  /** Ends a drag, returning it. */
+  #endDrag(event: PointerEvent): Drag | null {
+    const drag = this.#drag;
+    this.#drag = null;
+    this.#scene.setPanning(false);
+    this.#scene.zoom.flush();
+    if (this.#plot.hasPointerCapture(event.pointerId)) {
+      this.#plot.releasePointerCapture(event.pointerId);
+    }
+    return drag;
+  }
+
+  /** Ends a pan, which the layout then records, or a brush, which snaps to what it selects. */
+  #up(event: PointerEvent): void {
+    const drag = this.#endDrag(event);
+    const drew = this.#scene.editor.up();
+    if (drew || drag === null) {
+      return;
+    }
+    if (drag.brush) {
+      this.#scene.brushDone();
+    } else {
+      this.#scene.zoom.settle("now");
+    }
+  }
+
+  /** A drag the browser took over or the system interrupted ends without a pointerup; a brush it made is dropped. */
+  #cancel(event: PointerEvent): void {
+    this.#scene.editor.abandon();
+    const drag = this.#endDrag(event);
+    if (drag?.brush === true) {
+      this.#scene.clearBrush();
+    } else if (drag !== null) {
+      this.#scene.zoom.settle("now");
+    }
+  }
+
+  /** Zooms around the pointer: up to zoom in, down to zoom out. */
+  #wheel(event: WheelEvent): void {
+    const { zoom } = this.#scene;
+    const x = this.#scene.model()?.x ?? null;
+    const range = zoom.shown();
+    if (x === null || range === null || event.deltaY === 0) {
+      return;
+    }
+    event.preventDefault();
+    const factor = event.deltaY < 0 ? zoomIn : zoomOut;
+    const anchor = x.invert(this.#local(event).x);
+    zoom.schedule(zoomRange(range, { anchor, factor, full: this.#scene.extent() }));
+    zoom.settle("at rest");
+  }
+
+  /** Plus and minus zoom, the arrows pan, 0 shows everything, Delete removes the selected drawing, and Escape drops a
+   * drawing in progress or the selection, then the brush. */
+  #key(event: KeyboardEvent): void {
+    const action = keys[event.key];
+    const range = this.#scene.zoom.shown();
+    if (action === undefined || range === null || event.target !== this.#plot) {
+      return;
+    }
+    event.preventDefault();
+    if (action === "clear" || action === "remove" || action === "all") {
+      this.#act(action);
+      return;
+    }
+    this.#scene.zoom.schedule(keyed(action, range, this.#scene.extent()));
+    this.#scene.zoom.settle("now");
+  }
+
+  #act(action: "clear" | "remove" | "all"): void {
+    const scene = this.#scene;
+    if (action === "all") {
+      scene.zoom.reset();
+    } else if (action === "remove") {
+      scene.editor.remove();
+    } else if (!scene.editor.cancel()) {
+      scene.clearBrush();
+    }
+  }
+}
+
+export { ChartPointer };
+export type { PointerScene };
