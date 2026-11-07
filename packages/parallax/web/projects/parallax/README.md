@@ -125,13 +125,71 @@ The engine then starts without waiting for the server's welcome. In exchange,
 every page downloads the engine, about 1 MB compressed, and runs its worker,
 even a page that opens no browser dataset.
 
+## Load the app's own data
+
+An app can hand the engine Arrow bytes it fetched itself, such as its API's
+answer to a request for `application/vnd.apache.arrow.stream`, and every view
+of them runs in the page, with no parallax server. Serve the `wasm` folder as
+above and give `worker`; `url` is then optional:
+
+```ts
+provideParallax({ worker: "/parallax/worker.js" });
+```
+
+```ts
+const response = await fetch("/api/positions", { headers: { accept: "application/vnd.apache.arrow.stream" } });
+await inject(ParallaxClient).load("positions", await response.arrayBuffer());
+// Every grid, pivot and chart whose layout names "positions" now runs in the worker.
+```
+
+The buffer moves to the worker with the message, so the app can no longer read
+it, and the engine decodes it in place. A second load of the same dataset
+reloads it, and its open views show the new rows; give `primaryKey` in the
+options so that a reload applies as a diff. Load before showing the views, or
+while they open: a view of a dataset whose load is under way waits for it.
+
+A table in the browser holds at most `MAX_ROWS` rows (150,000) and
+`MAX_ARROW_BYTES` bytes of Arrow (70,000,000), the limits spike 0.3 measured
+for a pivot to answer within 500 ms on a slow desktop. A larger load fails with
+a message naming the limit and the size, before it costs the engine any memory:
+the bytes are checked before they leave the page, and the rows from the
+stream's batch headers before any data is decoded. Narrow larger data in the
+API, by filtering or aggregating it.
+
+The status bar's time and NaN badge come from the API, which alone knows them.
+It sets them in the stream's schema metadata under `parallax.load`, as JSON:
+
+```json
+{ "source_as_of_micros": 1793980800000000, "nans_to_null": [["price", 3]] }
+```
+
+`source_as_of_micros` is when the API read its source, in microseconds since
+the Unix epoch; without it, the status shows when the page loaded the data.
+`nans_to_null` counts, per column, the NaNs the API turned blank before
+sending. NaNs still in the stream are turned blank by the engine and counted
+with them. The `sourceAsOfMicros` load option overrides the stream's time.
+
+WebAssembly memory never shrinks, so a reload or a large pivot keeps its
+high-water mark until the worker ends. A load or export that runs the engine
+out of memory stops it for good: the client then ends the worker, which frees
+all its memory, fails every open view and waiting request with the reason, and
+starts a new, empty one. `ParallaxClient.onRestart` tells the app, which loads
+its data again.
+
 ## Export a view
 
-The status bar under every grid has **Export to Excel** and **CSV**. The grid
-posts its layout to the server's `/export`, and the browser saves the file;
-`GridComponent.export("xlsx")` does the same from code. If the server is not
-at `/export` next to `url`, set `httpUrl` in `provideParallax` to its HTTP
-base, such as `https://api.host/px`; browser copies come from `/copy` there too.
+The status bar under every grid has **Export to Excel** and **CSV**, and
+`GridComponent.export("xlsx")` does the same from code. A view of data the app
+loaded is written in the browser's worker, which holds its table, and saved as
+a download. An Excel export there holds at most `MAX_XLSX_CELLS` cells
+(1,000,000), since the browser keeps the sheet in memory; a larger view is
+refused with a reason that says to export CSV, which reaches the page in
+chunks as it is written.
+
+Other views post their layout to the server's `/export`, and the browser saves
+the file. If the server is not at `/export` next to `url`, set `httpUrl` in
+`provideParallax` to its HTTP base, such as `https://api.host/px`; browser
+copies come from `/copy` there too.
 
 ## Share a view
 

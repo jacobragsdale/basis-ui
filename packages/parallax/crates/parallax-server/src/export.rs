@@ -182,7 +182,7 @@ pub(crate) async fn export(
                 .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
             let shared = Shared(table);
             let written = if extension == "xlsx" {
-                write_xlsx(&shared, &layout, &source, &mut file)
+                write_xlsx(&shared, &layout, &source, None, &mut file)
             } else {
                 write_csv(
                     &shared,

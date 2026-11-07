@@ -25,7 +25,7 @@ fn main() {
     let layout = Layout::default();
     let mut file = tempfile::tempfile().unwrap();
     let started = Instant::now();
-    let summary = write_xlsx(&table, &layout, &ExportSource::default(), &mut file).unwrap();
+    let summary = write_xlsx(&table, &layout, &ExportSource::default(), None, &mut file).unwrap();
     let size = file.metadata().unwrap().len();
     println!(
         "xlsx: {} rows × {} columns in {:.1} s, {:.0} MB",

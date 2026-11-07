@@ -92,6 +92,17 @@ pub enum ExportError {
         /// Excel's limit.
         limit: usize,
     },
+    /// More cells than the export may write as Excel, such as in the browser,
+    /// where a sheet is held in memory at about 190 bytes a cell.
+    #[error(
+        "the view has {cells} cells, more than the {limit} an Excel export here holds; export it as CSV instead"
+    )]
+    TooManyCells {
+        /// Cells the sheet would hold, the header and group column included.
+        cells: usize,
+        /// The limit the caller set.
+        limit: usize,
+    },
     /// Text longer than an Excel cell holds; it is never cut.
     #[error(
         "row {row}, column {column}: {length} characters is more than the {EXCEL_MAX_TEXT} an Excel cell holds"
@@ -539,17 +550,36 @@ fn read_at<T: ReadTable + ?Sized>(source: &T, version: u64) -> Result<T::Guard<'
 /// The longest text the Notes sheet puts in one cell, below Excel's limit.
 const NOTE_CELL: usize = 30_000;
 
-/// Writes the layout's view of a table as an Excel workbook.
+/// A sheet that streams its rows to a temporary file, so that a large export
+/// needs little memory.
+#[cfg(not(target_arch = "wasm32"))]
+fn streamed_sheet(workbook: &mut Workbook) -> Result<&mut Worksheet, XlsxError> {
+    workbook.add_worksheet_with_constant_memory()
+}
+
+/// WebAssembly in the browser has no file system for rust_xlsxwriter's temporary
+/// files, so the sheet is held in memory, about 190 bytes a cell. Callers there
+/// cap the cells with `max_cells`.
+#[cfg(target_arch = "wasm32")]
+#[allow(clippy::unnecessary_wraps)]
+fn streamed_sheet(workbook: &mut Workbook) -> Result<&mut Worksheet, XlsxError> {
+    Ok(workbook.add_worksheet())
+}
+
+/// Writes the layout's view of a table as an Excel workbook. With `max_cells`,
+/// a view of more cells than that, the header and group column included, is
+/// refused before anything is written.
 ///
 /// # Errors
 ///
 /// Returns an error if the layout does not fit the table, the view has more rows
-/// than a sheet holds, a text is longer than a cell holds, the table reloads part
-/// way, or writing fails.
+/// than a sheet holds or more cells than `max_cells`, a text is longer than a cell
+/// holds, the table reloads part way, or writing fails.
 pub fn write_xlsx<T: ReadTable + ?Sized, W: Write + Seek + Send>(
     tables: &T,
     layout: &Layout,
     source: &ExportSource,
+    max_cells: Option<usize>,
     out: W,
 ) -> Result<ExportSummary, ExportError> {
     let first = tables.read().map_err(ExportError::Read)?;
@@ -565,9 +595,16 @@ pub fn write_xlsx<T: ReadTable + ?Sized, W: Write + Seek + Send>(
             limit: EXCEL_MAX_ROWS,
         });
     }
+    let grouped = view.is_grouped();
+    if let Some(limit) = max_cells {
+        let width = columns.min(EXCEL_MAX_COLUMNS - usize::from(grouped)) + usize::from(grouped);
+        let cells = (rows + 1 + footer).saturating_mul(width);
+        if cells > limit {
+            return Err(ExportError::TooManyCells { cells, limit });
+        }
+    }
     let mut notes = Notes::default();
     let mut workbook = Workbook::new();
-    let grouped = view.is_grouped();
     let outlined = grouped && (rows + 1).saturating_mul(columns + 1) <= OUTLINE_MAX_CELLS;
     let shape = if outlined {
         tree_shape(&mut view, &first, rows)
@@ -578,7 +615,7 @@ pub fn write_xlsx<T: ReadTable + ?Sized, W: Write + Seek + Send>(
     let sheet = if outlined {
         workbook.add_worksheet()
     } else {
-        workbook.add_worksheet_with_constant_memory()?
+        streamed_sheet(&mut workbook)?
     };
     sheet.set_name("View")?;
     let header = Format::new()

@@ -189,11 +189,11 @@ export function chartSource(layout: Signal<Layout | null>): ChartSource {
     generation += 1;
     const mine = generation;
     client.connectionFor(next.dataset, next.parameters).then(
-      ({ connection, fallback }) => {
+      ({ connection, fallback, loaded }) => {
         if (destroyed || mine !== generation) {
           return;
         }
-        placement.set({ location: connection.location, fallback });
+        placement.set({ location: connection.location, fallback, loaded });
         const view = connection.open(
           next.dataset,
           JSON.stringify(next),

@@ -4,13 +4,17 @@ import { Injectable, InjectionToken, inject, makeEnvironmentProviders, provideEn
 import type { EnvironmentProviders } from "@angular/core";
 
 import { BrowserEngine, COPY_TIMEOUT_MS } from "./browser-engine";
+import type { ExportFormat, LoadOptions, Loaded } from "./browser-engine";
 import { Connection } from "./connection";
 import type { ParallaxTheme, Scheme } from "./theme";
 
 /** Where the engine runs. */
 export interface ParallaxConfig {
-  /** The server's WebSocket URL, such as `wss://host/ws`. A path such as `/ws` is resolved against the page. */
-  readonly url: string;
+  /**
+   * The server's WebSocket URL, such as `wss://host/ws`. A path such as `/ws` is resolved against the page. Without
+   * it there is no server: every view runs in the browser, on data the app loads with `ParallaxClient.load`.
+   */
+  readonly url?: string;
   /**
    * The server's HTTP base, such as `https://host/app`, where exports are posted to `/export` and browser copies
    * are fetched from `/copy`. By default, beside `url`: `wss://host/app/ws` gives `https://host/app`.
@@ -18,8 +22,8 @@ export interface ParallaxConfig {
   readonly httpUrl?: string;
   /**
    * Where the application serves `worker.js` from the package's `wasm` folder, such as `/parallax/worker.js`.
-   * With it, datasets the server marks for the browser are copied into a worker and their views run there;
-   * without it, every view runs on the server.
+   * With it, the app can load its own data into a worker, and datasets the server marks for the browser are copied
+   * into it; views of either run there. Without it, every view runs on the server.
    */
   readonly worker?: string;
   /**
@@ -40,6 +44,8 @@ export interface Placement {
   readonly connection: Connection;
   /** Why a dataset marked for the browser runs on the server instead, or null. */
   readonly fallback: string | null;
+  /** Whether the view runs on a table the app loaded into the browser, rather than on the server or a server table's copy. */
+  readonly loaded: boolean;
 }
 
 const CONFIG = new InjectionToken<ParallaxConfig>("parallax config");
@@ -109,7 +115,14 @@ export class ParallaxClient {
 
   /** The server's HTTP base. */
   private httpBase(): string {
-    return this.config.httpUrl ?? httpBaseFor(absolute(this.config.url));
+    const url = this.config.url;
+    if (this.config.httpUrl !== undefined) {
+      return this.config.httpUrl;
+    }
+    if (url === undefined) {
+      throw new Error("parallax has no server: provideParallax was given no url");
+    }
+    return httpBaseFor(absolute(url));
   }
 
   /** The URL exports are posted to. */
@@ -119,15 +132,49 @@ export class ParallaxClient {
 
   /** Returns the shared connection to the server. */
   public connection(): Promise<Connection> {
-    this.connecting ??= Connection.websocket(absolute(this.config.url));
+    const url = this.config.url;
+    if (url === undefined) {
+      return Promise.reject(new Error("parallax has no server: provideParallax was given no url"));
+    }
+    this.connecting ??= Connection.websocket(absolute(url));
     return this.connecting;
   }
 
-  /** Connects to the server and starts the browser's engine, if there is a worker, before any view needs them. */
+  /** Connects to the server, if there is one, and starts the browser's engine, if there is a worker, before any view needs them. */
   public prewarm(): void {
-    // A connection that fails is reported to the views that need it.
-    this.connection().catch(() => undefined);
+    if (this.config.url !== undefined) {
+      // A connection that fails is reported to the views that need it.
+      this.connection().catch(() => undefined);
+    }
     this.engine();
+  }
+
+  /**
+   * Loads Arrow IPC stream bytes the app fetched, such as its API's response, into the browser's engine as
+   * `dataset`; views of it then run there. The buffer moves to the engine's worker, so the app can no longer read
+   * it. Load before showing the views, or while they open: a view that opens after the load starts waits for it.
+   * See `BrowserEngine.load` for the limits and the load's status.
+   */
+  public load(dataset: string, bytes: ArrayBuffer, options: LoadOptions = {}): Promise<Loaded> {
+    const engine = this.engine();
+    if (engine === null) {
+      return Promise.reject(new Error("parallax has no worker to load data into: provideParallax was given no worker"));
+    }
+    return engine.load(dataset, bytes, options);
+  }
+
+  /** Writes a view of a table the app loaded as xlsx or CSV in the browser's engine; see `BrowserEngine.export`. */
+  public export(layoutJson: string, format: ExportFormat, loadVersion: bigint | null): Promise<Blob> {
+    const engine = this.browser;
+    if (engine === null) {
+      return Promise.reject(new Error("parallax's browser engine has not started"));
+    }
+    return engine.export(layoutJson, format, loadVersion);
+  }
+
+  /** Calls `listener` whenever the browser's engine runs out of memory and starts again empty, so the app can load its data again. */
+  public onRestart(listener: (reason: string) => void): void {
+    this.engine()?.onRestart(listener);
   }
 
   /** The browser's engine, started on first use, or null without a worker. */
@@ -141,11 +188,19 @@ export class ParallaxClient {
   }
 
   /**
-   * Returns the connection for views of `dataset`: the browser's engine if the server marks the dataset for the
-   * browser, a worker is configured and the copy loads; otherwise the server. A copy that fails to load leaves
-   * the view on the server, which holds the same table, and says why.
+   * Returns the connection for views of `dataset`: the browser's engine if the app loaded the dataset there, or if
+   * the server marks it for the browser, a worker is configured and the copy loads; otherwise the server. A copy
+   * that fails to load leaves the view on the server, which holds the same table, and says why.
    */
   public async connectionFor(dataset: string, parameters: Readonly<Record<string, string>>): Promise<Placement> {
+    // A load answers for itself; the server is never asked about a dataset the app loaded.
+    const engine = this.browser;
+    if (engine !== null && (await engine.holds(dataset))) {
+      return { connection: engine.connection, fallback: null, loaded: true };
+    }
+    if (this.config.url === undefined) {
+      throw new Error(`${dataset} is not loaded in this page; the app loads it with ParallaxClient.load before showing it`);
+    }
     return placeView(await this.connection(), () => this.engine(), dataset, parameters, copyUrlFor(this.httpBase(), dataset, parameters));
   }
 }
@@ -162,17 +217,17 @@ export interface CopyingEngine {
  */
 export async function placeView(server: Connection, browser: () => CopyingEngine | null, dataset: string, parameters: Readonly<Record<string, string>>, copyUrl: string): Promise<Placement> {
   if ((await server.dataset(dataset))?.browser !== true) {
-    return { connection: server, fallback: null };
+    return { connection: server, fallback: null, loaded: false };
   }
   const engine = browser();
   if (engine === null) {
-    return { connection: server, fallback: null };
+    return { connection: server, fallback: null, loaded: false };
   }
   try {
     await engine.copy(dataset, parameters, copyUrl, COPY_TIMEOUT_MS);
-    return { connection: engine.connection, fallback: null };
+    return { connection: engine.connection, fallback: null, loaded: false };
   } catch (failure: unknown) {
     const reason = failure instanceof Error ? failure.message : String(failure);
-    return { connection: server, fallback: `The copy for this browser did not load, so the view runs on the server: ${reason}` };
+    return { connection: server, fallback: `The copy for this browser did not load, so the view runs on the server: ${reason}`, loaded: false };
   }
 }

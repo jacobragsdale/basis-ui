@@ -90,6 +90,16 @@ export interface DrillRequest {
 /** The message a refused export posts from its hidden frame. */
 const exportRefusal = z.strictObject({ source: z.literal("parallax-export"), token: z.string(), error: z.string() });
 
+const EXPORT_TIME = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+
+/** An export's file name, as the server names it: the dataset, made safe, and the time in New York, such as `positions-2026-11-07-1430.xlsx`. */
+export function exportFileName(dataset: string, extension: string, at: Date): string {
+  const parts = new Map(EXPORT_TIME.formatToParts(at).map((p) => [p.type, p.value]));
+  const part = (type: Intl.DateTimeFormatPartTypes): string => parts.get(type) ?? "";
+  const safe = dataset.replace(/[^A-Za-z0-9_-]/gu, "_");
+  return `${safe}-${part("year")}-${part("month")}-${part("day")}-${part("hour")}${part("minute")}.${extension}`;
+}
+
 /** How tightly rows are packed: a comfortable grid's rows and header are taller by `DENSITY_STEP` pixels. */
 export type Density = "compact" | "comfortable";
 
@@ -736,14 +746,19 @@ export class GridComponent {
   }
 
   /**
-   * Downloads the view as an Excel workbook or a CSV file. The browser posts the
-   * layout in a form and streams the answer to disk, so a large export never sits
-   * in the page's memory. A refusal, such as more rows than Excel holds, comes
-   * back as text, which the status bar shows.
+   * Downloads the view as an Excel workbook or a CSV file. A view of data the app
+   * loaded is written by the browser's engine, which holds its table. Otherwise the
+   * browser posts the layout in a form to the server and streams the answer to
+   * disk, so a large export never sits in the page's memory. A refusal, such as
+   * more rows than Excel holds, comes back as text, which the status bar shows.
    */
   public export(format: "xlsx" | "csv"): void {
     const layout = this.current();
     if (layout === null) {
+      return;
+    }
+    if (this.source.placement()?.loaded === true) {
+      this.exportInBrowser(layout, format);
       return;
     }
     const token = `${String(Date.now())}-${String(Math.random()).slice(2)}`;
@@ -783,6 +798,33 @@ export class GridComponent {
     form.submit();
     form.remove();
     this.message.set(format === "xlsx" ? "Exporting to Excel; your browser will save the file." : "Exporting to CSV; your browser will save the file.");
+  }
+
+  /** Writes the export in the browser's engine and saves it as a download, refusing another load than the screen shows. */
+  private exportInBrowser(layout: Layout, format: "xlsx" | "csv"): void {
+    const shown = this.source.frame()?.loadVersion ?? null;
+    const name = exportFileName(layout.dataset, format, new Date());
+    this.message.set(format === "xlsx" ? "Exporting to Excel…" : "Exporting to CSV…");
+    this.client.export(JSON.stringify(layout), format, shown).then(
+      (file) => {
+        const url = URL.createObjectURL(file);
+        const link = this.document.createElement("a");
+        link.href = url;
+        link.download = name;
+        link.hidden = true;
+        this.document.body.append(link);
+        link.click();
+        link.remove();
+        // The download has its own reference to the file once it starts.
+        setTimeout(() => {
+          URL.revokeObjectURL(url);
+        }, 60_000);
+        this.message.set(format === "xlsx" ? "Exported to Excel; your browser saves the file." : "Exported to CSV; your browser saves the file.");
+      },
+      (failure: unknown) => {
+        this.message.set(`Export failed: ${failure instanceof Error ? failure.message : String(failure)}`);
+      }
+    );
   }
 
   /** Lists a column's values under the view's other filters, for filter pick-lists. */

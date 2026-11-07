@@ -34,7 +34,9 @@ cargo test -p parallax-wasm --target wasm32-unknown-unknown
 
 That test replays the protocol conversation in `parallax-session`'s `testing`
 module and checks its fingerprint against the native build's. The browser engine
-must answer byte for byte like the server.
+must answer byte for byte like the server. The others load an app's Arrow bytes
+and export them as WebAssembly, through the methods the browser's worker calls:
+the row limit, the Excel cell cap, and CSV in chunks.
 
 ## Run the server
 

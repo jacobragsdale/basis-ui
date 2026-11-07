@@ -219,7 +219,8 @@ export class StatusBarComponent {
   private readonly where = computed((): Omit<Badge, "kind"> | null => {
     const placement = this.placement();
     if (placement?.location === "browser") {
-      return { text: "in browser", classes: "px-badge px-badge-neutral px-status-where", role: null, title: "This view runs in your browser, on a copy of the server's table, with the same engine." };
+      const title = placement.loaded ? "This view runs in your browser, on the data this page loaded." : "This view runs in your browser, on a copy of the server's table, with the same engine.";
+      return { text: "in browser", classes: "px-badge px-badge-neutral px-status-where", role: null, title };
     }
     if (placement !== null && placement.fallback !== null) {
       return { text: "on server", classes: "px-badge px-badge-warning px-status-where", role: null, title: placement.fallback };
@@ -258,7 +259,13 @@ export class StatusBarComponent {
     }
     const placement = this.placement();
     if (placement !== null) {
-      items.push({ term: "Runs", value: placement.location === "browser" ? "in this browser, on a copy of the server's table" : (placement.fallback ?? "on the server") });
+      const runs =
+        placement.location === "server"
+          ? (placement.fallback ?? "on the server")
+          : placement.loaded
+            ? "in this browser, on the data this page loaded"
+            : "in this browser, on a copy of the server's table";
+      items.push({ term: "Runs", value: runs });
     }
     return items;
   });

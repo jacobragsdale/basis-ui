@@ -26,7 +26,7 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/src/target \
     cargo build --release --locked -p parallax-server \
     && cargo build --release --locked -p parallax-wasm --target wasm32-unknown-unknown \
-    && wasm-bindgen --target web --out-dir web/projects/parallax/wasm --out-name parallax_wasm \
+    && wasm-bindgen --target web --remove-name-section --out-dir web/projects/parallax/wasm --out-name parallax_wasm \
         target/wasm32-unknown-unknown/release/parallax_wasm.wasm \
     && cp target/release/parallax-server /usr/local/bin/
 

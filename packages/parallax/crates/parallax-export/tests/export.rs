@@ -46,6 +46,7 @@ fn xlsx(table: &Table, layout: &str) -> Vec<u8> {
         table,
         &Layout::from_json(layout).unwrap(),
         &ExportSource::default(),
+        None,
         &mut out,
     )
     .unwrap();
@@ -321,11 +322,70 @@ fn more_rows_than_a_sheet_holds_is_refused() {
         &table_of(&batch),
         &Layout::default(),
         &ExportSource::default(),
+        None,
         Cursor::new(Vec::new()),
     )
     .unwrap_err();
     assert!(matches!(error, ExportError::TooManyRows { .. }), "{error}");
     assert!(error.to_string().contains("CSV"));
+}
+
+#[test]
+fn more_cells_than_the_cap_is_refused_and_says_to_export_csv() {
+    // 99 rows and 4 columns: 100 rows with the header, 400 cells.
+    let batch = RecordBatch::try_new(
+        Arc::new(Schema::new(vec![
+            Field::new("a", DataType::Int64, false),
+            Field::new("b", DataType::Int64, false),
+            Field::new("c", DataType::Int64, false),
+            Field::new("d", DataType::Int64, false),
+        ])),
+        (0..4)
+            .map(|_| Arc::new(Int64Array::from_iter_values(0..99)) as ArrayRef)
+            .collect(),
+    )
+    .unwrap();
+    let table = table_of(&batch);
+    let flat = Layout::default();
+    let export = |layout: &Layout, cap: usize| {
+        write_xlsx(
+            &table,
+            layout,
+            &ExportSource::default(),
+            Some(cap),
+            Cursor::new(Vec::new()),
+        )
+    };
+    export(&flat, 400).unwrap();
+    let error = export(&flat, 399).unwrap_err();
+    assert!(
+        matches!(
+            error,
+            ExportError::TooManyCells {
+                cells: 400,
+                limit: 399
+            }
+        ),
+        "{error}"
+    );
+    assert_eq!(
+        error.to_string(),
+        "the view has 400 cells, more than the 399 an Excel export here holds; export it as CSV instead"
+    );
+    // A pivot counts its group column and its total: 99 groups, the header and
+    // the total, by the group column and one sum, 101 by 2.
+    let pivot = Layout::from_json(
+        r#"{"version":1,"group_by":["a"],"measures":[{"column":"b","aggregate":"sum"}]}"#,
+    )
+    .unwrap();
+    export(&pivot, 202).unwrap();
+    let error = export(&pivot, 201).unwrap_err();
+    assert!(
+        matches!(error, ExportError::TooManyCells { cells: 202, .. }),
+        "{error}"
+    );
+    // CSV has no cap: it streams.
+    write_csv(&table, &flat, &ExportSource::default(), Vec::new()).unwrap();
 }
 
 #[test]
@@ -342,6 +402,7 @@ fn text_longer_than_a_cell_is_refused_not_cut() {
         &table_of(&batch),
         &Layout::default(),
         &ExportSource::default(),
+        None,
         Cursor::new(Vec::new()),
     )
     .unwrap_err();
@@ -385,7 +446,14 @@ fn the_notes_sheet_says_where_excel_cannot_match_the_screen() {
         as_of: "2026-11-02 16:00:00".into(),
         load_version: None,
     };
-    let summary = write_xlsx(&long_decimals(), &Layout::default(), &source, &mut out).unwrap();
+    let summary = write_xlsx(
+        &long_decimals(),
+        &Layout::default(),
+        &source,
+        None,
+        &mut out,
+    )
+    .unwrap();
     assert!(
         summary
             .notes
@@ -486,6 +554,7 @@ fn a_reload_part_way_stops_the_export() {
         &tables,
         &Layout::default(),
         &ExportSource::default(),
+        None,
         Cursor::new(Vec::new()),
     )
     .unwrap_err();
@@ -518,6 +587,7 @@ fn a_layout_longer_than_a_cell_spreads_over_note_rows() {
         &table,
         &Layout::from_json(&layout).unwrap(),
         &ExportSource::default(),
+        None,
         &mut out,
     )
     .unwrap();
@@ -686,8 +756,14 @@ fn an_export_of_a_load_the_screen_does_not_show_is_refused() {
         load_version: Some(table.load_version() + 1),
         ..ExportSource::default()
     };
-    let refused =
-        write_xlsx(&table, &Layout::default(), &behind, Cursor::new(Vec::new())).unwrap_err();
+    let refused = write_xlsx(
+        &table,
+        &Layout::default(),
+        &behind,
+        None,
+        Cursor::new(Vec::new()),
+    )
+    .unwrap_err();
     assert!(matches!(refused, ExportError::Stale { .. }), "{refused}");
     assert!(refused.to_string().contains("reload the view"), "{refused}");
     assert!(matches!(
