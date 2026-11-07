@@ -5,5 +5,6 @@ export default defineConfig({
     dts: {
       generator: "tsgo",
     },
+    entry: ["src/index.ts", "src/preset/index.ts"],
   },
 });

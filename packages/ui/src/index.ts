@@ -37,6 +37,7 @@ export {
   type Density,
   type ModePreference,
   type Preferences,
+  type PreferencesRoot,
   type ResolvedMode,
 } from "./theme/preferences.ts";
 export { tokenNames } from "./theme/tokens.ts";
