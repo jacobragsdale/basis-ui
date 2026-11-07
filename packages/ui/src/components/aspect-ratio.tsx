@@ -1,0 +1,24 @@
+/* Aspect Ratio, from shadcn's Base UI source: a box that keeps a width-to-height ratio, through the `--ratio`
+ * variable that its `aspect-(--ratio)` class reads. */
+
+import { cn } from "cn";
+import type { ComponentProps, ReactElement } from "react";
+
+interface AspectRatioProps extends ComponentProps<"div"> {
+  /** Width over height, such as `16 / 9`. */
+  readonly ratio: number;
+}
+
+/** A box whose height follows its width at `ratio`. Its content, such as an image, fills it with `size-full`. */
+function AspectRatio({ ratio, className, ...props }: AspectRatioProps): ReactElement {
+  return (
+    <div
+      data-slot="aspect-ratio"
+      style={{ "--ratio": ratio }}
+      className={cn("relative aspect-(--ratio)", className)}
+      {...props}
+    />
+  );
+}
+
+export { AspectRatio };

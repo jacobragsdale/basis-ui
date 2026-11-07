@@ -195,6 +195,42 @@ Where these differ from what shadcn's documentation leads one to expect:
 Overlays animate with a short fade and scale, or a short slide for Sheet and Drawer, which stop under
 `prefers-reduced-motion`. The gallery's overlays and menus page shows each one closed, with its tests beside it.
 
+## Laying out an app
+
+The navigation and layout components keep shadcn's names, props and parts. Where they differ, it is here:
+
+- **Sidebar.** `SidebarProvider` keeps whether the sidebar is open in the `basis-ui-sidebar` cookie for a week, and
+  reads it back on load, so the user's last choice wins over `defaultOpen`; an app passes no cookie to it. Ctrl+B, or
+  Cmd+B on a Mac, toggles it. It folds to its icon rail or off the canvas at once, with no animation. A sidebar on the
+  right comes after `SidebarInset` in the provider, so its gap sits on the right. `SidebarInset` is the page's
+  `<main>`; where a layout already has one, `render={<div />}` makes it a `<div>`.
+- **Resizable.** It is @basis/ui's own build on the WAI-ARIA window splitter pattern, with no dependency, and sizes
+  are percentages as plain numbers from 0 to 100: `defaultSize={30}` is 30 percent, where react-resizable-panels 4
+  would read pixels. Give each `ResizableHandle` an `aria-label`, such as "Resize the trade list". To keep a layout,
+  give each panel an `id`, store what `onLayoutChanged` reports after a drag or a key, and pass it back as
+  `defaultLayout`:
+
+  ```tsx
+  <ResizablePanelGroup defaultLayout={stored} onLayoutChanged={store}>
+    <ResizablePanel id="trades" defaultSize={40} minSize={20} maxSize={70}>
+      …
+    </ResizablePanel>
+    <ResizableHandle withHandle aria-label="Resize the trade list" />
+    <ResizablePanel id="detail" minSize={30}>
+      …
+    </ResizablePanel>
+  </ResizablePanelGroup>
+  ```
+
+- **Navigation Menu.** A top-level link takes `variant="trigger"` to look like the triggers beside it, where shadcn
+  puts `navigationMenuTriggerStyle()` on it; give the menu an `aria-label`.
+- **Links.** `BreadcrumbLink`, `PaginationLink`, `PaginationPrevious`, `PaginationNext`, `SidebarMenuButton` and
+  `SidebarMenuSubButton` take `render` for the router's link, as in `<BreadcrumbLink render={<Link to="/desks" />}>`.
+  A page link is a `ButtonLink`, and takes Button's `size`.
+- **Keys.** Tabs move focus with the arrow keys and open the focused tab on Enter or Space. Accordion triggers are
+  buttons in the tab order, without arrow-key movement between them, as Base UI 1.9 follows the WAI-ARIA authoring
+  practices.
+
 ## Raising a toast
 
 Render `<Toaster />` once, around the app or beside its routes, and raise a toast from anywhere, inside React or out,

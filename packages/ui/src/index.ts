@@ -197,6 +197,22 @@ export { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./comp
 
 // Navigation and layout.
 export {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "./components/accordion.tsx";
+export { AspectRatio } from "./components/aspect-ratio.tsx";
+export {
+  Breadcrumb,
+  BreadcrumbEllipsis,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "./components/breadcrumb.tsx";
+export {
   Card,
   CardAction,
   CardContent,
@@ -205,6 +221,75 @@ export {
   CardHeader,
   CardTitle,
 } from "./components/card.tsx";
+export { Collapsible, CollapsibleContent, CollapsibleTrigger } from "./components/collapsible.tsx";
+export {
+  Item,
+  ItemActions,
+  ItemContent,
+  ItemDescription,
+  ItemFooter,
+  ItemGroup,
+  ItemHeader,
+  ItemMedia,
+  ItemSeparator,
+  ItemTitle,
+} from "./components/item.tsx";
+export {
+  NavigationMenu,
+  NavigationMenuContent,
+  NavigationMenuIndicator,
+  NavigationMenuItem,
+  NavigationMenuLink,
+  NavigationMenuList,
+  NavigationMenuPositioner,
+  NavigationMenuTrigger,
+} from "./components/navigation-menu.tsx";
+export {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "./components/pagination.tsx";
+export { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "./components/resizable.tsx";
+export type { ResizableLayout } from "./components/resizable-layout.ts";
+export { ScrollArea, ScrollBar } from "./components/scroll-area.tsx";
+export { Separator } from "./components/separator.tsx";
+export {
+  Sidebar,
+  SidebarInset,
+  SidebarProvider,
+  SidebarRail,
+  SidebarTrigger,
+} from "./components/sidebar.tsx";
+export {
+  SidebarContent,
+  SidebarFooter,
+  SidebarHeader,
+  SidebarInput,
+  SidebarSeparator,
+} from "./components/sidebar-sections.tsx";
+export { useSidebar, type SidebarContextProps } from "./components/sidebar-context.ts";
+export {
+  SidebarGroup,
+  SidebarGroupAction,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+} from "./components/sidebar-group.tsx";
+export {
+  SidebarMenu,
+  SidebarMenuAction,
+  SidebarMenuBadge,
+  SidebarMenuItem,
+  SidebarMenuSkeleton,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
+} from "./components/sidebar-menu.tsx";
+export { SidebarMenuButton } from "./components/sidebar-menu-button.tsx";
+export { Tabs, TabsContent, TabsList, TabsTrigger } from "./components/tabs.tsx";
 
 // Feedback and display.
 export { Alert, AlertAction, AlertDescription, AlertTitle } from "./components/alert.tsx";
