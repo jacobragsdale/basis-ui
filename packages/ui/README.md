@@ -155,6 +155,41 @@ validator's field errors as. `fieldErrors` names each field as TanStack Form doe
 pointer `#/legs/0/price`, so its entries go straight to the fields; `fieldName` does the same for one path.
 The gallery's forms and inputs page holds a whole order ticket, with its tests.
 
+## Using overlays and menus
+
+Dialog, Alert Dialog, Sheet, Drawer, Popover, Hover Card, Tooltip, Dropdown Menu, Context Menu, Menubar and Command
+are shadcn's, on Base UI, and open, close, trap and return focus as Base UI does. A trigger renders as a Button through
+`render`, and the trigger keeps its own text:
+
+```tsx
+import { Button, Dialog, DialogContent, DialogTitle, DialogTrigger } from "@basis/ui";
+
+<Dialog>
+  <DialogTrigger render={<Button variant="outline" />}>Edit position</DialogTrigger>
+  <DialogContent>
+    <DialogTitle>Edit position</DialogTitle>
+  </DialogContent>
+</Dialog>;
+```
+
+Where these differ from what shadcn's documentation leads one to expect:
+
+- `AlertDialogAction` is a button that does not close the dialog. Control `open`, and close it in the action's handler
+  once the action has run; `AlertDialogCancel` closes it.
+- `Command` is built on Base UI's Autocomplete, not cmdk. An item matches when its `value`, or its text without its
+  `CommandShortcut`, or one of its `keywords` contains the search, ignoring case and accents, and the list keeps its
+  order rather than sorting by a fuzzy score. The search cannot be controlled from outside; `shouldFilter={false}`
+  shows every item, for a list the app filters itself. `onSelect` receives the item's value. Put a `Command` inside a
+  `CommandDialog` for the palette, and close the dialog in `onSelect`.
+- A `ContextMenuTrigger` should hold something focusable, such as a row's button or link, so a keyboard user can open
+  the menu with the context-menu key or Shift+F10.
+- A `Tooltip` names nothing for assistive technology, so an icon-only trigger still takes an `aria-label`, and a
+  `HoverCard`'s content must also be reachable by following its link: neither reaches touch or screen reader users.
+- A `Drawer` takes no snap points: placing the panel at one needs arbitrary values the theme does not allow.
+
+Overlays animate with a short fade and scale, or a short slide for Sheet and Drawer, which stop under
+`prefers-reduced-motion`. The gallery's overlays and menus page shows each one closed, with its tests beside it.
+
 ## Using the icons
 
 `@basis/ui` exports a set of lucide's icons under lucide-react's names with the `Icon` suffix: each icon's current
