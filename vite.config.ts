@@ -4,6 +4,8 @@ import { defineConfig } from "vite-plus";
 // Parallax keeps its own checks (cargo, and ESLint and Prettier for its Angular layer) until roadmap step 2.6 replaces
 // that layer with React, so the root checks skip it.
 const parallax = "packages/parallax/**";
+// A spike's reference code compiles in the spike's own throwaway project, whose dependencies this workspace lacks.
+const spikeCode = "docs/spikes/**/*.ts";
 
 export default defineConfig({
   staged: {
@@ -14,7 +16,7 @@ export default defineConfig({
     ignorePatterns: [parallax],
   },
   lint: {
-    ignorePatterns: [parallax],
+    ignorePatterns: [parallax, spikeCode],
     jsPlugins: [{ name: "vite-plus", specifier: "vite-plus/oxlint-plugin" }],
     categories: { correctness: "error" },
     rules: { "vite-plus/prefer-vite-plus-imports": "error" },
