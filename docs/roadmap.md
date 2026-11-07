@@ -20,7 +20,7 @@ Actions.
 | C. Ports | the firm's Angular library and apps | 4 |
 
 The critical path runs through lane A: the Vite+ and orval spikes, the workspace, the preset, the shell, fixture mode,
-screenshots, the template, and the pilot. Parallax runs alongside phase 1 once the preset exists, and the ports start at
+screenshots, the firm's components, the template, and the pilot. Parallax runs alongside phase 1 once the preset exists, and the ports start at
 the firm as soon as the base components set the patterns. The eval's UI tasks run in basis's eval lane, against this
 roadmap's pilot.
 
@@ -32,7 +32,10 @@ flowchart TD
   s04[0.4 WSL screenshots, work] --> u6[1.6 screenshots]
   u1[1.1 workspace] --> u2
   u2 --> u3 --> u5[1.5 fixture mode] --> u6 --> u7[1.7 template and tasks] --> u8[1.8 releases] --> l1[3.1 pilot UI]
-  u2 --> u4[1.4 base components] --> c1[4.1 library port, work]
+  u2 --> u4[1.4 theme and base components] --> c1[4.1 library port, work]
+  u3 --> u10[1.10 firm components]
+  u4 --> u10 --> u7
+  p1 --> u10
   u3 --> u9[1.9 sign-in, work]
   u1 --> p1[2.1 move parallax] --> p2[2.2 delete the server] --> p3
   p2 --> p4[2.4 export in wasm]
@@ -67,7 +70,12 @@ and the fallback for each no.
    - whether Oxlint has `no-restricted-imports` and `no-restricted-globals` built in;
    - whether a preset spread into `vite.config.ts` can add `vp run` tasks, and whether `vp create` accepts a template
      from a package;
-   - whether Vite+'s hooks install on a fresh clone through `prepare`.
+   - whether Vite+'s hooks install on a fresh clone through `prepare`;
+   - whether `@shadcn/lint` runs under `vp lint` through `lint.jsPlugins`, finds components imported from a package
+     and the theme in that package's CSS, and whether a token declared in an app's CSS still hides the package's tokens;
+   - whether removing Tailwind's palette and blur utilities makes `no-unknown-classes` reject them, and whether `dark:`
+     variants can be made a lint error;
+   - whether TanStack Form and TanStack Table v9 build under `panicThreshold: "all_errors"`.
 
    **(work)** On a Citrix desktop, on Windows and in WSL: install `vp` without admin rights, run `vp install` from the
    internal npm feed, and install the hooks on a fresh clone. Done when the result names the exact Oxlint configuration,
@@ -79,8 +87,9 @@ and the fallback for each no.
    for basis's until basis's step 2.5 publishes one.
 3. **0.3 Parallax alone.** Load Arrow bytes into parallax's worker with no server, build `parallax-export` for wasm32
    with rust_xlsxwriter's in-memory mode and save an xlsx from the browser, and measure the largest table that loads and
-   pivots within the existing budgets in headless Chromium with software rendering. **(work)** Repeat the measurement on
-   a Citrix desktop. Done when the result states the row limit.
+   pivots within the existing budgets in headless Chromium with software rendering. Measure, too, how long a page with
+   one small chart takes to download and compile the wasm and draw the chart. **(work)** Repeat both measurements on a
+   Citrix desktop. Done when the result states the row limit and the first chart's time.
 4. **0.4 WSL screenshots (work).** Screenshot the same page with the same pinned Playwright Chromium and bundled fonts
    in WSL on two Citrix desktops, and compare. Done when the result says whether baselines made on one desktop hold on
    another.
@@ -92,15 +101,18 @@ Lane A. Steps 1.3 and 1.4 run at once, and so do 1.8 and 1.9.
 1. **1.1 Workspace.** Set up `packages/ui` in a pnpm workspace, with GitHub Actions CI that runs only the jobs whose
    paths changed, and this repo's own hooks. Done when an empty package passes CI.
 2. **1.2 Preset.** Add the Vite+ preset from spike 0.1, as a function that an app's `vite.config.ts` spreads in: the
-   Oxlint and Oxfmt configuration, the strict tsconfig, the React Compiler with its `panicThreshold`, the `vp run` task
-   slots, the library build with tsdown, and Vitest's browser mode with the Playwright provider. Needs 1.1 and spike
-   0.1.
+   Oxlint and Oxfmt configuration with `@shadcn/lint`, the strict tsconfig, the React Compiler with its
+   `panicThreshold`, the `vp run` task slots, the library build with tsdown, and Vitest's browser mode with the
+   Playwright provider. Needs 1.1 and spike 0.1.
 3. **1.3 App shell.** Add TanStack Router and Query; spike 0.2's orval preset and custom fetch, which attaches the JWT;
    a sign-in adapter interface with a fake for tests; error display that reads RFC 9457 problem details; telemetry; and
    the restricted imports and globals that keep feature code on the generated client. Needs 1.2 and spike 0.2.
-4. **1.4 Base components.** Build the components every app needs (layout, forms, small tables, dialogs, toasts) on Base
-   UI and Tailwind 4, with the firm's theme as the only palette. They set the patterns the library port follows. Needs
-   1.2.
+4. **1.4 Theme and base components.** First the theme, as the design describes it: the ramp generator and its inputs,
+   the semantic tokens in both modes, the two densities, the mode and density cookie with the script that applies it
+   before the first paint, and the theme's checks. Then the gallery app, with its screenshots in both modes and both
+   densities and the axe check. Then shadcn's components on Base UI, one family per agent at once (forms and inputs,
+   overlays and menus, navigation and layout, feedback and display), each with its `no-restyle` contract and its gallery
+   page. They set the patterns the library port follows. Needs 1.2.
 5. **1.5 Fixture mode.** Fixture mode serves orval's MSW handlers, the synthetic responses in `fixtures/`, and records
    in `.fixtures/` in the format `basis records export` writes. `vp dev` starts the app on fixtures on a free port per
    worktree. Needs 1.3.
@@ -116,12 +128,23 @@ Lane A. Steps 1.3 and 1.4 run at once, and so do 1.8 and 1.9.
      CI exists;
    - the tasks `client-pull`, `review`, `sync`, `upgrade`, `doctor` and `docs`.
 
-   Needs 1.6. Done when a generated UI repo passes `vp run check-full` in WSL, `vp dev` serves its fixture pages, and
-   its image serves the build.
+   Needs 1.6 and 1.10. Done when a generated UI repo passes `vp run check-full` in WSL, `vp dev` serves its fixture
+   pages, and its image serves the build.
 8. **1.8 Releases.** One tag releases every package at one version. **(work)** Publish to the internal npm feed through
    Azure DevOps. Needs 1.7. Done when `v0.1.0` installs from git here and from the internal feed at the firm.
 9. **1.9 Sign-in (work).** Write the adapter for the firm's sign-in system, against the interface from step 1.3. Needs
    1.3.
+10. **1.10 Firm components.** Build the components shadcn does not have, one group per agent at once:
+    - numbers and dates: the display components, the TypeScript formatter tested against fixtures written by parallax's
+      Rust formatter, the number inputs, the as-of date picker and the date ranges;
+    - forms: fields bound to orval's Zod schemas, the unsaved-changes guard and typed confirmation, and errors placed on
+      fields once basis's contract says where a problem details response names them;
+    - data: `DataTable` with its row cap, the entity picker, and file import;
+    - the shell's parts: sidebar, breadcrumbs, user menu, environment banner, command palette, filter bar, saved views,
+      split panes and shortcuts;
+    - query states, `Sparkline` and the in-cell bar.
+
+    Each has its gallery page. Needs 1.3, 1.4, and 2.1 for the formatter's fixtures.
 
 ## Phase 2: parallax in the browser
 
@@ -142,7 +165,8 @@ phase 1.
 6. **2.6 Component families.** Port four families at once, one agent each:
    - the grid, with its filters, toolbar, menus and column tools;
    - the pivot, with its group menu and field list;
-   - charts, with technical-analysis panes and drawings;
+   - charts, with technical-analysis panes and drawings, the small-data `Chart` API, the text alternative for screen
+     readers, and colours read from the theme's tokens;
    - the shared pieces.
 
    Each family's existing Playwright specs and pixel baselines are rewritten for React. Needs 2.5.
