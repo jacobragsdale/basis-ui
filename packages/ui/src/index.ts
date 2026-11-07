@@ -232,6 +232,7 @@ export {
 export {
   fieldErrorSchema,
   fieldErrors,
+  fieldName,
   pointerPath,
   problemSchema,
   validationProblemSchema,

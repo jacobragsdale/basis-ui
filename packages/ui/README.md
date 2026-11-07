@@ -151,8 +151,8 @@ const form = useForm({
 ```
 
 `FieldError` takes a schema's issues, the strings `fieldErrors` returns, and the lists TanStack Form types a form
-validator's field errors as. `fieldErrors` names a field by a dotted path, such as `legs.0.price`, which matches a
-TanStack Form field's name only where the path holds no array index: TanStack Form writes that one `legs[0].price`.
+validator's field errors as. `fieldErrors` names each field as TanStack Form does, such as `legs[0].price` for the
+pointer `#/legs/0/price`, so its entries go straight to the fields; `fieldName` does the same for one path.
 The gallery's forms and inputs page holds a whole order ticket, with its tests.
 
 ## Using the icons
