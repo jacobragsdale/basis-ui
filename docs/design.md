@@ -171,12 +171,14 @@ and Questionnaire), Carousel, Input OTP, Direction, Calendar and Date Picker, wh
 
 The firm's own components cover what shadcn does not:
 
-- **Numbers and dates.** `Num`, `Money`, `Pct`, `Bps` and `DateTime` display values by parallax's rules (Excel's display
-  rules and the New York time zone), so a number reads the same in a card as in the grid. The formatter is a TypeScript
-  port of parallax's Rust formatter, tested against fixtures the Rust writes. Number inputs, on Base UI's Number Field,
-  read `1.5m`, `250k` and `25bp` into exact decimals and show the full number back. Each field declares the suffixes
-  it accepts, because in bond markets `M` means thousands, so `5M` par is $5,000. An as-of date picker knows business
-  days, and date ranges offer month, quarter and year to date.
+- **Numbers and dates.** `Num`, `Money`, `Pct`, `Bps`, `Price32` and `DateTime` display values by parallax's rules
+  (Excel's display rules and the New York time zone), so a number reads the same in a card as in the grid. The
+  formatter is a TypeScript port of parallax's Rust formatter, tested against fixtures the Rust writes. `AmountInput`
+  reads `1.5m`, `250k` and `25bp` into exact decimal strings and shows the full number back. It is not built on Base
+  UI's Number Field, which holds a double and so cannot keep a par amount or a price exact. Each field declares the
+  suffixes it accepts, because in bond markets `M` means thousands, so `5M` par is $5,000. `AsOfDatePicker` knows
+  business days on its declared calendar, SIFMA by default, and `DateRangePicker` offers month, quarter and year to
+  date.
 - **Forms.** Fields bind to the Zod schemas orval generates, so a form checks what the API's document declares. Errors
   the API returns land on the fields they name, leaving a page with unsaved changes asks first, and a destructive action
   asks for typed confirmation. Placing errors on fields needs basis's contract to say where a problem details response
