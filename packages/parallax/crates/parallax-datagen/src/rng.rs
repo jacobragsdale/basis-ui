@@ -50,6 +50,10 @@ pub enum Stream {
     Prices = 7,
     /// Hostile-value decisions for prices, keyed by row.
     PricesHostile = 8,
+    /// Bond issuers, keyed by issuer.
+    BondIssuers = 9,
+    /// Bonds, keyed by row.
+    Bonds = 10,
 }
 
 /// xoshiro256** 1.0.

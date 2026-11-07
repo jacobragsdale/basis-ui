@@ -189,3 +189,65 @@ describe("a chart frame's indicator lines", () => {
     ).toThrow("in order");
   });
 });
+
+describe("a scatter's dots and fit lines", () => {
+  const dots = {
+    fit_text: ["4.5", null, "5.5"],
+    id_json: ['"ABC123AB4"', '"ABC123AC2"', "17"],
+    id_text: ["ABC123AB4", "ABC123AC2", "17"],
+    series: new Uint32Array([0, 0, 1]),
+    size: new Float64Array([1, Number.NaN, 0.25]),
+    size_text: ["4,000", null, "1,000"],
+    tooltip_0: ["Atlas Corp", "Atlas Corp", "Beacon Corp"],
+    tooltip_1: ["AA", "AA", "BBB"],
+    x: new Float64Array([1, 2, 3]),
+    x_text: ["1.00", "2.00", "3.00"],
+    y: new Float64Array([50, 60, 70]),
+    y_text: ["50.0", "60.0", "70.0"],
+  };
+  const fits = {
+    series: new Uint32Array([0, 0, 1]),
+    x: new Float64Array([1, 2, 3]),
+    x_text: ["1.00", "2.00", "3.00"],
+    y: new Float64Array([45, Number.NaN, 55]),
+    y_text: ["45.0", null, "55.0"],
+  };
+  const series = [
+    { column: "spread_bp", label: "spread_bp Energy" },
+    { column: "spread_bp", label: "spread_bp Utilities" },
+  ];
+  const lines = [
+    { column: "fitted_spread_bp", label: "fitted_spread_bp Energy" },
+    { column: "fitted_spread_bp", label: "fitted_spread_bp Utilities" },
+  ];
+
+  test("split dots into their series with every value's text, and the tooltip columns in order", () => {
+    const frame = decodeChartFrame(
+      chartFrame(dots, { fitBatch: batch(fits), fits: lines, series, yFrom: 50, yTo: 70 }),
+    );
+    const content = frame.content.kind === "points" ? frame.content : null;
+    expect([content?.yFrom, content?.yTo]).toStrictEqual([50, 70]);
+    const [energy, utilities] = content?.series ?? [];
+    expect([energy?.label, [...(energy?.x ?? [])], energy?.idText, energy?.sizeText]).toStrictEqual(
+      ["spread_bp Energy", [1, 2], ["ABC123AB4", "ABC123AC2"], ["4,000", null]],
+    );
+    expect(Number.isNaN(energy?.size[1])).toBe(true);
+    expect([utilities?.idJson, utilities?.tooltip, utilities?.fitText]).toStrictEqual([
+      ["17"],
+      [["Beacon Corp"], ["BBB"]],
+      ["5.5"],
+    ]);
+    expect(frame.fits.map((fit) => [fit.label, [...fit.x], fit.yText])).toStrictEqual([
+      ["fitted_spread_bp Energy", [1, 2], ["45.0", null]],
+      ["fitted_spread_bp Utilities", [3], ["55.0"]],
+    ]);
+  });
+
+  test("are refused when the fit batch names a line the frame does not list", () => {
+    expect(() =>
+      decodeChartFrame(
+        chartFrame(dots, { fitBatch: batch(fits), fits: lines.slice(0, 1), series }),
+      ),
+    ).toThrow("does not list");
+  });
+});

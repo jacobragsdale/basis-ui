@@ -29,6 +29,8 @@ type CanvasStyle = Partial<
 
 /** Half a pixel, to put a one-pixel line on a pixel rather than between two. */
 const half = 0.5;
+/** How faint the bars, slices and dots of groups other than the selected one are. */
+const dim = 0.3;
 
 /** Sets each property of `values` on the canvas, in the order written, as one assignment after another would. */
 function style(ctx: CanvasRenderingContext2D, values: CanvasStyle): void {
@@ -47,5 +49,5 @@ function strokeLine(
   ctx.stroke();
 }
 
-export { half, strokeLine, style };
+export { dim, half, strokeLine, style };
 export type { CanvasStyle, Painting };

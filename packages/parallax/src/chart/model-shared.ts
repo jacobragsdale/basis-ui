@@ -69,7 +69,7 @@ function shown(input: ModelInput, style: IndicatorStyle): boolean {
 function seriesEntries(
   input: ModelInput,
   labels: readonly string[],
-  shape: "line" | "rect",
+  shape: LegendEntry["shape"],
 ): LegendEntry[] {
   return labels.map((label, i) => ({
     color: seriesColor(input, i),
@@ -83,7 +83,7 @@ function seriesEntries(
 function legendOf(
   input: ModelInput,
   labels: readonly string[],
-  shape: "line" | "rect",
+  shape: LegendEntry["shape"],
 ): readonly LegendEntry[] {
   return labels.length < 2 ? [] : seriesEntries(input, labels, shape);
 }

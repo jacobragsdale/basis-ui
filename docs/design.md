@@ -298,9 +298,9 @@ routes the 2025 npm worms used.
 ## Charts
 
 Every chart is parallax's. Parallax draws on Canvas 2D after its engine, in a worker, reduces the data to pixels, and it
-draws line, area, bar (across, stacked, or on two axes), scatter (as a density), heatmap, histogram, candlestick, OHLC,
-pie and donut charts. It adds a trading-time axis, technical-analysis indicators, panes, drawings and a compare mode,
-and it formats numbers and times by the grid's rules. One chart system means one look, one formatter, one time zone and
+draws line, area, bar (across, stacked, or on two axes), scatter (a dot per row, or a density past 5,000 rows), heatmap,
+histogram, candlestick, OHLC, pie and donut charts. It adds a trading-time axis, technical-analysis indicators, panes,
+drawings and a compare mode, and it formats numbers and times by the grid's rules. One chart system means one look, one formatter, one time zone and
 one way to interact.
 
 Those kinds came from equity charting, and a study of what the fixed-income systems the firm's users know show them
@@ -308,7 +308,7 @@ Those kinds came from equity charting, and a study of what the fixed-income syst
 2.8](roadmap.md#phase-2-parallax-in-the-browser) closes:
 
 - A relative-value scatter draws each bond as a dot, coloured and sized by columns, with the API's fitted curve,
-  rather than as a density.
+  rather than as a density (step 2.8.1, built).
 - Tenors and ratings sort as a desk reads them, groups can sort by another column, and curves get a tenor axis from
   `3M` to `30Y`.
 - The grid's formatter writes basis points, Treasury 32nds and par amounts' `M` and `MM`, so that a value reads the

@@ -11,7 +11,7 @@ use parallax_datagen::calendar::{from_epoch_days, trading_days};
 use parallax_datagen::prices::{Prices, PricesOptions};
 use parallax_engine::chart::{
     Candle, ChartConfig, ChartData, ChartKind, ChartRequest, ChartView, Interval, OhlcColumns,
-    Point, XAxis,
+    Point, PointColumns, XAxis,
 };
 use parallax_engine::{Filter, FilterOp, Scalar, Table, TableOptions};
 use proptest::prelude::*;
@@ -46,6 +46,7 @@ fn line(axis: XAxis) -> ChartConfig {
         volume: None,
         compare: false,
         events: None,
+        points: PointColumns::default(),
     }
 }
 
@@ -252,6 +253,7 @@ fn weekly_candles_match_the_daily_prices() {
         volume: None,
         compare: false,
         events: None,
+        points: PointColumns::default(),
     };
     let view = ChartView::new(&t, config).unwrap();
     let (from, to) = view.x_extent().unwrap();
@@ -414,8 +416,9 @@ fn ticks_are_in_order_inside_the_range_and_labelled() {
 
 #[test]
 fn a_density_counts_every_point_once() {
-    let x: Vec<f64> = (0..5_000).map(|i| f64::from(i % 97)).collect();
-    let y: Vec<Option<f64>> = (0..5_000).map(|i| Some(f64::from((i * 31) % 89))).collect();
+    // One more row than a scatter draws as dots.
+    let x: Vec<f64> = (0..5_001).map(|i| f64::from(i % 97)).collect();
+    let y: Vec<Option<f64>> = (0..5_001).map(|i| Some(f64::from((i * 31) % 89))).collect();
     let t = table(&x, &y);
     let config = ChartConfig {
         kind: ChartKind::Scatter,
@@ -442,7 +445,7 @@ fn a_density_counts_every_point_once() {
         panic!("not a density")
     };
     assert_eq!((columns, rows), (100, 50));
-    assert_eq!(counts.iter().map(|&c| u64::from(c)).sum::<u64>(), 5_000);
+    assert_eq!(counts.iter().map(|&c| u64::from(c)).sum::<u64>(), 5_001);
 }
 
 #[test]
@@ -558,6 +561,7 @@ fn candlestick(x: &str, filters: Vec<Filter>, axis: XAxis) -> ChartConfig {
         volume: None,
         compare: false,
         events: None,
+        points: PointColumns::default(),
     }
 }
 

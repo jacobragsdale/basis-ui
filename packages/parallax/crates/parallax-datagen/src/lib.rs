@@ -4,6 +4,9 @@
 //! Any range of rows can therefore be generated on its own and equals the same rows
 //! of a full run, and the output never depends on thread count or batch size.
 //!
+//! [`bonds::Bonds`] holds corporate bonds with spreads, durations and DV01s, for
+//! fixed-income charts, from issuers of its own.
+//!
 //! Three datasets share one [`universe::Universe`] per seed:
 //!
 //! - [`positions::Positions`]: position lots on an as-of date, 40 columns.
@@ -16,6 +19,7 @@
 
 /// NYSE trading days, from the engine, which also places charts in trading time.
 pub use parallax_engine::calendar;
+pub mod bonds;
 pub mod decimal;
 pub mod dist;
 pub mod error;

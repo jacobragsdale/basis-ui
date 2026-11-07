@@ -12,6 +12,7 @@ import { defaultTheme, sameChartColors, sameTheme } from "#theme/read.ts";
 import type { Theme } from "#theme/read.ts";
 
 import { categoryAt } from "./interaction.ts";
+import { dotPicked } from "./marks-at.ts";
 import { chartModel } from "./model.ts";
 import type { CategoryData, ChartModel, ModelInput, Point } from "./model-types.ts";
 import type { Range } from "./range.ts";
@@ -190,11 +191,20 @@ class SceneModel {
     this.#withChart(apply, (chart) => ({ ...chart, drawings: [...drawings] }));
   }
 
-  /**
-   * Selects the group of the bar or slice at `at`, returning the selection, null when a click cleared it, or
-   * undefined when nothing changed. Only charts of the grouped view select: the others pan and brush.
-   */
+  /** Selects the group of the bar or slice at `at`, or a scatter's dot by its id, returning the selection, null when a
+   * click cleared it, or undefined when nothing changed. Other charts along an x axis pan and brush instead. */
   public pick(model: ChartModel | null, at: Point): ChartSelection | null | undefined {
+    const id = this.#layout?.chart?.id;
+    if (model === null || id === undefined || !model.marks.some((mark) => mark.kind === "dots")) {
+      return this.#pickGroup(model, at);
+    }
+    const dot = dotPicked(model, at.x, at.y);
+    const picked = dot?.label === this.#selected ? null : dot;
+    const changed = this.#select(picked?.label ?? null);
+    return picked === null ? changed : { column: id, ...picked };
+  }
+
+  #pickGroup(model: ChartModel | null, at: Point): ChartSelection | null | undefined {
     const [layout, data] = [this.#layout, this.categories];
     if (model === null || layout === null || data === null || model.x !== null) {
       return undefined;

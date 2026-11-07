@@ -32,9 +32,15 @@ const isoDate = /^\d{4}-\d{2}-\d{2}$/u;
 /** The kinds that draw the layout's grouped view, whose x groups the rows. */
 const groupedKinds: ReadonlySet<LayoutChart["kind"]> = new Set(["bar", "heatmap", "pie"]);
 
-function columnsOf(chart: SmallChart): readonly string[] {
+/** The columns a small chart reads: its x, y and series, and a scatter's size, id, tooltip and fit columns. */
+function columnsOf(chart: SmallChart, settings: ChartSettings = {}): readonly string[] {
   const ys = typeof chart.y === "string" ? [chart.y] : chart.y;
-  return [...new Set([chart.x, ...ys, ...(chart.series === undefined ? [] : [chart.series])])];
+  const dots = [settings.size, settings.id, ...(settings.tooltip ?? []), settings.fit].filter(
+    (column) => column !== undefined,
+  );
+  return [
+    ...new Set([chart.x, ...ys, ...(chart.series === undefined ? [] : [chart.series]), ...dots]),
+  ];
 }
 
 /** A column's values as an Arrow vector of the type they share. */
@@ -60,9 +66,13 @@ function vectorOf(name: string, values: readonly ChartValue[]): Vector {
 }
 
 /** The rows' chart columns as an Arrow IPC stream. */
-function rowsToArrow(rows: readonly ChartRow[], chart: SmallChart): ArrayBuffer {
+function rowsToArrow(
+  rows: readonly ChartRow[],
+  chart: SmallChart,
+  settings: ChartSettings = {},
+): ArrayBuffer {
   const vectors = Object.fromEntries(
-    columnsOf(chart).map((name) => [
+    columnsOf(chart, settings).map((name) => [
       name,
       vectorOf(
         name,
@@ -79,13 +89,17 @@ const tables = new Map<string, ArrayBuffer>();
 
 /** The rows' chart columns as an Arrow IPC stream: the same bytes for rows of the same content, so that a page that
  * builds its rows afresh each render loads them once. */
-function smallBytes(rows: readonly ChartRow[], chart: SmallChart): ArrayBuffer {
-  const content = JSON.stringify([rows, columnsOf(chart)]);
+function smallBytes(
+  rows: readonly ChartRow[],
+  chart: SmallChart,
+  settings: ChartSettings = {},
+): ArrayBuffer {
+  const content = JSON.stringify([rows, columnsOf(chart, settings)]);
   const kept = tables.get(content);
   if (kept !== undefined) {
     return kept;
   }
-  const bytes = rowsToArrow(rows, chart);
+  const bytes = rowsToArrow(rows, chart, settings);
   const [oldest] = tables.keys();
   if (tables.size >= keptTables && oldest !== undefined) {
     tables.delete(oldest);

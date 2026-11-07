@@ -9,7 +9,10 @@
 //!   them covers exactly the same pixels as the line through every point, so
 //!   spikes never vanish, and a chart 2,000 pixels wide needs at most 8,000
 //!   points per series however long the series is.
-//! - [`ChartKind::Scatter`] becomes a density: counts in cells of a few pixels.
+//! - [`ChartKind::Scatter`] sends each row in the range shown as a dot while
+//!   there are at most [`MAX_POINTS`] of them, and becomes a density past that:
+//!   counts in cells of a few pixels. A fit column, a curve the API fitted, is
+//!   reduced like a line in either form.
 //! - [`ChartKind::Histogram`] counts values in bins with stated edges.
 //! - [`ChartKind::Candlestick`] and [`ChartKind::Ohlc`] bucket rows by a calendar
 //!   interval cut in New York time, chosen so that candles stay a few pixels
@@ -45,7 +48,8 @@ pub enum ChartKind {
     Line,
     /// Lines through each series, filled down to zero.
     Area,
-    /// Points, drawn as a density.
+    /// Points: each row as a dot up to [`MAX_POINTS`] in the range shown, and a
+    /// density past that.
     Scatter,
     /// Counts of the x values in bins.
     Histogram,
@@ -79,6 +83,28 @@ pub struct OhlcColumns {
     pub close: String,
 }
 
+/// The columns a scatter plot draws its dots with, beside its x and y.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct PointColumns {
+    /// A numeric column whose magnitude sets each dot's area, such as DV01.
+    pub size: Option<String>,
+    /// The column naming each dot, such as a bond's CUSIP.
+    pub id: Option<String>,
+    /// More columns a dot's tooltip lists.
+    pub tooltip: Vec<String>,
+    /// A numeric column holding a fitted curve's value at each row's x, drawn
+    /// as a line through each series.
+    pub fit: Option<String>,
+}
+
+impl PointColumns {
+    /// Whether any is set.
+    #[must_use]
+    pub fn any(&self) -> bool {
+        self.size.is_some() || self.id.is_some() || !self.tooltip.is_empty() || self.fit.is_some()
+    }
+}
+
 /// What a chart shows.
 #[derive(Clone, Debug, PartialEq)]
 pub struct ChartConfig {
@@ -107,6 +133,8 @@ pub struct ChartConfig {
     pub compare: bool,
     /// A column whose non-null values mark rows as events, such as earnings.
     pub events: Option<String>,
+    /// A scatter's size, id, tooltip and fit columns.
+    pub points: PointColumns,
 }
 
 impl ChartConfig {
@@ -136,6 +164,9 @@ pub struct ChartRequest {
 
 /// Pixels per density cell side.
 pub const DENSITY_CELL: u32 = 4;
+/// The most rows a scatter plot sends as dots, in the range shown; past this it
+/// becomes a density.
+pub const MAX_POINTS: usize = 5_000;
 /// The narrowest candle, in pixels: the bucket interval grows until candles are
 /// at least this wide.
 pub const MIN_CANDLE: u32 = 4;
@@ -163,6 +194,21 @@ pub struct Point {
     pub y: f64,
     /// The row it came from, or `None` at a break.
     pub slot: Option<usize>,
+}
+
+/// A row of a scatter plot, drawn as a dot.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Dot {
+    /// The x position on the axis.
+    pub x: f64,
+    /// The y value.
+    pub y: f64,
+    /// The row.
+    pub slot: usize,
+    /// The size column's magnitude as a share of its largest in the whole
+    /// chart, in `0..=1`, or `None` without a size column or a value. A dot's
+    /// area follows it, so zooming keeps a dot's size.
+    pub size: Option<f64>,
 }
 
 /// One calendar bucket of a candlestick or OHLC chart, by the rows that give its
@@ -227,6 +273,14 @@ pub struct Tick {
 pub enum ChartData {
     /// Line and area series.
     Series(Vec<(Series, Vec<Point>)>),
+    /// A scatter's rows in the range shown, as dots, per series in the series'
+    /// order and each in x order.
+    Points {
+        /// The y range the dots span.
+        y: (f64, f64),
+        /// Each series' key, or `None` without a series column, and its dots.
+        series: Vec<(Option<Scalar>, Vec<Dot>)>,
+    },
     /// A density of points: `counts[row * columns + column]`, with row 0 at the
     /// bottom.
     Density {
@@ -344,6 +398,9 @@ pub struct Reduced {
     pub events: Vec<EventPoint>,
     /// How many rows it marks in the range shown, all told.
     pub events_total: usize,
+    /// A scatter's fit line per series, reduced with M4, in the series' order;
+    /// empty without a fit column.
+    pub fits: Vec<(Option<Scalar>, Vec<Point>)>,
 }
 
 /// How the x column's values become axis positions.
@@ -624,6 +681,12 @@ pub struct ChartView {
     ohlc: Option<[usize; 4]>,
     volume: Option<usize>,
     events: Option<usize>,
+    /// A scatter's size and fit columns.
+    size: Option<usize>,
+    fit: Option<usize>,
+    /// The size column's largest magnitude among the chart's rows, which a
+    /// dot's size is a share of.
+    size_max: f64,
     /// Rows by series key, each in x order.
     rows: Vec<(Option<Key>, Ordered)>,
     /// Each series' inputs to its indicators, gathered once per kind.
@@ -726,6 +789,25 @@ impl ChartView {
             .transpose()?;
         check_indicators(&config, volume.is_some())?;
         let events = config.events.as_deref().map(index).transpose()?;
+        let points = &config.points;
+        if points.any() && config.kind != ChartKind::Scatter {
+            return Err(ConfigError::Chart(
+                "size, id, tooltip and fit draw a scatter plot's dots, which other kinds have none of".into(),
+            ));
+        }
+        let size = points
+            .size
+            .as_deref()
+            .map(|c| numeric_column(c, "size of a scatter's dots"))
+            .transpose()?;
+        let fit = points
+            .fit
+            .as_deref()
+            .map(|c| numeric_column(c, "fitted curve of a scatter"))
+            .transpose()?;
+        for column in points.id.iter().chain(&points.tooltip) {
+            index(column)?;
+        }
         let mut view = Self {
             config,
             filters,
@@ -736,6 +818,9 @@ impl ChartView {
             ohlc,
             volume,
             events,
+            size,
+            fit,
+            size_max: 0.0,
             rows: Vec::new(),
             gathered: Vec::new(),
             computed: Vec::new(),
@@ -808,6 +893,14 @@ impl ChartView {
             });
         }
         self.rows = rows;
+        self.size_max = self.size.map_or(0.0, |s| {
+            let column = table.column(s);
+            self.rows
+                .iter()
+                .flat_map(|(_, o)| &o.slots)
+                .filter_map(|&slot| y_value(column, slot))
+                .fold(0.0, |most: f64, v| most.max(v.abs()))
+        });
         let (gathered, computed) = self
             .rows
             .iter()
@@ -967,13 +1060,26 @@ impl ChartView {
             ChartKind::Line | ChartKind::Area => {
                 ChartData::Series(self.series_m4(table, from, to, width))
             }
-            ChartKind::Scatter => self.density(table, from, to, request),
+            ChartKind::Scatter => self.scatter(table, from, to, request),
             ChartKind::Histogram => self.histogram(table, from, to, request),
             ChartKind::Candlestick | ChartKind::Ohlc => self.candles(table, from, to, width),
         };
         let ticks = self.ticks(from, to, width);
         let indicators = self.reduce_indicators(table, from, to, width);
         let (events, events_total) = self.reduce_events(table, from, to);
+        let fits = self.fit.map_or_else(Vec::new, |f| {
+            let column = table.column(f);
+            self.rows
+                .iter()
+                .map(|(key, ordered)| {
+                    let points = ordered.around(from, to).map(|r| {
+                        let slot = ordered.slots[r];
+                        (ordered.x[r], y_value(column, slot), slot)
+                    });
+                    (self.scalar(table, *key), m4(points, from, to, width))
+                })
+                .collect()
+        });
         Reduced {
             data,
             x: (from, to),
@@ -982,6 +1088,7 @@ impl ChartView {
             indicators,
             events,
             events_total,
+            fits,
         }
     }
 
@@ -1168,24 +1275,34 @@ impl ChartView {
         out
     }
 
-    fn density(&self, table: &Table, from: f64, to: f64, request: &ChartRequest) -> ChartData {
-        let columns = (request.width / DENSITY_CELL).max(1);
-        let rows = (request.height / DENSITY_CELL).max(1);
+    /// A scatter's rows in `from..=to` as dots, if there are at most
+    /// [`MAX_POINTS`] of them inside the y range, or else their density.
+    fn scatter(&self, table: &Table, from: f64, to: f64, request: &ChartRequest) -> ChartData {
         let y_column = table.column(self.y[0]);
-        let points: Vec<(f64, f64)> = self
+        // Each series' rows in the range, by place in the series, with a y value.
+        let shown: Vec<Vec<(usize, f64)>> = self
             .rows
             .iter()
-            .flat_map(|(_, o)| {
+            .map(|(_, o)| {
                 o.within(from, to)
-                    .filter_map(|r| Some((o.x[r], y_value(y_column, o.slots[r])?)))
+                    .filter_map(|r| Some((r, y_value(y_column, o.slots[r])?)))
+                    .collect()
             })
             .collect();
+        // The y range holds the fit line where it crosses the range, too.
+        let fit_values = self.fit.map(|f| table.column(f)).into_iter().flat_map(|c| {
+            self.rows.iter().flat_map(move |(_, o)| {
+                o.within(from, to)
+                    .filter_map(move |r| y_value(c, o.slots[r]))
+            })
+        });
         let (bottom, top) = request
             .y
             .or_else(|| {
-                let low = points.iter().map(|p| p.1).reduce(f64::min)?;
-                let high = points.iter().map(|p| p.1).reduce(f64::max)?;
-                Some((low, high))
+                let values = shown.iter().flatten().map(|p| p.1).chain(fit_values);
+                values.fold(None, |range: Option<(f64, f64)>, v| {
+                    Some(range.map_or((v, v), |(low, high)| (low.min(v), high.max(v))))
+                })
             })
             .unwrap_or((0.0, 1.0));
         let (bottom, top) = if top > bottom {
@@ -1193,21 +1310,49 @@ impl ChartView {
         } else {
             (bottom - 0.5, bottom + 0.5)
         };
-        let mut counts = vec![0u32; (columns * rows) as usize];
-        for (x, y) in points {
-            if y < bottom || y > top {
-                continue;
-            }
-            let c = cell(x, from, to, columns);
-            let r = cell(y, bottom, top, rows);
-            counts[(r * columns + c) as usize] += 1;
+        let inside = |y: f64| y >= bottom && y <= top;
+        let count: usize = shown
+            .iter()
+            .map(|rows| rows.iter().filter(|p| inside(p.1)).count())
+            .sum();
+        if count > MAX_POINTS {
+            let points = self
+                .rows
+                .iter()
+                .zip(&shown)
+                .flat_map(|((_, o), rows)| rows.iter().map(|&(r, y)| (o.x[r], y)));
+            return density(points, (from, to), (bottom, top), request);
         }
-        ChartData::Density {
-            x: (from, to),
+        let size = self.size.map(|s| table.column(s));
+        let share = |slot: usize| {
+            let v = y_value(size?, slot)?.abs();
+            Some(if self.size_max > 0.0 {
+                (v / self.size_max).min(1.0)
+            } else {
+                0.0
+            })
+        };
+        let series = self
+            .rows
+            .iter()
+            .zip(&shown)
+            .map(|((key, o), rows)| {
+                let dots = rows
+                    .iter()
+                    .filter(|p| inside(p.1))
+                    .map(|&(r, y)| Dot {
+                        x: o.x[r],
+                        y,
+                        slot: o.slots[r],
+                        size: share(o.slots[r]),
+                    })
+                    .collect();
+                (self.scalar(table, *key), dots)
+            })
+            .collect();
+        ChartData::Points {
             y: (bottom, top),
-            columns,
-            rows,
-            counts,
+            series,
         }
     }
 
@@ -1443,6 +1588,34 @@ impl ChartView {
             }
             placement => time_ticks(placement, from, to, wanted),
         }
+    }
+}
+
+/// The density of `points` in cells of [`DENSITY_CELL`] pixels over the plot,
+/// leaving out those outside the y range.
+fn density(
+    points: impl Iterator<Item = (f64, f64)>,
+    (from, to): (f64, f64),
+    (bottom, top): (f64, f64),
+    request: &ChartRequest,
+) -> ChartData {
+    let columns = (request.width / DENSITY_CELL).max(1);
+    let rows = (request.height / DENSITY_CELL).max(1);
+    let mut counts = vec![0u32; (columns * rows) as usize];
+    for (x, y) in points {
+        if y < bottom || y > top {
+            continue;
+        }
+        let c = cell(x, from, to, columns);
+        let r = cell(y, bottom, top, rows);
+        counts[(r * columns + c) as usize] += 1;
+    }
+    ChartData::Density {
+        x: (from, to),
+        y: (bottom, top),
+        columns,
+        rows,
+        counts,
     }
 }
 

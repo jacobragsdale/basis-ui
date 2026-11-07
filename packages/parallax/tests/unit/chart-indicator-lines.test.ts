@@ -61,6 +61,7 @@ describe("indicators, events and comparisons over line charts", () => {
         { series: "", text: "Dividend", x: 7, xText: "day 7" },
       ],
       eventsTotal: 2,
+      fits: [],
     };
     const drawn = model(candleChart([]), data);
     expect(drawn.events.map((event) => event.text)).toStrictEqual(["Q1 earnings", "Dividend"]);
@@ -106,6 +107,7 @@ describe("indicators, events and comparisons over line charts", () => {
         { series: "MSFT", text: "MSFT: Q1 earnings", x: 3, xText: "day 3" },
       ],
       eventsTotal: 2,
+      fits: [],
     };
     expect(model(chart, data).events.map((event) => event.text)).toStrictEqual([
       "MSFT: Q1 earnings",

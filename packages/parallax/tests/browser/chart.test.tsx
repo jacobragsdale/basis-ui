@@ -7,7 +7,9 @@ import { Chart } from "#chart/chart.tsx";
 import type { Layout, LayoutInput } from "#layout/layout.ts";
 import { ParallaxProvider } from "#react/provider.tsx";
 
-import { deskExposures, exposures, yields } from "./chart-data.ts";
+import type { ChartSelection } from "#chart/scene.ts";
+
+import { bonds, deskExposures, exposures, yields } from "./chart-data.ts";
 import { fire, plotOf, rest, summaryOf, surfaceOf, wordsOf } from "./chart-reads.ts";
 import { PricesChart } from "./charts.tsx";
 import { startWorker } from "./data.ts";
@@ -107,6 +109,90 @@ describe("Chart's small-data form", () => {
     await legend.first().click();
     await expect.element(legend.first()).toHaveAttribute("aria-pressed", "false");
     expect(changes.at(-1)?.chart?.hidden).toStrictEqual([legend.elements()[0]?.textContent]);
+  });
+});
+
+/** The middle of a chart's plot, where a scatter of one row draws its dot. */
+function middleOf(root: HTMLElement): { readonly x: number; readonly y: number } {
+  const box = plotOf(root).getBoundingClientRect();
+  return { x: box.width / 2, y: box.height / 2 };
+}
+
+/** A scatter of one bond, whose dot sits in the middle of the plot, once it has drawn: its root and the middle. */
+async function oneBond(onSelect: (selection: ChartSelection | null) => void): Promise<{
+  readonly root: HTMLElement;
+  readonly middle: { readonly x: number; readonly y: number };
+}> {
+  const screen = await render(
+    <ParallaxProvider worker={startWorker}>
+      <Chart
+        rows={bonds.slice(1, 2)}
+        kind="scatter"
+        x="duration"
+        y="spread"
+        settings={{ fit: "fit", id: "cusip", size: "dv01", tooltip: ["issuer"] }}
+        onSelect={onSelect}
+        className="h-80 w-160"
+      />
+    </ParallaxProvider>,
+  );
+  await expect.poll(() => summaryOf(screen.container)).toBe("1 dot");
+  return { middle: middleOf(screen.container), root: screen.container };
+}
+
+describe("a scatter of a few rows, drawn as dots", () => {
+  test("says how many dots it draws, and where each series' lowest and highest are, by id", async () => {
+    const screen = await render(
+      <ParallaxProvider worker={startWorker}>
+        <Chart
+          rows={bonds}
+          kind="scatter"
+          x="duration"
+          y="spread"
+          settings={{ fit: "fit", id: "cusip", size: "dv01", tooltip: ["issuer"] }}
+          className="h-80 w-160"
+        />
+      </ParallaxProvider>,
+    );
+    await expect.poll(() => summaryOf(screen.container)).toBe("3 dots");
+    await expect
+      .element(screen.getByRole("application"))
+      .toHaveAccessibleName("Scatter plot of spread from rows");
+    expect(wordsOf(screen.container)).toContain("from 80.00 (ATL000A02) to 130.00 (COB002A08)");
+  });
+
+  test("names a dot in its tooltip, with its values as the engine wrote them", async () => {
+    const { root, middle } = await oneBond(() => {
+      // The tooltip's test clicks nothing.
+    });
+    fire(root, "pointermove", middle);
+    await expect
+      .poll(() => root.querySelector('[data-slot="chart-tip-title"]')?.textContent)
+      .toBe("BEA001A04");
+    const rows = [...root.querySelectorAll('[data-slot="chart-tip-row"]')].map(
+      (row) => row.textContent,
+    );
+    expect(rows).toStrictEqual([
+      "90.00spread",
+      "5.00duration",
+      "4,000.00dv01",
+      "90.00fit",
+      "Beacon Corpissuer",
+    ]);
+  });
+
+  test("selects a dot by its id when clicked, and clears it on a second click", async () => {
+    const selections: (ChartSelection | null)[] = [];
+    const { root, middle } = await oneBond((selection) => {
+      selections.push(selection);
+    });
+    const selected = { column: "cusip", label: "BEA001A04", value: "BEA001A04" };
+    fire(root, "click", middle);
+    expect(selections).toStrictEqual([selected]);
+    // A click off the dots after the second changes nothing more.
+    fire(root, "click", middle);
+    fire(root, "click", { x: 4, y: 4 });
+    expect(selections).toStrictEqual([selected, null]);
   });
 });
 

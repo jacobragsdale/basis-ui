@@ -35,6 +35,7 @@ function frameOf(content: ChartContent, { xFrom = 0, xTo = lastX } = {}): ChartF
     content,
     events: [],
     eventsTotal: 0,
+    fits: [],
     extentFrom: xFrom,
     extentTo: xTo,
     indicators: [],

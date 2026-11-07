@@ -6,6 +6,8 @@ import type { LayoutChart } from "#layout/chart.ts";
 import type { LayoutScalar } from "#layout/layout.ts";
 import type { ChartColors } from "#theme/charts.ts";
 
+import type { DotsMark } from "./model-dots.ts";
+
 /** A point in CSS pixels. */
 interface Point {
   readonly x: number;
@@ -126,13 +128,21 @@ interface CandleMark {
 }
 
 /** One painted shape. */
-type Mark = LineMark | BandMark | ColumnsMark | RectMark | SliceMark | CellMark | CandleMark;
+type Mark =
+  | LineMark
+  | BandMark
+  | ColumnsMark
+  | RectMark
+  | SliceMark
+  | CellMark
+  | CandleMark
+  | DotsMark;
 
 /** A legend entry: the same shape as the series' mark. */
 interface LegendEntry {
   readonly label: string;
   readonly color: string;
-  readonly shape: "line" | "rect";
+  readonly shape: "line" | "rect" | "dot";
   readonly hidden: boolean;
   /** A value beside the label, such as a slice's share. */
   readonly note?: string;
@@ -188,17 +198,6 @@ interface IndicatorStyle {
   readonly dashed: boolean;
   /** The legend label of the series it follows, which hides it too, or "" for none. */
   readonly follows: string;
-}
-
-/** A pane of its own for one indicator. */
-interface PaneSpec {
-  readonly title: string;
-  /** A fixed value range, as for oscillators from 0 to 100, or null to fit the values. */
-  readonly domain: readonly [number, number] | null;
-  /** Lines drawn across the pane at these values, such as RSI's 30 and 70. */
-  readonly guides: readonly number[];
-  /** Whether the pane holds a candle chart's volume. */
-  readonly volume: boolean;
 }
 
 /** Everything a chart paints. */
@@ -265,7 +264,7 @@ interface ModelInput {
   readonly minGutter?: number;
   /** A small tile's chart: less padding around the plot. */
   readonly compact?: boolean;
-  /** The selected group, by its label; the others' bars and slices dim. */
+  /** The selected group, by its label, or a scatter's dot, by its id's text; the others' bars, slices and dots dim. */
   readonly selected?: string | null;
   /** The group under the pointer, by its index: a pie's slice moves out, and a donut's hole names it. */
   readonly hovered?: number | null;
@@ -288,7 +287,6 @@ export type {
   Mark,
   ModelInput,
   Pane,
-  PaneSpec,
   Point,
   Rect,
   RectMark,

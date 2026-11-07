@@ -167,5 +167,5 @@ function brushFilters(frame: ChartFrameData, { column, hidden, range }: Brush): 
   };
 }
 
-export { brushFilters, panRange, zoomRange };
+export { brushFilters, panRange, scalar, zoomRange };
 export type { Brush, Brushed, Range, Zoom };

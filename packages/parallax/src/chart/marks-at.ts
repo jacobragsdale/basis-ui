@@ -1,8 +1,12 @@
-/* The mark under the pointer, worked out without the DOM so that tests can check it: what its tooltip reads, and the
- * group a click on a bar or slice selects. */
+/* The mark under the pointer, worked out without the DOM so that tests can check it: what its tooltip reads, the
+ * group a click on a bar or slice selects, and the dot a click on a scatter selects. */
+
+import type { LayoutScalar } from "#layout/layout.ts";
 
 import type { Reading, TipRow } from "./interaction.ts";
+import type { DotsMark } from "./model-dots.ts";
 import type { ChartModel, Hit, Mark, SliceMark } from "./model-types.ts";
+import { scalar } from "./range.ts";
 
 /** How far outside a mark, in pixels, the pointer still reads it. */
 const markSlack = 4;
@@ -58,7 +62,8 @@ function distanceTo(mark: Mark, at: At): number | null {
     }
     case "line":
     case "band":
-    case "columns": {
+    case "columns":
+    case "dots": {
       return null;
     }
     default: {
@@ -84,7 +89,8 @@ function readMark(mark: Mark): Reading | null {
     }
     case "line":
     case "band":
-    case "columns": {
+    case "columns":
+    case "dots": {
       return null;
     }
     default: {
@@ -118,7 +124,8 @@ function groupOf(mark: Mark): number | null {
     case "band":
     case "columns":
     case "cell":
-    case "candle": {
+    case "candle":
+    case "dots": {
       return null;
     }
     default: {
@@ -133,8 +140,69 @@ function categoryAt(model: ChartModel, px: number, py: number): number | null {
   return mark === null ? null : groupOf(mark);
 }
 
+/** A scatter's dot: its series' mark and its place in it. */
+interface DotHit {
+  readonly mark: DotsMark;
+  readonly dot: number;
+}
+
+/** The dot nearest the pointer whose circle, a few pixels larger, holds it; a dot drawn later wins a tie, as it is
+ * drawn on top. */
+function dotAt(model: ChartModel, { px, py }: At): DotHit | null {
+  let best: (DotHit & { readonly distance: number }) | null = null;
+  for (const mark of model.marks) {
+    if (mark.kind === "dots") {
+      for (let dot = 0; dot < mark.x.length; dot += 1) {
+        const distance = Math.hypot(px - (mark.x[dot] ?? 0), py - (mark.y[dot] ?? 0));
+        if (
+          distance <= (mark.radius[dot] ?? 0) + markSlack &&
+          (best === null || distance <= best.distance)
+        ) {
+          best = { distance, dot, mark };
+        }
+      }
+    }
+  }
+  return best;
+}
+
+/** What a dot's tooltip reads: its id, or its series without one, then its values as the engine wrote them, each
+ * under its column's name. */
+function readDot({ mark, dot }: DotHit): Reading {
+  const { points, columns } = mark;
+  const named = (label: string | null, texts: readonly (string | null)[]): TipRow[] => {
+    const value = texts[dot] ?? null;
+    return label === null || value === null ? [] : [{ color: mark.color, label, value }];
+  };
+  const rows = [
+    ...named(columns.y, points.yText),
+    ...named(columns.x, points.xText),
+    ...named(columns.size, points.sizeText),
+    ...named(columns.fit, points.fitText),
+    ...columns.tooltip.flatMap((column, i) => named(column, points.tooltip[i] ?? [])),
+  ];
+  return { crosshair: null, rows, title: points.idText[dot] ?? points.label };
+}
+
+/** The dot a click on a scatter picks: its id's text and exact value. Null where there is no dot, or the dot has no
+ * id. */
+function dotPicked(
+  model: ChartModel,
+  px: number,
+  py: number,
+): { readonly label: string; readonly value: LayoutScalar } | null {
+  const hit = dotAt(model, { px, py });
+  const label = hit === null ? null : (hit.mark.points.idText[hit.dot] ?? null);
+  const json = hit === null ? null : (hit.mark.points.idJson[hit.dot] ?? null);
+  return label === null || json === null ? null : { label, value: scalar(json) ?? null };
+}
+
 /** The mark nearest the pointer whose hit area holds it, and what it reads. */
 function markAt(model: ChartModel, px: number, py: number): Reading | null {
+  const dot = dotAt(model, { px, py });
+  if (dot !== null) {
+    return readDot(dot);
+  }
   // A density's cells read nothing of their own.
   const mark = nearestMark(
     model,
@@ -144,4 +212,4 @@ function markAt(model: ChartModel, px: number, py: number): Reading | null {
   return mark === null ? null : readMark(mark);
 }
 
-export { categoryAt, markAt };
+export { categoryAt, dotPicked, markAt };

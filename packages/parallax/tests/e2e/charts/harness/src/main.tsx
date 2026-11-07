@@ -1,5 +1,5 @@
 /* The end-to-end harness: the React chart's pages, which the Playwright specs beside it drive. `?page=` picks the
- * page (`charts`, `technical` or `breakdowns`), `?theme=` the mode (`light` or `dark`), and `?look=angular` draws in
+ * page (`charts`, `technical`, `breakdowns` or `fixed-income`), `?theme=` the mode (`light` or `dark`), and `?look=angular` draws in
  * parallax's standard theme with the Angular layer's chart colours, for the pixel comparison with its screenshots. */
 
 import "./styles.css";

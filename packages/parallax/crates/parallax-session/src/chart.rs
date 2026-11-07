@@ -7,7 +7,7 @@ use std::sync::Arc;
 use arrow_array::{ArrayRef, Float64Array, RecordBatch, StringArray, UInt32Array, UInt64Array};
 use arrow_schema::{DataType, Field, Schema};
 use parallax_engine::chart::{
-    BucketVolume, ChartConfig, ChartData, ChartRequest, ChartView, IndicatorLines, Interval,
+    BucketVolume, ChartConfig, ChartData, ChartRequest, ChartView, Dot, IndicatorLines, Interval,
     Reduced,
 };
 use parallax_engine::format::{Format, MAX_DECIMALS, OVERFLOW_TEXT};
@@ -106,6 +106,64 @@ fn texts(name: &str, values: Vec<Option<String>>) -> (Field, ArrayRef) {
     )
 }
 
+/// The columns whose text a scatter's dots carry.
+struct PointTexts<'a, 'b> {
+    x: &'b Texts<'a>,
+    y: &'b Texts<'a>,
+    size: Option<Texts<'a>>,
+    fit: Option<Texts<'a>>,
+    id: Option<Texts<'a>>,
+    tooltip: Vec<Texts<'a>>,
+}
+
+/// A scatter's dots as a batch: a row per dot, series by series, with each
+/// value's text and the id's exact JSON.
+fn points_batch(
+    series: &[(Option<Scalar>, Vec<Dot>)],
+    texts_of: &PointTexts<'_, '_>,
+) -> Result<Vec<u8>, String> {
+    let dots = || {
+        series
+            .iter()
+            .enumerate()
+            .flat_map(|(i, (_, d))| d.iter().map(move |d| (i, d)))
+    };
+    let text = |t: Option<&Texts<'_>>| -> Vec<Option<String>> {
+        dots()
+            .map(|(_, d)| t.and_then(|t| t.cell(Some(d.slot))))
+            .collect()
+    };
+    let mut columns = vec![
+        (
+            field("series", DataType::UInt32, false),
+            Arc::new(UInt32Array::from(
+                dots().map(|(i, _)| i as u32).collect::<Vec<_>>(),
+            )) as ArrayRef,
+        ),
+        floats("x", dots().map(|(_, d)| d.x).collect()),
+        floats("y", dots().map(|(_, d)| d.y).collect()),
+        floats(
+            "size",
+            dots().map(|(_, d)| d.size.unwrap_or(f64::NAN)).collect(),
+        ),
+        texts("x_text", text(Some(texts_of.x))),
+        texts("y_text", text(Some(texts_of.y))),
+        texts("size_text", text(texts_of.size.as_ref())),
+        texts("fit_text", text(texts_of.fit.as_ref())),
+        texts("id_text", text(texts_of.id.as_ref())),
+        texts(
+            "id_json",
+            dots()
+                .map(|(_, d)| texts_of.id.as_ref().and_then(|t| t.json(Some(d.slot))))
+                .collect(),
+        ),
+    ];
+    for (i, tip) in texts_of.tooltip.iter().enumerate() {
+        columns.push(texts(&format!("tooltip_{i}"), text(Some(tip))));
+    }
+    batch(columns)
+}
+
 fn interval_name(interval: Interval) -> String {
     match interval {
         Interval::Minutes(m) => format!("{m}m"),
@@ -135,6 +193,7 @@ pub(crate) fn chart_frame(table: &Table, state: &ChartState) -> Result<ChartFram
         indicators,
         events,
         events_total,
+        fits,
     } = state.view.reduce(table, &request);
     let config = state.view.config();
     let texts_of = |column: &str| Texts::new(table, &state.formats, column);
@@ -245,6 +304,34 @@ pub(crate) fn chart_frame(table: &Table, state: &ChartState) -> Result<ChartFram
                 texts("y_text", y_texts),
                 texts("x_json", x_json),
             ])?;
+        }
+        ChartData::Points { y, series } => {
+            frame.y_from = y.0;
+            frame.y_to = y.1;
+            // A scatter plots one column, so its series are named by the series
+            // column's values alone.
+            let column = &config.y[0];
+            for (key, _) in &series {
+                frame.series.push(ChartSeries {
+                    label: match (key, &series_text) {
+                        (Some(key), Some(texts)) => texts.value(key),
+                        _ => column.clone(),
+                    },
+                    column: column.clone(),
+                    right: false,
+                });
+            }
+            frame.batch = points_batch(
+                &series,
+                &PointTexts {
+                    x: &x_text,
+                    y: &texts_of(column),
+                    size: config.points.size.as_deref().map(texts_of),
+                    fit: config.points.fit.as_deref().map(texts_of),
+                    id: config.points.id.as_deref().map(texts_of),
+                    tooltip: config.points.tooltip.iter().map(|c| texts_of(c)).collect(),
+                },
+            )?;
         }
         ChartData::Density {
             y,
@@ -378,6 +465,35 @@ pub(crate) fn chart_frame(table: &Table, state: &ChartState) -> Result<ChartFram
             }
             frame.batch = batch(columns)?;
         }
+    }
+    if let Some(fit) = config.points.fit.as_deref().filter(|_| !fits.is_empty()) {
+        let fit_text = texts_of(fit);
+        let (mut ids, mut xs, mut ys, mut x_texts, mut y_texts) =
+            (Vec::new(), Vec::new(), Vec::new(), Vec::new(), Vec::new());
+        for (i, (key, points)) in fits.iter().enumerate() {
+            frame.fits.push(ChartSeries {
+                label: label(fit, key.as_ref()),
+                column: fit.to_owned(),
+                right: false,
+            });
+            for p in points {
+                ids.push(i as u32);
+                xs.push(p.x);
+                ys.push(p.y);
+                x_texts.push(x_text.cell(p.slot));
+                y_texts.push(fit_text.cell(p.slot));
+            }
+        }
+        frame.fit_batch = batch(vec![
+            (
+                field("series", DataType::UInt32, false),
+                Arc::new(UInt32Array::from(ids)),
+            ),
+            floats("x", xs),
+            floats("y", ys),
+            texts("x_text", x_texts),
+            texts("y_text", y_texts),
+        ])?;
     }
     if !indicators.is_empty() {
         let price = config.indicator_price();

@@ -390,13 +390,26 @@ the line through every point at that width. Spikes never vanish. A chart 2,000
 pixels wide therefore needs at most 8,000 points, whether the series has 2,000
 points or 20 million.
 
-Scatter plots and heatmaps become binned densities, and bar charts arrive
-aggregated. From step 2.8, a scatter with at most 5,000 rows in the range shown
-sends each row instead, as a dot coloured by its series and sized by a column
-such as DV01, with its own tooltip and selection, so that a bond can be seen,
-hovered and picked on a relative-value chart. A fit column the API sends, such
-as a fitted curve's spread at each bond's duration, is drawn as a line through
-it, reduced with M4 in either form.
+Heatmaps become binned densities, and bar charts arrive aggregated. A scatter
+with at most 5,000 rows in the range shown, and in its y range, sends each row
+as a dot, so that a bond can be seen, hovered and picked on a relative-value
+chart; past that, it becomes a density too, and zooming in far enough draws the
+dots again. Each dot carries every value it shows as the engine's text: its x
+and y, a size column's, such as DV01, a fit column's, the layout's tooltip
+columns', and an id column's, such as the CUSIP, with the id's exact JSON,
+which a click selects as a bar's group is selected. A dot's area follows its
+size column's magnitude as a share of the largest in the whole chart, not only
+in the range shown, so zooming never changes a dot's size, and a dot of no size
+still shows. A fit column holds the curve the API fitted, its value at each
+row's x, and is drawn as a dashed line through each series, reduced with M4 in
+either form, so the line covers the same pixels as the line through every
+fitted row; the y range holds it as well as the dots. Dots are drawn a little
+see-through and edged in the surface's colour, so touching dots stay apart;
+while one is selected, the rest fade and it is drawn whole, ringed. In
+headless Chromium on the build host's CPU (2026-11-07), 600 dots of mixed
+sizes painted in 2.6 ms and 5,000 in 16.6 ms, a frame's worth, of which the
+edges took 5 ms; a slow desktop takes about four times as long, so a chart near
+the cap pans at about 15 frames a second there.
 
 Indicators are computed on full-resolution data before the reduction. A 200-day
 moving average computed from downsampled points would be wrong.

@@ -29,7 +29,8 @@ import { SceneView } from "./scene-view.ts";
 import { chartSync } from "./sync.ts";
 import { ChartZoom } from "./zoom.ts";
 
-/** A group selected by clicking its bar or slice: the outermost group column, and the group's exact key. */
+/** A group selected by clicking its bar or slice, the outermost group column and the group's exact key; or a scatter's
+ * dot, its id column and the id's exact value. */
 interface ChartSelection {
   readonly column: string;
   readonly value: LayoutScalar;

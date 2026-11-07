@@ -21,6 +21,33 @@ interface SeriesData {
   readonly xJson: readonly (string | null)[];
 }
 
+/** A scatter's dots of one series, in x order, with every value's text. */
+interface PointSeries {
+  readonly label: string;
+  readonly x: Float64Array;
+  readonly y: Float64Array;
+  /** Each dot's size column's magnitude as a share of its largest in the chart, NaN for none. */
+  readonly size: Float64Array;
+  readonly xText: readonly (string | null)[];
+  readonly yText: readonly (string | null)[];
+  readonly sizeText: readonly (string | null)[];
+  readonly fitText: readonly (string | null)[];
+  /** The id column's text and exact JSON, null without one. */
+  readonly idText: readonly (string | null)[];
+  readonly idJson: readonly (string | null)[];
+  /** The text of each tooltip column, in the layout's order. */
+  readonly tooltip: readonly (readonly (string | null)[])[];
+}
+
+/** A scatter's fit line for one series: points in order, with NaN y values at breaks. */
+interface FitLineData {
+  readonly label: string;
+  readonly x: Float64Array;
+  readonly y: Float64Array;
+  readonly xText: readonly (string | null)[];
+  readonly yText: readonly (string | null)[];
+}
+
 /** One series of a histogram: a count per bin. */
 interface HistogramSeries {
   readonly label: string;
@@ -57,6 +84,12 @@ interface CandleData {
 type ChartContent =
   | { readonly kind: "series"; readonly series: readonly SeriesData[] }
   | {
+      readonly kind: "points";
+      readonly yFrom: number;
+      readonly yTo: number;
+      readonly series: readonly PointSeries[];
+    }
+  | {
       readonly kind: "density";
       readonly columns: number;
       readonly rows: number;
@@ -87,6 +120,8 @@ interface ChartFrameData {
   /** The rows the layout's events column marks in the range shown, at most 500, and how many there are in all. */
   readonly events: readonly ChartEventData[];
   readonly eventsTotal: number;
+  /** A scatter's fit lines, one per series; empty without a fit column. */
+  readonly fits: readonly FitLineData[];
   /** Where each x value the layout's drawings are anchored to sits on the axis, by the value's canonical JSON; NaN where the axis cannot place it. */
   readonly anchors: ReadonlyMap<string, number>;
   /** When the chart window this frame answers was asked for, by `performance.now()`. */
@@ -122,7 +157,9 @@ export type {
   ChartEventData,
   ChartFrameData,
   ChartTickData,
+  FitLineData,
   HistogramSeries,
   IndicatorLineData,
+  PointSeries,
   SeriesData,
 };

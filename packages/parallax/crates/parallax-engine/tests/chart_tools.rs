@@ -8,7 +8,7 @@ use arrow_array::{ArrayRef, Float64Array, RecordBatch, StringArray};
 use arrow_schema::{Field, Schema};
 use parallax_engine::chart::{
     ChartConfig, ChartData, ChartKind, ChartRequest, ChartView, MAX_EVENTS, OhlcColumns, Point,
-    XAxis, percent_change,
+    PointColumns, XAxis, percent_change,
 };
 use parallax_engine::indicator::Indicator;
 use parallax_engine::{ConfigError, Scalar, Table, TableOptions};
@@ -62,6 +62,7 @@ fn line(compare: bool) -> ChartConfig {
         volume: None,
         compare,
         events: Some("event".into()),
+        points: PointColumns::default(),
     }
 }
 
@@ -222,6 +223,7 @@ fn measuring_takes_the_nearest_priced_rows_and_counts_the_bars_between() {
         ChartConfig {
             series: None,
             events: None,
+            points: PointColumns::default(),
             ..line(false)
         },
     )

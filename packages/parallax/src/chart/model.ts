@@ -1,5 +1,6 @@
 /* The draw model of a chart: what to paint and where, worked out from the data without touching a canvas, so that
- * tests can check it. Line, area, scatter, histogram, candlestick and OHLC charts draw the engine's reduction; bar
+ * tests can check it. Line, area, scatter (as dots or a density), histogram, candlestick and OHLC charts draw the
+ * engine's reduction; bar
  * charts, heatmaps and pies draw the layout's grouped view. */
 
 import { barModel } from "./model-bars.ts";
@@ -7,6 +8,7 @@ import { densityModel, histogramModel } from "./model-bins.ts";
 import { candleModel } from "./model-candles.ts";
 import { heatmapModel } from "./model-heatmap.ts";
 import { withPanes } from "./model-panes.ts";
+import { pointsModel } from "./model-points.ts";
 import { lineModel } from "./model-series.ts";
 import { emptyModel } from "./model-shared.ts";
 import type { ChartFrameData } from "#frame/chart-data.ts";
@@ -40,6 +42,9 @@ function frameModel(input: ModelInput, frame: ChartFrameData): ChartModel {
     }
     case "histogram": {
       return histogramModel(input, frame, content);
+    }
+    case "points": {
+      return pointsModel(input, frame, content);
     }
     case "density": {
       return densityModel(input, frame, content);

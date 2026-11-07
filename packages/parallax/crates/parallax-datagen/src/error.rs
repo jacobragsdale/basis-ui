@@ -31,6 +31,14 @@ pub enum OptionsError {
         /// Securities in the universe.
         securities: usize,
     },
+    /// More bonds than a book holds.
+    #[error("a bond book holds at most {limit} bonds, not {rows}")]
+    TooManyBonds {
+        /// Bonds asked for.
+        rows: u64,
+        /// The most there can be.
+        limit: u64,
+    },
     /// A rate is outside `[0, 1]` or not a number.
     #[error("{name} must be between 0 and 1, not {value}")]
     InvalidRate {

@@ -3,9 +3,8 @@
 
 import { inkOn } from "./ink.ts";
 import { lineHeight } from "./paint-axes.ts";
-import { style } from "./paint-canvas.ts";
+import { dim, style } from "./paint-canvas.ts";
 import type { Painting } from "./paint-canvas.ts";
-import { dim } from "./paint-marks.ts";
 import type { ChartModel, Rect, RectMark, SliceMark } from "./model-types.ts";
 import { fitText } from "./text.ts";
 

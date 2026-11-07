@@ -1,8 +1,9 @@
-/* Painting a chart's marks on a Canvas 2D context: lines with their area washes, bands, columns, bars, slices, cells
- * and candles. Every decision about what goes where is in the model; this only draws it. */
+/* Painting a chart's marks on a Canvas 2D context: lines with their area washes, bands, columns, bars, slices, cells,
+ * candles and dots. Every decision about what goes where is in the model; this only draws it. */
 
 import { paintCandle } from "./paint-candles.ts";
-import { style } from "./paint-canvas.ts";
+import { dim, style } from "./paint-canvas.ts";
+import { paintDots } from "./paint-dots.ts";
 import type { Painting } from "./paint-canvas.ts";
 import type {
   BandMark,
@@ -20,8 +21,6 @@ import type {
 const radius = 4;
 /** The surface gap between touching slices, as between bars. */
 const sliceGap = 2;
-/** How faint the bars and slices of groups other than the selected one are. */
-const dim = 0.3;
 /** An area's and a band's wash: the series colour at 10 %, never a saturated block. */
 const wash = 0.1;
 /** The dashes of a dashed line, and the radius of a lone point between gaps. */
@@ -39,8 +38,9 @@ const wholeTurn = 1e-6;
 
 type Side = RectMark["round"];
 
-/** The marks that fill a shape of their own. */
-type BarLike = RectMark | SliceMark | CellMark | CandleMark;
+/** The marks that fill a shape of their own, and those drawn with lines. */
+type Shape = RectMark | SliceMark | CellMark | CandleMark;
+type Stroked = LineMark | BandMark | ColumnsMark;
 
 function corners(side: Side, round: number): [number, number, number, number] {
   switch (side) {
@@ -185,8 +185,8 @@ function paintBar(painting: Painting, mark: RectMark): void {
   painting.ctx.globalAlpha = 1;
 }
 
-/** A filled mark: a bar, a slice, a cell or a candle. */
-function paintFilled(painting: Painting, mark: BarLike): void {
+/** A shape filled in one colour: a bar, a slice, a cell or a candle. */
+function paintShape(painting: Painting, mark: Shape): void {
   switch (mark.kind) {
     case "rect": {
       paintBar(painting, mark);
@@ -210,7 +210,8 @@ function paintFilled(painting: Painting, mark: BarLike): void {
   }
 }
 
-function paintMark(painting: Painting, mark: Mark): void {
+/** A mark drawn with lines: a series' line, a band or columns. */
+function paintStroked(painting: Painting, mark: Stroked): void {
   switch (mark.kind) {
     case "line": {
       paintLine(painting, mark);
@@ -224,16 +225,23 @@ function paintMark(painting: Painting, mark: Mark): void {
       paintColumns(painting, mark);
       return;
     }
-    case "rect":
-    case "slice":
-    case "cell":
-    case "candle": {
-      paintFilled(painting, mark);
-      return;
-    }
     default: {
       mark satisfies never;
     }
+  }
+}
+
+function isStroked(mark: Mark): mark is Stroked {
+  return mark.kind === "line" || mark.kind === "band" || mark.kind === "columns";
+}
+
+function paintMark(painting: Painting, mark: Mark): void {
+  if (isStroked(mark)) {
+    paintStroked(painting, mark);
+  } else if (mark.kind === "dots") {
+    paintDots(painting, mark);
+  } else {
+    paintShape(painting, mark);
   }
 }
 
@@ -250,4 +258,4 @@ function paintClipped(painting: Painting, rect: Rect, marks: readonly Mark[]): v
   ctx.restore();
 }
 
-export { dim, paintClipped };
+export { paintClipped };
