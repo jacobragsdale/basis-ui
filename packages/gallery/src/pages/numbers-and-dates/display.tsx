@@ -76,14 +76,14 @@ const moneyExamples: readonly Example[] = [
 const pctExamples: readonly Example[] = [
   { sent: '"0.0525"', shown: <Pct value="0.0525" /> },
   { sent: "-0.0012", shown: <Pct value={-0.0012} /> },
-  { sent: '"5.25", in percent', shown: <Pct value="5.25" unit="percent" /> },
+  { sent: "0.0525", shown: <Pct value={0.0525} /> },
   { sent: "null", shown: <Pct value={null} /> },
 ];
 
 const bpsExamples: readonly Example[] = [
   { sent: '"0.0025"', shown: <Bps value="0.0025" /> },
   { sent: '"-0.00125"', shown: <Bps value="-0.00125" /> },
-  { sent: "125.5, in basis points", shown: <Bps value={125.5} unit="bp" /> },
+  { sent: "0.0125", shown: <Bps value={0.0125} /> },
   { sent: "null", shown: <Bps value={null} /> },
 ];
 
@@ -149,7 +149,7 @@ function PctSection(): ReactElement {
   return (
     <Section
       title="Pct"
-      description="A rate as a percentage, at two decimals: a fraction unless the value is in percent."
+      description="A rate, a fraction, as a percentage at two decimals: 0.0525 is 5.25%."
     >
       <Examples label="Pct examples" examples={pctExamples} />
     </Section>
@@ -160,7 +160,7 @@ function BpsSection(): ReactElement {
   return (
     <Section
       title="Bps"
-      description="A rate in basis points: a fraction unless the value is in basis points already."
+      description="A rate or spread, a fraction, in basis points: 0.0025 is 25 bp."
     >
       <Examples label="Bps examples" examples={bpsExamples} />
     </Section>

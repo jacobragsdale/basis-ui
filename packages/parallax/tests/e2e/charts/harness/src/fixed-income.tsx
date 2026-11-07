@@ -17,7 +17,7 @@ const bonds = async (): Promise<ArrayBuffer> => datasetBytes("bonds");
 /** The bonds, narrowed to the one clicked. */
 function bondsLayout(selected: ChartSelection | null): LayoutInput {
   return {
-    columns: ["cusip", "issuer", "sector", "rating", "spread_bp", "rich_cheap_bp"],
+    columns: ["cusip", "issuer", "sector", "rating", "spread", "rich_cheap"],
     filters:
       selected === null ? [] : [{ column: selected.column, op: "eq", value: selected.value }],
   };

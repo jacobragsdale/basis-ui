@@ -8,6 +8,7 @@ import type { CandleMark, ChartModel, Hit, Mark, ModelInput, Rect, Scale } from 
 import { eventMarks, legendWithOverlays, overlayMarks, overlayValues } from "./model-overlays.ts";
 import {
   axis,
+  columnStyle,
   columnWidth,
   onto,
   padOf,
@@ -121,7 +122,8 @@ function priceAxis(
 ): { readonly plot: Rect; readonly y: Scale } {
   const range: readonly [number, number] = [input.height - xAxisHeight, padOf(input)];
   const scale = valueScale(input, values, { range, zero: false });
-  const plot = plotFor(input, { left: axis("left", scale).ticks, right: null });
+  const style = columnStyle(input, input.chart.ohlc?.close);
+  const plot = plotFor(input, { left: axis("left", scale, { style }).ticks, right: null });
   return { plot, y: onto(scale, [plot.y + plot.height, plot.y]) };
 }
 
@@ -156,7 +158,7 @@ function candleModel(
     width: input.width,
     x,
     xTicks: frame.ticks.map((tick) => ({ label: tick.label, px: pixel(x, tick.x) })),
-    yAxes: [axis("left", y)],
+    yAxes: [axis("left", y, { style: columnStyle(input, input.chart.ohlc?.close) })],
     yLabels: [],
   };
 }

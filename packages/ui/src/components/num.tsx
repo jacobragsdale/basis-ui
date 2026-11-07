@@ -18,14 +18,7 @@ import {
   numVariants as price32Variants,
 } from "./num-variants.ts";
 import { bpsText, moneyText, numText, pctText, price32Text, signedText } from "./num-text.ts";
-import type {
-  BpsUnit,
-  NumberFormat,
-  NumericValue,
-  PercentUnit,
-  PriceFormat,
-  Shown,
-} from "./num-text.ts";
+import type { NumberFormat, NumericValue, PriceFormat, Shown } from "./num-text.ts";
 
 /** What every number component takes. */
 interface NumberProps
@@ -73,6 +66,7 @@ function Num({
   decimals,
   thousands,
   abbreviate,
+  suffixes,
   negative,
   align,
   className,
@@ -81,7 +75,7 @@ function Num({
   return (
     <NumberText
       dataSlot="num"
-      shown={numText(value, { abbreviate, decimals, negative, thousands })}
+      shown={numText(value, { abbreviate, decimals, negative, suffixes, thousands })}
       className={cn(numVariants({ align }), className)}
       {...props}
     />
@@ -94,13 +88,14 @@ interface MoneyProps extends NumberProps, NumberFormat {
 }
 
 /** An amount of money, with its currency's symbol after the sign, at the currency's minor units unless abbreviated or
- * told otherwise: `$1,234.50`, `-€12.00`, `$1.5M`. */
+ * told otherwise: `$1,234.50`, `-€12.00`, `$1.5M`, or with par suffixes `$1.5MM`. */
 function Money({
   value,
   currency = "USD",
   decimals,
   thousands,
   abbreviate,
+  suffixes,
   negative,
   align,
   className,
@@ -109,22 +104,18 @@ function Money({
   return (
     <NumberText
       dataSlot="money"
-      shown={moneyText(value, currency, { abbreviate, decimals, negative, thousands })}
+      shown={moneyText(value, currency, { abbreviate, decimals, negative, suffixes, thousands })}
       className={cn(moneyVariants({ align }), className)}
       {...props}
     />
   );
 }
 
-interface PctProps extends NumberProps, Omit<NumberFormat, "abbreviate"> {
-  /** `fraction`, the default, reads 0.0525 as 5.25%, as the formatter and `rateSuffixes` do; `percent` reads 5.25. */
-  readonly unit?: PercentUnit | undefined;
-}
+type PctProps = NumberProps & Omit<NumberFormat, "abbreviate" | "suffixes">;
 
 /** A rate as a percentage, at two decimals unless told otherwise: 0.0525 is `5.25%`. */
 function Pct({
   value,
-  unit,
   decimals,
   thousands,
   negative,
@@ -135,22 +126,18 @@ function Pct({
   return (
     <NumberText
       dataSlot="pct"
-      shown={pctText(value, { decimals, negative, thousands }, unit)}
+      shown={pctText(value, { decimals, negative, thousands })}
       className={cn(pctVariants({ align }), className)}
       {...props}
     />
   );
 }
 
-interface BpsProps extends NumberProps, Omit<NumberFormat, "abbreviate"> {
-  /** `fraction`, the default, reads 0.0025 as 25 bp, as `rateSuffixes` does; `bp` reads 25. */
-  readonly unit?: BpsUnit | undefined;
-}
+type BpsProps = NumberProps & Omit<NumberFormat, "abbreviate" | "suffixes">;
 
 /** A rate in basis points, by the formatter's defaults for the value in basis points: 0.0025 is `25 bp`. */
 function Bps({
   value,
-  unit,
   decimals,
   thousands,
   negative,
@@ -161,7 +148,7 @@ function Bps({
   return (
     <NumberText
       dataSlot="bps"
-      shown={bpsText(value, { decimals, negative, thousands }, unit)}
+      shown={bpsText(value, { decimals, negative, thousands })}
       className={cn(bpsVariants({ align }), className)}
       {...props}
     />

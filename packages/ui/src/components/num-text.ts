@@ -1,15 +1,16 @@
 /* The text the number components show, through the formatter, so a value reads as it does in parallax's grid. Each
  * value type APIs send takes the formatter's path for it: decimal strings and Decimals the exact decimal path, doubles
- * the 15-digit float path, and bigints the integer path. Percentages, basis points, currencies and the sign of a signed
- * value are added around the formatter's text, never by rounding a double.
+ * the 15-digit float path, and bigints the integer path. Basis points and prices in 32nds are the formatter's own
+ * formats, so `Bps` and `Price32` read as the grid's columns in those formats do. A rate is a fraction, as the
+ * formatter takes it: `Pct` shows 0.0525 as 5.25% and `Bps` 0.0025 as 25 bp. Currencies and the sign of a signed value
+ * are added around the formatter's text, never by rounding a double.
  *
  * A Decimal is read by its shape, `unscaled` and `scale`, rather than with `instanceof`, because `@basis/ui/numbers`
  * and the package's root can load two copies of the class: the source and the build. */
 
 import { createFormatter, nullText, undefinedText } from "#format/format.ts";
-import type { Abbreviation, Format, Formatter, Negative } from "#format/format.ts";
+import type { Abbreviation, Format, Formatter, Negative, SuffixStyle } from "#format/format.ts";
 import { Decimal } from "#numbers/decimal.ts";
-import { fractionToBps, percentToFraction } from "#numbers/rates.ts";
 import type { Rounding } from "#numbers/rounding.ts";
 import { formatThirtySeconds } from "#numbers/thirty-seconds.ts";
 import type { ThirtySecondsPrecision } from "#numbers/thirty-seconds.ts";
@@ -32,6 +33,9 @@ interface NumberFormat {
   readonly thousands?: boolean | undefined;
   /** Divide by a thousand, million or billion and show the suffix. */
   readonly abbreviate?: Abbreviation | undefined;
+  /** `par` writes the abbreviation as bond markets write par amounts, `M`, `MM` and `BN`; `amount`'s `K`, `M` and `B`
+   * unless set. */
+  readonly suffixes?: SuffixStyle | undefined;
   /** `-1,234.50` or `(1,234.50)`; `minus` unless set. */
   readonly negative?: Negative | undefined;
 }
@@ -45,12 +49,6 @@ interface Shown {
   readonly direction: Direction;
 }
 
-/** The unit a rate arrives in. A fraction is the formatter's and the rate parser's unit: 0.0525 is 5.25%. */
-type PercentUnit = "fraction" | "percent";
-type BpsUnit = "fraction" | "bp";
-
-const bpsPerWhole = 10_000;
-const percentPerWhole = 100;
 /** The formatter's cached for each distinct format; formats in an app are few, so the cache stays small. */
 const formatterCacheSize = 64;
 const formatters = new Map<string, Formatter>();
@@ -62,6 +60,9 @@ function formatterFor(format: Format): Formatter {
     format.thousands,
     format.percent,
     format.abbreviate,
+    format.suffixes,
+    format.bps,
+    format.thirtySeconds,
     format.negative,
   ]);
   const cached = formatters.get(key);
@@ -76,14 +77,19 @@ function formatterFor(format: Format): Formatter {
   return made;
 }
 
-/** The formatter for a number format, leaving what is unset to the formatter's defaults. */
-function numberFormatter(format: NumberFormat, percent = false): Formatter {
+/** The formatter for a number format, leaving what is unset to the formatter's defaults, with a style of the
+ * formatter's own: a percentage, basis points, or a price in 32nds. */
+function numberFormatter(
+  format: NumberFormat,
+  style: Pick<Format, "percent" | "bps" | "thirtySeconds"> = {},
+): Formatter {
   return formatterFor({
     abbreviate: format.abbreviate ?? null,
     decimals: format.decimals ?? null,
     negative: format.negative ?? "minus",
-    percent,
+    suffixes: format.suffixes ?? "amount",
     thousands: format.thousands ?? null,
+    ...style,
   });
 }
 
@@ -140,64 +146,21 @@ function numText(value: NumericValue, format: NumberFormat = {}): Shown {
   return shown(formattedText(value, numberFormatter(format)));
 }
 
-/** A rate as a fraction, at no loss: a percentage's point moves exactly, and a double is divided, which the
- * formatter's 15 significant digits then read back exactly. */
-function fractionFromPercent(value: string | DecimalLike | number | bigint): Decimal | number {
-  if (typeof value === "number") {
-    return value / percentPerWhole;
-  }
-  return percentToFraction(typeof value === "bigint" ? Decimal.from(value) : decimalOf(value));
-}
-
 /** A rate as `Pct` shows it: a fraction multiplied by 100 with `%`, so 0.0525 is 5.25%. */
-function pctText(
-  value: NumericValue,
-  format: NumberFormat = {},
-  unit: PercentUnit = "fraction",
-): Shown {
+function pctText(value: NumericValue, format: NumberFormat = {}): Shown {
   if (value === null || value === undefined) {
     return noValue;
   }
-  const fraction = unit === "percent" ? fractionFromPercent(value) : value;
-  return shown(formattedText(fraction, numberFormatter(format, true)));
+  return shown(formattedText(value, numberFormatter(format, { percent: true })));
 }
 
-/** A rate in basis points, exactly for decimals and integers. */
-function bpsFrom(
-  value: string | DecimalLike | number | bigint,
-  unit: BpsUnit,
-): Decimal | number | bigint {
-  if (unit === "bp") {
-    return typeof value === "string" || typeof value === "object" ? decimalOf(value) : value;
-  }
-  if (typeof value === "number") {
-    return value * bpsPerWhole;
-  }
-  if (typeof value === "bigint") {
-    return value * BigInt(bpsPerWhole);
-  }
-  return fractionToBps(decimalOf(value));
-}
-
-/** Puts a unit after the digits and inside the parentheses of a negative: `25 bp`, `(25 bp)`. */
-function withUnit(text: string, unit: string): string {
-  if (text === undefinedText) {
-    return text;
-  }
-  return text.endsWith(")") ? `${text.slice(0, -1)}${unit})` : `${text}${unit}`;
-}
-
-/** A rate as `Bps` shows it: in basis points with ` bp`, so 0.0025 is 25 bp. */
-function bpsText(
-  value: NumericValue,
-  format: NumberFormat = {},
-  unit: BpsUnit = "fraction",
-): Shown {
+/** A rate as `Bps` shows it, through the formatter's basis points: 0.0025 is `25 bp`, and `(25 bp)` a negative in
+ * parentheses. The point moves four places after the formatter reads the value, so a decimal keeps every digit. */
+function bpsText(value: NumericValue, format: NumberFormat = {}): Shown {
   if (value === null || value === undefined) {
     return noValue;
   }
-  const text = formattedText(bpsFrom(value, unit), numberFormatter(format));
-  return shown(withUnit(text, " bp"));
+  return shown(formattedText(value, numberFormatter(format, { bps: true })));
 }
 
 /** A currency's symbol and minor units, as US English writes them: `$` and 2 for USD, `€` and 2 for EUR, `¥` and 0
@@ -252,31 +215,22 @@ function priceOf(value: string | DecimalLike | number | bigint, rounding: Roundi
 }
 
 /** A Treasury price as `Price32` shows it: `99-16+`. A double that is not finite has no price, and shows the
- * formatter's text for an undefined result. */
+ * formatter's text for an undefined result. Rounded half away from zero, as by default, it is the formatter's 32nds,
+ * which the grid writes; another rounding is the price's own. */
 function price32Text(value: NumericValue, format: PriceFormat = {}): Shown {
   if (value === null || value === undefined) {
     return noValue;
   }
+  const precision = format.precision ?? "eighths";
+  const rounding = format.rounding ?? "half-away-from-zero";
+  if (rounding === "half-away-from-zero") {
+    return shown(formattedText(value, numberFormatter({}, { thirtySeconds: precision })));
+  }
   if (typeof value === "number" && !Number.isFinite(value)) {
     return shown(undefinedText);
   }
-  const rounding = format.rounding ?? "half-away-from-zero";
-  return shown(
-    formatThirtySeconds(priceOf(value, rounding), {
-      precision: format.precision ?? "eighths",
-      rounding,
-    }),
-  );
+  return shown(formatThirtySeconds(priceOf(value, rounding), { precision, rounding }));
 }
 
 export { bpsText, moneyText, numText, pctText, price32Text, signedText };
-export type {
-  BpsUnit,
-  DecimalLike,
-  Direction,
-  NumberFormat,
-  NumericValue,
-  PercentUnit,
-  PriceFormat,
-  Shown,
-};
+export type { DecimalLike, Direction, NumberFormat, NumericValue, PriceFormat, Shown };

@@ -78,14 +78,10 @@ describe("rate text", () => {
   test.each([
     ["a fraction as decimal text", pctText("0.0525"), "5.25%"],
     ["a fraction as a double", pctText(0.0525), "5.25%"],
-    ["a percentage as decimal text", pctText("5.25", {}, "percent"), "5.25%"],
-    ["a percentage as a double", pctText(5.25, {}, "percent"), "5.25%"],
-    ["a percentage as a bigint", pctText(5n, {}, "percent"), "5.00%"],
     ["a negative fraction", pctText(-0.001), "-0.10%"],
     ["a fraction in basis points", bpsText("0.0025"), "25 bp"],
     ["a fraction's scale carries over", bpsText("0.00125"), "12.5 bp"],
     ["a double in basis points", bpsText(0.0025), "25.00 bp"],
-    ["basis points as they are", bpsText(25n, {}, "bp"), "25 bp"],
     ["basis points in parentheses", bpsText("-0.0025", { negative: "parentheses" }), "(25 bp)"],
   ])("%s", (_name, shown, text) => {
     expect(shown.text).toBe(text);

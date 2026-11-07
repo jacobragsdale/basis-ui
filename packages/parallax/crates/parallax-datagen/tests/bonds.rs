@@ -45,7 +45,7 @@ fn golden_rows_are_stable() {
     assert_eq!(hash(&bonds(600).batch(0..600)), GOLDEN);
 }
 
-const GOLDEN: u64 = 5_655_194_409_302_964_230;
+const GOLDEN: u64 = 5_134_714_031_958_905_183;
 
 #[test]
 fn check_digits_follow_the_cusip_rules() {
@@ -85,9 +85,16 @@ fn spreads_yields_and_risk_agree() {
     let batch = bonds(3_000).batch(0..3_000);
     let years = f64s(&batch, "years_to_maturity");
     let ytm = f64s(&batch, "yield_to_maturity");
-    let spread = f64s(&batch, "spread_bp");
-    let fitted = f64s(&batch, "fitted_spread_bp");
-    let rich_cheap = f64s(&batch, "rich_cheap_bp");
+    // Spreads are fractions; these checks read them in basis points.
+    let in_bp = |name: &str| -> Vec<Option<f64>> {
+        f64s(&batch, name)
+            .into_iter()
+            .map(|v| v.map(|v| v * 10_000.0))
+            .collect()
+    };
+    let spread = in_bp("spread");
+    let fitted = in_bp("fitted_spread");
+    let rich_cheap = in_bp("rich_cheap");
     let duration = f64s(&batch, "duration");
     let dv01 = f64s(&batch, "dv01_usd");
     let price = f64s(&batch, "price");

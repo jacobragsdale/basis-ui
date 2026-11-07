@@ -588,8 +588,8 @@ import { Bps, DateTime, Money, Num, Pct, Price32 } from "@basis/ui";
 <Num value={pnl} signed />; // +1,250.50 in the gain colour, -1,250.50 in the loss colour
 ```
 
-- **Rates** are fractions, as the formatter's `percent` and `rateSuffixes` read them: 0.0525 is 5.25% and 0.0025 is
-  25 bp. A value already in percent or basis points takes `unit="percent"` or `unit="bp"`.
+- **Rates** and spreads are fractions, the one unit APIs send them in, as the formatter's `percent` and `bps` and
+  `rateSuffixes` read them: 0.0525 is 5.25% and 0.0025 is 25 bp.
 - **Money** takes an ISO 4217 `currency`, USD unless set, which gives the symbol, written after the sign, and the
   decimals: `€1,234.50`, `¥1,234`, `($1,234.50)` with `negative="parentheses"`.
 - **`signed`** colours a gain and a loss with the `gain` and `loss` tokens and always writes the sign. The direction is

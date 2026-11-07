@@ -6,7 +6,7 @@
       "donut": true,
       "drawings": [],
       "events": null,
-      "fit": "fitted_spread_bp",
+      "fit": "fitted_spread",
       "hidden": [],
       "horizontal": false,
       "id": "cusip",
@@ -26,7 +26,7 @@
       "volume": null,
       "x": "duration",
       "y": [
-        "spread_bp"
+        "spread"
       ],
       "y_right": []
     },
@@ -144,6 +144,64 @@
     "expanded": [],
     "filters": [],
     "formats": {},
+    "group_by": [],
+    "group_sort": {
+      "by": "key",
+      "descending": false
+    },
+    "having": [],
+    "measures": [],
+    "parameters": {},
+    "pinned": [],
+    "search": "",
+    "sort": [],
+    "split_by": [],
+    "titles": {},
+    "top_n": null,
+    "totals": [],
+    "version": 2
+  },
+  {
+    "chart": null,
+    "column_widths": {},
+    "columns": [],
+    "dataset": "bonds",
+    "detail": false,
+    "expand_depth": 0,
+    "expanded": [],
+    "filters": [],
+    "formats": {
+      "par": {
+        "abbreviate": "millions",
+        "decimals": null,
+        "negative": "minus",
+        "percent": false,
+        "precision": "seconds",
+        "suffixes": "par",
+        "thousands": null,
+        "zone": null
+      },
+      "price": {
+        "abbreviate": null,
+        "decimals": null,
+        "negative": "parentheses",
+        "percent": false,
+        "precision": "seconds",
+        "thirty_seconds": "halves",
+        "thousands": null,
+        "zone": null
+      },
+      "spread": {
+        "abbreviate": null,
+        "bps": true,
+        "decimals": 1,
+        "negative": "minus",
+        "percent": false,
+        "precision": "seconds",
+        "thousands": null,
+        "zone": null
+      }
+    },
     "group_by": [],
     "group_sort": {
       "by": "key",

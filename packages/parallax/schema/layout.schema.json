@@ -666,7 +666,11 @@
             }
           ],
           "default": null,
-          "description": "Divide by a thousand, million or billion and append `K`, `M` or `B`."
+          "description": "Divide by a thousand, million or billion and append `K`, `M` or `B`, or\nas `suffixes` says."
+        },
+        "bps": {
+          "description": "Write a rate, a fraction, in basis points with ` bp`: 0.0025 is `25 bp`.",
+          "type": "boolean"
         },
         "decimals": {
           "default": null,
@@ -693,6 +697,21 @@
           "$ref": "#/$defs/PrecisionName",
           "default": "seconds",
           "description": "The sub-second digits instants show."
+        },
+        "suffixes": {
+          "$ref": "#/$defs/SuffixesName",
+          "description": "How an abbreviation is written: `amount`'s `K`, `M` and `B`, or `par`'s\n`M`, `MM` and `BN`, as bond markets write par amounts."
+        },
+        "thirty_seconds": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ThirtySecondsName"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Write a price in 32nds, `99-16+`, to its finest step."
         },
         "thousands": {
           "default": null,
@@ -1285,6 +1304,21 @@
         }
       ]
     },
+    "SuffixesName": {
+      "description": "How an abbreviation is written, in a layout.",
+      "oneOf": [
+        {
+          "const": "amount",
+          "description": "`K`, `M` and `B`.",
+          "type": "string"
+        },
+        {
+          "const": "par",
+          "description": "`M` for thousands, `MM` for millions and `BN` for billions, as bond\nmarkets write par amounts and `AmountInput` reads them back.",
+          "type": "string"
+        }
+      ]
+    },
     "TenorSpacingName": {
       "description": "How a tenor axis spaces tenors, in a layout.",
       "oneOf": [
@@ -1296,6 +1330,31 @@
         {
           "const": "length",
           "description": "By length in years.",
+          "type": "string"
+        }
+      ]
+    },
+    "ThirtySecondsName": {
+      "description": "The finest step of a price in 32nds, in a layout.",
+      "oneOf": [
+        {
+          "const": "thirty_seconds",
+          "description": "Whole 32nds: `99-16`.",
+          "type": "string"
+        },
+        {
+          "const": "halves",
+          "description": "Halves of a 32nd: `99-16+`.",
+          "type": "string"
+        },
+        {
+          "const": "quarters",
+          "description": "Quarters of a 32nd: `99-162`.",
+          "type": "string"
+        },
+        {
+          "const": "eighths",
+          "description": "Eighths of a 32nd, the finest: `99-163`.",
           "type": "string"
         }
       ]

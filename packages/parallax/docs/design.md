@@ -290,23 +290,43 @@ how the export writes it is decided with the export.
 - A number too wide for its column shows `###`, as Excel does, never with
   digits clipped off.
 - Text truncates with an ellipsis and shows in full on hover.
-- K/M/B abbreviations are opt-in per column and always show the suffix.
-  Step 2.8 adds par style, which writes them `M`, `MM` and `BN`, as bond
-  markets do and as `@basis/ui`'s `AmountInput` reads them back.
-- Step 2.8 adds basis points, `25 bp` for 0.0025, and Treasury prices in 32nds,
-  `99-16+` for 99.515625, matching `@basis/ui`'s `Bps` and `Price32`, so that
-  a rate or a price reads the same in a card as in the grid.
-- Percent and K/M/B scaling move the decimal point exactly, before the one
-  rounding to the shown decimals.
+- K/M/B abbreviations are opt-in per column and always show the suffix. With
+  `suffixes: "par"` they read `M`, `MM` and `BN`, as bond markets write par
+  amounts and as `@basis/ui`'s `AmountInput` reads them back.
+- Basis points, `bps: true`, write a rate or spread as `25 bp` with a
+  no-break space. A rate is a fraction, 0.0025 here, the one unit APIs send
+  rates and spreads in, so there is no unit to choose. Treasury prices in
+  32nds, `thirty_seconds`, write 99.515625 as `99-16+`, to the finest step the
+  column asks for: a 32nd, or a half, quarter or eighth of one. They are
+  `@basis/ui`'s `Bps` and `Price32`, which now write through its port of this
+  formatter, so a rate or a price reads the same in a card as in the grid, and
+  the fixtures check every case of each. A double price is read at its
+  shortest digits and rounded to 8 decimals, enough for any 256th of a point,
+  before it is rounded to its step, as `Price32` reads one. A format takes one
+  of a percentage, an abbreviation, basis points or 32nds.
+- Percent, basis-point and K/M/B scaling move the decimal point exactly, before
+  the one rounding to the shown decimals.
 - Booleans show as `TRUE` and `FALSE`, as in Excel.
 - Copy and export carry full-precision values. Display formats travel as Excel
   number formats.
 
 A layout sets formats per source column: decimals, thousands separators,
-percent, K/M/B, negatives in parentheses, the display zone, and sub-second
-digits; from step 2.8, basis points, 32nds and par suffixes too. A measure
-takes its column's format unless it sets its own; counts and variances use
-their type's default, and shares of a total show as percentages.
+percent, K/M/B and their suffixes, basis points, 32nds, negatives in
+parentheses, the display zone, and sub-second digits. A measure takes its
+column's format unless it sets its own; counts and variances use their type's
+default, and shares of a total show as percentages.
+
+A chart's value axes read in the plotted column's style where it has one a desk
+reads: a percentage, basis points, 32nds or par suffixes, with as many decimals
+as the step between ticks needs, so a yield's axis reads 5.50% rather than
+0.055. The y axes are labelled by `@basis/ui`'s port of the formatter, and an x
+axis of numbers by the engine. A 32nds axis steps by a 32nd's halvings, no
+finer than the column shows. Other formats keep the axes' round numbers.
+
+Excel has no 32nds and cannot multiply by 10,000, so an export keeps each
+cell's value and shows a price in 32nds as a decimal price and basis points as
+a percentage, the same digits two places over; the Notes sheet says so. Par
+suffixes have Excel formats that read as the screen does.
 
 Rounding happens only in this formatter. The tests compare it with exact
 big-integer arithmetic on random doubles, many of them next to rounding

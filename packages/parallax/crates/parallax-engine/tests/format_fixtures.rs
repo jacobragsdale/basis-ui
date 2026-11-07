@@ -6,7 +6,9 @@
 
 #![allow(missing_docs)]
 
-use parallax_engine::format::{Abbreviation, Format, Formatter, Negative, TimePrecision};
+use parallax_engine::format::{
+    Abbreviation, Format, Formatter, Negative, Suffixes, ThirtySeconds, TimePrecision,
+};
 use serde_json::{Value, json};
 
 fn format_json(format: &Format) -> Value {
@@ -18,6 +20,17 @@ fn format_json(format: &Format) -> Value {
             Abbreviation::Thousands => "K",
             Abbreviation::Millions => "M",
             Abbreviation::Billions => "B",
+        }),
+        "suffixes": match format.suffixes {
+            Suffixes::Amount => "amount",
+            Suffixes::Par => "par",
+        },
+        "bps": format.bps,
+        "thirtySeconds": format.thirty_seconds.map(|step| match step {
+            ThirtySeconds::Whole => "thirty-seconds",
+            ThirtySeconds::Halves => "halves",
+            ThirtySeconds::Quarters => "quarters",
+            ThirtySeconds::Eighths => "eighths",
         }),
         "negative": match format.negative {
             Negative::Minus => "minus",
@@ -70,6 +83,39 @@ fn number_formats() -> Vec<Format> {
         with(|f| {
             f.negative = Negative::Parentheses;
             f.percent = true;
+        }),
+        // Step 2.8: basis points, as @basis/ui's Bps writes them.
+        with(|f| f.bps = true),
+        with(|f| {
+            f.bps = true;
+            f.decimals = Some(0);
+        }),
+        with(|f| {
+            f.bps = true;
+            f.negative = Negative::Parentheses;
+            f.thousands = Some(false);
+        }),
+        // Treasury prices in 32nds, as @basis/ui's Price32 writes them.
+        with(|f| f.thirty_seconds = Some(ThirtySeconds::Eighths)),
+        with(|f| f.thirty_seconds = Some(ThirtySeconds::Quarters)),
+        with(|f| f.thirty_seconds = Some(ThirtySeconds::Halves)),
+        with(|f| {
+            f.thirty_seconds = Some(ThirtySeconds::Whole);
+            f.negative = Negative::Parentheses;
+        }),
+        // Par amounts' suffixes: M thousands, MM millions, BN billions.
+        with(|f| {
+            f.abbreviate = Some(Abbreviation::Thousands);
+            f.suffixes = Suffixes::Par;
+        }),
+        with(|f| {
+            f.abbreviate = Some(Abbreviation::Millions);
+            f.suffixes = Suffixes::Par;
+        }),
+        with(|f| {
+            f.abbreviate = Some(Abbreviation::Billions);
+            f.suffixes = Suffixes::Par;
+            f.decimals = Some(2);
         }),
     ]
 }
@@ -126,6 +172,22 @@ fn floats() -> Vec<f64> {
         f64::NAN,
         f64::INFINITY,
         f64::NEG_INFINITY,
+        // Prices in 32nds: on a step, at the midpoints between steps, and past
+        // eight decimals.
+        99.515_625,
+        99.507_812_5,
+        99.501_953_125,
+        99.503_906_25,
+        -0.140_625,
+        0.001_953_125,
+        101.123_456_789,
+        99.999_999_996,
+        0.000_000_004,
+        // Rates in basis points.
+        0.0025,
+        0.000_125,
+        -0.000_05,
+        0.052_5,
     ];
     values.extend(spread_floats());
     values
@@ -146,6 +208,11 @@ fn decimals() -> Vec<(i128, i8)> {
         (12, -2),
         (-123_456_789_012_345_678_901_234_567_890_123_456, 4),
         (i128::MAX, 38),
+        // A price at 32nds' midpoints, and a rate at four places.
+        (9_950_390_625, 8),
+        (-1_406_250, 7),
+        (25, 4),
+        (52_500, 6),
     ]
 }
 

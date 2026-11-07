@@ -8,7 +8,7 @@ use arrow_array::{ArrayRef, Float64Array, RecordBatch, StringArray, UInt32Array,
 use arrow_schema::{DataType, Field, Schema};
 use parallax_engine::chart::{
     BucketVolume, ChartConfig, ChartData, ChartRequest, ChartView, Dot, IndicatorLines, Interval,
-    Reduced,
+    Reduced, Tick, XAxis,
 };
 use parallax_engine::format::{Format, MAX_DECIMALS, OVERFLOW_TEXT};
 use parallax_engine::{ColumnType, Formatter, Scalar, Table};
@@ -164,6 +164,65 @@ fn points_batch(
     batch(columns)
 }
 
+/// The format a numeric x column on a value axis is read in, where it reads its
+/// numbers as a desk does: a percentage, basis points or 32nds. `None` keeps the
+/// engine's round numbers.
+fn x_format<'a>(
+    table: &Table,
+    config: &ChartConfig,
+    formats: &'a BTreeMap<String, Format>,
+) -> Option<&'a Format> {
+    let numeric = table.column_index(&config.x).is_some_and(|i| {
+        matches!(
+            table.column(i).column_type(),
+            ColumnType::Int64 | ColumnType::Float64 | ColumnType::Decimal { .. }
+        )
+    });
+    let format = formats.get(&config.x)?;
+    let styled = format.percent || format.bps || format.thirty_seconds.is_some();
+    (numeric && styled && config.axis == XAxis::Value).then_some(format)
+}
+
+/// The x axis's ticks, labelled in the x column's format when it has a style of
+/// its own, with as many decimals as the step between ticks needs.
+fn x_ticks(ticks: &[Tick], format: Option<&Format>) -> Vec<ChartTick> {
+    let formatter = format.and_then(|format| {
+        let step = ticks
+            .windows(2)
+            .map(|w| w[1].x - w[0].x)
+            .fold(f64::INFINITY, f64::min);
+        let scaled = match (format.percent, format.bps) {
+            (true, _) => step * 100.0,
+            (_, true) => step * 10_000.0,
+            _ => step,
+        };
+        let decimals = (0..=10u8)
+            .find(|&d| {
+                let shifted = scaled * 10f64.powi(i32::from(d));
+                (shifted.round() - shifted).abs() <= 1e-9 * shifted.abs().max(1.0)
+            })
+            .unwrap_or(10);
+        let shown = Format {
+            decimals: format
+                .thirty_seconds
+                .is_none()
+                .then_some(decimals)
+                .filter(|_| step.is_finite()),
+            ..format.clone()
+        };
+        Formatter::new(&shown).ok()
+    });
+    ticks
+        .iter()
+        .map(|t| ChartTick {
+            x: t.x,
+            label: formatter
+                .as_ref()
+                .map_or_else(|| t.label.clone(), |f| f.float(t.x)),
+        })
+        .collect()
+}
+
 fn interval_name(interval: Interval) -> String {
     match interval {
         Interval::Minutes(m) => format!("{m}m"),
@@ -217,13 +276,7 @@ pub(crate) fn chart_frame(table: &Table, state: &ChartState) -> Result<ChartFram
                 position: state.view.position(value).unwrap_or(f64::NAN),
             })
             .collect(),
-        ticks: ticks
-            .into_iter()
-            .map(|t| ChartTick {
-                x: t.x,
-                label: t.label,
-            })
-            .collect(),
+        ticks: x_ticks(&ticks, x_format(table, config, &state.formats)),
         events_total: u32::try_from(events_total).unwrap_or(u32::MAX),
         ..ChartFrame::default()
     };

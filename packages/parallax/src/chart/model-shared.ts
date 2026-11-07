@@ -16,6 +16,8 @@ import type {
   ValueAxis,
   ValueTick,
 } from "./model-types.ts";
+import { plain, styleOf, styledTicks } from "./axis-styles.ts";
+import type { AxisStyle } from "./axis-styles.ts";
 import { linearScale, logDomain, logScale, niceDomain, valueTicks } from "./scale.ts";
 
 /** The padding around the plot, and a compact chart's. */
@@ -123,11 +125,27 @@ function valueScale(
   return linearScale(niceDomain(all[0], all[1], { count: ticks, zero }), range);
 }
 
-function axis(side: "left" | "right", scale: Scale, suffix = ""): ValueAxis {
-  const ticks = valueTicks(
-    scale,
-    Math.max(2, Math.abs(scale.range[0] - scale.range[1]) * ticksPerPixel),
-  );
+/** The style a plotted column's format gives its axis; a comparison's percentage changes are plain. */
+function columnStyle(input: ModelInput, column: string | undefined): AxisStyle {
+  return input.chart.compare || column === undefined ? plain : styleOf(input.formats?.[column]);
+}
+
+/** How an axis's labels read: a suffix after each, such as a comparison's `%`, and the plotted column's style. */
+interface AxisOptions {
+  readonly suffix?: string;
+  readonly style?: AxisStyle;
+}
+
+function axis(
+  side: "left" | "right",
+  scale: Scale,
+  { suffix = "", style = plain }: AxisOptions = {},
+): ValueAxis {
+  const tickCount = Math.max(2, Math.abs(scale.range[0] - scale.range[1]) * ticksPerPixel);
+  const ticks =
+    style.kind === "plain" || scale.log
+      ? valueTicks(scale, tickCount)
+      : styledTicks(scale, tickCount, style);
   return {
     scale,
     side,
@@ -212,6 +230,7 @@ function columnWidth(space: number): number {
 
 export {
   axis,
+  columnStyle,
   columnWidth,
   count,
   dimmed,

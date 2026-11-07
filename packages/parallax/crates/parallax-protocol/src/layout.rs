@@ -15,7 +15,9 @@ use parallax_engine::chart::{
     ChartConfig, ChartKind, OhlcColumns, PointColumns, TenorSpacing, XAxis,
 };
 use parallax_engine::filter::{Filter, FilterOp};
-use parallax_engine::format::{Abbreviation, Format, Negative, TimePrecision, exact_decimal};
+use parallax_engine::format::{
+    Abbreviation, Format, Negative, Suffixes, ThirtySeconds, TimePrecision, exact_decimal,
+};
 use parallax_engine::indicator::Indicator;
 use parallax_engine::order::Order;
 use parallax_engine::view::{Comparison, GroupOrder, GroupSort, Having, Sort, TopN, ViewConfig};
@@ -620,8 +622,19 @@ pub struct LayoutFormat {
     pub thousands: Option<bool>,
     /// Multiply by 100 and append `%`.
     pub percent: bool,
-    /// Divide by a thousand, million or billion and append `K`, `M` or `B`.
+    /// Divide by a thousand, million or billion and append `K`, `M` or `B`, or
+    /// as `suffixes` says.
     pub abbreviate: Option<AbbreviationName>,
+    /// How an abbreviation is written: `amount`'s `K`, `M` and `B`, or `par`'s
+    /// `M`, `MM` and `BN`, as bond markets write par amounts.
+    #[serde(skip_serializing_if = "SuffixesName::is_amount")]
+    pub suffixes: SuffixesName,
+    /// Write a rate, a fraction, in basis points with ` bp`: 0.0025 is `25 bp`.
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub bps: bool,
+    /// Write a price in 32nds, `99-16+`, to its finest step.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub thirty_seconds: Option<ThirtySecondsName>,
     /// How negative numbers are written.
     pub negative: NegativeName,
     /// The IANA zone instants are shown in.
@@ -640,6 +653,38 @@ pub enum AbbreviationName {
     Millions,
     /// Billions, `B`.
     Billions,
+}
+
+/// How an abbreviation is written, in a layout.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum SuffixesName {
+    /// `K`, `M` and `B`.
+    #[default]
+    Amount,
+    /// `M` for thousands, `MM` for millions and `BN` for billions, as bond
+    /// markets write par amounts and `AmountInput` reads them back.
+    Par,
+}
+
+impl SuffixesName {
+    fn is_amount(&self) -> bool {
+        *self == Self::Amount
+    }
+}
+
+/// The finest step of a price in 32nds, in a layout.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum ThirtySecondsName {
+    /// Whole 32nds: `99-16`.
+    ThirtySeconds,
+    /// Halves of a 32nd: `99-16+`.
+    Halves,
+    /// Quarters of a 32nd: `99-162`.
+    Quarters,
+    /// Eighths of a 32nd, the finest: `99-163`.
+    Eighths,
 }
 
 /// How negative numbers are written, in a layout.
@@ -679,6 +724,17 @@ impl LayoutFormat {
                 AbbreviationName::Millions => Abbreviation::Millions,
                 AbbreviationName::Billions => Abbreviation::Billions,
             }),
+            suffixes: match self.suffixes {
+                SuffixesName::Amount => Suffixes::Amount,
+                SuffixesName::Par => Suffixes::Par,
+            },
+            bps: self.bps,
+            thirty_seconds: self.thirty_seconds.map(|step| match step {
+                ThirtySecondsName::ThirtySeconds => ThirtySeconds::Whole,
+                ThirtySecondsName::Halves => ThirtySeconds::Halves,
+                ThirtySecondsName::Quarters => ThirtySeconds::Quarters,
+                ThirtySecondsName::Eighths => ThirtySeconds::Eighths,
+            }),
             negative: match self.negative {
                 NegativeName::Minus => Negative::Minus,
                 NegativeName::Parentheses => Negative::Parentheses,
@@ -703,6 +759,17 @@ impl LayoutFormat {
                 Abbreviation::Thousands => AbbreviationName::Thousands,
                 Abbreviation::Millions => AbbreviationName::Millions,
                 Abbreviation::Billions => AbbreviationName::Billions,
+            }),
+            suffixes: match format.suffixes {
+                Suffixes::Amount => SuffixesName::Amount,
+                Suffixes::Par => SuffixesName::Par,
+            },
+            bps: format.bps,
+            thirty_seconds: format.thirty_seconds.map(|step| match step {
+                ThirtySeconds::Whole => ThirtySecondsName::ThirtySeconds,
+                ThirtySeconds::Halves => ThirtySecondsName::Halves,
+                ThirtySeconds::Quarters => ThirtySecondsName::Quarters,
+                ThirtySeconds::Eighths => ThirtySecondsName::Eighths,
             }),
             negative: match format.negative {
                 Negative::Minus => NegativeName::Minus,
@@ -1815,6 +1882,9 @@ mod tests {
                                     thousands,
                                     percent,
                                     abbreviate,
+                                    suffixes: SuffixesName::Amount,
+                                    bps: false,
+                                    thirty_seconds: None,
                                     negative,
                                     zone,
                                     precision,
@@ -1824,6 +1894,35 @@ mod tests {
                     }
                 }
             }
+        }
+        // The styles step 2.8 adds, each alone, and par suffixes on each
+        // abbreviation.
+        formats.push(LayoutFormat {
+            bps: true,
+            ..LayoutFormat::default()
+        });
+        for step in [
+            ThirtySecondsName::ThirtySeconds,
+            ThirtySecondsName::Halves,
+            ThirtySecondsName::Quarters,
+            ThirtySecondsName::Eighths,
+        ] {
+            formats.push(LayoutFormat {
+                thirty_seconds: Some(step),
+                negative: NegativeName::Parentheses,
+                ..LayoutFormat::default()
+            });
+        }
+        for abbreviate in [
+            AbbreviationName::Thousands,
+            AbbreviationName::Millions,
+            AbbreviationName::Billions,
+        ] {
+            formats.push(LayoutFormat {
+                abbreviate: Some(abbreviate),
+                suffixes: SuffixesName::Par,
+                ..LayoutFormat::default()
+            });
         }
         for f in formats {
             assert_eq!(LayoutFormat::from_engine(&f.to_engine()), f);
@@ -1931,9 +2030,9 @@ mod tests {
     fn fixture_layouts_2_8() -> Vec<Value> {
         let points = r#"{
             "dataset": "bonds",
-            "chart": {"kind": "scatter", "x": "duration", "y": ["spread_bp"], "series": "sector",
+            "chart": {"kind": "scatter", "x": "duration", "y": ["spread"], "series": "sector",
                       "size": "dv01_usd", "id": "cusip", "tooltip": ["issuer", "rating"],
-                      "fit": "fitted_spread_bp"}
+                      "fit": "fitted_spread"}
         }"#;
         let orders = r#"{
             "dataset": "bonds",
@@ -1948,10 +2047,17 @@ mod tests {
             "chart": {"kind": "line", "x": "tenor", "y": ["yield"], "series": "curve_date", "axis": "tenor",
                       "tenor_spacing": "length"}
         }"#;
+        let formats = r#"{
+            "dataset": "bonds",
+            "formats": {"spread": {"bps": true, "decimals": 1},
+                        "price": {"thirty_seconds": "halves", "negative": "parentheses"},
+                        "par": {"abbreviate": "millions", "suffixes": "par"}}
+        }"#;
         [
             Layout::from_json(points).unwrap(),
             Layout::from_json(orders).unwrap(),
             Layout::from_json(tenor).unwrap(),
+            Layout::from_json(formats).unwrap(),
         ]
         .iter()
         .map(|l| serde_json::to_value(l).unwrap())
@@ -1982,6 +2088,12 @@ mod tests {
             .unwrap()
             .to_json();
         for field in ["\"orders\"", "\"tenor_spacing\""] {
+            assert!(!json.contains(field), "{field} in {json}");
+        }
+        let json = Layout::from_json(r#"{"formats": {"a": {"decimals": 1}}}"#)
+            .unwrap()
+            .to_json();
+        for field in ["\"suffixes\"", "\"bps\"", "\"thirty_seconds\""] {
             assert!(!json.contains(field), "{field} in {json}");
         }
     }

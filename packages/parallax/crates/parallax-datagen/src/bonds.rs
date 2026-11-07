@@ -8,6 +8,10 @@
 //! the curve and some cheap. The fitted spread stands for the curve an API fits
 //! and sends beside the bonds. Prices, durations and DV01s follow from the
 //! coupon and the yield with semi-annual compounding, as of a coupon date.
+//!
+//! Rates, yields and spreads are fractions, the one unit an API sends them in:
+//! a spread of 125 basis points is 0.0125, and a chart or grid shows it in
+//! basis points with a format.
 
 use std::ops::Range;
 use std::sync::Arc;
@@ -345,9 +349,10 @@ impl Bonds {
             bucket,
             price,
             yield_: round(yield_, 6),
-            spread: round(spread, 1),
-            fitted: round(fitted, 1),
-            rich_cheap: round(spread - fitted, 1),
+            // To a tenth of a basis point.
+            spread: round(spread / 10_000.0, 5),
+            fitted: round(fitted / 10_000.0, 5),
+            rich_cheap: round((spread - fitted) / 10_000.0, 5),
             duration,
             dv01: round(price / 100.0 * duration * par / 10_000.0, 2),
             par: from_f64(par, 2),
@@ -378,8 +383,8 @@ struct Row {
     market_value: f64,
 }
 
-/// The schema of [`Bonds`]: rates and yields as fractions, spreads in basis
-/// points, prices per 100 of par.
+/// The schema of [`Bonds`]: rates, yields and spreads as fractions, prices per
+/// 100 of par.
 #[must_use]
 pub fn schema() -> Schema {
     let float = |name: &str| Field::new(name, DataType::Float64, false);
@@ -395,9 +400,9 @@ pub fn schema() -> Schema {
         Field::new("tenor_bucket", DataType::Utf8, false),
         float("price"),
         float("yield_to_maturity"),
-        float("spread_bp"),
-        float("fitted_spread_bp"),
-        float("rich_cheap_bp"),
+        float("spread"),
+        float("fitted_spread"),
+        float("rich_cheap"),
         float("duration"),
         float("dv01_usd"),
         Field::new("par", DataType::Decimal128(18, 2), false),
