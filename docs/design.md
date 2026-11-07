@@ -299,7 +299,25 @@ Every chart is parallax's. Parallax draws on Canvas 2D after its engine, in a wo
 draws line, area, bar (across, stacked, or on two axes), scatter (as a density), heatmap, histogram, candlestick, OHLC,
 pie and donut charts. It adds a trading-time axis, technical-analysis indicators, panes, drawings and a compare mode,
 and it formats numbers and times by the grid's rules. One chart system means one look, one formatter, one time zone and
-one way to interact, and parallax already draws every kind a firm dashboard needs.
+one way to interact.
+
+Those kinds came from equity charting, and a study of what the fixed-income systems the firm's users know show them
+(Aladdin, PORT, Yield Book, FactSet, BarraOne, ICE and Marquee) found seven gaps, which [roadmap step
+2.8](roadmap.md#phase-2-parallax-in-the-browser) closes:
+
+- A relative-value scatter draws each bond as a dot, coloured and sized by columns, with the API's fitted curve,
+  rather than as a density.
+- Tenors and ratings sort as a desk reads them, groups can sort by another column, and curves get a tenor axis from
+  `3M` to `30Y`.
+- The grid's formatter writes basis points, Treasury 32nds and par amounts' `M` and `MM`, so that a value reads the
+  same in the grid as in `Bps` and `Price32`.
+- The trading axis takes SIFMA's calendar, its early closes, and sessions that open the evening before.
+- Waterfalls draw attribution and P&L explain.
+- Panes under a chart take any columns, for curves on several dates with their change in basis points below.
+- An axis can be reversed, for yields, and a chart says whether a rise takes the gain colour or the loss colour.
+
+Analytics stay in the API: curve fits, key-rate durations, scenario P&L and attribution arrive as columns, and
+parallax draws them. With those additions, parallax draws what the firm's dashboards need.
 
 Two additions fit it to small charts. A small-data API, such as `<Chart rows={rows} kind="bar" x="sector"
 y="exposure" />`, builds the Arrow table itself, so a ten-bar chart does not feel like loading an engine. And

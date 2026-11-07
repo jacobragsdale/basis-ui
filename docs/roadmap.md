@@ -41,6 +41,7 @@ flowchart TD
   p2 --> p4[2.4 export in wasm]
   u2 --> p5[2.5 React foundation]
   p3 --> p5 --> p6[2.6 component families] --> p7[2.7 demo and release]
+  p6 --> p8[2.8 fixed income]
   l1 --> l2[3.2 pilot in QA, work]
   l2 --> c2[4.2 app ports, work]
   c1 --> c2
@@ -183,6 +184,131 @@ phase 1.
 
 7. **2.7 Demo and release.** Rebuild the demo as a React app on `@basis/ui` with fixture data, with its screenshot tests
    at threshold 0. Release `@basis/parallax` with the next basis-ui version. Needs 2.4 and 2.6.
+8. **2.8 Fixed income.** Seven additions that fit parallax's charts to the firm's desks, from a study of what Aladdin,
+   PORT, Yield Book, FactSet, BarraOne, ICE and Marquee show fixed-income portfolio managers and traders. Analytics stay
+   in the API, which sends them as columns: curve fits, key-rate durations, scenario P&L and attribution. Parallax
+   draws columns, and live updates stay deferred. Needs the charts of 2.6, and runs alongside its other families and
+   2.7.
+
+   The additions land one pull request each, in the order below, each on a branch and worktree named after its id. A
+   step that needs an earlier one's code branches from that step's branch until it merges. They follow four rules:
+   - **Layouts.** Changes are additive and stay at version 2. A new field defaults to what its absence meant and is
+     left out of a layout written without it, so the committed fixtures and the Angular layer read every layout as
+     before, and a reader that lacks the field refuses a layout that sets it, as `deny_unknown_fields` already makes it
+     do. Layouts that set the new fields go in `tests/fixtures/layouts-2.8.json`, which only the React layer reads.
+   - **Frames.** A change to frames keeps the native and wasm transcript fingerprints in step.
+   - **Data.** `parallax-datagen` writes the data the new views draw, as deterministically as its other datasets:
+     `bonds`, a row per bond with its CUSIP, issuer, sector, rating, coupon, maturity, tenor bucket, duration, yield,
+     spread, the fitted curve's spread at its duration, DV01 and par; `curves`, Treasury curves on several dates with
+     each point's change in basis points; and `attribution`, P&L explained by factor.
+   - **Screenshots.** Each new view is a card on a fixed-income page of the charts' end-to-end harness, with its specs
+     beside the others in `tests/e2e/charts/` and its screenshots in light and dark at threshold 0.
+
+   The steps:
+   1. **2.8.1 Scatter points** (`2.8-scatter-points`). A scatter with at most 5,000 rows in the range shown draws each
+      row as a dot; past that, it stays a density. This is the relative-value view, rich or cheap to a curve.
+      - Layout: `size`, a numeric column whose magnitude sets each dot's area, such as DV01 or par; `id`, the column
+        naming each dot, such as the CUSIP, which titles its tooltip and is what a click selects; `tooltip`, more
+        columns the tooltip lists; and `fit`, a column holding the API's fitted curve at each row's x, drawn as a line
+        per series. `series` colours the dots and names them in the legend.
+      - Engine and session (`chart.rs` in each): `ChartData::Points` below the cap, the points' batch with every value
+        as the engine's text and the id as exact JSON, sizes as shares of the largest magnitude in the whole chart so
+        that zooming keeps a dot's size, and the fit reduced with M4 in both forms.
+      - React: the points' model and painter, hit-testing to the nearest dot, the tooltip, selection through
+        `onSelect` with the id column and value, and the text alternative.
+      - Tests:
+        - Rust: the cap in both directions, the sizes, the frame's texts, and M4's guarantee for the fit line. The
+          transcript's scatter becomes points, so both fingerprints change.
+        - Unit: the model and hit-testing.
+        - Browser: hover and click.
+        - End-to-end: a rich/cheap card over `bonds`, with spread against duration, coloured by sector, sized by DV01,
+          and the fitted curve. Its specs hover and select a bond.
+   2. **2.8.2 Tenor and rating order** (`2.8-orders`). Text keys sort alphabetically, so a DV01 ladder reads `10Y, 1Y,
+      20Y, 2Y` and ratings put `A` ahead of `AA`.
+      - Layout: `orders` sets a text column's order by name: `"tenor"`, by length, read as `@basis/ui/dates` reads a
+        tenor; `"rating"`, best first, on S&P's and Fitch's scale and Moody's; `{"values": [...]}`, as listed; or
+        `{"by": "column"}`, by another column's smallest value among a key's rows. Keys an order cannot place come
+        after the rest in text order, and nulls last.
+      - Where orders apply: group keys at every level, column pivots, flat and detail sorts, a chart's series, and the
+        categories of bars, heatmaps and pies. Filters still compare text.
+      - The tenor axis: `axis: "tenor"` places an x column of tenors, as text such as `3M` or as years, with the
+        engine's ticks labelled `3M` to `30Y`. `tenor_spacing: "even"`, the default, puts the curve's standard tenors
+        one step apart and places a value between them by length; `"length"` places it by its length in years.
+      - Engine (`dictionary.rs`, `view.rs` and `chart.rs`): ranks per dictionary code for each ordered column, refreshed
+        as loads intern strings or change the column an order reads.
+      - Tests:
+        - Rust: each order, at every level and in column pivots, with top-N's "Other" and nulls; reloads keep the
+          order; DuckDB as the oracle, with each order written as an `ORDER BY` expression; tenors read as
+          `@basis/ui/dates` reads them, on its test cases; the tenor axis's positions and ticks.
+        - Unit: the layout schema.
+        - End-to-end: a DV01 ladder card by tenor bucket, and exposure by rating.
+   3. **2.8.3 Basis points, 32nds and par amounts** (`2.8-formats`). `@basis/ui`'s `Bps` shows 0.0025 as `25 bp` and
+      `Price32` a Treasury price as `99-16+`, but the grid shows 0.0025 and 99.515625, which breaks the design's rule
+      that a number reads the same in a card as in the grid. Bond markets write `M` for thousands, yet parallax writes
+      `5.0M` for $5 million.
+      - Layout: `LayoutFormat` gains `bps`, the unit a rate arrives in (`"fraction"` or `"bp"`), written in basis
+        points with ` bp`; `thirty_seconds`, a price in 32nds to its finest step (`"thirty_seconds"`, `"halves"`,
+        `"quarters"` or `"eighths"`); and `suffixes: "par"`, which writes K/M/B abbreviations as `M`, `MM` and `BN`,
+        the suffixes `AmountInput` reads in par style.
+      - Code: the Rust formatter (`format.rs`) and its fixtures; `@basis/ui`'s TypeScript port (`format/format.ts`), with
+        `Bps` and `Price32` written through it, so that the two agree by construction; parallax's layout schema; value
+        axes labelled in the plotted column's format; and the Excel export's number formats, with a Notes sheet line
+        for what Excel cannot show, such as 32nds.
+      - Tests:
+        - Fixtures: the formatter's fixtures gain a group per new format, and `@basis/ui`'s test runs the 2,192 cases
+          and the new ones. Every case of those formats reads the same through `Bps` and `Price32`.
+        - Rust: exact arithmetic for basis points and for rounding to 256ths, half away from zero, at doubles next to
+          each step's midpoint.
+        - Export: the read-back tests.
+        - End-to-end: the formats on the fixed-income cards' tooltips and axes.
+   4. **2.8.4 The SIFMA trading axis** (`2.8-sifma-axis`). The trading axis knows only the NYSE's calendar and its 09:30
+      to 16:00 session, while `@basis/ui`'s date pickers default to SIFMA's. Bond markets close on Columbus Day and
+      Veterans Day, SIFMA recommends 2 p.m. early closes, and Treasuries trade electronically almost around the clock.
+      - Layout: `axis: "trading"` takes `calendar: "nyse" | "sifma"`, NYSE by default as before, and `session: {opens,
+        closes}`, the calendar's regular session by default. A session that opens later in the day than it closes
+        opens the evening before.
+      - Engine (`calendar.rs`): SIFMA's rules and dated exceptions, ported from `@basis/ui/dates`. An early close
+        shortens its day on the axis, so closed time still takes no space.
+      - Tests:
+        - Rust: the SIFMA calendar against the schedules SIFMA published, the same fixture file `@basis/ui/dates` is
+          tested against, with the disputes between SIFMA's sources moved into that file so both tests read one list.
+          The Rust also writes each year's closes and early closes from 1996 to 2050 to a fixture, which
+          `@basis/ui`'s tests check its SIFMA calendar against, as they check the NYSE's, so the two can't disagree
+          past the published years.
+        - Axis: positions across early closes, an evening session's open, and daylight-saving changes.
+        - End-to-end: a 10-year yield on SIFMA's days over October and November, and an intraday card through
+          Thanksgiving's early close.
+   5. **2.8.5 Waterfall** (`2.8-waterfall`). Attribution and P&L explain.
+      - Layout: `kind: "waterfall"` draws the layout's grouped view: each group's bar floats from the running total
+        before it to the one after, rising bars in the gain colour and falling ones in the loss colour, joined by
+        connectors and ending in a total bar.
+      - Engine (`aggregate.rs` and `view.rs`): `show_as: "running_total"`, Excel's "Running Total In": among siblings
+        in their order, from exact sums, for sums and counts only. A waterfall adds it for its first measure.
+      - Labels: each bar's value and the total are the engine's text.
+      - Tests:
+        - Rust: running totals against DuckDB's window sums, after reloads as a diff too, and refused for aggregates
+          that do not add.
+        - Unit: the model.
+        - End-to-end: a P&L explain card over `attribution`, where a click selects a factor.
+   6. **2.8.6 Yield curves with a change pane** (`2.8-curve-change`). Curves for several dates as lines, with the
+      change in basis points as bars below, on the same tenor axis. Needs 2.8.2's tenor axis.
+      - Layout: `panes`, a list of panes under the plot, each with its columns, `line` or `bar`, and a title. They
+        share the x axis, the crosshair and zoom, as the indicators' panes do, which they generalise to any value
+        axis. A series with no values in a pane is left out of it.
+      - Code: `model-panes.ts` in React, and the session's frames for pane columns.
+      - Tests:
+        - Rust: the frame.
+        - Unit: the panes' model.
+        - End-to-end: a card of three dates' curves with the change below, and a crosshair spec across the panes.
+   7. **2.8.7 Reversed axis and the rising colour** (`2.8-reversed-axis`). A rising yield is a loss to a long position.
+      - Layout: `reverse_y`, `reverse_y_right` and a pane's `reverse` turn an axis upside down. `rising: "gain" |
+        "loss"` says which colour a rise takes: candles, OHLC bars, volume, MACD's histogram, change bars and waterfall
+        steps.
+      - Tests:
+        - Unit: the model, and drawings, zoom and brushing on a reversed axis.
+        - End-to-end: a yield chart drawn reversed.
+
+   Each step updates parallax's design page and its README's API table as it builds. Done when the seven are merged.
 
 ## Phase 3: the pilot
 

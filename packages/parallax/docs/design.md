@@ -244,6 +244,15 @@ Text sorts case-insensitively, with a case-sensitive tie-break and nulls last.
 There is no locale-dependent collation, so the order is the same on every
 machine and matches the test oracle.
 
+[Step 2.8](../../../docs/roadmap.md#phase-2-parallax-in-the-browser) of
+basis-ui's roadmap fits parallax to fixed income, and lets a layout give a
+text column another order: tenors by length, so a ladder reads `1Y, 2Y, 10Y`
+rather than `10Y, 1Y, 2Y`; ratings best first, on S&P's and Fitch's scale and
+Moody's; a listed order; or another column's smallest value among a key's
+rows. Groups at every level, column pivots, sorts and a chart's series and
+categories follow it, and keys it cannot place come after the rest in text
+order. Filters still compare text.
+
 ### Display
 
 The screen and the Excel export show the same digits because both use one
@@ -263,6 +272,11 @@ how the export writes it is decided with the export.
   digits clipped off.
 - Text truncates with an ellipsis and shows in full on hover.
 - K/M/B abbreviations are opt-in per column and always show the suffix.
+  Step 2.8 adds par style, which writes them `M`, `MM` and `BN`, as bond
+  markets do and as `@basis/ui`'s `AmountInput` reads them back.
+- Step 2.8 adds basis points, `25 bp` for 0.0025, and Treasury prices in 32nds,
+  `99-16+` for 99.515625, matching `@basis/ui`'s `Bps` and `Price32`, so that
+  a rate or a price reads the same in a card as in the grid.
 - Percent and K/M/B scaling move the decimal point exactly, before the one
   rounding to the shown decimals.
 - Booleans show as `TRUE` and `FALSE`, as in Excel.
@@ -271,8 +285,9 @@ how the export writes it is decided with the export.
 
 A layout sets formats per source column: decimals, thousands separators,
 percent, K/M/B, negatives in parentheses, the display zone, and sub-second
-digits. A measure takes its column's format unless it sets its own; counts and
-variances use their type's default, and shares of a total show as percentages.
+digits; from step 2.8, basis points, 32nds and par suffixes too. A measure
+takes its column's format unless it sets its own; counts and variances use
+their type's default, and shares of a total show as percentages.
 
 Rounding happens only in this formatter. The tests compare it with exact
 big-integer arithmetic on random doubles, many of them next to rounding
@@ -376,9 +391,15 @@ pixels wide therefore needs at most 8,000 points, whether the series has 2,000
 points or 20 million.
 
 Scatter plots and heatmaps become binned densities, and bar charts arrive
-aggregated. Indicators are computed on full-resolution data before the
-reduction. A 200-day moving average computed from downsampled points would be
-wrong.
+aggregated. From step 2.8, a scatter with at most 5,000 rows in the range shown
+sends each row instead, as a dot coloured by its series and sized by a column
+such as DV01, with its own tooltip and selection, so that a bond can be seen,
+hovered and picked on a relative-value chart. A fit column the API sends, such
+as a fitted curve's spread at each bond's duration, is drawn as a line through
+it, reduced with M4 in either form.
+
+Indicators are computed on full-resolution data before the reduction. A 200-day
+moving average computed from downsampled points would be wrong.
 
 Candlestick and OHLC charts bucket rows by a calendar interval cut in New York
 time: minutes, days, Monday-started weeks, months, quarters or years, the
@@ -397,6 +418,16 @@ engine places the axis's ticks and writes their labels, because only it can
 map trading time back to dates; a tick that falls on a closed moment moves to
 where the market next opens and takes that moment's label.
 
+Step 2.8 gives the trading axis a calendar and a session. SIFMA's calendar,
+the US bond market's, closes on Columbus Day and Veterans Day as well, and its
+2 p.m. early closes shorten their days, so closed time still takes no space; a
+session that opens later in the day than it closes, as electronic Treasury
+trading does, opens the evening before. The SIFMA calendar is tested against
+the schedules SIFMA published, the same fixtures `@basis/ui/dates` is tested
+against. A tenor axis places curves and bonds by tenor, `3M` to `30Y`: by
+default the standard tenors sit one step apart, with values between them
+placed by length, or every value by its length in years.
+
 Averages, Bollinger Bands and VWAP are drawn over the price, and widen its
 scale to hold them; RSI, MACD, ATR, the stochastic and volume each get a pane
 under it, on the same x axis, so zooming, panning, the crosshair and a brush
@@ -406,6 +437,13 @@ overlays take the palette's slots after the plotted series, so an average never
 shares a price's colour. The tooltip lists each indicator line's value at the
 crosshair: on a candle, at the last row of its bucket, the one its close comes
 from, and under that row's own date when it differs from the crosshair's.
+
+Step 2.8 generalises panes beyond indicators: a layout lists panes of its own
+columns, as lines or bars, on the same x axis, such as the change in basis
+points under curves for several dates. Any value axis can be reversed, for
+yields, where up is bad for a long position, and a chart says whether a rise
+takes the gain colour or the loss colour, for its candles, volume, histogram
+and change bars alike.
 
 Drawings (trend lines, horizontal lines, Fibonacci retracements, rectangles
 and notes) are saved in the layout, anchored to data rather than to pixels:
@@ -448,6 +486,12 @@ drawing them. Clicking a bar or slice selects its group: the chart emits
 `selectionChange` with the outermost group column and the group's exact key,
 for a host to filter a linked view by, dims the other groups, and clears it on
 a second click. "Other" stands for several groups and selects nothing.
+
+Step 2.8 adds waterfalls, for attribution and P&L explain, which draw the
+grouped view too: each group's bar floats from the running total before it to
+the one after, and a total bar ends them. The running totals are the engine's,
+a measure shown as a running total among its siblings, from exact sums, so the
+last bar ends exactly on the total, and every label is the engine's text.
 
 Charts label what they can without crowding. Category labels along the bottom
 stay level if each fits its share of the width, break onto two lines between
