@@ -1,8 +1,8 @@
 # @basis/ui
 
-The firm's React design system and toolchain: the theme, the components and their icons, the Vite+ preset, and the
-pieces of the app shell built so far (the formatter, the client's fetch, and the mode and density preferences). [The
-basis-ui design](../../docs/design.md) holds the decisions behind them.
+The firm's React design system and toolchain: the theme, the components and their icons, the Vite+ preset, the
+numbers and utils modules, and the pieces of the app shell built so far (the formatter, the client's fetch, and the
+mode and density preferences). [The basis-ui design](../../docs/design.md) holds the decisions behind them.
 
 ## How to build an app on @basis/ui
 
@@ -122,6 +122,31 @@ package.
 
 An icon `@basis/ui` lacks is added to it, as [Adding an icon](#adding-an-icon) describes.
 
+## Using the numbers and utils modules
+
+`@basis/ui/numbers` and `@basis/ui/utils` hold what an app would otherwise add a decimal library or lodash for. Import
+them by subpath:
+
+```ts
+import { Decimal, formatThirtySeconds, percentChange } from "@basis/ui/numbers";
+import { debounce, sortBy, toCsv } from "@basis/ui/utils";
+```
+
+- Read the decimal strings an API sends with `Decimal.from`, and do the arithmetic on the `Decimal`, never on
+  `Number(text)`. Division and `round` take a scale and round half away from zero, Excel's rounding, unless told
+  otherwise; `Decimal.fromNumber` takes both explicitly. Show one through the formatter with
+  `formatter.decimal(value.unscaled, value.scale)`, and give a chart `value.toNumber()`.
+- `sumPrecise` adds doubles exactly, where adding them in turn would drift.
+- Anything with a market convention, such as accrued interest, day counts, yields or risk, is the API's to compute.
+- `utils` follows es-toolkit's signatures, and differs where the types would otherwise lie or lodash surprises:
+  `keyBy`, `countBy` and `fromEntries` return `Partial` records, `zip` types the `undefined` it pads with, `throttle`
+  never calls twice within its wait, and `sortBy` puts missing values last in either order.
+
+The tests check `Decimal` and `sumPrecise` against `tests/fixtures/numbers.json`, which
+`tests/fixtures/generate_numbers.py` writes with Python's `decimal` module. After changing the generator, rewrite the
+fixtures from this package with `uv run tests/fixtures/generate_numbers.py` and commit both: the tests fail while the
+fixtures are older than the generator.
+
 ## Adding a component
 
 1. Port it from shadcn's Base UI source, keeping shadcn's names, props and parts, into
@@ -187,11 +212,13 @@ To add one:
 folder holds the upstream license, which the published package carries, and each file opens with the upstream package,
 its version and its license.
 
-| Folder              | Upstream                                 | License                                             | Changed                                                                                                                    |
-| ------------------- | ---------------------------------------- | --------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `src/vendor/clsx`   | `clsx` 2.1.1                             | MIT                                                 | Rewritten in strict TypeScript, giving the package's output                                                                |
-| `src/vendor/cva`    | `class-variance-authority` 0.7.1         | Apache-2.0                                          | Rewritten in strict TypeScript, giving the package's output; `cx` left out; still named `cva`, which `@shadcn/lint` reads  |
-| `src/vendor/lucide` | `lucide-react` 1.70.0, some of its icons | ISC, and MIT for the icons lucide took from Feather | One `Icon` base without lucide-react's `size`, `color` and stroke props, its context, its `lucide` classes or its children |
+| Folder                   | Upstream                                                                   | License                                             | Changed                                                                                                                    |
+| ------------------------ | -------------------------------------------------------------------------- | --------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `src/vendor/clsx`        | `clsx` 2.1.1                                                               | MIT                                                 | Rewritten in strict TypeScript, giving the package's output                                                                |
+| `src/vendor/cva`         | `class-variance-authority` 0.7.1                                           | Apache-2.0                                          | Rewritten in strict TypeScript, giving the package's output; `cx` left out; still named `cva`, which `@shadcn/lint` reads  |
+| `src/vendor/lucide`      | `lucide-react` 1.70.0, some of its icons                                   | ISC, and MIT for the icons lucide took from Feather | One `Icon` base without lucide-react's `size`, `color` and stroke props, its context, its `lucide` classes or its children |
+| `src/vendor/sum-precise` | The `Math.sumPrecise` polyfill in `tc39/proposal-math-sum`, commit 77d52dc | BSD-3-Clause                                        | Rewritten in strict TypeScript, giving the polyfill's results; without its RangeError at 2^53 carries                      |
 
-`tests/vendor.test.ts` holds clsx's and cva's behaviour, and `tests/icons.test.tsx` the icons'. To move to a newer
-upstream version, copy its changes in, update the headers' versions, and run the tests.
+`tests/vendor.test.ts` holds clsx's and cva's behaviour, `tests/icons.test.tsx` the icons', and
+`tests/sum-precise.test.ts` and `tests/numbers-oracle.test.ts` the sum's. To move to a newer upstream version, copy its
+changes in, update the headers' versions, and run the tests.

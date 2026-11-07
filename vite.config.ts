@@ -9,6 +9,9 @@ const { lint } = preset;
 /* Parallax keeps its own checks (cargo, and ESLint and Prettier for its Angular layer) until roadmap step 2.6 replaces
  * that layer with React, so the root checks skip it. */
 const parallax = "packages/parallax/**";
+/* Test fixtures that a script writes, one case a line, are rewritten by their script rather than formatted, and their
+ * tests fail when the script has changed since. */
+const generatedFixtures = "packages/*/tests/fixtures/*.json";
 // A spike's reference code runs in the spike's own throwaway project, whose dependencies this workspace lacks.
 const spikeCode = ["docs/spikes/**/*.ts", "docs/spikes/**/*.mjs"];
 // The repo's own scripts, package tests and the preset run in Node, unlike an app's code, which runs in a browser.
@@ -16,7 +19,7 @@ const nodeCode = ["packages/*/scripts/**", "packages/*/tests/**", "packages/ui/s
 
 export default defineConfig({
   fmt: {
-    ignorePatterns: [parallax],
+    ignorePatterns: [parallax, generatedFixtures],
   },
   lint: {
     ...lint,

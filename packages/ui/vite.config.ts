@@ -7,7 +7,7 @@ export default defineConfig({
     dts: {
       generator: "tsgo",
     },
-    entry: ["src/index.ts", "src/preset/index.ts"],
+    entry: ["src/index.ts", "src/preset/index.ts", "src/numbers/index.ts", "src/utils/index.ts"],
     /* The React Compiler, as `basisPlugins()` applies it to an app: a component that breaks the rules of React fails
      * the package's build rather than shipping unoptimized. `vp pack` runs with NODE_ENV=development, which would
      * otherwise add the compiler's hot-reload checks to the published code. */

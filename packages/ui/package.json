@@ -24,6 +24,8 @@
       "default": "./dist/index.mjs"
     },
     "./preset": "./src/preset/index.ts",
+    "./numbers": "./src/numbers/index.ts",
+    "./utils": "./src/utils/index.ts",
     "./styles.css": "./src/styles/styles.css",
     "./theme.css": "./src/styles/theme.css",
     "./tsconfig.json": "./config/tsconfig.json",
@@ -38,6 +40,14 @@
       "./preset": {
         "types": "./dist/preset/index.d.mts",
         "default": "./dist/preset/index.mjs"
+      },
+      "./numbers": {
+        "types": "./dist/numbers/index.d.mts",
+        "default": "./dist/numbers/index.mjs"
+      },
+      "./utils": {
+        "types": "./dist/utils/index.d.mts",
+        "default": "./dist/utils/index.mjs"
       },
       "./styles.css": "./src/styles/styles.css",
       "./theme.css": "./src/styles/theme.css",
