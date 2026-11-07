@@ -84,6 +84,48 @@ const lint: OxlintConfig = {
     "eslint/no-duplicate-imports": ["error", { allowSeparateTypeImports: true }],
     // -1, 0, 1, 2 and 100 read as themselves; other numbers still need a name.
     "eslint/no-magic-numbers": ["error", { ignore: [-1, 0, 1, 2, 100] }],
+    /* The libraries @basis/ui's utilities and icons replace, so that no app adds them back (docs/design.md, Utilities
+     * and Dependencies and the supply chain). Each message names what to use instead. */
+    "eslint/no-restricted-imports": [
+      "error",
+      {
+        paths: [
+          ...["lodash", "lodash-es", "underscore", "es-toolkit", "remeda", "radash"].map(
+            (name) => ({
+              message:
+                "Use @basis/ui/utils, or a native API: Object.groupBy, structuredClone, the Set methods, toSorted. docs/design.md#utilities.",
+              name,
+            }),
+          ),
+          ...["moment", "date-fns", "dayjs", "luxon", "@date-fns/tz"].map((name) => ({
+            message:
+              "Use Temporal and @basis/ui/dates, whose business days follow SIFMA by default, then NYSE and TARGET2.",
+            name,
+          })),
+          ...["decimal.js", "decimal.js-light", "big.js", "bignumber.js"].map((name) => ({
+            message:
+              "Use Decimal from @basis/ui/numbers, which rounds as Excel does unless told otherwise.",
+            name,
+          })),
+          {
+            message:
+              "Import icons from @basis/ui under lucide's names; add a missing one to @basis/ui, as its README says.",
+            name: "lucide-react",
+          },
+        ],
+        patterns: [
+          {
+            group: ["lodash/*", "lodash.*", "es-toolkit/*"],
+            message: "Use @basis/ui/utils or a native API.",
+          },
+          {
+            group: ["date-fns/*", "dayjs/*", "moment/*"],
+            message: "Use Temporal and @basis/ui/dates.",
+          },
+          { group: ["lucide-react/*"], message: "Import icons from @basis/ui." },
+        ],
+      },
+    ],
     // A ternary is often the clearest conditional render; `eslint/no-nested-ternary` still forbids nesting.
     "eslint/no-ternary": "off",
     // With `unicorn/no-typeof-undefined` and `eslint/no-void`, nothing could test for undefined.

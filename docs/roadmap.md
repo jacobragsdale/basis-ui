@@ -165,7 +165,7 @@ phase 1.
    only when its paths change.
 2. **2.2 Delete the server.** Remove `parallax-server`, `parallax-sources`, the client's server paths, the registry,
    `/copy` and `/export`, and CI's database containers. Done when the engine, session and protocol tests pass, the
-   DuckDB and Perspective comparisons included.
+   DuckDB comparisons included.
 3. **2.3 Browser source.** Load Arrow bytes from the app, which passes in its load status, and enforce the row limit
    from spike 0.3 with a clear error. Needs 2.2 and spike 0.3.
 4. **2.4 Export in wasm.** Move xlsx and CSV export into the wasm build, as spike 0.3 found it works. Needs 2.2, and
