@@ -9,18 +9,30 @@
     "directory": "packages/ui"
   },
   "files": [
-    "dist"
+    "dist",
+    "src/styles"
   ],
   "type": "module",
   "exports": {
     ".": "./dist/index.mjs",
+    "./theme.css": "./src/styles/theme.css",
     "./package.json": "./package.json"
   },
   "scripts": {
     "build": "vp pack",
-    "test": "vp test"
+    "test": "vp test",
+    "theme": "node scripts/build-theme.ts"
+  },
+  "dependencies": {
+    "@fontsource-variable/inter": "catalog:",
+    "@fontsource-variable/jetbrains-mono": "catalog:"
   },
   "devDependencies": {
+    "@tailwindcss/node": "catalog:",
+    "@types/culori": "catalog:",
+    "@types/node": "catalog:",
+    "culori": "catalog:",
+    "tailwindcss": "catalog:",
     "typescript": "catalog:",
     "vite-plus": "catalog:"
   }
