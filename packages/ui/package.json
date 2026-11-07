@@ -10,6 +10,7 @@
   },
   "files": [
     "dist",
+    "src/api/mutator.ts",
     "src/styles",
     "src/vendor/*/LICENSE",
     "config"
@@ -24,6 +25,8 @@
       "default": "./dist/index.mjs"
     },
     "./preset": "./src/preset/index.ts",
+    "./orval": "./src/preset/orval.ts",
+    "./mutator": "./src/api/mutator.ts",
     "./numbers": "./src/numbers/index.ts",
     "./utils": "./src/utils/index.ts",
     "./dates": "./src/dates/index.ts",
@@ -43,6 +46,11 @@
         "types": "./dist/preset/index.d.mts",
         "default": "./dist/preset/index.mjs"
       },
+      "./orval": {
+        "types": "./dist/preset/orval.d.mts",
+        "default": "./dist/preset/orval.mjs"
+      },
+      "./mutator": "./src/api/mutator.ts",
       "./numbers": {
         "types": "./dist/numbers/index.d.mts",
         "default": "./dist/numbers/index.mjs"
@@ -82,12 +90,16 @@
     "@vitest/browser-playwright": "catalog:",
     "babel-plugin-react-compiler": "catalog:",
     "cn": "catalog:",
+    "msw": "catalog:",
+    "orval": "catalog:",
     "playwright": "catalog:",
     "tailwindcss": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
     "@tailwindcss/node": "catalog:",
+    "@tanstack/react-query": "catalog:",
+    "@tanstack/react-router": "catalog:",
     "@types/culori": "catalog:",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
@@ -99,6 +111,8 @@
     "vite-plus": "catalog:"
   },
   "peerDependencies": {
+    "@tanstack/react-query": "^5.106.1",
+    "@tanstack/react-router": "^1.170.46",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "vite-plus": "1.5.0"

@@ -6,9 +6,9 @@ through [the contract on basis's design
 page](https://github.com/jacobragsdale/basis/blob/main/docs/design.md#what-a-ui-can-rely-on).
 [docs/design.md](docs/design.md) holds the decisions and their reasons, and [docs/roadmap.md](docs/roadmap.md) the
 phases, their steps, and the lanes that run at the same time. The code is a pnpm workspace run by Vite+'s `vp`, with
-`@basis/ui` in `packages/ui`, its gallery in `packages/gallery`, and parallax, moved in with its history, in
-`packages/parallax`. [packages/ui/README.md](packages/ui/README.md) says how an app uses `@basis/ui` and how a component
-is added.
+`@basis/ui` in `packages/ui`, its gallery in `packages/gallery`, an example app on the app shell and a generated client
+in `packages/example`, and parallax, moved in with its history, in `packages/parallax`.
+[packages/ui/README.md](packages/ui/README.md) says how an app uses `@basis/ui` and how a component is added.
 
 ## Working here
 

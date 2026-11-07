@@ -23,6 +23,62 @@ const corePlugins: NonNullable<OxlintConfig["plugins"]> = [
   "oxc",
 ];
 
+/* The libraries @basis/ui's utilities and icons replace, so that no app adds them back (docs/design.md, Utilities
+ * and Dependencies and the supply chain), and the HTTP client that would bypass the generated one. Each message names
+ * what to use instead. */
+const bannedImports = [
+  ...["lodash", "lodash-es", "underscore", "es-toolkit", "remeda", "radash"].map((name) => ({
+    message:
+      "Use @basis/ui/utils, or a native API: Object.groupBy, structuredClone, the Set methods, toSorted. docs/design.md#utilities.",
+    name,
+  })),
+  ...["moment", "date-fns", "dayjs", "luxon", "@date-fns/tz"].map((name) => ({
+    message:
+      "Use Temporal and @basis/ui/dates, whose business days follow SIFMA by default, then NYSE and TARGET2.",
+    name,
+  })),
+  ...["decimal.js", "decimal.js-light", "big.js", "bignumber.js"].map((name) => ({
+    message:
+      "Use Decimal from @basis/ui/numbers, which rounds as Excel does unless told otherwise.",
+    name,
+  })),
+  {
+    message:
+      "Import icons from @basis/ui under lucide's names; add a missing one to @basis/ui, as its README says.",
+    name: "lucide-react",
+  },
+  {
+    message:
+      "ERROR feature code calls the API only through the generated client: import the operation's hook from src/api/client.ts.",
+    name: "axios",
+  },
+];
+const bannedPatterns = [
+  {
+    group: ["lodash/*", "lodash.*", "es-toolkit/*"],
+    message: "Use @basis/ui/utils or a native API.",
+  },
+  {
+    group: ["date-fns/*", "dayjs/*", "moment/*"],
+    message: "Use Temporal and @basis/ui/dates.",
+  },
+  { group: ["lucide-react/*"], message: "Import icons from @basis/ui." },
+];
+/* The generated client's own files, however the import names them (`#api/generated/...`, `../api/generated/...`):
+ * outside `src/api`, code imports the client through `src/api/client.ts`, which `vp run client-pull` never rewrites. */
+const generatedImports = {
+  message:
+    "ERROR import the generated client through src/api/client.ts, not from src/api/generated, which vp run client-pull rewrites.",
+  regex: "(?:^|[/#])api/generated(?:/|$)",
+};
+/* `fetch`, also as `globalThis.fetch` or `window.fetch`: feature code reaches the API only through the generated client,
+ * whose mutator, @basis/ui's `apiFetch`, attaches the user's token and parses every response by its schema. */
+const bannedFetch = {
+  message:
+    "ERROR feature code calls the API only through the generated client: import the operation's hook from src/api/client.ts.",
+  name: "fetch",
+};
+
 /** The lint block a basis-ui repo's `vite.config.ts` uses, through `basisPreset()`. */
 const lint: OxlintConfig = {
   categories: {
@@ -34,8 +90,8 @@ const lint: OxlintConfig = {
     style: "error",
     suspicious: "error",
   },
-  // The generated client is rewritten by `vp run client-pull`, and checked by regenerating it rather than by lint.
-  ignorePatterns: ["dist/**", "src/api/generated/**"],
+  // The generated client is rewritten by `vp run client-pull`, and checked by `vp run client-check` rather than by lint.
+  ignorePatterns: ["dist/**", "**/src/api/generated/**"],
   jsPlugins: [
     // Ships with Vite+: `vite-plus/prefer-vite-plus-imports`.
     { name: "vite-plus", specifier: "vite-plus/oxlint-plugin" },
@@ -65,6 +121,18 @@ const lint: OxlintConfig = {
       },
     },
     {
+      /* The client layer: the app's `src/api`, which imports the generated client to re-export it, and the place a
+       * `fetch` outside the API, if an app ever needs one, belongs. The libraries' bans still hold. */
+      files: ["**/src/api/**"],
+      rules: {
+        "eslint/no-restricted-globals": "off",
+        "eslint/no-restricted-imports": [
+          "error",
+          { paths: bannedImports, patterns: bannedPatterns },
+        ],
+      },
+    },
+    {
       files: ["**/vite.config.ts"],
       rules: {
         // Vite loads its configuration from the file's default export.
@@ -84,47 +152,11 @@ const lint: OxlintConfig = {
     "eslint/no-duplicate-imports": ["error", { allowSeparateTypeImports: true }],
     // -1, 0, 1, 2 and 100 read as themselves; other numbers still need a name.
     "eslint/no-magic-numbers": ["error", { ignore: [-1, 0, 1, 2, 100] }],
-    /* The libraries @basis/ui's utilities and icons replace, so that no app adds them back (docs/design.md, Utilities
-     * and Dependencies and the supply chain). Each message names what to use instead. */
+    // Outside the client layer, `fetch` is banned, as are the generated files and the libraries @basis/ui replaces.
+    "eslint/no-restricted-globals": ["error", { checkGlobalObject: true, globals: [bannedFetch] }],
     "eslint/no-restricted-imports": [
       "error",
-      {
-        paths: [
-          ...["lodash", "lodash-es", "underscore", "es-toolkit", "remeda", "radash"].map(
-            (name) => ({
-              message:
-                "Use @basis/ui/utils, or a native API: Object.groupBy, structuredClone, the Set methods, toSorted. docs/design.md#utilities.",
-              name,
-            }),
-          ),
-          ...["moment", "date-fns", "dayjs", "luxon", "@date-fns/tz"].map((name) => ({
-            message:
-              "Use Temporal and @basis/ui/dates, whose business days follow SIFMA by default, then NYSE and TARGET2.",
-            name,
-          })),
-          ...["decimal.js", "decimal.js-light", "big.js", "bignumber.js"].map((name) => ({
-            message:
-              "Use Decimal from @basis/ui/numbers, which rounds as Excel does unless told otherwise.",
-            name,
-          })),
-          {
-            message:
-              "Import icons from @basis/ui under lucide's names; add a missing one to @basis/ui, as its README says.",
-            name: "lucide-react",
-          },
-        ],
-        patterns: [
-          {
-            group: ["lodash/*", "lodash.*", "es-toolkit/*"],
-            message: "Use @basis/ui/utils or a native API.",
-          },
-          {
-            group: ["date-fns/*", "dayjs/*", "moment/*"],
-            message: "Use Temporal and @basis/ui/dates.",
-          },
-          { group: ["lucide-react/*"], message: "Import icons from @basis/ui." },
-        ],
-      },
+      { paths: bannedImports, patterns: [...bannedPatterns, generatedImports] },
     ],
     // A ternary is often the clearest conditional render; `eslint/no-nested-ternary` still forbids nesting.
     "eslint/no-ternary": "off",

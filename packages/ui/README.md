@@ -1,17 +1,32 @@
 # @basis/ui
 
-The firm's React design system and toolchain: the theme, the components and their icons, the Vite+ preset, the
-numbers and utils modules, and the pieces of the app shell built so far (the formatter, the client's fetch, and the
-mode and density preferences). [The basis-ui design](../../docs/design.md) holds the decisions behind them.
+The firm's React design system and toolchain: the theme, the components and their icons, the Vite+ preset, the app
+shell (`BasisApp`, sign-in, telemetry and error display), the generated API client's configuration and tasks, and the
+numbers, dates, securities and utils modules. [The basis-ui design](../../docs/design.md) holds the decisions behind
+them.
 
 ## How to build an app on @basis/ui
 
 An app takes its checks, its plugins, its stylesheet, its components and its icons from this one package, and declares
-no styles of its own. basis-ui's `packages/gallery` is an app built this way.
+no styles of its own. basis-ui's `packages/gallery` is an app built this way, and `packages/example` is one that also
+calls an API, through the app shell and a generated client.
 
-Prerequisites: an app repo, in git, with `react` and `react-dom` 19.3 as dependencies and `vite-plus` 1.5.0 and
-TypeScript 7.0 as dev dependencies. Until roadmap step 1.8 publishes `@basis/ui`, install it from a tarball made with
-`vp pm pack` in this package.
+Prerequisites: an app repo, in git, with `react` and `react-dom` 19.3, `@tanstack/react-query` 5, `@tanstack/react-router`
+1 and `zod` 4 as dependencies, and `vite-plus` 1.5.0, TypeScript 7.0, `msw` 3 and `@faker-js/faker` 10 as dev
+dependencies. Until roadmap step 1.8 publishes `@basis/ui`, install it from a tarball made with `vp pm pack` in this
+package.
+
+orval, which generates the client, brings TypeScript 6 with it, through `@orval/zod` and `@orval/hono`. Keep one
+TypeScript in the tree by overriding it in `pnpm-workspace.yaml`, then reinstall and check that `pnpm why typescript`
+finds one version, again after each orval upgrade. orval also brings esbuild, whose install script pnpm refuses to run
+unless told; it only checks the binary pnpm installs anyway, so tell pnpm not to run it:
+
+```yaml
+overrides:
+  typescript: 7.0.2 # the app's own TypeScript
+allowBuilds:
+  esbuild: false
+```
 
 To set the app up:
 
@@ -67,6 +82,169 @@ To set the app up:
 
 To confirm the setup, run `vp check`, `vp test` and `vp build`. The built `dist/index.html` holds the head script, in
 a `<script>` before `</head>`.
+
+## Starting the app
+
+`BasisApp` is the app: it signs the user in, then renders the router's routes inside the providers every app shares.
+An app's entry point and router are these two files:
+
+```tsx
+// src/router.ts
+import { createRouter } from "@tanstack/react-router";
+import { routeTree } from "./routes.ts";
+
+const router = createRouter({ routeTree });
+
+declare module "@tanstack/react-router" {
+  interface Register {
+    router: typeof router;
+  }
+}
+
+export { router };
+```
+
+```tsx
+// src/main.tsx
+import "./styles.css";
+import { BasisApp, fakeSignIn } from "@basis/ui";
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+import { router } from "./router.ts";
+
+const root = document.querySelector("#root");
+if (root === null) {
+  throw new Error("index.html has no #root element for the app to render into.");
+}
+createRoot(root).render(
+  <StrictMode>
+    <BasisApp router={router} signIn={fakeSignIn()} />
+  </StrictMode>,
+);
+```
+
+`BasisApp` takes:
+
+| Prop          | What it is                                                                                             |
+| ------------- | ------------------------------------------------------------------------------------------------------ |
+| `router`      | The app's TanStack Router. Its routes render once the user is known.                                   |
+| `signIn`      | The sign-in adapter: the firm's (roadmap step 1.9), or `fakeSignIn()` in tests and development.        |
+| `telemetry`   | Where errors, events and timings go; `consoleTelemetry` by default.                                    |
+| `queryClient` | The TanStack Query client, for a test that reads its cache; one from `createQueryClient()` by default. |
+
+Inside it, in order: the telemetry, the query client, the toasts (`Toaster`), an error boundary round the whole app,
+the signed-in session, and the router. It keeps the page in the user's mode and density as they change them
+(`followPreferences`), and gives `apiFetch` the adapter's token, so every request carries the user's JWT.
+
+- **Queries.** `createQueryClient()` keeps data fresh for 30 seconds and retries a query twice, but only after a
+  network failure or a 502, 503 or 504, which basis's contract says may pass; a 4xx, a 500 or a response its schema
+  refused shows at once. Mutations never retry.
+- **Routes.** Unless the router sets its own, `BasisApp` gives it an error component, which shows the error on an
+  `ErrorAlert` with "Try again", and a not-found page that links to `/`.
+- **Session.** `useSession()` returns `{ user, signOut }`. `signOut()` signs out through the adapter, drops every
+  cached response, which was the user's, and asks again for what the page shows.
+- **Telemetry.** `useTelemetry()` returns `{ error, event, timing }`. `BasisApp` reports each error its boundary, the
+  router or a failed query or mutation meets, with a `source` attribute (`render`, `route`, `query`, `mutation`,
+  `sign-in`), and each navigation's time as `navigation`. An app reports its own: `useTelemetry().event("position.booked",
+  { book })`. The firm's collector will be a `Telemetry` of its own; `consoleTelemetry` writes to the console.
+
+A sign-in adapter is three functions, `{ currentUser, token, signOut }`: `currentUser()` resolves the signed-in `User`
+(`{ id, name, email? }`) or `null`, and `BasisApp` shows nothing of the app until it does; `token()` resolves the JWT
+for the next request, or `null`; `signOut()` ends the session. `fakeSignIn({ user, issuer, audience, claims })` signs
+in `user` at once (a placeholder user by default, `null` for an anonymous one) and signs each token with the
+development key basis publishes, so a basis API on a developer's desktop, such as `basis dev`'s, accepts it when
+`issuer` and `audience` match its `BASIS_IDENTITY__ISSUER` and `BASIS_IDENTITY__AUDIENCE` (`basis-development` by
+default). Every other API refuses it.
+
+## Calling the API
+
+The client is generated by orval from the app's `openapi.json`, the pinned copy of its API's document, into
+`src/api/generated`, which no one edits. Copy the document and generate the client with `vp run client-pull`:
+
+```sh
+vp run client-pull ../positions-api v1.4.0                         # from a clone of the API repo, at a tag
+vp run client-pull https://positions.example/api/openapi.json      # from a deployed API
+vp run client-pull                                                 # regenerate from the openapi.json already here
+```
+
+To run `vp dev` against a live API, such as `basis dev`'s on the desktop, set `BASIS_API_URL` to its address, as in
+`BASIS_API_URL=http://127.0.0.1:8000 vp dev`: the preset sends `/api` to it with the prefix removed, as the ingress
+does, and `fakeSignIn()`'s tokens sign the user in.
+
+`vp run client-check`, which `vp run check-full` runs first, fails when `src/api/generated` is not what `openapi.json`
+generates, one line for each file. Its fix is `vp run client-pull`. `@basis/ui/orval` exports `basisOrval()`, the
+configuration both tasks use, from spike 0.2: a Zod 4 schema for each model, which drops fields it does not know, a
+TanStack Query v5 hook for each operation, with every response parsed by its schema, and MSW handlers for each
+operation and status. Two settings never change: `zod.strict` stays off, since it would make every response refuse a
+new field, and `override.zod.schemaExtension` is never set, since it is the one path on which orval calls TypeScript's
+compiler API, which TypeScript 7 does not have.
+
+Code outside `src/api` imports the client through two files of the app's own, which re-export the generated ones:
+
+```ts
+// src/api/client.ts
+/* oxlint-disable oxc/no-barrel-file -- the generated client's whole surface, which changes on every pull. */
+export * from "./generated/client.ts";
+export * from "./generated/model/index.ts";
+```
+
+```ts
+// src/api/mocks.ts: the MSW handlers, for tests and fixture mode
+// oxlint-disable-next-line oxc/no-barrel-file -- the generated handlers, which change on every pull.
+export * from "./generated/client.msw.ts";
+```
+
+The preset's lint keeps feature code on them: outside `src/api`, `fetch` (also as `globalThis.fetch`), `axios` and any
+import of `api/generated` fail with the import to use instead.
+
+A hook returns the response as `{ data, status, headers }`, so a component reads `query.data.data`, and its error is an
+`ApiError` holding the API's problem details. Show it with `ErrorAlert`, which renders nothing while there is no error:
+
+```tsx
+import { ErrorAlert } from "@basis/ui";
+import { useGetPositions } from "#api/client.ts";
+
+const positions = useGetPositions();
+
+<ErrorAlert
+  error={positions.error}
+  onRetry={() => {
+    positions.refetch().catch(reportError);
+  }}
+/>;
+```
+
+`ErrorAlert` shows the problem's title, its detail, each field a 422 names (`legs[0].price: Must be positive`) and the
+request's reference, and words of its own for a lost connection or a response that broke its schema. A failed
+mutation raises a toast of the same words through `toastError`, unless the mutation says otherwise, as a form that puts
+the errors on its fields does:
+
+```ts
+useCreatePosition({ mutation: { meta: { errorToast: false } } });
+```
+
+`describeError(error)` gives the same words, `{ title, detail, fields, reference }`, for a display of an app's own.
+
+A dataset route, one whose success lists Arrow, is generated to ask for Arrow, and its hook's data is a `Blob` of the
+Arrow IPC stream.
+
+In tests, MSW's service worker stands in for the API: `basisPlugins()` serves its script in `vp dev` and `vp test`
+only. Start it once in a test helper, add each test's handlers, and render the app at an address:
+
+```tsx
+import { setupWorker } from "msw/browser";
+import { createMemoryHistory, createRouter } from "@tanstack/react-router";
+import { getGetPositionsMockHandler } from "#api/mocks.ts";
+
+const worker = setupWorker();
+await worker.start({ onUnhandledFrame: "bypass", quiet: true });
+
+worker.use(getGetPositionsMockHandler([position]));
+const router = createRouter({ history: createMemoryHistory({ initialEntries: ["/"] }), routeTree });
+await render(<BasisApp router={router} signIn={fakeSignIn()} />);
+```
+
+`packages/example`'s `src/test-support.tsx` and its tests do this in full.
 
 ## Using the components
 

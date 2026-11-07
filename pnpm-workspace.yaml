@@ -3,9 +3,15 @@ packages:
 
 catalogMode: strict
 
+# orval bundles its mutator with esbuild, whose install script only checks the platform binary that pnpm installs anyway,
+# so it does not run.
+allowBuilds:
+  esbuild: false
+
 catalog:
   "@babel/core": 7.29.13
   "@base-ui/react": 1.9.0
+  "@faker-js/faker": 10.6.0
   "@fontsource-variable/inter": 5.3.0
   "@fontsource-variable/jetbrains-mono": 5.3.0
   "@rolldown/plugin-babel": 0.3.0
@@ -13,6 +19,8 @@ catalog:
   "@tailwindcss/node": 4.3.5
   "@tailwindcss/vite": 4.3.5
   "@tanstack/react-form": 1.33.5
+  "@tanstack/react-query": 5.106.1
+  "@tanstack/react-router": 1.170.46
   "@types/culori": 4.0.1
   "@types/node": 26.6.6
   "@types/react": 19.3.0
@@ -22,6 +30,8 @@ catalog:
   babel-plugin-react-compiler: 1.0.0
   cn: 0.5.2
   culori: 4.0.2
+  msw: 3.0.4
+  orval: 8.46.0
   playwright: 1.65.0
   react: 19.3.1
   react-dom: 19.3.1
@@ -33,6 +43,9 @@ catalog:
   zod: 4.6.7
 
 overrides:
+  # orval 8.45 and later bring TypeScript 6 through @orval/zod and @orval/hono; only the workspace's TypeScript stays
+  # (docs/spikes/orval.md, answer 1).
+  typescript: "catalog:"
   vite@*: "catalog:"
 
 peerDependencyRules:

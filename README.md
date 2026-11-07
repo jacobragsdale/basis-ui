@@ -5,8 +5,9 @@ are built on, `@basis/ui` and `@basis/parallax`, for a codebase that agents writ
 Vite+ at its strictest settings, and its apps call basis APIs through the contract on basis's design page. The name is a
 placeholder.
 
-`@basis/ui` holds the theme, the Vite+ preset and the first components, which [its gallery](packages/gallery) shows;
-the roadmap's phase 1 fills in the rest. The design and the build order:
+`@basis/ui` holds the theme, the Vite+ preset, the app shell and the first components, which
+[its gallery](packages/gallery) shows, and [an example app](packages/example) calls an API through the shell and a
+generated client; the roadmap's phase 1 fills in the rest. The design and the build order:
 
 - [The basis-ui design](docs/design.md): the toolchain, the stack, how agents see a UI, parallax in the browser, and
   why.
