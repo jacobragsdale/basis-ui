@@ -1,8 +1,14 @@
 /* The feedback and display family: Badge so far, every variant, with each status shown by an icon and a word as well
  * as its colour. */
 
-import { Badge } from "@basis/ui";
-import { ArrowUpRight, CircleAlert, CircleCheck, CircleX, Info } from "lucide-react";
+import {
+  ArrowUpRightIcon,
+  Badge,
+  CircleAlertIcon,
+  CircleCheckIcon,
+  CircleXIcon,
+  InfoIcon,
+} from "@basis/ui";
 import type { ReactElement } from "react";
 
 import { Section } from "./section.tsx";
@@ -24,19 +30,19 @@ function BadgeSection(): ReactElement {
       </div>
       <div className="flex flex-wrap items-center gap-2">
         <Badge variant="success">
-          <CircleCheck data-icon="inline-start" />
+          <CircleCheckIcon data-icon="inline-start" />
           Settled
         </Badge>
         <Badge variant="warning">
-          <CircleAlert data-icon="inline-start" />
+          <CircleAlertIcon data-icon="inline-start" />
           Pending
         </Badge>
         <Badge variant="info">
-          <Info data-icon="inline-start" />
+          <InfoIcon data-icon="inline-start" />
           Indicative
         </Badge>
         <Badge variant="destructive">
-          <CircleX data-icon="inline-start" />
+          <CircleXIcon data-icon="inline-start" />
           Failed
         </Badge>
       </div>
@@ -46,7 +52,7 @@ function BadgeSection(): ReactElement {
           render={
             <a href="#badge">
               Trades
-              <ArrowUpRight data-icon="inline-end" />
+              <ArrowUpRightIcon data-icon="inline-end" />
             </a>
           }
         />

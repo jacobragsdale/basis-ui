@@ -5,6 +5,8 @@
     "module": "esnext",
     "moduleResolution": "bundler",
     "moduleDetection": "force",
+    "jsx": "react-jsx",
+    "types": ["vite-plus/client"],
     "noEmit": true,
     "allowImportingTsExtensions": true,
     "skipLibCheck": true,

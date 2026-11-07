@@ -1,7 +1,7 @@
-/* The forms and inputs family: Button so far, every variant at every size, and the states a page puts it in. */
+/* The forms and inputs family: Button, every variant at every size and the states a page puts it in, and ButtonLink,
+ * a link drawn as a Button. */
 
-import { Button, buttonVariants } from "@basis/ui";
-import { ArrowRight, Download, Plus } from "lucide-react";
+import { ArrowRightIcon, Button, ButtonLink, DownloadIcon, PlusIcon } from "@basis/ui";
 import type { ReactElement } from "react";
 
 import { Section } from "./section.tsx";
@@ -43,7 +43,7 @@ function ButtonMatrix(): ReactElement {
               {iconSizes.map((size) => (
                 <td key={size}>
                   <Button variant={variant} size={size} aria-label="Add">
-                    <Plus />
+                    <PlusIcon />
                   </Button>
                 </td>
               ))}
@@ -55,39 +55,72 @@ function ButtonMatrix(): ReactElement {
   );
 }
 
-/** Icons at either end, disabled, invalid, and a link drawn as a button, which is an `<a>` with `buttonVariants`, since
- * Base UI's Button gives whatever it renders the button role. */
+/** Icons at either end, disabled and invalid. */
 function ButtonStates(): ReactElement {
   return (
     <div className="flex flex-wrap items-center gap-2">
       <Button>
-        <Download data-icon="inline-start" />
+        <DownloadIcon data-icon="inline-start" />
         Export
       </Button>
       <Button variant="outline">
         Next
-        <ArrowRight data-icon="inline-end" />
+        <ArrowRightIcon data-icon="inline-end" />
       </Button>
       <Button disabled>Disabled</Button>
       <Button variant="outline" aria-invalid>
         Invalid
       </Button>
-      <a href="#button" className={buttonVariants({ variant: "outline" })}>
-        Back to Button
-      </a>
     </div>
+  );
+}
+
+/** Every variant, every size, and an icon at the end. Each link leads back to Button's section. */
+function ButtonLinkSection(): ReactElement {
+  return (
+    <Section
+      title="ButtonLink"
+      description="A link drawn as a Button, with Button's variants and sizes, which stays a link. Base UI's Button gives whatever it renders the button role."
+    >
+      <div className="flex flex-wrap items-center gap-2">
+        {variants.map((variant) => (
+          <ButtonLink key={variant} href="#button" variant={variant}>
+            {variant}
+          </ButtonLink>
+        ))}
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        {textSizes.map((size) => (
+          <ButtonLink key={size} href="#button" variant="outline" size={size}>
+            {size}
+          </ButtonLink>
+        ))}
+        {iconSizes.map((size) => (
+          <ButtonLink key={size} href="#button" variant="outline" size={size} aria-label={size}>
+            <ArrowRightIcon />
+          </ButtonLink>
+        ))}
+        <ButtonLink href="#button" variant="outline">
+          View trades
+          <ArrowRightIcon data-icon="inline-end" />
+        </ButtonLink>
+      </div>
+    </Section>
   );
 }
 
 function FormsAndInputs(): ReactElement {
   return (
-    <Section
-      title="Button"
-      description="An action. Its variant says how much it matters, and sizes below h-8 keep a 24 px target in the compact density."
-    >
-      <ButtonMatrix />
-      <ButtonStates />
-    </Section>
+    <div className="flex flex-col gap-8">
+      <Section
+        title="Button"
+        description="An action. Its variant says how much it matters, and sizes below h-8 keep a 24 px target in the compact density."
+      >
+        <ButtonMatrix />
+        <ButtonStates />
+      </Section>
+      <ButtonLinkSection />
+    </div>
   );
 }
 
