@@ -20,9 +20,9 @@ Actions.
 | C. Ports    | the firm's Angular library and apps | 4       |
 
 The critical path runs through lane A: the Vite+ and orval spikes, the workspace, the preset, the shell, fixture mode,
-screenshots, the firm's components, the template, and the pilot. Parallax runs alongside phase 1 once the preset exists, and the ports start at
-the firm as soon as the base components set the patterns. The eval's UI tasks run in basis's eval lane, against this
-roadmap's pilot.
+screenshots, the firm's components, the template, and the pilot. Parallax runs alongside phase 1 once the preset exists,
+and the ports start at the firm as soon as the base components set the patterns. The eval's UI tasks run in basis's eval
+lane, against this roadmap's pilot.
 
 ```mermaid
 flowchart TD
@@ -120,11 +120,12 @@ Lane A. Steps 1.3 and 1.4 run at once, and so do 1.8 and 1.9.
 6. **1.6 Screenshots.** Add `vp run shot ROUTE`, writing a screenshot, the accessibility tree and the console errors.
    Visual baselines are made and compared in WSL only, per spike 0.4, and `vp run check-full` says so on Windows. Add
    the skill for driving an app with Playwright CLI. Needs 1.5 and spike 0.4.
-7. **1.7 Template and tasks.** Add the UI repo template, through `vp create` or `pnpm create @basis/app` per spike 0.1,
-   with:
+7. **1.7 Template and tasks.** Add the UI repo template as an `@basis/create` package, which `vp create @basis:app`
+   reads from a registry, per spike 0.1, with:
    - its managed-file headers and drift check;
    - the `AGENTS.md` block, and the skills with their `.claude/skills/` copy;
-   - Vite+'s hooks installed from `prepare`;
+   - Vite+'s hooks installed from `prepare`, with a commit hook that runs `vp staged`, `vp check` and `vp test`, since
+     Vite+ scaffolds only `vp staged`;
    - the Dockerfile serving the built files, and `azure-pipelines.yml` with a `vp run check-full` stage ready for when
      CI exists;
    - the tasks `client-pull`, `review`, `sync`, `upgrade`, `doctor` and `docs`.
@@ -132,8 +133,9 @@ Lane A. Steps 1.3 and 1.4 run at once, and so do 1.8 and 1.9.
    Needs 1.6 and 1.10. Done when a generated UI repo passes `vp run check-full` in WSL, `vp dev` serves its fixture
    pages, and its image serves the build.
 
-8. **1.8 Releases.** One tag releases every package at one version. **(work)** Publish to the internal npm feed through
-   Azure DevOps. Needs 1.7. Done when `v0.1.0` installs from git here and from the internal feed at the firm.
+8. **1.8 Releases.** One tag releases every package, `@basis/create` included, at one version. **(work)** Publish to
+   the internal npm feed through Azure DevOps. Needs 1.7. Done when `v0.1.0` installs from git here and from the
+   internal feed at the firm.
 9. **1.9 Sign-in (work).** Write the adapter for the firm's sign-in system, against the interface from step 1.3. Needs
    1.3.
 10. **1.10 Firm components.** Build the components shadcn does not have, one group per agent at once:
