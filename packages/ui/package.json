@@ -11,6 +11,7 @@
   "files": [
     "dist",
     "src/styles",
+    "src/vendor/*/LICENSE",
     "config"
   ],
   "type": "module",
@@ -60,9 +61,7 @@
     "@vitejs/plugin-react": "catalog:",
     "@vitest/browser-playwright": "catalog:",
     "babel-plugin-react-compiler": "catalog:",
-    "class-variance-authority": "catalog:",
     "cn": "catalog:",
-    "lucide-react": "catalog:",
     "playwright": "catalog:",
     "tailwindcss": "catalog:",
     "zod": "catalog:"

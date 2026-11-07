@@ -1,5 +1,6 @@
-/* The gallery's entry point. index.html's head script has already applied the stored mode and density; a query that
- * names either replaces them for this page alone, and otherwise the page follows the stored choice as it changes. */
+/* The gallery's entry point. The head script that `basisPlugins()` writes into index.html has already applied the
+ * stored mode and density; a query that names either replaces them for this page alone, and otherwise the page follows
+ * the stored choice as it changes. */
 
 import "./styles.css";
 

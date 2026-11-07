@@ -1,9 +1,9 @@
 /* Button's classes, from shadcn's Base UI source with its `dark:` classes and arbitrary values replaced by the theme's
- * tokens and scales. It lives apart from button.tsx because a component file exports only components, so Fast Refresh
- * can swap it. `buttonVariants` also draws a link as a button: Base UI's Button gives any element it renders the
- * button role, so a link keeps its own role only as an `<a>` with these classes. */
+ * tokens and scales. They live apart from button.tsx because ButtonLink draws with them too, and a component file
+ * exports only components (`react/only-export-components`). @basis/ui's own components import them; the package
+ * never exports them, so no app can style a plain element as a button past `shadcn/no-restyle`. */
 
-import { cva } from "class-variance-authority";
+import { cva } from "#vendor/cva/cva.ts";
 
 /** Button's look (`variant`) and height (`size`). Every size shorter than `h-8` carries `min-h-target` and
  * `min-w-target`, so a button stays 24 px across in the compact density, WCAG 2.2's minimum target size. */

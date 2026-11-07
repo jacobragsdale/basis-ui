@@ -1,8 +1,8 @@
 /* The gallery's frame: links to each family's page and to each mode and density, and the current page. Every link is
- * a plain query, so a screenshot can open any page in any combination directly. The links are drawn as buttons with
- * `buttonVariants`, since Base UI's Button would give them the button role. */
+ * a plain query, so a screenshot can open any page in any combination directly. The links are ButtonLinks, links drawn
+ * as buttons. */
 
-import { buttonVariants } from "@basis/ui";
+import { ButtonLink } from "@basis/ui";
 import type { Density, ResolvedMode } from "@basis/ui";
 import type { ReactElement } from "react";
 
@@ -38,17 +38,15 @@ function Choice({ label, parameter, options, current, search }: ChoiceProps): Re
     <nav aria-label={label} className="flex items-center gap-1">
       <span className="pr-1 text-sm text-muted-foreground">{label}</span>
       {options.map((option) => (
-        <a
+        <ButtonLink
           key={option}
           href={withParameter(search, parameter, option)}
           aria-current={option === current ? "true" : undefined}
-          className={buttonVariants({
-            size: "sm",
-            variant: option === current ? "secondary" : "ghost",
-          })}
+          size="sm"
+          variant={option === current ? "secondary" : "ghost"}
         >
           {option}
-        </a>
+        </ButtonLink>
       ))}
     </nav>
   );
@@ -62,17 +60,15 @@ function Gallery({ page, search, mode, density }: GalleryProps): ReactElement {
         <p className="text-sm font-semibold">@basis/ui gallery</p>
         <nav aria-label="Component families" className="flex flex-wrap gap-1">
           {pages.map((entry) => (
-            <a
+            <ButtonLink
               key={entry.id}
               href={withParameter(search, "page", entry.id)}
               aria-current={entry.id === page.id ? "page" : undefined}
-              className={buttonVariants({
-                size: "sm",
-                variant: entry.id === page.id ? "secondary" : "ghost",
-              })}
+              size="sm"
+              variant={entry.id === page.id ? "secondary" : "ghost"}
             >
               {entry.title}
-            </a>
+            </ButtonLink>
           ))}
         </nav>
         <div className="flex flex-wrap gap-6">

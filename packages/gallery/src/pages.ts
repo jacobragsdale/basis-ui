@@ -1,10 +1,11 @@
-/* The gallery's pages, one per component family in the design's order. A family's agent owns its page and the page's
- * test, so families built at once never edit the same file. */
+/* The gallery's pages, one per component family in the design's order, then the icons. A family's agent owns its page
+ * and the page's test, so families built at once never edit the same file. */
 
 import type { ReactElement } from "react";
 
 import { FeedbackAndDisplay } from "./pages/feedback-and-display.tsx";
 import { FormsAndInputs } from "./pages/forms-and-inputs.tsx";
+import { Icons } from "./pages/icons.tsx";
 import { NavigationAndLayout } from "./pages/navigation-and-layout.tsx";
 import { OverlaysAndMenus } from "./pages/overlays-and-menus.tsx";
 
@@ -20,6 +21,7 @@ const pages: readonly [GalleryPage, ...GalleryPage[]] = [
   { Content: OverlaysAndMenus, id: "overlays-and-menus", title: "Overlays and menus" },
   { Content: NavigationAndLayout, id: "navigation-and-layout", title: "Navigation and layout" },
   { Content: FeedbackAndDisplay, id: "feedback-and-display", title: "Feedback and display" },
+  { Content: Icons, id: "icons", title: "Icons" },
 ];
 
 /** The page a query asks for with `?page=`, or the first page. */

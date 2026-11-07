@@ -4,29 +4,6 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@basis/ui gallery</title>
-    <!-- @basis/ui's headScript, which applies the stored mode and density before the first paint. A test holds it to the package's copy. -->
-    <script>
-      (() => {
-        try {
-          const match = /(?:^|;\s*)basis-ui-preferences=([a-z]+)\.([a-z]+)/.exec(document.cookie);
-          const stored = match === null ? "system" : match[1];
-          const mode =
-            stored === "light" || stored === "dark"
-              ? stored
-              : matchMedia("(prefers-color-scheme: dark)").matches
-                ? "dark"
-                : "light";
-          const root = document.documentElement;
-          root.classList.toggle("dark", mode === "dark");
-          root.style.colorScheme = mode;
-          if (match !== null && match[2] === "compact") {
-            root.dataset.density = "compact";
-          }
-        } catch {
-          // Without cookies or matchMedia the page keeps the light, comfortable default.
-        }
-      })();
-    </script>
   </head>
   <body>
     <div id="root"></div>

@@ -8,6 +8,7 @@ import { lazyPlugins } from "vite-plus";
 import type { PluginOption, ViteUserConfig } from "vite-plus";
 import type { OxlintConfig } from "vite-plus/lint";
 
+import { headScriptPlugin } from "./head-script.ts";
 import { lint } from "./lint.ts";
 
 type Task = NonNullable<NonNullable<ViteUserConfig["run"]>["tasks"]>[string];
@@ -46,8 +47,9 @@ function basisPreset(): BasisPreset {
   };
 }
 
-/** React with the React Compiler, which fails the build on any component it cannot optimize, and Tailwind. They load
- * only when a command needs them, so `vp lint` and `vp fmt` stay fast. */
+/** React with the React Compiler, which fails the build on any component it cannot optimize, Tailwind, and the head
+ * script that applies the stored mode and density before the first paint, written into the app's index.html. They
+ * load only when a command needs them, so `vp lint` and `vp fmt` stay fast. */
 function basisPlugins(): PluginOption[] {
   return (
     lazyPlugins(async () => {
@@ -61,6 +63,7 @@ function basisPlugins(): PluginOption[] {
         import("@tailwindcss/vite"),
       ]);
       return [
+        headScriptPlugin(),
         react(),
         babel({ presets: [reactCompilerPreset({ panicThreshold: "all_errors" })] }),
         tailwindcss(),

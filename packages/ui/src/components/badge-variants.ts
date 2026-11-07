@@ -1,8 +1,8 @@
 /* Badge's classes, from shadcn's Base UI source with its `dark:` classes and arbitrary values replaced by the theme's
- * tokens and scales, and with the theme's status variants added. It lives apart from badge.tsx because a component
- * file exports only components. */
+ * tokens and scales, and with the theme's status variants added. They live apart from badge.ts so that another
+ * component can draw with them, since a component file exports only components; the package never exports them. */
 
-import { cva } from "class-variance-authority";
+import { cva } from "#vendor/cva/cva.ts";
 
 /** Badge's look. The status variants sit on their status's `-subtle` tint, with the status colour as text, a pair the
  * theme holds to 5.5:1; show the status with an icon or a word as well as the colour. */

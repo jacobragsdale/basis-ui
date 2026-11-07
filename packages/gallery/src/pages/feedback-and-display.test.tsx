@@ -1,7 +1,6 @@
 import "#styles.css";
 
-import { Badge } from "@basis/ui";
-import { CircleCheck } from "lucide-react";
+import { Badge, CircleCheckIcon } from "@basis/ui";
 import { describe, expect, test } from "vite-plus/test";
 import { render } from "vitest-browser-react";
 
@@ -50,7 +49,7 @@ describe("Badge", () => {
   test("an icon beside the word leaves the word as its text", async () => {
     const screen = await render(
       <Badge variant="success">
-        <CircleCheck data-icon="inline-start" />
+        <CircleCheckIcon data-icon="inline-start" />
         Settled
       </Badge>,
     );

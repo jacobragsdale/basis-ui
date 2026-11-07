@@ -3,9 +3,10 @@
 
 import { mergeProps } from "@base-ui/react/merge-props";
 import { useRender } from "@base-ui/react/use-render";
-import type { VariantProps } from "class-variance-authority";
 import { cn } from "cn";
 import type { ReactElement } from "react";
+
+import type { VariantProps } from "#vendor/cva/cva.ts";
 
 import { badgeVariants } from "./badge-variants.ts";
 

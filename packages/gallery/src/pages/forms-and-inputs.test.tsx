@@ -1,7 +1,7 @@
 import "#styles.css";
 
-import { Button, buttonVariants } from "@basis/ui";
-import { Plus } from "lucide-react";
+import { Button, ButtonLink, PlusIcon } from "@basis/ui";
+import type { ComponentProps, ReactElement } from "react";
 import { describe, expect, test } from "vite-plus/test";
 import { render } from "vitest-browser-react";
 
@@ -43,7 +43,7 @@ describe("Button", () => {
   test("an icon button is named by its aria-label", async () => {
     const screen = await render(
       <Button size="icon" aria-label="Add">
-        <Plus />
+        <PlusIcon />
       </Button>,
     );
     await expect.element(screen.getByRole("button", { name: "Add" })).toBeVisible();
@@ -54,20 +54,9 @@ describe("Button", () => {
     await expect.element(screen.getByRole("button", { name: "Save" })).toBeDisabled();
   });
 
-  test("render swaps its element but keeps the button role, so links use buttonVariants", async () => {
+  test("render swaps its element but keeps the button role, so links use ButtonLink", async () => {
     const screen = await render(<Button nativeButton={false} render={<span>Save</span>} />);
     await expect.element(screen.getByRole("button", { name: "Save" })).toBeVisible();
-  });
-
-  test("buttonVariants draws a link as a button, and it stays a link", async () => {
-    const screen = await render(
-      <a href="#positions" className={buttonVariants({ variant: "outline" })}>
-        Positions
-      </a>,
-    );
-    const link = screen.getByRole("link", { name: "Positions" });
-    await expect.element(link).toHaveAttribute("href", "#positions");
-    expect(link.element().getBoundingClientRect().height).toBe(32);
   });
 
   test.each(variants)("the %s variant is a button named by its text", async (variant) => {
@@ -106,7 +95,7 @@ describe("Button", () => {
     async (size, side) => {
       const screen = await render(
         <Button size={size} aria-label="Add">
-          <Plus />
+          <PlusIcon />
         </Button>,
       );
       const box = screen.getByRole("button", { name: "Add" }).element().getBoundingClientRect();
@@ -120,10 +109,99 @@ describe("Button", () => {
       await inCompactDensity(async () => {
         const screen = await render(
           <Button size={size} aria-label="Add">
-            <Plus />
+            <PlusIcon />
           </Button>,
         );
         const box = screen.getByRole("button", { name: "Add" }).element().getBoundingClientRect();
+        expect(box.height).toBeGreaterThanOrEqual(24);
+        expect(box.width).toBeGreaterThanOrEqual(24);
+      });
+    },
+  );
+});
+
+/** A stand-in for a router's link component, which renders an `<a>` of its own. */
+function RouterLink({
+  to,
+  children,
+  ...props
+}: ComponentProps<"a"> & { readonly to: string }): ReactElement {
+  return (
+    <a href={`#${to}`} data-router="true" {...props}>
+      {children}
+    </a>
+  );
+}
+
+/** The computed look that tells one variant from another. */
+function lookOf(element: Element): string {
+  const style = getComputedStyle(element);
+  return [style.backgroundColor, style.color, style.borderColor, style.height].join(" ");
+}
+
+describe("ButtonLink", () => {
+  test("is a link named by its text, to its href, marked as a button with its variant and size", async () => {
+    const screen = await render(
+      <ButtonLink href="#positions" variant="outline" size="sm">
+        Positions
+      </ButtonLink>,
+    );
+    const link = screen.getByRole("link", { name: "Positions" });
+    await expect.element(link).toHaveAttribute("href", "#positions");
+    await expect.element(link).toHaveAttribute("data-slot", "button");
+    await expect.element(link).toHaveAttribute("data-variant", "outline");
+    await expect.element(link).toHaveAttribute("data-size", "sm");
+  });
+
+  test("render makes it the router's link, which stays a link", async () => {
+    const screen = await render(
+      <ButtonLink variant="secondary" render={<RouterLink to="trades" />}>
+        Trades
+      </ButtonLink>,
+    );
+    const link = screen.getByRole("link", { name: "Trades" });
+    await expect.element(link).toHaveAttribute("href", "#trades");
+    await expect.element(link).toHaveAttribute("data-router", "true");
+    await expect.element(link).toHaveAttribute("data-variant", "secondary");
+  });
+
+  test.each(variants)("the %s variant looks like the Button of that variant", async (variant) => {
+    const screen = await render(
+      <>
+        <Button variant={variant}>Save</Button>
+        <ButtonLink href="#save" variant={variant}>
+          Save
+        </ButtonLink>
+      </>,
+    );
+    const button = screen.getByRole("button", { name: "Save" }).element();
+    const link = screen.getByRole("link", { name: "Save" }).element();
+    expect(lookOf(link)).toBe(lookOf(button));
+  });
+
+  test.each(textSizes)(
+    "the %s size is %i px tall in the comfortable density",
+    async (size, height) => {
+      const screen = await render(
+        <ButtonLink href="#save" size={size}>
+          Save
+        </ButtonLink>,
+      );
+      const box = screen.getByRole("link", { name: "Save" }).element().getBoundingClientRect();
+      expect(box.height).toBe(height);
+    },
+  );
+
+  test.each(allSizes)(
+    "the %s size stays at least 24 px across in the compact density, WCAG 2.2's minimum target",
+    async (size) => {
+      await inCompactDensity(async () => {
+        const screen = await render(
+          <ButtonLink href="#add" size={size} aria-label="Add">
+            <PlusIcon />
+          </ButtonLink>,
+        );
+        const box = screen.getByRole("link", { name: "Add" }).element().getBoundingClientRect();
         expect(box.height).toBeGreaterThanOrEqual(24);
         expect(box.width).toBeGreaterThanOrEqual(24);
       });
@@ -137,5 +215,18 @@ describe("the forms and inputs page", () => {
     const perVariant = variants.length * textSizes.length;
     expect(screen.getByRole("button", { name: "Save" }).all()).toHaveLength(perVariant);
     expect(screen.getByRole("button", { name: "Add" }).all()).toHaveLength(perVariant);
+  });
+
+  test("shows a ButtonLink of every variant and every size", async () => {
+    const screen = await render(<FormsAndInputs />);
+    const links = screen.container.querySelectorAll<HTMLElement>('a[data-slot="button"]');
+    const shownVariants = new Set([...links].map((link) => link.dataset["variant"]));
+    const shownSizes = new Set([...links].map((link) => link.dataset["size"]));
+    for (const variant of variants) {
+      expect(shownVariants, variant).toContain(variant);
+    }
+    for (const size of allSizes) {
+      expect(shownSizes, size).toContain(size);
+    }
   });
 });
