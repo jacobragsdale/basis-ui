@@ -13,7 +13,6 @@ import type { AnyRouter, ErrorComponentProps } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import type { ReactElement } from "react";
 
-import { setTokenSource } from "#api/fetch.ts";
 import { ButtonLink } from "#components/button-link.ts";
 import {
   Empty,
@@ -29,9 +28,10 @@ import { followPreferences } from "#theme/preferences.ts";
 
 import { toastError } from "./toast-error.tsx";
 import { createQueryClient } from "./query-client.ts";
+import { useSessionState } from "./session-state.ts";
 import { SessionContext } from "./session.ts";
-import type { Session } from "./session.ts";
-import type { SignIn, User } from "./sign-in.ts";
+import { signInProblem } from "./sign-in-problems.ts";
+import type { SignIn } from "./sign-in.ts";
 import { TelemetryContext, consoleTelemetry, useTelemetry } from "./telemetry.ts";
 import type { Telemetry } from "./telemetry.ts";
 
@@ -48,14 +48,10 @@ interface BasisAppProps {
   readonly queryClient?: QueryClient;
 }
 
-type SignInState =
-  | { readonly status: "pending" }
-  | { readonly status: "failed"; readonly error: unknown }
-  | { readonly status: "ready"; readonly user: User | null };
-
 /** Reports every failed query and mutation to telemetry, once its retries are spent, and raises a toast for each
- * failed mutation unless its `meta` says `{ errorToast: false }`. A failed query shows where its data would, through
- * `ErrorAlert`. Returns the unsubscribe. */
+ * failed mutation unless its `meta` says `{ errorToast: false }` or it failed for want of a session, which the sign-in
+ * toast answers (sign-in-problems.ts). A failed query shows where its data would, through `ErrorAlert`. Returns the
+ * unsubscribe. */
 function reportRequests(queryClient: QueryClient, telemetry: Telemetry): () => void {
   const stopQueries = queryClient.getQueryCache().subscribe((event) => {
     if (event.type === "updated" && event.action.type === "error") {
@@ -72,7 +68,10 @@ function reportRequests(queryClient: QueryClient, telemetry: Telemetry): () => v
         mutation: String(event.mutation.options.mutationKey?.[0]),
         source: "mutation",
       });
-      if (event.mutation.meta?.["errorToast"] !== false) {
+      if (
+        event.mutation.meta?.["errorToast"] !== false &&
+        signInProblem(event.action.error) === undefined
+      ) {
         toastError(event.action.error);
       }
     }
@@ -101,49 +100,6 @@ function reportNavigations(router: AnyRouter, telemetry: Telemetry): () => void 
   return () => {
     stopLoads();
     stopResolutions();
-  };
-}
-
-/** Signs the user in through `signIn` once, and again after `retry`. It gives `apiFetch` the adapter's token first. */
-function useSignIn(
-  signIn: SignIn,
-  telemetry: Telemetry,
-): { readonly state: SignInState; readonly retry: () => void; readonly signedOut: () => void } {
-  const [state, setState] = useState<SignInState>({ status: "pending" });
-  const [attempt, setAttempt] = useState(0);
-  useEffect(() => {
-    setTokenSource(signIn.token);
-    let live = true;
-    const start = async (): Promise<void> => {
-      try {
-        const user = await signIn.currentUser();
-        if (live) {
-          setState({ status: "ready", user });
-        }
-      } catch (error) {
-        if (live) {
-          telemetry.error(error, { attempt, source: "sign-in" });
-          setState({ error, status: "failed" });
-        }
-      }
-    };
-    const unexpected = (error: unknown): void => {
-      telemetry.error(error, { source: "sign-in" });
-    };
-    start().catch(unexpected);
-    return (): void => {
-      live = false;
-    };
-  }, [signIn, telemetry, attempt]);
-  return {
-    retry: (): void => {
-      setState({ status: "pending" });
-      setAttempt((previous) => previous + 1);
-    },
-    signedOut: (): void => {
-      setState({ status: "ready", user: null });
-    },
-    state,
   };
 }
 
@@ -222,7 +178,8 @@ function Routes({ router }: { readonly router: AnyRouter }): ReactElement {
 }
 
 /** The app's providers: telemetry, the query client, the toasts, an error boundary round everything, the signed-in
- * session, and the router. It also keeps the page in the user's mode and density as they change them. */
+ * session, and the router. It also keeps the page in the user's mode and density as they change them, signs the user
+ * out when the API says their session has ended, and asks them to sign in when it says a request needs them to. */
 function BasisApp({
   router,
   signIn,
@@ -231,23 +188,10 @@ function BasisApp({
 }: BasisAppProps): ReactElement {
   // oxlint-disable-next-line react/hook-use-state -- one query client for the app's life, made once; nothing sets it.
   const [queryClient] = useState(() => givenClient ?? createQueryClient());
-  const { state, retry, signedOut } = useSignIn(signIn, telemetry);
+  const { state, retry, session } = useSessionState(signIn, queryClient, telemetry);
   useEffect(() => followPreferences(), []);
   useEffect(() => reportRequests(queryClient, telemetry), [queryClient, telemetry]);
   useEffect(() => reportNavigations(router, telemetry), [router, telemetry]);
-  const session: Session | null =
-    state.status === "ready"
-      ? {
-          signOut: async () => {
-            await signIn.signOut();
-            signedOut();
-            // Every cached response was the user's: each is dropped, and each query on the page asks again.
-            queryClient.getMutationCache().clear();
-            await queryClient.resetQueries();
-          },
-          user: state.user,
-        }
-      : null;
   const report = (error: unknown): void => {
     telemetry.error(error, { source: "render" });
   };

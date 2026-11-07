@@ -44,11 +44,10 @@ jobs:
             ui:
               - "packages/ui/**"
               - "packages/gallery/**"
+              # The client tasks' tests also generate a client from the example's copy of basis's sample document.
               - "packages/example/**"
               # The formatter's tests read the fixtures parallax's Rust formatter writes.
               - "packages/parallax/crates/parallax-engine/tests/fixtures/format.json"
-              # The client tasks' tests generate a client from spike 0.2's document.
-              - "docs/spikes/orval/openapi.json"
               - "package.json"
               - "pnpm-lock.yaml"
               - "pnpm-workspace.yaml"

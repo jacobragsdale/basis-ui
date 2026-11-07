@@ -1,13 +1,14 @@
-/* The app shell's parts that need no page: the fake sign-in's tokens, the query client's retries, and the words an
- * error is shown in. BasisApp itself, ErrorAlert and the error toast are tested in a browser, in packages/example and
- * the gallery. */
+/* The app shell's parts that need no page: the fake sign-in's tokens, the query client's retries, which problems are
+ * sign-in problems, and the words an error is shown in. BasisApp itself, its answers to sign-in problems, ErrorAlert
+ * and the error toast are tested in a browser, in packages/example and the gallery. */
 
 import { describe, expect, test } from "vite-plus/test";
 import { z } from "zod";
 
 import { ApiError, describeError, fakeSignIn } from "#index.ts";
 import type { AnyProblem } from "#index.ts";
-import { shouldRetry } from "#shell/query-client.ts";
+import { shouldRetry, shouldRetryMutation } from "#shell/query-client.ts";
+import { signInProblem } from "#shell/sign-in-problems.ts";
 
 /** basis's development key's public part, as basis publishes it. */
 const developmentPublicKey: JsonWebKey = {
@@ -84,6 +85,18 @@ describe(fakeSignIn, () => {
     expect(await signIn.currentUser()).toBeNull();
     expect(await signIn.token()).toBeNull();
   });
+
+  test("signs its user in again after a sign-out, and an anonymous one in as the placeholder user", async () => {
+    const signedOut = fakeSignIn({ user: { id: "desk-head", name: "Desk Head" } });
+    await signedOut.signOut();
+    await signedOut.signIn();
+    expect(await signedOut.currentUser()).toStrictEqual({ id: "desk-head", name: "Desk Head" });
+    expect(await signedOut.token()).not.toBeNull();
+    const anonymous = fakeSignIn({ user: null });
+    await anonymous.signIn();
+    const placeholder = await anonymous.currentUser();
+    expect(placeholder?.id).toBe("dev-user");
+  });
 });
 
 describe(shouldRetry, () => {
@@ -101,6 +114,45 @@ describe(shouldRetry, () => {
     expect(shouldRetry(0, new TypeError("Failed to fetch"))).toBe(true);
     expect(shouldRetry(0, z.number().safeParse("five").error)).toBe(false);
     expect(shouldRetry(0, new Error("a bug"))).toBe(false);
+  });
+});
+
+describe(shouldRetryMutation, () => {
+  const keysUnavailable = apiError(503, {
+    status: 503,
+    title: "The sign-in system's keys are unavailable",
+    type: "keys-unavailable",
+  });
+
+  test("retries a keys-unavailable 503 twice, since basis refused it before any handler ran", () => {
+    expect(shouldRetryMutation(0, keysUnavailable)).toBe(true);
+    expect(shouldRetryMutation(1, keysUnavailable)).toBe(true);
+    expect(shouldRetryMutation(2, keysUnavailable)).toBe(false);
+  });
+
+  test.each([
+    ["another 503", apiError(503)],
+    ["a 502", apiError(502, { type: "call-failed" })],
+    ["a 504", apiError(504, { type: "deadline-exceeded" })],
+    ["a 422", apiError(422)],
+    ["a lost connection", new TypeError("Failed to fetch")],
+  ])("never retries %s, which may have come after the write", (_name, error) => {
+    expect(shouldRetryMutation(0, error)).toBe(false);
+  });
+});
+
+describe(signInProblem, () => {
+  test.each(["invalid-token", "sign-in-required"])("reads a 401 %s by its type", (type) => {
+    expect(signInProblem(apiError(401, { status: 401, type }))).toBe(type);
+  });
+
+  test.each([
+    ["a keys-unavailable 503", apiError(503, { type: "keys-unavailable" })],
+    ["a 401 of another type", apiError(401, { type: "about:blank" })],
+    ["a 403", apiError(403, { type: "invalid-token" })],
+    ["a lost connection", new TypeError("Failed to fetch")],
+  ])("finds none in %s, so it never signs the user out", (_name, error) => {
+    expect(signInProblem(error)).toBeUndefined();
   });
 });
 

@@ -4,10 +4,13 @@ import { createContext, use } from "react";
 
 import type { User } from "./sign-in.ts";
 
-/** Who is signed in, and how to sign them out. */
+/** Who is signed in, and how to sign them in and out. */
 interface Session {
   /** The signed-in user, or `null` for an anonymous one. */
   readonly user: User | null;
+  /** Signs the user in through the sign-in adapter, then drops every cached response, which was the anonymous
+   * user's, and asks again for what the page shows, with the user's token. */
+  readonly signIn: () => Promise<void>;
   /** Signs the user out through the sign-in adapter, then drops every cached response, which was theirs, and asks
    * again for what the page shows. */
   readonly signOut: () => Promise<void>;
@@ -15,7 +18,8 @@ interface Session {
 
 const SessionContext = createContext<Session | null>(null);
 
-/** The signed-in session: `const { user, signOut } = useSession();`. Only components inside `BasisApp` have one. */
+/** The signed-in session: `const { user, signIn, signOut } = useSession();`. Only components inside `BasisApp` have
+ * one. */
 function useSession(): Session {
   const session = use(SessionContext);
   if (session === null) {

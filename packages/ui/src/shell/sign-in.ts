@@ -18,6 +18,9 @@ interface SignIn {
   /** The user's JWT for the next request, renewed before it expires, or `null` while no one is signed in. `apiFetch`
    * calls it for every request and sends it as `Authorization: Bearer`. */
   readonly token: () => Promise<string | null>;
+  /** Signs in a user who is anonymous or whose session has ended. An adapter may leave the page for the sign-in
+   * system's; once it resolves, `BasisApp` asks `currentUser` again and asks again for what the page shows. */
+  readonly signIn: () => Promise<void>;
   /** Ends the user's session. An adapter may leave the page for the sign-in system's; `BasisApp` then shows the app
    * as the anonymous user sees it. */
   readonly signOut: () => Promise<void>;
@@ -73,7 +76,8 @@ async function signWithDevelopmentKey(claims: Readonly<Record<string, unknown>>)
 }
 
 interface FakeSignInOptions {
-  /** Who is signed in: a placeholder user by default, or `null` for an anonymous one. */
+  /** Who is signed in at the start: a placeholder user by default, or `null` for an anonymous one, whom `signIn`
+   * signs in as the placeholder user. */
   readonly user?: User | null;
   /** The token's `iss`, which must be the API's `BASIS_IDENTITY__ISSUER`. `basis-development` by default. */
   readonly issuer?: string;
@@ -86,7 +90,7 @@ interface FakeSignInOptions {
 /** A sign-in adapter for tests and development: `user` is signed in at once, and each token is a JWT for them, signed
  * with basis's development key, with their `name` and `email` as claims. A basis API on a developer's desktop whose
  * settings verify with the development key, such as `basis dev`'s, accepts it; any other refuses it with a 401.
- * `signOut` makes the user anonymous. */
+ * `signOut` makes the user anonymous, and `signIn` signs them in again at once. */
 function fakeSignIn({
   user = fakeUser,
   issuer = developmentKeyId,
@@ -97,6 +101,11 @@ function fakeSignIn({
   let signed: { readonly token: string; readonly expires: number } | null = null;
   return {
     currentUser: async () => Promise.resolve(current),
+    signIn: async () => {
+      current = user ?? fakeUser;
+      signed = null;
+      await Promise.resolve();
+    },
     signOut: async () => {
       current = null;
       signed = null;

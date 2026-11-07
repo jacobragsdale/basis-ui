@@ -37,7 +37,7 @@ fix reaches all of them in one upgrade.
 | `vp check`                      | Formatting, linting and type checking together                                                                                        |
 | `vp test`                       | The Vitest suites, in Vitest's browser mode with the Playwright provider                                                              |
 | `vp dev`                        | The app in fixture mode, on a free port per git worktree, with no backend                                                             |
-| `vp run check-full`             | `client-check`, `check` and `test`, plus screenshot comparison in WSL                                                                 |
+| `vp run check-full`             | `client-check`, `tsc --noEmit` on the whole app, generated client included, `check` and `test`, plus screenshot comparison in WSL     |
 | `vp run shot ROUTE`             | A screenshot of a page, its accessibility tree and its console errors                                                                 |
 | `vp run client-pull`            | Copies the API's `openapi.json` from the API repo at a tag, or from a deployed API, and regenerates the client                        |
 | `vp run client-check`           | Whether the generated client still matches the repo's `openapi.json`: a task of its own, since an app cannot add a step to `vp check` |
@@ -46,9 +46,11 @@ fix reaches all of them in one upgrade.
 | `vp run doctor`, `vp run docs`  | Check the desktop's setup and print the fix for each problem; print the docs for the installed version                                |
 
 The `vp run` tasks come from `@basis/ui`'s preset, which an app's `vite.config.ts` spreads in, so every UI repo has the
-same ones. As in basis, every file `vp run sync` writes opens with a line saying that basis-ui manages it, the drift
-check fails when someone edits one, and every failure is one line that starts with `ERROR`, gives the reason and ends
-with the fix.
+same ones. `check-full`'s `tsc --noEmit`, from the app's installed TypeScript, is what type-checks the generated client:
+`vp check` lints around `src/api/generated`, so a type error there, such as one an upgrade of `@basis/ui`'s mutator
+causes, would pass it. As in basis, every file `vp run sync` writes opens with a line saying that basis-ui manages it,
+the drift check fails when someone edits one, and every failure is one line that starts with `ERROR`, gives the reason
+and ends with the fix.
 
 A UI repo is made with `vp create` and `@basis/ui`'s template, if Vite+ accepts a template from a package, and with
 `pnpm create @basis/app` if it does not.
@@ -136,7 +138,10 @@ by its schema before a component sees it. A response's schema checks every field
 not, so that an API can add a field without breaking a UI already deployed, as basis's contract promises.
 
 The app shell owns startup, sign-in (it attaches the user's JWT to every request through orval's custom fetch), routing,
-the generated client, telemetry, and how errors are shown, reading RFC 9457 problem details. Feature code reaches the
+the generated client, telemetry, and how errors are shown, reading RFC 9457 problem details. It answers the sign-in
+problems basis's contract names by their type: `invalid-token` means the session has ended, so the shell signs the user
+out through the sign-in adapter and says so; `sign-in-required` asks the user to sign in; and `keys-unavailable`, a 503
+while the sign-in system's keys cannot be fetched, is retried and never signs the user out. Feature code reaches the
 backend only through the generated client, which Oxlint's built-in `no-restricted-imports` and `no-restricted-globals`
 (for `fetch`) enforce.
 
@@ -182,9 +187,10 @@ The firm's own components cover what shadcn does not:
   date.
 - **Forms.** Fields bind to the Zod schemas orval generates, so a form checks what the API's document declares. Errors
   the API returns land on the fields they name, leaving a page with unsaved changes asks first, and a destructive action
-  asks for typed confirmation. Placing errors on fields needs basis's contract to say where a problem details response
-  names the field at fault, which it does not yet. Spike 0.2 found the shape it needs, RFC 9457's own `errors` list of
-  `{detail, pointer}`, and basis-ui has asked basis for it (jacobragsdale/basis#7).
+  asks for typed confirmation. basis's contract names each field at fault in a 422's `errors`, RFC 9457's own list of
+  `{detail, pointer}`, with `{detail, parameter}` for a query or path parameter, the shape spike 0.2 found and basis-ui
+  asked basis for (jacobragsdale/basis#7). `fieldErrors` names each field as TanStack Form does, so the errors go
+  straight onto the form; the example app's settlement form does this.
 - **Data.** `DataTable`, on TanStack Table, is for small data whose cells hold links and buttons; past its row cap it
   fails with a message that points to parallax's grid. An entity picker searches through the generated client. File
   import reads CSV and xlsx, previews the rows, and checks them against a schema before anything is sent.

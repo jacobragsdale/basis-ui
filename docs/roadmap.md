@@ -142,7 +142,7 @@ Lane A. Steps 1.3 and 1.4 run at once, and so do 1.8 and 1.9.
     - numbers and dates: the display components, the TypeScript formatter tested against fixtures written by parallax's
       Rust formatter, the number inputs, the as-of date picker and the date ranges;
     - forms: fields bound to orval's Zod schemas, the unsaved-changes guard and typed confirmation, and errors placed on
-      fields once basis's contract says where a problem details response names them;
+      the fields a 422's `errors` names, as basis's contract gives them;
     - data: `DataTable` with its row cap, the entity picker, and file import;
     - the shell's parts: sidebar, breadcrumbs, user menu, environment banner, command palette, filter bar, saved views,
       split panes and shortcuts;

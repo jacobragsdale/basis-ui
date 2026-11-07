@@ -68,8 +68,9 @@ function basisPreset(): BasisPreset {
     lint,
     run: {
       tasks: {
-        // Screenshot comparison in WSL joins these in step 1.6.
-        "check-full": { command: ["vp run client-check", "vp check", "vp test"] },
+        /* `tsc --noEmit` type-checks the whole app with the installed TypeScript, the generated client included, which
+         * `vp check` lints around. Screenshot comparison in WSL joins these in step 1.6. */
+        "check-full": { command: ["vp run client-check", "tsc --noEmit", "vp check", "vp test"] },
         "client-check": clientTask("check"),
         "client-pull": clientTask("pull"),
         docs: notYet("docs", "1.7"),

@@ -1,6 +1,6 @@
 /* RFC 9457 problem details, as basis's contract promises every error is. `@basis/ui` carries its own schemas rather
- * than an app's generated ones, so the shared client can read any app's errors; the field-error shape is the one
- * basis-ui asked basis to add to its contract (jacobragsdale/basis#7). */
+ * than an app's generated ones, so the shared client can read any app's errors. A 422 names each field at fault in
+ * `errors`, by a JSON Pointer into the body or by a parameter's name, as basis's docs/contract.md (Errors) gives it. */
 
 import { z } from "zod";
 
