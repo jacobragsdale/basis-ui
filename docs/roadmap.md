@@ -150,6 +150,12 @@ Lane A. Steps 1.3 and 1.4 run at once, and so do 1.8 and 1.9.
 
     Each has its gallery page. Needs 1.3, 1.4, and 2.1 for the formatter's fixtures.
 
+11. **1.11 Utilities.** Build the four modules the design's Utilities section lists, two agents at once: `dates`, with
+    the SIFMA calendar first since the firm trades US fixed income, then the NYSE's and TARGET2's, alongside
+    `securities`; then `numbers` and `utils`. `Decimal` is checked against fixtures Python's `decimal` module writes,
+    and each calendar against its published holidays. The imports they replace are added to the preset's
+    `no-restricted-imports` in a pull request of its own. Needs 1.2.
+
 ## Phase 2: parallax in the browser
 
 Lane B. Needs step 1.1 to move in, spike 0.3 for the browser source, and step 1.2 for the React layer. It runs alongside
