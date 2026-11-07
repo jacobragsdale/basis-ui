@@ -40,3 +40,26 @@ export {
   type ResolvedMode,
 } from "./theme/preferences.ts";
 export { tokenNames } from "./theme/tokens.ts";
+export {
+  ApiError,
+  apiFetch,
+  apiPrefix,
+  arrowStream,
+  isApiError,
+  setTokenSource,
+  type AnyProblem,
+  type ApiRequestInit,
+  type ApiResponse,
+  type ErrorType,
+  type TokenSource,
+} from "./api/fetch.ts";
+export {
+  fieldErrorSchema,
+  fieldErrors,
+  pointerPath,
+  problemSchema,
+  validationProblemSchema,
+  type FieldError,
+  type Problem,
+  type ValidationProblem,
+} from "./api/problem.ts";

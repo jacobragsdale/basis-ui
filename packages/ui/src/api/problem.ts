@@ -1,0 +1,69 @@
+// RFC 9457 problem details, as basis's contract promises every error is. `@basis/ui` carries its own schemas rather
+// than an app's generated ones, so the shared client can read any app's errors; the field-error shape is the one
+// basis-ui asked basis to add to its contract (jacobragsdale/basis#7).
+
+import { z } from "zod";
+
+/** Problem details. Every member is optional in RFC 9457; `type` defaults to `about:blank`. Unknown members are kept,
+ * since a problem type may add its own. */
+export const problemSchema = z.looseObject({
+  type: z.string().default("about:blank"),
+  title: z.string().optional(),
+  status: z.number().int().optional(),
+  detail: z.string().optional(),
+  instance: z.string().optional(),
+});
+
+/** One field's error in a 422: a request-body field named by a JSON Pointer, or a query or path parameter by name. */
+export const fieldErrorSchema = z.union([
+  z.object({ detail: z.string(), pointer: z.string() }),
+  z.object({ detail: z.string(), parameter: z.string() }),
+]);
+
+/** A 422's problem details, naming each field at fault. */
+export const validationProblemSchema = problemSchema.extend({
+  errors: z.array(fieldErrorSchema),
+});
+
+export type Problem = z.infer<typeof problemSchema>;
+export type FieldError = z.infer<typeof fieldErrorSchema>;
+export type ValidationProblem = z.infer<typeof validationProblemSchema>;
+
+/** The path a JSON Pointer in URI-fragment form names, such as `#/legs/0/price` → `["legs", 0, "price"]`. `#` alone
+ * names the whole body, an empty path. Returns `undefined` for text that is not a fragment pointer. */
+export function pointerPath(pointer: string): readonly (string | number)[] | undefined {
+  if (!pointer.startsWith("#")) {
+    return undefined;
+  }
+  const decoded = decodeURIComponent(pointer.slice(1));
+  if (decoded === "") {
+    return [];
+  }
+  if (!decoded.startsWith("/")) {
+    return undefined;
+  }
+  return decoded
+    .slice(1)
+    .split("/")
+    .map((token) => token.replaceAll("~1", "/").replaceAll("~0", "~"))
+    .map((token) => (/^(?:0|[1-9]\d*)$/u.test(token) ? Number(token) : token));
+}
+
+/** A 422's errors keyed by the form field each names, as a dotted path such as `legs.0.price`; errors for the whole
+ * body sit under `""`, and parameters under their names. */
+export function fieldErrors(
+  problem: Problem | ValidationProblem,
+): ReadonlyMap<string, readonly string[]> {
+  const byField = new Map<string, string[]>();
+  // A problem type may define its own `errors` member, so only the contract's shape is read.
+  const parsed = validationProblemSchema.safeParse(problem);
+  if (!parsed.success) {
+    return byField;
+  }
+  for (const error of parsed.data.errors) {
+    const path = "pointer" in error ? pointerPath(error.pointer) : [error.parameter];
+    const key = path === undefined ? "" : path.join(".");
+    byField.set(key, [...(byField.get(key) ?? []), error.detail]);
+  }
+  return byField;
+}
