@@ -148,7 +148,9 @@ cross-origin calls. Where that routing is not possible, the API declares the UI'
 app, which suits a team that wants to own every line, but across the firm's repos it means as many copies drifting
 apart, and a fix that reaches none of them. Here a fix or a new variant lands once and reaches every app through `vp run
 upgrade`, and `no-restyle` keeps each component looking the same everywhere. When no variant fits, the variant is added
-to `@basis/ui`, never restyled in an app.
+to `@basis/ui`, never restyled in an app. For the same reason `@basis/ui` exports no `*Variants` helpers, through which
+an app could style a plain element past the lint: an element that must look like another component is a component of
+its own, such as `ButtonLink`.
 
 Each component starts from shadcn's source for Base UI, which is MIT-licensed, and keeps shadcn's names, props and parts
 (`Card`, `CardHeader`, `CardContent`), so what agents already know about shadcn applies here. From shadcn, `@basis/ui`
@@ -248,6 +250,38 @@ This repo's `vp check` runs the theme's checks, since no app can change the them
 - the gallery's screenshots, in light and dark, comfortable and compact, match their baselines.
 
 Apps' routes are screenshotted in light and dark, at the comfortable density.
+
+## Utilities
+
+`@basis/ui` carries the utilities apps need, in four modules, so that no app adds lodash, a date library or a decimal
+library. They do display arithmetic only: anything with a market convention, such as accrued interest, day counts,
+yields, risk or returns over long series, is computed by the API, so the firm has one implementation of each.
+
+| Module                 | What it holds                                                                                                                                                                                                                                                                                                                                             |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@basis/ui/numbers`    | `Decimal`, exact fixed-point arithmetic on `BigInt` with explicit rounding, for the decimal strings APIs send; `sumPrecise` for doubles; basis points, percent and tick rounding; Treasury prices in 32nds; percent change and shares of a total                                                                                                          |
+| `@basis/ui/dates`      | Business days on the SIFMA calendar, the default, since the firm trades US fixed income, then the NYSE's and TARGET2's for euro settlement, each its rules plus a dated list of exceptions, since markets close on unscheduled days; month, quarter and year to date; settlement dates; market status; tenors such as `3M` and `10Y`; how stale a time is |
+| `@basis/ui/securities` | CUSIP, ISIN and SEDOL checks, CUSIP to ISIN, and branded identifier types, so a ticker cannot pass where a CUSIP is due                                                                                                                                                                                                                                   |
+| `@basis/ui/utils`      | The collection helpers modern JavaScript lacks (`keyBy`, `partition`, `chunk`, `uniqBy`, a multi-key `sortBy` and others), `deepEqual` and `stableStringify`, `debounce` and `throttle`, type guards such as `assertNever`, and CSV and TSV writers that neutralize formula injection                                                                     |
+
+A date field names its calendar, SIFMA unless it says otherwise. Dates use Temporal, which the firm's Chrome has shipped
+since version 144, so no date library is needed; grouping uses `Object.groupBy`, cloning `structuredClone`, and set
+operations the Set methods. `Decimal` is tested against Python's `decimal` module and the calendars against the
+exchanges' published holidays. The preset's `no-restricted-imports` rejects `lodash`, `lodash-es`, `underscore`,
+`es-toolkit`, `moment`, `date-fns`, `dayjs`, `decimal.js` and `big.js` in apps, and each error names the module or the
+native API to use instead.
+
+## Dependencies and the supply chain
+
+The firm installs packages only from its internal registry, and basis-ui keeps what comes from upstream small. Small,
+stable code is copied into `@basis/ui`'s `src/vendor/`, with its license and the upstream version it came from: `cva`
+and `clsx`, and the lucide icons the components use. Large, maintained packages are mirrored unchanged through the
+internal registry, pinned exactly, and upgraded one reviewed pull request at a time, checked by the gallery's tests and
+screenshots: Base UI and its eight dependencies, `cn`, `@shadcn/lint`, and the toolchain. Forking Base UI would mean
+owning keyboard, focus and screen-reader behaviour across browsers, and losing its fixes. The shadcn CLI, with its 32
+dependencies, is installed nowhere; its repository is read when porting a component. pnpm refuses package versions
+younger than its minimum release age and runs no dependency's install script without approval, which closes the two
+routes the 2025 npm worms used.
 
 ## Charts
 
