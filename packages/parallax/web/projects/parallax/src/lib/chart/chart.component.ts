@@ -368,7 +368,6 @@ const KEYS: Readonly<Partial<Record<string, "in" | "out" | "left" | "right" | "a
       [summary]="summary()"
       [sourceAsOf]="source.frame()?.sourceAsOfMicros ?? null"
       [status]="source.status()"
-      [placement]="source.placement()"
     />
   `,
   styles: CHART_STYLES

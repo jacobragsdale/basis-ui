@@ -14,8 +14,13 @@ behind the design, see [How parallax is designed](design.md).
 | 4 | Grids and pivots for everyday use: search, Excel-style column filters, hiding, reordering and pinning columns, a totals row, grouping from the grid, export from a toolbar, a reworked pivot field list, pie and donut charts, and tables of a few hundred rows that feel instant. |
 | 5 | A prettier default look and themes anyone can make: every colour, font, size and border a token, settable in CSS anywhere or with `defineTheme`; light, dark and system schemes; a second built-in theme, Airy; labels on bars and slices; and a demo with big breakdown charts and a theme studio. |
 
-Releases are semver 0.x until milestone 3. Each milestone publishes
-`@jacobragsdale/parallax` to npm and the `parallax-*` crates to crates.io.
+Milestone 1's server and connectors are gone: basis-ui's step 2.2 deleted them,
+and parallax now runs only in the browser, on Arrow data the app loads. Its
+measurements below that name the server were taken before then.
+
+Basis-ui releases parallax as one npm package with the WebAssembly engine built
+into it, in its roadmap's step 2.7. The Rust crates stay inside the repository
+and are not published.
 
 ## Milestone 3 tools
 
@@ -95,12 +100,13 @@ new token mechanism draws exactly what the old one did.
 1. Repository, CI, licence checks and the synthetic data generator.
 2. Engine core, with the DuckDB differential test suite.
 3. Server, protocol and the WebAssembly build, with tests that the native and
-   WebAssembly builds return identical results.
+   WebAssembly builds return identical results. Basis-ui's step 2.2 deleted the
+   server.
 4. The grid experiment: canvas against virtualized DOM, measured, and the
    choice between them.
 5. Grid features, pivot UI and layouts.
 6. Excel export, with read-back tests.
-7. Connectors:
+7. Connectors, which basis-ui's step 2.2 deleted with the server:
    - SQL Server, including JSON columns
    - Oracle Database, through the same ODBC path
    - Parquet, with the NFS cache
@@ -148,10 +154,11 @@ The design envelope covers:
 
 | Quantity | Design target |
 |---|---|
-| Largest table held on the server | 20 million rows × 60 columns |
 | Largest table held in the browser | 150,000 rows × 40 columns, 70 MB of Arrow (was 5 million) |
 | Distinct values in a text column | about 10,000 |
-| Concurrent users per server | 50 |
+
+The server's targets, 20 million rows × 60 columns held on it and 50 users at
+once, went with it.
 
 ## Performance budgets
 
@@ -161,13 +168,17 @@ for these numbers.
 
 | Measure | Budget |
 |---|---|
-| Browser tab memory, server-held view | ≤ 300 MB |
+| Browser tab memory, written for a view held on the server | ≤ 300 MB |
 | Main-thread time per frame | ≤ 8 ms |
 | Redraw rate | ≤ 30 frames per second |
-| First paint of a 20-million-row server view | ≤ 300 ms |
-| Regroup or re-pivot of 20 million rows | ≤ 500 ms |
-| Server memory | ≤ 1.5 × the raw Arrow size of loaded tables |
+| Regroup or re-pivot, with the CPU throttled four times | ≤ 500 ms |
 | Excel export, 1 million rows × 40 columns | ≤ 30 s |
+
+The re-pivot budget was written for 20 million rows held on the server, and now
+sets the browser's row limit. The memory budget waits to be restated for tables
+held in the browser, from the Citrix repeat of basis-ui's spike 0.3. The
+server's own budgets, a first paint of a 20-million-row view within 300 ms and
+its memory within 1.5 times the loaded tables' Arrow, went with it.
 
 On the build host, single-threaded, an Excel export of 1,000,000 generated
 positions by 40 columns took 28.0 s and the same CSV 8.1 s (2026-11-02).
@@ -217,8 +228,10 @@ a Citrix desktop:
 | A sort, filter or search of such a table, from the input to the screen | ≤ 50 ms |
 
 The demo's performance overlay shows both figures for every grid on the page.
-The figures below were taken on the build host on 2026-11-03, in headless
-Chromium without a GPU, with the server on the same machine. First rows are the
+The figures below were taken on the build host on 2026-11-03 and 2026-11-04, in
+headless Chromium without a GPU, with the server on the same machine, so they
+hold the blotter and the trades on it; they have not been taken again since the
+server was deleted. First rows are the
 median of five loads with an empty cache and five reloads with a full one.
 Sorts are 20 clicks on a header. Each table had the page to itself.
 
@@ -335,9 +348,9 @@ rows, the time from an input such as a click or a keystroke to drawing the
 change it made, and the time from asking for rows to drawing them. It also shows
 tab memory. A **Copy report** button copies those figures with the browser and
 window they were taken on. Tab memory covers the whole tab, worker included,
-only when the server sends `cross_origin_isolated` headers and the page is a
-secure context (HTTPS or localhost); otherwise it is Chromium's JavaScript heap
-for the page, and the report says which. At each milestone the demo runs on a Citrix VDI
-against a test deployment, and the copied report joins the benchmark history
+only when the page is served cross-origin isolated, as the demo's static server
+serves it, and is a secure context (HTTPS or localhost); otherwise it is
+Chromium's JavaScript heap for the page, and the report says which. At each
+milestone the demo runs on a Citrix VDI from a test deployment, and the copied report joins the benchmark history
 next to the benchmark host's figures. The Excel verification workbook is opened
 on the same VDI.

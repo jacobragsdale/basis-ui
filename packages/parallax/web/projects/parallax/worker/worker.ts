@@ -1,7 +1,6 @@
 /**
- * The parallax engine in a Web Worker: the WebAssembly build of the same session
- * code the server runs, so a dataset held in the browser answers views as the
- * server would.
+ * The parallax engine in a Web Worker: the WebAssembly build of the session code,
+ * which answers byte for byte as the native build does.
  *
  * The page sends these messages:
  *
@@ -12,9 +11,6 @@
  * - `export` writes a view's xlsx, whose bytes move back as `exported`, or its
  *   CSV, which goes back as `chunk`s, then `exported`, so that the whole file is
  *   never held here.
- * - `copy` fetches a table's copy from the server's `/copy/{dataset}` endpoint and
- *   loads it; the browser decodes the compressed answer natively. `cancel` stops
- *   a copy the page gave up on.
  * - `message` carries one encoded protocol message, and every reply goes back as
  *   `reply`, in order.
  *
@@ -26,25 +22,10 @@
 
 import init, { Worker as Engine } from "./parallax_wasm.js";
 
-/** A copy to fetch and load. */
-interface CopyRequest {
-  readonly kind: "copy";
-  readonly id: number;
-  readonly dataset: string;
-  readonly parameters: Readonly<Record<string, string>>;
-  readonly url: string;
-}
-
 /** One encoded protocol message. */
 interface ProtocolMessage {
   readonly kind: "message";
   readonly bytes: Uint8Array;
-}
-
-/** The page gave up waiting for a copy. */
-interface CancelCopy {
-  readonly kind: "cancel";
-  readonly id: number;
 }
 
 /** Arrow IPC stream bytes to load as a dataset; the buffer moved here with the message. */
@@ -70,14 +51,10 @@ interface ExportRequest {
   readonly maxCells: number;
 }
 
-type Inbound = CopyRequest | ProtocolMessage | CancelCopy | LoadRequest | ExportRequest;
+type Inbound = ProtocolMessage | LoadRequest | ExportRequest;
 
 function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function isTextRecord(value: unknown): value is Readonly<Record<string, string>> {
-  return isRecord(value) && Object.values(value).every((v) => typeof v === "string");
 }
 
 function isCount(value: unknown): value is number {
@@ -102,20 +79,12 @@ function parseExport(data: Readonly<Record<string, unknown>>): ExportRequest | n
   return { kind: "export", id, format, layout, loadVersion, maxCells };
 }
 
-function parseCopy(data: Readonly<Record<string, unknown>>): CopyRequest | null {
-  const { id, dataset, parameters, url } = data;
-  if (typeof id !== "number" || typeof dataset !== "string" || !isTextRecord(parameters) || typeof url !== "string") {
-    return null;
-  }
-  return { kind: "copy", id, dataset, parameters, url };
-}
-
 /** Reads a message from the page, or null if it is not one this worker knows. */
 function parse(data: unknown): Inbound | null {
   if (!isRecord(data)) {
     return null;
   }
-  const { kind, bytes, id } = data;
+  const { kind, bytes } = data;
   switch (kind) {
     case "message":
       return bytes instanceof Uint8Array ? { kind, bytes } : null;
@@ -123,16 +92,10 @@ function parse(data: unknown): Inbound | null {
       return parseLoad(data);
     case "export":
       return parseExport(data);
-    case "copy":
-      return parseCopy(data);
-    case "cancel":
-      return typeof id === "number" ? { kind, id } : null;
     default:
       return null;
   }
 }
-
-const ARROW_STREAM = "application/vnd.apache.arrow.stream";
 
 const engine: Promise<Engine> = init({ module_or_path: new URL("./parallax_wasm_bg.wasm", import.meta.url) }).then(() => new Engine());
 
@@ -170,49 +133,6 @@ function run(work: () => void, failed: (message: string) => void): void {
     }
     failed(describe(error));
   }
-}
-
-/** Copies being fetched, by request id, so that the page can cancel them. */
-const fetching = new Map<number, AbortController>();
-
-/** Fetches a copy while the engine starts, and returns its bytes. */
-async function fetchCopy(request: CopyRequest, signal: AbortSignal): Promise<Uint8Array> {
-  const response = await fetch(request.url, { credentials: "include", signal });
-  if (!response.ok) {
-    const reason = (await response.text()).trim();
-    throw new Error(`the server answered ${response.status.toString()}${reason === "" ? "" : `: ${reason}`}`);
-  }
-  const type = response.headers.get("content-type") ?? "";
-  if (!type.startsWith(ARROW_STREAM)) {
-    throw new Error(`the server sent ${type === "" ? "no content type" : type}, not an Arrow stream`);
-  }
-  return new Uint8Array(await response.arrayBuffer());
-}
-
-function copy(request: CopyRequest): void {
-  const controller = new AbortController();
-  fetching.set(request.id, controller);
-  const failed = (message: string): void => {
-    fetching.delete(request.id);
-    postMessage({ kind: "failed", id: request.id, message });
-  };
-  Promise.all([fetchCopy(request, controller.signal), engine]).then(
-    ([bytes, e]) => {
-      // A copy the page gave up on is not loaded, so that it holds no memory.
-      if (controller.signal.aborted) {
-        failed("the page stopped waiting for the copy");
-        return;
-      }
-      fetching.delete(request.id);
-      run(() => {
-        const rows = Number(e.loadCopy(request.dataset, JSON.stringify(request.parameters), bytes));
-        postMessage({ kind: "copied", id: request.id, rows });
-      }, failed);
-    },
-    (error: unknown) => {
-      failed(describe(error));
-    }
-  );
 }
 
 /** Loads bytes the page moved here, brings open views up to date, and answers with the rows. */
@@ -264,14 +184,6 @@ addEventListener("message", (event: MessageEvent<unknown>) => {
   const message = parse(event.data);
   if (message === null) {
     postMessage({ kind: "fatal", message: "the parallax worker received a message it does not know" });
-    return;
-  }
-  if (message.kind === "cancel") {
-    fetching.get(message.id)?.abort();
-    return;
-  }
-  if (message.kind === "copy") {
-    copy(message);
     return;
   }
   engine.then(

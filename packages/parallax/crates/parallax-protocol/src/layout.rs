@@ -1460,7 +1460,7 @@ pub fn path_to_json(table: &Table, group_by: &[String], path: &[Scalar]) -> Vec<
 }
 
 impl Layout {
-    /// Describes an engine configuration as a layout, for views the server creates
+    /// Describes an engine configuration as a layout, for views the engine creates
     /// itself, such as drill-throughs. Measures and aggregate filters are not
     /// carried; flat views have none.
     #[must_use]

@@ -16,8 +16,8 @@ function datasetFor(file: string): string {
 }
 
 /**
- * Data the app loads itself, as from its own API: the bytes move into the page's worker, every view of them runs
- * there with no server, and exports are written there too. A file of the user's own loads the same way, within the
+ * Data the app makes itself, as its own API would send it: the bytes move into the page's worker, every view of
+ * them runs there, and exports are written there too. A file of the user's own loads the same way, within the
  * browser's limits, and a load the engine cannot hold ends in a plain reason and a fresh engine.
  */
 @Component({

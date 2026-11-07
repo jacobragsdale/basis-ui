@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, signal, viewChild } from "@angular/core";
+import { ChangeDetectionStrategy, Component, computed, inject, signal, viewChild } from "@angular/core";
 import { GridComponent, PivotComponent, decodeLayout, encodeLayout } from "parallax";
 import type { Density, LayoutInput, Scheme } from "parallax";
 import * as z from "zod/mini";
@@ -6,6 +6,7 @@ import * as z from "zod/mini";
 import { BreakdownsComponent } from "./breakdowns.component";
 import { ChartsComponent } from "./charts.component";
 import { DashboardComponent } from "./dashboard.component";
+import { DemoData, isDemoDataset } from "./data";
 import { TechnicalComponent } from "./technical.component";
 import { ThemeStudioComponent } from "./theme-studio.component";
 import { LOOKS, lookSchema } from "./themes";
@@ -22,6 +23,9 @@ interface Preset {
   readonly layout: LayoutInput;
 }
 
+/** The rows of the large generated datasets, positions and trades. */
+const ROWS = "150,000";
+
 const REFERENCE_PIVOT = {
   group_by: ["fund", "strategy", "sector", "ticker"],
   split_by: ["asset_class"],
@@ -30,7 +34,7 @@ const REFERENCE_PIVOT = {
 } as const satisfies LayoutInput;
 
 /** The views the demo opens, in the order of their tabs. */
-const PRESET_NAMES = ["pivot", "browser", "source", "trades", "sorted", "prices", "small", "dashboard", "breakdowns", "charts", "technical"] as const;
+const PRESET_NAMES = ["pivot", "source", "trades", "sorted", "prices", "small", "dashboard", "breakdowns", "charts", "technical"] as const;
 
 type PresetName = (typeof PRESET_NAMES)[number];
 
@@ -38,25 +42,18 @@ type PresetName = (typeof PRESET_NAMES)[number];
 const PRESETS: Readonly<Record<PresetName, Preset>> = {
   pivot: {
     title: "Positions pivot",
-    about:
-      "200,000 generated positions held on the server. The pivot groups fund, strategy, sector and ticker by asset class. Change it in the settings, double-click a value for the rows behind it, export it to Excel.",
+    about: `${ROWS} generated positions, the most rows a table in the browser holds, loaded into this page and pivoted by the engine compiled to WebAssembly in a worker. The pivot groups fund, strategy, sector and ticker by asset class. Change it in the settings, double-click a value for the rows behind it, export it to Excel.`,
     layout: { dataset: "positions", ...REFERENCE_PIVOT }
-  },
-  browser: {
-    title: "Pivot in the browser",
-    about:
-      "The same positions, copied into this page and pivoted by the same engine compiled to WebAssembly in a worker. Every change is answered without the server; the cells match the server pivot exactly.",
-    layout: { dataset: "positions_browser", ...REFERENCE_PIVOT }
   },
   source: {
     title: "Data from the app",
     about:
-      "Data the app loads itself, as from its own API: the Arrow bytes move into this page's worker, and every view and export of them runs there, with no server. The API says when it read the data and which NaNs it blanked. Open an Arrow stream file to load your own.",
+      "Data the app makes itself, as its own API would send it: the Arrow bytes move into this page's worker, and every view and export of them runs there. The API says when it read the data and which NaNs it blanked. Open an Arrow stream file to load your own, within the browser's limits.",
     layout: { dataset: SAMPLE }
   },
   trades: {
-    title: "1,000,000 trades",
-    about: "A million generated trades held on the server; the browser receives only the rows on screen. Sort by a header, select with the mouse or keyboard, copy with Ctrl+C.",
+    title: `${ROWS} trades`,
+    about: `${ROWS} generated trades loaded into this page; the grid draws only the rows on screen. Sort by a header, select with the mouse or keyboard, copy with Ctrl+C.`,
     layout: { dataset: "trades" }
   },
   sorted: {
@@ -76,7 +73,7 @@ const PRESETS: Readonly<Record<PresetName, Preset>> = {
   small: {
     title: "Small tables",
     about:
-      "Two tables of a few hundred rows, the size most tables are: 300 positions held in this page and run by the WebAssembly engine, and 500 trades held on the server. Every change should feel instant; open Performance to time each one from the click or keystroke to the screen.",
+      "Two tables of a few hundred rows, the size most tables are: 300 positions and 500 trades, each loaded into this page and run by the WebAssembly engine. Every change should feel instant; open Performance to time each one from the click or keystroke to the screen.",
     layout: { dataset: "book" }
   },
   dashboard: {
@@ -87,8 +84,7 @@ const PRESETS: Readonly<Record<PresetName, Preset>> = {
   },
   breakdowns: {
     title: "Breakdowns",
-    about:
-      "Big pies, donuts and bars over the 200,000 positions and the million trades on the server. Bars carry their values and slices their shares; hover a slice to see it in the donut's hole. Click a slice or bar to narrow every other chart of the same dataset to that group, and its chip to show them all again.",
+    about: `Big pies, donuts and bars over the ${ROWS} positions and the ${ROWS} trades. Bars carry their values and slices their shares; hover a slice to see it in the donut's hole. Click a slice or bar to narrow every other chart of the same dataset to that group, and its chip to show them all again.`,
     layout: { dataset: "positions" }
   },
   charts: {
@@ -103,11 +99,7 @@ const PRESETS: Readonly<Record<PresetName, Preset>> = {
       "One ticker's prices with the indicators, chart kind and range the controls set. Indicators are computed by the engine over every row and checked against TA-Lib. Draw with the tools above the chart, measure with Measure, Shift-drag to list those days below, or compare three tickers as percentage changes.",
     layout: { dataset: "prices" }
   },
-  prices: {
-    title: "Daily prices",
-    about: "Daily prices for 50 tickers with fat-tailed returns, held in the browser.",
-    layout: { dataset: "prices", sort: [{ column: "date", descending: true }, { column: "ticker" }] }
-  }
+  prices: { title: "Daily prices", about: "Daily prices for 50 tickers with fat-tailed returns.", layout: { dataset: "prices", sort: [{ column: "date", descending: true }, { column: "ticker" }] } }
 };
 
 const themeSchema = z.enum(["light", "dark", "auto"]);
@@ -462,11 +454,17 @@ export class App {
     return stats === null ? (this.smallTables()?.stats() ?? []) : [{ name, stats }];
   };
 
+  private readonly data = inject(DemoData);
+
   constructor() {
     const link = this.search.layout;
-    if (link !== undefined) {
+    if (link === undefined) {
+      // The pages of views of their own load what they show; the presets shown here load their dataset.
+      this.need(this.layout().dataset);
+    } else {
       decodeLayout(link).then(
         (layout) => {
+          this.need(layout.dataset);
           this.layout.set(layout);
           this.ready.set(true);
         },
@@ -475,6 +473,13 @@ export class App {
           this.ready.set(true);
         }
       );
+    }
+  }
+
+  /** Loads the dataset a view of the header's preset or a shared link names, if the demo serves it. */
+  private need(dataset: string | undefined): void {
+    if (dataset !== undefined && isDemoDataset(dataset) && !this.pageOfViews()) {
+      this.data.need(dataset);
     }
   }
 

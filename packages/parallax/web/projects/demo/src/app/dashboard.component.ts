@@ -1,7 +1,8 @@
-import { ChangeDetectionStrategy, Component, input, signal } from "@angular/core";
+import { ChangeDetectionStrategy, Component, inject, input, signal } from "@angular/core";
 import { ChartComponent, GridComponent, standardTheme } from "parallax";
 import type { ChartSelection, Density, LayoutInput, ParallaxTheme, Scheme } from "parallax";
 
+import { DemoData } from "./data";
 import { withSelection, withShare } from "./layouts";
 import { BLOTTER, BOOK } from "./small.component";
 
@@ -44,7 +45,7 @@ function tile(id: string, title: string, table: Table, layout: Omit<LayoutInput,
         <px-grid [(layout)]="book" [scheme]="scheme()" [theme]="theme()" [density]="density()" [toolbar]="{ group: false }" />
       </section>
       <section data-table="blotter">
-        <h2>Blotter <span>500 trades, held on the server</span></h2>
+        <h2>Blotter <span>500 trades, held in this page</span></h2>
         <px-grid [(layout)]="blotter" [scheme]="scheme()" [theme]="theme()" [density]="density()" [toolbar]="{ group: false }" />
       </section>
     </div>
@@ -143,6 +144,10 @@ export class DashboardComponent {
     }),
     tile("trades-by-side", "Blotter trades by side", "blotter", { group_by: ["side"], measures: withShare(null), group_sort: { by: { measure: 0 }, descending: true }, chart: { kind: "pie" } })
   ];
+
+  constructor() {
+    inject(DemoData).need("book", "blotter");
+  }
 
   /** Filters the tile's table's grid to the group clicked, or shows every row again when it is cleared. */
   protected select(t: Tile, selection: ChartSelection | null): void {

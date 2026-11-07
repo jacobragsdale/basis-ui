@@ -18,7 +18,6 @@ import { ParallaxClient } from "../client";
 import type { Measurement, ViewHandle, Viewport } from "../connection";
 import { pathValue } from "../format";
 import type { CellValue, FrameData } from "../frame";
-import type { ViewPlacement } from "../grid/grid-source";
 import type { Layout } from "../layout";
 import type { TableStatus } from "../proto/parallax_pb";
 import { PIE_SLICES } from "./model";
@@ -41,7 +40,6 @@ export interface ChartSource {
   readonly categories: Signal<CategoryData | null>;
   readonly status: Signal<TableStatus | null>;
   readonly error: Signal<string | null>;
-  readonly placement: Signal<ViewPlacement | null>;
   /** Asks for the chart at a plot size, over an x range or everything. */
   readonly show: (size: PlotSize, range: readonly [number, number] | null) => void;
   /** Asks the engine to measure a series between two axis positions; null without a view or a row to measure. */
@@ -158,7 +156,6 @@ export function chartSource(layout: Signal<Layout | null>): ChartSource {
   const categories = signal<CategoryData | null>(null);
   const status = signal<TableStatus | null>(null);
   const error = signal<string | null>(null);
-  const placement = signal<ViewPlacement | null>(null);
   let current: Current | null = null;
   let generation = 0;
   let destroyed = false;
@@ -184,16 +181,14 @@ export function chartSource(layout: Signal<Layout | null>): ChartSource {
     frame.set(null);
     categories.set(null);
     status.set(null);
-    placement.set(null);
     error.set(null);
     generation += 1;
     const mine = generation;
-    client.connectionFor(next.dataset, next.parameters).then(
-      ({ connection, fallback, loaded }) => {
+    client.connectionFor(next.dataset).then(
+      (connection) => {
         if (destroyed || mine !== generation) {
           return;
         }
-        placement.set({ location: connection.location, fallback, loaded });
         const view = connection.open(
           next.dataset,
           JSON.stringify(next),
@@ -274,7 +269,6 @@ export function chartSource(layout: Signal<Layout | null>): ChartSource {
     categories,
     status,
     error,
-    placement,
     show: (size, range) => {
       wanted = { size, range };
       const next = layout();

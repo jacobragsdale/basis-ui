@@ -6,8 +6,8 @@
 //! [`ChangeSet`](table::ChangeSet) to stay current, and the result equals a view
 //! built from scratch on the new table.
 //!
-//! The same code compiles natively for the server and to WebAssembly for the
-//! browser.
+//! The same code compiles to WebAssembly for the browser and natively for the
+//! tests, which compare it with DuckDB.
 
 pub mod aggregate;
 mod bignum;

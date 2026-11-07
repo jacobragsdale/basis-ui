@@ -100,6 +100,10 @@ pnpm experiment
 
 The results are written to `web/test-results/grid-experiment.json`.
 
-The same method measures the current canvas grid alone. From `web/`, after
+That commit served the demo from the reference server, which held the data and
+sent the browser the rows on screen; basis-ui's step 2.2 deleted it. The same
+method measures the current canvas grid alone, on the demo's 150,000 trades and
+positions held in the browser, so its figures are not comparable with the
+experiment's. From `web/`, after `pnpm build:wasm`, `pnpm build:data` and
 `pnpm build:demo`, run `pnpm performance`; the results go to
 `web/test-results/grid-performance.json`.

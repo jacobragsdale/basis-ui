@@ -1,6 +1,8 @@
-import { ChangeDetectionStrategy, Component, computed, input, signal } from "@angular/core";
+import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from "@angular/core";
 import { ChartComponent, GridComponent, standardTheme } from "parallax";
 import type { Density, LayoutFilter, LayoutIndicator, LayoutInput, ParallaxTheme, Scheme } from "parallax";
+
+import { DemoData } from "./data";
 
 const TICKERS = ["QYE", "ZREZ", "NV"] as const;
 type Ticker = (typeof TICKERS)[number];
@@ -228,6 +230,10 @@ export class TechnicalComponent {
   private readonly brushed = signal<readonly LayoutFilter[]>([]);
   protected readonly rows = signal<LayoutInput>(rowsLayout(this.settings(), []));
   protected readonly rowsTitle = computed(() => (this.brushed().length === 0 ? "Every day shown, newest first: Shift-drag on the chart to narrow them" : "The days brushed on the chart"));
+
+  constructor() {
+    inject(DemoData).need("prices");
+  }
 
   /**
    * New settings remake the chart. Another ticker, start date or comparison draws other rows: the zoom goes, the grid

@@ -76,8 +76,9 @@ function bytesOf(text: string): Uint8Array {
   return Uint8Array.from(new TextEncoder().encode(text));
 }
 
-function welcome(names: readonly string[]): Uint8Array {
-  return toBinary(ServerMessageSchema, create(ServerMessageSchema, { body: { case: "welcome", value: { protocolVersion: 1, datasets: names.map((name) => ({ name })) } } }));
+/** The engine's refusal of a request of view `viewId`, encoded as the worker sends it. */
+function refusal(viewId: number, message: string): Uint8Array {
+  return toBinary(ServerMessageSchema, create(ServerMessageSchema, { requestId: 2n, body: { case: "error", value: { viewId, message } } }));
 }
 
 /** Opens a view and returns the errors it reports. */
@@ -96,73 +97,41 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-describe("BrowserEngine copies", () => {
-  it("loads each table once and forwards protocol messages both ways", async () => {
+describe("BrowserEngine's worker", () => {
+  it("carries protocol messages both ways", () => {
     const { engine, worker } = engineWithWorker();
-    expect(engine.connection.location).toBe("browser");
     // The connection says hello through the worker.
     expect(worker.posted[0]).toMatchObject({ kind: "message" });
-    const first = engine.copy("positions", { b: "2", a: "1" }, "/copy/positions?a=1&b=2");
-    const again = engine.copy("positions", { a: "1", b: "2" }, "/copy/positions?a=1&b=2");
-    expect(worker.ids("copy")).toEqual([1]);
-    expect(worker.posted[1]).toEqual({ kind: "copy", id: 1, dataset: "positions", parameters: { b: "2", a: "1" }, url: "/copy/positions?a=1&b=2" });
-    worker.answer({ kind: "copied", id: 1, rows: 10 });
-    await expect(first).resolves.toBeUndefined();
-    await expect(again).resolves.toBeUndefined();
-    worker.answer({ kind: "reply", bytes: welcome(["positions"]) });
-    await expect(engine.connection.dataset("positions")).resolves.toMatchObject({ name: "positions" });
+    const errors = openView(engine, "positions");
+    expect(worker.sent("message").length).toBe(2);
+    worker.answer({ kind: "reply", bytes: refusal(1, "unknown dataset positions") });
+    expect(errors).toEqual(["unknown dataset positions"]);
   });
 
-  it("forgets a failed copy so that a later view tries again", async () => {
-    const { engine, worker } = engineWithWorker();
-    const failed = engine.copy("positions", {}, "/copy/positions");
-    worker.answer({ kind: "failed", id: 1, message: "the server answered 503" });
-    await expect(failed).rejects.toThrow("503");
-    const retried = engine.copy("positions", {}, "/copy/positions");
-    expect(worker.ids("copy")).toEqual([1, 2]);
-    worker.answer({ kind: "copied", id: 2, rows: 1 });
-    await expect(retried).resolves.toBeUndefined();
-  });
-
-  it("stops on a fatal error or a message it does not know, failing every copy and view", async () => {
+  it("stops on a fatal error or a message it does not know, failing every load and view", async () => {
     for (const bad of [
       { kind: "fatal", message: "the parallax engine did not start" },
       { kind: "reply", bytes: "not bytes" }
     ]) {
       const { engine, worker, workers } = engineWithWorker();
       const errors = openView(engine, "positions");
-      const pending = engine.copy("positions", {}, "/copy/positions");
+      const pending = engine.load("positions", new ArrayBuffer(8));
       worker.answer(bad);
       await expect(pending).rejects.toThrow();
-      await expect(engine.copy("trades", {}, "/copy/trades")).rejects.toThrow();
       await expect(engine.load("trades", new ArrayBuffer(8))).rejects.toThrow();
       expect(errors.length).toBe(1);
-      // The worker ends, releasing the copies it held, and is not replaced: it would fail again.
+      // The worker ends, releasing the tables it held, and is not replaced: it would fail again.
       expect(worker.terminated).toBe(true);
       expect(workers.all.length).toBe(1);
     }
   });
 
-  it("fails every copy when the worker script does not start", async () => {
+  it("fails every load when the worker script does not start", async () => {
     const { engine, worker } = engineWithWorker();
-    const pending = engine.copy("positions", {}, "/copy/positions");
+    const pending = engine.load("positions", new ArrayBuffer(8));
     worker.crash("Failed to fetch a worker script");
     await expect(pending).rejects.toThrow(/did not start.*Failed to fetch a worker script/);
     expect(worker.terminated).toBe(true);
-  });
-
-  it("gives up on a copy that takes too long, and tells the worker to stop fetching it", async () => {
-    vi.useFakeTimers();
-    const { engine, worker } = engineWithWorker();
-    const slow = engine.copy("positions", {}, "/copy/positions", 1_000);
-    const outcome = expect(slow).rejects.toThrow("longer than 1 s");
-    await vi.advanceTimersByTimeAsync(1_000);
-    await outcome;
-    expect(worker.posted).toContainEqual({ kind: "cancel", id: 1 });
-    // A late answer for the abandoned copy changes nothing, and a later view tries again.
-    worker.answer({ kind: "copied", id: 1, rows: 5 });
-    void engine.copy("positions", {}, "/copy/positions", 1_000).catch(() => undefined);
-    expect(worker.ids("copy")).toEqual([1, 2]);
   });
 });
 
@@ -229,6 +198,42 @@ describe("BrowserEngine loads", () => {
     worker.answer({ kind: "failed", id: 2, message: "trades: the stream ends inside a message" });
     await expect(failing).rejects.toThrow();
     await expect(waiting).rejects.toThrow("the stream ends inside a message");
+  });
+});
+
+describe("BrowserEngine loads of bytes still arriving", () => {
+  it("counts as in flight from the call, so a view that opens first waits for the bytes and the load", async () => {
+    const { engine, worker } = engineWithWorker();
+    let arrive: (bytes: ArrayBuffer) => void = () => undefined;
+    const bytes = new ArrayBuffer(8);
+    const loading = engine.load(
+      "positions",
+      new Promise<ArrayBuffer>((resolve) => {
+        arrive = resolve;
+      }),
+      { primaryKey: "position_id" }
+    );
+    const placed = engine.holds("positions");
+    expect(worker.sent("load")).toEqual([]);
+    arrive(bytes);
+    await vi.waitFor(() => {
+      expect(worker.sent("load")).toMatchObject([{ id: 1, dataset: "positions", bytes, primaryKey: "position_id" }]);
+    });
+    expect(worker.transferred[1]).toEqual([bytes]);
+    worker.answer({ kind: "loaded", id: 1, rows: 4 });
+    await expect(loading).resolves.toEqual({ dataset: "positions", rows: 4 });
+    await expect(placed).resolves.toBe(true);
+  });
+
+  it("fails the views waiting with the fetch's reason, and checks the bytes against the limit when they arrive", async () => {
+    const { engine, worker } = engineWithWorker();
+    const failing = engine.load("positions", Promise.reject(new Error("the API answered 503")));
+    await expect(engine.holds("positions")).rejects.toThrow("the API answered 503");
+    await expect(failing).rejects.toThrow("the API answered 503");
+    const big = engine.load("trades", Promise.resolve(new ArrayBuffer(MAX_ARROW_BYTES + 1)));
+    await expect(engine.holds("trades")).rejects.toThrow(`more than the ${String(MAX_ARROW_BYTES)} a table in the browser holds`);
+    await expect(big).rejects.toThrow();
+    expect(worker.sent("load")).toEqual([]);
   });
 });
 

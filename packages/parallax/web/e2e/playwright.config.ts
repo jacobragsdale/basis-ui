@@ -1,12 +1,12 @@
 import { defineConfig, devices } from "@playwright/test";
 
-import server from "./reference-server.json" with { type: "json" };
+import server from "./demo-server.json" with { type: "json" };
 
 /**
- * End-to-end tests run against the reference server, which serves the built demo
- * next to generated datasets. Chromium runs with the GPU disabled, as on the Citrix
- * desktops parallax targets. `in-image.sh` starts the same server from the same
- * file and runs these tests in the pinned Playwright image.
+ * End-to-end tests run against the built demo, served as static files with the
+ * datasets `pnpm build:data` generates. Chromium runs with the GPU disabled, as on
+ * the Citrix desktops parallax targets. `in-image.sh` starts the same server from
+ * the same file and runs these tests in the pinned Playwright image.
  */
 export default defineConfig({
   testDir: ".",
@@ -18,5 +18,5 @@ export default defineConfig({
   reporter: [["list"]],
   use: { baseURL: server.url, viewport: { width: 1400, height: 900 }, launchOptions: { args: ["--disable-gpu", "--disable-gpu-compositing", "--disable-software-rasterizer"] } },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"], viewport: { width: 1400, height: 900 } } }],
-  webServer: { command: server.command, cwd: "../..", url: server.health, reuseExistingServer: true, timeout: 120_000 }
+  webServer: { command: server.command, cwd: "..", url: server.url, reuseExistingServer: true, timeout: 30_000 }
 });

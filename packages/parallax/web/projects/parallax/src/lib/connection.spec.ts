@@ -76,20 +76,6 @@ describe("ViewHandle.measure", () => {
   });
 });
 
-describe("Connection.dataset", () => {
-  it("waits for the welcome, and fails if the connection closes first", async () => {
-    const { connection: c } = connection();
-    const asked = c.dataset("positions");
-    c.receive(toBinary(ServerMessageSchema, create(ServerMessageSchema, { body: { case: "welcome", value: { protocolVersion: 1, datasets: [{ name: "positions", browser: true }] } } })));
-    await expect(asked).resolves.toMatchObject({ name: "positions", browser: true });
-    await expect(c.dataset("trades")).resolves.toBeUndefined();
-    const { connection: closed } = connection();
-    const waiting = closed.dataset("positions");
-    closed.disconnect("gone");
-    await expect(waiting).rejects.toThrow("gone");
-  });
-});
-
 describe("ViewHandle request timing", () => {
   const frame = (configVersion = 0n): FrameData => ({
     viewId: 1,

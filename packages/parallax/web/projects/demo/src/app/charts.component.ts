@@ -1,6 +1,8 @@
-import { ChangeDetectionStrategy, Component, input, signal } from "@angular/core";
+import { ChangeDetectionStrategy, Component, inject, input, signal } from "@angular/core";
 import { ChartComponent, GridComponent, standardTheme } from "parallax";
 import type { ChartSelection, LayoutFilter, LayoutInput, ParallaxTheme, Scheme } from "parallax";
+
+import { DemoData } from "./data";
 
 /** A chart the page shows, with what it says. */
 interface Card {
@@ -35,7 +37,7 @@ function card(id: string, title: string, layout: LayoutInput, linked = false): C
   return { id, title, layout: signal(layout), linked };
 }
 
-/** Every chart kind over the generated data: prices held in the browser, positions on the server. */
+/** Every chart kind over the generated data: daily prices and positions, both loaded into the page. */
 @Component({
   selector: "demo-charts",
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -114,6 +116,10 @@ export class ChartsComponent {
   /** The positions beside the donut, narrowed to a clicked slice's asset class. */
   protected readonly positions = signal<LayoutInput>(positionsLayout(null));
   protected readonly positionsTitle = signal(ALL_POSITIONS);
+
+  constructor() {
+    inject(DemoData).need("prices", "positions");
+  }
 
   /** A slice clicked on the donut narrows its grid to that asset class; clicking it again shows every position. */
   protected select(c: Card, selected: ChartSelection | null): void {

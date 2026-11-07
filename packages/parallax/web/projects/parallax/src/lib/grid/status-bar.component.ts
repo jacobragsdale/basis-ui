@@ -7,7 +7,6 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, ViewEncapsulation, computed, inject, input, signal } from "@angular/core";
 
 import type { TableStatus } from "../proto/parallax_pb";
-import type { ViewPlacement } from "./grid-source";
 import { IconComponent } from "../ui/icon.component";
 
 /** The zone the status bar shows times in. */
@@ -74,11 +73,6 @@ const STATUS_STYLES = `
     padding: 1px calc(var(--_px-spacing) * 1.5);
     border-radius: 8px;
     color: var(--_px-on-accent);
-  }
-  px-status-bar .px-badge-neutral {
-    padding: 0 calc(var(--_px-spacing) * 1.25);
-    border: 1px solid var(--_px-border-color);
-    color: inherit;
   }
   px-status-bar .px-badge-warning {
     background: var(--_px-warning);
@@ -169,8 +163,6 @@ export class StatusBarComponent {
   public readonly sourceAsOf = input<bigint | null>(null);
   /** The table's status from the engine. */
   public readonly status = input<TableStatus | null>(null);
-  /** Where the view runs. */
-  public readonly placement = input<ViewPlacement | null>(null);
   /** A short note, such as the result of a copy. */
   public readonly message = input<string>("");
 
@@ -215,28 +207,13 @@ export class StatusBarComponent {
     return { text: `refresh failed${at}`, title: `${status.refreshError}. The grid still shows the last good load.` };
   });
 
-  /** A badge when the view runs in the browser, or runs on the server because its copy did not load. */
-  private readonly where = computed((): Omit<Badge, "kind"> | null => {
-    const placement = this.placement();
-    if (placement?.location === "browser") {
-      const title = placement.loaded ? "This view runs in your browser, on the data this page loaded." : "This view runs in your browser, on a copy of the server's table, with the same engine.";
-      return { text: "in browser", classes: "px-badge px-badge-neutral px-status-where", role: null, title };
-    }
-    if (placement !== null && placement.fallback !== null) {
-      return { text: "on server", classes: "px-badge px-badge-warning px-status-where", role: null, title: placement.fallback };
-    }
-    return null;
-  });
-
-  /** The badges after the age: blanked NaNs, a failed refresh, and where the view runs. */
+  /** The badges after the age: blanked NaNs and a failed refresh. */
   protected readonly badges = computed((): readonly Badge[] => {
     const nans = this.nans();
     const failed = this.failed();
-    const where = this.where();
     return [
       ...(nans === null ? [] : [{ kind: "nans", text: nans.text, classes: "px-badge px-badge-warning", role: null, title: nans.title }]),
-      ...(failed === null ? [] : [{ kind: "failed", text: failed.text, classes: "px-badge px-badge-danger", role: "status", title: failed.title }]),
-      ...(where === null ? [] : [{ kind: "where", ...where }])
+      ...(failed === null ? [] : [{ kind: "failed", text: failed.text, classes: "px-badge px-badge-danger", role: "status", title: failed.title }])
     ];
   });
 
@@ -256,16 +233,6 @@ export class StatusBarComponent {
     ];
     if (status !== null && status.refreshError !== "") {
       items.push({ term: "Last refresh", value: status.refreshError });
-    }
-    const placement = this.placement();
-    if (placement !== null) {
-      const runs =
-        placement.location === "server"
-          ? (placement.fallback ?? "on the server")
-          : placement.loaded
-            ? "in this browser, on the data this page loaded"
-            : "in this browser, on a copy of the server's table";
-      items.push({ term: "Runs", value: runs });
     }
     return items;
   });

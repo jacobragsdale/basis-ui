@@ -1,15 +1,15 @@
-//! Arrow IPC files: round trips and batch-size independence.
+//! Arrow IPC files and streams: round trips and batch-size independence.
 
 mod common;
 
 use std::fs::File;
 use std::path::PathBuf;
 
-use arrow_ipc::reader::FileReader;
+use arrow_ipc::reader::{FileReader, StreamReader};
 use common::RowHasher;
 use parallax_datagen::positions::{Positions, PositionsOptions};
 use parallax_datagen::prices::{Prices, PricesOptions};
-use parallax_datagen::{Dataset, write_ipc_file};
+use parallax_datagen::{Dataset, IpcFormat, write_ipc, write_ipc_file};
 
 fn temp_path(name: &str) -> PathBuf {
     PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join(name)
@@ -45,6 +45,31 @@ fn files_read_back_identically_whatever_the_batch_size() {
         assert_eq!(summary.batches, 10_000u64.div_ceil(batch_rows));
         assert_eq!(file_hash(&path), (expected.finish(), 10_000));
     }
+}
+
+#[test]
+fn streams_read_back_as_the_files_do() {
+    let dataset = Positions::new(PositionsOptions {
+        rows: 10_000,
+        hostile: true,
+        ..PositionsOptions::default()
+    })
+    .unwrap();
+    let file = temp_path("positions-file.arrow");
+    let stream = temp_path("positions.arrows");
+    write_ipc_file(&dataset, &file, 4_096).unwrap();
+    let summary = write_ipc(&dataset, &stream, 4_096, IpcFormat::Stream).unwrap();
+    assert_eq!((summary.rows, summary.batches), (10_000, 3));
+    assert_eq!(summary.bytes, std::fs::metadata(&stream).unwrap().len());
+    let reader = StreamReader::try_new(File::open(&stream).unwrap(), None).unwrap();
+    let mut hasher = RowHasher::default();
+    let mut rows = 0;
+    for batch in reader {
+        let batch = batch.unwrap();
+        rows += batch.num_rows();
+        hasher.update(&batch);
+    }
+    assert_eq!((hasher.finish(), rows), file_hash(&file));
 }
 
 #[test]

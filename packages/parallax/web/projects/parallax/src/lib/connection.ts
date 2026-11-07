@@ -1,8 +1,8 @@
 /**
  * The protocol client, independent of Angular.
  *
- * One connection carries every view over one transport, a WebSocket to the server
- * or a worker hosting the WebAssembly engine. Two rules keep stale data off the
+ * One connection carries every view over one transport, the messages to and from
+ * the worker hosting the WebAssembly engine. These rules keep stale data off the
  * screen and the engine from being flooded:
  *
  * - A view drops any frame built from an older configuration than the one it last
@@ -28,13 +28,10 @@ import type { ChartFrameData } from "./chart-frame";
 import { decodeDistinct, decodeFrame, FrameError } from "./frame";
 import type { DistinctValue, FrameData } from "./frame";
 import { ClientMessageSchema, ServerMessageSchema } from "./proto/parallax_pb";
-import type { ChartFrame, ChartMeasure, DatasetInfo, DistinctValuesResult, Frame, TableStatus, ViewOpened, Welcome } from "./proto/parallax_pb";
+import type { ChartFrame, ChartMeasure, DistinctValuesResult, Frame, TableStatus, ViewOpened } from "./proto/parallax_pb";
 
 /** The body of a client message, as plain values. */
 export type ClientBody = NonNullable<MessageInitShape<typeof ClientMessageSchema>["body"]>;
-
-/** Where a connection's engine runs. */
-export type EngineLocation = "server" | "browser";
 
 /** Moves encoded messages between the client and an engine. */
 export interface Transport {
@@ -511,65 +508,10 @@ export class Connection {
   private nextRequest = 1n;
   private nextView = 1;
   private readonly views = new Map<number, ViewHandle>();
-  private welcome: Welcome | null = null;
-  private readonly welcomed: Promise<Welcome>;
-  private settleWelcome: { readonly resolve: (welcome: Welcome) => void; readonly reject: (error: Error) => void } | null = null;
   private readonly errors: ((message: string) => void)[] = [];
 
-  /** `location` says where the engine behind `transport` runs. */
-  constructor(
-    private readonly transport: Transport,
-    public readonly location: EngineLocation = "server"
-  ) {
-    this.welcomed = new Promise((resolve, reject) => {
-      this.settleWelcome = { resolve, reject };
-    });
-    // A connection that closes before its welcome rejects; nobody may be waiting.
-    this.welcomed.catch(() => undefined);
+  constructor(private readonly transport: Transport) {
     this.send({ case: "hello", value: { protocolVersion: 1 } });
-  }
-
-  /** Connects to a server's `/ws` endpoint. */
-  public static websocket(url: string): Promise<Connection> {
-    return new Promise((resolve, reject) => {
-      const socket = new WebSocket(url);
-      socket.binaryType = "arraybuffer";
-      let connection: Connection | null = null;
-      socket.addEventListener("open", () => {
-        connection = new Connection({
-          send: (bytes) => {
-            socket.send(new Uint8Array(bytes));
-          },
-          close: () => {
-            socket.close();
-          }
-        });
-        resolve(connection);
-      });
-      socket.addEventListener("message", (event: MessageEvent<unknown>) => {
-        const data = event.data;
-        if (connection !== null && data instanceof ArrayBuffer) {
-          connection.receive(new Uint8Array(data));
-        }
-      });
-      socket.addEventListener("error", () => {
-        reject(new Error(`could not connect to ${url}`));
-      });
-      socket.addEventListener("close", () => {
-        connection?.disconnect("The connection to the server closed. Reload the page to reconnect.");
-      });
-    });
-  }
-
-  /** The datasets the engine offers, once it has said hello. */
-  public get datasets(): readonly string[] {
-    return this.welcome?.datasets.map((d) => d.name) ?? [];
-  }
-
-  /** Waits for the engine's welcome and returns what it says about `name`, or undefined if it has no such dataset. */
-  public async dataset(name: string): Promise<DatasetInfo | undefined> {
-    const welcome = await this.welcomed;
-    return welcome.datasets.find((d) => d.name === name);
   }
 
   /** Reports errors not tied to a view. */
@@ -603,8 +545,6 @@ export class Connection {
 
   /** Marks every view disconnected: pending fetches fail and each view reports `reason`. */
   public disconnect(reason: string): void {
-    this.settleWelcome?.reject(new Error(reason));
-    this.settleWelcome = null;
     for (const view of [...this.views.values()]) {
       view.receiveDisconnect(reason);
     }
@@ -663,16 +603,13 @@ export class Connection {
     }
   }
 
-  /** Handles one encoded server message. */
+  /** Handles one encoded message from the engine. */
   public receive(bytes: Uint8Array): void {
     const message = fromBinary(ServerMessageSchema, bytes);
     const requestId = message.requestId;
     const body = message.body;
     switch (body.case) {
       case "welcome":
-        this.welcome = body.value;
-        this.settleWelcome?.resolve(body.value);
-        this.settleWelcome = null;
         return;
       case "viewOpened":
         this.views.get(body.value.viewId)?.receiveOpened(body.value);

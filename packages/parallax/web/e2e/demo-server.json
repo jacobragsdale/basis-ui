@@ -1,0 +1,1 @@
+{ "command": "node projects/demo/serve.mjs --port 8791", "url": "http://127.0.0.1:8791" }

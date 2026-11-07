@@ -28,4 +28,4 @@ pub mod universe;
 pub mod write;
 
 pub use error::OptionsError;
-pub use write::{Dataset, WriteSummary, batch_ranges, write_ipc_file};
+pub use write::{Dataset, IpcFormat, WriteSummary, batch_ranges, write_ipc, write_ipc_file};

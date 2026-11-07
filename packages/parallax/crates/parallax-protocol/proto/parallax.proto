@@ -1,10 +1,10 @@
 // The parallax wire protocol.
 //
-// One binary WebSocket per browser tab carries every view, tagged by view id. The
-// browser worker that hosts the WebAssembly engine speaks the same messages over
-// postMessage. Control messages are protobuf; rows travel as Arrow IPC streams
-// inside Frame messages. A view's configuration is the layout JSON document, which
-// is versioned and generated from the Rust types.
+// The page and the Web Worker that hosts the WebAssembly engine exchange these
+// messages over postMessage, each tagged by its view's id. Control messages are
+// protobuf; rows travel as Arrow IPC streams inside Frame messages. A view's
+// configuration is the layout JSON document, which is versioned and generated
+// from the Rust types.
 
 syntax = "proto3";
 
@@ -29,7 +29,7 @@ message ClientMessage {
   }
 }
 
-// Sent by the server or worker.
+// Sent by the engine's worker.
 message ServerMessage {
   // The request this replies to, or 0 for frames pushed after a table refresh.
   uint64 request_id = 1;
@@ -59,9 +59,10 @@ message Welcome {
 message DatasetInfo {
   string name = 1;
   repeated string parameters = 2;
-  // The client may copy the dataset into the browser and run its views there,
-  // fetching the copy from the server's /copy/{name} endpoint.
-  bool browser = 3;
+  // Field 3, `browser`, marked a dataset of the deleted server for copying into
+  // the browser.
+  reserved 3;
+  reserved "browser";
 }
 
 message OpenView {

@@ -7,46 +7,54 @@ async function ready(page: Page): Promise<void> {
   await expect(page.locator('[role="grid"]').first()).toHaveAttribute("aria-rowcount", /^[1-9]\d*$/, { timeout: 120_000 });
 }
 
+/**
+ * Counts the protocol messages the page posts to its engine's worker, from before the page's own script runs: each
+ * is a request a view makes of the engine.
+ */
+async function countEngineRequests(page: Page): Promise<() => Promise<number>> {
+  await page.addInitScript(() => {
+    let sent = 0;
+    Object.defineProperty(globalThis, "engineRequests", { get: () => sent });
+    const Native = Worker;
+    globalThis.Worker = class extends Native {
+      public override postMessage(...args: Parameters<Worker["postMessage"]>): void {
+        const message: unknown = args[0];
+        if (typeof message === "object" && message !== null && "kind" in message && message.kind === "message") {
+          sent += 1;
+        }
+        super.postMessage(...args);
+      }
+    };
+  });
+  return () => page.evaluate(() => Number(Reflect.get(globalThis, "engineRequests")));
+}
+
 test.beforeEach(async ({ context }) => {
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
 });
 
-test("every view opens from its tab, and the browser-held ones say so", async ({ page }) => {
+test("every view opens from its tab, with no server", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
+  const sockets: string[] = [];
+  page.on("websocket", (socket) => sockets.push(socket.url()));
   await page.goto("/");
   await ready(page);
   const titles = await page.getByRole("navigation", { name: "Views" }).getByRole("link").allTextContents();
-  expect(titles).toEqual([
-    "Positions pivot",
-    "Pivot in the browser",
-    "Data from the app",
-    "1,000,000 trades",
-    "Largest trades",
-    "Daily prices",
-    "Small tables",
-    "Dashboard",
-    "Breakdowns",
-    "Charts",
-    "Technical analysis"
-  ]);
-  for (const [title, where] of [
-    ["1,000,000 trades", null],
-    ["Daily prices", "in browser"],
-    ["Pivot in the browser", "in browser"],
-    ["Positions pivot", null]
+  expect(titles).toEqual(["Positions pivot", "Data from the app", "150,000 trades", "Largest trades", "Daily prices", "Small tables", "Dashboard", "Breakdowns", "Charts", "Technical analysis"]);
+  for (const [title, rows] of [
+    ["150,000 trades", "150,000 rows"],
+    ["Daily prices", "136,150 rows"],
+    ["Positions pivot", "rows"]
   ] as const) {
     await page.getByRole("link", { name: title }).click();
     await ready(page);
     await expect(page.getByRole("link", { name: title })).toHaveAttribute("aria-current", "page");
     await expect(page.locator(".px-error")).toHaveCount(0);
-    if (where === null) {
-      await expect(page.locator(".px-status-where")).toHaveCount(0);
-    } else {
-      await expect(page.locator(".px-status-where")).toHaveText(where);
-    }
+    await expect(page.locator(".px-status-rows")).toContainText(rows);
   }
   expect(errors).toEqual([]);
+  expect(sockets).toEqual([]);
 });
 
 test("the theme and row density follow their pickers and survive moving to another view", async ({ page }) => {
@@ -93,7 +101,7 @@ test("the performance overlay measures the page and copies its report", async ({
   expect(report).toContain("parallax performance report");
   expect(report).toContain("Showing: trades, grid, light theme, compact rows");
   expect(report).toMatch(/Rows asked to drawn: [\d.]+ ms median/);
-  // examples/experiment.toml isolates the page, but a server already running may not.
+  // The demo's server isolates the page, but another server may not.
   const isolated = await page.evaluate(() => crossOriginIsolated);
   expect(report).toContain(`Cross-origin isolated: ${isolated ? "yes" : "no"}`);
   expect(report).toMatch(/Memory: \d+ MB/);
@@ -109,8 +117,6 @@ test("the small tables open in their places, and the overlay times each one from
   ] as const) {
     await expect(table.locator('[role="grid"]')).toHaveAttribute("aria-rowcount", new RegExp(`^${rows}$`), { timeout: 120_000 });
   }
-  await expect(book.locator(".px-status-where")).toHaveText("in browser");
-  await expect(blotter.locator(".px-status-where")).toHaveCount(0);
   await page.getByRole("button", { name: "Performance" }).click();
   const figure = (key: string): Locator => page.locator(`demo-performance [data-figure="${key}"]`);
   await expect(figure("first-rows-book")).toContainText("after opening", { timeout: 10_000 });
@@ -132,25 +138,20 @@ test("the small tables open in their places, and the overlay times each one from
 });
 
 test("a table of a few hundred rows is held whole, so scrolling it and copying from it ask for nothing", async ({ page }) => {
-  let sent = 0;
-  page.on("websocket", (socket) => {
-    socket.on("framesent", () => {
-      sent += 1;
-    });
-  });
+  const sent = await countEngineRequests(page);
   await page.goto("/?preset=small");
-  // The blotter runs on the server, so its requests cross the socket.
   const blotter = page.locator('section[data-table="blotter"]');
   await expect(blotter.locator('[role="grid"]')).toHaveAttribute("aria-rowcount", "500", { timeout: 120_000 });
   // The first rows are what is in view; the whole table follows them.
   await expect
     .poll(async () => {
-      const before = sent;
+      const before = await sent();
       await page.waitForTimeout(300);
-      return sent - before;
+      return (await sent()) - before;
     })
     .toBe(0);
-  const quiet = sent;
+  const quiet = await sent();
+  expect(quiet).toBeGreaterThan(0);
   const scroll = blotter.locator(".px-scroll");
   await scroll.evaluate((element) => {
     element.scrollTo({ top: element.scrollHeight });
@@ -170,7 +171,7 @@ test("a table of a few hundred rows is held whole, so scrolling it and copying f
     element.scrollTo({ top: element.scrollHeight / 2 });
   });
   await page.waitForTimeout(300);
-  expect(sent).toBe(quiet);
+  expect(await sent()).toBe(quiet);
 });
 
 test.describe("dashboard", () => {

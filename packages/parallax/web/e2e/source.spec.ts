@@ -130,12 +130,12 @@ test("the app's data loads into the worker and shows the status its API sent", a
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await open(page);
-  await expect(page.locator(".px-status-where")).toHaveText("in browser");
   // The API read the data 20 minutes ago, blanked 2 NaNs itself and left 3 for the engine.
   await expect(page.locator(".px-status-age")).toContainText("20 min ago");
   await expect(page.locator(".px-badge-warning")).toHaveText("5 NaN shown blank");
   await page.locator(".px-status-info").click();
-  await expect(page.locator(".px-info")).toContainText("in this browser, on the data this page loaded");
+  await expect(page.locator(".px-info")).toContainText(/Dataset\s*orders/u);
+  await expect(page.locator(".px-info")).toContainText(/Rows in table\s*2,000/u);
   expect(errors).toEqual([]);
 });
 
@@ -214,6 +214,6 @@ test("exports are written in the browser and read back cell for cell", async ({ 
   const lines = text.slice(1).trimEnd().split("\n").slice(1);
   // CSV holds every digit as the engine writes it, such as 247.0 for a whole double.
   expect(lines.map((line) => line.split(",")).map(([id, desk, amount]) => [id, desk, Number(amount)])).toEqual(ROWS.map((r) => [String(r.id), r.desk, r.amount]));
-  // Nothing went to the server.
+  // Nothing was posted anywhere.
   expect(posted).toBe(0);
 });

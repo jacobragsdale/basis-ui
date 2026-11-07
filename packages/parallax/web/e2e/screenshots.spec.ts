@@ -5,8 +5,30 @@
  */
 
 import { expect, test } from "@playwright/test";
+import type { Page } from "@playwright/test";
 
 test.skip(process.env["PARALLAX_PINNED_IMAGE"] !== "1", "Screenshots are compared only in the pinned Playwright image: run pnpm screenshots.");
+
+/**
+ * Paints the whole page again. A rounded corner painted while the page was still loading can come out a shade
+ * different from one painted whole, so a screenshot taken straight away would depend on when the data arrived.
+ */
+async function paintAfresh(page: Page): Promise<void> {
+  await page.evaluate(async () => {
+    const frames = (): Promise<void> =>
+      new Promise((resolve) => {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            resolve();
+          });
+        });
+      });
+    document.body.style.visibility = "hidden";
+    await frames();
+    document.body.style.visibility = "";
+    await frames();
+  });
+}
 
 const CHARTS = 14;
 
@@ -42,6 +64,7 @@ for (const theme of ["light", "dark"] as const) {
     await expect(page.locator("demo-breakdowns .px-status-rows").filter({ hasText: "loading" })).toHaveCount(0, { timeout: 120_000 });
     for (const section of await sections.all()) {
       await section.scrollIntoViewIfNeeded();
+      await paintAfresh(page);
       const id = (await section.getAttribute("data-breakdown")) ?? "";
       await expect(section).toHaveScreenshot(`breakdown-${id}-${theme}.png`, { mask: [section.locator("px-status-bar")], animations: "disabled", caret: "hide", threshold: 0, maxDiffPixels: 0 });
     }
@@ -67,6 +90,7 @@ for (const theme of ["light", "dark"] as const) {
     const book = page.locator('section[data-table="book"]');
     await expect(book.locator('[role="grid"]')).toHaveAttribute("aria-rowcount", "300", { timeout: 60_000 });
     await page.mouse.move(0, 0);
+    await paintAfresh(page);
     await expect(book).toHaveScreenshot(`grid-book-airy-${theme}.png`, { mask: [book.locator("px-status-bar")], animations: "disabled", caret: "hide", threshold: 0, maxDiffPixels: 0 });
   });
 }
@@ -85,6 +109,7 @@ for (const theme of ["light", "dark"] as const) {
     const away = (): Promise<void> => page.mouse.move(0, 0);
     // The toolbar, the pinned ticker and the totals row.
     await away();
+    await paintAfresh(page);
     await expect(book).toHaveScreenshot(`grid-book-${theme}.png`, { ...exactly, mask: [book.locator("px-status-bar")] });
     // The fund's header menu, with its values and their counts.
     await book.locator("canvas.px-canvas").click({ position: { x: 10, y: 36 } });
@@ -94,6 +119,7 @@ for (const theme of ["light", "dark"] as const) {
     await expect(menu).toHaveAttribute("aria-label", "Column fund");
     await expect(menu.locator("px-value-picker input[type=checkbox]")).toHaveCount(8, { timeout: 30_000 });
     await away();
+    await paintAfresh(page);
     await expect(page.locator(".px-popover-panel")).toHaveScreenshot(`grid-header-menu-${theme}.png`, exactly);
     await page.keyboard.press("Escape");
     // The blotter grouped by fund: its groups with their counts, each over its trades.
@@ -105,6 +131,7 @@ for (const theme of ["light", "dark"] as const) {
     await page.locator("px-header-menu").getByRole("menuitem", { name: "Group by this column" }).click();
     await expect(blotter.locator('[role="grid"]')).toHaveAttribute("aria-rowcount", "508");
     await away();
+    await paintAfresh(page);
     await expect(blotter).toHaveScreenshot(`grid-detail-groups-${theme}.png`, { ...exactly, mask: [blotter.locator("px-status-bar")] });
     expect(errors).toEqual([]);
   });

@@ -1,4 +1,4 @@
-/** Functional checks of `<px-grid>` against the reference server. */
+/** Functional checks of `<px-grid>` in the demo. */
 
 import { expect, test } from "@playwright/test";
 import type { Locator, Page } from "@playwright/test";
@@ -529,16 +529,12 @@ test.describe("export", () => {
   });
 
   test("a refused export says why in the status bar", async ({ page }) => {
-    // Answer the post as the server answers a refusal from another origin.
-    await page.route("**/export", async (route) => {
-      const token = new URLSearchParams(route.request().postData() ?? "").get("token") ?? "";
-      const payload = JSON.stringify({ source: "parallax-export", token, error: "the view has 2000000 rows, more than the 1048576 an Excel sheet holds" });
-      // An isolated page, as examples/experiment.toml serves it, shows a frame only from a server that agrees.
-      await route.fulfill({ status: 422, contentType: "text/html", headers: { "cross-origin-embedder-policy": "require-corp" }, body: `<script>parent.postMessage(${payload}, "*");</script>` });
-    });
-    await open(page, "preset=pivot");
+    // 150,000 trades by 25 columns is more than an xlsx written in the browser holds.
+    await open(page, "preset=trades");
     await page.getByRole("button", { name: "Export", exact: true }).first().click();
-    await expect(page.locator(".px-status-message")).toContainText("Export failed: the view has 2000000 rows");
+    await expect(page.locator(".px-status-message")).toContainText("Export failed: the view has 3750025 cells, more than the 1000000 an Excel export here holds; export it as CSV instead", {
+      timeout: 60_000
+    });
   });
 
   test("CSV downloads every digit of the view", async ({ page }) => {
