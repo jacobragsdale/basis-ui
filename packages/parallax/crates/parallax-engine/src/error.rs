@@ -126,6 +126,14 @@ pub enum ConfigError {
         /// What is wrong.
         reason: String,
     },
+    /// A column cannot take the order a view gives it.
+    #[error("order of {column}: {reason}")]
+    Order {
+        /// The column.
+        column: String,
+        /// What is wrong.
+        reason: String,
+    },
     /// A display format cannot be used.
     #[error("format of {column}: {reason}")]
     Format {

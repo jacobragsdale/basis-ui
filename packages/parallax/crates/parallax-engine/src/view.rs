@@ -27,6 +27,7 @@ use crate::column::Column;
 use crate::error::ConfigError;
 use crate::filter::{CompiledFilter, Filter};
 use crate::format::{self, Format, Formatter};
+use crate::order::{Order, Orders};
 use crate::table::{ChangeSet, RemovedRows, Table};
 use crate::types::{ColumnType, Key, Scalar};
 
@@ -150,6 +151,10 @@ pub struct ViewConfig {
     /// no measures, column pivots, aggregate filters or top-N, and sorts groups by
     /// their keys. The grand total is not a row.
     pub detail: bool,
+    /// Orders of text columns other than the engine's text order, such as
+    /// tenors by length: groups at every level, column pivots and sorts follow
+    /// them. Filters still compare text.
+    pub orders: BTreeMap<String, Order>,
 }
 
 impl ViewConfig {
@@ -525,12 +530,17 @@ struct Grouped {
     scratch_inputs: Vec<Input>,
     scratch_keys: Vec<Key>,
     scratch_path: Vec<u32>,
+    /// The orders of its text columns, which its groups and column pivots
+    /// follow.
+    orders: Orders,
 }
 
 #[derive(Clone, Debug)]
 struct Flat {
     columns: Vec<usize>,
     sort: Vec<(usize, bool)>,
+    /// The orders of its text columns, which its sort follows.
+    orders: Orders,
     order: Vec<usize>,
     /// The totals, as a grouped view with no levels, whose root is its one leaf.
     totals: Option<Box<Grouped>>,
@@ -856,12 +866,14 @@ impl View {
                     buckets: None,
                 }));
             }
+            grouped.orders = Orders::compile(table, &config.orders)?;
             Kind::Grouped(Box::new(grouped))
         } else {
             let sort = flat_sort(table, &config)?;
             Kind::Flat(Flat {
                 columns: flat_columns(table, &config)?,
                 sort,
+                orders: Orders::compile(table, &config.orders)?,
                 order: Vec::new(),
                 totals: compile_totals(table, &config)?,
             })
@@ -1069,6 +1081,7 @@ impl View {
         let passes = |slot: usize| filters.iter().all(|f| f.passes_table(table, slot));
         match &mut self.kind {
             Kind::Flat(flat) => {
+                flat.orders.refresh(table);
                 flat.order = passing_slots(table, &passes);
                 sort_flat(table, flat);
                 if let Some(totals) = &mut flat.totals {
@@ -1077,6 +1090,7 @@ impl View {
                 }
             }
             Kind::Grouped(g) => {
+                g.orders.refresh(table);
                 g.build(table, &passes);
                 g.invalidate();
             }
@@ -1114,6 +1128,7 @@ impl View {
         for s in pass_added {
             g.apply_row(current, s, 1);
         }
+        g.orders.refresh(table);
         g.invalidate();
     }
 
@@ -1281,9 +1296,14 @@ impl View {
     }
 }
 
-/// Orders two table rows by `sort`, nulls last whichever the direction, then by
-/// the table's key, or failing that by insertion.
-fn compare_slots(table: &Table, sort: &[(usize, bool)], a: usize, b: usize) -> Ordering {
+/// Orders two table rows by `sort`, in each column's order, nulls last whichever
+/// the direction, then by the table's key, or failing that by insertion.
+fn compare_slots(
+    table: &Table,
+    (sort, orders): (&[(usize, bool)], &Orders),
+    a: usize,
+    b: usize,
+) -> Ordering {
     for &(c, descending) in sort {
         let column = table.column(c);
         let (ka, kb) = (column.key(a), column.key(b));
@@ -1291,8 +1311,8 @@ fn compare_slots(table: &Table, sort: &[(usize, bool)], a: usize, b: usize) -> O
             (Key::Null, Key::Null) => Ordering::Equal,
             (Key::Null, _) => Ordering::Greater,
             (_, Key::Null) => Ordering::Less,
-            _ if descending => column.cmp_keys(kb, ka),
-            _ => column.cmp_keys(ka, kb),
+            _ if descending => orders.cmp(table, c, kb, ka),
+            _ => orders.cmp(table, c, ka, kb),
         };
         if ordering != Ordering::Equal {
             return ordering;
@@ -1307,8 +1327,8 @@ fn compare_slots(table: &Table, sort: &[(usize, bool)], a: usize, b: usize) -> O
 }
 
 fn sort_flat(table: &Table, flat: &mut Flat) {
-    let sort = &flat.sort;
-    let cmp = |&a: &usize, &b: &usize| compare_slots(table, sort, a, b);
+    let by = (flat.sort.as_slice(), &flat.orders);
+    let cmp = |&a: &usize, &b: &usize| compare_slots(table, by, a, b);
     #[cfg(not(target_arch = "wasm32"))]
     {
         use rayon::slice::ParallelSliceMut;
@@ -1907,6 +1927,7 @@ impl Grouped {
             scratch_inputs: Vec::new(),
             scratch_keys: Vec::new(),
             scratch_path: Vec::new(),
+            orders: Orders::default(),
         }
     }
 
@@ -2301,7 +2322,7 @@ impl Grouped {
     ) -> (Vec<u32>, Vec<u32>) {
         let node = self.node(id);
         let level = node.depth as usize;
-        let column = table.column(self.group_columns[level]);
+        let column = self.group_columns[level];
         let mut children: Vec<u32> = node.children.values().copied().collect();
         let mut keyed: Vec<(u32, Option<f64>)> = children.iter().map(|&c| (c, None)).collect();
         if let GroupOrder::Measure(m) = config.group_sort.by {
@@ -2309,7 +2330,10 @@ impl Grouped {
                 entry.1 = self.numeric(table, &[entry.0], m);
             }
         }
-        let by_key = |a: u32, b: u32| column.cmp_keys(self.node(a).key, self.node(b).key);
+        let by_key = |a: u32, b: u32| {
+            self.orders
+                .cmp(table, column, self.node(a).key, self.node(b).key)
+        };
         keyed.sort_by(|a, b| {
             let primary = match config.group_sort.by {
                 GroupOrder::Key => {
@@ -2426,7 +2450,9 @@ impl Grouped {
                 .collect();
             splits.sort_by(|&a, &b| {
                 for (i, &c) in self.split_columns.iter().enumerate() {
-                    let o = table.column(c).cmp_keys(
+                    let o = self.orders.cmp(
+                        table,
+                        c,
                         self.split_keys[a as usize][i],
                         self.split_keys[b as usize][i],
                     );
@@ -2651,7 +2677,7 @@ impl Grouped {
         let Some(buckets) = &mut detail.buckets else {
             return vec![None; shown.len()];
         };
-        let sort = &detail.sort;
+        let by = (detail.sort.as_slice(), &self.orders);
         shown
             .iter()
             .map(|row| {
@@ -2661,7 +2687,7 @@ impl Grouped {
                 let bucket = buckets.get_mut(leaf)?;
                 if !bucket.sorted {
                     bucket.slots.sort_unstable_by(|&a, &b| {
-                        compare_slots(table, sort, a as usize, b as usize)
+                        compare_slots(table, by, a as usize, b as usize)
                     });
                     bucket.sorted = true;
                 }

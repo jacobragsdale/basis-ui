@@ -11,10 +11,13 @@
 use std::collections::BTreeMap;
 
 use parallax_engine::aggregate::{Aggregate, Measure, ShowAs};
-use parallax_engine::chart::{ChartConfig, ChartKind, OhlcColumns, PointColumns, XAxis};
+use parallax_engine::chart::{
+    ChartConfig, ChartKind, OhlcColumns, PointColumns, TenorSpacing, XAxis,
+};
 use parallax_engine::filter::{Filter, FilterOp};
 use parallax_engine::format::{Abbreviation, Format, Negative, TimePrecision, exact_decimal};
 use parallax_engine::indicator::Indicator;
+use parallax_engine::order::Order;
 use parallax_engine::view::{Comparison, GroupOrder, GroupSort, Having, Sort, TopN, ViewConfig};
 use parallax_engine::{ColumnType, Scalar, Table};
 use schemars::JsonSchema;
@@ -87,6 +90,47 @@ pub struct Layout {
     /// Groups `group_by` with the rows under them, in `sort` order and with the
     /// `columns`, as a grid does, rather than as a pivot of measures.
     pub detail: bool,
+    /// Orders of text columns other than alphabetical, by column: tenors by
+    /// length, ratings best first, a listed order, or another column's values.
+    /// Groups at every level, column pivots, sorts, a chart's series and the
+    /// categories of bars, heatmaps and pies follow them; filters still compare
+    /// text.
+    #[serde(skip_serializing_if = "BTreeMap::is_empty")]
+    pub orders: BTreeMap<String, LayoutOrder>,
+}
+
+/// How a text column's values are ordered, in a layout.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case", deny_unknown_fields)]
+pub enum LayoutOrder {
+    /// Alphabetically, ignoring case, as text sorts without an order.
+    Text,
+    /// Tenors by length, `3M` before `1Y` and `10Y`: a whole number from 1 to
+    /// 9999 and `D`, `W`, `M` or `Y`. Text that is not a tenor comes after.
+    Tenor,
+    /// Credit ratings, best first, on S&P's and Fitch's scale and Moody's, a
+    /// notch of one equal to the same notch of the other. Text that is not a
+    /// rating, such as `NR`, comes after.
+    Rating,
+    /// As listed; values not listed come after.
+    Values(Vec<String>),
+    /// By another column's smallest value among the rows with each value, such
+    /// as a tenor bucket by its rows' shortest maturity.
+    By(String),
+}
+
+impl LayoutOrder {
+    /// The engine's order.
+    #[must_use]
+    pub fn to_engine(&self) -> Order {
+        match self {
+            Self::Text => Order::Text,
+            Self::Tenor => Order::Tenor,
+            Self::Rating => Order::Rating,
+            Self::Values(values) => Order::Values(values.clone()),
+            Self::By(column) => Order::By(column.clone()),
+        }
+    }
 }
 
 impl Default for Layout {
@@ -115,6 +159,7 @@ impl Default for Layout {
             titles: BTreeMap::new(),
             totals: Vec::new(),
             detail: false,
+            orders: BTreeMap::new(),
         }
     }
 }
@@ -182,6 +227,28 @@ pub enum XAxisName {
     Value,
     /// By trading time on the NYSE calendar.
     Trading,
+    /// By tenor, labelled `3M` to `30Y`: the x column holds tenors as text,
+    /// such as `3M` and `10Y`, or as years.
+    Tenor,
+}
+
+/// How a tenor axis spaces tenors, in a layout.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum TenorSpacingName {
+    /// The standard tenors 1M, 3M, 6M, 1Y, 2Y, 3Y, 5Y, 7Y, 10Y, 20Y, 30Y, 50Y
+    /// and 100Y one step apart, and a tenor between two placed between them by
+    /// length, as desks' curve screens space them.
+    #[default]
+    Even,
+    /// By length in years.
+    Length,
+}
+
+impl TenorSpacingName {
+    fn is_even(&self) -> bool {
+        *self == Self::Even
+    }
 }
 
 /// The price columns of a candlestick or OHLC chart, in a layout.
@@ -491,13 +558,20 @@ pub struct LayoutChart {
     /// line through each series.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub fit: Option<String>,
+    /// How a tenor axis spaces tenors.
+    #[serde(default, skip_serializing_if = "TenorSpacingName::is_even")]
+    pub tenor_spacing: TenorSpacingName,
 }
 
 impl LayoutChart {
-    /// The engine's chart for this layout chart, with the view's filters, or
-    /// `None` for kinds drawn from the grouped view.
+    /// The engine's chart for this layout chart, with the view's filters and
+    /// orders, or `None` for kinds drawn from the grouped view.
     #[must_use]
-    pub fn to_engine(&self, filters: &[Filter]) -> Option<ChartConfig> {
+    pub fn to_engine(
+        &self,
+        filters: &[Filter],
+        orders: &BTreeMap<String, Order>,
+    ) -> Option<ChartConfig> {
         Some(ChartConfig {
             kind: self.kind.reduced()?,
             x: self.x.clone(),
@@ -513,6 +587,10 @@ impl LayoutChart {
             axis: match self.axis {
                 XAxisName::Value => XAxis::Value,
                 XAxisName::Trading => XAxis::Trading,
+                XAxisName::Tenor => XAxis::Tenor(match self.tenor_spacing {
+                    TenorSpacingName::Even => TenorSpacing::Even,
+                    TenorSpacingName::Length => TenorSpacing::Length,
+                }),
             },
             indicators: self.indicators.iter().map(|i| i.to_engine()).collect(),
             volume: self.volume.clone(),
@@ -524,6 +602,7 @@ impl LayoutChart {
                 tooltip: self.tooltip.clone(),
                 fit: self.fit.clone(),
             },
+            orders: orders.clone(),
         })
     }
 }
@@ -1382,11 +1461,16 @@ impl Layout {
                 .collect::<Result<_, LayoutError>>()?,
             totals,
             detail: self.detail,
+            orders: self
+                .orders
+                .iter()
+                .map(|(column, order)| (column.clone(), order.to_engine()))
+                .collect(),
         };
         let chart = self
             .chart
             .as_ref()
-            .and_then(|c| c.to_engine(&config.filters));
+            .and_then(|c| c.to_engine(&config.filters, &config.orders));
         let anchors = match &self.chart {
             Some(c) if !c.drawings.is_empty() => drawing_anchors(table, c)?,
             _ => Vec::new(),
@@ -1851,10 +1935,27 @@ mod tests {
                       "size": "dv01_usd", "id": "cusip", "tooltip": ["issuer", "rating"],
                       "fit": "fitted_spread_bp"}
         }"#;
-        [Layout::from_json(points).unwrap()]
-            .iter()
-            .map(|l| serde_json::to_value(l).unwrap())
-            .collect()
+        let orders = r#"{
+            "dataset": "bonds",
+            "group_by": ["rating", "tenor_bucket"],
+            "split_by": ["sector"],
+            "measures": [{"column": "dv01_usd", "aggregate": "sum"}],
+            "orders": {"rating": "rating", "tenor_bucket": "tenor", "sector": {"values": ["Utilities", "Energy"]},
+                       "issuer": {"by": "years_to_maturity"}, "ticker": "text"}
+        }"#;
+        let tenor = r#"{
+            "dataset": "curves",
+            "chart": {"kind": "line", "x": "tenor", "y": ["yield"], "series": "curve_date", "axis": "tenor",
+                      "tenor_spacing": "length"}
+        }"#;
+        [
+            Layout::from_json(points).unwrap(),
+            Layout::from_json(orders).unwrap(),
+            Layout::from_json(tenor).unwrap(),
+        ]
+        .iter()
+        .map(|l| serde_json::to_value(l).unwrap())
+        .collect()
     }
 
     #[test]
@@ -1876,6 +1977,37 @@ mod tests {
             .to_json();
         for field in ["\"size\"", "\"id\"", "\"tooltip\"", "\"fit\""] {
             assert!(!json.contains(field), "{field} in {json}");
+        }
+        let json = Layout::from_json(r#"{"chart": {"kind": "line", "x": "a", "y": ["b"]}}"#)
+            .unwrap()
+            .to_json();
+        for field in ["\"orders\"", "\"tenor_spacing\""] {
+            assert!(!json.contains(field), "{field} in {json}");
+        }
+    }
+
+    #[test]
+    fn orders_read_as_names_or_objects_and_refuse_the_rest() {
+        let layout = Layout::from_json(
+            r#"{"orders": {"a": "tenor", "b": {"values": ["x", "y"]}, "c": {"by": "d"}}}"#,
+        )
+        .unwrap();
+        assert_eq!(layout.orders["a"], LayoutOrder::Tenor);
+        assert_eq!(
+            layout.orders["b"],
+            LayoutOrder::Values(vec!["x".into(), "y".into()])
+        );
+        assert_eq!(layout.orders["c"], LayoutOrder::By("d".into()));
+        for wrong in [
+            r#""alphabet""#,
+            r#"{"by": 3}"#,
+            r#"{"values": "x"}"#,
+            r#"{"tenor": true}"#,
+        ] {
+            assert!(
+                Layout::from_json(&format!(r#"{{"orders": {{"a": {wrong}}}}}"#)).is_err(),
+                "{wrong}"
+            );
         }
     }
 }

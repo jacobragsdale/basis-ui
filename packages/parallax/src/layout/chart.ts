@@ -119,7 +119,7 @@ const chartSchema = z.strictObject({
   y_right: z.array(name).default([]),
   series: name.nullable().default(null),
   ohlc: z.strictObject({ open: name, high: name, low: name, close: name }).nullable().default(null),
-  axis: z.enum(["value", "trading"]).default("value"),
+  axis: z.enum(["value", "trading", "tenor"]).default("value"),
   log_y: z.boolean().default(false),
   stacked: z.boolean().default(false),
   horizontal: z.boolean().default(false),
@@ -140,6 +140,8 @@ const chartSchema = z.strictObject({
   id: name.optional(),
   tooltip: z.array(name).optional(),
   fit: name.optional(),
+  // How a tenor axis spaces tenors: the standard ones a step apart, or by length. Left out at its default, as in Rust.
+  tenor_spacing: z.enum(["even", "length"]).optional(),
 });
 
 /** A chart of a layout. */

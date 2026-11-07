@@ -197,7 +197,7 @@ layout, so a pivot round-trips through a link with `encodeLayout` and
 `<Chart>` draws every chart of the firm's apps on a Canvas 2D surface: line,
 area, bar (across, stacked, or on two axes), scatter (a dot per row up to 5,000
 rows in the range shown, a density past that), heatmap,
-histogram, candlestick, OHLC, pie and donut, on a value or trading-time axis,
+histogram, candlestick, OHLC, pie and donut, on a value, trading-time or tenor axis,
 with technical-analysis indicators and panes, drawings, a compare mode and
 events. Give it a dataset that `useDataset` loads and a layout whose `chart`
 section says what to draw:
@@ -245,6 +245,35 @@ x, as a dashed line through each series:
   onSelect={(bond) => setBond(bond)} // { column: "cusip", value, label }, or null
 />
 ```
+
+Text sorts alphabetically unless the layout's `orders` say otherwise, which a
+grid's groups and sorts, a pivot's columns, a filter menu's values and a
+chart's series and categories all follow: `"tenor"` by length, `"rating"` best
+first, `{ values: [...] }` as listed, or `{ by: "column" }` by another
+column's smallest value. A DV01 ladder that reads short to long, over a tenor
+axis for curves:
+
+```tsx
+<Chart
+  dataset={bonds}
+  layout={{
+    group_by: ["tenor_bucket"],
+    measures: [{ aggregate: "sum", column: "dv01_usd" }],
+    orders: { tenor_bucket: "tenor" },
+    chart: { kind: "bar" },
+  }}
+/>;
+
+<Chart
+  dataset={curves}
+  layout={{
+    chart: { kind: "line", x: "tenor", y: ["yield"], series: "curve_date", axis: "tenor" },
+  }}
+/>;
+```
+
+A tenor axis puts the standard tenors one step apart, 1M, 3M, 6M, 1Y and so on
+to 30Y, and labels them; `tenor_spacing: "length"` spaces them by years.
 
 A small chart takes the rows the page already holds, and loads them as a table
 of its own, in their order:

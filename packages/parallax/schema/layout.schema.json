@@ -427,6 +427,10 @@
           "description": "Bars of one group stacked instead of side by side.",
           "type": "boolean"
         },
+        "tenor_spacing": {
+          "$ref": "#/$defs/TenorSpacingName",
+          "description": "How a tenor axis spaces tenors."
+        },
         "tooltip": {
           "description": "More columns a scatter's dot lists in its tooltip, in order.",
           "items": {
@@ -1094,6 +1098,55 @@
       ],
       "type": "object"
     },
+    "LayoutOrder": {
+      "description": "How a text column's values are ordered, in a layout.",
+      "oneOf": [
+        {
+          "const": "text",
+          "description": "Alphabetically, ignoring case, as text sorts without an order.",
+          "type": "string"
+        },
+        {
+          "const": "tenor",
+          "description": "Tenors by length, `3M` before `1Y` and `10Y`: a whole number from 1 to\n9999 and `D`, `W`, `M` or `Y`. Text that is not a tenor comes after.",
+          "type": "string"
+        },
+        {
+          "const": "rating",
+          "description": "Credit ratings, best first, on S&P's and Fitch's scale and Moody's, a\nnotch of one equal to the same notch of the other. Text that is not a\nrating, such as `NR`, comes after.",
+          "type": "string"
+        },
+        {
+          "additionalProperties": false,
+          "description": "As listed; values not listed come after.",
+          "properties": {
+            "values": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "values"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "By another column's smallest value among the rows with each value, such\nas a tenor bucket by its rows' shortest maturity.",
+          "properties": {
+            "by": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "by"
+          ],
+          "type": "object"
+        }
+      ]
+    },
     "LayoutRange": {
       "additionalProperties": false,
       "description": "An x range a chart was zoomed to, in axis positions.",
@@ -1232,6 +1285,21 @@
         }
       ]
     },
+    "TenorSpacingName": {
+      "description": "How a tenor axis spaces tenors, in a layout.",
+      "oneOf": [
+        {
+          "const": "even",
+          "description": "The standard tenors 1M, 3M, 6M, 1Y, 2Y, 3Y, 5Y, 7Y, 10Y, 20Y, 30Y, 50Y\nand 100Y one step apart, and a tenor between two placed between them by\nlength, as desks' curve screens space them.",
+          "type": "string"
+        },
+        {
+          "const": "length",
+          "description": "By length in years.",
+          "type": "string"
+        }
+      ]
+    },
     "XAxisName": {
       "description": "How a chart places x values, in a layout.",
       "oneOf": [
@@ -1243,6 +1311,11 @@
         {
           "const": "trading",
           "description": "By trading time on the NYSE calendar.",
+          "type": "string"
+        },
+        {
+          "const": "tenor",
+          "description": "By tenor, labelled `3M` to `30Y`: the x column holds tenors as text,\nsuch as `3M` and `10Y`, or as years.",
           "type": "string"
         }
       ]
@@ -1354,6 +1427,13 @@
         "$ref": "#/$defs/LayoutMeasure"
       },
       "type": "array"
+    },
+    "orders": {
+      "additionalProperties": {
+        "$ref": "#/$defs/LayoutOrder"
+      },
+      "description": "Orders of text columns other than alphabetical, by column: tenors by\nlength, ratings best first, a listed order, or another column's values.\nGroups at every level, column pivots, sorts, a chart's series and the\ncategories of bars, heatmaps and pies follow them; filters still compare\ntext.",
+      "type": "object"
     },
     "parameters": {
       "additionalProperties": {

@@ -55,6 +55,7 @@ fn candles(t: &Table, indicators: Vec<Indicator>) -> ChartConfig {
         compare: false,
         events: None,
         points: PointColumns::default(),
+        orders: std::collections::BTreeMap::new(),
     }
 }
 
@@ -231,6 +232,7 @@ fn rows_without_a_price_are_skipped_not_counted() {
         compare: false,
         events: None,
         points: PointColumns::default(),
+        orders: std::collections::BTreeMap::new(),
     };
     let view = ChartView::new(&t, config).unwrap();
     let points = line(&view.reduce(&t, &request(None, 100)).indicators, 0, "sma").to_vec();
@@ -313,6 +315,7 @@ fn vwap_starts_again_each_new_york_day_and_volume_sums_per_candle() {
         compare: false,
         events: None,
         points: PointColumns::default(),
+        orders: std::collections::BTreeMap::new(),
     };
     let view = ChartView::new(&t, config).unwrap();
     let reduced = view.reduce(&t, &request(None, 1000));
@@ -391,6 +394,7 @@ fn charts_refuse_indicators_they_cannot_compute() {
         compare: false,
         events: None,
         points: PointColumns::default(),
+        orders: std::collections::BTreeMap::new(),
     };
     assert!(refuse(line(vec![Indicator::Atr { period: 14 }])).contains("candlestick or OHLC"));
     assert!(refuse(line(vec![Indicator::Volume])).contains("candlestick or OHLC"));
@@ -480,6 +484,7 @@ fn a_volume_too_large_to_hold_says_so() {
         compare: false,
         events: None,
         points: PointColumns::default(),
+        orders: std::collections::BTreeMap::new(),
     };
     let view = ChartView::new(&t, config).unwrap();
     let volumes = |width| match view.reduce(&t, &request(None, width)).data {

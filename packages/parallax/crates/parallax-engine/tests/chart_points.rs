@@ -66,6 +66,7 @@ fn scatter() -> ChartConfig {
         volume: None,
         compare: false,
         events: None,
+        orders: std::collections::BTreeMap::new(),
         points: PointColumns {
             size: Some("size".into()),
             id: Some("cusip".into()),

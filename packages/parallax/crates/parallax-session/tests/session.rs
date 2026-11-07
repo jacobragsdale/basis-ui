@@ -797,6 +797,35 @@ mod requests {
     }
 
     #[test]
+    fn value_lists_follow_the_column_s_order() {
+        let mut s = session();
+        open(
+            &mut s,
+            r#"{"columns":["position_id","credit_rating"],"orders":{"credit_rating":"rating"}}"#,
+        );
+        let listed = ask(
+            &mut s,
+            2,
+            C::DistinctValues(parallax_protocol::v1::DistinctValues {
+                view_id: 1,
+                column: "credit_rating".into(),
+                search: String::new(),
+                limit: 1_000,
+            }),
+        );
+        let Body::DistinctValues(list) = &listed[0].1 else {
+            panic!("values, got {listed:?}");
+        };
+        let texts = strings(&decode_batches(&list.values).unwrap()[0], "text");
+        let notches: Vec<u64> = texts
+            .iter()
+            .filter_map(|t| parallax_engine::order::rating_notch(t))
+            .collect();
+        assert!(notches.len() > 3, "{texts:?}");
+        assert!(notches.windows(2).all(|w| w[0] < w[1]), "{texts:?}");
+    }
+
+    #[test]
     fn a_search_narrows_the_rows_and_the_value_lists() {
         let mut s = session();
         open(&mut s, r#"{"columns":["position_id","fund","sector"]}"#);

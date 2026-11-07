@@ -112,6 +112,7 @@ export {
   type LayoutFormat,
   type LayoutInput,
   type LayoutMeasure,
+  type LayoutOrder,
   type LayoutScalar,
 } from "./layout/layout.ts";
 export {

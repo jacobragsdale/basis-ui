@@ -310,7 +310,7 @@ Those kinds came from equity charting, and a study of what the fixed-income syst
 - A relative-value scatter draws each bond as a dot, coloured and sized by columns, with the API's fitted curve,
   rather than as a density (step 2.8.1, built).
 - Tenors and ratings sort as a desk reads them, groups can sort by another column, and curves get a tenor axis from
-  `3M` to `30Y`.
+  `3M` to `30Y` (step 2.8.2, built).
 - The grid's formatter writes basis points, Treasury 32nds and par amounts' `M` and `MM`, so that a value reads the
   same in the grid as in `Bps` and `Price32`.
 - The trading axis takes SIFMA's calendar, its early closes, and sessions that open the evening before.
