@@ -103,6 +103,11 @@ The components already keep WCAG 2.2's 24 px minimum target in the compact densi
 carries `min-h-target` and `min-w-target`. A control drawn smaller than that, such as Checkbox's 16 px box, Switch's
 track or Slider's thumb, is a 24 px target with its shape drawn inside it, so it keeps shadcn's look.
 
+Text takes its look from the Typography components (`TypographyH1` to `TypographyH4`, `TypographyP`, `TypographyLead`,
+`TypographyMuted`, `TypographyInlineCode` and `TypographyList`), never from classes on a plain element. `render`
+changes a heading's level and keeps its look, as in `<TypographyH2 render={<h3>Risk</h3>} />`. In a `Table`, a column
+of numbers takes `variant="numeric"` on its `TableHead` and each `TableCell`, which aligns it right in tabular figures.
+
 ## Building a form
 
 A form's state is TanStack Form's, its schema Zod's, and its look `Field`'s. Each field passes `data-invalid` to
@@ -189,6 +194,27 @@ Where these differ from what shadcn's documentation leads one to expect:
 
 Overlays animate with a short fade and scale, or a short slide for Sheet and Drawer, which stop under
 `prefers-reduced-motion`. The gallery's overlays and menus page shows each one closed, with its tests beside it.
+
+## Raising a toast
+
+Render `<Toaster />` once, around the app or beside its routes, and raise a toast from anywhere, inside React or out,
+with `toast`:
+
+```tsx
+import { Toaster, toast } from "@basis/ui";
+
+<Toaster />;
+
+toast.add({ title: "Trade booked", description: "Bought 5,000 par at 99-16.", type: "success" });
+toast.promise(save(), { loading: "Saving", success: "Saved", error: "Not saved" });
+```
+
+`type` picks the look: `success`, `warning`, `info` and `destructive` (or `error`, which `toast.promise` sets) each
+show their status colour and icon, `loading` a turning loader, and anything else the plain toast. A toast closes
+itself after five seconds unless `timeout` says otherwise; `timeout: 0` keeps it until the user closes it. Its
+`actionProps`, such as `{ children: "Undo", onClick: restore }`, add a button. `priority: "high"` announces it to a
+screen reader at once, for what the user must act on now. F6 moves the keyboard into the toasts, and Escape closes the
+focused one.
 
 ## Using the icons
 
