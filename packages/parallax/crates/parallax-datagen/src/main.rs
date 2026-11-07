@@ -5,6 +5,7 @@ use std::time::Instant;
 
 use clap::{Args, Parser, Subcommand};
 use jiff::civil::Date;
+use parallax_datagen::bonds::{Bonds, BondsOptions};
 use parallax_datagen::positions::{Positions, PositionsOptions};
 use parallax_datagen::prices::{Prices, PricesOptions};
 use parallax_datagen::trades::{Trades, TradesOptions};
@@ -76,6 +77,19 @@ enum Command {
         #[arg(long, default_value_t = 0.0)]
         duplicate_key_rate: f64,
     },
+    /// Corporate bonds on one as-of date, with their spreads, the fitted spread
+    /// curve and their DV01s. Its issuers are its own, so --securities does not
+    /// apply, and it has no hostile values.
+    Bonds {
+        #[command(flatten)]
+        common: Common,
+        /// Number of bonds.
+        #[arg(long, default_value_t = 600)]
+        rows: u64,
+        /// As-of date maturities are counted from.
+        #[arg(long, default_value = "2026-10-30")]
+        as_of: Date,
+    },
     /// Daily price bars for the most-held equities.
     Prices {
         #[command(flatten)]
@@ -129,6 +143,21 @@ fn main() -> anyhow::Result<()> {
             })?),
             common,
         ),
+        Command::Bonds {
+            common,
+            rows,
+            as_of,
+        } => {
+            anyhow::ensure!(!common.hostile, "bonds has no hostile values");
+            (
+                Box::new(Bonds::new(BondsOptions {
+                    seed: common.seed,
+                    rows,
+                    as_of,
+                })?),
+                common,
+            )
+        }
         Command::Prices {
             common,
             tickers,

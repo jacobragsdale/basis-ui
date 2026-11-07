@@ -3,8 +3,19 @@
 
 import type { CandleData, IndicatorLineData } from "#frame/chart-data.ts";
 
-import type { IndicatorStyle, PaneSpec, Rect, Scale, ValueTick } from "./model-types.ts";
+import type { IndicatorStyle, Rect, Scale, ValueTick } from "./model-types.ts";
 import { linearScale, niceDomain, pixel, valueTicks } from "./scale.ts";
+
+/** A pane of its own for one indicator. */
+interface PaneSpec {
+  readonly title: string;
+  /** A fixed value range, as for oscillators from 0 to 100, or null to fit the values. */
+  readonly domain: readonly [number, number] | null;
+  /** Lines drawn across the pane at these values, such as RSI's 30 and 70. */
+  readonly guides: readonly number[];
+  /** Whether the pane holds a candle chart's volume. */
+  readonly volume: boolean;
+}
 
 /** The shortest pane worth drawing. */
 const shortest = 16;
@@ -122,4 +133,4 @@ function segmentsOf(xs: Float64Array, ys: Float64Array, { x, y }: Axes): Float64
 }
 
 export { paneDomain, paneGap, paneHeight, paneScale, paneValues, segmentsOf };
-export type { Axes, PaneLines };
+export type { Axes, PaneLines, PaneSpec };

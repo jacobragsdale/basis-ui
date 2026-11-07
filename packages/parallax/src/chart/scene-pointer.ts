@@ -1,14 +1,17 @@
 /* The pointer, wheel and keys on a chart's plot: hovering reads, dragging pans, Shift and drag brushes, the wheel and
- * the keys zoom, a click selects a bar or a slice, and a press with a drawing tool draws. The listeners are the DOM's
- * own, not React's: the wheel must be able to stop the page scrolling, and nothing here renders. Presses and keys in a
- * note's text box are the box's, not the plot's. */
+ * the keys zoom, a click selects a bar, a slice or a dot, and a press with a drawing tool draws. The listeners are the
+ * DOM's own, not React's: the wheel must be able to stop the page scrolling, and nothing here renders. Presses and keys
+ * in a note's text box are the box's, not the plot's. */
 
 import type { DrawingEditor } from "./drawing-editor.ts";
-import type { ChartModel, Point } from "./model-types.ts";
+import type { ChartModel, Point, Scale } from "./model-types.ts";
 import { keyed, keys, zoomIn, zoomOut } from "./pointer-keys.ts";
 import { panRange, zoomRange } from "./range.ts";
 import type { Range } from "./range.ts";
 import type { ChartZoom } from "./zoom.ts";
+
+/** How far, in pixels, a press may move and still end in a click that selects. */
+const clickSlack = 3;
 
 /** The events the plot listens to. */
 const listened = [
@@ -54,6 +57,8 @@ class ChartPointer implements EventListenerObject {
   readonly #scene: PointerScene;
   readonly #plot: HTMLElement;
   #drag: Drag | null = null;
+  /** Whether the last press moved far enough to pan or brush, so that the click it ends in selects nothing. */
+  #dragged = false;
   /** What each pointer event does. */
   readonly #pointerHandlers: Readonly<Partial<Record<string, (event: PointerEvent) => void>>> = {
     pointercancel: (event) => {
@@ -119,7 +124,7 @@ class ChartPointer implements EventListenerObject {
     }
     if (event.type === "dblclick") {
       this.#scene.zoom.reset();
-    } else if (event.type === "click") {
+    } else if (event.type === "click" && !this.#dragged) {
       this.#scene.pick(this.#local(event));
     }
   }
@@ -149,6 +154,7 @@ class ChartPointer implements EventListenerObject {
 
   /** Starts panning, or with Shift a brush; a press that makes, picks or grabs a drawing is neither. */
   #down(event: PointerEvent): void {
+    this.#dragged = false;
     const target = this.#draggable(event);
     if (target === null) {
       return;
@@ -192,12 +198,17 @@ class ChartPointer implements EventListenerObject {
     if (scene.editor.move(at) || drag === null || x === null) {
       return;
     }
+    this.#dragTo(drag, at.x, x);
+  }
+
+  /** A drag moved to `px`: it brushes or pans, and once past a few pixels it is a drag, not a click. */
+  #dragTo(drag: Drag, px: number, x: Scale): void {
+    const scene = this.#scene;
+    this.#dragged ||= Math.abs(px - drag.start) > clickSlack;
     if (drag.brush) {
-      scene.brush([x.invert(drag.start), x.invert(at.x)]);
+      scene.brush([x.invert(drag.start), x.invert(px)]);
     } else {
-      scene.zoom.schedule(
-        panRange(drag.range, (drag.start - at.x) * drag.perPixel, scene.extent()),
-      );
+      scene.zoom.schedule(panRange(drag.range, (drag.start - px) * drag.perPixel, scene.extent()));
     }
   }
 

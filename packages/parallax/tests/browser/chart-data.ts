@@ -51,6 +51,14 @@ const exposures: readonly ChartRow[] = [
   { exposure: 1.75, sector: "Agency" },
 ];
 
+/** Three bonds, as a relative-value scatter draws them: spread against duration, sized by DV01, with the API's fitted
+ * spread at each bond's duration. */
+const bonds: readonly ChartRow[] = [
+  { cusip: "ATL000A02", duration: 2, dv01: 400, fit: 72, issuer: "Atlas Corp", spread: 80 },
+  { cusip: "BEA001A04", duration: 5, dv01: 4000, fit: 90, issuer: "Beacon Corp", spread: 90 },
+  { cusip: "COB002A08", duration: 8, dv01: 1200, fit: 110, issuer: "Cobalt Corp", spread: 130 },
+];
+
 /** Two desks' exposure by sector, for a chart of two series. */
 const deskExposures: readonly ChartRow[] = [
   { desk: "Atlas", exposure: 3.5, sector: "Rates" },
@@ -68,4 +76,4 @@ const yields: readonly ChartRow[] = [
   { date: "2026-11-06", yield: 4.25 },
 ];
 
-export { deskExposures, exposures, pricesBytes, yields };
+export { bonds, deskExposures, exposures, pricesBytes, yields };

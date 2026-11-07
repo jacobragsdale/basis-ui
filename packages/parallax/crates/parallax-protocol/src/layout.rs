@@ -11,7 +11,7 @@
 use std::collections::BTreeMap;
 
 use parallax_engine::aggregate::{Aggregate, Measure, ShowAs};
-use parallax_engine::chart::{ChartConfig, ChartKind, OhlcColumns, XAxis};
+use parallax_engine::chart::{ChartConfig, ChartKind, OhlcColumns, PointColumns, XAxis};
 use parallax_engine::filter::{Filter, FilterOp};
 use parallax_engine::format::{Abbreviation, Format, Negative, TimePrecision, exact_decimal};
 use parallax_engine::indicator::Indicator;
@@ -130,7 +130,8 @@ pub enum ChartKindName {
     /// Bars of the layout's grouped view: one per group, one per measure or
     /// column pivot within it.
     Bar,
-    /// Points, drawn as a density.
+    /// Points: each row as a dot while the range shown holds at most 5,000,
+    /// and a density past that.
     Scatter,
     /// Cells of the layout's grouped view, coloured by its first measure: groups
     /// across, column pivots up.
@@ -474,6 +475,22 @@ pub struct LayoutChart {
     /// where they fit.
     #[serde(default = "yes")]
     pub labels: bool,
+    /// A scatter's numeric column whose magnitude sets each dot's area, such as
+    /// DV01 or par.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub size: Option<String>,
+    /// The column naming each dot of a scatter, such as a bond's CUSIP: the
+    /// title of its tooltip, and the value a click on it selects.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub id: Option<String>,
+    /// More columns a scatter's dot lists in its tooltip, in order.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub tooltip: Vec<String>,
+    /// A scatter's numeric column holding a fitted curve's value at each row's
+    /// x, such as the API's fitted spread at each bond's duration: drawn as a
+    /// line through each series.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fit: Option<String>,
 }
 
 impl LayoutChart {
@@ -501,6 +518,12 @@ impl LayoutChart {
             volume: self.volume.clone(),
             compare: self.compare,
             events: self.events.clone(),
+            points: PointColumns {
+                size: self.size.clone(),
+                id: self.id.clone(),
+                tooltip: self.tooltip.clone(),
+                fit: self.fit.clone(),
+            },
         })
     }
 }
@@ -1818,11 +1841,41 @@ mod tests {
         );
     }
 
+    /// Layouts that set the fields roadmap step 2.8 adds. They are written to a
+    /// file of their own, which only the React layer reads: the Angular layer,
+    /// which step 2.7 deletes, reads `layouts.json` and knows none of them.
+    fn fixture_layouts_2_8() -> Vec<Value> {
+        let points = r#"{
+            "dataset": "bonds",
+            "chart": {"kind": "scatter", "x": "duration", "y": ["spread_bp"], "series": "sector",
+                      "size": "dv01_usd", "id": "cusip", "tooltip": ["issuer", "rating"],
+                      "fit": "fitted_spread_bp"}
+        }"#;
+        [Layout::from_json(points).unwrap()]
+            .iter()
+            .map(|l| serde_json::to_value(l).unwrap())
+            .collect()
+    }
+
     #[test]
     fn committed_schema_and_fixtures_are_current() {
         let schema = serde_json::to_string_pretty(&schema()).unwrap() + "\n";
         check_generated("../../schema/layout.schema.json", &schema);
         let fixtures = serde_json::to_string_pretty(&fixture_layouts()).unwrap() + "\n";
         check_generated("../../tests/fixtures/layouts.json", &fixtures);
+        let additions = serde_json::to_string_pretty(&fixture_layouts_2_8()).unwrap() + "\n";
+        check_generated("../../tests/fixtures/layouts-2.8.json", &additions);
+    }
+
+    #[test]
+    fn fields_left_unset_are_left_out() {
+        // A layout that sets none of step 2.8's fields is written as before, so
+        // a reader that predates them reads it.
+        let json = Layout::from_json(r#"{"chart": {"kind": "scatter", "x": "a", "y": ["b"]}}"#)
+            .unwrap()
+            .to_json();
+        for field in ["\"size\"", "\"id\"", "\"tooltip\"", "\"fit\""] {
+            assert!(!json.contains(field), "{field} in {json}");
+        }
     }
 }

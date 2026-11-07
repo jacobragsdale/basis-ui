@@ -1,7 +1,7 @@
 /* What a chart says in words: the status line's summary of what it draws, and the text alternative a screen reader
  * reads in place of the canvas, with the values the chart shows, as the engine wrote them. */
 
-import type { ChartFrameData, SeriesData } from "#frame/chart-data.ts";
+import type { CandleData, ChartFrameData, PointSeries, SeriesData } from "#frame/chart-data.ts";
 import type { LayoutChart } from "#layout/chart.ts";
 
 import { bucketTitle } from "./model-candles.ts";
@@ -35,7 +35,12 @@ function sum(values: Iterable<number>): number {
   return total;
 }
 
-/** How much a frame draws: points, bins or candles. */
+/** A count of dots, in words. */
+function dots(total: number): string {
+  return `${count.format(total)} ${total === 1 ? "dot" : "dots"}`;
+}
+
+/** How much a frame draws: points, dots, bins or candles. */
 function drawnOf(frame: ChartFrameData): string {
   const { content } = frame;
   switch (content.kind) {
@@ -44,6 +49,9 @@ function drawnOf(frame: ChartFrameData): string {
     }
     case "histogram": {
       return `${count.format(content.series[0]?.counts.length ?? 0)} bins`;
+    }
+    case "points": {
+      return dots(sum(content.series.map((series) => series.x.length)));
     }
     case "density": {
       return `${count.format(sum(content.counts))} points`;
@@ -97,12 +105,41 @@ function seriesWords(series: SeriesData): string {
   return `${series.label}: from ${at(first)} to ${at(last)}`;
 }
 
+/** A scatter series' dots: how many, and the lowest and highest y they reach, with the ids of the dots there. */
+function dotWords(series: PointSeries): string {
+  if (series.y.length === 0) {
+    return `${series.label}: no dots shown`;
+  }
+  let [low, high] = [0, 0];
+  for (let dot = 1; dot < series.y.length; dot += 1) {
+    low = (series.y[dot] ?? 0) < (series.y[low] ?? 0) ? dot : low;
+    high = (series.y[dot] ?? 0) > (series.y[high] ?? 0) ? dot : high;
+  }
+  const at = (dot: number): string => {
+    const id = series.idText[dot] ?? null;
+    return `${series.yText[dot] ?? ""}${id === null ? "" : ` (${id})`}`;
+  };
+  const where = low === high ? `at ${at(low)}` : `from ${at(low)} to ${at(high)}`;
+  return `${series.label}: ${dots(series.y.length)}, ${where}`;
+}
+
 /** Each group's values, as a table would read them. */
 function groupWords(data: CategoryData): readonly string[] {
   return data.categories.slice(0, mostListed).map((category, index) => {
     const values = data.series.map((series) => `${series.label} ${series.texts[index] ?? ""}`);
     return `${category}: ${values.join(", ")}`;
   });
+}
+
+/** A candle chart's first open and last close. */
+function candleWords(candles: CandleData): readonly string[] {
+  const last = candles.from.length - 1;
+  return last < 0
+    ? []
+    : [
+        `${bucketTitle(candles.interval, candles.xText[0] ?? "")}: opens at ${candles.openText[0] ?? ""}`,
+        `${bucketTitle(candles.interval, candles.xText[last] ?? "")}: closes at ${candles.closeText[last] ?? ""}`,
+      ];
 }
 
 /** The values a frame shows, in words. */
@@ -114,17 +151,10 @@ function frameWords(frame: ChartFrameData | null): readonly string[] {
   if (content.kind === "series") {
     return content.series.slice(0, mostListed).map((series) => seriesWords(series));
   }
-  if (content.kind === "candles") {
-    const { candles } = content;
-    const last = candles.from.length - 1;
-    return last < 0
-      ? []
-      : [
-          `${bucketTitle(candles.interval, candles.xText[0] ?? "")}: opens at ${candles.openText[0] ?? ""}`,
-          `${bucketTitle(candles.interval, candles.xText[last] ?? "")}: closes at ${candles.closeText[last] ?? ""}`,
-        ];
+  if (content.kind === "points") {
+    return content.series.slice(0, mostListed).map((series) => dotWords(series));
   }
-  return [];
+  return content.kind === "candles" ? candleWords(content.candles) : [];
 }
 
 /** What the chart shows, for a screen reader: its summary, then its values. */

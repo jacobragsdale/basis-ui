@@ -22,11 +22,13 @@ const url = `http://127.0.0.1:${port}`;
 const readyWithinMs = 30_000;
 const pollEveryMs = 250;
 
-/** The datasets the harness loads, and how `parallax-datagen` writes each, as the Angular demo's `data.sh` does. */
+/** The datasets the harness loads, and how `parallax-datagen` writes each: the Angular demo's, as its `data.sh` writes
+ * them, and the fixed-income page's bonds. */
 const datasets: readonly (readonly [string, readonly string[]])[] = [
   ["positions", ["positions", "--rows", "150000"]],
   ["trades", ["trades", "--rows", "150000"]],
   ["prices", ["prices", "--tickers", "50"]],
+  ["bonds", ["bonds", "--rows", "600"]],
 ];
 
 /** Runs a command to its end, failing with one line that says what failed. Cargo builds with one rustc job unless

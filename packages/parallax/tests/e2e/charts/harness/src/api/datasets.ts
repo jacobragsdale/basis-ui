@@ -4,6 +4,7 @@
 
 /** Each dataset's primary key, which makes a reload a diff, as in the Angular demo. */
 const datasets = {
+  bonds: "cusip",
   positions: "position_id",
   prices: null,
   trades: "trade_id",

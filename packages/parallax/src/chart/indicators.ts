@@ -6,7 +6,8 @@ import type { ChartFrameData, IndicatorLineData } from "#frame/chart-data.ts";
 import type { LayoutChart, LayoutIndicator } from "#layout/chart.ts";
 import type { ChartColors } from "#theme/charts.ts";
 
-import type { IndicatorStyle, PaneSpec } from "./model-types.ts";
+import type { IndicatorStyle } from "./model-types.ts";
+import type { PaneSpec } from "./panes.ts";
 
 const overlayKinds: ReadonlySet<LayoutIndicator["kind"]> = new Set([
   "sma",

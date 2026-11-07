@@ -230,7 +230,8 @@ pub fn transcript() -> Vec<Vec<u8>> {
             }),
         ),
     );
-    // Charts the engine reduces: a histogram split into series, and a density.
+    // Charts the engine reduces: a histogram split into series, and a scatter of
+    // dots, which 2,000 positions are, with their sizes, ids, tooltips and fit.
     let charts = [
         (
             3,
@@ -241,7 +242,9 @@ pub fn transcript() -> Vec<Vec<u8>> {
         ),
         (
             4,
-            r#"{"chart":{"kind":"scatter","x":"market_value_usd","y":["beta"]}}"#,
+            r#"{"chart":{"kind":"scatter","x":"market_value_usd","y":["beta"],
+            "series":"long_short","size":"notional_usd","id":"position_id",
+            "tooltip":["ticker","fund"],"fit":"delta"}}"#,
             200,
             100,
         ),

@@ -134,6 +134,12 @@ const chartSchema = z.strictObject({
   donut: z.boolean().default(true),
   // Values on bars and shares on slices, where they fit, unless this is off.
   labels: z.boolean().default(true),
+  // A scatter's dots: the column sizing them, the one naming them, more for the tooltip, and the API's fitted curve.
+  // The Rust leaves them out of a layout that does not set them, so they have no default here either.
+  size: name.optional(),
+  id: name.optional(),
+  tooltip: z.array(name).optional(),
+  fit: name.optional(),
 });
 
 /** A chart of a layout. */

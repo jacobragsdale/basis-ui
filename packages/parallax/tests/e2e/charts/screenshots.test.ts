@@ -1,4 +1,4 @@
-/* Every chart of the harness, its breakdowns and its technical page, in both modes, compared pixel for pixel with the
+/* Every chart of the harness, its breakdowns, its fixed-income charts and its technical page, in both modes, compared pixel for pixel with the
  * screenshots in `screenshots/`, as web/e2e/screenshots.spec.ts compares the Angular demo's. Text renders differently
  * from one machine to the next, so these run only in the pinned Playwright image: run them with `node
  * tests/e2e/charts/run.ts screenshots`, and take new ones with `--update-snapshots`. */
@@ -14,8 +14,9 @@ test.skip(
   "Screenshots are compared only in the pinned Playwright image: run node tests/e2e/charts/run.ts screenshots.",
 );
 
-/** How many charts the breakdowns page shows. */
+/** How many charts the breakdowns page and the fixed-income page show. */
 const breakdownCount = 10;
+const fixedIncomeCount = 1;
 
 /** Two animation frames, for a paint to reach the screen. */
 async function frames(page: Page): Promise<void> {
@@ -88,6 +89,15 @@ for (const theme of ["light", "dark"] as const) {
     await open(page, `/?page=breakdowns&theme=${theme}`, breakdownCount);
     const sections = page.locator("section[data-breakdown]");
     await allMatch(page, sections, { attribute: "data-breakdown", prefix: "breakdown-", theme });
+    expect(errors).toStrictEqual([]);
+  });
+
+  test(`every fixed-income chart draws as in its screenshot, ${theme} mode`, async ({ page }) => {
+    const errors = errorsOf(page);
+    await open(page, `/?page=fixed-income&theme=${theme}`, fixedIncomeCount);
+    const cards = page.locator("section[data-card]");
+    await expect(cards).toHaveCount(fixedIncomeCount);
+    await allMatch(page, cards, { attribute: "data-card", prefix: "fixed-income-", theme });
     expect(errors).toStrictEqual([]);
   });
 

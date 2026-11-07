@@ -35,7 +35,7 @@ const kinds = [
   "Stacked bar chart of sector by asset_class",
   "Horizontal bar chart of sector by long_short",
   "Histogram of beta by long_short",
-  "Density of points of daily_pnl_usd",
+  "Scatter plot of daily_pnl_usd",
   "Heatmap of sector by asset_class",
   "Donut chart of asset_class",
   "Pie chart of sector",

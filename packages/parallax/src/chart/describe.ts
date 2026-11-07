@@ -8,7 +8,7 @@ const kindNames: Readonly<Record<LayoutChart["kind"], string>> = {
   line: "Line chart",
   area: "Area chart",
   bar: "Bar chart",
-  scatter: "Density of points",
+  scatter: "Scatter plot",
   heatmap: "Heatmap",
   histogram: "Histogram",
   candlestick: "Candlestick chart",

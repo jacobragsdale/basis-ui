@@ -66,9 +66,8 @@ pins: `vp exec --filter @basis/ui playwright install chromium`.
 
 `charts-e2e` runs the React charts' Playwright specs in `tests/e2e/charts`
 against a small React app, the harness in `tests/e2e/charts/harness`, over the
-Angular demo's datasets, which it writes with `parallax-datagen` into
-`tests/e2e/charts/data` when they are
-missing. Text renders differently from one machine to the next, so it runs
+Angular demo's datasets and the fixed-income page's bonds, which it writes with
+`parallax-datagen` into `tests/e2e/charts/data` when they are missing. Text renders differently from one machine to the next, so it runs
 Playwright in the Docker image `mcr.microsoft.com/playwright` of the installed
 `@playwright/test` version, the Angular layer's, against the harness it builds
 and serves from this machine, and compares screenshots at threshold 0. Its
@@ -129,7 +128,11 @@ cargo build --release -p parallax-datagen
 ```
 
 The defaults give 5 million positions, 20 million trades, and daily bars for 500
-equities from 2016-01-04 to 2026-10-30. Add `--hostile` for nulls, NaN,
+equities from 2016-01-04 to 2026-10-30. `parallax-datagen bonds` writes a book
+of 600 investment-grade corporate bonds for the fixed-income charts: each
+bond's CUSIP, issuer, sector, rating, coupon, maturity and tenor bucket, its
+price, yield, duration and DV01, its spread, its sector's fitted spread curve at
+its duration, and how rich or cheap it is to that curve. Add `--hostile` for nulls, NaN,
 infinities, negative zero, extreme magnitudes, Unicode and blank tickers, and
 wall-clock times that daylight-saving changes make ambiguous or impossible. Add
 `--duplicate-key-rate 0.01` for repeated primary keys, and `--stream` for the

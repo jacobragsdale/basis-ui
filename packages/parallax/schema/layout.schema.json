@@ -115,7 +115,7 @@
         },
         {
           "const": "scatter",
-          "description": "Points, drawn as a density.",
+          "description": "Points: each row as a dot while the range shown holds at most 5,000,\nand a density past that.",
           "type": "string"
         },
         {
@@ -334,6 +334,13 @@
             "null"
           ]
         },
+        "fit": {
+          "description": "A scatter's numeric column holding a fitted curve's value at each row's\nx, such as the API's fitted spread at each bond's duration: drawn as a\nline through each series.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
         "hidden": {
           "default": [],
           "description": "Series hidden from the plot, by their legend labels.",
@@ -346,6 +353,13 @@
           "default": false,
           "description": "Bars running across instead of up.",
           "type": "boolean"
+        },
+        "id": {
+          "description": "The column naming each dot of a scatter, such as a bond's CUSIP: the\ntitle of its tooltip, and the value a click on it selects.",
+          "type": [
+            "string",
+            "null"
+          ]
         },
         "indicators": {
           "default": [],
@@ -401,10 +415,24 @@
             "null"
           ]
         },
+        "size": {
+          "description": "A scatter's numeric column whose magnitude sets each dot's area, such as\nDV01 or par.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
         "stacked": {
           "default": false,
           "description": "Bars of one group stacked instead of side by side.",
           "type": "boolean"
+        },
+        "tooltip": {
+          "description": "More columns a scatter's dot lists in its tooltip, in order.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
         },
         "volume": {
           "default": null,

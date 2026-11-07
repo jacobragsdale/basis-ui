@@ -56,7 +56,9 @@ function ChartLegend({ entries, onToggle, beside }: ChartLegendProps): ReactNode
             style={{ "--key": entry.color }}
             className={cn(
               "shrink-0 bg-(--key)",
-              entry.shape === "line" ? "h-0.5 w-3.5 rounded-full" : "size-2.5 rounded-sm",
+              entry.shape === "line" && "h-0.5 w-3.5 rounded-full",
+              entry.shape === "rect" && "size-2.5 rounded-sm",
+              entry.shape === "dot" && "size-2.5 rounded-full",
               entry.hidden && "opacity-40",
             )}
           />

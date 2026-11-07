@@ -195,7 +195,8 @@ layout, so a pivot round-trips through a link with `encodeLayout` and
 ## Draw a chart
 
 `<Chart>` draws every chart of the firm's apps on a Canvas 2D surface: line,
-area, bar (across, stacked, or on two axes), scatter as a density, heatmap,
+area, bar (across, stacked, or on two axes), scatter (a dot per row up to 5,000
+rows in the range shown, a density past that), heatmap,
 histogram, candlestick, OHLC, pie and donut, on a value or trading-time axis,
 with technical-analysis indicators and panes, drawings, a compare mode and
 events. Give it a dataset that `useDataset` loads and a layout whose `chart`
@@ -220,6 +221,31 @@ import { Chart } from "@basis/parallax";
 />;
 ```
 
+A scatter's dots draw a relative-value view: `series` colours them, `size`
+sets each dot's area by a column's magnitude, `id` names each in its tooltip
+and is what a click on it selects, `tooltip` lists more columns, and `fit`
+draws the API's fitted curve, a column holding the curve's value at each row's
+x, as a dashed line through each series:
+
+```tsx
+<Chart
+  dataset={bonds}
+  layout={{
+    chart: {
+      kind: "scatter",
+      x: "duration",
+      y: ["spread_bp"],
+      series: "sector",
+      size: "dv01_usd",
+      id: "cusip",
+      tooltip: ["issuer", "rating"],
+      fit: "fitted_spread_bp",
+    },
+  }}
+  onSelect={(bond) => setBond(bond)} // { column: "cusip", value, label }, or null
+/>
+```
+
 A small chart takes the rows the page already holds, and loads them as a table
 of its own, in their order:
 
@@ -233,7 +259,7 @@ of its own, in their order:
 | `rows`, `kind`, `x`, `y` | The small-data form: the rows, a value per column, and what to draw of them; `series` splits them, `settings` adds chart settings and `formats` formats the values |
 | `onLayoutChange`         | The layout the chart changed: a series hidden from the legend, a zoom, a drawing. Without it, the chart keeps its own changes until its `layout` changes           |
 | `onBrush`                | The filters a Shift-drag selects, for a linked view; null once Escape clears it                                                                                    |
-| `onSelect`               | The group of a bar or slice clicked, for a linked view; null once the selection is cleared                                                                        |
+| `onSelect`               | The group of a bar or slice clicked, or a scatter's dot by its `id` column, for a linked view; null once the selection is cleared                                  |
 | `sync`                   | The group whose crosshairs move together: charts of the same dataset, x column and axis by default; null keeps the crosshair to this chart                        |
 | `status`                 | The status line under the chart: what it draws, and when the source was read. On by default                                                                       |
 | `label`                  | The chart's name for a screen reader, in place of what it says it draws                                                                                            |

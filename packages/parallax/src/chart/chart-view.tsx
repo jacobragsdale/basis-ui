@@ -23,7 +23,8 @@ interface ChartOptions {
   readonly onLayoutChange?: (layout: Layout) => void;
   /** The filters a Shift-drag brush selects, for linked views; null once the brush is cleared. */
   readonly onBrush?: (filters: readonly LayoutFilter[] | null) => void;
-  /** The group whose bar or slice was clicked, for linked views; null once the selection is cleared. */
+  /** The group whose bar or slice was clicked, or the scatter's dot by its id, for linked views; null once the
+   * selection is cleared. */
   readonly onSelect?: (selection: ChartSelection | null) => void;
   /** The group whose crosshairs move together: by default charts of the same dataset, x column and axis; null keeps
    * the crosshair to this chart. */

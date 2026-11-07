@@ -286,21 +286,27 @@ fn chart_frames_carry_reduced_data_and_exact_text() {
             .all(|t| t.split('.').nth(1).is_some_and(|d| d.len() == 2)),
         "{from_text:?}"
     );
-    // The density of market value against beta: 4-pixel cells.
-    let density = &charts[1];
-    assert_eq!((density.columns, density.rows), (50, 25));
-    assert!(density.y_to > density.y_from);
-    let cells = decode_batches(&density.batch).unwrap().remove(0);
-    let counts = arrow_array::cast::AsArray::as_primitive::<arrow_array::types::UInt32Type>(
-        cells.column_by_name("count").unwrap().as_ref(),
+    // Market value against beta as dots, each position with a beta one dot,
+    // and a fit line per side.
+    let dots = &charts[1];
+    assert_eq!((dots.columns, dots.rows), (0, 0));
+    assert!(dots.y_to > dots.y_from);
+    let batch = decode_batches(&dots.batch).unwrap().remove(0);
+    assert!(
+        batch.num_rows() > 1_000 && batch.num_rows() <= 2_000,
+        "{}",
+        batch.num_rows()
     );
-    assert_eq!(counts.len(), 50 * 25);
-    assert!(counts.iter().flatten().map(u64::from).sum::<u64>() <= 2_000);
+    for name in ["size", "id_json", "tooltip_0", "tooltip_1", "fit_text"] {
+        assert_eq!(role(&batch, name), name);
+    }
+    assert_eq!(dots.fits.len(), 2);
+    assert!(!dots.fit_batch.is_empty());
 }
 
 /// The WebAssembly test suite checks the same value, so both builds must answer
 /// byte for byte the same.
-pub const TRANSCRIPT_FINGERPRINT: u64 = 4_939_667_166_795_085_321;
+pub const TRANSCRIPT_FINGERPRINT: u64 = 4_229_851_471_995_632_977;
 
 #[test]
 fn transcript_fingerprint_is_stable() {

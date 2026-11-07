@@ -9,9 +9,9 @@
  *
  * The engine, in its worker, reduces line, area, scatter, histogram, candlestick and OHLC charts to the plot's pixels;
  * bar charts, heatmaps and pies draw the layout's grouped view. The legend hides and shows series, drawings and their
- * tools sit on charts along an x axis, the wheel zooms, a drag pans, Shift and drag brushes, a click selects a bar or
- * slice, and crosshairs of the same dataset and x move together. The canvas carries a text alternative: what the chart
- * draws, and the values it shows. */
+ * tools sit on charts along an x axis, the wheel zooms, a drag pans, Shift and drag brushes, a click selects a bar, a
+ * slice or a scatter's dot, and crosshairs of the same dataset and x move together. The canvas carries a text
+ * alternative: what the chart draws, and the values it shows. */
 
 import { useId } from "react";
 import type { ReactNode } from "react";
@@ -46,7 +46,7 @@ function RowsChart(props: RowsChartProps): ReactNode {
   const { rows, kind, x, y, series, settings, formats, name, ...options } = props;
   const small = { kind, x, y, ...(series === undefined ? {} : { series }) };
   const id = useId().replaceAll(/[^\w-]/gu, "");
-  const dataset = useDataset(`rows-${id}`, smallBytes(rows, small));
+  const dataset = useDataset(`rows-${id}`, smallBytes(rows, small, settings));
   const layout = {
     ...smallLayout(small, settings),
     ...(formats === undefined ? {} : { formats }),

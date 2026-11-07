@@ -10,12 +10,12 @@ import type {
   Mark,
   ModelInput,
   Pane,
-  PaneSpec,
   Rect,
   Scale,
 } from "./model-types.ts";
 import { columnWidth, gutter, padOf, shown, xAxisHeight } from "./model-shared.ts";
 import { paneDomain, paneGap, paneHeight, paneScale, paneValues, segmentsOf } from "./panes.ts";
+import type { PaneSpec } from "./panes.ts";
 import { pixel } from "./scale.ts";
 
 /** A pane's line width. */
