@@ -1,0 +1,9 @@
+node_modules/
+dist/
+target/
+test-results/
+playwright-report/
+.fixtures/
+.env
+.env.*
+!.env.example
