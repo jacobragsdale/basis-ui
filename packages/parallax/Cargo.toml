@@ -7,7 +7,7 @@ version = "0.1.0"
 edition = "2024"
 rust-version = "1.99"
 license = "Apache-2.0"
-repository = "https://github.com/jacobragsdale/parallax"
+repository = "https://github.com/jacobragsdale/basis-ui"
 
 [workspace.dependencies]
 parallax-datagen = { path = "crates/parallax-datagen", version = "0.1.0" }

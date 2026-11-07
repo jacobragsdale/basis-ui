@@ -12,7 +12,8 @@ order:
   why.
 - [Roadmap](docs/roadmap.md): the phases, the steps in each, and which run at the same time.
 
-[parallax](https://github.com/jacobragsdale/parallax) moves into this repo in the roadmap's phase 2.
+[parallax](packages/parallax) moved into this repo with its history, from
+[its own repo](https://github.com/jacobragsdale/parallax), at the start of the roadmap's phase 2.
 
 ## License
 
