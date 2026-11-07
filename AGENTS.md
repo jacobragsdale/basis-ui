@@ -6,7 +6,7 @@ through [the contract on basis's design
 page](https://github.com/jacobragsdale/basis/blob/main/docs/design.md#what-a-ui-can-rely-on).
 [docs/design.md](docs/design.md) holds the decisions and their reasons, and [docs/roadmap.md](docs/roadmap.md) the
 phases, their steps, and the lanes that run at the same time. The code is a pnpm workspace run by Vite+'s `vp`, with
-`@basis/ui` in `packages/ui`; parallax moves into `packages/parallax` in phase 2.
+`@basis/ui` in `packages/ui` and parallax, moved in with its history, in `packages/parallax`.
 
 ## Working here
 
@@ -33,3 +33,14 @@ vp run -r build       # every package's build
 
 `vp` is Vite+'s command: install it with `curl -fsSL https://vite.plus | bash`. The commit hook runs `vp staged`, `vp
 check` and the tests. CI runs `vp check` on every change, and each package's tests and build when its paths change.
+
+Parallax keeps its own checks until roadmap step 2.6 replaces its Angular layer, and the root checks skip it. Its
+`CONTRIBUTING.md` has them; in short:
+
+```sh
+cd packages/parallax
+cargo fmt --all --check && cargo clippy --workspace --all-targets --locked && cargo test --workspace --locked
+cd web && pnpm install && pnpm build:wasm && pnpm lint && pnpm format:check && pnpm test
+```
+
+On this machine, build Rust with `CARGO_BUILD_JOBS=1`: parallel rustc jobs run out of memory.

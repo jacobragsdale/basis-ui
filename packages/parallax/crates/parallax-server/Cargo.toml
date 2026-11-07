@@ -1,0 +1,48 @@
+[package]
+name = "parallax-server"
+description = "The parallax server: datasets, a shared table cache, and the WebSocket protocol"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+arrow-array.workspace = true
+arrow-ipc.workspace = true
+arrow-schema.workspace = true
+axum = { version = "0.8.9", features = ["ws"] }
+clap.workspace = true
+futures-util = "0.3.34"
+jiff.workspace = true
+parallax-datagen.workspace = true
+parallax-engine.workspace = true
+parallax-export.workspace = true
+parallax-protocol.workspace = true
+parallax-session.workspace = true
+parallax-sources.workspace = true
+prost = "0.14"
+serde = { version = "1.0", features = ["derive"] }
+serde_json.workspace = true
+tempfile = "3.27"
+tokio = { version = "1.54", features = ["macros", "net", "rt-multi-thread", "signal", "sync", "time"] }
+tokio-util = { version = "0.7.20", features = ["io"] }
+toml = "1.1"
+tower-http = { version = "0.7", features = ["compression-gzip", "compression-zstd", "fs", "set-header"] }
+tracing = "0.1.44"
+tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
+
+[features]
+# Datasets from SQL Server and Oracle through ODBC; needs unixODBC.
+odbc = ["parallax-sources/odbc"]
+# Datasets from MongoDB.
+mongodb = ["parallax-sources/mongodb"]
+
+[dev-dependencies]
+tokio = { version = "1.54", features = ["test-util"] }
+tokio-tungstenite = "0.29"
+tower = { version = "0.5", features = ["util"] }
+
+[lints]
+workspace = true

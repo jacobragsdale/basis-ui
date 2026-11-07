@@ -1,0 +1,920 @@
+# How parallax is designed
+
+parallax is a data grid, pivot table and charting stack for portfolio managers
+and quant researchers. It is a Rust engine with an Angular front end. Three
+facts about its users drive the design. The datasets are large. The browsers
+have no GPU. A wrong number on screen costs more than a slow one.
+[Perspective](https://github.com/perspective-dev/perspective) is the model for
+the architecture. parallax is a new implementation, not a fork, and its tests
+use Perspective as a second reference.
+
+## Why existing grids fail at this size
+
+The component suites that parallax replaces hold each row as a JavaScript
+object and draw one DOM or SVG node per value. DevExpress DevExtreme is the
+one in the first deployment. One million rows of 20 floating-point columns and
+two text columns were parsed from JSON in Node 26's V8 on 2026-11-02. They
+took 509 MB of JavaScript heap, about 530 bytes a row. Stored as typed
+columns, the same data took 155 MB, 163 bytes a row.
+
+V8's pointer compression caps a tab's JavaScript heap near 4 GB. Grid suites
+also keep extra copies of the rows for sorting, filtering and wrapping, so a
+few million rows exhaust the tab. The JSON text adds to the peak: about 510 MB
+for that million rows, held alongside the parsed objects while it parses.
+
+parallax avoids each of those costs. Data travels and lives as Arrow columns.
+Computation happens where the data is held. The screen receives only what it
+draws.
+
+## The environment: Windows 11 on Citrix, without a GPU
+
+Users run a Chromium-based browser on 64-bit Windows 11 Citrix VDIs, with
+software rendering only. Chromium
+[deprecated](https://groups.google.com/a/chromium.org/g/blink-dev/c/yhFguWS_3pM/m/oLrB5up_BwAJ)
+the automatic SwiftShader fallback for WebGL in Chrome 130 and removed it by
+Chrome 139. On a machine without a GPU, creating a WebGL context therefore
+fails outright instead of running slowly. WebGPU is unavailable for the same
+reason. That rules out every GPU charting library, Perspective's WebGL charts
+included. Canvas 2D, which Skia rasterizes on the CPU, is the drawing surface
+that works.
+
+Citrix adds two more pressures. A VDI's CPU and memory are shared and limited,
+so the browser should hold as little data as possible. Citrix's display
+protocol sends only the screen regions that changed. A redraw confined to the
+changed cells therefore costs less than a full repaint, both on the VDI and on
+the network.
+
+## One engine, two places to run
+
+The engine is a Rust library compiled two ways: natively for the server, and
+to `wasm32-unknown-unknown` for the browser, where it runs in a Web Worker off
+the main thread. Both builds sit behind the same client protocol, so a dataset
+can choose where it lives without the UI noticing. Small datasets are copied to
+the browser, where pivots respond without a network round trip. Large datasets
+stay on the server, and the browser receives only the visible window.
+
+A dataset marked `browser` in its definition is still loaded and cached on the
+server, which keeps serving exports and clients without a worker. The first view
+of such a dataset in a page fetches a copy of the server's table for its
+parameters from `GET /copy/{dataset}`, loads it into the worker and runs every
+later view of that table there. The copy is an Arrow IPC stream of the rows in
+insertion order, with the table's status (load number, load and source times,
+NaNs turned blank, a failed refresh) in its schema metadata, so views of the copy
+show the same rows, order and status as views on the server. The server writes
+a table's copy once per load and streams that file to every page that asks, so
+many pages opening at once neither re-encode the table nor hold up its reload.
+The cache follows the table itself, so callers whose connection context
+resolves to different tables never share a copy. A test runs a set
+of layouts against a reloaded table and its copy and requires identical frames,
+and an end-to-end test compares a pivot's copied cells across the two. A copy
+that fails to load, or takes longer than two minutes, leaves the view on the
+server, and the status bar says why.
+A copy is fetched once per page: a reload on the server reaches it when the page
+reloads, and its status bar shows the copy's age meanwhile.
+
+The browser build is single-threaded and stays under the 4 GB limit of 32-bit
+WebAssembly. Going further would cost a lot:
+
+- Rust's `wasm64-unknown-unknown` target is Tier 3.
+- Multithreaded WebAssembly from Rust needs a nightly compiler and a rebuilt
+  standard library.
+- Threads also need cross-origin isolation headers on the host application.
+- The `wasm-bindgen-rayon` helper was last released in December 2024.
+
+That cost isn't worth paying when large data belongs on the server anyway. The
+server build parallelizes with rayon.
+
+## Inside the engine
+
+A table stores each column as a typed vector with a validity bitmap, one entry
+per slot. A slot is stable for the life of a row:
+
+- an update overwrites the slot in place
+- a delete frees it for reuse
+- a hash index on the primary key finds the slot for a key
+
+Text columns are dictionary-encoded. Each dictionary keeps a rank for every
+string in the engine's text order, so sorting and grouping compare integers
+instead of strings. Arrow is the format at the edges: loads arrive as Arrow
+batches, and every window leaves as one.
+
+A load into a keyed table is a diff against the current contents. New keys are
+inserted, changed rows are updated in place, and missing keys are deleted. The
+load is validated in full before anything changes. The result is a change set:
+the old images of removed and overwritten rows, and the slots of new and updated
+ones.
+
+A view is a pipeline over a table:
+
+1. filter
+2. computed columns
+3. group or pivot
+4. aggregate
+5. sort
+6. the window the screen asks for
+
+A grouped view applies a change set as a diff, as Perspective does. It removes
+the old images' contributions and adds the new rows'. That gives the same
+state as building the view from scratch, which the tests check after random
+streams of loads and upserts. Live streams use this, but its main use is
+refresh. About 90% of pages show snapshot data, and applying a reload as a diff
+keeps an open pivot's expanded rows, sort and scroll position intact.
+
+A flat view re-filters and re-sorts the table on every change, using every core
+on the server. Incremental maintenance of flat views waits for live sources,
+which are deferred.
+
+Text is stored as dictionary codes, so a filter on a text column decides each
+distinct string once. It keeps a bit per code saying whether that string
+passes, and testing a row reads its code and one bit; new strings are decided
+as a reload interns them. Removed rows carry dictionaries of their own, so they
+are tested on their text. On 1,000,000 trades, a "contains" filter on the
+ticker took 1.4 ms this way, against 27 ms when each row's text was lowered
+and searched (2026-11-03). Text conditions ignore case: contains, does not
+contain, starts with and ends with. "Does not contain" keeps blanks, as a
+spreadsheet does. A filter may test several columns and pass when its
+condition holds in any of them, which is how a search across a grid's columns
+runs.
+
+A grouped view keeps a tree. The root is the grand total, and each level below
+groups by one more column. Every node is fed directly by base rows, so no total
+is computed from other totals. Column pivots keep one cell per node and
+column-pivot key, next to the node's own row total.
+
+The aggregates are sum, count, mean, weighted mean, minimum, maximum, first,
+last, distinct count, variance, standard deviation, median and percentiles.
+
+- **Sum, count, mean, variance and weighted mean** are kept at every node as
+  exact sums that can be reversed. A change costs constant time per node.
+- **Minimum, maximum, first, last, distinct count, median and percentiles** keep
+  value counts at the leaf nodes only. Nodes above merge their leaves when a
+  value is needed, which keeps memory proportional to the rows rather than to
+  rows times levels.
+
+Pivots support:
+
+- several row and column levels
+- subtotals and grand totals
+- expand and collapse state that survives refreshes and re-sorts
+- sorting by any aggregate within a level
+- filters on raw values and on aggregates
+- top-N per level, with an "Other" row
+- percentage of parent, row, column or grand total
+- drill-through to the underlying rows
+- several measures at once
+
+A grid can be grouped too, keeping its rows: a detail view. Its innermost
+groups expand into their rows, in the grid's sort, and each group row carries a
+count of its rows. The grand total is the grid's totals row rather than a row
+of its own. Detail rows are kept as runs, one per group, so a million rows cost
+a group's entry rather than one each. The rows that pass are gathered by group
+the first time any show, and each group is sorted the first time its rows show;
+on 1,000,000 trades grouped two levels deep, that first window took 23 ms and
+later ones under 2 ms. A detail view takes no column pivots, measures, top-N or
+aggregate filters, and sorts its groups by their keys.
+
+## What "never wrong" means
+
+parallax treats a plausible but wrong number as worse than an error. Every rule
+in this section follows from that.
+
+### Numbers
+
+Money columns use exact decimals (Arrow Decimal128) alongside f64, i64 and
+time-zone-aware timestamps. Floating-point sums are exact until one final
+rounding: each double is added to a fixed-point integer wide enough for every
+finite double (a Kulisch accumulator), and the total is rounded once. The `xsum`
+crate, the first choice, returned a neighbouring double for some single values,
+so the engine carries its own accumulator and the tests compare it with a port of
+CPython's `math.fsum`. A total comes out the same, to the last bit, however it is
+computed:
+
+- incrementally
+- from scratch
+- in the browser
+- on the server
+- in DuckDB
+
+Removing a value adds its negative, which is equally exact. Integer and
+decimal sums accumulate in 256-bit integers. A decimal sum that cannot fit 38
+digits shows an overflow marker instead of a wrapped value. A mean is the exact
+sum divided by the count, rounded once.
+
+The sample variance of doubles comes from the exact sums of values and of
+squares, each square added without error. Big-integer arithmetic then divides
+once. A group of identical values therefore has a variance of exactly zero,
+not a rounding residue. Percentiles of decimals are reported as doubles at full
+interpolated precision. DuckDB instead rounds them to the column's scale.
+
+Every subtotal and grand total is computed from base rows, never from other
+subtotals, so no average is an average of averages. Percent-of-total with a
+zero denominator shows a dash. Distinct counts are exact. Percentiles
+interpolate linearly, matching Excel's `PERCENTILE.INC` and DuckDB's
+`quantile_cont`.
+
+A column can declare its unit, either fixed (`USD`) or taken from another
+column (`currency`). When a group mixes units, the cell reads "mixed" and lists
+the units on hover. The exception is when the layout converts through a
+declared FX-rate column. The same guard covers percent against basis points.
+
+### Nulls, NaN and text
+
+Nulls follow SQL rules:
+
+- Aggregates skip nulls.
+- `count(*)` and `count(column)` stay distinct.
+- A null group key appears as "(blank)" and sorts last.
+
+NaN becomes null at load time and is counted in the view's data-quality badge,
+so the substitution is visible. Positive and negative infinity are kept.
+
+Text sorts case-insensitively, with a case-sensitive tie-break and nulls last.
+There is no locale-dependent collation, so the order is the same on every
+machine and matches the test oracle.
+
+### Display
+
+The screen and the Excel export show the same digits because both use one
+formatter, in the engine. Frames carry its text next to each value, so the
+browser draws what the engine wrote and never formats a number itself. It
+follows Excel's display rules: a double is rounded to 15 significant digits, then
+to the shown decimals, both half away from zero. So 2.675 at two decimals shows
+as 2.68 in both.
+
+Exact decimals and integers skip the 15-digit step: they never were doubles. A
+decimal of 15 significant digits or fewer converts to a double and back
+unchanged, so Excel shows the same digits. A longer one shows in full on screen;
+how the export writes it is decided with the export.
+
+- A value that rounds to zero never shows a minus sign.
+- A number too wide for its column shows `###`, as Excel does, never with
+  digits clipped off.
+- Text truncates with an ellipsis and shows in full on hover.
+- K/M/B abbreviations are opt-in per column and always show the suffix.
+- Percent and K/M/B scaling move the decimal point exactly, before the one
+  rounding to the shown decimals.
+- Booleans show as `TRUE` and `FALSE`, as in Excel.
+- Copy and export carry full-precision values. Display formats travel as Excel
+  number formats.
+
+A layout sets formats per source column: decimals, thousands separators,
+percent, K/M/B, negatives in parentheses, the display zone, and sub-second
+digits. A measure takes its column's format unless it sets its own; counts and
+variances use their type's default, and shares of a total show as percentages.
+
+Rounding happens only in this formatter. The tests compare it with exact
+big-integer arithmetic on random doubles, many of them next to rounding
+midpoints, and compare its time zones with DuckDB's.
+
+### Time
+
+Timestamps are stored as UTC instants. They are displayed in a zone that each
+column declares, defaulting to `America/New_York`, and headers name the zone.
+Digits below the shown precision are cut rather than rounded, so a time never
+shows later than it happened and 23:59:59.9 never becomes the next day.
+
+SQL Server `datetime` and `datetime2` values carry no zone, so each such column
+declares its source zone, also defaulting to New York. Daylight-saving changes
+produce local times that are ambiguous or don't exist:
+
+- In autumn, local times from 01:00 to 01:59 occur twice. Such a time is a load
+  error unless the column declares whether to take the earlier or the later
+  instant.
+- In spring, an hour of local time is skipped. A time in that gap is always an
+  error.
+
+Business dates such as trade date stay dates and never pass through a zone.
+Chart buckets are cut in the display zone, so a day is a New York day. The
+engine uses `jiff` with a bundled, version-pinned time-zone database, so the
+server and browser builds agree. Diagnostics show the database version.
+
+### Loads
+
+A load that would change the meaning of the data fails loudly instead:
+
+- Duplicate primary keys are an error, unless the dataset opts into
+  last-one-wins.
+- A column that changes type or disappears is an error naming the column.
+- A document field whose value has the wrong type is an error naming the row
+  key, path and value.
+- Oversized text is an error, never a truncation.
+
+A load that fails partway never replaces the last good table. The view keeps
+the old data and shows a "refresh failed" badge with the time. Each table
+records its row count, a hash of the source query, its load times and a
+checksum, all visible in the view's info panel.
+
+Every frame of rows sent to the screen carries two versions: the view
+configuration that produced it, and the table load. The UI discards frames
+that don't match the current versions. A scroll racing a filter change
+therefore can never paint old rows under new headers, and a view never mixes
+rows from two loads.
+
+## How the guarantees are tested
+
+The tests compare parallax with independent implementations rather than with
+expected values written by hand. They run on data from a reproducible,
+seed-driven generator. It produces realistic finance data:
+
+- positions, trades, and daily prices with fat-tailed returns
+- Zipf-distributed ticker frequency
+- several currencies and mixed decimal scales
+
+It also produces hostile values: nulls, NaN, infinities, negative zero,
+notionals of 10^15, weights of 10^-12, duplicate keys, Unicode tickers, and
+timestamps at daylight-saving transitions.
+
+Six layers of tests run on that data:
+
+1. Random tables and random view configurations run through parallax and
+   through DuckDB, and the results must match. Perspective is a second oracle.
+2. Random streams of updates must leave every view identical to a
+   recomputation from scratch.
+3. The native and WebAssembly builds must return identical results.
+4. The cells the grid draws must match the engine's output. This is checked
+   from the renderer's cell model, and with Playwright screenshots in Chromium
+   with the GPU disabled.
+5. Exported Excel files are read back with `calamine` and compared with the
+   view.
+6. The protocol is fuzzed.
+
+Technical-analysis indicators are checked against TA-Lib. Where indicator
+definitions vary, such as how an EMA starts, parallax follows TA-Lib's
+convention of seeding with an SMA, and MACD aligns its two averages as TA-Lib
+does. Two cases differ on purpose, because TA-Lib reports zero where there is
+no answer: a stochastic over a window whose high equals its low, and a VWAP
+before any volume has traded, have no value. An RSI over a window without
+movement reads 50, as in TA-Lib. Indicators skip rows that lack an input, such
+as a null close, rather than reading them as zero or breaking the line; a
+VWAP starts again with each New York trading day for intraday data, and runs
+from the first row for daily data. Moving sums carry their rounding error, so a
+moving average over a million rows stays within one unit in the last place of
+the exact mean, where a plain running sum drifts by a dozen. Bollinger Bands
+keep their sums in double-double precision: a square root turns the smallest
+leftover of rounding into a visible spread, so a window that has gone flat must
+come out with none. Every indicator takes one pass over the rows whatever its
+period. A candle's volume that overflows its column's type says so rather than
+wrapping round. Excel can't run on the Linux build host, so
+at each milestone someone opens a verification workbook in real Excel on a VDI.
+
+## Drawing without a GPU
+
+The engine reduces data to screen resolution before sending it, so the client
+never draws more than the screen can show.
+
+Line charts use M4 aggregation. It keeps the first, last, minimum and maximum
+value in each pixel column, and the resulting line matches, pixel for pixel,
+the line through every point at that width. Spikes never vanish. A chart 2,000
+pixels wide therefore needs at most 8,000 points, whether the series has 2,000
+points or 20 million.
+
+Scatter plots and heatmaps become binned densities, and bar charts arrive
+aggregated. Indicators are computed on full-resolution data before the
+reduction. A 200-day moving average computed from downsampled points would be
+wrong.
+
+Candlestick and OHLC charts bucket rows by a calendar interval cut in New York
+time: minutes, days, Monday-started weeks, months, quarters or years, the
+shortest that keeps candles at least 4 pixels wide. Each bucket keeps its first
+open, highest high, lowest low and last close. A histogram computes its bin
+edges once and places every value by comparing it with them, so a value on an
+edge lands in the bin that edge's label opens. Every reduced value carries the
+row it came from, so tooltips show the exact value, formatted by the engine like
+any cell.
+
+A chart's x axis is either its values or trading time on the NYSE calendar,
+where closed days and the hours outside the 09:30 to 16:00 session take no
+space, so trading days sit one apart and Friday's close meets Monday's open.
+The calendar's closures hold from 2000; before that, only weekends close. The
+engine places the axis's ticks and writes their labels, because only it can
+map trading time back to dates; a tick that falls on a closed moment moves to
+where the market next opens and takes that moment's label.
+
+Averages, Bollinger Bands and VWAP are drawn over the price, and widen its
+scale to hold them; RSI, MACD, ATR, the stochastic and volume each get a pane
+under it, on the same x axis, so zooming, panning, the crosshair and a brush
+cover every pane at once. Oscillator panes run from 0 to 100 with their usual
+guides, MACD's histogram and volume bars take the up and down colours, and
+overlays take the palette's slots after the plotted series, so an average never
+shares a price's colour. The tooltip lists each indicator line's value at the
+crosshair: on a candle, at the last row of its bucket, the one its close comes
+from, and under that row's own date when it differs from the crosshair's.
+
+Drawings (trend lines, horizontal lines, Fibonacci retracements, rectangles
+and notes) are saved in the layout, anchored to data rather than to pixels:
+each anchor holds an x value of the x column, exactly as the frame's points
+carry it, and a price. A new anchor snaps to the nearest point or candle, and
+its price is rounded to what a pixel tells apart. The engine places every
+anchored x value on the axis and sends the positions with each frame, because
+only it can place a date on trading time, so a drawing stays with its data
+however the chart is zoomed, panned or its axis placed. Changing a drawing is a
+change of how the chart is drawn, so the reduction stays and only the
+positions are sent again.
+
+Compare mode puts every series of a line or area chart on its percentage
+change from its first value in the range shown, so instruments of different
+prices share one axis; the engine computes each change from its row's exact
+value and writes it as a percentage, and refuses averages and bands, which are
+in prices, on such a chart. A layout can name an events column: the rows it
+marks in the range shown, such as earnings and dividends, are marked along the
+bottom of the price and read in the tooltip, at most 500 of them, evenly
+chosen, with the status bar saying how many there are in all. The measure
+tool asks the engine rather than working from pixels: between the rows with a
+price nearest the two ends of a band, it reads their prices, the change and
+its percentage, and the bars between them, all as the engine's text.
+
+A candle at either edge of the visible range keeps its whole bucket, so panning
+never changes its prices, and each price comes from a row that has one. Minute
+buckets are cut by each instant's own offset, so the repeated autumn hour gets
+its own candles. Candlestick and OHLC charts show one instrument and need dates
+or instants on the x axis.
+
+Pie and donut charts draw the layout's grouped view, as bar charts and heatmaps
+do, so the engine needed only the kind. A slice's angle comes from its group's
+first measure; its label, tooltip and a donut's centre total are the engine's
+text, and a second measure shown as a share of the total gives each slice its
+percentage, so no share is computed in the browser. A pie with more than seven
+groups asks the engine for its seven largest and one "Other" slice, which the
+engine totals, unless the layout sets its own top-N. A share of a whole has no
+negative parts, so a pie refuses negative values with a message rather than
+drawing them. Clicking a bar or slice selects its group: the chart emits
+`selectionChange` with the outermost group column and the group's exact key,
+for a host to filter a linked view by, dims the other groups, and clears it on
+a second click. "Other" stands for several groups and selects nothing.
+
+Charts label what they can without crowding. Category labels along the bottom
+stay level if each fits its share of the width, break onto two lines between
+words if that makes them fit, and otherwise turn 45° and are cut to a share of
+the chart's height; only labels that would touch even turned are thinned out.
+Unless the layout's chart says `labels: false`, each bar carries its value just
+past its end, or just inside it in a contrasting ink, and the value axis leaves
+room for it; stacked bars carry none, since their segments' values would crowd.
+Each slice carries its share where the text fits between the hole and the rim,
+in white or near-black, whichever contrasts more with the slice. The slice
+under the pointer moves out, and a donut's hole names it in place of the total;
+the chart finds that slice in the model drawn without the movement, so the
+pointer never chases it.
+
+A chart smaller than 260 by 200 pixels is compact: its plot has less padding
+and no legend, and its tooltip names what is under the pointer. A pie at least
+360 pixels wide lists its slices beside it in a table, as Excel does. A host can turn the
+status bar off with `[statusBar]="false"` for a small tile.
+
+M4's guarantee is tested directly: for random series with gaps and repeated x
+values, the line through the reduced points reaches exactly the same lowest and
+highest value in every pixel column as the line through every point.
+
+The client draws with Canvas 2D:
+
+- only on animation frames
+- only in regions that changed
+- with updates batched to a configurable visual rate, 4 Hz by default for
+  flashing cells
+
+Renderers, hit-testing and interaction are TypeScript inside the Angular
+library. Drawing from Rust would cross the WebAssembly boundary on every text
+call and make theming harder.
+
+The grid draws on a canvas too. A virtualized DOM grid, Perspective's choice, was
+measured against it on the same views in Chromium with the GPU disabled and the
+CPU throttled four times. The DOM grid spent 1.1 to 2 times as much main-thread
+time per frame, which is the headroom a slow desktop has before frames drop.
+[The grid experiment](grid-experiment.md) has the method and the numbers. The DOM
+grid brings native text selection and accessibility, which the canvas grid
+provides separately; screen-reader support isn't a first-milestone requirement.
+
+## The wire protocol
+
+Each browser tab opens one binary WebSocket and carries all of its views over
+it, tagged by view ID.
+
+- Control messages are protobuf: create a view, change its configuration, set
+  the visible window, subscribe. The `.proto` files are the single source of
+  truth and generate both the Rust and the TypeScript code.
+- Data travels as Arrow IPC. Frames for the visible window are small and go
+  uncompressed. A copy of a table for the browser goes over HTTP, compressed
+  with zstd, or gzip for a browser that doesn't offer zstd, and the worker's
+  `fetch` decodes it natively, off the main thread.
+- Every data frame carries the view ID, configuration version, window bounds,
+  table load version and source timestamp.
+- A client can fetch a window once without moving the view's viewport, which
+  is how a copy larger than the screen gets its rows. One fetch is limited to
+  1,000,000 cells.
+- A grid's layout change carries the window to answer it with, so the reply
+  holds the rows to draw and the grid never asks twice. If the rows now end at
+  or above the window's first row, as after a search, the window starts again
+  at row 0 and the grid scrolls to the top.
+- A grid has at most one layout change in flight. A newer change replaces any
+  change still waiting, so a small table answers every keystroke and a large
+  one never queues a backlog. Viewports and expansions asked for while a change
+  waits are sent after it, so that they apply to its layout. The engine answers
+  every change that carries a window, if only to refuse it, so a change in
+  flight is never left waiting for an answer that won't come.
+- A view of at most 20,000 cells, such as a few hundred rows, is fetched whole,
+  so scrolling it needs no request. After a search leaves it small, the grid
+  asks for rows up to that many cells, so clearing the search needs no request
+  either. A larger view is fetched for what is in view, plus 40 rows and two
+  columns on every side.
+- A chart asks for a chart window instead of a viewport: an x range at a plot
+  size in pixels, at most 16,384 each way. The answer is the reduction for that
+  window, with the x axis's labelled ticks and every value's text, and a
+  refresh pushes it again. Only one chart window per view is in flight; a
+  newer one replaces any waiting, as viewports do.
+- Each data column in a frame travels with its display text, its cell flags
+  (overflow, mixed units, undefined) and, for timestamps, full-precision text
+  for copying. Every Arrow field names its role and column index in its
+  metadata, so the client pairs them by index, never by name. Column-pivot names
+  can display alike: 1.001 and 1.004 both read 1.00 at two decimals.
+- Names can repeat within a frame: a detail view grouped by a column it also
+  shows has that column's group key and its values under one name. Arrow JS
+  merges the metadata of same-named fields when it builds a batch, so the client
+  reads each field from the schema the stream declares, matching vectors by
+  position.
+
+The browser worker that hosts the WebAssembly engine speaks the same messages
+over `postMessage`, through the same session code as the server. The server
+and the worker therefore can't drift apart: a fixed conversation must produce
+byte-identical replies from the native and WebAssembly builds.
+
+gRPC-web was ruled out because browsers can't use it for bidirectional
+streaming. WebTransport was ruled out because it runs over UDP, which corporate
+proxies often block.
+
+## The server and its data
+
+`parallax-server` is a crate that a host application embeds. It exposes an
+axum router and an engine handle. A small reference binary wraps it for
+deployment as a Linux container on Kubernetes (AKS), close to the Citrix farm
+on the network.
+
+The router is served with Nagle's algorithm off. With it on, a frame written
+just after another reply waited for the browser to acknowledge that reply,
+which its operating system may delay: by 40 ms on Linux, and by up to 200 ms
+on Windows, which Citrix desktops run. On the demo's Small tables page, the blotter's
+first frame waited 44 ms behind its own ViewOpened. A host that serves the
+router itself must turn it off too.
+
+The library contains no authentication, entitlement or audit code. Its one
+extension point is a per-connection value: the host's middleware sets it,
+dataset code receives it, and the library passes it through without
+interpreting it.
+
+A host registers datasets through a Rust API, and the reference binary reads
+the same definitions from TOML. A definition names the source, query,
+parameters, primary key, schema and refresh policy.
+
+Tables are cached in memory and shared across users, keyed by dataset and
+parameters, so fifty people opening the same page cost one load. A table
+refreshes in one of three cases:
+
+- it is older than a time limit when a view opens
+- its schedule says so
+- a publisher calls an invalidation endpoint
+
+Each refresh applies as a diff. A reload fetches without holding up readers:
+views keep showing the current rows until the new ones apply, and tables due at
+the same time reload in parallel, so one slow source does not delay the others.
+A memory budget evicts the least recently used tables, and an Arrow copy on
+local SSD makes reloading fast. Existing Python
+and C# services keep their business logic. parallax pulls from their existing
+GET endpoints through the HTTP connector, and live sources push Arrow batches
+through an ingest API.
+
+The connectors live in the `parallax-sources` crate, behind one interface: a
+source reads every row for a set of parameters in one call. The reference
+server's TOML names them by `kind`; `examples/sources.toml` shows each. The first
+connectors cover where the data already lives:
+
+- **SQL Server** goes through `arrow-odbc` and Microsoft ODBC Driver 18, which
+  fetch column batches instead of rows. SQL Server 2025's
+  [`json` type](https://learn.microsoft.com/en-us/sql/t-sql/data-types/json-data-type)
+  and JSON stored in `nvarchar(max)` both arrive as text. ODBC isn't among the
+  clients that support the native type.
+- **Oracle Database** goes through the same `arrow-odbc` path, with Oracle's
+  Instant Client ODBC driver. Three Oracle behaviours meet the load rules in
+  [What "never wrong" means](#what-never-wrong-means):
+  - `NUMBER` without a declared precision is a floating decimal of up to 38
+    digits, but Oracle's ODBC driver reports it as a double and converts it
+    through one even when asked for text. Such a column must be selected as
+    `TO_CHAR(col, 'TM9', 'NLS_NUMERIC_CHARACTERS=''.,''')` and declare its Arrow
+    type, so the text made by the database is parsed exactly, never through f64.
+  - `DATE` carries a time of day but no zone, so it follows the rule for
+    zoneless timestamps. `TIMESTAMP WITH TIME ZONE` is an instant.
+  - Oracle stores an empty string as NULL, so text columns from Oracle can't
+    distinguish the two.
+- Database connections and queries are configuration. A connection string may
+  name environment variables as `${NAME}`, so passwords stay out of files, and
+  dataset parameters bind to the query's `?` markers in a declared order. A
+  column fetched as text to stay exact, a zoneless time's zone and choice in the
+  repeated hour, a time kept as wall-clock, and a JSON column's fields are all
+  declared per dataset. Digits below the microsecond refuse the load rather than
+  being cut. Every column a setting names must be in the query's result, so a
+  misspelt name fails instead of falling back to defaults. On Oracle, a column
+  the driver reports as a double refuses the load unless it is listed as a real
+  `BINARY_DOUBLE` or declared as a float, and the refusal names the `TO_CHAR`
+  form to select instead. An environment value is quoted for its setting: braced in an ODBC
+  string, percent-encoded in a MongoDB URI; `env:NAME` takes a whole setting from
+  the environment. The ODBC and MongoDB connectors are features of `parallax-sources`
+  and the server, because they need unixODBC and the database drivers
+  installed. CI runs them against SQL Server, Oracle Database and MongoDB in
+  service containers.
+- **JSON columns and MongoDB documents** go through one shared converter that
+  maps declared paths to declared Arrow types.
+  - Numbers are parsed from text straight into the declared type, and decimals
+    are parsed exactly, never through f64.
+  - A missing path is null.
+  - Nested fields are reached by dotted paths. Arrays are refused for now,
+    because the engine has no list columns yet; see
+    [Deferred work](future.md).
+  - Wall-clock text without an offset follows the zoneless-timestamp rule in
+    the column's zone.
+  - MongoDB uses the official `mongodb` driver. `Decimal128` values keep every
+    digit, dates become instants, and object ids become their hex text. The
+    filter is extended JSON with `{name}` placeholders, filled as JSON strings
+    so that a parameter cannot change the filter's shape.
+- **Parquet** goes through the `parquet` crate, behind a local SSD cache keyed
+  by path, size and modification time, so the slow NFS share is read only once.
+  Older copies of a file are removed when a newer one is cached. Dataset
+  parameters may fill placeholders in the path, but not with path separators or
+  a leading dot, so a parameter cannot reach outside the configured directory.
+- **HTTP** pulls from the existing C# and Python REST GET endpoints, on the
+  same refresh rules as any other source.
+  - Dataset parameters map onto the GET's query string, so a table is still
+    cached by dataset and parameters.
+  - The host supplies a service credential, as it supplies the per-connection
+    value: a header read from an environment variable at each fetch, or a
+    function that returns headers. The library still contains no auth code.
+  - Certificates are checked against the operating system's trust store, so
+    endpoints signed by the company's own authority work. A response larger
+    than the dataset's limit, 2 GiB by default, refuses the load.
+  - The connector asks for an Arrow IPC stream with
+    `Accept: application/vnd.apache.arrow.stream`, the
+    [IANA-registered type](https://www.iana.org/assignments/media-types/application/vnd.apache.arrow.stream),
+    and falls back to JSON, which goes through the shared JSON converter. A
+    service can add Arrow beside JSON on the same route, with pyarrow in Python
+    or the Apache.Arrow NuGet package in C#, and its other callers keep getting
+    JSON.
+
+### Choosing a source
+
+Pulling suits snapshot data better than pushing, because a service can't know
+in advance which parameters a PM will open, such as an as-of date and a fund.
+Push ingest stays for live streams and for "data changed" signals.
+
+Which connector a dataset uses depends on what its existing GET does:
+
+- A GET that wraps one query or file: connect directly with the SQL Server,
+  Oracle, Parquet or MongoDB connector, and move the SQL into the dataset
+  definition.
+- A GET that carries business logic, such as calculations, joins across sources,
+  adjustments or Python models: use the HTTP connector. Rewriting that logic as
+  SQL inside parallax would let the grid and the app's other pages show
+  different numbers for the same thing.
+- A GET that filters rows by the calling user: tables are shared across users,
+  so it needs an unfiltered variant called with the service credential, with
+  the host applying entitlements. The alternative, per-user parameters, gives up
+  the sharing. Whether the existing GETs filter by user is still an open
+  question.
+
+JSON costs far more than Arrow at this size. 100,000 rows of 20 floats and 2
+strings were serialized in Python on 2026-11-02:
+
+| Serializer | Time | Size |
+|---|---|---|
+| Standard library `json.dumps` | 873 ms | 56 MB |
+| orjson | 96 ms | 52 MB |
+| pyarrow IPC stream | 33 ms | 18 MB |
+
+JSON is workable up to about a million rows. Past that the endpoint needs Arrow:
+twenty million trades would be about 11 GB of JSON per load.
+
+HTTP responses follow the load rules in [Loads](#loads), plus these:
+
+- **Pagination:** pages fetched one after another can come from different
+  moments. A load must be a single response, or pages pinned to one snapshot by
+  an as-of parameter.
+- **Decimals:** they arrive as JSON numbers or strings, and both are parsed
+  exactly. Python's standard `json` module can't serialize `Decimal`, so
+  services often convert money to float first. Those values have already passed
+  through a double, which keeps 15 to 17 significant digits. Pydantic v2 writes
+  decimals as strings.
+- **Zoneless datetimes:** these follow the zoneless-timestamp rule. Pydantic
+  and orjson both emit `2026-11-01T01:30:00`, which falls in New York's repeated
+  hour, so it fails unless the column declares the earlier or later instant.
+- **Bare `NaN`:** Python's `json.dumps` writes a bare `NaN` token by default,
+  which isn't valid JSON. The converter accepts it as NaN, which becomes null and
+  is counted, as for other sources.
+- **Missing or changed fields:** these are load errors naming the column.
+
+## The Angular library
+
+The library targets Angular 22 and later, zoneless, with signals and
+standalone components.
+
+- `<px-grid>`, `<px-pivot>` and `<px-chart>` each take a single `layout` and
+  emit `layoutChange`, so `[(layout)]` keeps the host's copy current.
+- `provideParallax({ url, worker })` configures the connection, and where the
+  application serves the browser engine's worker script. Without `worker`,
+  every view runs on the server.
+- A `ParallaxClient` service offers the same operations to code.
+- The npm package ships the WebAssembly engine and its worker script in its
+  `wasm` folder, which the application serves as static files. The worker
+  starts only when a page first opens a dataset marked for the browser, so pages
+  that don't use one never download the engine. `prewarm: true` starts it when
+  the application starts instead, beside the connection to the server. A
+  browser dataset's first rows otherwise wait for the server's welcome, then the
+  worker, then the engine: on the build host, with the CPU throttled four times
+  and an empty cache, they came 372 ms after the page began loading with
+  prewarming and 510 ms without. The demo prewarms.
+
+A layout is a JSON document that describes a whole view: dataset and
+parameters, grouping, pivots, filters, sorts, formats, column widths, chart
+configuration and drawings. Saved views, shared URLs, Excel exports and tests
+all use it. Its JSON Schema is generated from the Rust types, versioned with a
+tested migration for each change, and committed as `schema/layout.schema.json`.
+The TypeScript library checks layouts with a Zod schema that mirrors the Rust
+types. A test reads layouts the Rust crate wrote and requires each to come back
+unchanged, with the same defaults, so the two can't drift.
+
+Version 2 added what grids need. A version 1 document reads unchanged, since
+every new field defaults to what version 1 meant.
+
+- `search` matches text, ignoring case, in every column searched: the text
+  columns a grid shows, or a pivot's group and column-pivot columns. The layout
+  turns it into one filter across those columns, so a search survives
+  drill-through, and the value lists in filter menus honour it.
+- A filter can name more `columns`, and passes when its condition holds in any
+  of them.
+- `pinned` columns come first and stay at the left.
+- `titles` rename headers, in the grid and in the export alike.
+- `totals` fill a totals row, and a detail view's group rows.
+- `detail` groups a grid's rows rather than pivoting them.
+
+Frames carry the totals row beside the rows, computed for the same columns.
+
+`<px-grid>` keeps everything the user changes in the layout. Clicking a header
+sorts by that column, then reverses it, then clears it; Shift adds a sort. In a
+pivot, a header sorts groups by that measure. Dragging a header edge resizes
+the column, and double-clicking it fits the loaded values. Clicking a group
+expands or collapses it. The grid sends the engine only what a change needs:
+
+- New widths send nothing.
+- Expanding or collapsing sends that group.
+- New formats are applied without recomputing the view.
+- Anything else recomputes it.
+
+Cells are selected by click, Shift-click, drag or the keyboard: arrows, Page
+Up and Page Down, Home and End, with Ctrl to jump and Shift to extend; Ctrl+A
+selects everything. Ctrl+C copies the selection as tab-separated text with
+every digit, which pastes into Excel as cells. A selection larger than the rows
+on screen is fetched first, up to 1,000,000 cells, without moving the view.
+Hovering over a cell whose text was cut, a `###`, or a flagged cell shows the
+full text or what the flag means.
+
+`<px-pivot>` puts a field list beside a grid, laid out as Excel's PivotTable
+field list is, since that is the pivot its users already know. The dataset's
+fields are listed with a search, ticked when the pivot uses them, and dragged
+into the Filters, Columns, Rows and Values areas, or between them; a drop line
+shows where a field lands. Ticking a field puts it where Excel does, numbers on
+Values and anything else on Rows, and unticking takes it out of every area.
+Dragging is never required: each field has a menu that adds it to any area, and
+each chip has a menu and a remove button. A field groups one way, so moving it
+to Columns takes it out of Rows. Removing or moving a value renumbers everything
+that referred to it by position: the group sort, aggregate filters, top-N and
+column widths.
+
+A value's menu sets its aggregate, column, how it is shown (as a value or a
+share of a total), and its number format: decimals, thousands, millions or
+billions, and how negatives read. The same menu opens from the value's header in
+the grid, where it also sorts the groups by the value. A pivot's columns fit
+their values, every column of one value sharing a width, so totals don't read
+`###`; their titles, which name the pivot values and the value, don't widen
+them.
+
+Filters use the grid's own filter editor, so a pivot filters as a header menu
+does: a list of the column's values with their counts, which the engine computes
+under the view's other filters, as a spreadsheet's filter list does, or a
+condition. "(blank)" can be picked too: an "is one of" list may name null, and
+then matches blanks. A field dropped on Filters shows "(All)" with its list open,
+and stays out of the layout until it names a value, because an empty "is one
+of" would hide every row. The pivot's toolbar has the grid's search, chips and
+export, plus Expand all and Collapse all.
+
+Double-clicking a value opens the rows behind its cell in a drawer: a flat view
+with the pivot's filters plus one filter per group level and per column-pivot
+level. The drawer has its own toolbar, to search those rows, choose their
+columns and export them. Its filters are what put the rows there, so they show
+in its title rather than as chips to remove. The drawer closes when the pivot's
+filters or groups change, since its rows would no longer add up to the cells
+above.
+
+A layout also travels as a link: `encodeLayout` deflates it into a URL
+parameter, and `decodeLayout` checks it against the schema, so an edited link
+fails loudly instead of opening a different view.
+
+Under every grid a status bar names the dataset and the rows shown, and says
+when the source was read and how long ago. It also flags NaN values the load
+turned blank, and a failed refresh with its time. An info button lists the load
+details.
+
+### Themes
+
+Every colour, font, size and border the components draw is a design token,
+listed once in `theme.ts` with its defaults for the light and dark schemes; the
+library's stylesheet, the TypeScript types and `readTheme` are all generated
+from that list. [Themes](theming.md) lists the tokens and shows how to apply
+your own.
+
+Each token has three custom properties. The public one, `--px-accent`, is never
+declared by the library, so a value a host sets anywhere wins: on `:root`, on a
+wrapper or on the element, whatever its specificity. A theme made with
+`defineTheme` declares `--_px-theme-accent` on the components given it. Each
+component then declares `--_px-accent` as the first of the two that is set,
+else the scheme's default. Had the library declared the public property on the
+component, as it once did, a value on `:root` or a wrapper would have lost to
+it, and only rules naming the components would have worked.
+
+Most defaults derive from a few tokens with `color-mix()` and `calc()`: the
+borders, the header, stripes, selections, focus rings and chips mix the
+accent, background and foreground, and paddings are multiples of the spacing
+unit. A theme of three colours is therefore consistent throughout, and any
+derived token can still be set on its own.
+
+The canvas can't draw with `var()`, `calc()` or `light-dark()`, so the
+resolved properties are registered with `@property` as colours and lengths.
+`getComputedStyle` then returns concrete values, which the canvas draws with
+as they are. CSS can't announce that a computed value changed, so a shared
+watcher counts the page changes that usually mean a new theme: an attribute of
+`<html>` or `<body>` changing, the system's colour scheme changing, and fonts
+loading. The components read their tokens again then, and when their inputs
+change; `refreshTheme()` covers anything else. Reading tokens on every redraw
+would cost a style recalculation per frame, and Citrix desktops have no cycles
+to spare. Text widths are cached per font, so a theme that changes the font
+measures again.
+
+Comfortable density adds a fixed 6 px to the row and header heights, whatever
+the theme sets, so the two choices are independent. The row under the pointer
+is highlighted by redrawing that row's cells only: a full redraw at every
+pointer movement would send most of the grid across a remote-display protocol
+each time.
+
+## Excel export
+
+The server writes exports with `rust_xlsxwriter` and streams them as downloads,
+because VDI memory is scarce: the page posts the layout in a form to
+`POST /export`, and the browser saves the answer to disk instead of holding it.
+An export runs the layout through the same engine and formatter as the screen,
+so it holds the same numbers.
+
+- Cells hold real numbers, with Excel number formats that show the digits the
+  screen shows. A negative value that rounds to zero gets a format without a
+  minus sign, because the screen never shows one there.
+- Dates and times are Excel dates, shown in the display zone. Times shown to
+  the microsecond, which Excel cannot hold, are written as their text.
+- The sheet has a frozen header row, column widths from the layout, and, for
+  flat views, an autofilter. Headers are the layout's titles, and pinned
+  columns are frozen too, as they stay put on screen.
+- A grid with totals ends with its totals row, read as the screen shows it. It
+  sits below the autofilter's range, so Excel's filters don't change it, and
+  the Notes sheet says so. CSV leaves it out.
+- A detail view exports as an outline like a pivot's. Its group rows read
+  "Atlas (120)", with the group's count, and hold the group totals; its rows
+  hold their values.
+- A pivot exports every group as an outline, with the outline buttons beside
+  the group rows, which come first as on screen. Groups start expanded:
+  `rust_xlsxwriter` 0.102 marks a collapsed group on the row after it, which is
+  right only for buttons below the groups. It also writes outline levels only for
+  sheets it holds in memory, so pivots of up to 2,000,000 cells are outlined and
+  larger ones stream without an outline, indented by level. Native Excel pivot
+  tables are not written.
+- A Notes sheet records the dataset, when the source was read, the layout, and
+  every place Excel cannot match the screen: values with more than 15
+  significant digits, which Excel rounds; infinities, which it lacks; and the
+  like.
+- An export larger than Excel's limit of 1,048,576 rows, or text longer than a
+  cell's 32,767 characters, is refused with the reason, and CSV is offered
+  instead. CSV holds every digit as text, and a pivot's CSV has one column per
+  group level. It starts with a UTF-8 byte-order mark, without which Excel
+  reads non-ASCII text in the system code page, and text that a spreadsheet
+  would run as a formula gets a leading apostrophe.
+
+The export reads the table one chunk at a time, each under its own read lock,
+so a long export never holds up a reload; if the table reloads part way, the
+export stops rather than mix two loads. The form also carries the load the
+screen shows, and an export of any other load is refused with the reason: a
+browser copy is fetched once per page, so without this a browser-held view
+could export newer numbers than it shows. A refusal reaches the page even when the
+server is on another origin: the form carries a token, and the answer posts the
+reason to the page, which shows it in the status bar.
+
+The read-back tests open each export with `calamine` and compare every cell
+with the engine's value, bit for bit for doubles. Excel can't run on the build
+host, so `cargo run -p parallax-export --example verification` writes a workbook
+whose second and third columns must read the same in real Excel on a VDI.
+
+## Deliberately out of scope
+
+Authentication, entitlements and audit belong to the host application. Cell
+editing, Python bindings and the other deferred items are listed with their
+reasons in [Deferred work](future.md). The milestones, build order and
+performance budgets are in the [Roadmap](roadmap.md).

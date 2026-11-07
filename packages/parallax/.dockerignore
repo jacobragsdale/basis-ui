@@ -1,0 +1,10 @@
+# The image builds everything it serves; local build output only slows the context.
+.git
+target
+data
+**/node_modules
+web/dist
+web/.angular
+web/projects/parallax/wasm
+web/test-results
+web/playwright-report
