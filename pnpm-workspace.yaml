@@ -15,8 +15,9 @@ catalog:
   "@faker-js/faker": 10.6.0
   "@fontsource-variable/inter": 5.3.0
   "@fontsource-variable/jetbrains-mono": 5.3.0
-  # The Angular layer's version: the React chart's end-to-end specs run in its Docker image, so that their canvases
-  # compare pixel for pixel with its screenshots. It joins the workspace's Playwright once step 2.7 deletes web/.
+  # The Angular layer's version: the React chart's and grid's end-to-end specs run in its Docker image, so that their
+  # canvases compare pixel for pixel with its screenshots. It joins the workspace's Playwright once step 2.7 deletes
+  # web/.
   "@playwright/test": 1.64.1
   "@rolldown/plugin-babel": 0.3.0
   "@shadcn/lint": 0.2.5

@@ -44,8 +44,8 @@ package's tests and build when its paths change.
 `@basis/parallax`'s TypeScript is checked by the root checks, as `@basis/ui`'s is. Its build and tests first build the
 engine for the browser, which needs the Rust toolchain and the `wasm-bindgen` command that its `CONTRIBUTING.md` names;
 Vite+ replays that build from its cache until the Rust changes, and the first one in a fresh clone takes minutes. Its
-charts' end-to-end specs and screenshots run with `vp run @basis/parallax#charts-e2e`, in Docker, as its `CONTRIBUTING.md`
-says.
+charts' end-to-end specs and screenshots run with `vp run @basis/parallax#charts-e2e`, and its grid's with
+`vp run @basis/parallax#grid-e2e`, in Docker, as its `CONTRIBUTING.md` says.
 
 Parallax's Rust and its Angular layer keep their own checks until roadmap step 2.7 deletes that layer, and the root
 checks skip them. Its `CONTRIBUTING.md` has them; in short:

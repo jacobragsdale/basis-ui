@@ -1,0 +1,78 @@
+/* The harness's page, laid out as the Angular demo's, so that a grid's canvas is the same size as the demo's. The
+   grids themselves are @basis/parallax's, in @basis/ui's styles. */
+
+@import "@basis/ui/styles.css";
+
+@source "../../../../src";
+
+#root {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  height: 100vh;
+}
+
+header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+
+header label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+header pre {
+  position: absolute;
+  z-index: 5;
+  max-height: 60vh;
+  overflow: auto;
+  background: var(--popover);
+  font-size: 12px;
+}
+
+main {
+  min-height: 0;
+  box-sizing: border-box;
+  padding: 0 12px 12px;
+}
+
+main[data-preset="small"] {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(480px, 1fr));
+  align-items: start;
+  gap: 12px;
+  height: 100%;
+  overflow: auto;
+}
+
+main[data-preset="single"] {
+  height: 100%;
+}
+
+main > section {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+main > section > h2 {
+  margin: 4px 0 6px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+main > section > h2 span {
+  margin-left: 6px;
+  font-weight: normal;
+  color: var(--muted-foreground);
+}
+
+[data-figure] {
+  font-variant-numeric: tabular-nums;
+}

@@ -10,3 +10,5 @@ __pycache__/
 !/wasm/parallax_wasm.d.ts
 # The datasets the end-to-end specs load, which tests/e2e/charts/run.ts writes with parallax-datagen.
 /tests/e2e/charts/data/
+# The grid's harness's datasets, which tests/e2e/grid/data.sh writes with parallax-datagen.
+/tests/e2e/grid/harness/public/data

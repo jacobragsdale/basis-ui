@@ -73,8 +73,71 @@ on at its own version.
    }
    ```
 
-   Step 2.6's grid, pivot and chart components take the dataset and a layout,
-   and draw the view's frames.
+4. Or give the dataset to a component that opens its own view and draws its
+   frames: [a grid](#show-a-grid) or [a chart](#draw-a-chart).
+
+## Show a grid
+
+`<Grid>` is the data grid and pivot table of the firm's apps. Give it a dataset
+that `useDataset` loads and a layout, and it opens its own view:
+
+```tsx
+import { Grid, useDataset } from "@basis/parallax";
+import type { LayoutInput } from "@basis/parallax";
+
+function Positions(): ReactNode {
+  const positions = useDataset("positions", positionsBytes, {
+    primaryKey: "position_id",
+  });
+  const [layout, setLayout] = useState<LayoutInput>({ pinned: ["ticker"] });
+  return <Grid dataset={positions} layout={layout} onLayoutChange={setLayout} />;
+}
+```
+
+Every change the user makes, a sort, a width, a filter, a group, is a new
+layout, handed to `onLayoutChange`; keep it in state, the URL or a saved view.
+Without `onLayoutChange`, the grid keeps the user's changes itself until
+`layout` changes.
+
+`<Grid>` draws on a Canvas 2D surface, which a desktop without a GPU draws on
+its CPU. It opens its view with `useView` and takes the view's frames outside
+React's state, so a scroll asks the view's handle for rows and draws the rows in
+view without a React render. Only the visible rows and columns are drawn, and a
+frame for rows already on screen redraws only the cells whose text changed.
+
+| Prop             | What it is                                                                                                                                  |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `dataset`        | The dataset, from `useDataset`                                                                                                              |
+| `layout`         | The view: columns, sorts, filters, groups and pivots, formats, widths, pinned columns, titles and totals                                     |
+| `onLayoutChange` | Takes each layout the user makes                                                                                                            |
+| `toolbar`        | `true` (the default) shows the toolbar, `false` hides it, and an object turns parts off: `search`, `chips`, `columns`, `totals`, `export`, `group` and `expand` |
+| `height`         | `fill`, the default, takes the container's height; `auto` sizes the grid to its rows up to `maxHeight` pixels (480 by default)               |
+| `onDrill`        | Takes a double click on a pivot's value: the group's path, the column's pivot values and a label, for the rows behind it                     |
+| `label`          | What screen readers call the grid; the dataset's name by default                                                                            |
+| `measureMenu`    | The menu a pivot's measure header opens, which the pivot gives the grid; without it, a measure's header has none                            |
+| `ref`            | `drawStats()`, the drawing counters; `export(format)`, `xlsx` or `csv`; and `distinctValues(column, search, limit)`                         |
+
+The user sorts by clicking a header, Shift adding a sort; resizes a column by
+dragging its header's edge, or fits it with a double click there; moves a column
+by dragging its header, and groups by it by dropping it on the group panel; and
+opens a column's menu from its header's funnel or with Alt+Down, for sorting,
+the column's filter of values or a condition, hiding, pinning, fitting,
+grouping, a title and a total. The arrow keys, Page Up and Down, Home and End
+move the focused cell, Ctrl to the edge and Shift extending the selection;
+Ctrl+A selects everything, Enter or Space opens or closes a group, Ctrl+F
+searches the grid, and Ctrl+C copies the selection as tab-separated text with
+every digit, which pastes into Excel as cells. Rows the grid does not hold are
+fetched first. Export writes an Excel workbook or a CSV file in the engine, of
+the load the screen shows.
+
+A canvas is invisible to screen readers, so the grid is a `grid` whose name is
+`label`, whose description says how many rows and columns it holds and how to
+move about it, and whose active descendant is the focused cell, read as its
+column's title and its text. A live region says the selection's size, and the
+totals row is said as text. The canvas draws in the theme's tokens, which
+`basisTheme` takes from `@basis/ui`'s, in either mode, and reads them again when
+the mode, the density or the fonts change. Its toolbar, menus and status bar are
+`@basis/ui`'s components, in `@basis/ui`'s theme.
 
 ## Draw a chart
 
@@ -137,8 +200,9 @@ them.
 | -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `<ParallaxProvider>`             | Starts the engine's worker for the tree inside it (`worker`, `prewarm`), and gives parallax its theme (`theme`, `basisTheme` by default) and scheme (`scheme`, the page's mode by default)                                                         |
 | `useDataset(name, source, opts)` | Loads Arrow IPC stream bytes, or a function that returns them, as `name`, and returns the load's `status` (`idle`, `loading`, `loaded` or `failed`), `rows`, `error` and `reload()`. `opts` are the load's primary key and times                  |
-| `useView(dataset, layout, opts)` | Opens a view of the dataset as the layout describes it, and returns its `status` (`waiting`, `opening`, `open` or `failed`), its latest `frame` and `chart`, its table's status, its `error`, and its `handle`. `opts` are the viewport (null for a chart the engine reduces, which has no rows), the chart window, and `onChart`, which takes each reduction in place of `chart`, so a canvas can paint it without a React render |
-| `<Chart>`                        | A chart of a dataset as a layout describes it, or of rows the page holds; see [Draw a chart](#draw-a-chart)                                                                                                                                        |
+| `useView(dataset, layout, opts)` | Opens a view of the dataset as the layout describes it, and returns its `status` (`waiting`, `opening`, `open` or `failed`), its latest `frame` and `chart`, its table's status, its `error`, and its `handle`. `opts` are the viewport (null for a chart the engine reduces, which has no rows), the chart window, `onFrame`, which takes each frame in place of `frame`, and `onChart`, which takes each reduction in place of `chart`, so a canvas can paint them without a React render |
+| `<Grid>` | A data grid and pivot table of a dataset as a layout describes it; see [Show a grid](#show-a-grid) |
+| `<Chart>` | A chart of a dataset as a layout describes it, or of rows the page holds; see [Draw a chart](#draw-a-chart) |
 | `useParallaxTheme()`             | The theme a component draws in, the `attributes` its element carries, and `read(element)`, which reads the tokens in effect and changes whenever they may have                                                                                     |
 
 A changed layout updates the open view in place, and a changed viewport or chart

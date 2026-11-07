@@ -5,6 +5,7 @@ import type { ParallaxClient } from "#engine/client.ts";
 import type { ViewHandle } from "#engine/view.ts";
 import type { ChartWindow, ViewListener, Viewport } from "#engine/view-types.ts";
 import type { ChartFrameData } from "#frame/chart-data.ts";
+import type { FrameData } from "#frame/frame.ts";
 
 import { listenerFor, opening } from "./view-state.ts";
 import type { Change, ViewState } from "./view-state.ts";
@@ -30,6 +31,15 @@ type Report = (update: (was: Opened | null) => Opened) => void;
 /** Takes a chart's reduction, and the view it is of, out of the view's state, returning whether it did. */
 type ChartSink = (chart: ChartFrameData, view: ViewHandle) => boolean;
 
+/** Takes a frame out of the view's state, returning whether it did. */
+type FrameSink = (frame: FrameData) => boolean;
+
+/** What may take a view's reports out of its state: its chart's reductions, and its frames. */
+interface Sinks {
+  readonly chart: ChartSink;
+  readonly frame: FrameSink;
+}
+
 function describe(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
@@ -38,16 +48,16 @@ function describe(error: unknown): string {
 class ViewAttempt {
   readonly #key: string;
   readonly #report: Report;
-  readonly #chartSink: ChartSink;
+  readonly #sinks: Sinks;
   #live = true;
   #view: ViewHandle | null = null;
 
   /** `key` names the dataset and engine the view opens on; what it reports under another key is not its own.
-   * `chartSink` may take each chart reduction, which then stays out of the state. */
-  public constructor(key: string, report: Report, chartSink: ChartSink) {
+   * `sinks` may take each chart reduction and each frame, which then stay out of the state. */
+  public constructor(key: string, report: Report, sinks: Sinks) {
     this.#key = key;
     this.#report = report;
-    this.#chartSink = chartSink;
+    this.#sinks = sinks;
   }
 
   /** Opens the view once its dataset is loaded, and asks for its first window. */
@@ -81,7 +91,9 @@ class ViewAttempt {
         this.#change(next);
       },
       isClosed: () => this.#view?.isClosed ?? false,
-      takeChart: (chart) => this.#live && this.#view !== null && this.#chartSink(chart, this.#view),
+      takeChart: (chart) =>
+        this.#live && this.#view !== null && this.#sinks.chart(chart, this.#view),
+      takeFrame: (frame) => this.#live && this.#sinks.frame(frame),
     });
   }
 
@@ -103,13 +115,14 @@ class ViewAttempt {
     }
     const key = this.#key;
     const view = this.#view;
-    this.#report((was) => ({
-      handle: view,
-      key,
-      state: next(was?.key === key ? was.state : opening),
-    }));
+    // A change that changes nothing hands back what the hook holds, so it renders nothing.
+    this.#report((was) => {
+      const mine = was?.key === key ? was : null;
+      const state = next(mine?.state ?? opening);
+      return mine?.handle === view && mine.state === state ? mine : { handle: view, key, state };
+    });
   }
 }
 
 export { ViewAttempt };
-export type { ChartSink, Opened, Opening };
+export type { ChartSink, FrameSink, Opened, Opening, Sinks };
