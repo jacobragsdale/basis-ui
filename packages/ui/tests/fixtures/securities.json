@@ -1,0 +1,244 @@
+{
+  "treasuries": [
+    {
+      "title": "TreasuryDirect, the most recently auctioned Treasury Notes",
+      "url": "https://www.treasurydirect.gov/TA_WS/securities/auctioned?format=json&type=Note&pagesize=40",
+      "fetched": "2026-11-07",
+      "cusips": [
+        {
+          "code": "91282CRV5",
+          "security": "7-Year Note, issued 2026-11-02, maturing 2033-10-31, 4.875%"
+        },
+        {
+          "code": "91282CRT0",
+          "security": "5-Year Note, issued 2026-11-02, maturing 2031-10-31, 4.750%"
+        },
+        {
+          "code": "91282CRU7",
+          "security": "2-Year Note, issued 2026-11-02, maturing 2028-10-31, 4.625%"
+        },
+        {
+          "code": "91282CRF0",
+          "security": "9-Year 10-Month Note, issued 2026-10-15, maturing 2036-08-15, 4.625%"
+        },
+        {
+          "code": "91282CRQ6",
+          "security": "3-Year Note, issued 2026-10-15, maturing 2029-10-15, 4.875%"
+        },
+        {
+          "code": "91282CRM5",
+          "security": "7-Year Note, issued 2026-09-30, maturing 2033-09-30, 5.000%"
+        },
+        {
+          "code": "91282CRN3",
+          "security": "5-Year Note, issued 2026-09-30, maturing 2031-09-30, 5.000%"
+        },
+        {
+          "code": "91282CRP8",
+          "security": "2-Year Note, issued 2026-09-30, maturing 2028-09-30, 4.750%"
+        },
+        {
+          "code": "91282CRL7",
+          "security": "3-Year Note, issued 2026-09-15, maturing 2029-09-15, 4.375%"
+        },
+        {
+          "code": "91282CRJ2",
+          "security": "7-Year Note, issued 2026-08-31, maturing 2033-08-31, 4.500%"
+        },
+        {
+          "code": "91282CRK9",
+          "security": "5-Year Note, issued 2026-08-31, maturing 2031-08-31, 4.375%"
+        },
+        {
+          "code": "91282CRH6",
+          "security": "2-Year Note, issued 2026-08-31, maturing 2028-08-31, 4.125%"
+        },
+        {
+          "code": "91282CRG8",
+          "security": "3-Year Note, issued 2026-08-17, maturing 2029-08-15, 4.250%"
+        },
+        {
+          "code": "91282CRC7",
+          "security": "7-Year Note, issued 2026-07-31, maturing 2033-07-31, 4.375%"
+        },
+        {
+          "code": "91282CRB9",
+          "security": "2-Year Note, issued 2026-07-31, maturing 2028-07-31, 4.250%"
+        },
+        {
+          "code": "91282CRA1",
+          "security": "5-Year Note, issued 2026-07-31, maturing 2031-07-31, 4.375%"
+        },
+        {
+          "code": "91282CQQ7",
+          "security": "9-Year 10-Month Note, issued 2026-07-15, maturing 2036-05-15, 4.375%"
+        },
+        {
+          "code": "91282CQZ7",
+          "security": "3-Year Note, issued 2026-07-15, maturing 2029-07-15, 4.125%"
+        },
+        {
+          "code": "91282CQW4",
+          "security": "7-Year Note, issued 2026-06-30, maturing 2033-06-30, 4.250%"
+        },
+        {
+          "code": "91282CQX2",
+          "security": "5-Year Note, issued 2026-06-30, maturing 2031-06-30, 4.125%"
+        },
+        {
+          "code": "91282CQY0",
+          "security": "2-Year Note, issued 2026-06-30, maturing 2028-06-30, 4.125%"
+        },
+        {
+          "code": "91282CQV6",
+          "security": "3-Year Note, issued 2026-06-15, maturing 2029-06-15, 4.125%"
+        },
+        {
+          "code": "91282CQT1",
+          "security": "7-Year Note, issued 2026-06-01, maturing 2033-05-31, 4.250%"
+        },
+        {
+          "code": "91282CQU8",
+          "security": "5-Year Note, issued 2026-06-01, maturing 2031-05-31, 4.125%"
+        },
+        {
+          "code": "91282CQS3",
+          "security": "2-Year Note, issued 2026-06-01, maturing 2028-05-31, 4.000%"
+        },
+        {
+          "code": "91282CQR5",
+          "security": "3-Year Note, issued 2026-05-15, maturing 2029-05-15, 3.875%"
+        },
+        {
+          "code": "91282CQN4",
+          "security": "7-Year Note, issued 2026-04-30, maturing 2033-04-30, 4.125%"
+        },
+        {
+          "code": "91282CQL8",
+          "security": "2-Year Note, issued 2026-04-30, maturing 2028-04-30, 3.750%"
+        },
+        {
+          "code": "91282CQK0",
+          "security": "5-Year Note, issued 2026-04-30, maturing 2031-04-30, 3.875%"
+        },
+        {
+          "code": "91282CPZ8",
+          "security": "9-Year 10-Month Note, issued 2026-04-15, maturing 2036-02-15, 4.125%"
+        },
+        {
+          "code": "91282CQJ3",
+          "security": "3-Year Note, issued 2026-04-15, maturing 2029-04-15, 3.875%"
+        },
+        {
+          "code": "91282CQF1",
+          "security": "7-Year Note, issued 2026-03-31, maturing 2033-03-31, 4.250%"
+        },
+        {
+          "code": "91282CQG9",
+          "security": "5-Year Note, issued 2026-03-31, maturing 2031-03-31, 3.875%"
+        },
+        {
+          "code": "91282CQH7",
+          "security": "2-Year Note, issued 2026-03-31, maturing 2028-03-31, 3.875%"
+        },
+        {
+          "code": "91282CQE4",
+          "security": "3-Year Note, issued 2026-03-16, maturing 2029-03-15, 3.500%"
+        }
+      ]
+    },
+    {
+      "title": "TreasuryDirect, the most recently auctioned Treasury Bonds",
+      "url": "https://www.treasurydirect.gov/TA_WS/securities/auctioned?format=json&type=Bond&pagesize=4",
+      "fetched": "2026-11-07",
+      "cusips": [
+        {
+          "code": "912810UX4",
+          "security": "19-Year 10-Month Bond, issued 2026-10-23, maturing 2046-08-15, 5.125%"
+        },
+        {
+          "code": "912810UW6",
+          "security": "29-Year 10-Month Bond, issued 2026-10-15, maturing 2056-08-15, 5.125%"
+        }
+      ]
+    },
+    {
+      "title": "TreasuryDirect, the most recently auctioned Treasury Bills",
+      "url": "https://www.treasurydirect.gov/TA_WS/securities/auctioned?format=json&type=Bill&pagesize=4",
+      "fetched": "2026-11-07",
+      "cusips": [
+        {
+          "code": "912797WE3",
+          "security": "4-Week Bill, issued 2026-11-10, maturing 2026-12-08"
+        },
+        {
+          "code": "912797WN3",
+          "security": "8-Week Bill, issued 2026-11-10, maturing 2027-01-05"
+        },
+        {
+          "code": "912797XG7",
+          "security": "17-Week Bill, issued 2026-11-10, maturing 2027-03-09"
+        },
+        {
+          "code": "912797VH7",
+          "security": "6-Week Bill, issued 2026-11-05, maturing 2026-12-17"
+        }
+      ]
+    },
+    {
+      "title": "TreasuryDirect, the most recently auctioned Treasury TIPSs",
+      "url": "https://www.treasurydirect.gov/TA_WS/securities/auctioned?format=json&type=TIPS&pagesize=4",
+      "fetched": "2026-11-07",
+      "cusips": [
+        {
+          "code": "91282CRR4",
+          "security": "5-Year Note, issued 2026-10-30, maturing 2031-10-15, 2.250%"
+        },
+        {
+          "code": "91282CRE3",
+          "security": "9-Year 10-Month Note, issued 2026-09-30, maturing 2036-07-15, 2.375%"
+        },
+        {
+          "code": "912810US5",
+          "security": "29-Year 6-Month Bond, issued 2026-08-31, maturing 2056-02-15, 2.375%"
+        }
+      ]
+    }
+  ],
+  "examples": {
+    "title": "Wikipedia, 'International Securities Identification Number' and 'SEDOL'",
+    "urls": [
+      "https://en.wikipedia.org/wiki/International_Securities_Identification_Number",
+      "https://en.wikipedia.org/wiki/SEDOL"
+    ],
+    "fetched": "2026-11-07",
+    "isins": [
+      {
+        "code": "US0378331005",
+        "security": "Apple, Inc.",
+        "cusip": "037833100"
+      },
+      {
+        "code": "AU0000XVGZA3",
+        "security": "Treasury Corporation of Victoria 5 3/4% 2005-2016"
+      },
+      {
+        "code": "GB0002634946",
+        "security": "BAE Systems",
+        "sedol": "0263494"
+      }
+    ],
+    "sedols": [
+      {
+        "code": "0263494",
+        "security": "BAE Systems"
+      }
+    ],
+    "undetected": [
+      {
+        "code": "AU0000VXGZA3",
+        "note": "The page's miskeyed AU0000XVGZA3, with X and V swapped: the ISIN check passes it."
+      }
+    ]
+  }
+}

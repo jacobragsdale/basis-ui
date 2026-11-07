@@ -147,6 +147,64 @@ The tests check `Decimal` and `sumPrecise` against `tests/fixtures/numbers.json`
 fixtures from this package with `uv run tests/fixtures/generate_numbers.py` and commit both: the tests fail while the
 fixtures are older than the generator.
 
+## Dates and securities
+
+`@basis/ui/dates` works on Temporal's types, with no date library: plain dates are `Temporal.PlainDate`, and instants
+come back as `Temporal.ZonedDateTime` in New York time. Every query takes a calendar and uses SIFMA's, the US bond
+market's, unless it names the NYSE's or TARGET2's:
+
+```ts
+import {
+  addBusinessDays,
+  marketStatus,
+  nyse,
+  settlementDate,
+  sifma,
+  target2,
+} from "@basis/ui/dates";
+
+const tradeDate = Temporal.PlainDate.from("2026-07-02");
+settlementDate(tradeDate); // 2026-07-06: T+1 on SIFMA's calendar, over Independence Day
+settlementDate(tradeDate, { calendar: target2, days: 2 });
+addBusinessDays(tradeDate, -3, { calendar: nyse });
+marketStatus(Temporal.Now.instant()).state; // "open", "early-close" or "closed"
+sifma.day(Temporal.PlainDate.from("2026-11-27")); // an early close at 14:00, "After Thanksgiving Day"
+```
+
+| Calendar  | Rules from        | Tested against                                                            | Session                   |
+| --------- | ----------------- | ------------------------------------------------------------------------- | ------------------------- |
+| `sifma`   | sifma.org         | SIFMA's published recommendations for every year from 1996 to 2027        | 08:00 to 17:00, New York  |
+| `nyse`    | parallax's Rust   | the fixtures the Rust writes, 2000 to 2050, and nyse.com for 2016 to 2028 | 09:30 to 16:00, New York  |
+| `target2` | the ECB, Dec 2000 | the ECB's six closing days, 2000 to 2050                                  | 07:00 to 18:00, Frankfurt |
+
+Each calendar is its rules, stated at the top of its module in `src/dates/`, plus a dated list of exceptions, each with
+the notice behind it, since markets close on days no rule foresees. `publishedThrough` is the last year the publisher
+had confirmed when the calendar was written; later years follow the rules. SIFMA publishes no regular session hours,
+only closes, so its 8 a.m. to 5 p.m. session is the US bond venues' convention, as the calendar's `session.source` says.
+
+To update a calendar when its publisher announces a year or an unscheduled close:
+
+1. Add the exception or change the rule in `src/dates/`, with the notice's address as its `source`.
+2. Add the published schedule to `tests/fixtures/calendars/sifma.json` or `nyse.json`, as one more source with its
+   address, the day it was fetched, and the years it lists in full; raise the calendar's `publishedThrough`.
+3. For the NYSE, change parallax's `calendar.rs` too, and rewrite its fixtures with
+   `PARALLAX_UPDATE_FIXTURES=1 cargo test -p parallax-engine --test calendar_fixtures`.
+
+`@basis/ui/securities` checks CUSIPs, ISINs and SEDOLs and their check digits. Its `Cusip`, `Isin` and `Sedol` types
+are made only by `parseCusip`, `parseIsin` and `parseSedol`, which return the identifier or the reason it is not one,
+so a ticker cannot reach a function that takes a `Cusip`:
+
+```ts
+import { cusipToIsin, parseCusip } from "@basis/ui/securities";
+
+const reading = parseCusip(field.value);
+if (reading.ok) {
+  cusipToIsin(reading.value); // "US91282CRF04" for 91282CRF0
+} else {
+  showError(reading.reason);
+}
+```
+
 ## Adding a component
 
 1. Port it from shadcn's Base UI source, keeping shadcn's names, props and parts, into
