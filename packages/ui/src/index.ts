@@ -1,17 +1,8 @@
 // @basis/ui's entry point. The app shell arrives in a later roadmap step.
-export { Badge } from "./components/badge.ts";
-export { badgeVariants } from "./components/badge-variants.ts";
-export { Button } from "./components/button.tsx";
-export { buttonVariants } from "./components/button-variants.ts";
-export {
-  Card,
-  CardAction,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "./components/card.tsx";
+// The components, one barrel per family, so that families built at once never edit the same file.
+export * from "./components/feedback-and-display.ts";
+export * from "./components/forms-and-inputs.ts";
+export * from "./components/navigation-and-layout.ts";
 export type { CssVariable } from "./components/css-variables.ts";
 export {
   FormatError,

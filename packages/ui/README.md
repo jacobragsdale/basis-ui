@@ -105,7 +105,9 @@ carries `min-h-target` and `min-w-target`.
 2. Put its `cva` classes in `src/components/NAME-variants.ts`, named after the component, such as `buttonVariants`
    for `Button`: a component file exports only components, and `@shadcn/lint` finds a component's variants by that
    name.
-3. Export the component and its variants from `src/index.ts`.
+3. Export the component and its variants from its family's barrel, such as `src/components/forms-and-inputs.ts`,
+   which `src/index.ts` re-exports. Each family has its own barrel, so families built at once never edit the same
+   file; the overlays and menus family adds its barrel and one `export *` line to `src/index.ts`.
 4. Run `vp run @basis/ui#build`. The React Compiler fails the build on a component that breaks the rules of React, and
    the gallery uses the build, not the source.
 5. Show every variant and size on its family's gallery page in `packages/gallery/src/pages`, and test it in the page's
