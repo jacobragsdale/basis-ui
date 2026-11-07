@@ -38,6 +38,9 @@ export default defineConfig({
   run: {
     tasks: {
       build: { command: "vp pack", dependsOn: ["wasm"] },
+      // The charts' end-to-end specs, in the pinned Playwright image (tests/e2e/charts/run.ts); never cached, as they drive
+      // a browser against a build of the harness.
+      "charts-e2e": { cache: false, command: "node tests/e2e/charts/run.ts", dependsOn: ["wasm"] },
       // The browser tests run the built worker too, as an app gets it.
       test: { command: "vp test", dependsOn: ["build"] },
       wasm: {

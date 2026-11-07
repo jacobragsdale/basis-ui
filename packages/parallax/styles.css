@@ -1,0 +1,5 @@
+/* @basis/parallax's stylesheet. An app imports it after @basis/ui's, `@import "@basis/parallax/styles.css";`, so that
+   Tailwind, which does not scan node_modules, generates the classes parallax's components use. Their colours and sizes
+   are @basis/ui's tokens, which its stylesheet declares. */
+
+@source "./dist";

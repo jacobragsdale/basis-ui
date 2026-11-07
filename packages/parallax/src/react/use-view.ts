@@ -1,16 +1,17 @@
 /* `useView()`: a view of a dataset, as a layout describes it, and what the engine sends for it. */
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { RefObject } from "react";
 
 import type { ParallaxClient } from "#engine/client.ts";
 import type { ViewHandle } from "#engine/view.ts";
 import type { ChartWindow, Viewport } from "#engine/view-types.ts";
+import type { ChartFrameData } from "#frame/chart-data.ts";
 import { checkLayout } from "#layout/layout.ts";
 import type { Layout, LayoutInput } from "#layout/layout.ts";
 
 import { ViewAttempt } from "./attempt.ts";
-import type { Opened, Opening } from "./attempt.ts";
+import type { ChartSink, Opened, Opening } from "./attempt.ts";
 import { useParallaxClient } from "./context.ts";
 import { useLatest } from "./latest.ts";
 import type { Dataset } from "./use-dataset.ts";
@@ -19,10 +20,15 @@ import type { ViewState } from "./view-state.ts";
 
 /** What a view asks the engine for besides its layout. */
 interface ViewOptions {
-  /** The rows and data columns to fetch: by default the first 100 rows of up to 100 columns. */
-  readonly viewport?: Viewport;
+  /** The rows and data columns to fetch: by default the first 100 rows of up to 100 columns. Null asks for none, as
+   * a chart the engine reduces, such as a line or a candlestick, must: it has no rows, and the engine refuses a
+   * viewport for it. */
+  readonly viewport?: Viewport | null;
   /** For a chart the engine reduces, such as a line or a candlestick: the part to reduce and the plot's size. */
   readonly chartWindow?: ChartWindow;
+  /** Takes each reduction of the view's chart, with the view it is of, in place of the state's `chart`, which then
+   * stays null, so a chart can paint its frames without a React render each. */
+  readonly onChart?: (chart: ChartFrameData, handle: ViewHandle) => void;
 }
 
 /** A view as `useView` returns it. */
@@ -44,39 +50,44 @@ interface Target {
   readonly key: string;
   readonly ready: boolean;
   readonly latestRef: RefObject<Opening | null>;
+  readonly chartSink: ChartSink;
 }
 
 /** Opens the view whenever its dataset, its engine or whether it can open changes, closing the one before. */
 function useOpen(target: Target, report: (update: (was: Opened | null) => Opened) => void): void {
-  const { client, name, key, ready, latestRef } = target;
+  const { client, name, key, ready, latestRef, chartSink } = target;
   useEffect(() => {
     const first = latestRef.current;
     if (!ready || first === null) {
       return (): void => undefined;
     }
-    const run = new ViewAttempt(key, report);
+    const run = new ViewAttempt(key, report, chartSink);
     run.open(client, name, first).catch(reportError);
     return (): void => {
       run.end();
     };
-  }, [client, key, latestRef, name, ready, report]);
+  }, [chartSink, client, key, latestRef, name, ready, report]);
 }
 
 /** Updates the open view's layout in place, and asks for its window and its chart's, when they change. */
 function useWindows(handle: ViewHandle | null, opening: Opening | null): void {
   const layoutJson = opening?.layoutJson ?? null;
+  const rows = opening?.viewport !== null;
   const { firstRow, rowCount, firstColumn, columnCount } = opening?.viewport ?? defaultViewport;
   const { width = 0, height = 0, x, y } = opening?.chartWindow ?? {};
   const [xFrom, xTo] = x ?? [];
   const [yFrom, yTo] = y ?? [];
   useEffect(() => {
     if (handle !== null && layoutJson !== null && handle.layoutJson !== layoutJson) {
-      handle.update(layoutJson, () => handle.requested());
+      // A view without rows is answered with its chart; any other with the window last asked for.
+      handle.update(layoutJson, rows ? (): Viewport | null => handle.requested() : null);
     }
-  }, [handle, layoutJson]);
+  }, [handle, layoutJson, rows]);
   useEffect(() => {
-    handle?.setViewport({ columnCount, firstColumn, firstRow, rowCount });
-  }, [handle, columnCount, firstColumn, firstRow, rowCount]);
+    if (rows) {
+      handle?.setViewport({ columnCount, firstColumn, firstRow, rowCount });
+    }
+  }, [handle, columnCount, firstColumn, firstRow, rowCount, rows]);
   useEffect(() => {
     if (handle !== null && width > 0 && height > 0) {
       handle.setChartWindow({
@@ -97,8 +108,25 @@ function openingOf(checked: ReturnType<typeof checkLayout>, options: ViewOptions
   return {
     chartWindow: options.chartWindow ?? null,
     layoutJson: JSON.stringify(checked.layout),
-    viewport: options.viewport ?? defaultViewport,
+    viewport: options.viewport === undefined ? defaultViewport : options.viewport,
   };
+}
+
+/** Hands each chart reduction to the newest `onChart`, if the view has one; one function for the hook's life, so it
+ * never reopens the view. */
+function useChartSink(onChart: ViewOptions["onChart"]): ChartSink {
+  const onChartRef = useLatest(onChart);
+  return useCallback(
+    (chart: ChartFrameData, handle: ViewHandle): boolean => {
+      const newest = onChartRef.current;
+      if (newest === undefined) {
+        return false;
+      }
+      newest(chart, handle);
+      return true;
+    },
+    [onChartRef],
+  );
 }
 
 /** Whether a view of the dataset can open: once it is loading, since a view waits for its load. */
@@ -112,7 +140,8 @@ function canOpen(dataset: Dataset): boolean {
  *
  * The view opens while its dataset loads, and waits for it. A changed layout updates the open view in place, and a
  * changed viewport or chart window asks for that window, without reopening. When the engine restarts, the view fails
- * with the reason, and opens again once the dataset has loaded again.
+ * with the reason, and opens again once the dataset has loaded again. With `onChart`, the chart's reductions go to it
+ * rather than into the state.
  */
 function useView(dataset: Dataset, layout: LayoutInput, options: ViewOptions = {}): View {
   const client = useParallaxClient();
@@ -122,7 +151,14 @@ function useView(dataset: Dataset, layout: LayoutInput, options: ViewOptions = {
   const [opened, setOpened] = useState<Opened | null>(null);
   const latestRef = useLatest(opening);
   useOpen(
-    { client, key, latestRef, name: dataset.name, ready: opening !== null && canOpen(dataset) },
+    {
+      chartSink: useChartSink(options.onChart),
+      client,
+      key,
+      latestRef,
+      name: dataset.name,
+      ready: opening !== null && canOpen(dataset),
+    },
     setOpened,
   );
   const current = opened?.key === key ? opened : null;

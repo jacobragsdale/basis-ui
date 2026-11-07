@@ -4,6 +4,7 @@
 import type { ParallaxClient } from "#engine/client.ts";
 import type { ViewHandle } from "#engine/view.ts";
 import type { ChartWindow, ViewListener, Viewport } from "#engine/view-types.ts";
+import type { ChartFrameData } from "#frame/chart-data.ts";
 
 import { listenerFor, opening } from "./view-state.ts";
 import type { Change, ViewState } from "./view-state.ts";
@@ -18,12 +19,16 @@ interface Opened {
 /** What a view opens with. */
 interface Opening {
   readonly layoutJson: string;
-  readonly viewport: Viewport;
+  /** Null for a chart the engine reduces, which has no rows to ask for. */
+  readonly viewport: Viewport | null;
   readonly chartWindow: ChartWindow | null;
 }
 
 /** Hands the hook a change to what it holds. */
 type Report = (update: (was: Opened | null) => Opened) => void;
+
+/** Takes a chart's reduction, and the view it is of, out of the view's state, returning whether it did. */
+type ChartSink = (chart: ChartFrameData, view: ViewHandle) => boolean;
 
 function describe(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -33,18 +38,27 @@ function describe(error: unknown): string {
 class ViewAttempt {
   readonly #key: string;
   readonly #report: Report;
+  readonly #chartSink: ChartSink;
   #live = true;
   #view: ViewHandle | null = null;
 
-  /** `key` names the dataset and engine the view opens on; what it reports under another key is not its own. */
-  public constructor(key: string, report: Report) {
+  /** `key` names the dataset and engine the view opens on; what it reports under another key is not its own.
+   * `chartSink` may take each chart reduction, which then stays out of the state. */
+  public constructor(key: string, report: Report, chartSink: ChartSink) {
     this.#key = key;
     this.#report = report;
+    this.#chartSink = chartSink;
   }
 
   /** Opens the view once its dataset is loaded, and asks for its first window. */
   public async open(client: ParallaxClient, dataset: string, first: Opening): Promise<void> {
     try {
+      /* A view's effect runs before the effects of the components above it, so a dataset that a page loads for the
+       * chart or grid below it starts loading only after this. The rest of the effects run first. */
+      await Promise.resolve();
+      if (!this.#live) {
+        return;
+      }
       const connection = await client.connectionFor(dataset);
       // A run that ended while the dataset loaded opens nothing.
       if (this.#live) {
@@ -62,18 +76,21 @@ class ViewAttempt {
   }
 
   #listener(): ViewListener {
-    return listenerFor(
-      (next) => {
+    return listenerFor({
+      change: (next) => {
         this.#change(next);
       },
-      () => this.#view?.isClosed ?? false,
-    );
+      isClosed: () => this.#view?.isClosed ?? false,
+      takeChart: (chart) => this.#live && this.#view !== null && this.#chartSink(chart, this.#view),
+    });
   }
 
   /** Keeps the view that opened, and asks for its first windows. */
   #opened(view: ViewHandle, first: Opening): void {
     this.#view = view;
-    view.setViewport(first.viewport);
+    if (first.viewport !== null) {
+      view.setViewport(first.viewport);
+    }
     if (first.chartWindow !== null) {
       view.setChartWindow(first.chartWindow);
     }
@@ -95,4 +112,4 @@ class ViewAttempt {
 }
 
 export { ViewAttempt };
-export type { Opened, Opening };
+export type { ChartSink, Opened, Opening };

@@ -1,0 +1,6 @@
+/* The harness's stylesheet, as an app's: @basis/ui's, and Tailwind pointed at parallax's components, which an app
+   installs from node_modules, where Tailwind does not look. */
+
+@import "@basis/ui/styles.css";
+
+@source "../../../../../src";
