@@ -5,8 +5,8 @@ This repo is basis-ui (a placeholder name): the TypeScript packages a firm's Rea
 through [the contract on basis's design
 page](https://github.com/jacobragsdale/basis/blob/main/docs/design.md#what-a-ui-can-rely-on).
 [docs/design.md](docs/design.md) holds the decisions and their reasons, and [docs/roadmap.md](docs/roadmap.md) the
-phases, their steps, and the lanes that run at the same time. Code arrives in the roadmap's phase 1; until then the repo
-is its docs.
+phases, their steps, and the lanes that run at the same time. The code is a pnpm workspace run by Vite+'s `vp`, with
+`@basis/ui` in `packages/ui`; parallax moves into `packages/parallax` in phase 2.
 
 ## Working here
 
@@ -24,4 +24,12 @@ is its docs.
 
 ## Checks
 
-None yet. Roadmap step 1.1 adds the workspace, its checks and CI.
+```sh
+vp install            # once per clone: installs dependencies and the commit hook (.vite-hooks/pre-commit)
+vp check              # formatting, linting and type checking, docs included
+vp run -r test        # every package's tests
+vp run -r build       # every package's build
+```
+
+`vp` is Vite+'s command: install it with `curl -fsSL https://vite.plus | bash`. The commit hook runs `vp staged`, `vp
+check` and the tests. CI runs `vp check` on every change, and each package's tests and build when its paths change.

@@ -32,17 +32,17 @@ fix reaches all of them in one upgrade.
 
 ## What a developer sees
 
-| Command | What it does |
-|---|---|
-| `vp check` | Formatting, linting and type checking together, plus whether the generated client still matches the repo's `openapi.json` |
-| `vp test` | The Vitest suites, in Vitest's browser mode with the Playwright provider |
-| `vp dev` | The app in fixture mode, on a free port per git worktree, with no backend |
-| `vp run check-full` | `check` and `test`, plus screenshot comparison in WSL |
-| `vp run shot ROUTE` | A screenshot of a page, its accessibility tree and its console errors |
-| `vp run client-pull` | Copies the API's `openapi.json` from the API repo at a tag, or from a deployed API, and regenerates the client |
-| `vp run review` | A pull request's summary: screenshot diffs, the client's diff, the versions, and the commit that was checked |
-| `vp run sync`, `vp run upgrade` | Rewrite the framework's files from the installed version; update `@basis/ui`, sync and check in one step |
-| `vp run doctor`, `vp run docs` | Check the desktop's setup and print the fix for each problem; print the docs for the installed version |
+| Command                         | What it does                                                                                                              |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `vp check`                      | Formatting, linting and type checking together, plus whether the generated client still matches the repo's `openapi.json` |
+| `vp test`                       | The Vitest suites, in Vitest's browser mode with the Playwright provider                                                  |
+| `vp dev`                        | The app in fixture mode, on a free port per git worktree, with no backend                                                 |
+| `vp run check-full`             | `check` and `test`, plus screenshot comparison in WSL                                                                     |
+| `vp run shot ROUTE`             | A screenshot of a page, its accessibility tree and its console errors                                                     |
+| `vp run client-pull`            | Copies the API's `openapi.json` from the API repo at a tag, or from a deployed API, and regenerates the client            |
+| `vp run review`                 | A pull request's summary: screenshot diffs, the client's diff, the versions, and the commit that was checked              |
+| `vp run sync`, `vp run upgrade` | Rewrite the framework's files from the installed version; update `@basis/ui`, sync and check in one step                  |
+| `vp run doctor`, `vp run docs`  | Check the desktop's setup and print the fix for each problem; print the docs for the installed version                    |
 
 The `vp run` tasks come from `@basis/ui`'s preset, which an app's `vite.config.ts` spreads in, so every UI repo has the
 same ones. As in basis, every file `vp run sync` writes opens with a line saying that basis-ui manages it, the drift
@@ -54,10 +54,10 @@ A UI repo is made with `vp create` and `@basis/ui`'s template, if Vite+ accepts 
 
 ## The packages
 
-| Package | What it is |
-|---|---|
-| `@basis/ui` | The runtime and the toolchain: the theme, the React components, the app shell, the Vite+ preset with its tasks and lint configuration, fixture mode, the template, and the UI's skills and docs |
-| `@basis/parallax` | The grid, pivot table and every chart, running in the browser |
+| Package           | What it is                                                                                                                                                                                      |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@basis/ui`       | The runtime and the toolchain: the theme, the React components, the app shell, the Vite+ preset with its tasks and lint configuration, fixture mode, the template, and the UI's skills and docs |
+| `@basis/parallax` | The grid, pivot table and every chart, running in the browser                                                                                                                                   |
 
 Both are published to the internal npm feed, from this repo, a pnpm workspace. They release together, under one version
 and one tag, such as `v0.4.0`, and `@basis/parallax` depends on `@basis/ui` at exactly its own version. basis-ui's
@@ -65,15 +65,15 @@ version line is its own, apart from basis's: the two meet at the contract, not a
 
 ## A UI repo
 
-| Path | Holds |
-|---|---|
-| `src/` | The app's routes, pages and components |
-| `openapi.json` | The pinned copy of the API's document, which the client is generated from |
-| `fixtures/` | Synthetic responses for fixture mode, in git |
-| `.fixtures/` | Records exported from a basis API's run store by `basis records export`, which git ignores because they hold client data |
-| `Dockerfile`, `azure-pipelines.yml` | An image that serves the built files with a static file server, and the deploy pipeline that calls the maintainer's team's templates |
+| Path                                                           | Holds                                                                                                                                      |
+| -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `src/`                                                         | The app's routes, pages and components                                                                                                     |
+| `openapi.json`                                                 | The pinned copy of the API's document, which the client is generated from                                                                  |
+| `fixtures/`                                                    | Synthetic responses for fixture mode, in git                                                                                               |
+| `.fixtures/`                                                   | Records exported from a basis API's run store by `basis records export`, which git ignores because they hold client data                   |
+| `Dockerfile`, `azure-pipelines.yml`                            | An image that serves the built files with a static file server, and the deploy pipeline that calls the maintainer's team's templates       |
 | `AGENTS.md`, `CLAUDE.md`, `.agents/skills/`, `.claude/skills/` | The agent files, as basis writes them: `AGENTS.md` a short map, `CLAUDE.md` containing `@AGENTS.md`, and the skills copied for Claude Code |
-| `.vite-hooks/`, `.gitattributes` | Vite+'s commit and push hooks, and LF line endings on Windows and in WSL alike |
+| `.vite-hooks/`, `.gitattributes`                               | Vite+'s commit and push hooks, and LF line endings on Windows and in WSL alike                                                             |
 
 ## The toolchain, at its strictest
 
@@ -97,14 +97,14 @@ through the compiler's `panicThreshold: "all_errors"`. The design system's rules
 linter for Tailwind design systems, which runs as an Oxlint JS plugin through Vite+'s `lint.jsPlugins`. Its errors say
 which variant, size or token to use instead, from the components and the theme themselves:
 
-| Rule | What it rejects |
-|---|---|
-| `no-restyle` | Restyling a `@basis/ui` component through `className`; each component declares what an app may change, which is mostly its placement |
-| `no-raw-colors` | Palette colours and hex values in place of the theme's tokens |
-| `no-arbitrary-values` | Values off the theme's scales, such as `p-[13px]` |
-| `no-inline-styles` | `style` props that set anything but a CSS variable, and `<style>` elements |
-| `no-unknown-classes` | Classes Tailwind cannot generate, which include Tailwind's own palette, since the theme removes it |
-| `require-static-classes` | Classes built at run time, which no check can read |
+| Rule                     | What it rejects                                                                                                                      |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `no-restyle`             | Restyling a `@basis/ui` component through `className`; each component declares what an app may change, which is mostly its placement |
+| `no-raw-colors`          | Palette colours and hex values in place of the theme's tokens                                                                        |
+| `no-arbitrary-values`    | Values off the theme's scales, such as `p-[13px]`                                                                                    |
+| `no-inline-styles`       | `style` props that set anything but a CSS variable, and `<style>` elements                                                           |
+| `no-unknown-classes`     | Classes Tailwind cannot generate, which include Tailwind's own palette, since the theme removes it                                   |
+| `require-static-classes` | Classes built at run time, which no check can read                                                                                   |
 
 It is pinned to an exact version, since it is at 0.2 and Oxlint still calls its JS plugins alpha. If it breaks, its
 rules are turned off until it is fixed, and the screenshot tests catch what they would have.
@@ -195,16 +195,17 @@ declare no tokens, and use no `dark:` variants, since every token already switch
 2. **Semantic tokens.** These are the only colours Tailwind exposes, and each one is a ramp step in each mode. Tailwind's
    own palette is removed, so a class such as `bg-pink-500` is an unknown class and fails the lint.
 
-   | Tokens | Use |
-   |---|---|
-   | `background`, `card`, `popover`, `muted`, `secondary`, `accent`, each with its `-foreground` | Surfaces and the text on them. These are shadcn's names, so its source ports unchanged. |
-   | `primary`, `primary-foreground`, `border`, `input`, `ring` | The main action, lines, control outlines and focus |
-   | `sidebar-*` | shadcn's set for the sidebar |
-   | `success`, `warning`, `info` and `destructive`, each with `-foreground` and `-subtle` | Status, always with an icon or a label as well as the colour |
-   | `gain`, `loss` | Signed values. They differ in lightness as well as hue, because red against green is the pair colour-blind readers lose, and every signed number shows its sign. |
-   | `selection`, `highlight` | Selected rows and cells, and search matches |
-   | `env-dev`, `env-qa`, `env-prod` | The environment banner |
-   | `chart-1` to `chart-8`, a sequential scale and a diverging scale | Chart series in order, heatmaps and conditional formatting. Parallax's canvases read the same tokens. |
+   | Tokens                                                                                       | Use                                                                                                                                                              |
+   | -------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+   | `background`, `card`, `popover`, `muted`, `secondary`, `accent`, each with its `-foreground` | Surfaces and the text on them. These are shadcn's names, so its source ports unchanged.                                                                          |
+   | `primary`, `primary-foreground`, `border`, `input`, `ring`                                   | The main action, lines, control outlines and focus                                                                                                               |
+   | `sidebar-*`                                                                                  | shadcn's set for the sidebar                                                                                                                                     |
+   | `success`, `warning`, `info` and `destructive`, each with `-foreground` and `-subtle`        | Status, always with an icon or a label as well as the colour                                                                                                     |
+   | `gain`, `loss`                                                                               | Signed values. They differ in lightness as well as hue, because red against green is the pair colour-blind readers lose, and every signed number shows its sign. |
+   | `selection`, `highlight`                                                                     | Selected rows and cells, and search matches                                                                                                                      |
+   | `env-dev`, `env-qa`, `env-prod`                                                              | The environment banner                                                                                                                                           |
+   | `chart-1` to `chart-8`, a sequential scale and a diverging scale                             | Chart series in order, heatmaps and conditional formatting. Parallax's canvases read the same tokens.                                                            |
+
 3. **Scales.** Spacing derives from Tailwind's single `--spacing` variable, so the compact density sets it smaller and
    every control's height follows. Type runs down to `text-2xs`, for axes and dense labels, and number components use
    tabular figures. There are two shadows, both subtle. Citrix desktops draw on the CPU, so the theme removes the blur and
@@ -306,51 +307,51 @@ LTS, managed by `vp env`.
 
 ## Decided against
 
-| Option | Why not |
-|---|---|
-| Staying on Angular | The maintainer's call. The measured evidence is thin either way: in DesignBench, Claude 3.7's Angular compiled less often than its React when writing a page from scratch (0.69 against 0.95), and almost as often when editing one (0.91 against 1.00). |
-| A UI inside basis, or a UI in an API's repo | Each repo has one toolchain, and each project one language. |
-| A command of basis-ui's own | Vite+'s `vp` already runs checks, tests and tasks; the preset adds the rest as `vp run` tasks. |
-| typescript-eslint | It does not support TypeScript 7, which ships no compiler API; its maintainers closed the request as not planned until TypeScript 7.1's API lands. |
-| Oxlint JS plugins other than `@shadcn/lint` | Alpha. basis-ui uses the rules Vite+ ships, plus the one plugin that checks the design system. |
-| Copying components into each app, shadcn's usual model | The copies drift apart, and a fix reaches none of them. The package ships the components, and `no-restyle` keeps them alike. |
-| Recharts, and shadcn's Chart on it | Parallax draws every kind of chart needed, by the grid's number and time rules; a second chart library means a second look and a second formatter. It stays the fallback if spike 0.3 finds chart-only pages too slow. |
-| React Hook Form | It is on the React Compiler's list of incompatible libraries. |
-| Sonner | Base UI ships a toast, and shadcn added one for Base UI in July 2026. |
-| React Aria as a second component base | shadcn has supported it since July 2026, but one base keeps every component alike, and Base UI is shadcn's default. |
-| Several themes, or a theme per app | The firm has one brand; light and dark are modes of it. |
-| Blur and backdrop filters | Citrix desktops draw on the CPU. |
-| Rust for components, forms or JSON | No win to measure: the page's DOM work stays in JavaScript either way, and `JSON.parse` is native. |
-| Prettier | Oxfmt ships with Vite+. |
-| Bun | Vite+ already installs packages (`vp install`) and manages Node (`vp env`); `bun test` has no browser mode; Vitest under Bun has open worker failures. |
-| MCP servers | Every agent reads MCP settings from a different file. |
-| Rejecting unknown fields in API responses | A UI and its API deploy separately; a UI that rejected a new field would break on every additive change. |
-| Parallax's server | The firm does not need million-row tables in the browser, and every app would have deployed one. |
-| Storybook visual tests, Argos, Lost Pixel | Storybook's visual tests send stories to Chromatic's cloud, Argos's maintainers do not support self-hosting, and Lost Pixel was archived in April 2026. Playwright compares screenshots locally. |
-| @hey-api/openapi-ts | It lists `typescript` as a peer, and TypeScript 7 ships no compiler API; orval depends on no `typescript` package. |
+| Option                                                 | Why not                                                                                                                                                                                                                                                  |
+| ------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Staying on Angular                                     | The maintainer's call. The measured evidence is thin either way: in DesignBench, Claude 3.7's Angular compiled less often than its React when writing a page from scratch (0.69 against 0.95), and almost as often when editing one (0.91 against 1.00). |
+| A UI inside basis, or a UI in an API's repo            | Each repo has one toolchain, and each project one language.                                                                                                                                                                                              |
+| A command of basis-ui's own                            | Vite+'s `vp` already runs checks, tests and tasks; the preset adds the rest as `vp run` tasks.                                                                                                                                                           |
+| typescript-eslint                                      | It does not support TypeScript 7, which ships no compiler API; its maintainers closed the request as not planned until TypeScript 7.1's API lands.                                                                                                       |
+| Oxlint JS plugins other than `@shadcn/lint`            | Alpha. basis-ui uses the rules Vite+ ships, plus the one plugin that checks the design system.                                                                                                                                                           |
+| Copying components into each app, shadcn's usual model | The copies drift apart, and a fix reaches none of them. The package ships the components, and `no-restyle` keeps them alike.                                                                                                                             |
+| Recharts, and shadcn's Chart on it                     | Parallax draws every kind of chart needed, by the grid's number and time rules; a second chart library means a second look and a second formatter. It stays the fallback if spike 0.3 finds chart-only pages too slow.                                   |
+| React Hook Form                                        | It is on the React Compiler's list of incompatible libraries.                                                                                                                                                                                            |
+| Sonner                                                 | Base UI ships a toast, and shadcn added one for Base UI in July 2026.                                                                                                                                                                                    |
+| React Aria as a second component base                  | shadcn has supported it since July 2026, but one base keeps every component alike, and Base UI is shadcn's default.                                                                                                                                      |
+| Several themes, or a theme per app                     | The firm has one brand; light and dark are modes of it.                                                                                                                                                                                                  |
+| Blur and backdrop filters                              | Citrix desktops draw on the CPU.                                                                                                                                                                                                                         |
+| Rust for components, forms or JSON                     | No win to measure: the page's DOM work stays in JavaScript either way, and `JSON.parse` is native.                                                                                                                                                       |
+| Prettier                                               | Oxfmt ships with Vite+.                                                                                                                                                                                                                                  |
+| Bun                                                    | Vite+ already installs packages (`vp install`) and manages Node (`vp env`); `bun test` has no browser mode; Vitest under Bun has open worker failures.                                                                                                   |
+| MCP servers                                            | Every agent reads MCP settings from a different file.                                                                                                                                                                                                    |
+| Rejecting unknown fields in API responses              | A UI and its API deploy separately; a UI that rejected a new field would break on every additive change.                                                                                                                                                 |
+| Parallax's server                                      | The firm does not need million-row tables in the browser, and every app would have deployed one.                                                                                                                                                         |
+| Storybook visual tests, Argos, Lost Pixel              | Storybook's visual tests send stories to Chromatic's cloud, Argos's maintainers do not support self-hosting, and Lost Pixel was archived in April 2026. Playwright compares screenshots locally.                                                         |
+| @hey-api/openapi-ts                                    | It lists `typescript` as a peer, and TypeScript 7 ships no compiler API; orval depends on no `typescript` package.                                                                                                                                       |
 
 ## Facts behind the decisions
 
 Each fact was checked on 2026-11-06 against the source named, unless it says secondhand.
 
-| Fact | Source |
-|---|---|
-| typescript-eslint 8.72 peers on `typescript <6.1.0`; its maintainers closed TypeScript 7 support as not planned (issue #12518) while TypeScript 7.1's API is in progress (issue #10940) | npm registry; GitHub issues |
-| TypeScript 7.0.2 is npm's `latest` (2026-07-08); 7.1.0-beta shipped 2026-10-20; the 7.1 plan dates the RC 2026-11-10 and stable 2026-11-24 | npm registry; microsoft/TypeScript#63703 |
-| Oxlint's type-aware mode needs TypeScript 7 and covers 59 of typescript-eslint's 61 type-aware rules; its JS plugins are alpha and cannot use type information | oxc.rs docs |
-| Vite+ is MIT-licensed and bundles Vite, Rolldown, Vitest, Oxlint, Oxfmt, tsdown and a task runner; it ships commit hooks through `vp config` and `vp staged` | viteplus.dev; GitHub release v1.5.0 |
-| Cloudflare announced on 2026-06-04 that it was acquiring VoidZero, which says its tools remain open source and MIT-licensed | voidzero.dev; the acquisition date is secondhand |
-| React Compiler 1.0 was released 2025-10-07 | react.dev |
-| orval 8.46 generates TanStack Query hooks, Zod schemas and MSW mocks, and depends on no `typescript` package; @hey-api/openapi-ts 0.99, which FastAPI's own full-stack template uses, lists `typescript` as a peer | npm registry; fastapi/full-stack-fastapi-template |
-| Playwright's docs warn that rendering varies by operating system, version, settings and hardware, and advise making baselines where they are compared | playwright.dev |
-| Bun has no browser mode in `bun test`; Anthropic acquired Bun on 2025-12-03 | bun.com; anthropic.com |
-| shadcn/ui made Base UI its default in July 2026, with Radix still supported | ui.shadcn.com changelog |
-| shadcn/ui added React Aria as a component base, and a Toast for Base UI projects, in July 2026; its theme tokens are OKLCH CSS variables, redefined under `.dark` | ui.shadcn.com changelog and theming page |
-| `@shadcn/lint` 0.2.5 (2026-11-02) runs on ESLint or as an Oxlint JS plugin on Oxlint 1.80 or later; its rules are `no-restyle`, `no-raw-colors`, `no-arbitrary-values`, `no-inline-styles`, `no-unknown-classes` and `require-static-classes` | npm registry; github.com/shadcn-ui/lint |
-| Vite+ 1.5.0 pins `oxlint` 1.91.0 and `@oxlint/plugins` 1.91.0; its lint configuration lives in `vite.config.ts`'s `lint` block, which takes `jsPlugins`, `typeAware` and `typeCheck` | npm registry; viteplus.dev/guide/lint |
-| Oxlint's JS plugins have been alpha since 2026-03-11; no stable release was found | oxc.rs blog; the absence of a stable release is secondhand |
-| The React Compiler's lint lists React Hook Form's `useForm` as an incompatible library, because the compiler memoizes what `watch()` returns | facebook/react issue #29144 and pull request #35465, secondhand |
-| Parallax's wasm build is 5.0 MB, or 1.07 MB gzipped; Recharts 3.10.1's line and bar charts bundle to 408 kB minified, or 118 kB gzipped, without React | Measured here on 2026-11-06 |
+| Fact                                                                                                                                                                                                                                          | Source                                                          |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| typescript-eslint 8.72 peers on `typescript <6.1.0`; its maintainers closed TypeScript 7 support as not planned (issue #12518) while TypeScript 7.1's API is in progress (issue #10940)                                                       | npm registry; GitHub issues                                     |
+| TypeScript 7.0.2 is npm's `latest` (2026-07-08); 7.1.0-beta shipped 2026-10-20; the 7.1 plan dates the RC 2026-11-10 and stable 2026-11-24                                                                                                    | npm registry; microsoft/TypeScript#63703                        |
+| Oxlint's type-aware mode needs TypeScript 7 and covers 59 of typescript-eslint's 61 type-aware rules; its JS plugins are alpha and cannot use type information                                                                                | oxc.rs docs                                                     |
+| Vite+ is MIT-licensed and bundles Vite, Rolldown, Vitest, Oxlint, Oxfmt, tsdown and a task runner; it ships commit hooks through `vp config` and `vp staged`                                                                                  | viteplus.dev; GitHub release v1.5.0                             |
+| Cloudflare announced on 2026-06-04 that it was acquiring VoidZero, which says its tools remain open source and MIT-licensed                                                                                                                   | voidzero.dev; the acquisition date is secondhand                |
+| React Compiler 1.0 was released 2025-10-07                                                                                                                                                                                                    | react.dev                                                       |
+| orval 8.46 generates TanStack Query hooks, Zod schemas and MSW mocks, and depends on no `typescript` package; @hey-api/openapi-ts 0.99, which FastAPI's own full-stack template uses, lists `typescript` as a peer                            | npm registry; fastapi/full-stack-fastapi-template               |
+| Playwright's docs warn that rendering varies by operating system, version, settings and hardware, and advise making baselines where they are compared                                                                                         | playwright.dev                                                  |
+| Bun has no browser mode in `bun test`; Anthropic acquired Bun on 2025-12-03                                                                                                                                                                   | bun.com; anthropic.com                                          |
+| shadcn/ui made Base UI its default in July 2026, with Radix still supported                                                                                                                                                                   | ui.shadcn.com changelog                                         |
+| shadcn/ui added React Aria as a component base, and a Toast for Base UI projects, in July 2026; its theme tokens are OKLCH CSS variables, redefined under `.dark`                                                                             | ui.shadcn.com changelog and theming page                        |
+| `@shadcn/lint` 0.2.5 (2026-11-02) runs on ESLint or as an Oxlint JS plugin on Oxlint 1.80 or later; its rules are `no-restyle`, `no-raw-colors`, `no-arbitrary-values`, `no-inline-styles`, `no-unknown-classes` and `require-static-classes` | npm registry; github.com/shadcn-ui/lint                         |
+| Vite+ 1.5.0 pins `oxlint` 1.91.0 and `@oxlint/plugins` 1.91.0; its lint configuration lives in `vite.config.ts`'s `lint` block, which takes `jsPlugins`, `typeAware` and `typeCheck`                                                          | npm registry; viteplus.dev/guide/lint                           |
+| Oxlint's JS plugins have been alpha since 2026-03-11; no stable release was found                                                                                                                                                             | oxc.rs blog; the absence of a stable release is secondhand      |
+| The React Compiler's lint lists React Hook Form's `useForm` as an incompatible library, because the compiler memoizes what `watch()` returns                                                                                                  | facebook/react issue #29144 and pull request #35465, secondhand |
+| Parallax's wasm build is 5.0 MB, or 1.07 MB gzipped; Recharts 3.10.1's line and bar charts bundle to 408 kB minified, or 118 kB gzipped, without React                                                                                        | Measured here on 2026-11-06                                     |
 
 ## Not yet verified
 
