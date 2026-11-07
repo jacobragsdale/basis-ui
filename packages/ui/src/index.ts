@@ -396,6 +396,7 @@ export { ChevronRightIcon } from "./vendor/lucide/chevron-right.tsx";
 export { ChevronUpIcon } from "./vendor/lucide/chevron-up.tsx";
 export { ChevronsLeftIcon } from "./vendor/lucide/chevrons-left.tsx";
 export { ChevronsRightIcon } from "./vendor/lucide/chevrons-right.tsx";
+export { ChevronsDownUpIcon } from "./vendor/lucide/chevrons-down-up.tsx";
 export { ChevronsUpDownIcon } from "./vendor/lucide/chevrons-up-down.tsx";
 export { CircleIcon } from "./vendor/lucide/circle.tsx";
 export {
@@ -413,6 +414,7 @@ export {
 } from "./vendor/lucide/circle-exclamation-point.tsx";
 export { CircleXIcon, CircleXIcon as XCircleIcon } from "./vendor/lucide/circle-x.tsx";
 export { ClockIcon } from "./vendor/lucide/clock.tsx";
+export { Columns3Icon, Columns3Icon as PanelsLeftRightIcon } from "./vendor/lucide/columns-3.tsx";
 export { CopyIcon } from "./vendor/lucide/copy.tsx";
 export { DownloadIcon } from "./vendor/lucide/download.tsx";
 export { EllipsisIcon, EllipsisIcon as MoreHorizontalIcon } from "./vendor/lucide/ellipsis.tsx";
@@ -425,6 +427,7 @@ export { EyeIcon } from "./vendor/lucide/eye.tsx";
 export { EyeOffIcon } from "./vendor/lucide/eye-off.tsx";
 export { FunnelIcon, FunnelIcon as FilterIcon } from "./vendor/lucide/funnel.tsx";
 export { GripVerticalIcon } from "./vendor/lucide/grip-vertical.tsx";
+export { GroupIcon } from "./vendor/lucide/group.tsx";
 export { InfoIcon } from "./vendor/lucide/info.tsx";
 export {
   LoaderCircleIcon,
@@ -436,10 +439,12 @@ export { MinusIcon } from "./vendor/lucide/minus.tsx";
 export { OctagonXIcon, OctagonXIcon as XOctagonIcon } from "./vendor/lucide/octagon-x.tsx";
 export { PanelLeftIcon, PanelLeftIcon as SidebarIcon } from "./vendor/lucide/panel-left.tsx";
 export { PencilIcon } from "./vendor/lucide/pencil.tsx";
+export { PinIcon } from "./vendor/lucide/pin.tsx";
 export { PlusIcon } from "./vendor/lucide/plus.tsx";
 export { RefreshCwIcon } from "./vendor/lucide/refresh-cw.tsx";
 export { SearchIcon } from "./vendor/lucide/search.tsx";
 export { SettingsIcon } from "./vendor/lucide/settings.tsx";
+export { SigmaIcon } from "./vendor/lucide/sigma.tsx";
 export {
   SquarePenIcon,
   SquarePenIcon as EditIcon,

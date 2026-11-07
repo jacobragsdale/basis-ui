@@ -30,6 +30,15 @@ export type { ChartOptions } from "./chart/chart-view.tsx";
 export type { ChartSelection } from "./chart/scene.ts";
 export type { ChartRow, ChartSettings, ChartValue } from "./chart/small-data.ts";
 
+// The grid.
+export { Grid, type GridProps } from "./grid/grid.tsx";
+export type { GridHandle } from "./grid/use-grid-handles.ts";
+export type { MeasureMenuProps } from "./grid/grid-menu.tsx";
+export type { ToolbarParts } from "./grid/parts.ts";
+export type { DrillRequest } from "./grid/types.ts";
+export type { FieldKind, SourceField } from "./grid/fields.ts";
+export type { DrawStats } from "./grid/paint/stats.ts";
+
 // The engine, its worker and its protocol.
 export {
   ParallaxClient,

@@ -41,6 +41,10 @@ export default defineConfig({
       // The charts' end-to-end specs, in the pinned Playwright image (tests/e2e/charts/run.ts); never cached, as they drive
       // a browser against a build of the harness.
       "charts-e2e": { cache: false, command: "node tests/e2e/charts/run.ts", dependsOn: ["wasm"] },
+      /* The grid's end-to-end specs, in the pinned Playwright image, against the harness: Docker and the Rust toolchain
+       * are needed. Arguments go to Playwright, such as spec names or --update-snapshots. It is never cached, so it sees
+       * the whole environment, such as PARALLAX_PREBUILT and CARGO_TARGET_DIR. */
+      "grid-e2e": { cache: false, command: "bash tests/e2e/grid/in-image.sh", dependsOn: ["wasm"] },
       // The browser tests run the built worker too, as an app gets it.
       test: { command: "vp test", dependsOn: ["build"] },
       wasm: {

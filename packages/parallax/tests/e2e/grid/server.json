@@ -1,0 +1,4 @@
+{
+  "command": "vp preview tests/e2e/grid/harness --port 8793 --strictPort --host 127.0.0.1",
+  "url": "http://127.0.0.1:8793"
+}

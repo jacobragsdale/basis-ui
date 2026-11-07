@@ -75,6 +75,25 @@ layer's screenshots, until step 2.7 deletes them. After an intended change to
 how charts look, run `node tests/e2e/charts/run.ts --update-snapshots`, look at the
 new screenshots, and commit them.
 
+`grid-e2e` runs the React grid's Playwright specs in `tests/e2e/grid` the same
+way, in the same image, against a harness of its own in
+`tests/e2e/grid/harness`, over the Angular demo's datasets, which
+`tests/e2e/grid/data.sh` writes with `parallax-datagen`:
+
+```sh
+vp run @basis/parallax#grid-e2e        # every spec, the screenshots at threshold 0
+bash tests/e2e/grid/in-image.sh screenshots --update-snapshots   # from packages/parallax: new screenshots
+PARALLAX_PERFORMANCE=1 bash tests/e2e/grid/in-image.sh grid-performance
+```
+
+The task runs `tests/e2e/grid/in-image.sh`, which writes the data, builds the
+harness, serves it on port 8793 and runs `playwright test` in the image, passing
+its arguments on; with `PARALLAX_PREBUILT=1` it takes the data and the harness
+as built. Its parity spec compares the grid's canvas pixel for pixel with the
+Angular layer's screenshots, until step 2.7 deletes them. Its performance spec
+measures scrolling as the Angular layer's does, and runs only when asked. Look
+at new screenshots before committing them.
+
 wasm-bindgen's output in `wasm/` is ignored by git, except its declaration of
 the glue, `wasm/parallax_wasm.d.ts`, which is committed so that the package
 type-checks before the engine is built. CI fails when a build changes it;

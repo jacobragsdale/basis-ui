@@ -45,11 +45,24 @@ interface ListenerParts {
   readonly isClosed: () => boolean;
   /** Takes a chart's reduction before the state does, returning whether it took it. */
   readonly takeChart: (chart: ChartFrameData) => boolean;
+  /** Takes a frame before the state does, returning whether it took it. */
+  readonly takeFrame: (frame: FrameData) => boolean;
+}
+
+/** The view open, as a frame says, and as it was otherwise; `accepted` says the frame is the first of a layout change,
+ * which the engine took, so a refusal of an earlier change no longer stands. */
+function shown(state: ViewState, accepted: boolean): ViewState {
+  const error = accepted ? null : state.error;
+  return state.status === "open" && state.error === error
+    ? state
+    : { ...state, error, status: "open" };
 }
 
 /** The listener that turns what the engine sends a view into changes of its state. An error fails a view that is
- * closed, or that never opened; one for a view already open is a refused change, and the view stays open. */
-function listenerFor({ change, isClosed, takeChart }: ListenerParts): ViewListener {
+ * closed, or that never opened; one for a view already open is a refused change, and the view stays open until a
+ * later change is accepted. A frame something takes leaves the state as it was once the view is open, so it renders
+ * nothing. */
+function listenerFor({ change, isClosed, takeChart, takeFrame }: ListenerParts): ViewListener {
   return {
     chart: (chart) => {
       if (!takeChart(chart)) {
@@ -64,7 +77,9 @@ function listenerFor({ change, isClosed, takeChart }: ListenerParts): ViewListen
       }));
     },
     frame: (frame) => {
-      change((state) => ({ ...state, frame, status: "open" }));
+      const accepted = frame.changedAtMs !== undefined;
+      const taken = takeFrame(frame);
+      change((state) => (taken ? shown(state, accepted) : { ...shown(state, accepted), frame }));
     },
     opened: (opened) => {
       change((state) => ({ ...state, opened, status: "open" }));

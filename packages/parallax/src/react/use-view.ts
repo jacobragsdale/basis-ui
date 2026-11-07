@@ -1,17 +1,18 @@
 /* `useView()`: a view of a dataset, as a layout describes it, and what the engine sends for it. */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { RefObject } from "react";
 
 import type { ParallaxClient } from "#engine/client.ts";
 import type { ViewHandle } from "#engine/view.ts";
 import type { ChartWindow, Viewport } from "#engine/view-types.ts";
 import type { ChartFrameData } from "#frame/chart-data.ts";
+import type { FrameData } from "#frame/frame.ts";
 import { checkLayout } from "#layout/layout.ts";
 import type { Layout, LayoutInput } from "#layout/layout.ts";
 
 import { ViewAttempt } from "./attempt.ts";
-import type { ChartSink, Opened, Opening } from "./attempt.ts";
+import type { ChartSink, FrameSink, Opened, Opening, Sinks } from "./attempt.ts";
 import { useParallaxClient } from "./context.ts";
 import { useLatest } from "./latest.ts";
 import type { Dataset } from "./use-dataset.ts";
@@ -29,6 +30,12 @@ interface ViewOptions {
   /** Takes each reduction of the view's chart, with the view it is of, in place of the state's `chart`, which then
    * stays null, so a chart can paint its frames without a React render each. */
   readonly onChart?: (chart: ChartFrameData, handle: ViewHandle) => void;
+  /**
+   * Takes each frame in place of `frame`, which then stays null, so that a component that draws frames as they
+   * arrive, such as a grid scrolling at 60 frames a second, renders only when it chooses to. The newest function given
+   * takes each frame; a new one reopens nothing.
+   */
+  readonly onFrame?: (frame: FrameData) => void;
 }
 
 /** A view as `useView` returns it. */
@@ -50,23 +57,23 @@ interface Target {
   readonly key: string;
   readonly ready: boolean;
   readonly latestRef: RefObject<Opening | null>;
-  readonly chartSink: ChartSink;
+  readonly sinks: Sinks;
 }
 
 /** Opens the view whenever its dataset, its engine or whether it can open changes, closing the one before. */
 function useOpen(target: Target, report: (update: (was: Opened | null) => Opened) => void): void {
-  const { client, name, key, ready, latestRef, chartSink } = target;
+  const { client, name, key, ready, latestRef, sinks } = target;
   useEffect(() => {
     const first = latestRef.current;
     if (!ready || first === null) {
       return (): void => undefined;
     }
-    const run = new ViewAttempt(key, report, chartSink);
+    const run = new ViewAttempt(key, report, sinks);
     run.open(client, name, first).catch(reportError);
     return (): void => {
       run.end();
     };
-  }, [chartSink, client, key, latestRef, name, ready, report]);
+  }, [client, key, latestRef, name, ready, report, sinks]);
 }
 
 /** Updates the open view's layout in place, and asks for its window and its chart's, when they change. */
@@ -129,6 +136,27 @@ function useChartSink(onChart: ViewOptions["onChart"]): ChartSink {
   );
 }
 
+/** Hands each frame to the newest `onFrame`, if the view has one; one function for the hook's life, so it never
+ * reopens the view. */
+function useFrameSink(onFrame: ViewOptions["onFrame"]): FrameSink {
+  const onFrameRef = useLatest(onFrame);
+  return useCallback(
+    (frame: FrameData): boolean => {
+      const newest = onFrameRef.current;
+      newest?.(frame);
+      return newest !== undefined;
+    },
+    [onFrameRef],
+  );
+}
+
+/** What takes the view's reports out of its state, the same object for the hook's life. */
+function useSinks(options: ViewOptions): Sinks {
+  const chart = useChartSink(options.onChart);
+  const frame = useFrameSink(options.onFrame);
+  return useMemo(() => ({ chart, frame }), [chart, frame]);
+}
+
 /** Whether a view of the dataset can open: once it is loading, since a view waits for its load. */
 function canOpen(dataset: Dataset): boolean {
   return dataset.status === "loading" || dataset.status === "loaded";
@@ -141,7 +169,8 @@ function canOpen(dataset: Dataset): boolean {
  * The view opens while its dataset loads, and waits for it. A changed layout updates the open view in place, and a
  * changed viewport or chart window asks for that window, without reopening. When the engine restarts, the view fails
  * with the reason, and opens again once the dataset has loaded again. With `onChart`, the chart's reductions go to it
- * rather than into the state.
+ * rather than into the state, and with `onFrame`, the frames do, so a scroll that asks `handle` for rows renders
+ * nothing.
  */
 function useView(dataset: Dataset, layout: LayoutInput, options: ViewOptions = {}): View {
   const client = useParallaxClient();
@@ -152,12 +181,12 @@ function useView(dataset: Dataset, layout: LayoutInput, options: ViewOptions = {
   const latestRef = useLatest(opening);
   useOpen(
     {
-      chartSink: useChartSink(options.onChart),
       client,
       key,
       latestRef,
       name: dataset.name,
       ready: opening !== null && canOpen(dataset),
+      sinks: useSinks(options),
     },
     setOpened,
   );
