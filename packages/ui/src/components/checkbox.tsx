@@ -3,7 +3,8 @@
  *
  * Changed from shadcn: the checkbox is a 24 px target, `min-h-target` by `min-w-target`, with shadcn's 16 px box drawn
  * inside it, so the target holds in the compact density, where the box is 12 px; shadcn widened the target with an
- * `::after` that the compact density shrinks below 24 px. The box takes the focus ring and the invalid outline through
+ * `::after` that the compact density shrinks below 24 px. An indeterminate checkbox draws a dash on the filled box,
+ * where shadcn drew its check. The box takes the focus ring and the invalid outline through
  * `group-*` classes, and the `dark:` classes and the box's arbitrary radius are the theme's. */
 
 import { Checkbox as CheckboxPrimitive } from "@base-ui/react/checkbox";
@@ -11,8 +12,10 @@ import { cn } from "cn";
 import type { ReactElement } from "react";
 
 import { CheckIcon } from "#vendor/lucide/check.tsx";
+import { MinusIcon } from "#vendor/lucide/minus.tsx";
 
-/** A checkbox. Name it with a `<label>` around it or a `Label` whose `htmlFor` is its `id`. */
+/** A checkbox. Name it with a `<label>` around it or a `Label` whose `htmlFor` is its `id`. `indeterminate`, for a
+ * checkbox over others of which some are checked, fills the box and draws a dash in place of the check. */
 function Checkbox({
   className,
   ...props
@@ -28,13 +31,14 @@ function Checkbox({
     >
       <span
         data-slot="checkbox-box"
-        className="flex size-4 items-center justify-center rounded-sm border border-input transition-colors group-focus-visible/checkbox:border-ring group-focus-visible/checkbox:ring-3 group-focus-visible/checkbox:ring-ring/50 group-has-[:focus-visible]/field-label:ring-0 group-aria-invalid/checkbox:border-destructive group-aria-invalid/checkbox:ring-3 group-aria-invalid/checkbox:ring-destructive/30 group-data-checked/checkbox:border-primary group-data-checked/checkbox:bg-primary group-data-checked/checkbox:text-primary-foreground group-has-[:focus-visible]/field-label:group-data-unchecked/checkbox:border-input"
+        className="flex size-4 items-center justify-center rounded-sm border border-input transition-colors group-focus-visible/checkbox:border-ring group-focus-visible/checkbox:ring-3 group-focus-visible/checkbox:ring-ring/50 group-has-[:focus-visible]/field-label:ring-0 group-aria-invalid/checkbox:border-destructive group-aria-invalid/checkbox:ring-3 group-aria-invalid/checkbox:ring-destructive/30 group-data-checked/checkbox:border-primary group-data-checked/checkbox:bg-primary group-data-checked/checkbox:text-primary-foreground group-data-indeterminate/checkbox:border-primary group-data-indeterminate/checkbox:bg-primary group-data-indeterminate/checkbox:text-primary-foreground group-has-[:focus-visible]/field-label:group-data-unchecked/checkbox:border-input"
       >
         <CheckboxPrimitive.Indicator
           data-slot="checkbox-indicator"
           className="grid place-content-center text-current transition-none [&>svg]:size-3.5"
         >
-          <CheckIcon />
+          <CheckIcon className="group-data-indeterminate/checkbox:hidden" />
+          <MinusIcon className="hidden group-data-indeterminate/checkbox:block" />
         </CheckboxPrimitive.Indicator>
       </span>
     </CheckboxPrimitive.Root>
