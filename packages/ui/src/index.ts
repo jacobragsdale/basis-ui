@@ -505,6 +505,7 @@ export {
   type FormatErrorReason,
   type Formatter,
   type Negative,
+  type SuffixStyle,
   type TimePrecision,
 } from "./format/format.ts";
 export {

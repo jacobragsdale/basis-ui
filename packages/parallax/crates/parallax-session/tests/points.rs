@@ -239,3 +239,44 @@ fn a_scatter_without_a_fit_sends_no_fit_lines_and_a_density_past_the_cap() {
     assert!(batch.num_rows() <= 2_000 && batch.column_by_name("x").is_some());
     assert!(texts(&batch, "id_json").iter().all(Option::is_none));
 }
+
+#[test]
+fn an_x_axis_of_a_percentage_or_basis_points_reads_as_its_column_does() {
+    let (shown, _) = frame(
+        r#"{"formats": {"yield_to_maturity": {"percent": true, "decimals": 3}},
+            "chart": {"kind": "scatter", "x": "yield_to_maturity", "y": ["duration"]}}"#,
+    );
+    let labels: Vec<&str> = shown.ticks.iter().map(|t| t.label.as_str()).collect();
+    assert!(labels.len() > 2, "{labels:?}");
+    assert!(labels.iter().all(|l| l.ends_with('%')), "{labels:?}");
+    // As many decimals as the step needs: every label has the same number.
+    let decimals = |l: &str| {
+        l.trim_end_matches('%')
+            .split('.')
+            .nth(1)
+            .map_or(0, str::len)
+    };
+    assert!(
+        labels.windows(2).all(|w| decimals(w[0]) == decimals(w[1])),
+        "{labels:?}"
+    );
+    let (shown, _) = frame(
+        r#"{"formats": {"coupon_rate": {"bps": "fraction"}},
+            "chart": {"kind": "scatter", "x": "coupon_rate", "y": ["duration"]}}"#,
+    );
+    assert!(
+        shown.ticks.iter().all(|t| t.label.ends_with("\u{a0}bp")),
+        "{:?}",
+        shown.ticks
+    );
+    // A format without a style of its own keeps the engine's round numbers.
+    let (shown, _) = frame(
+        r#"{"formats": {"duration": {"decimals": 4}},
+            "chart": {"kind": "scatter", "x": "duration", "y": ["coupon_rate"]}}"#,
+    );
+    assert!(
+        shown.ticks.iter().all(|t| !t.label.contains('.')),
+        "{:?}",
+        shown.ticks
+    );
+}

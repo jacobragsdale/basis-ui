@@ -9,7 +9,7 @@ import { centre, errorsOf, legendOf, linked, open, plotOf, rowsIn, summaryOf } f
 import type { PlotBox } from "./pages.ts";
 
 /** How many charts the fixed-income page shows, and how many bonds its book holds. */
-const fixedIncomeCount = 4;
+const fixedIncomeCount = 7;
 const bonds = 600;
 
 /** A CUSIP: nine letters and digits. */
@@ -156,4 +156,24 @@ test("a scatter on a tenor axis draws every bond", async ({ page }) => {
   const chart = fixedIncomeCard(page, "tenor-axis");
   await expect(summaryOf(chart)).toHaveText(`${String(bonds)} dots`);
   await expect(plotOf(chart)).toHaveAccessibleName("Scatter plot of yield_to_maturity from bonds");
+});
+
+test("par reads in MM and rich/cheap in basis points, as the grid writes them", async ({
+  page,
+}) => {
+  await open(page, "/?page=fixed-income", fixedIncomeCount);
+  expect(await wordsOf(fixedIncomeCard(page, "par-by-sector"))).toMatch(
+    /Financials: sum\(par\) [\d,]+\.\dMM/u,
+  );
+  expect(await wordsOf(fixedIncomeCard(page, "rich-cheap-bps"))).toMatch(
+    /Energy: mean\(rich_cheap_bp\) -?\d+\.\d\u00A0bp/u,
+  );
+});
+
+test("a bond's price reads in 32nds in its tooltip", async ({ page }) => {
+  await open(page, "/?page=fixed-income", fixedIncomeCount);
+  const chart = fixedIncomeCard(page, "price-32nds");
+  await hoverABond(chart);
+  const price = chart.getByRole("tooltip").locator('[data-slot="chart-tip-row"]').first();
+  await expect(price).toHaveText(/^\d+-\d\d\+?price$/u);
 });

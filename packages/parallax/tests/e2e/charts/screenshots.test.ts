@@ -16,7 +16,7 @@ test.skip(
 
 /** How many charts the breakdowns page and the fixed-income page show. */
 const breakdownCount = 10;
-const fixedIncomeCount = 4;
+const fixedIncomeCount = 7;
 
 /** Two animation frames, for a paint to reach the screen. */
 async function frames(page: Page): Promise<void> {

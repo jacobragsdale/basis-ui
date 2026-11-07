@@ -22,6 +22,10 @@ const formatSchema = z.strictObject({
   thousands: z.boolean().nullable().default(null),
   percent: z.boolean().default(false),
   abbreviate: z.enum(["thousands", "millions", "billions"]).nullable().default(null),
+  // Roadmap step 2.8's styles. The Rust leaves them out of a format that does not set them, so they have no default.
+  suffixes: z.enum(["amount", "par"]).optional(),
+  bps: z.enum(["fraction", "bp"]).optional(),
+  thirty_seconds: z.enum(["thirty_seconds", "halves", "quarters", "eighths"]).optional(),
   negative: z.enum(["minus", "parentheses"]).default("minus"),
   zone: z.string().nullable().default(null),
   precision: z.enum(["seconds", "milliseconds", "microseconds"]).default("seconds"),

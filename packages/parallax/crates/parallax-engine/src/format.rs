@@ -10,9 +10,15 @@
 //!   double unchanged, so the two agree; for longer ones the screen keeps every
 //!   digit.
 //!
-//! Percent and K/M/B scaling then move the decimal point, which is exact, and the
-//! result is rounded once to the shown decimals, half away from zero. A value that
-//! rounds to zero never shows a minus sign.
+//! Percent, basis-point and K/M/B scaling then move the decimal point, which is
+//! exact, and the result is rounded once to the shown decimals, half away from
+//! zero. A value that rounds to zero never shows a minus sign.
+//!
+//! A Treasury price in 32nds, `99-16+`, is written as `@basis/ui`'s `Price32`
+//! writes it: a double is first read at its shortest round-trip digits and
+//! rounded to 8 decimals, enough for any 256th of a point, then every price is
+//! rounded to its finest step, half away from zero. `@basis/ui`'s formatter port
+//! is tested against this file's fixtures, so a card and the grid agree.
 //!
 //! Instants are shown in a display zone, `America/New_York` unless the format names
 //! another, using the time-zone database bundled into the build, so the native build
@@ -68,14 +74,68 @@ impl Abbreviation {
         }
     }
 
-    const fn suffix(self) -> &'static str {
-        match self {
-            Self::Thousands => "K",
-            Self::Millions => "M",
-            Self::Billions => "B",
+    const fn suffix(self, suffixes: Suffixes) -> &'static str {
+        match (self, suffixes) {
+            (Self::Thousands, Suffixes::Amount) => "K",
+            (Self::Millions, Suffixes::Amount) => "M",
+            (Self::Billions, Suffixes::Amount) => "B",
+            (Self::Thousands, Suffixes::Par) => "M",
+            (Self::Millions, Suffixes::Par) => "MM",
+            (Self::Billions, Suffixes::Par) => "BN",
         }
     }
 }
+
+/// How an abbreviation is written.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Suffixes {
+    /// `K`, `M` and `B`, as amounts are written.
+    #[default]
+    Amount,
+    /// `M`, `MM` and `BN`, as bond markets write par amounts, and as
+    /// `@basis/ui`'s `AmountInput` reads them back in par style.
+    Par,
+}
+
+/// The unit a rate shown in basis points arrives in.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum BpsUnit {
+    /// A fraction, as `0.0025` for 25 bp: multiplied by 10,000.
+    Fraction,
+    /// Basis points already, as `25`.
+    Bp,
+}
+
+/// The finest step a price in 32nds shows: a 32nd, or a half, quarter or eighth
+/// of one.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ThirtySeconds {
+    /// Whole 32nds: `99-16`.
+    Whole,
+    /// Halves: `99-16+`.
+    Halves,
+    /// Quarters: `99-162`, `99-16+`, `99-166`.
+    Quarters,
+    /// Eighths, the finest: `99-161` to `99-167`.
+    Eighths,
+}
+
+impl ThirtySeconds {
+    /// The steps in a point: 32 times the steps in a 32nd.
+    const fn steps_per_point(self) -> u32 {
+        32 * match self {
+            Self::Whole => 1,
+            Self::Halves => 2,
+            Self::Quarters => 4,
+            Self::Eighths => 8,
+        }
+    }
+}
+
+/// The suffix basis points take, after the digits and inside the parentheses of a
+/// negative, as `@basis/ui`'s `Bps` writes it: a no-break space keeps the unit on
+/// the number's line.
+const BP_SUFFIX: &str = "\u{a0}bp";
 
 /// How negative numbers are written.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -122,6 +182,12 @@ pub struct Format {
     pub percent: bool,
     /// Divide by a thousand, million or billion and append the suffix.
     pub abbreviate: Option<Abbreviation>,
+    /// How an abbreviation is written.
+    pub suffixes: Suffixes,
+    /// Show a rate in basis points, with ` bp`, from the unit it arrives in.
+    pub bps: Option<BpsUnit>,
+    /// Show a price in 32nds, to its finest step: `99-16+`.
+    pub thirty_seconds: Option<ThirtySeconds>,
     /// How negative numbers are written.
     pub negative: Negative,
     /// The zone instants are shown in.
@@ -142,6 +208,11 @@ pub enum FormatError {
     /// Percent and K/M/B scaling together.
     #[error("a format cannot both show a percentage and abbreviate")]
     PercentAndAbbreviation,
+    /// More than one of a percentage, an abbreviation, basis points and 32nds.
+    #[error(
+        "a format shows one of a percentage, an abbreviation, basis points or 32nds, not {0} and {1}"
+    )]
+    Styles(&'static str, &'static str),
 }
 
 /// A checked [`Format`], ready to format values.
@@ -151,6 +222,9 @@ pub struct Formatter {
     thousands: bool,
     percent: bool,
     abbreviate: Option<Abbreviation>,
+    suffixes: Suffixes,
+    bps: Option<BpsUnit>,
+    thirty_seconds: Option<ThirtySeconds>,
     negative: Negative,
     zone: TimeZone,
     zone_name: String,
@@ -179,6 +253,18 @@ impl Formatter {
         if format.percent && format.abbreviate.is_some() {
             return Err(FormatError::PercentAndAbbreviation);
         }
+        let styles: Vec<&'static str> = [
+            (format.percent, "a percentage"),
+            (format.abbreviate.is_some(), "an abbreviation"),
+            (format.bps.is_some(), "basis points"),
+            (format.thirty_seconds.is_some(), "32nds"),
+        ]
+        .into_iter()
+        .filter_map(|(set, name)| set.then_some(name))
+        .collect();
+        if let [first, second, ..] = styles[..] {
+            return Err(FormatError::Styles(first, second));
+        }
         let zone_name = format.zone.as_deref().unwrap_or(DEFAULT_ZONE);
         let zone =
             TimeZone::get(zone_name).map_err(|_| FormatError::UnknownZone(zone_name.to_owned()))?;
@@ -187,6 +273,9 @@ impl Formatter {
             thousands: format.thousands.unwrap_or(true),
             percent: format.percent,
             abbreviate: format.abbreviate,
+            suffixes: format.suffixes,
+            bps: format.bps,
+            thirty_seconds: format.thirty_seconds,
             negative: format.negative,
             zone,
             zone_name: zone_name.to_owned(),
@@ -217,8 +306,18 @@ impl Formatter {
             return UNDEFINED_TEXT.to_owned();
         }
         let negative = value.is_sign_negative();
+        if let Some(step) = self.thirty_seconds {
+            // A price has no infinity: Price32 shows it as undefined.
+            if value.is_infinite() {
+                return UNDEFINED_TEXT.to_owned();
+            }
+            let (digits, exp) = shortest_digits(value.abs());
+            let points = round_half_away(&digits, exp, PRICE_DECIMALS);
+            return self.thirty_seconds_text(negative, &points, -(PRICE_DECIMALS as i32), step);
+        }
         if value.is_infinite() {
-            return self.signed(negative, "∞".to_owned());
+            let unit = if self.bps.is_some() { BP_SUFFIX } else { "" };
+            return self.signed(negative, format!("∞{unit}"));
         }
         let (digits, exp) = if value == 0.0 {
             ("0".to_owned(), 0)
@@ -231,7 +330,20 @@ impl Formatter {
     /// Formats an exact decimal, `unscaled × 10^-scale`.
     #[must_use]
     pub fn decimal(&self, unscaled: i128, scale: i8) -> String {
-        let natural = u8::try_from(scale.max(0)).unwrap_or(0).min(MAX_DECIMALS);
+        if let Some(step) = self.thirty_seconds {
+            let digits = unscaled.unsigned_abs().to_string();
+            return self.thirty_seconds_text(unscaled < 0, &digits, -i32::from(scale), step);
+        }
+        // Basis points of a fraction move the point four places, and take the
+        // decimals the moved value has, as Bps does.
+        let shift = if self.bps == Some(BpsUnit::Fraction) {
+            4
+        } else {
+            0
+        };
+        let natural = u8::try_from((scale - shift).max(0))
+            .unwrap_or(0)
+            .min(MAX_DECIMALS);
         self.number(
             unscaled < 0,
             &unscaled.unsigned_abs().to_string(),
@@ -243,6 +355,9 @@ impl Formatter {
     /// Formats an integer.
     #[must_use]
     pub fn integer(&self, value: i64) -> String {
+        if let Some(step) = self.thirty_seconds {
+            return self.thirty_seconds_text(value < 0, &value.unsigned_abs().to_string(), 0, step);
+        }
         self.number(
             value < 0,
             &value.unsigned_abs().to_string(),
@@ -398,25 +513,61 @@ impl Formatter {
             }
             _ => return None,
         };
-        let decimals = self.decimals_or(natural) as usize;
         let mut body = if self.thousands { "#,##0" } else { "0" }.to_owned();
-        if decimals > 0 {
-            body.push('.');
-            body.extend(std::iter::repeat_n('0', decimals));
-        }
-        if let Some(a) = self.abbreviate {
-            // Each trailing comma divides by a thousand.
-            body.extend(std::iter::repeat_n(',', a.shift() as usize / 3));
-            write!(body, "\"{}\"", a.suffix()).expect("writes to a string");
-        }
-        if self.percent {
-            body.push('%');
+        if self.thirty_seconds.is_some() {
+            // Excel has no 32nds: the decimal price, to its 256ths.
+            body.push_str(".00######");
+        } else {
+            // Excel cannot multiply by 10,000, so basis points of a fraction show
+            // as a percentage, the same digits two places over.
+            let percent = self.percent || self.bps == Some(BpsUnit::Fraction);
+            let natural = if self.bps == Some(BpsUnit::Fraction) {
+                natural.saturating_sub(4)
+            } else {
+                natural
+            };
+            let mut decimals = self.decimals_or(natural) as usize;
+            if self.bps == Some(BpsUnit::Fraction) {
+                decimals += 2;
+            }
+            if decimals > 0 {
+                body.push('.');
+                body.extend(std::iter::repeat_n('0', decimals));
+            }
+            if let Some(a) = self.abbreviate {
+                // Each trailing comma divides by a thousand.
+                body.extend(std::iter::repeat_n(',', a.shift() as usize / 3));
+                write!(body, "\"{}\"", a.suffix(self.suffixes)).expect("writes to a string");
+            }
+            if self.bps == Some(BpsUnit::Bp) {
+                write!(body, "\"{BP_SUFFIX}\"").expect("writes to a string");
+            }
+            if percent {
+                body.push('%');
+            }
         }
         Some(match (signed, self.negative) {
             (true, Negative::Minus) => body,
             (true, Negative::Parentheses) => format!("{body};({body})"),
             (false, _) => format!("{body};{body}"),
         })
+    }
+
+    /// What an Excel export says on its Notes sheet about a column this formatter
+    /// shows, where Excel cannot show what the screen does.
+    #[must_use]
+    pub fn excel_note(&self) -> Option<&'static str> {
+        if self.thirty_seconds.is_some() {
+            Some(
+                "Prices shown in 32nds on screen are decimal prices in Excel, which has no format for 32nds.",
+            )
+        } else if self.bps == Some(BpsUnit::Fraction) {
+            Some(
+                "Rates shown in basis points on screen are percentages in Excel, the same digits two places over: Excel's formats cannot multiply by 10,000.",
+            )
+        } else {
+            None
+        }
     }
 
     /// Whether `text`, made by this formatter, shows a value that rounded to zero.
@@ -434,11 +585,36 @@ impl Formatter {
         }
     }
 
+    /// Writes the price `digits × 10^exp` points in 32nds, rounded to `step`, half
+    /// away from zero: `99-16+`, and `-0-04+` for a negative change.
+    fn thirty_seconds_text(
+        &self,
+        negative: bool,
+        digits: &str,
+        exp: i32,
+        step: ThirtySeconds,
+    ) -> String {
+        let per_point = step.steps_per_point();
+        let steps = round_half_away(&multiply(digits, per_point), exp, 0);
+        let eighths = multiply(&steps, 256 / per_point);
+        let (whole, rest) = divide(&eighths, 256);
+        let mark = match rest % 8 {
+            0 => String::new(),
+            4 => "+".to_owned(),
+            other => other.to_string(),
+        };
+        let body = format!("{whole}-{:02}{mark}", rest / 8);
+        self.signed(negative && eighths != "0", body)
+    }
+
     /// Formats `digits × 10^exp`, rounded to `decimals` places.
     fn number(&self, negative: bool, digits: &str, exp: i32, decimals: u32) -> String {
         let mut exp = exp;
         if self.percent {
             exp += 2;
+        }
+        if self.bps == Some(BpsUnit::Fraction) {
+            exp += 4;
         }
         if let Some(a) = self.abbreviate {
             exp -= a.shift();
@@ -458,10 +634,13 @@ impl Formatter {
             body.push_str(fraction);
         }
         if let Some(a) = self.abbreviate {
-            body.push_str(a.suffix());
+            body.push_str(a.suffix(self.suffixes));
         }
         if self.percent {
             body.push('%');
+        }
+        if self.bps.is_some() {
+            body.push_str(BP_SUFFIX);
         }
         self.signed(negative && !is_zero, body)
     }
@@ -498,6 +677,59 @@ fn fifteen_digits(value: f64) -> (String, i32) {
     let kept = &digits[..15];
     let kept = if up { increment(kept) } else { kept.to_owned() };
     (kept, exp - 14)
+}
+
+/// The decimals a double price is read at before it is rounded to 32nds: enough
+/// for any 256th of a point, as Price32 reads one.
+const PRICE_DECIMALS: u32 = 8;
+
+/// The digits and exponent of a positive finite double's shortest text that reads
+/// back as the same double, as JavaScript's `String(value)` writes it.
+fn shortest_digits(value: f64) -> (String, i32) {
+    let (digits, exp) = scientific(&format!("{value:e}"));
+    let exp = exp - i32::try_from(digits.len()).expect("a short digit string") + 1;
+    (digits, exp)
+}
+
+/// A decimal digit string times a small number.
+fn multiply(digits: &str, by: u32) -> String {
+    let mut carry = 0u64;
+    let mut out: Vec<u8> = Vec::with_capacity(digits.len() + 4);
+    for b in digits.bytes().rev() {
+        let product = u64::from(b - b'0') * u64::from(by) + carry;
+        out.push(b'0' + (product % 10) as u8);
+        carry = product / 10;
+    }
+    while carry > 0 {
+        out.push(b'0' + (carry % 10) as u8);
+        carry /= 10;
+    }
+    out.reverse();
+    let text = String::from_utf8(out).expect("ASCII digits");
+    let trimmed = text.trim_start_matches('0');
+    if trimmed.is_empty() {
+        "0".to_owned()
+    } else {
+        trimmed.to_owned()
+    }
+}
+
+/// A decimal digit string divided by a small number: the quotient's digits and
+/// the remainder.
+fn divide(digits: &str, by: u32) -> (String, u32) {
+    let mut rest = 0u64;
+    let mut out = String::with_capacity(digits.len());
+    for b in digits.bytes() {
+        let value = rest * 10 + u64::from(b - b'0');
+        out.push(char::from(b'0' + (value / u64::from(by)) as u8));
+        rest = value % u64::from(by);
+    }
+    let trimmed = out.trim_start_matches('0');
+    let quotient = if trimmed.is_empty() { "0" } else { trimmed };
+    (
+        quotient.to_owned(),
+        u32::try_from(rest).expect("below the divisor"),
+    )
 }
 
 /// Splits Rust's `d.ddde±x` text into its digits and decimal exponent.

@@ -275,6 +275,13 @@ axis for curves:
 A tenor axis puts the standard tenors one step apart, 1M, 3M, 6M, 1Y and so on
 to 30Y, and labels them; `tenor_spacing: "length"` spaces them by years.
 
+A layout's `formats` write a column's values in the grid, tooltips, labels and
+value axes alike, as `@basis/ui`'s number components do: `{ bps: "fraction" }`
+writes 0.0025 as `25 bp` (`"bp"` takes basis points as they are),
+`{ thirty_seconds: "halves" }` writes 99.515625 as `99-16+`, and
+`{ abbreviate: "millions", suffixes: "par" }` writes $5 million of par as
+`5.0MM`.
+
 A small chart takes the rows the page already holds, and loads them as a table
 of its own, in their order:
 

@@ -27,9 +27,9 @@ const fixedIncomeCards: readonly FixedIncomeCard[] = [
       },
       formats: {
         dv01_usd: { decimals: 0 },
-        fitted_spread_bp: { decimals: 1 },
-        rich_cheap_bp: { decimals: 1 },
-        spread_bp: { decimals: 1 },
+        fitted_spread_bp: { bps: "bp", decimals: 1 },
+        rich_cheap_bp: { bps: "bp", decimals: 1 },
+        spread_bp: { bps: "bp", decimals: 1 },
       },
     },
     title:
@@ -67,6 +67,37 @@ const fixedIncomeCards: readonly FixedIncomeCard[] = [
       },
     },
     title: "Yield against maturity on a tenor axis, the standard tenors a step apart",
+  },
+  {
+    id: "par-by-sector",
+    layout: {
+      chart: { horizontal: true, kind: "bar" },
+      formats: { par: { abbreviate: "millions", suffixes: "par" } },
+      group_by: ["sector"],
+      measures: [{ aggregate: "sum", column: "par" }],
+    },
+    title: "Par held by sector, written as bond markets write par: MM for millions",
+  },
+  {
+    id: "rich-cheap-bps",
+    layout: {
+      chart: { kind: "bar" },
+      formats: { rich_cheap_bp: { bps: "bp", decimals: 1 } },
+      group_by: ["sector"],
+      measures: [{ aggregate: "mean", column: "rich_cheap_bp" }],
+    },
+    title: "How rich or cheap each sector sits to its curve, on average, in basis points",
+  },
+  {
+    id: "price-32nds",
+    layout: {
+      chart: { id: "cusip", kind: "scatter", x: "coupon_rate", y: ["price"] },
+      formats: {
+        coupon_rate: { decimals: 3, percent: true },
+        price: { thirty_seconds: "halves" },
+      },
+    },
+    title: "Price in 32nds against coupon",
   },
 ];
 

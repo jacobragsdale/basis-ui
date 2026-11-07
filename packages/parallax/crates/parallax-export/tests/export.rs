@@ -776,3 +776,77 @@ fn an_export_of_a_load_the_screen_does_not_show_is_refused() {
     };
     assert!(write_csv(&table, &Layout::default(), &current, Vec::new()).is_ok());
 }
+
+#[test]
+fn rates_in_basis_points_prices_in_32nds_and_par_amounts_keep_their_values() {
+    let batch = RecordBatch::try_new(
+        Arc::new(Schema::new(vec![
+            Field::new("spread", DataType::Float64, false),
+            Field::new("oas", DataType::Float64, false),
+            Field::new("price", DataType::Float64, false),
+            Field::new("par", DataType::Float64, false),
+        ])),
+        vec![
+            Arc::new(Float64Array::from(vec![0.0025, -0.000_125])) as ArrayRef,
+            Arc::new(Float64Array::from(vec![45.5, -3.25])),
+            Arc::new(Float64Array::from(vec![99.515_625, 101.0])),
+            Arc::new(Float64Array::from(vec![5_000_000.0, 250_000.0])),
+        ],
+    )
+    .unwrap();
+    let layout = r#"{"formats": {"spread": {"bps": "fraction", "decimals": 1}, "oas": {"bps": "bp"},
+        "price": {"thirty_seconds": "halves"}, "par": {"abbreviate": "millions", "suffixes": "par"}}}"#;
+    let mut out = Cursor::new(Vec::new());
+    let source = ExportSource {
+        dataset: "bonds".into(),
+        as_of: "2026-11-02 16:00:00".into(),
+        load_version: None,
+    };
+    let summary = write_xlsx(
+        &table_of(&batch),
+        &Layout::from_json(layout).unwrap(),
+        &source,
+        None,
+        &mut out,
+    )
+    .unwrap();
+    let bytes = out.into_inner();
+    // Each cell holds the column's value: Excel's formats show it, never a value
+    // rescaled to look like the screen.
+    let range = sheet(&bytes);
+    let values: Vec<f64> = (1..=2)
+        .flat_map(|row| (0..4).map(move |col| (row, col)))
+        .map(|(row, col)| number(range.get((row, col)).unwrap()))
+        .collect();
+    assert_eq!(
+        values,
+        [
+            0.0025,
+            45.5,
+            99.515_625,
+            5_000_000.0,
+            -0.000_125,
+            -3.25,
+            101.0,
+            250_000.0
+        ]
+    );
+    let styles = zipped(&bytes, "xl/styles.xml");
+    for code in [
+        "#,##0.000%",
+        "#,##0.00&quot;\u{a0}bp&quot;",
+        "#,##0.00######",
+        "#,##0.0,,&quot;MM&quot;",
+    ] {
+        assert!(styles.contains(code), "{code} in {styles}");
+    }
+    // Excel shows basis points as a percentage and 32nds as a decimal price, and
+    // the Notes sheet says so.
+    for note in ["percentages in Excel", "no format for 32nds"] {
+        assert!(
+            summary.notes.iter().any(|n| n.contains(note)),
+            "{note}: {:?}",
+            summary.notes
+        );
+    }
+}

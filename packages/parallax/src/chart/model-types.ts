@@ -3,7 +3,7 @@
 
 import type { ChartFrameData } from "#frame/chart-data.ts";
 import type { LayoutChart } from "#layout/chart.ts";
-import type { LayoutScalar } from "#layout/layout.ts";
+import type { LayoutFormat, LayoutScalar } from "#layout/layout.ts";
 import type { ChartColors } from "#theme/charts.ts";
 
 import type { DotsMark } from "./model-dots.ts";
@@ -268,6 +268,9 @@ interface ModelInput {
   readonly selected?: string | null;
   /** The group under the pointer, by its index: a pie's slice moves out, and a donut's hole names it. */
   readonly hovered?: number | null;
+  /** The formats by column, and a grouped view's first measure's, whose styles label value axes. */
+  readonly formats?: Readonly<Record<string, LayoutFormat>>;
+  readonly measureFormat?: LayoutFormat | null;
 }
 
 export type {

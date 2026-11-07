@@ -6,6 +6,7 @@ import type { ChartContent, ChartFrameData, HistogramSeries } from "#frame/chart
 import type { ChartModel, Hit, Mark, ModelInput, Rect, Scale } from "./model-types.ts";
 import {
   axis,
+  columnStyle,
   count,
   gap,
   hidden,
@@ -163,7 +164,8 @@ function densityModel(
 ): ChartModel {
   const range: readonly [number, number] = [input.height - xAxisHeight, padOf(input)];
   const scale = linearScale([content.yFrom, content.yTo], range);
-  const plot = plotFor(input, { left: axis("left", scale).ticks, right: null });
+  const style = columnStyle(input, input.chart.y[0]);
+  const plot = plotFor(input, { left: axis("left", scale, { style }).ticks, right: null });
   const y = linearScale([content.yFrom, content.yTo], [plot.y + plot.height, plot.y]);
   const x = linearScale([frame.xFrom, frame.xTo], [plot.x, plot.x + plot.width]);
   const marks = densityCells(input, content, plot);
@@ -179,7 +181,7 @@ function densityModel(
     width: input.width,
     x,
     xTicks: frame.ticks.map((tick) => ({ label: tick.label, px: pixel(x, tick.x) })),
-    yAxes: [axis("left", y)],
+    yAxes: [axis("left", y, { style })],
     yLabels: [],
   };
 }

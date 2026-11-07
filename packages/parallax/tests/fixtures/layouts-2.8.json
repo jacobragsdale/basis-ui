@@ -160,5 +160,73 @@
     "top_n": null,
     "totals": [],
     "version": 2
+  },
+  {
+    "chart": null,
+    "column_widths": {},
+    "columns": [],
+    "dataset": "bonds",
+    "detail": false,
+    "expand_depth": 0,
+    "expanded": [],
+    "filters": [],
+    "formats": {
+      "oas_bp": {
+        "abbreviate": null,
+        "bps": "bp",
+        "decimals": null,
+        "negative": "minus",
+        "percent": false,
+        "precision": "seconds",
+        "thousands": null,
+        "zone": null
+      },
+      "par": {
+        "abbreviate": "millions",
+        "decimals": null,
+        "negative": "minus",
+        "percent": false,
+        "precision": "seconds",
+        "suffixes": "par",
+        "thousands": null,
+        "zone": null
+      },
+      "price": {
+        "abbreviate": null,
+        "decimals": null,
+        "negative": "parentheses",
+        "percent": false,
+        "precision": "seconds",
+        "thirty_seconds": "halves",
+        "thousands": null,
+        "zone": null
+      },
+      "spread": {
+        "abbreviate": null,
+        "bps": "fraction",
+        "decimals": 1,
+        "negative": "minus",
+        "percent": false,
+        "precision": "seconds",
+        "thousands": null,
+        "zone": null
+      }
+    },
+    "group_by": [],
+    "group_sort": {
+      "by": "key",
+      "descending": false
+    },
+    "having": [],
+    "measures": [],
+    "parameters": {},
+    "pinned": [],
+    "search": "",
+    "sort": [],
+    "split_by": [],
+    "titles": {},
+    "top_n": null,
+    "totals": [],
+    "version": 2
   }
 ]

@@ -3,6 +3,8 @@ import { readFileSync } from "node:fs";
 import { describe, expect, test } from "vite-plus/test";
 import { z } from "zod";
 
+import { bpsText, price32Text } from "#components/num-text.ts";
+import type { NumericValue } from "#components/num-text.ts";
 import { FormatError, createFormatter } from "#index.ts";
 import type { Format, FormatErrorReason, Formatter } from "#index.ts";
 
@@ -12,12 +14,15 @@ const fixtures = new URL(
   import.meta.url,
 );
 
-const formatSchema = z.object({
+const formatSchema = z.strictObject({
   abbreviate: z.enum(["K", "M", "B"]).nullable(),
+  bps: z.enum(["fraction", "bp"]).nullable(),
   decimals: z.number().nullable(),
   negative: z.enum(["minus", "parentheses"]),
   percent: z.boolean(),
   precision: z.enum(["seconds", "milliseconds", "microseconds"]),
+  suffixes: z.enum(["amount", "par"]),
+  thirtySeconds: z.enum(["thirty-seconds", "halves", "quarters", "eighths"]).nullable(),
   thousands: z.boolean().nullable(),
   zone: z.string().nullable(),
 });
@@ -138,12 +143,75 @@ describe.each(groups.map((group) => [JSON.stringify(group.format), group] as con
   },
 );
 
+/** A number case's value as the number components take it, or undefined for a decimal of a negative scale, which a
+ * Decimal cannot hold. */
+function componentValue(item: Case): NumericValue | undefined {
+  switch (item.kind) {
+    case "float": {
+      return floatOf(item.value);
+    }
+    case "decimal": {
+      return item.scale < 0 ? undefined : { scale: item.scale, unscaled: BigInt(item.unscaled) };
+    }
+    case "integer": {
+      return BigInt(item.value);
+    }
+    case "date":
+    case "timestamp": {
+      return undefined;
+    }
+    default: {
+      throw new TypeError("The fixture case has an unknown kind.");
+    }
+  }
+}
+
+/** Each fixture group in basis points or 32nds, which Bps and Price32 write, with its cases they can take. */
+const componentGroups = groups.flatMap((group) => {
+  const cases = group.cases.flatMap((item) => {
+    const value = componentValue(item);
+    return value === undefined ? [] : [{ text: item.text, value }];
+  });
+  return group.format.bps !== null || group.format.thirtySeconds !== null
+    ? [[JSON.stringify(group.format), group.format, cases] as const]
+    : [];
+});
+
+describe.each(componentGroups)(
+  "Bps and Price32 read as the grid does, format %s",
+  (_name, format, cases) => {
+    test.each(cases.map((item) => [item.text, item] as const))("%s", (_text, item) => {
+      const shown =
+        format.thirtySeconds === null
+          ? bpsText(
+              item.value,
+              {
+                decimals: format.decimals ?? undefined,
+                negative: format.negative,
+                thousands: format.thousands ?? undefined,
+              },
+              format.bps ?? "fraction",
+            ).text
+          : price32Text(item.value, { precision: format.thirtySeconds }).text;
+      // Price32 writes negatives with a minus only.
+      const expected =
+        format.negative === "parentheses" && /^\(.*\)$/u.test(item.text)
+          ? `-${item.text.slice(1, -1)}`
+          : item.text;
+      expect(shown).toBe(format.thirtySeconds === null ? item.text : expected);
+    });
+  },
+);
+
 describe("formats that cannot be used", () => {
   test.each([
     [{ decimals: 31 }, "too-many-decimals"],
     [{ decimals: -1 }, "too-many-decimals"],
     [{ decimals: 1.5 }, "too-many-decimals"],
     [{ abbreviate: "K", percent: true }, "percent-and-abbreviation"],
+    [{ bps: "fraction", percent: true }, "two-styles"],
+    [{ abbreviate: "M", thirtySeconds: "eighths" }, "two-styles"],
+    [{ bps: "bp", thirtySeconds: "halves" }, "two-styles"],
     [{ zone: "Mars/Olympus_Mons" }, "unknown-zone"],
   ] as const)("%o is refused as %s", (format, reason) => {
     expect(() => createFormatter(format)).toThrow(FormatError);

@@ -8,6 +8,7 @@ import type { DotColumns } from "./model-dots.ts";
 import type { ChartModel, Mark, ModelInput, Rect, Scale } from "./model-types.ts";
 import {
   axis,
+  columnStyle,
   hidden,
   legendOf,
   onto,
@@ -135,7 +136,10 @@ function fitMark(
 function dotScales(input: ModelInput, frame: ChartFrameData, content: Content): DotScales {
   const range: readonly [number, number] = [input.height - xAxisHeight, padOf(input)];
   const scale = valueScale(input, [content.yFrom, content.yTo], { range, zero: false });
-  const plot = plotFor(input, { left: axis("left", scale).ticks, right: null });
+  const plot = plotFor(input, {
+    left: axis("left", scale, { style: columnStyle(input, input.chart.y[0]) }).ticks,
+    right: null,
+  });
   const largest: readonly [number, number] =
     input.compact === true ? [compactSmallest, compactLargest] : [smallestRadius, largestRadius];
   const inset = Math.min(
@@ -179,7 +183,7 @@ function pointsModel(input: ModelInput, frame: ChartFrameData, content: Content)
     width: input.width,
     x,
     xTicks: frame.ticks.map((tick) => ({ label: tick.label, px: pixel(x, tick.x) })),
-    yAxes: [axis("left", y)],
+    yAxes: [axis("left", y, { style: columnStyle(input, input.chart.y[0]) })],
     yLabels: [],
   };
 }

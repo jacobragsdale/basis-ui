@@ -73,6 +73,7 @@ function Num({
   decimals,
   thousands,
   abbreviate,
+  suffixes,
   negative,
   align,
   className,
@@ -81,7 +82,7 @@ function Num({
   return (
     <NumberText
       dataSlot="num"
-      shown={numText(value, { abbreviate, decimals, negative, thousands })}
+      shown={numText(value, { abbreviate, decimals, negative, suffixes, thousands })}
       className={cn(numVariants({ align }), className)}
       {...props}
     />
@@ -94,13 +95,14 @@ interface MoneyProps extends NumberProps, NumberFormat {
 }
 
 /** An amount of money, with its currency's symbol after the sign, at the currency's minor units unless abbreviated or
- * told otherwise: `$1,234.50`, `-€12.00`, `$1.5M`. */
+ * told otherwise: `$1,234.50`, `-€12.00`, `$1.5M`, or with par suffixes `$1.5MM`. */
 function Money({
   value,
   currency = "USD",
   decimals,
   thousands,
   abbreviate,
+  suffixes,
   negative,
   align,
   className,
@@ -109,14 +111,14 @@ function Money({
   return (
     <NumberText
       dataSlot="money"
-      shown={moneyText(value, currency, { abbreviate, decimals, negative, thousands })}
+      shown={moneyText(value, currency, { abbreviate, decimals, negative, suffixes, thousands })}
       className={cn(moneyVariants({ align }), className)}
       {...props}
     />
   );
 }
 
-interface PctProps extends NumberProps, Omit<NumberFormat, "abbreviate"> {
+interface PctProps extends NumberProps, Omit<NumberFormat, "abbreviate" | "suffixes"> {
   /** `fraction`, the default, reads 0.0525 as 5.25%, as the formatter and `rateSuffixes` do; `percent` reads 5.25. */
   readonly unit?: PercentUnit | undefined;
 }
@@ -142,7 +144,7 @@ function Pct({
   );
 }
 
-interface BpsProps extends NumberProps, Omit<NumberFormat, "abbreviate"> {
+interface BpsProps extends NumberProps, Omit<NumberFormat, "abbreviate" | "suffixes"> {
   /** `fraction`, the default, reads 0.0025 as 25 bp, as `rateSuffixes` does; `bp` reads 25. */
   readonly unit?: BpsUnit | undefined;
 }

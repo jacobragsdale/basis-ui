@@ -8,6 +8,7 @@ import type { ChartModel, Mark, ModelInput, Rect, Scale } from "./model-types.ts
 import { eventMarks, legendWithOverlays, overlayMarks, overlayValues } from "./model-overlays.ts";
 import {
   axis,
+  columnStyle,
   hidden,
   onto,
   padOf,
@@ -60,8 +61,15 @@ function lineAxes(
   // The gutters fit the labels as shown, a comparison's "%" included.
   const percent = input.chart.compare ? "%" : "";
   const plot = plotFor(input, {
-    left: axis("left", leftScale, percent).ticks,
-    right: rightScale === null ? null : axis("right", rightScale, percent).ticks,
+    left: axis("left", leftScale, { style: columnStyle(input, input.chart.y[0]), suffix: percent })
+      .ticks,
+    right:
+      rightScale === null
+        ? null
+        : axis("right", rightScale, {
+            style: columnStyle(input, input.chart.y_right[0]),
+            suffix: percent,
+          }).ticks,
   });
   const yRange: readonly [number, number] = [plot.y + plot.height, plot.y];
   return {
@@ -141,8 +149,14 @@ function lineModel(
     // In compare mode the engine sends percentage changes: the axes say so.
     yAxes:
       right === null
-        ? [axis("left", left, percent)]
-        : [axis("left", left, percent), axis("right", right, percent)],
+        ? [axis("left", left, { style: columnStyle(input, input.chart.y[0]), suffix: percent })]
+        : [
+            axis("left", left, { style: columnStyle(input, input.chart.y[0]), suffix: percent }),
+            axis("right", right, {
+              style: columnStyle(input, input.chart.y_right[0]),
+              suffix: percent,
+            }),
+          ],
     yLabels: [],
   };
 }

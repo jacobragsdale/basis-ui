@@ -1,6 +1,7 @@
 /* How a bar chart's bars are sized and placed: the slots in a category's band, a bar's rectangle, the room past the
  * longest bar for its label, and the plot and value scale that leave that room. */
 
+import { styleOf } from "./axis-styles.ts";
 import type { CategoryData, CategorySeries, ModelInput, Rect, Scale } from "./model-types.ts";
 import { axis, gap, lineHeight, maxBar, onto, padOf, plotFor, valueScale } from "./model-shared.ts";
 import { pixel } from "./scale.ts";
@@ -178,7 +179,9 @@ function barPlot(
         y: padding,
       }
     : plotFor(input, {
-        left: axis("left", onto(scale, [input.height - xAxis, padding])).ticks,
+        left: axis("left", onto(scale, [input.height - xAxis, padding]), {
+          style: styleOf(input.measureFormat),
+        }).ticks,
         right: null,
         xAxis,
       });

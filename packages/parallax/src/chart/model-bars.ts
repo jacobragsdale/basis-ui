@@ -2,11 +2,21 @@
  * stacked, upright or across, each bar's value at its end where it fits. A selected group's bars stay bright while
  * the others dim. */
 
+import { styleOf, styledTicks } from "./axis-styles.ts";
+import type { AxisStyle } from "./axis-styles.ts";
 import { barExtent, barLabel, barPlot, barRect, barSlots } from "./model-bar-plot.ts";
 import type { Visible } from "./model-bar-plot.ts";
 import { categoryAxis, categoryLabels, sideTicks } from "./model-categories.ts";
 import type { CategoryAxis } from "./model-categories.ts";
-import type { CategoryData, ChartModel, Mark, ModelInput, Rect, Scale } from "./model-types.ts";
+import type {
+  AxisTick,
+  CategoryData,
+  ChartModel,
+  Mark,
+  ModelInput,
+  Rect,
+  Scale,
+} from "./model-types.ts";
 import {
   axis,
   dimmed,
@@ -130,6 +140,14 @@ function barLayout(
   return { band, categoryRoom, plot, room, slots, value };
 }
 
+/** The value ticks along the bottom of horizontal bars, in the first measure's style. */
+function acrossTicks(value: Scale, width: number, style: AxisStyle): AxisTick[] {
+  const count = Math.max(2, width / pixelsPerAcrossTick);
+  const ticks =
+    style.kind === "plain" ? valueTicks(value, count) : styledTicks(value, count, style);
+  return ticks.map((tick) => ({ label: tick.label, px: tick.px }));
+}
+
 /** The model of a bar chart. */
 function barModel(input: ModelInput, data: CategoryData): ChartModel {
   const { horizontal } = input.chart;
@@ -142,12 +160,8 @@ function barModel(input: ModelInput, data: CategoryData): ChartModel {
     categoryBars(input, { c, data, visible }, layout),
   );
   const positions = (i: number): number => (horizontal ? plot.y : plot.x) + (i + 1 / 2) * band;
-  const across = horizontal
-    ? valueTicks(value, Math.max(2, plot.width / pixelsPerAcrossTick)).map((tick) => ({
-        label: tick.label,
-        px: tick.px,
-      }))
-    : [];
+  const style = styleOf(input.measureFormat);
+  const across = horizontal ? acrossTicks(value, plot.width, style) : [];
   return {
     empty: data.categories.length === 0 ? "No groups to show" : null,
     events: [],
@@ -167,7 +181,7 @@ function barModel(input: ModelInput, data: CategoryData): ChartModel {
     xLabelRoom: categoryRoom?.room ?? 0,
     xTicks:
       categoryRoom === null ? across : categoryLabels(data.categories, positions, categoryRoom),
-    yAxes: horizontal ? [] : [axis("left", value)],
+    yAxes: horizontal ? [] : [axis("left", value, { style })],
     yLabels: horizontal ? sideTicks(data.categories, positions, plot.height) : [],
   };
 }

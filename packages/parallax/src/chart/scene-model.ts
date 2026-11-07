@@ -11,6 +11,7 @@ import type { ChartColors } from "#theme/charts.ts";
 import { defaultTheme, sameChartColors, sameTheme } from "#theme/read.ts";
 import type { Theme } from "#theme/read.ts";
 
+import { axisFormats } from "./axis-styles.ts";
 import { categoryAt } from "./interaction.ts";
 import { dotPicked } from "./marks-at.ts";
 import { chartModel } from "./model.ts";
@@ -289,6 +290,7 @@ class SceneModel {
       muted: this.theme.muted,
       selected: this.#selected,
       width: this.size.width,
+      ...axisFormats(this.#layout),
     };
   }
 }

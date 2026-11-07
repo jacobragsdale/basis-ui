@@ -672,10 +672,11 @@ pub fn write_xlsx<T: ReadTable + ?Sized, W: Write + Seek + Send>(
         if start == 0 {
             for (j, column) in read.columns.iter().enumerate() {
                 let col = u16::try_from(usize::from(offset) + j).expect("within Excel's columns");
-                formats.push(ColumnFormats::new(
-                    &formatter_of(&view, &table, column),
-                    column.values.data_type(),
-                ));
+                let formatter = formatter_of(&view, &table, column);
+                if let Some(note) = formatter.excel_note() {
+                    notes.add(note);
+                }
+                formats.push(ColumnFormats::new(&formatter, column.values.data_type()));
                 total_formats.push(column.totals.map(|t| {
                     ColumnFormats::new(
                         &view

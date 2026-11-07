@@ -4,63 +4,24 @@
  *
  * Every number is first turned into an exact decimal. A double is rounded to 15 significant digits, half away from
  * zero, as Excel does: 2.675, whose double is 2.67499999999999982..., becomes 2.67500000000000. Decimals and integers
- * are already exact. Percent and K/M/B scaling then move the decimal point, which is exact, and the result is rounded
- * once to the shown decimals, half away from zero. A value that rounds to zero never shows a minus sign.
+ * are already exact. Percent, basis-point and K/M/B scaling then move the decimal point, which is exact, and the result
+ * is rounded once to the shown decimals, half away from zero. A value that rounds to zero never shows a minus sign.
+ *
+ * A Treasury price in 32nds, `99-16+`, is written by `formatThirtySeconds`, as `Price32` writes it: a double is read at
+ * its shortest digits and rounded to 8 decimals, then to the step, half away from zero. `Bps` and `Price32` write
+ * through this formatter, so a rate or a price reads the same in a card as in the grid.
  *
  * Instants are shown in a display zone, America/New_York unless the format names another. Sub-second digits beyond
  * the shown precision are cut, never rounded, so a time is never shown later than it happened. */
 
+import { Decimal as ExactDecimal } from "#numbers/decimal.ts";
+import { formatThirtySeconds } from "#numbers/thirty-seconds.ts";
+import type { ThirtySecondsPrecision } from "#numbers/thirty-seconds.ts";
+
 import { fifteenDigits, groupThousands, roundHalfAway } from "./digits.ts";
-import { civilText, dateText, utcParts, zonePartsFor } from "./time.ts";
-import type { ZoneParts } from "./time.ts";
-
-/** A fixed scaling by a thousand, million or billion. The suffix is always shown. */
-type Abbreviation = "K" | "M" | "B";
-
-/** How negative numbers are written: `-1,234.50` or `(1,234.50)`. */
-type Negative = "minus" | "parentheses";
-
-/** The sub-second digits an instant shows. */
-type TimePrecision = "seconds" | "milliseconds" | "microseconds";
-
-/** How values are displayed. Unset fields take the value type's default. */
-interface Format {
-  /** Digits after the decimal point. The default is a decimal's scale, 0 for integers, 1 when abbreviating, 2 for a
-   * percentage, and 2 for doubles. */
-  readonly decimals?: number | null;
-  /** Group thousands with commas; the default is yes. */
-  readonly thousands?: boolean | null;
-  /** Multiply by 100 and append `%`. */
-  readonly percent?: boolean;
-  /** Divide by a thousand, million or billion and append the suffix. */
-  readonly abbreviate?: Abbreviation | null;
-  readonly negative?: Negative;
-  /** The IANA zone instants are shown in. */
-  readonly zone?: string | null;
-  readonly precision?: TimePrecision;
-}
-
-/** The display zone when a format names none. */
-const defaultZone = "America/New_York";
-/** The most decimals a format may show, Excel's limit. */
-const maxDecimals = 30;
-/** Text for a null value. */
-const nullText = "";
-/** Text for an undefined result, such as NaN or a percentage of zero. */
-const undefinedText = "—";
-
-type FormatErrorReason = "unknown-zone" | "too-many-decimals" | "percent-and-abbreviation";
-
-/** A format that cannot be used. */
-class FormatError extends Error {
-  public readonly reason: FormatErrorReason;
-
-  public constructor(reason: FormatErrorReason, message: string) {
-    super(message);
-    this.name = "FormatError";
-    this.reason = reason;
-  }
-}
+import { bpSuffix, bpsPower, maxDecimals, settingsOf, undefinedText } from "./settings.ts";
+import type { Format, Settings, TimePrecision } from "./settings.ts";
+import { civilText, dateText, utcParts } from "./time.ts";
 
 /** A checked format, ready to format values. */
 interface Formatter {
@@ -80,18 +41,13 @@ interface Formatter {
   readonly boolean: (value: boolean) => string;
 }
 
-/** Each abbreviation and the power of ten it divides by. */
-const abbreviations = [
-  { power: 3, suffix: "K" },
-  { power: 6, suffix: "M" },
-  { power: 9, suffix: "B" },
-] as const satisfies readonly { readonly power: number; readonly suffix: Abbreviation }[];
-
-/** A percentage multiplies by 10^2. */
-const percentPower = 2;
+/** The decimals a double price is read at before it is rounded to 32nds, as Price32 reads one. */
+const priceDecimals = 8;
 
 /** The decimals each kind of value shows when the format sets none. */
 const naturalDecimals = { abbreviated: 1, float: 2, integer: 0, percent: 2 } as const;
+/** A decimal of a negative scale holds whole tens, hundreds and so on. */
+const tenBig = 10n;
 
 const precisionDigits: Readonly<Record<TimePrecision, number>> = {
   microseconds: 6,
@@ -99,94 +55,11 @@ const precisionDigits: Readonly<Record<TimePrecision, number>> = {
   seconds: 0,
 };
 
-/** A checked format with its defaults filled in. */
-interface Settings {
-  /** The power of ten the shown value is scaled by: up for a percentage, down for an abbreviation. */
-  readonly power: number;
-  /** The abbreviation or `%` written after the digits. */
-  readonly suffix: string;
-  readonly decimals: number | undefined;
-  readonly percent: boolean;
-  readonly abbreviated: boolean;
-  readonly thousands: boolean;
-  readonly negative: Negative;
-  readonly precision: TimePrecision;
-  readonly zone: string;
-  readonly zoneParts: ZoneParts;
-}
-
 /** An exact decimal, `digits × 10^exp`, and its sign. */
 interface Decimal {
   readonly digits: string;
   readonly exp: number;
   readonly isNegative: boolean;
-}
-
-/** The format's decimals, when it sets them. Throws unless they are a count from 0 to 30. */
-function checkedDecimals(format: Format): number | undefined {
-  const decimals = format.decimals ?? undefined;
-  if (
-    decimals !== undefined &&
-    (!Number.isInteger(decimals) || decimals < 0 || decimals > maxDecimals)
-  ) {
-    throw new FormatError(
-      "too-many-decimals",
-      `${String(decimals)} decimals is not a count from 0 to the ${String(maxDecimals)} Excel can show.`,
-    );
-  }
-  return decimals;
-}
-
-/** The format's abbreviation, when it sets one. Throws if the format also shows a percentage. */
-function checkedAbbreviation(format: Format): Abbreviation | undefined {
-  const abbreviation = format.abbreviate ?? undefined;
-  if ((format.percent ?? false) && abbreviation !== undefined) {
-    throw new FormatError(
-      "percent-and-abbreviation",
-      "A format cannot both show a percentage and abbreviate.",
-    );
-  }
-  return abbreviation;
-}
-
-/** The civil fields of instants in the zone. Throws for a zone the platform does not know. */
-function checkedZoneParts(zone: string): ZoneParts {
-  try {
-    return zonePartsFor(zone);
-  } catch {
-    throw new FormatError(
-      "unknown-zone",
-      `Unknown time zone ${zone}: name an IANA zone such as ${defaultZone}.`,
-    );
-  }
-}
-
-function powerOf(percent: boolean, abbreviation: Abbreviation | undefined): number {
-  if (percent) {
-    return percentPower;
-  }
-  const found = abbreviations.find(({ suffix }) => suffix === abbreviation);
-  return found === undefined ? 0 : -found.power;
-}
-
-/** Checks a format's decimals, then its abbreviation, then its zone, and fills in its defaults. */
-function settingsOf(format: Format): Settings {
-  const decimals = checkedDecimals(format);
-  const abbreviation = checkedAbbreviation(format);
-  const percent = format.percent ?? false;
-  const zone = format.zone ?? defaultZone;
-  return {
-    abbreviated: abbreviation !== undefined,
-    decimals,
-    negative: format.negative ?? "minus",
-    percent,
-    power: powerOf(percent, abbreviation),
-    precision: format.precision ?? "seconds",
-    suffix: `${abbreviation ?? ""}${percent ? "%" : ""}`,
-    thousands: format.thousands ?? true,
-    zone,
-    zoneParts: checkedZoneParts(zone),
-  };
 }
 
 function decimalsOr(settings: Settings, natural: number): number {
@@ -217,13 +90,33 @@ function numberText(settings: Settings, value: Decimal, places: number): string 
   return signed(settings, value.isNegative && !isZero, `${grouped}${fraction}${settings.suffix}`);
 }
 
+/** A price in 32nds, as `Price32` writes it, with parentheses for a negative if the format asks. */
+function priceText(
+  settings: Settings,
+  price: ExactDecimal,
+  precision: ThirtySecondsPrecision,
+): string {
+  const text = formatThirtySeconds(price, { precision, rounding: "half-away-from-zero" });
+  return text.startsWith("-") ? signed(settings, true, text.slice(1)) : text;
+}
+
 function floatText(settings: Settings, value: number): string {
   if (Number.isNaN(value)) {
     return undefinedText;
   }
   const isNegative = value < 0 || Object.is(value, -0);
+  if (settings.thirtySeconds !== undefined) {
+    // A price has no infinity, as Price32 says.
+    return Number.isFinite(value)
+      ? priceText(
+          settings,
+          ExactDecimal.fromNumber(value, priceDecimals, "half-away-from-zero"),
+          settings.thirtySeconds,
+        )
+      : undefinedText;
+  }
   if (!Number.isFinite(value)) {
-    return signed(settings, isNegative, "∞");
+    return signed(settings, isNegative, `∞${settings.bps === undefined ? "" : bpSuffix}`);
   }
   const [digits, exp] = value === 0 ? ["0", 0] : fifteenDigits(Math.abs(value));
   return numberText(
@@ -234,7 +127,16 @@ function floatText(settings: Settings, value: number): string {
 }
 
 function decimalText(settings: Settings, unscaled: bigint, scale: number): string {
-  const natural = Math.min(Math.max(scale, 0), maxDecimals);
+  if (settings.thirtySeconds !== undefined) {
+    const price =
+      scale < 0
+        ? ExactDecimal.from(unscaled * tenBig ** BigInt(-scale))
+        : ExactDecimal.from(unscaled, scale);
+    return priceText(settings, price, settings.thirtySeconds);
+  }
+  // Basis points of a fraction move the point four places, and take the decimals the moved value has, as Bps does.
+  const shift = settings.bps === "fraction" ? bpsPower : 0;
+  const natural = Math.min(Math.max(scale - shift, 0), maxDecimals);
   const isNegative = unscaled < 0;
   const magnitude = isNegative ? -unscaled : unscaled;
   return numberText(
@@ -249,6 +151,9 @@ function integerText(settings: Settings, value: bigint | number): string {
     throw new RangeError(`${String(value)} is not a safe integer; pass it as a bigint.`);
   }
   const big = BigInt(value);
+  if (settings.thirtySeconds !== undefined) {
+    return priceText(settings, ExactDecimal.from(big), settings.thirtySeconds);
+  }
   const isNegative = big < 0;
   return numberText(
     settings,
@@ -284,6 +189,16 @@ function createFormatter(format: Format = {}): Formatter {
   };
 }
 
-export { FormatError, createFormatter, defaultZone, maxDecimals, nullText, undefinedText };
+export { FormatError, defaultZone, maxDecimals, nullText, undefinedText } from "./settings.ts";
+export { createFormatter };
 export { outOfRangeText } from "./time.ts";
-export type { Abbreviation, Format, FormatErrorReason, Formatter, Negative, TimePrecision };
+export type {
+  Abbreviation,
+  BpsUnit,
+  Format,
+  FormatErrorReason,
+  Negative,
+  SuffixStyle,
+  TimePrecision,
+} from "./settings.ts";
+export type { Formatter };
