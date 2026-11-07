@@ -27,6 +27,7 @@
 //! carries the slot of the row it came from, so callers can show its exact
 //! value, and the x axis's ticks come with their labels.
 
+use std::collections::BTreeMap;
 use std::ops::Range;
 
 use jiff::civil::{Date, DateTime};
@@ -38,6 +39,7 @@ use crate::error::ConfigError;
 use crate::exact::ExactSum;
 use crate::filter::{CompiledFilter, Filter};
 use crate::indicator::{Indicator, Inputs};
+use crate::order::{Order, Orders, tenor_years};
 use crate::table::Table;
 use crate::types::{ColumnType, Key, Scalar};
 
@@ -68,6 +70,60 @@ pub enum XAxis {
     /// By trading time on the NYSE calendar: closed days and the hours outside
     /// the session take no space.
     Trading,
+    /// By tenor: text such as `3M` and `10Y`, or a number of years.
+    Tenor(TenorSpacing),
+}
+
+/// How a tenor axis spaces tenors.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum TenorSpacing {
+    /// The standard tenors of [`TENOR_KNOTS`] one step apart, and a tenor
+    /// between two of them placed between them by length.
+    #[default]
+    Even,
+    /// By length in years.
+    Length,
+}
+
+/// The tenors a tenor axis is labelled with, in years and as written: an even
+/// axis puts each one step from the next.
+pub const TENOR_KNOTS: [(f64, &str); 14] = [
+    (0.0, "0"),
+    (1.0 / 12.0, "1M"),
+    (0.25, "3M"),
+    (0.5, "6M"),
+    (1.0, "1Y"),
+    (2.0, "2Y"),
+    (3.0, "3Y"),
+    (5.0, "5Y"),
+    (7.0, "7Y"),
+    (10.0, "10Y"),
+    (20.0, "20Y"),
+    (30.0, "30Y"),
+    (50.0, "50Y"),
+    (100.0, "100Y"),
+];
+
+/// The fewest pixels between a tenor axis's labels.
+pub const TENOR_TICK_GAP: f64 = 36.0;
+
+/// A tenor's place on an axis spaced `spacing`, from its length in years.
+#[must_use]
+pub fn tenor_position(years: f64, spacing: TenorSpacing) -> f64 {
+    match spacing {
+        TenorSpacing::Length => years,
+        TenorSpacing::Even => {
+            // The segment between the knots either side; past the last, the last
+            // segment carries on.
+            let after = TENOR_KNOTS
+                .iter()
+                .position(|k| k.0 >= years)
+                .unwrap_or(TENOR_KNOTS.len() - 1)
+                .max(1);
+            let (low, high) = (TENOR_KNOTS[after - 1].0, TENOR_KNOTS[after].0);
+            (after - 1) as f64 + (years - low) / (high - low)
+        }
+    }
 }
 
 /// The price columns of a candlestick or OHLC chart.
@@ -135,6 +191,8 @@ pub struct ChartConfig {
     pub events: Option<String>,
     /// A scatter's size, id, tooltip and fit columns.
     pub points: PointColumns,
+    /// Orders of text columns, which the series follow.
+    pub orders: BTreeMap<String, Order>,
 }
 
 impl ChartConfig {
@@ -416,6 +474,15 @@ enum Placement {
     TradingDate(TradingCalendar),
     /// Microseconds of open market on the calendar.
     TradingInstant(TradingCalendar),
+    /// Tenors, from a number of years or text such as `3M`: each dictionary
+    /// code's place, NaN for text that is not a tenor, refreshed as loads add
+    /// strings.
+    Tenor {
+        spacing: TenorSpacing,
+        scale: Option<i8>,
+        text: bool,
+        places: Vec<f64>,
+    },
 }
 
 impl Placement {
@@ -424,6 +491,7 @@ impl Placement {
             role: match axis {
                 XAxis::Value => "x axis".into(),
                 XAxis::Trading => "trading-time x axis".into(),
+                XAxis::Tenor(_) => "tenor x axis, which takes text such as 3M or years".into(),
             },
             column: column.to_owned(),
             data_type: ty.to_arrow().to_string(),
@@ -439,8 +507,45 @@ impl Placement {
             (ColumnType::Timestamp { .. }, XAxis::Trading) => {
                 Self::TradingInstant(TradingCalendar::nyse())
             }
+            (ColumnType::Utf8, XAxis::Tenor(spacing)) => Self::Tenor {
+                spacing,
+                scale: None,
+                text: true,
+                places: Vec::new(),
+            },
+            (ColumnType::Int64 | ColumnType::Float64, XAxis::Tenor(spacing)) => Self::Tenor {
+                spacing,
+                scale: None,
+                text: false,
+                places: Vec::new(),
+            },
+            (ColumnType::Decimal { scale, .. }, XAxis::Tenor(spacing)) => Self::Tenor {
+                spacing,
+                scale: Some(*scale),
+                text: false,
+                places: Vec::new(),
+            },
             _ => return Err(wrong()),
         })
+    }
+
+    /// A text tenor axis's places for every string of the column, after a load.
+    fn refresh(&mut self, column: &Column) {
+        if let Self::Tenor {
+            spacing,
+            text: true,
+            places,
+            ..
+        } = self
+            && let Some(dictionary) = column.dictionary()
+        {
+            *places = (0..dictionary.len() as u32)
+                .map(|code| {
+                    tenor_years(dictionary.get(code))
+                        .map_or(f64::NAN, |years| tenor_position(years, *spacing))
+                })
+                .collect();
+        }
     }
 
     /// The axis position of a key of the x column, or `None` for a null or NaN.
@@ -454,6 +559,15 @@ impl Placement {
             (Self::Instant, Key::Ts(t)) => t as f64,
             (Self::TradingDate(c), Key::Date(d)) => c.date_position(d),
             (Self::TradingInstant(c), Key::Ts(t)) => c.instant_position(t),
+            (Self::Tenor { places, .. }, Key::Str(code)) => {
+                places.get(code as usize).copied().unwrap_or(f64::NAN)
+            }
+            (Self::Tenor { spacing, scale, .. }, Key::Int(_) | Key::Float(_) | Key::Decimal(_)) => {
+                tenor_position(
+                    crate::aggregate::key_to_f64(key, scale.unwrap_or(0)),
+                    *spacing,
+                )
+            }
             _ => return None,
         };
         position.is_finite().then_some(position)
@@ -687,6 +801,8 @@ pub struct ChartView {
     /// The size column's largest magnitude among the chart's rows, which a
     /// dot's size is a share of.
     size_max: f64,
+    /// The orders of text columns, which the series follow.
+    orders: Orders,
     /// Rows by series key, each in x order.
     rows: Vec<(Option<Key>, Ordered)>,
     /// Each series' inputs to its indicators, gathered once per kind.
@@ -757,7 +873,12 @@ impl ChartView {
             ));
         }
         let candles = matches!(config.kind, ChartKind::Candlestick | ChartKind::Ohlc);
-        if candles && matches!(placement, Placement::Number { .. }) {
+        if candles
+            && matches!(
+                placement,
+                Placement::Number { .. } | Placement::Tenor { .. }
+            )
+        {
             return Err(ConfigError::ChartColumn {
                 role: "x axis of a candlestick or OHLC chart, which buckets by calendar".into(),
                 column: config.x.clone(),
@@ -808,6 +929,7 @@ impl ChartView {
         for column in points.id.iter().chain(&points.tooltip) {
             index(column)?;
         }
+        let orders = Orders::compile(table, &config.orders)?;
         let mut view = Self {
             config,
             filters,
@@ -821,6 +943,7 @@ impl ChartView {
             size,
             fit,
             size_max: 0.0,
+            orders,
             rows: Vec::new(),
             gathered: Vec::new(),
             computed: Vec::new(),
@@ -845,6 +968,8 @@ impl ChartView {
     /// Recomputes the chart's rows from the table.
     pub fn rebuild(&mut self, table: &Table) {
         self.load_version = table.load_version();
+        self.orders.refresh(table);
+        self.placement.refresh(table.column(self.x));
         for filter in &mut self.filters {
             filter.prepare(table, true);
         }
@@ -881,14 +1006,12 @@ impl ChartView {
                 (key, ordered)
             })
             .collect();
-        // Series in the order of their keys, nulls last.
+        // Series in the order of their keys, the column's own if it has one,
+        // nulls last.
         if let Some(s) = self.series {
-            let column = table.column(s);
+            let orders = &self.orders;
             rows.sort_by(|a, b| match (a.0, b.0) {
-                (Some(Key::Null), Some(Key::Null)) => std::cmp::Ordering::Equal,
-                (Some(Key::Null), _) => std::cmp::Ordering::Greater,
-                (_, Some(Key::Null)) => std::cmp::Ordering::Less,
-                (Some(x), Some(y)) => column.cmp_keys(x, y),
+                (Some(x), Some(y)) => orders.cmp(table, s, x, y),
                 _ => std::cmp::Ordering::Equal,
             });
         }
@@ -1024,6 +1147,17 @@ impl ChartView {
             Scalar::Decimal(v) => Key::Decimal(v),
             Scalar::Date32(d) => Key::Date(d),
             Scalar::Timestamp(t) => Key::Ts(t),
+            Scalar::Utf8(ref text) => {
+                // A tenor written as text, on a tenor axis of text.
+                return match self.placement {
+                    Placement::Tenor {
+                        spacing,
+                        text: true,
+                        ..
+                    } => tenor_years(text).map(|years| tenor_position(years, spacing)),
+                    _ => None,
+                };
+            }
             _ => return None,
         };
         self.placement.position(key)
@@ -1586,6 +1720,7 @@ impl ChartView {
                     .map(|(x, label)| Tick { x, label })
                     .collect()
             }
+            Placement::Tenor { spacing, .. } => tenor_ticks(*spacing, (from, to), width),
             placement => time_ticks(placement, from, to, wanted),
         }
     }
@@ -1617,6 +1752,27 @@ fn density(
         rows,
         counts,
     }
+}
+
+/// The standard tenors in `from..=to` on a tenor axis, labelled as written, as
+/// many as fit [`TENOR_TICK_GAP`] apart, the longest kept first.
+fn tenor_ticks(spacing: TenorSpacing, (from, to): (f64, f64), width: u32) -> Vec<Tick> {
+    let per_pixel = (to - from) / f64::from(width.max(1));
+    let mut kept: Vec<Tick> = Vec::new();
+    for &(years, label) in TENOR_KNOTS.iter().rev() {
+        let x = tenor_position(years, spacing);
+        let clear = kept
+            .iter()
+            .all(|t| (t.x - x).abs() / per_pixel >= TENOR_TICK_GAP);
+        if years > 0.0 && x >= from && x <= to && clear {
+            kept.push(Tick {
+                x,
+                label: label.to_owned(),
+            });
+        }
+    }
+    kept.reverse();
+    kept
 }
 
 /// The cell of `value` among `cells` equal cells spanning `from..=to`.
@@ -1873,7 +2029,7 @@ fn time_ticks(placement: &Placement, from: f64, to: f64, wanted: f64) -> Vec<Tic
         Placement::TradingInstant(c) => (true, Some(c)),
         Placement::Date => (false, None),
         Placement::TradingDate(c) => (false, Some(c)),
-        Placement::Number { .. } => return Vec::new(),
+        Placement::Number { .. } | Placement::Tenor { .. } => return Vec::new(),
     };
     // The x value at a position; on a trading axis, the open moment there.
     let value_at = |position: f64| -> i64 {

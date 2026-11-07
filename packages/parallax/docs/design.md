@@ -244,14 +244,33 @@ Text sorts case-insensitively, with a case-sensitive tie-break and nulls last.
 There is no locale-dependent collation, so the order is the same on every
 machine and matches the test oracle.
 
-[Step 2.8](../../../docs/roadmap.md#phase-2-parallax-in-the-browser) of
-basis-ui's roadmap fits parallax to fixed income, and lets a layout give a
-text column another order: tenors by length, so a ladder reads `1Y, 2Y, 10Y`
-rather than `10Y, 1Y, 2Y`; ratings best first, on S&P's and Fitch's scale and
-Moody's; a listed order; or another column's smallest value among a key's
-rows. Groups at every level, column pivots, sorts and a chart's series and
-categories follow it, and keys it cannot place come after the rest in text
-order. Filters still compare text.
+A layout can give a text column another order, which
+[step 2.8](../../../docs/roadmap.md#phase-2-parallax-in-the-browser) of
+basis-ui's roadmap added for fixed income, in its `orders`:
+
+- `"tenor"` orders tenors by length, so a ladder reads `1Y, 2Y, 10Y` rather
+  than `10Y, 1Y, 2Y`. It reads a tenor as `@basis/ui/dates` does: a whole number
+  from 1 to 9999 and `D`, `W`, `M` or `Y`, in either case, a month being a
+  twelfth of a Julian year, so `12M` and `1Y` are alike.
+- `"rating"` orders credit ratings best first, on S&P's and Fitch's scale and
+  Moody's, a notch of one alike with the same notch of the other: `AAA` and
+  `Aaa`, `BBB-` and `Baa3`, down to the defaults.
+- `{"values": [...]}` orders the values as listed.
+- `{"by": "column"}` orders each value by another column's smallest value
+  among the rows that have it, such as a tenor bucket by its bonds' shortest
+  maturity, over every row of the table, whatever the view's filters.
+
+Keys an order cannot place, such as `NR` among ratings, come after the rest,
+keys it places alike follow each other in text order, and nulls come last.
+Each order becomes a rank for every string of the column's dictionary, kept
+with the view and ranked again as loads add strings or change the column an
+order reads, so sorting still compares integers. Groups at every level, column
+pivots, flat and detail sorts, a filter menu's values, a chart's series and
+the categories of bars, heatmaps and pies follow it; a descending sort reverses
+it, nulls still last. Filters still compare text: under a rating order,
+"greater than BBB" would read as worse than BBB, so a filter on ratings lists
+them instead. The tests check every order against DuckDB, which orders the same
+rows by SQL written apart from the engine's parser.
 
 ### Display
 
@@ -437,9 +456,17 @@ the US bond market's, closes on Columbus Day and Veterans Day as well, and its
 session that opens later in the day than it closes, as electronic Treasury
 trading does, opens the evening before. The SIFMA calendar is tested against
 the schedules SIFMA published, the same fixtures `@basis/ui/dates` is tested
-against. A tenor axis places curves and bonds by tenor, `3M` to `30Y`: by
-default the standard tenors sit one step apart, with values between them
-placed by length, or every value by its length in years.
+against.
+
+A tenor axis, `axis: "tenor"`, places curves and bonds by tenor: an x column
+of tenors written as text, such as `3M` and `10Y`, or of years. By default the
+standard tenors, 1M, 3M, 6M, 1Y, 2Y, 3Y, 5Y, 7Y, 10Y, 20Y, 30Y, 50Y and 100Y,
+sit one step apart, as desks' curve screens space them, and a value between
+two of them sits between them by length, so 4Y is halfway from 3Y to 5Y;
+`tenor_spacing: "length"` places every value by its length in years instead.
+The engine labels the axis with the standard tenors in range, keeping from the
+long end those at least 36 pixels from the others, so a crowded short end
+gives way first. Text that is not a tenor takes no place, as a null x does.
 
 Averages, Bollinger Bands and VWAP are drawn over the price, and widen its
 scale to hold them; RSI, MACD, ATR, the stochastic and volume each get a pane

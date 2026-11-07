@@ -9,7 +9,7 @@ import { centre, errorsOf, legendOf, linked, open, plotOf, rowsIn, summaryOf } f
 import type { PlotBox } from "./pages.ts";
 
 /** How many charts the fixed-income page shows, and how many bonds its book holds. */
-const fixedIncomeCount = 1;
+const fixedIncomeCount = 4;
 const bonds = 600;
 
 /** A CUSIP: nine letters and digits. */
@@ -110,4 +110,50 @@ test("a click on a bond narrows the linked bonds to it, and a second shows them 
   await expect.poll(async () => rowsIn(view)).toBe(1);
   await page.mouse.click(at.x, at.y);
   await expect.poll(async () => rowsIn(view)).toBe(bonds);
+});
+
+/** A chart's text alternative, which describes its plot. */
+async function wordsOf(chart: Locator): Promise<string> {
+  return plotOf(chart).evaluate(
+    (plot) =>
+      plot.ownerDocument.querySelector(
+        `#${CSS.escape(plot.getAttribute("aria-describedby") ?? "")}`,
+      )?.textContent ?? "",
+  );
+}
+
+/** Where each group of `labels` is read out in `words`, which lists them after the summary, each as `. Label:`. */
+function placesIn(words: string, labels: readonly string[]): number[] {
+  return labels.map((label) => words.indexOf(`. ${label}:`));
+}
+
+test("the DV01 ladder reads short to long, and ratings best first", async ({ page }) => {
+  await open(page, "/?page=fixed-income", fixedIncomeCount);
+  const ladder = await wordsOf(fixedIncomeCard(page, "dv01-ladder"));
+  // The book's shortest bond matures in about ten months, so its first bucket is 1Y.
+  const tenors = placesIn(ladder, ["1Y", "2Y", "3Y", "5Y", "7Y", "10Y", "20Y", "30Y"]);
+  expect(tenors.every((at) => at >= 0)).toBe(true);
+  expect(tenors).toStrictEqual(tenors.toSorted((first, second) => first - second));
+  const ratings = await wordsOf(fixedIncomeCard(page, "ratings"));
+  const notches = placesIn(ratings, [
+    "AAA",
+    "AA+",
+    "AA",
+    "AA-",
+    "A+",
+    "A",
+    "A-",
+    "BBB+",
+    "BBB",
+    "BBB-",
+  ]);
+  expect(notches.every((at) => at >= 0)).toBe(true);
+  expect(notches).toStrictEqual(notches.toSorted((first, second) => first - second));
+});
+
+test("a scatter on a tenor axis draws every bond", async ({ page }) => {
+  await open(page, "/?page=fixed-income", fixedIncomeCount);
+  const chart = fixedIncomeCard(page, "tenor-axis");
+  await expect(summaryOf(chart)).toHaveText(`${String(bonds)} dots`);
+  await expect(plotOf(chart)).toHaveAccessibleName("Scatter plot of yield_to_maturity from bonds");
 });

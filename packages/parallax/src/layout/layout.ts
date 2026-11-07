@@ -118,6 +118,14 @@ const topNSchema = z.strictObject({
 
 const expandedSchema = z.strictObject({ path: z.array(scalar), expanded: z.boolean() });
 
+/** How a text column's values are ordered: by name, a listed order, or another column's smallest value. */
+const listedValues = z.array(z.string());
+const orderSchema = z.union([
+  z.enum(["text", "tenor", "rating"]),
+  z.strictObject({ values: listedValues }),
+  z.strictObject({ by: name }),
+]);
+
 /** The schema of a layout document. Unknown fields are errors, as in Rust. */
 const layoutSchema = z.strictObject({
   // Older versions are read and brought up to date, as the Rust crate does.
@@ -149,6 +157,8 @@ const layoutSchema = z.strictObject({
   titles: z.record(name, z.string()).default({}),
   totals: z.array(measureSchema).default([]),
   detail: z.boolean().default(false),
+  // Orders of text columns, by column. The Rust leaves them out of a layout that sets none, so there is no default.
+  orders: z.record(name, orderSchema).optional(),
 });
 
 /** A complete layout, with every default filled in. */
@@ -163,6 +173,8 @@ type LayoutFilter = z.output<typeof filterSchema>;
 type LayoutFormat = z.output<typeof formatSchema>;
 /** A JSON scalar in a filter or group path. */
 type LayoutScalar = z.output<typeof scalar>;
+/** How a text column's values are ordered. */
+type LayoutOrder = z.output<typeof orderSchema>;
 
 /** Reads and checks a layout from any source, filling in defaults. Throws a `ZodError` that says what is wrong. */
 function parseLayout(value: unknown): Layout {
@@ -220,5 +232,6 @@ export type {
   LayoutFormat,
   LayoutInput,
   LayoutMeasure,
+  LayoutOrder,
   LayoutScalar,
 };

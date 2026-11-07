@@ -54,5 +54,111 @@
     "top_n": null,
     "totals": [],
     "version": 2
+  },
+  {
+    "chart": null,
+    "column_widths": {},
+    "columns": [],
+    "dataset": "bonds",
+    "detail": false,
+    "expand_depth": 0,
+    "expanded": [],
+    "filters": [],
+    "formats": {},
+    "group_by": [
+      "rating",
+      "tenor_bucket"
+    ],
+    "group_sort": {
+      "by": "key",
+      "descending": false
+    },
+    "having": [],
+    "measures": [
+      {
+        "aggregate": "sum",
+        "column": "dv01_usd",
+        "format": null,
+        "percentile": null,
+        "show_as": "value",
+        "unit_column": null,
+        "weight": null
+      }
+    ],
+    "orders": {
+      "issuer": {
+        "by": "years_to_maturity"
+      },
+      "rating": "rating",
+      "sector": {
+        "values": [
+          "Utilities",
+          "Energy"
+        ]
+      },
+      "tenor_bucket": "tenor",
+      "ticker": "text"
+    },
+    "parameters": {},
+    "pinned": [],
+    "search": "",
+    "sort": [],
+    "split_by": [
+      "sector"
+    ],
+    "titles": {},
+    "top_n": null,
+    "totals": [],
+    "version": 2
+  },
+  {
+    "chart": {
+      "axis": "tenor",
+      "compare": false,
+      "donut": true,
+      "drawings": [],
+      "events": null,
+      "hidden": [],
+      "horizontal": false,
+      "indicators": [],
+      "kind": "line",
+      "labels": true,
+      "log_y": false,
+      "ohlc": null,
+      "range": null,
+      "series": "curve_date",
+      "stacked": false,
+      "tenor_spacing": "length",
+      "volume": null,
+      "x": "tenor",
+      "y": [
+        "yield"
+      ],
+      "y_right": []
+    },
+    "column_widths": {},
+    "columns": [],
+    "dataset": "curves",
+    "detail": false,
+    "expand_depth": 0,
+    "expanded": [],
+    "filters": [],
+    "formats": {},
+    "group_by": [],
+    "group_sort": {
+      "by": "key",
+      "descending": false
+    },
+    "having": [],
+    "measures": [],
+    "parameters": {},
+    "pinned": [],
+    "search": "",
+    "sort": [],
+    "split_by": [],
+    "titles": {},
+    "top_n": null,
+    "totals": [],
+    "version": 2
   }
 ]

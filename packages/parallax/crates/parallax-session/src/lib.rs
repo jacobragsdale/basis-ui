@@ -1018,13 +1018,20 @@ impl Session {
                 show_as: ShowAsName::Value,
                 format: None,
             }],
-            // The values show as they do in the view.
+            // The values show as they do in the view, in the column's order.
             formats: open
                 .layout
                 .formats
                 .get(&request.column)
                 .map(|f| (request.column.clone(), f.clone()))
                 .into_iter()
+                .collect(),
+            orders: open
+                .layout
+                .orders
+                .iter()
+                .filter(|(column, _)| **column == request.column)
+                .map(|(column, order)| (column.clone(), order.clone()))
                 .collect(),
             ..Layout::default()
         };

@@ -47,6 +47,7 @@ fn line(axis: XAxis) -> ChartConfig {
         compare: false,
         events: None,
         points: PointColumns::default(),
+        orders: std::collections::BTreeMap::new(),
     }
 }
 
@@ -254,6 +255,7 @@ fn weekly_candles_match_the_daily_prices() {
         compare: false,
         events: None,
         points: PointColumns::default(),
+        orders: std::collections::BTreeMap::new(),
     };
     let view = ChartView::new(&t, config).unwrap();
     let (from, to) = view.x_extent().unwrap();
@@ -562,6 +564,7 @@ fn candlestick(x: &str, filters: Vec<Filter>, axis: XAxis) -> ChartConfig {
         compare: false,
         events: None,
         points: PointColumns::default(),
+        orders: std::collections::BTreeMap::new(),
     }
 }
 

@@ -73,3 +73,33 @@ describe("the layout schema", () => {
     );
   });
 });
+
+describe("orders and the tenor axis, which roadmap step 2.8 adds", () => {
+  test("read orders by name or as an object, and refuse the rest, as the Rust crate does", () => {
+    const orders = {
+      bucket: { by: "years" },
+      rating: "rating",
+      sector: { values: ["Govt", "Muni"] },
+      tenor: "tenor",
+      ticker: "text",
+    };
+    expect(parseLayout({ orders }).orders).toStrictEqual(orders);
+    for (const wrong of ["alphabet", { by: 3 }, { values: "x" }, { tenor: true }]) {
+      expect(checkLayout({ orders: { sector: wrong } }).ok).toBe(false);
+    }
+  });
+
+  test("leave a layout that sets none of them as it was", () => {
+    const layout = parseLayout({ chart: { kind: "line", x: "date", y: ["close"] } });
+    expect("orders" in layout).toBe(false);
+    expect(layout.chart === null ? true : "tenor_spacing" in layout.chart).toBe(false);
+  });
+
+  test("take a tenor axis spaced evenly or by length", () => {
+    const { chart: curve } = parseLayout({
+      chart: { axis: "tenor", kind: "line", tenor_spacing: "length", x: "tenor" },
+    });
+    expect([curve?.axis, curve?.tenor_spacing]).toStrictEqual(["tenor", "length"]);
+    expect(checkLayout({ chart: { kind: "line", tenor_spacing: "log" } }).ok).toBe(false);
+  });
+});

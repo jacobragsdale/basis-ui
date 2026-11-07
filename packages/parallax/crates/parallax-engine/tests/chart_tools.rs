@@ -63,6 +63,7 @@ fn line(compare: bool) -> ChartConfig {
         compare,
         events: Some("event".into()),
         points: PointColumns::default(),
+        orders: std::collections::BTreeMap::new(),
     }
 }
 
@@ -224,6 +225,7 @@ fn measuring_takes_the_nearest_priced_rows_and_counts_the_bars_between() {
             series: None,
             events: None,
             points: PointColumns::default(),
+            orders: std::collections::BTreeMap::new(),
             ..line(false)
         },
     )
