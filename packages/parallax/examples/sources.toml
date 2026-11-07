@@ -1,0 +1,65 @@
+# Datasets from the connectors in parallax-sources. Copy the parts you need.
+#   cargo run --release -p parallax-server -- --config examples/sources.toml
+
+listen = "127.0.0.1:8792"
+
+# An existing REST GET. Dataset parameters fill {placeholders} in the URL, and
+# the rest become query parameters. The endpoint is asked for an Arrow IPC
+# stream and may answer JSON instead, which needs the columns declared.
+[[dataset]]
+name = "risk"
+parameters = ["as_of", "fund"]
+primary_key = "position_id"
+max_age_seconds = 300
+[dataset.source]
+kind = "http"
+url = "https://risk.internal/api/funds/{fund}/risk"
+records = "data.rows"
+key = "position_id"
+headers = { Authorization = "env:RISK_SERVICE_TOKEN" }
+columns = [
+  { name = "position_id", type = "integer" },
+  { name = "ticker", type = "text" },
+  { name = "market_value_usd", type = "decimal(20, 2)" },
+  { name = "beta", path = "risk.beta", type = "float" },
+  # Wall-clock text in New York; 01:30 on the day clocks go back happens twice,
+  # so the column says which one it means.
+  { name = "priced_at", type = "timestamp", zone = "America/New_York", ambiguous = "earlier" },
+]
+
+# A Parquet file on a slow share, copied once to a local cache.
+[[dataset]]
+name = "eod_positions"
+parameters = ["as_of"]
+primary_key = "position_id"
+[dataset.source]
+kind = "parquet"
+path = "/mnt/share/eod/{as_of}/positions.parquet"
+cache_dir = "/var/cache/parallax"
+
+# SQL Server through ODBC (build the server with --features odbc). The password
+# comes from the environment; parameters bind to ? in the order listed.
+# [[dataset]]
+# name = "trades"
+# parameters = ["as_of"]
+# primary_key = "trade_id"
+# [dataset.source]
+# kind = "odbc"
+# connection = "Driver={ODBC Driver 18 for SQL Server};Server=sql.internal;Database=Trading;UID=parallax;PWD=${TRADING_PASSWORD};Encrypt=yes;"
+# query = "SELECT trade_id, fund, notional, executed_at, attributes FROM dbo.Trades WHERE trade_date = ?"
+# bind = ["as_of"]
+# zones = { executed_at = { zone = "America/New_York", ambiguous = "earlier" } }
+# json = [{ column = "attributes", fields = [{ name = "desk", type = "text" }, { name = "beta", path = "risk.beta", type = "float" }] }]
+
+# MongoDB (build the server with --features mongodb).
+# [[dataset]]
+# name = "orders"
+# parameters = ["fund"]
+# [dataset.source]
+# kind = "mongodb"
+# uri = "mongodb://parallax:${MONGO_PASSWORD}@mongo.internal:27017"
+# database = "oms"
+# collection = "orders"
+# filter = '{"fund": "{fund}", "status": {"$ne": "cancelled"}}'
+# key = "_id"
+# columns = [{ name = "order_id", path = "_id", type = "text" }, { name = "notional", type = "decimal(20, 2)" }]

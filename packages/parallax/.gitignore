@@ -1,0 +1,5 @@
+/target
+*.arrow
+node_modules/
+/data
+__pycache__/

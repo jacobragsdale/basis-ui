@@ -1,0 +1,576 @@
+[
+  {
+    "chart": null,
+    "column_widths": {},
+    "columns": [],
+    "dataset": "",
+    "detail": false,
+    "expand_depth": 0,
+    "expanded": [],
+    "filters": [],
+    "formats": {},
+    "group_by": [],
+    "group_sort": {
+      "by": "key",
+      "descending": false
+    },
+    "having": [],
+    "measures": [],
+    "parameters": {},
+    "pinned": [],
+    "search": "",
+    "sort": [],
+    "split_by": [],
+    "titles": {},
+    "top_n": null,
+    "totals": [],
+    "version": 2
+  },
+  {
+    "chart": null,
+    "column_widths": {
+      "__measure:0": 120,
+      "__tree": 300,
+      "fund": 180,
+      "region": 0
+    },
+    "columns": [
+      "fund",
+      "ticker"
+    ],
+    "dataset": "positions",
+    "detail": true,
+    "expand_depth": 2,
+    "expanded": [
+      {
+        "expanded": false,
+        "path": [
+          "Atlas",
+          null,
+          1.5,
+          true
+        ]
+      }
+    ],
+    "filters": [
+      {
+        "column": "fund",
+        "columns": [],
+        "op": "in",
+        "value": null,
+        "values": [
+          "Atlas",
+          "Cobalt"
+        ]
+      },
+      {
+        "column": "quantity",
+        "columns": [],
+        "op": "gt",
+        "value": "1.5",
+        "values": []
+      },
+      {
+        "column": "sector",
+        "columns": [],
+        "op": "is_null",
+        "value": null,
+        "values": []
+      },
+      {
+        "column": "ticker",
+        "columns": [
+          "fund",
+          "sector"
+        ],
+        "op": "not_contains",
+        "value": "X",
+        "values": []
+      },
+      {
+        "column": "ticker",
+        "columns": [],
+        "op": "ends_with",
+        "value": "a",
+        "values": []
+      }
+    ],
+    "formats": {
+      "quantity": {
+        "abbreviate": "thousands",
+        "decimals": null,
+        "negative": "minus",
+        "percent": false,
+        "precision": "seconds",
+        "thousands": null,
+        "zone": null
+      },
+      "trade_time": {
+        "abbreviate": null,
+        "decimals": null,
+        "negative": "minus",
+        "percent": false,
+        "precision": "microseconds",
+        "thousands": null,
+        "zone": null
+      }
+    },
+    "group_by": [
+      "fund",
+      "sector"
+    ],
+    "group_sort": {
+      "by": {
+        "measure": 0
+      },
+      "descending": true
+    },
+    "having": [
+      {
+        "measure": 0,
+        "op": "ge",
+        "value": 1000.5
+      }
+    ],
+    "measures": [
+      {
+        "aggregate": "sum",
+        "column": "market_value_usd",
+        "format": {
+          "abbreviate": null,
+          "decimals": 1,
+          "negative": "parentheses",
+          "percent": true,
+          "precision": "milliseconds",
+          "thousands": false,
+          "zone": "Europe/London"
+        },
+        "percentile": null,
+        "show_as": "percent_of_parent",
+        "unit_column": "currency",
+        "weight": null
+      },
+      {
+        "aggregate": "percentile",
+        "column": "price_local",
+        "format": null,
+        "percentile": 0.9,
+        "show_as": "value",
+        "unit_column": null,
+        "weight": null
+      },
+      {
+        "aggregate": "weighted_mean",
+        "column": "beta",
+        "format": null,
+        "percentile": null,
+        "show_as": "value",
+        "unit_column": null,
+        "weight": "market_value_usd"
+      },
+      {
+        "aggregate": "count_all",
+        "column": null,
+        "format": null,
+        "percentile": null,
+        "show_as": "value",
+        "unit_column": null,
+        "weight": null
+      }
+    ],
+    "parameters": {
+      "as_of": "2026-11-02"
+    },
+    "pinned": [
+      "ticker"
+    ],
+    "search": "atl",
+    "sort": [
+      {
+        "column": "fund",
+        "descending": true
+      }
+    ],
+    "split_by": [
+      "asset_class"
+    ],
+    "titles": {
+      "fund": "Fund",
+      "market_value_usd": "Market value (USD)"
+    },
+    "top_n": {
+      "largest": false,
+      "measure": 0,
+      "n": 10,
+      "other": true
+    },
+    "totals": [
+      {
+        "aggregate": "sum",
+        "column": "market_value_usd",
+        "format": null,
+        "percentile": null,
+        "show_as": "value",
+        "unit_column": null,
+        "weight": null
+      },
+      {
+        "aggregate": "distinct_count",
+        "column": "ticker",
+        "format": null,
+        "percentile": null,
+        "show_as": "value",
+        "unit_column": null,
+        "weight": null
+      }
+    ],
+    "version": 2
+  },
+  {
+    "chart": {
+      "axis": "trading",
+      "compare": true,
+      "donut": true,
+      "drawings": [],
+      "events": "event",
+      "hidden": [
+        "volume AAPL"
+      ],
+      "horizontal": true,
+      "indicators": [],
+      "kind": "line",
+      "labels": true,
+      "log_y": true,
+      "ohlc": null,
+      "range": {
+        "from": 1200.5,
+        "to": 1450.0
+      },
+      "series": "ticker",
+      "stacked": true,
+      "volume": null,
+      "x": "date",
+      "y": [
+        "close"
+      ],
+      "y_right": [
+        "volume"
+      ]
+    },
+    "column_widths": {},
+    "columns": [],
+    "dataset": "prices",
+    "detail": false,
+    "expand_depth": 0,
+    "expanded": [],
+    "filters": [],
+    "formats": {},
+    "group_by": [],
+    "group_sort": {
+      "by": "key",
+      "descending": false
+    },
+    "having": [],
+    "measures": [],
+    "parameters": {},
+    "pinned": [],
+    "search": "",
+    "sort": [],
+    "split_by": [],
+    "titles": {},
+    "top_n": null,
+    "totals": [],
+    "version": 2
+  },
+  {
+    "chart": {
+      "axis": "value",
+      "compare": false,
+      "donut": true,
+      "drawings": [
+        {
+          "from": {
+            "x": "2026-01-05",
+            "y": 101.25
+          },
+          "kind": "trend",
+          "to": {
+            "x": "2026-03-02",
+            "y": 118.0
+          }
+        },
+        {
+          "kind": "horizontal",
+          "y": 110.5
+        },
+        {
+          "from": {
+            "x": "2026-01-05",
+            "y": 90.0
+          },
+          "kind": "fibonacci",
+          "to": {
+            "x": "2026-02-02",
+            "y": 120.0
+          }
+        },
+        {
+          "from": {
+            "x": "2026-02-02",
+            "y": 100.0
+          },
+          "kind": "rectangle",
+          "to": {
+            "x": "2026-02-27",
+            "y": 112.0
+          }
+        },
+        {
+          "at": {
+            "x": "2026-02-13",
+            "y": 115.0
+          },
+          "kind": "note",
+          "text": "Earnings: \"beat\""
+        }
+      ],
+      "events": null,
+      "hidden": [],
+      "horizontal": false,
+      "indicators": [
+        {
+          "kind": "sma",
+          "period": 20
+        },
+        {
+          "deviations": 1.5,
+          "kind": "bollinger",
+          "period": 10
+        },
+        {
+          "kind": "rsi",
+          "period": 14
+        },
+        {
+          "fast": 5,
+          "kind": "macd",
+          "signal": 5,
+          "slow": 35
+        },
+        {
+          "kind": "atr",
+          "period": 14
+        },
+        {
+          "d": 3,
+          "k": 9,
+          "k_smooth": 3,
+          "kind": "stochastic"
+        },
+        {
+          "kind": "vwap"
+        },
+        {
+          "kind": "volume"
+        },
+        {
+          "kind": "ema",
+          "period": 50
+        },
+        {
+          "kind": "wma",
+          "period": 20
+        }
+      ],
+      "kind": "candlestick",
+      "labels": true,
+      "log_y": false,
+      "ohlc": {
+        "close": "close",
+        "high": "high",
+        "low": "low",
+        "open": "open"
+      },
+      "range": null,
+      "series": null,
+      "stacked": false,
+      "volume": "volume",
+      "x": "date",
+      "y": [],
+      "y_right": []
+    },
+    "column_widths": {},
+    "columns": [],
+    "dataset": "prices",
+    "detail": false,
+    "expand_depth": 0,
+    "expanded": [],
+    "filters": [
+      {
+        "column": "ticker",
+        "columns": [],
+        "op": "eq",
+        "value": "AAPL",
+        "values": []
+      }
+    ],
+    "formats": {},
+    "group_by": [],
+    "group_sort": {
+      "by": "key",
+      "descending": false
+    },
+    "having": [],
+    "measures": [],
+    "parameters": {},
+    "pinned": [],
+    "search": "",
+    "sort": [],
+    "split_by": [],
+    "titles": {},
+    "top_n": null,
+    "totals": [],
+    "version": 2
+  },
+  {
+    "chart": {
+      "axis": "value",
+      "compare": false,
+      "donut": true,
+      "drawings": [],
+      "events": null,
+      "hidden": [],
+      "horizontal": false,
+      "indicators": [],
+      "kind": "bar",
+      "labels": true,
+      "log_y": false,
+      "ohlc": null,
+      "range": null,
+      "series": null,
+      "stacked": false,
+      "volume": null,
+      "x": "",
+      "y": [],
+      "y_right": []
+    },
+    "column_widths": {},
+    "columns": [],
+    "dataset": "",
+    "detail": false,
+    "expand_depth": 0,
+    "expanded": [],
+    "filters": [],
+    "formats": {},
+    "group_by": [],
+    "group_sort": {
+      "by": "key",
+      "descending": false
+    },
+    "having": [],
+    "measures": [],
+    "parameters": {},
+    "pinned": [],
+    "search": "",
+    "sort": [],
+    "split_by": [],
+    "titles": {},
+    "top_n": null,
+    "totals": [],
+    "version": 2
+  },
+  {
+    "chart": {
+      "axis": "value",
+      "compare": false,
+      "donut": false,
+      "drawings": [],
+      "events": null,
+      "hidden": [],
+      "horizontal": false,
+      "indicators": [],
+      "kind": "pie",
+      "labels": true,
+      "log_y": false,
+      "ohlc": null,
+      "range": null,
+      "series": null,
+      "stacked": false,
+      "volume": null,
+      "x": "",
+      "y": [],
+      "y_right": []
+    },
+    "column_widths": {},
+    "columns": [],
+    "dataset": "",
+    "detail": false,
+    "expand_depth": 0,
+    "expanded": [],
+    "filters": [],
+    "formats": {},
+    "group_by": [],
+    "group_sort": {
+      "by": "key",
+      "descending": false
+    },
+    "having": [],
+    "measures": [],
+    "parameters": {},
+    "pinned": [],
+    "search": "",
+    "sort": [],
+    "split_by": [],
+    "titles": {},
+    "top_n": null,
+    "totals": [],
+    "version": 2
+  },
+  {
+    "chart": {
+      "axis": "value",
+      "compare": false,
+      "donut": true,
+      "drawings": [],
+      "events": null,
+      "hidden": [],
+      "horizontal": false,
+      "indicators": [],
+      "kind": "bar",
+      "labels": false,
+      "log_y": false,
+      "ohlc": null,
+      "range": null,
+      "series": null,
+      "stacked": false,
+      "volume": null,
+      "x": "",
+      "y": [],
+      "y_right": []
+    },
+    "column_widths": {},
+    "columns": [],
+    "dataset": "",
+    "detail": false,
+    "expand_depth": 0,
+    "expanded": [],
+    "filters": [],
+    "formats": {},
+    "group_by": [],
+    "group_sort": {
+      "by": "key",
+      "descending": false
+    },
+    "having": [],
+    "measures": [],
+    "parameters": {},
+    "pinned": [],
+    "search": "",
+    "sort": [],
+    "split_by": [],
+    "titles": {},
+    "top_n": null,
+    "totals": [],
+    "version": 2
+  }
+]

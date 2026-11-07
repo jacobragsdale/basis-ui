@@ -1,0 +1,1405 @@
+{
+  "$defs": {
+    "AbbreviationName": {
+      "description": "A K, M or B scaling in a layout.",
+      "oneOf": [
+        {
+          "const": "thousands",
+          "description": "Thousands, `K`.",
+          "type": "string"
+        },
+        {
+          "const": "millions",
+          "description": "Millions, `M`.",
+          "type": "string"
+        },
+        {
+          "const": "billions",
+          "description": "Billions, `B`.",
+          "type": "string"
+        }
+      ]
+    },
+    "AggregateName": {
+      "description": "An aggregate's name in a layout.",
+      "oneOf": [
+        {
+          "const": "count",
+          "description": "Rows with a value.",
+          "type": "string"
+        },
+        {
+          "const": "count_all",
+          "description": "All rows.",
+          "type": "string"
+        },
+        {
+          "const": "sum",
+          "description": "Exact sum.",
+          "type": "string"
+        },
+        {
+          "const": "mean",
+          "description": "Mean.",
+          "type": "string"
+        },
+        {
+          "const": "weighted_mean",
+          "description": "Weighted mean; needs `weight`.",
+          "type": "string"
+        },
+        {
+          "const": "min",
+          "description": "Minimum.",
+          "type": "string"
+        },
+        {
+          "const": "max",
+          "description": "Maximum.",
+          "type": "string"
+        },
+        {
+          "const": "first",
+          "description": "Value of the earliest inserted row.",
+          "type": "string"
+        },
+        {
+          "const": "last",
+          "description": "Value of the latest inserted row.",
+          "type": "string"
+        },
+        {
+          "const": "distinct_count",
+          "description": "Distinct values.",
+          "type": "string"
+        },
+        {
+          "const": "variance",
+          "description": "Sample variance.",
+          "type": "string"
+        },
+        {
+          "const": "std_dev",
+          "description": "Sample standard deviation.",
+          "type": "string"
+        },
+        {
+          "const": "median",
+          "description": "Median.",
+          "type": "string"
+        },
+        {
+          "const": "percentile",
+          "description": "Percentile; needs `percentile`.",
+          "type": "string"
+        }
+      ]
+    },
+    "ChartKindName": {
+      "description": "What a chart draws, in a layout.",
+      "oneOf": [
+        {
+          "const": "line",
+          "description": "Lines through each series.",
+          "type": "string"
+        },
+        {
+          "const": "area",
+          "description": "Lines filled down to zero.",
+          "type": "string"
+        },
+        {
+          "const": "bar",
+          "description": "Bars of the layout's grouped view: one per group, one per measure or\ncolumn pivot within it.",
+          "type": "string"
+        },
+        {
+          "const": "scatter",
+          "description": "Points, drawn as a density.",
+          "type": "string"
+        },
+        {
+          "const": "heatmap",
+          "description": "Cells of the layout's grouped view, coloured by its first measure: groups\nacross, column pivots up.",
+          "type": "string"
+        },
+        {
+          "const": "histogram",
+          "description": "Counts of the x values in bins.",
+          "type": "string"
+        },
+        {
+          "const": "candlestick",
+          "description": "Candles of each bucket's open, high, low and close.",
+          "type": "string"
+        },
+        {
+          "const": "ohlc",
+          "description": "Bars of each bucket's open, high, low and close.",
+          "type": "string"
+        },
+        {
+          "const": "pie",
+          "description": "Slices of the layout's grouped view, one per group, sized by its first\nmeasure, as a ring when `donut` is set.",
+          "type": "string"
+        }
+      ]
+    },
+    "CompareName": {
+      "description": "A comparison for aggregate filters.",
+      "oneOf": [
+        {
+          "const": "gt",
+          "description": "Greater than.",
+          "type": "string"
+        },
+        {
+          "const": "ge",
+          "description": "At least.",
+          "type": "string"
+        },
+        {
+          "const": "lt",
+          "description": "Less than.",
+          "type": "string"
+        },
+        {
+          "const": "le",
+          "description": "At most.",
+          "type": "string"
+        },
+        {
+          "const": "eq",
+          "description": "Equal.",
+          "type": "string"
+        },
+        {
+          "const": "ne",
+          "description": "Not equal.",
+          "type": "string"
+        }
+      ]
+    },
+    "FilterOpName": {
+      "description": "A filter operator in a layout.",
+      "oneOf": [
+        {
+          "const": "eq",
+          "description": "Equal to `value`.",
+          "type": "string"
+        },
+        {
+          "const": "ne",
+          "description": "Not equal to `value`.",
+          "type": "string"
+        },
+        {
+          "const": "lt",
+          "description": "Less than `value`.",
+          "type": "string"
+        },
+        {
+          "const": "le",
+          "description": "At most `value`.",
+          "type": "string"
+        },
+        {
+          "const": "gt",
+          "description": "Greater than `value`.",
+          "type": "string"
+        },
+        {
+          "const": "ge",
+          "description": "At least `value`.",
+          "type": "string"
+        },
+        {
+          "const": "in",
+          "description": "One of `values`.",
+          "type": "string"
+        },
+        {
+          "const": "not_in",
+          "description": "None of `values`.",
+          "type": "string"
+        },
+        {
+          "const": "is_null",
+          "description": "Null.",
+          "type": "string"
+        },
+        {
+          "const": "is_not_null",
+          "description": "Not null.",
+          "type": "string"
+        },
+        {
+          "const": "contains",
+          "description": "Text containing `value`, ignoring case.",
+          "type": "string"
+        },
+        {
+          "const": "not_contains",
+          "description": "Text not containing `value`, ignoring case. Blanks match, as in a\nspreadsheet.",
+          "type": "string"
+        },
+        {
+          "const": "starts_with",
+          "description": "Text starting with `value`, ignoring case.",
+          "type": "string"
+        },
+        {
+          "const": "ends_with",
+          "description": "Text ending with `value`, ignoring case.",
+          "type": "string"
+        }
+      ]
+    },
+    "GroupOrderName": {
+      "description": "What orders groups.",
+      "oneOf": [
+        {
+          "const": "key",
+          "description": "The group's own value.",
+          "type": "string"
+        },
+        {
+          "additionalProperties": false,
+          "description": "A measure's value, by index.",
+          "properties": {
+            "measure": {
+              "format": "uint",
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "measure"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "LayoutAnchor": {
+      "additionalProperties": false,
+      "description": "A point a drawing is anchored to: a value of the chart's x column, as in a\nfilter, and a value on the price's axis. Drawings stay with the data however\nthe chart is zoomed or its axis placed.",
+      "properties": {
+        "x": {
+          "description": "The x value: a date, an instant or a number."
+        },
+        "y": {
+          "description": "The value on the price's axis.",
+          "format": "double",
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "type": "object"
+    },
+    "LayoutChart": {
+      "additionalProperties": false,
+      "description": "A chart, in a layout. Bar charts and heatmaps draw the layout's grouped view;\nthe other kinds are reduced by the engine to the plot's pixels.",
+      "properties": {
+        "axis": {
+          "$ref": "#/$defs/XAxisName",
+          "default": "value",
+          "description": "How x values are placed."
+        },
+        "compare": {
+          "default": false,
+          "description": "Each series as its percentage change from its first value in the range\nshown, on a line or area chart.",
+          "type": "boolean"
+        },
+        "donut": {
+          "default": true,
+          "description": "Draws a pie chart as a ring, with the total in its centre.",
+          "type": "boolean"
+        },
+        "drawings": {
+          "default": [],
+          "description": "Lines, levels, rectangles and notes drawn over the price.",
+          "items": {
+            "$ref": "#/$defs/LayoutDrawing"
+          },
+          "type": "array"
+        },
+        "events": {
+          "default": null,
+          "description": "A column whose non-null values mark rows as events, such as earnings.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "hidden": {
+          "default": [],
+          "description": "Series hidden from the plot, by their legend labels.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "horizontal": {
+          "default": false,
+          "description": "Bars running across instead of up.",
+          "type": "boolean"
+        },
+        "indicators": {
+          "default": [],
+          "description": "Technical-analysis indicators, computed over every row before the chart\nis reduced.",
+          "items": {
+            "$ref": "#/$defs/LayoutIndicator"
+          },
+          "type": "array"
+        },
+        "kind": {
+          "$ref": "#/$defs/ChartKindName",
+          "description": "What it draws."
+        },
+        "labels": {
+          "default": true,
+          "description": "Writes each bar's value at its end, and each slice's share on it,\nwhere they fit.",
+          "type": "boolean"
+        },
+        "log_y": {
+          "default": false,
+          "description": "A logarithmic y axis.",
+          "type": "boolean"
+        },
+        "ohlc": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/LayoutOhlc"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The price columns of candlestick and OHLC charts."
+        },
+        "range": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/LayoutRange"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The x range zoomed to; absent shows everything."
+        },
+        "series": {
+          "default": null,
+          "description": "A column whose values split each plotted column into series.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "stacked": {
+          "default": false,
+          "description": "Bars of one group stacked instead of side by side.",
+          "type": "boolean"
+        },
+        "volume": {
+          "default": null,
+          "description": "The volume column, which a VWAP and volume read.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "x": {
+          "default": "",
+          "description": "The x column of reduced kinds; a histogram bins it.",
+          "type": "string"
+        },
+        "y": {
+          "default": [],
+          "description": "Columns drawn against the left y axis.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "y_right": {
+          "default": [],
+          "description": "Columns drawn against a second y axis on the right.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
+    },
+    "LayoutDrawing": {
+      "description": "A drawing on a chart, in a layout.",
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "description": "A line between two points.",
+          "properties": {
+            "from": {
+              "$ref": "#/$defs/LayoutAnchor",
+              "description": "One end."
+            },
+            "kind": {
+              "const": "trend",
+              "type": "string"
+            },
+            "to": {
+              "$ref": "#/$defs/LayoutAnchor",
+              "description": "The other end."
+            }
+          },
+          "required": [
+            "kind",
+            "from",
+            "to"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "A line across the chart at a value.",
+          "properties": {
+            "kind": {
+              "const": "horizontal",
+              "type": "string"
+            },
+            "y": {
+              "description": "The value on the price's axis.",
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "kind",
+            "y"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "Fibonacci retracement levels between two points: 0 %, 23.6 %, 38.2 %,\n50 %, 61.8 %, 78.6 % and 100 % of the way from one to the other.",
+          "properties": {
+            "from": {
+              "$ref": "#/$defs/LayoutAnchor",
+              "description": "Where the move starts."
+            },
+            "kind": {
+              "const": "fibonacci",
+              "type": "string"
+            },
+            "to": {
+              "$ref": "#/$defs/LayoutAnchor",
+              "description": "Where it ends."
+            }
+          },
+          "required": [
+            "kind",
+            "from",
+            "to"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "A rectangle between two corners.",
+          "properties": {
+            "from": {
+              "$ref": "#/$defs/LayoutAnchor",
+              "description": "One corner."
+            },
+            "kind": {
+              "const": "rectangle",
+              "type": "string"
+            },
+            "to": {
+              "$ref": "#/$defs/LayoutAnchor",
+              "description": "The opposite corner."
+            }
+          },
+          "required": [
+            "kind",
+            "from",
+            "to"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "A text note at a point.",
+          "properties": {
+            "at": {
+              "$ref": "#/$defs/LayoutAnchor",
+              "description": "Where it is."
+            },
+            "kind": {
+              "const": "note",
+              "type": "string"
+            },
+            "text": {
+              "description": "What it says.",
+              "maxLength": 500,
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "at",
+            "text"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "LayoutExpanded": {
+      "additionalProperties": false,
+      "description": "A group the user expanded or collapsed.",
+      "properties": {
+        "expanded": {
+          "description": "Expanded or collapsed.",
+          "type": "boolean"
+        },
+        "path": {
+          "description": "The group's values from the outermost level.",
+          "items": true,
+          "type": "array"
+        }
+      },
+      "required": [
+        "path",
+        "expanded"
+      ],
+      "type": "object"
+    },
+    "LayoutFilter": {
+      "additionalProperties": false,
+      "description": "A filter in a layout.",
+      "properties": {
+        "column": {
+          "description": "The column.",
+          "type": "string"
+        },
+        "columns": {
+          "default": [],
+          "description": "More columns the condition is tested in: the filter passes when it holds\nin `column` or in any of these, as a search across columns does.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "op": {
+          "$ref": "#/$defs/FilterOpName",
+          "description": "The operator."
+        },
+        "value": {
+          "default": null,
+          "description": "The operand of single-value operators."
+        },
+        "values": {
+          "default": [],
+          "description": "The operands of `in` and `not_in`.",
+          "items": true,
+          "type": "array"
+        }
+      },
+      "required": [
+        "column",
+        "op"
+      ],
+      "type": "object"
+    },
+    "LayoutFormat": {
+      "additionalProperties": false,
+      "description": "How a column's values are displayed. Unset fields take the type's default:\na decimal's scale, no decimals for integers, one when abbreviating, and two\notherwise; thousands grouped; instants in `America/New_York` to the second.",
+      "properties": {
+        "abbreviate": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AbbreviationName"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Divide by a thousand, million or billion and append `K`, `M` or `B`."
+        },
+        "decimals": {
+          "default": null,
+          "description": "Digits after the decimal point, at most 30.",
+          "format": "uint8",
+          "maximum": 30,
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "negative": {
+          "$ref": "#/$defs/NegativeName",
+          "default": "minus",
+          "description": "How negative numbers are written."
+        },
+        "percent": {
+          "default": false,
+          "description": "Multiply by 100 and append `%`.",
+          "type": "boolean"
+        },
+        "precision": {
+          "$ref": "#/$defs/PrecisionName",
+          "default": "seconds",
+          "description": "The sub-second digits instants show."
+        },
+        "thousands": {
+          "default": null,
+          "description": "Group thousands with commas.",
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "zone": {
+          "default": null,
+          "description": "The IANA zone instants are shown in.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "type": "object"
+    },
+    "LayoutGroupSort": {
+      "additionalProperties": false,
+      "description": "How groups are ordered.",
+      "properties": {
+        "by": {
+          "$ref": "#/$defs/GroupOrderName",
+          "default": "key",
+          "description": "What to order by."
+        },
+        "descending": {
+          "default": false,
+          "description": "Largest first.",
+          "type": "boolean"
+        }
+      },
+      "type": "object"
+    },
+    "LayoutHaving": {
+      "additionalProperties": false,
+      "description": "An aggregate filter in a layout.",
+      "properties": {
+        "measure": {
+          "description": "The measure, by index.",
+          "format": "uint",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "op": {
+          "$ref": "#/$defs/CompareName",
+          "description": "The comparison."
+        },
+        "value": {
+          "description": "The value compared with.",
+          "format": "double",
+          "type": "number"
+        }
+      },
+      "required": [
+        "measure",
+        "op",
+        "value"
+      ],
+      "type": "object"
+    },
+    "LayoutIndicator": {
+      "description": "A technical-analysis indicator, in a layout, with TA-Lib's usual defaults.\nAverages, bands and VWAP are drawn over the price; the others in panes of\ntheir own.",
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "description": "The simple moving average of the price.",
+          "properties": {
+            "kind": {
+              "const": "sma",
+              "type": "string"
+            },
+            "period": {
+              "default": 20,
+              "description": "Rows averaged.",
+              "format": "uint32",
+              "maximum": 100000,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "The exponential moving average of the price.",
+          "properties": {
+            "kind": {
+              "const": "ema",
+              "type": "string"
+            },
+            "period": {
+              "default": 20,
+              "description": "Rows in the smoothing.",
+              "format": "uint32",
+              "maximum": 100000,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "The weighted moving average of the price.",
+          "properties": {
+            "kind": {
+              "const": "wma",
+              "type": "string"
+            },
+            "period": {
+              "default": 20,
+              "description": "Rows averaged.",
+              "format": "uint32",
+              "maximum": 100000,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "Bollinger Bands around the price's simple average.",
+          "properties": {
+            "deviations": {
+              "default": 2.0,
+              "description": "Standard deviations above and below.",
+              "exclusiveMinimum": 0,
+              "format": "double",
+              "type": "number"
+            },
+            "kind": {
+              "const": "bollinger",
+              "type": "string"
+            },
+            "period": {
+              "default": 20,
+              "description": "Rows averaged.",
+              "format": "uint32",
+              "maximum": 100000,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "The relative strength index of the price.",
+          "properties": {
+            "kind": {
+              "const": "rsi",
+              "type": "string"
+            },
+            "period": {
+              "default": 14,
+              "description": "Rows in Wilder's smoothing.",
+              "format": "uint32",
+              "maximum": 100000,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "MACD of the price.",
+          "properties": {
+            "fast": {
+              "default": 12,
+              "description": "Rows of the fast average.",
+              "format": "uint32",
+              "maximum": 100000,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "kind": {
+              "const": "macd",
+              "type": "string"
+            },
+            "signal": {
+              "default": 9,
+              "description": "Rows of the signal line's average.",
+              "format": "uint32",
+              "maximum": 100000,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "slow": {
+              "default": 26,
+              "description": "Rows of the slow average.",
+              "format": "uint32",
+              "maximum": 100000,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "The average true range.",
+          "properties": {
+            "kind": {
+              "const": "atr",
+              "type": "string"
+            },
+            "period": {
+              "default": 14,
+              "description": "Rows in Wilder's smoothing.",
+              "format": "uint32",
+              "maximum": 100000,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "The slow stochastic oscillator.",
+          "properties": {
+            "d": {
+              "default": 3,
+              "description": "Rows %D averages %K over.",
+              "format": "uint32",
+              "maximum": 100000,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "k": {
+              "default": 14,
+              "description": "Rows whose range the close is placed in.",
+              "format": "uint32",
+              "maximum": 100000,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "k_smooth": {
+              "default": 3,
+              "description": "Rows %K is averaged over.",
+              "format": "uint32",
+              "maximum": 100000,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "kind": {
+              "const": "stochastic",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "The volume-weighted average price.",
+          "properties": {
+            "kind": {
+              "const": "vwap",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "Volume, summed per candle.",
+          "properties": {
+            "kind": {
+              "const": "volume",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "LayoutMeasure": {
+      "additionalProperties": false,
+      "description": "A measure in a layout.",
+      "properties": {
+        "aggregate": {
+          "$ref": "#/$defs/AggregateName",
+          "description": "The aggregate."
+        },
+        "column": {
+          "default": null,
+          "description": "The column, absent for `count_all`.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "format": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/LayoutFormat"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The display format, overriding the one derived from the column's."
+        },
+        "percentile": {
+          "default": null,
+          "description": "The percentile in `[0, 1]`, for `percentile`.",
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "show_as": {
+          "$ref": "#/$defs/ShowAsName",
+          "default": "value",
+          "description": "How the value is shown."
+        },
+        "unit_column": {
+          "default": null,
+          "description": "A column naming each row's unit.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "weight": {
+          "default": null,
+          "description": "The weight column, for `weighted_mean`.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "aggregate"
+      ],
+      "type": "object"
+    },
+    "LayoutOhlc": {
+      "additionalProperties": false,
+      "description": "The price columns of a candlestick or OHLC chart, in a layout.",
+      "properties": {
+        "close": {
+          "description": "The closing price.",
+          "type": "string"
+        },
+        "high": {
+          "description": "The highest price.",
+          "type": "string"
+        },
+        "low": {
+          "description": "The lowest price.",
+          "type": "string"
+        },
+        "open": {
+          "description": "The opening price.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "open",
+        "high",
+        "low",
+        "close"
+      ],
+      "type": "object"
+    },
+    "LayoutRange": {
+      "additionalProperties": false,
+      "description": "An x range a chart was zoomed to, in axis positions.",
+      "properties": {
+        "from": {
+          "description": "The left edge.",
+          "format": "double",
+          "type": "number"
+        },
+        "to": {
+          "description": "The right edge.",
+          "format": "double",
+          "type": "number"
+        }
+      },
+      "required": [
+        "from",
+        "to"
+      ],
+      "type": "object"
+    },
+    "LayoutSort": {
+      "additionalProperties": false,
+      "description": "A sort in a layout.",
+      "properties": {
+        "column": {
+          "description": "The column.",
+          "type": "string"
+        },
+        "descending": {
+          "default": false,
+          "description": "Largest first.",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "column"
+      ],
+      "type": "object"
+    },
+    "LayoutTopN": {
+      "additionalProperties": false,
+      "description": "Top-N in a layout.",
+      "properties": {
+        "largest": {
+          "default": true,
+          "description": "Keep the largest.",
+          "type": "boolean"
+        },
+        "measure": {
+          "description": "The measure ranked, by index.",
+          "format": "uint",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "n": {
+          "description": "Groups to keep.",
+          "format": "uint",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "other": {
+          "default": true,
+          "description": "Show the rest as one Other row.",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "n",
+        "measure"
+      ],
+      "type": "object"
+    },
+    "NegativeName": {
+      "description": "How negative numbers are written, in a layout.",
+      "oneOf": [
+        {
+          "const": "minus",
+          "description": "`-1,234.50`",
+          "type": "string"
+        },
+        {
+          "const": "parentheses",
+          "description": "`(1,234.50)`",
+          "type": "string"
+        }
+      ]
+    },
+    "PrecisionName": {
+      "description": "Sub-second digits in a layout.",
+      "oneOf": [
+        {
+          "const": "seconds",
+          "description": "Whole seconds.",
+          "type": "string"
+        },
+        {
+          "const": "milliseconds",
+          "description": "Milliseconds.",
+          "type": "string"
+        },
+        {
+          "const": "microseconds",
+          "description": "Microseconds.",
+          "type": "string"
+        }
+      ]
+    },
+    "ShowAsName": {
+      "description": "How a measure is shown.",
+      "oneOf": [
+        {
+          "const": "value",
+          "description": "The value.",
+          "type": "string"
+        },
+        {
+          "const": "percent_of_grand_total",
+          "description": "Fraction of the grand total.",
+          "type": "string"
+        },
+        {
+          "const": "percent_of_column_total",
+          "description": "Fraction of the column's total.",
+          "type": "string"
+        },
+        {
+          "const": "percent_of_row_total",
+          "description": "Fraction of the row's total.",
+          "type": "string"
+        },
+        {
+          "const": "percent_of_parent",
+          "description": "Fraction of the parent row's value.",
+          "type": "string"
+        }
+      ]
+    },
+    "XAxisName": {
+      "description": "How a chart places x values, in a layout.",
+      "oneOf": [
+        {
+          "const": "value",
+          "description": "By value.",
+          "type": "string"
+        },
+        {
+          "const": "trading",
+          "description": "By trading time on the NYSE calendar.",
+          "type": "string"
+        }
+      ]
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "A view, as saved and sent.",
+  "properties": {
+    "chart": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/LayoutChart"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Draws the view as a chart instead of a grid."
+    },
+    "column_widths": {
+      "additionalProperties": {
+        "format": "uint32",
+        "minimum": 0,
+        "type": "integer"
+      },
+      "default": {},
+      "description": "Column widths in CSS pixels, chosen by the user. Keys are source column\nnames for flat views, `\"__measure:0\"`, `\"__measure:1\"` and so on for the\ndata columns of grouped views, and `\"__tree\"` for the group column. The\nengine ignores them.",
+      "type": "object"
+    },
+    "columns": {
+      "default": [],
+      "description": "Columns of a flat view, in order. Empty means every column.",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "dataset": {
+      "default": "",
+      "description": "The dataset the view reads. Empty in layouts sent with an open-view\nrequest, which names the dataset itself; when both are given they must\nagree.",
+      "type": "string"
+    },
+    "detail": {
+      "default": false,
+      "description": "Groups `group_by` with the rows under them, in `sort` order and with the\n`columns`, as a grid does, rather than as a pivot of measures.",
+      "type": "boolean"
+    },
+    "expand_depth": {
+      "default": 0,
+      "description": "Levels expanded by default.",
+      "format": "uint",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "expanded": {
+      "default": [],
+      "description": "Groups expanded or collapsed by the user, by value.",
+      "items": {
+        "$ref": "#/$defs/LayoutExpanded"
+      },
+      "type": "array"
+    },
+    "filters": {
+      "default": [],
+      "description": "Row filters.",
+      "items": {
+        "$ref": "#/$defs/LayoutFilter"
+      },
+      "type": "array"
+    },
+    "formats": {
+      "additionalProperties": {
+        "$ref": "#/$defs/LayoutFormat"
+      },
+      "default": {},
+      "description": "Display formats by source column. Measures take their column's format\nunless they set their own.",
+      "type": "object"
+    },
+    "group_by": {
+      "default": [],
+      "description": "Row pivots, outermost first.",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "group_sort": {
+      "$ref": "#/$defs/LayoutGroupSort",
+      "default": {
+        "by": "key",
+        "descending": false
+      },
+      "description": "Ordering of groups among their siblings."
+    },
+    "having": {
+      "default": [],
+      "description": "Aggregate filters.",
+      "items": {
+        "$ref": "#/$defs/LayoutHaving"
+      },
+      "type": "array"
+    },
+    "measures": {
+      "default": [],
+      "description": "Measures of a grouped view.",
+      "items": {
+        "$ref": "#/$defs/LayoutMeasure"
+      },
+      "type": "array"
+    },
+    "parameters": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "default": {},
+      "description": "The dataset's parameters, such as an as-of date.",
+      "type": "object"
+    },
+    "pinned": {
+      "default": [],
+      "description": "Columns of a flat or detail view kept at the left while the rest scroll,\nin order. They come first, whatever `columns` says.",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "search": {
+      "default": "",
+      "description": "Text to search for, ignoring case, in every searched column: the text\ncolumns a flat view shows, those and the group columns of a detail view,\nor the group and column-pivot columns of a pivot. Rows must match it as\nwell as the filters. Empty searches nothing.",
+      "type": "string"
+    },
+    "sort": {
+      "default": [],
+      "description": "Sorts of a flat view.",
+      "items": {
+        "$ref": "#/$defs/LayoutSort"
+      },
+      "type": "array"
+    },
+    "split_by": {
+      "default": [],
+      "description": "Column pivots.",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "titles": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "default": {},
+      "description": "Header text by source column; a column without one shows its name. The\nexport's headers are the same.",
+      "type": "object"
+    },
+    "top_n": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/LayoutTopN"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Top-N per set of siblings."
+    },
+    "totals": {
+      "default": [],
+      "description": "The totals row of a flat or detail view: at most one total per column,\neach a measure of its column. A detail view's group rows show them too.",
+      "items": {
+        "$ref": "#/$defs/LayoutMeasure"
+      },
+      "type": "array"
+    },
+    "version": {
+      "default": 2,
+      "description": "The layout version; [`LAYOUT_VERSION`] for documents this crate writes.",
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    }
+  },
+  "title": "Layout",
+  "type": "object"
+}
