@@ -252,6 +252,98 @@ itself after five seconds unless `timeout` says otherwise; `timeout: 0` keeps it
 screen reader at once, for what the user must act on now. F6 moves the keyboard into the toasts, and Escape closes the
 focused one.
 
+## Showing numbers and dates
+
+`Num`, `Money`, `Pct`, `Bps`, `Price32` and `DateTime` show a value through the formatter, by parallax's rules, so it
+reads the same in a card as in the grid. Pass `value` as the API sends it: decimal text, a `Decimal`, a double or a
+bigint, and for `DateTime` a Temporal value or ISO 8601 text. `null` shows the formatter's null text, which is empty.
+
+```tsx
+import { Bps, DateTime, Money, Num, Pct, Price32 } from "@basis/ui";
+
+<Num value="1234.50" />; // 1,234.50: decimal text keeps its scale
+<Money value="-1234.5" />; // -$1,234.50
+<Money value="2500000000" abbreviate="B" />; // $2.5B
+<Pct value="0.0525" />; // 5.25%
+<Bps value="0.0025" />; // 25 bp
+<Price32 value="99.515625" />; // 99-16+
+<DateTime value="2026-11-06T14:30:00Z" />; // 2026-11-06 09:30:00, in New York time
+<Num value={pnl} signed />; // +1,250.50 in the gain colour, -1,250.50 in the loss colour
+```
+
+- **Rates** are fractions, as the formatter's `percent` and `rateSuffixes` read them: 0.0525 is 5.25% and 0.0025 is
+  25 bp. A value already in percent or basis points takes `unit="percent"` or `unit="bp"`.
+- **Money** takes an ISO 4217 `currency`, USD unless set, which gives the symbol, written after the sign, and the
+  decimals: `€1,234.50`, `¥1,234`, `($1,234.50)` with `negative="parentheses"`.
+- **`signed`** colours a gain and a loss with the `gain` and `loss` tokens and always writes the sign. The direction is
+  the shown value's, so 0.001 at two decimals is `0.00`, in neither colour.
+- **Figures** are tabular. `align="end"` makes a number a block aligned right, for a column of figures outside a
+  table; in a `Table`, the cell's `variant="numeric"` aligns it.
+- **`DateTime`** takes `zone`, `precision` (`seconds`, `milliseconds` or `microseconds`) and `show` (`date-time`,
+  `date` or `time`). Text with an offset or `Z` is an instant, a bare date is a date, and a time without either is a
+  wall-clock time shown as stored. It renders a `<time>` whose title gives the full instant with its offset and zone.
+- Text that is not a decimal, or not ISO 8601, throws, as `Decimal.from` and Temporal do: the response's schema should
+  have refused it.
+
+## Taking amounts and dates
+
+`AmountInput`, `AsOfDatePicker` and `DateRangePicker` each go in a `Field` with a `FieldLabel` whose `htmlFor` is
+their `id`. The first two draw their field's error line themselves, so a form passes them the field's errors as
+`errors` rather than drawing a `FieldError` of its own; while what was typed cannot be taken, their own reason replaces
+those errors.
+
+`AmountInput` reads what is typed through `parseAmount` with the suffixes it declares, `amountSuffixes` unless set,
+and shows the number it read under the input, such as `= 1,500,000`. Bond markets write `M` for thousands, so a par
+field declares `parSuffixes`, and a spread `rateSuffixes`. Its value is the exact decimal string, `null` while it is
+empty, and the text itself while that reads as no number, which `amountSchema` refuses with the parser's reason and
+otherwise turns into the decimal:
+
+```tsx
+import { AmountInput, Field, FieldLabel, amountSchema, parSuffixes, rateSuffixes } from "@basis/ui";
+
+const ticketSchema = z.object({
+  par: amountSchema(parSuffixes), // "Enter an amount." when empty
+  spread: amountSchema(rateSuffixes).nullable(),
+});
+
+<form.Field name="par">
+  {(field) => {
+    const invalid = field.state.meta.isTouched && !field.state.meta.isValid;
+    return (
+      <Field data-invalid={invalid}>
+        <FieldLabel htmlFor="par">Par</FieldLabel>
+        <AmountInput
+          id="par"
+          suffixes={parSuffixes}
+          value={field.state.value}
+          onValueChange={field.handleChange}
+          onBlur={field.handleBlur}
+          aria-invalid={invalid}
+          errors={invalid ? field.state.meta.errors : undefined}
+        />
+      </Field>
+    );
+  }}
+</form.Field>;
+```
+
+`AsOfDatePicker` holds a `Temporal.PlainDate`. It takes business days on its `calendar`, SIFMA's unless set, from
+`min` to `max`, where `max` is today in New York unless set and `null` leaves the future open. Uncontrolled, it starts
+at the last business day before today, which `defaultAsOfDate()` also gives a form's default values. A typed
+`2026-11-06` or `11/06/2026` is taken when the field is left or Enter pressed; a date it cannot take leaves the value
+`null` and names the reason, such as `2026-11-11 is not a business day on the SIFMA (US bond market) calendar: it closes
+for Veterans Day.` Its calendar button opens a month grid on the WAI-ARIA date picker dialog pattern: the arrows move a
+day or a week, Home and End to the ends of the week, PageUp and PageDown a month and, with Shift, a year; Enter picks
+and Escape closes. Closed days are muted, holidays also struck through, and early closes dotted, with the reason in each
+day's name and title and under the grid.
+
+`DateRangePicker` holds a `DateRange` from `@basis/ui/dates`, and offers presets beside the same grid: month, quarter
+and year to date, and the prior month, quarter and year, each from its period's first business day to a business day,
+counted from `asOf`, the last business day before today unless set. `presets` picks and orders them, and
+`rangeForPreset` gives the same ranges outside the picker. Two days picked in the grid, in either order, make a range.
+
+Pass `today` to fix the date both pickers count from, as the gallery and tests do.
+
 ## Using the icons
 
 `@basis/ui` exports a set of lucide's icons under lucide-react's names with the `Icon` suffix: each icon's current
