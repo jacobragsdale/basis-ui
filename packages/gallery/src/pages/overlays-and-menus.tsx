@@ -1,13 +1,25 @@
-/* The overlays and menus family's page, which fills as the family's components arrive. */
+/* The overlays and menus family's page: each component with a trigger that opens it. Each group of components lives
+ * in overlays-and-menus/, beside its tests. */
 
 import type { ReactElement } from "react";
 
+import { CommandSection } from "./overlays-and-menus/command.tsx";
+import { DialogSections } from "./overlays-and-menus/dialogs.tsx";
+import { MenubarSection } from "./overlays-and-menus/menubar.tsx";
+import { MenuSections } from "./overlays-and-menus/menus.tsx";
+import { PanelSections } from "./overlays-and-menus/panels.tsx";
+import { PopupSections } from "./overlays-and-menus/popups.tsx";
+
 function OverlaysAndMenus(): ReactElement {
   return (
-    <p className="text-sm text-muted-foreground">
-      Dialog, Alert Dialog, Sheet, Drawer, Popover, Hover Card, Tooltip, Dropdown Menu, Context
-      Menu, Menubar and Command arrive here with the overlays and menus family.
-    </p>
+    <div className="flex flex-col gap-8">
+      <DialogSections />
+      <PanelSections />
+      <PopupSections />
+      <MenuSections />
+      <MenubarSection />
+      <CommandSection />
+    </div>
   );
 }
 
