@@ -2,8 +2,11 @@
  * (docs/spikes/vite-plus.md), with the maintainer's 2026-11-07 changes for rules that banned plain language features
  * or forced file splits: `eslint/no-magic-numbers`, `eslint/no-ternary`, `eslint/sort-imports`,
  * `import/max-dependencies`, `oxc/no-optional-chaining`, `react/jsx-max-depth` and `react/no-multi-comp`, and the
- * three rules for test files. Every rule turned off or loosened has its reason on the line above it, because
- * `eslint/no-inline-comments` rejects a comment at the end of a line. */
+ * three rules for test files; and, the same day, five rules that obstructed basis-ui's own code without catching a
+ * bug: `eslint/capitalized-comments`, `eslint/sort-keys`, `eslint/id-length`,
+ * `unicorn/no-useless-promise-resolve-reject` and `eslint/max-lines-per-function` in tests. Every rule turned off or
+ * loosened has its reason on the line above it, because `eslint/no-inline-comments` rejects a comment at the end of a
+ * line. */
 
 import { fileURLToPath } from "node:url";
 import type { OxlintConfig } from "vite-plus/lint";
@@ -53,6 +56,8 @@ const lint: OxlintConfig = {
       rules: {
         // A test's inputs and expected values are its literals; naming each one hides what the test checks.
         "eslint/no-magic-numbers": "off",
+        // A `describe` callback counts as one function, so a full suite would split into many.
+        "eslint/max-lines-per-function": "off",
         /* The maintainer's choice: Vitest's default timeout applies, and a test that asserts nothing fails its own
          * expectations rather than needing `expect.hasAssertions()`. */
         "vitest/prefer-expect-assertions": "off",
@@ -69,8 +74,12 @@ const lint: OxlintConfig = {
   ],
   plugins: corePlugins,
   rules: {
+    // It checks every line of a `//` comment, so wrapped sentences fail, and no comment may start lowercase.
+    "eslint/capitalized-comments": "off",
     // Conflicts with `react/function-component-definition`, which wants components as function declarations.
     "eslint/func-style": "off",
+    // OKLCH's channels are l, c and h, coordinates x and y, a counter i; Oxfmt unquotes keys the rule would accept.
+    "eslint/id-length": ["error", { exceptions: ["c", "h", "i", "l", "x", "y"] }],
     // With `import/consistent-type-specifier-style`, a module's types and values arrive in two imports.
     "eslint/no-duplicate-imports": ["error", { allowSeparateTypeImports: true }],
     // -1, 0, 1, 2 and 100 read as themselves; other numbers still need a name.
@@ -85,6 +94,8 @@ const lint: OxlintConfig = {
     "eslint/require-await": "off",
     // Sorting by the first imported name, across blank lines, prevents grouping imports by origin.
     "eslint/sort-imports": "off",
+    // Order is meaning in data: a theme's tokens are its CSS order, a field's suffixes the order its errors name them.
+    "eslint/sort-keys": "off",
     // A page that composes many components imports more than ten modules.
     "import/max-dependencies": ["error", { max: 20 }],
     // Conflicts with `import/no-default-export`: no module could export anything.
@@ -93,7 +104,7 @@ const lint: OxlintConfig = {
     "import/no-unassigned-import": ["error", { allow: ["**/*.css"] }],
     // Conflicts with `import/no-default-export`.
     "import/prefer-default-export": "off",
-    // Global declaration files such as vite-env.d.ts stay scripts, and `unicorn/require-module-specifiers` forbids `export {}`.
+    // Declaration files such as vite-env.d.ts stay scripts; `unicorn/require-module-specifiers` forbids `export {}`.
     "import/unambiguous": "off",
     // Conflicts with `typescript/promise-function-async`, which requires `async` on every function returning a promise.
     "oxc/no-async-await": "off",
@@ -128,6 +139,8 @@ const lint: OxlintConfig = {
     "typescript/prefer-readonly-parameter-types": "off",
     // Oxfmt removes the parentheses the rule asks for; `eslint/no-nested-ternary` still forbids nesting.
     "unicorn/no-nested-ternary": "off",
+    // With `require-await`, `promise-function-async` and `return-await`, no form of `async () => null` passes.
+    "unicorn/no-useless-promise-resolve-reject": "off",
     // React components return null, and refs to DOM elements start as null.
     "unicorn/no-null": "off",
     // Oxfmt prints hexadecimal digits in lower case; the rule wants upper case.
