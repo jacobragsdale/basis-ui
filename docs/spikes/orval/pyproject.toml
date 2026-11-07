@@ -1,0 +1,48 @@
+[project]
+name = "orval-spike-api"
+version = "0.0.0"
+description = "Spike 0.2's sample API: the shapes basis's contract promises, for orval to generate a client from."
+requires-python = "==3.14.*"
+dependencies = ["fastapi==0.162.0", "pydantic==2.14.3", "pyarrow==26.0.1", "uvicorn==0.54.0"]
+
+[dependency-groups]
+dev = ["ruff==0.17.4", "ty==0.0.99"]
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+line-length = 120
+required-version = ">=0.17.3"
+force-exclude = true
+show-fixes = true
+unsafe-fixes = false
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+  "COM812", # Conflicts with the formatter; Ruff's docs say to disable it alongside ruff format.
+  "ISC001", # Conflicts with the formatter; Ruff's docs say to disable it alongside ruff format.
+  "TC001", # Moving imports under TYPE_CHECKING breaks code that reads annotations at runtime (Pydantic, FastAPI).
+  "TC002", # Moving imports under TYPE_CHECKING breaks code that reads annotations at runtime (Pydantic, FastAPI).
+  "TC003", # Moving imports under TYPE_CHECKING breaks code that reads annotations at runtime (Pydantic, FastAPI).
+  "CPY001", # A copyright header is a legal decision per repository, not a lint fix.
+  "D", # Write a docstring only where it says what code and types cannot.
+]
+
+[tool.ruff.lint.isort]
+split-on-trailing-comma = false
+
+[tool.ruff.format]
+skip-magic-trailing-comma = true
+
+[tool.ty.rules]
+all = "error"
+
+[tool.ty.analysis]
+respect-type-ignore-comments = false
+strict-generic-narrowing = true
+strict-equality-semantics = true
+
+[tool.ty.terminal]
+error-on-warning = true
