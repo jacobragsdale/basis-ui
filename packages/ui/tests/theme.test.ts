@@ -112,6 +112,20 @@ const outlinePairs: readonly (readonly [outline: string, surface: string])[] = [
   ["sidebar-ring", "sidebar"],
 ];
 
+/* A fill must show on every surface it can sit on, or a muted band or a highlighted menu item vanishes in a popup.
+ * 2 is about one just-noticeable difference in OKLab's scale; a quiet fill needs no more. */
+const fills = ["muted", "secondary", "accent"] as const;
+const surfaces = ["background", "card", "popover"] as const;
+
+describe.each(modes)("fills in %s mode", (mode) => {
+  test.each(fills.flatMap((fill) => surfaces.map((surface) => [fill, surface] as const)))(
+    "%s stands apart from %s",
+    (fill, surface) => {
+      expect(delta(colourOf(fill, mode), colourOf(surface, mode))).toBeGreaterThanOrEqual(2);
+    },
+  );
+});
+
 describe.each(modes)("contrast in %s mode", (mode) => {
   test.each(textPairs)("%s on %s reaches 5.5:1", (text, surface) => {
     expect(wcagContrast(colourOf(text, mode), colourOf(surface, mode))).toBeGreaterThanOrEqual(5.5);

@@ -96,11 +96,11 @@
   --card-foreground: oklch(0.95 0.0063 255);
   --popover: oklch(0.252 0.0022 255);
   --popover-foreground: oklch(0.95 0.0063 255);
-  --muted: oklch(0.252 0.0022 255);
+  --muted: oklch(0.283 0.0034 255);
   --muted-foreground: oklch(0.8 0.0115 255);
-  --secondary: oklch(0.283 0.0034 255);
+  --secondary: oklch(0.312 0.0045 255);
   --secondary-foreground: oklch(0.95 0.0063 255);
-  --accent: oklch(0.283 0.0034 255);
+  --accent: oklch(0.312 0.0045 255);
   --accent-foreground: oklch(0.95 0.0063 255);
   --primary: oklch(0.74 0.135 258);
   --primary-foreground: oklch(0.178 0.0006 255);
