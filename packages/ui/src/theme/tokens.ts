@@ -23,7 +23,8 @@ function both(source: Source): Token {
 const onSolid: Token = { dark: { hue: "neutral", step: 1 }, light: { css: "oklch(1 0 0)" } };
 
 /** Surfaces and the text on them, under shadcn's names. Light mode lifts cards above a faintly grey page; dark mode
- * lifts them by lightness, since shadows barely show on dark surfaces. */
+ * lifts them by lightness, since shadows barely show on dark surfaces. Fills sit above every surface they can land on:
+ * dark mode's popover is step 3, so its muted fill is step 4 and its secondary and accent fills step 5. */
 const surfaces: readonly Entry[] = [
   ["background", { dark: { hue: "neutral", step: 1 }, light: { hue: "neutral", step: 2 } }],
   ["foreground", both({ hue: "neutral", step: 12 })],
@@ -31,11 +32,11 @@ const surfaces: readonly Entry[] = [
   ["card-foreground", both({ hue: "neutral", step: 12 })],
   ["popover", { dark: { hue: "neutral", step: 3 }, light: { hue: "neutral", step: 1 } }],
   ["popover-foreground", both({ hue: "neutral", step: 12 })],
-  ["muted", both({ hue: "neutral", step: 3 })],
+  ["muted", { dark: { hue: "neutral", step: 4 }, light: { hue: "neutral", step: 3 } }],
   ["muted-foreground", both({ hue: "neutral", step: 11 })],
-  ["secondary", both({ hue: "neutral", step: 4 })],
+  ["secondary", { dark: { hue: "neutral", step: 5 }, light: { hue: "neutral", step: 4 } }],
   ["secondary-foreground", both({ hue: "neutral", step: 12 })],
-  ["accent", both({ hue: "neutral", step: 4 })],
+  ["accent", { dark: { hue: "neutral", step: 5 }, light: { hue: "neutral", step: 4 } }],
   ["accent-foreground", both({ hue: "neutral", step: 12 })],
 ];
 
