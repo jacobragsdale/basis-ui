@@ -49,8 +49,20 @@ function pointerPath(pointer: string): readonly (string | number)[] | undefined 
     .map((token) => (/^(?:0|[1-9]\d*)$/u.test(token) ? Number(token) : token));
 }
 
-/** A 422's errors keyed by the form field each names, as a dotted path such as `legs.0.price`; errors for the whole
- * body sit under `""`, and parameters under their names. */
+/** A JSON Pointer's path as TanStack Form names the field: `["legs", 0, "price"]` → `legs[0].price`. */
+function fieldName(path: readonly (string | number)[]): string {
+  return path
+    .map((segment, index) => {
+      if (typeof segment === "number") {
+        return `[${String(segment)}]`;
+      }
+      return index === 0 ? segment : `.${segment}`;
+    })
+    .join("");
+}
+
+/** A 422's errors keyed by the form field each names, in TanStack Form's naming, such as `legs[0].price`; errors for
+ * the whole body sit under `""`, and parameters under their names. */
 function fieldErrors(problem: Problem | ValidationProblem): ReadonlyMap<string, readonly string[]> {
   const byField = new Map<string, string[]>();
   // A problem type may define its own `errors` member, so only the contract's shape is read.
@@ -60,11 +72,18 @@ function fieldErrors(problem: Problem | ValidationProblem): ReadonlyMap<string, 
   }
   for (const error of parsed.data.errors) {
     const path = "pointer" in error ? pointerPath(error.pointer) : [error.parameter];
-    const key = path === undefined ? "" : path.join(".");
+    const key = path === undefined ? "" : fieldName(path);
     byField.set(key, [...(byField.get(key) ?? []), error.detail]);
   }
   return byField;
 }
 
-export { fieldErrorSchema, fieldErrors, pointerPath, problemSchema, validationProblemSchema };
+export {
+  fieldErrorSchema,
+  fieldErrors,
+  fieldName,
+  pointerPath,
+  problemSchema,
+  validationProblemSchema,
+};
 export type { FieldError, Problem, ValidationProblem };

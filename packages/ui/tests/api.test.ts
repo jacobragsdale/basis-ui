@@ -6,6 +6,7 @@ import {
   apiFetch,
   arrowStream,
   fieldErrors,
+  fieldName,
   isApiError,
   pointerPath,
   setTokenSource,
@@ -143,10 +144,20 @@ describe("apiFetch's failures", () => {
     expect(Object.fromEntries(fieldErrors(error.problem))).toEqual({
       "": ["The body is empty"],
       account: ["Unknown account"],
-      "legs.0.price": ["Must be positive", "Must be positive"],
+      "legs[0].price": ["Must be positive", "Must be positive"],
       trade_date: ["Must be a business day"],
     });
   });
+});
+
+test.each([
+  [[], ""],
+  [["price"], "price"],
+  [["legs", 0, "price"], "legs[0].price"],
+  [["matrix", 2, 3], "matrix[2][3]"],
+  [[0, "name"], "[0].name"],
+] as const)("fieldName(%o) is %s, as TanStack Form names it", (path, name) => {
+  expect(fieldName(path)).toBe(name);
 });
 
 test("fieldErrors ignores an errors member of another shape", () => {
