@@ -47,7 +47,9 @@ To set the app up:
    and the `vp run` tasks. `basisPlugins()` adds React with the React Compiler, which fails the build on a component
    that breaks the rules of React, Tailwind, and the head script: an inline `<script>` that `vp dev` and `vp build`
    write at the end of `index.html`'s `<head>`, which applies the stored mode and density before the first paint. Its
-   text is `headScript`, exported from `@basis/ui`; the app keeps no copy of it. `basisTest()` runs `vp test` in
+   text is `headScript`, exported from `@basis/ui`; the app keeps no copy of it. In `vp test` it also has Vite
+   pre-bundle what every module under `src/` imports before the tests start, so no dependency that only app code
+   imports is found mid-run, which would reload the test pages under the tests. `basisTest()` runs `vp test` in
    headless Chromium through Playwright.
 
 2. Install the Chromium that the preset's Playwright pins:
@@ -138,23 +140,30 @@ the signed-in session, and the router. It keeps the page in the user's mode and 
 
 - **Queries.** `createQueryClient()` keeps data fresh for 30 seconds and retries a query twice, but only after a
   network failure or a 502, 503 or 504, which basis's contract says may pass; a 4xx, a 500 or a response its schema
-  refused shows at once. Mutations never retry.
+  refused shows at once. A mutation retries twice only after a `keys-unavailable` 503, which basis answers before any
+  handler runs; after any other failure the write may have happened, so it is the user's to repeat.
 - **Routes.** Unless the router sets its own, `BasisApp` gives it an error component, which shows the error on an
   `ErrorAlert` with "Try again", and a not-found page that links to `/`.
-- **Session.** `useSession()` returns `{ user, signOut }`. `signOut()` signs out through the adapter, drops every
-  cached response, which was the user's, and asks again for what the page shows.
+- **Session.** `useSession()` returns `{ user, signIn, signOut }`. `signIn()` and `signOut()` go through the adapter,
+  then drop every cached response, which was the last user's, and ask again for what the page shows.
+- **Sign-in problems.** A query or mutation that fails with a 401 of type `invalid-token` means the session has ended:
+  `BasisApp` signs the user out through the adapter and raises a toast, "Your session has expired", whose "Sign in"
+  signs them in again. One of type `sign-in-required` raises a toast that asks the user to sign in. A failed mutation
+  raises that toast instead of its error toast. A `keys-unavailable` 503 is retried, as above, and never signs the
+  user out.
 - **Telemetry.** `useTelemetry()` returns `{ error, event, timing }`. `BasisApp` reports each error its boundary, the
   router or a failed query or mutation meets, with a `source` attribute (`render`, `route`, `query`, `mutation`,
   `sign-in`), and each navigation's time as `navigation`. An app reports its own: `useTelemetry().event("position.booked",
   { book })`. The firm's collector will be a `Telemetry` of its own; `consoleTelemetry` writes to the console.
 
-A sign-in adapter is three functions, `{ currentUser, token, signOut }`: `currentUser()` resolves the signed-in `User`
-(`{ id, name, email? }`) or `null`, and `BasisApp` shows nothing of the app until it does; `token()` resolves the JWT
-for the next request, or `null`; `signOut()` ends the session. `fakeSignIn({ user, issuer, audience, claims })` signs
-in `user` at once (a placeholder user by default, `null` for an anonymous one) and signs each token with the
-development key basis publishes, so a basis API on a developer's desktop, such as `basis dev`'s, accepts it when
-`issuer` and `audience` match its `BASIS_IDENTITY__ISSUER` and `BASIS_IDENTITY__AUDIENCE` (`basis-development` by
-default). Every other API refuses it.
+A sign-in adapter is four functions, `{ currentUser, token, signIn, signOut }`: `currentUser()` resolves the signed-in
+`User` (`{ id, name, email? }`) or `null`, and `BasisApp` shows nothing of the app until it does; `token()` resolves the
+JWT for the next request, or `null`; `signIn()` signs in a user who is anonymous or whose session ended, and may leave
+the page for the sign-in system's; `signOut()` ends the session. `fakeSignIn({ user, issuer, audience, claims })`
+signs in `user` at once (a placeholder user by default, `null` for an anonymous one, whom `signIn()` signs in as the
+placeholder user) and signs each token with the development key basis publishes, so a basis API on a developer's
+desktop, such as `basis dev`'s, accepts it when `issuer` and `audience` match its `BASIS_IDENTITY__ISSUER` and
+`BASIS_IDENTITY__AUDIENCE` (`basis-development` by default). Every other API refuses it.
 
 ## Calling the API
 
@@ -172,7 +181,8 @@ To run `vp dev` against a live API, such as `basis dev`'s on the desktop, set `B
 does, and `fakeSignIn()`'s tokens sign the user in.
 
 `vp run client-check`, which `vp run check-full` runs first, fails when `src/api/generated` is not what `openapi.json`
-generates, one line for each file. Its fix is `vp run client-pull`. `@basis/ui/orval` exports `basisOrval()`, the
+generates, one line for each file. Its fix is `vp run client-pull`. `check-full` then type-checks the whole app with
+the installed TypeScript's `tsc --noEmit`, the generated client included, since `vp check` lints around it. `@basis/ui/orval` exports `basisOrval()`, the
 configuration both tasks use, from spike 0.2: a Zod 4 schema for each model, which drops fields it does not know, a
 TanStack Query v5 hook for each operation, with every response parsed by its schema, and MSW handlers for each
 operation and status. Two settings never change: `zod.strict` stays off, since it would make every response refuse a

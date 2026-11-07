@@ -1,7 +1,7 @@
 /* `vp run client-pull` and `vp run client-check`, run as the preset runs them: Node on src/preset/client.ts, in an
  * app's root. The app is a temporary folder with this package linked in as `node_modules/@basis/ui`, as an installed
- * app has it, so `@basis/ui/mutator` resolves; the API repo is a temporary git repo holding spike 0.2's openapi.json
- * under a tag. */
+ * app has it, so `@basis/ui/mutator` resolves; the API repo is a temporary git repo holding, under a tag, basis's
+ * sample document, as packages/example pins it. */
 
 import { execFileSync, spawnSync } from "node:child_process";
 import {
@@ -22,7 +22,7 @@ import { z } from "zod";
 
 const packageRoot = fileURLToPath(new URL("..", import.meta.url));
 const script = path.join(packageRoot, "src/preset/client.ts");
-const sampleDocument = path.join(packageRoot, "../../docs/spikes/orval/openapi.json");
+const sampleDocument = path.join(packageRoot, "../example/openapi.json");
 
 /** A JSON document's members. */
 const membersSchema = z.record(z.string(), z.unknown());
@@ -69,11 +69,13 @@ beforeAll(() => {
   mkdirSync(path.join(app, "node_modules/@basis"), { recursive: true });
   symlinkSync(packageRoot, path.join(app, "node_modules/@basis/ui"), "junction");
   apiRepo = mkdtempSync(path.join(tmpdir(), "basis-ui-api-repo-"));
+  // The document as basis writes it in the API's repo: with basis's marker, not the example's.
+  const members = Object.entries(membersOf(sampleDocument)).filter(([key]) => key !== "x-basis-ui");
   writeFileSync(
     path.join(apiRepo, "openapi.json"),
     JSON.stringify({
       "x-basis": "managed by basis: `basis sync` rewrites it",
-      ...membersOf(sampleDocument),
+      ...Object.fromEntries(members),
     }),
   );
   git("init", "--quiet");
@@ -105,7 +107,7 @@ describe("vp run client-pull", () => {
     const client = readFileSync(path.join(app, "src/api/generated/client.ts"), "utf8");
     expect(client).toContain("import { apiFetch } from '@basis/ui/mutator';");
     expect(client).toContain("import type { ErrorType } from '@basis/ui/mutator';");
-    expect(client).toContain("export function useGetPositions");
+    expect(client).toContain("export function useConventions");
     expect(client).toContain("headers: { 'Accept': `application/vnd.apache.arrow.stream`");
   });
 
@@ -145,7 +147,7 @@ describe("vp run client-check", () => {
     const generated = path.join(app, "src/api/generated");
     appendFileSync(path.join(generated, "client.ts"), "// edited\n");
     writeFileSync(path.join(generated, "extra.ts"), "export {};\n");
-    rmSync(path.join(generated, "model/position.zod.ts"));
+    rmSync(path.join(generated, "model/bond.zod.ts"));
     const result = run("check");
     expect(result.status).toBe(1);
     const fix =
@@ -153,7 +155,7 @@ describe("vp run client-check", () => {
     expect(result.stderr.trimEnd().split("\n")).toStrictEqual([
       `ERROR src/api/generated/client.ts differs from what openapi.json generates: ${fix}`,
       `ERROR src/api/generated/extra.ts is not one openapi.json generates: ${fix}`,
-      `ERROR src/api/generated/model/position.zod.ts is missing, though openapi.json generates it: ${fix}`,
+      `ERROR src/api/generated/model/bond.zod.ts is missing, though openapi.json generates it: ${fix}`,
     ]);
     expect(run("pull").status).toBe(0);
     expect(run("check").status).toBe(0);

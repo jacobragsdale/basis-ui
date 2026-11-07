@@ -5,45 +5,54 @@ import { fakeSignIn, problemSchema, validationProblemSchema } from "@basis/ui";
 import type { Problem, SignIn, ValidationProblem } from "@basis/ui";
 import { describe, expect, expectTypeOf, test } from "vite-plus/test";
 
-import type { Position, ProblemOutput, ValidationProblemOutput } from "#api/client.ts";
+import type { DayCount, ProblemOutput, ValidationProblemOutput } from "#api/client.ts";
 import {
-  getGetPositionResponseMock404,
-  getGetPositionsMockHandler,
-  getGetPositionsResponseMock422,
+  getBondResponseMock404,
+  getConventionsMockHandler,
+  getRecordSettlementResponseMock422,
 } from "#api/mocks.ts";
 import { renderApp, worker } from "#test-support.tsx";
 
-const position: Position = {
-  as_of: "2026-11-06",
-  book: "RATES",
-  note: null,
-  position_id: 1,
-  price: "99.515625",
-  quantity: 5_000_000,
-  symbol: "UST10Y",
-};
+const conventions: DayCount[] = [{ convention: "ACT/360", year_days: 360 }];
 
 describe("signing in and out", () => {
   test("shows the signed-in user, and after signing out asks the API anonymously", async () => {
     const authorizations: (string | null)[] = [];
     worker.use(
-      getGetPositionsMockHandler(({ request }) => {
+      getConventionsMockHandler(({ request }) => {
         authorizations.push(request.headers.get("authorization"));
-        return [position];
+        return conventions;
       }),
     );
     const { screen } = await renderApp("/");
     await expect.element(screen.getByText("Dev User")).toBeVisible();
     await screen.getByRole("button", { name: "Sign out" }).click();
     await expect.element(screen.getByText("Signed out")).toBeVisible();
-    await expect.element(screen.getByRole("link", { name: "UST10Y" })).toBeVisible();
+    await expect.element(screen.getByRole("cell", { name: "ACT/360" })).toBeVisible();
     expect(authorizations).toHaveLength(2);
     expect(authorizations[0]).toMatch(/^Bearer [\w-]+\.[\w-]+\.[\w-]+$/u);
     expect(authorizations[1]).toBeNull();
   });
 
+  test("signs an anonymous user in, and asks the API again with their token", async () => {
+    const authorizations: (string | null)[] = [];
+    worker.use(
+      getConventionsMockHandler(({ request }) => {
+        authorizations.push(request.headers.get("authorization"));
+        return conventions;
+      }),
+    );
+    const { screen } = await renderApp("/", fakeSignIn({ user: null }));
+    await expect.element(screen.getByText("Signed out")).toBeVisible();
+    await screen.getByRole("banner").getByRole("button", { name: "Sign in" }).click();
+    await expect.element(screen.getByText("Dev User")).toBeVisible();
+    await expect.poll(() => authorizations).toHaveLength(2);
+    expect(authorizations[0]).toBeNull();
+    expect(authorizations[1]).toMatch(/^Bearer /u);
+  });
+
   test("a sign-in that fails says so, and signs in when the user tries again", async () => {
-    worker.use(getGetPositionsMockHandler([position]));
+    worker.use(getConventionsMockHandler(conventions));
     const working = fakeSignIn();
     let attempts = 0;
     const flaky: SignIn = {
@@ -74,9 +83,9 @@ describe("routing", () => {
   });
 
   test("each navigation's time is reported", async () => {
-    worker.use(getGetPositionsMockHandler([position]));
+    worker.use(getConventionsMockHandler(conventions));
     const { screen, reports } = await renderApp("/");
-    await expect.element(screen.getByRole("link", { name: "UST10Y" })).toBeVisible();
+    await expect.element(screen.getByRole("cell", { name: "ACT/360" })).toBeVisible();
     expect(reports.timings).toContain("navigation");
   });
 });
@@ -90,8 +99,8 @@ describe("the generated problem types", () => {
   test.each([...Array.from({ length: 20 }).keys()])(
     "parse with @basis/ui's schemas as the generated mocks make them, sample %i",
     () => {
-      expect(problemSchema.safeParse(getGetPositionResponseMock404()).success).toBe(true);
-      expect(validationProblemSchema.safeParse(getGetPositionsResponseMock422()).success).toBe(
+      expect(problemSchema.safeParse(getBondResponseMock404()).success).toBe(true);
+      expect(validationProblemSchema.safeParse(getRecordSettlementResponseMock422()).success).toBe(
         true,
       );
     },
