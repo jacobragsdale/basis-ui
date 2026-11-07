@@ -72,11 +72,11 @@ version line is its own, apart from basis's: the two meet at the contract, not a
 | -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
 | `src/`                                                         | The app's routes, pages and components                                                                                                     |
 | `openapi.json`                                                 | The pinned copy of the API's document, which the client is generated from                                                                  |
-| `fixtures/`                                                    | Synthetic responses for fixture mode, in git                                                                                               |
+| `fixtures/`                                                    | Synthetic responses for fixture mode, in git, in the record format `basis records export` writes                                           |
 | `.fixtures/`                                                   | Records exported from a basis API's run store by `basis records export`, which git ignores because they hold client data                   |
 | `Dockerfile`, `azure-pipelines.yml`                            | An image that serves the built files with a static file server, and the deploy pipeline that calls the maintainer's team's templates       |
 | `AGENTS.md`, `CLAUDE.md`, `.agents/skills/`, `.claude/skills/` | The agent files, as basis writes them: `AGENTS.md` a short map, `CLAUDE.md` containing `@AGENTS.md`, and the skills copied for Claude Code |
-| `.vite-hooks/`, `.gitattributes`                               | Vite+'s commit and push hooks, and LF line endings on Windows and in WSL alike                                                             |
+| `.vite-hooks/`, `.gitattributes`, `.gitignore`                 | Vite+'s commit and push hooks, LF line endings on Windows and in WSL alike, and the ignored files, `.fixtures/` among them                 |
 
 ## The toolchain, at its strictest
 
@@ -347,10 +347,25 @@ and the packages share one wasm module rather than loading one per feature.
 
 ## Seeing the UI
 
-Agents need to see what they build, so the UI runs without a backend. Fixture mode serves the MSW handlers orval
-generates, the synthetic responses in `fixtures/`, and any records exported into `.fixtures/`. `vp dev` starts the app
-on fixtures on a free port per git worktree, and `vp run shot ROUTE` writes a screenshot, the page's accessibility tree
-and its console errors. Agents drive the browser with Playwright CLI, which Microsoft built for coding agents.
+Agents need to see what they build, so the UI runs without a backend. In fixture mode, MSW's service worker answers
+every request under `/api` from three sources, in this order: the records `basis records export` writes into
+`.fixtures/`, the synthetic responses the app commits in `fixtures/`, and the handlers orval generates. The first record
+or fixture whose method, path and query match the request answers, each folder's files in the order of their names.
+Records and fixtures share one format, basis-ui's, which `@basis/ui` ships as a JSON Schema that basis tests its export
+against: one JSON file for each exchange, holding the operation's id, when it was recorded, the request's method, its
+path without `/api`, its query and its body, and the response's status, the headers that matter to a UI, and its body,
+as JSON or as base64 bytes with their media type. A record never holds the bearer token: a request keeps no headers,
+and a JWT anywhere in a record is refused. A request for Arrow is answered only by a fixture, since orval's handlers
+make random bytes, and a request no source answers gets a problem that says what to add. Every file is checked against
+`openapi.json` when `vp dev` starts and when one changes, so a fixture a newer document has left behind fails with an
+`ERROR` line rather than serving an answer the API no longer gives.
+
+`vp dev` starts the app in fixture mode with no code in the app: the preset rewrites `index.html` to start the worker
+before the app's entry runs, and reports each answer and its source through the telemetry interface, which writes to
+the browser's console. `BASIS_API_URL` sends `/api` to a live API instead. The app runs on a port derived from its
+folder, the same on every run and another in another git worktree, and `vp run shot ROUTE` writes a screenshot, the
+page's accessibility tree and its console errors. Agents drive the browser with Playwright CLI, which Microsoft built
+for coding agents.
 
 Screenshots differ between operating systems, as Playwright's docs warn, and the desktops run no Docker to pin a Linux
 image in. So visual baselines are made and compared only in WSL, with the Chromium build Playwright pins and the fonts
@@ -422,6 +437,7 @@ managed by `vp env`.
 | Parallax's server                                           | The firm does not need million-row tables in the browser, and every app would have deployed one.                                                                                                                                                         |
 | Storybook visual tests, Argos, Lost Pixel                   | Storybook's visual tests send stories to Chromatic's cloud, Argos's maintainers do not support self-hosting, and Lost Pixel was archived in April 2026. Playwright compares screenshots locally.                                                         |
 | @hey-api/openapi-ts                                         | It lists `typescript` as a peer, and TypeScript 7 ships no compiler API. orval also depends on TypeScript 6 since 8.45, but runs with it overridden to 7 (spike 0.2); hey-api was not tried that way.                                                    |
+| Starting fixture mode from each app's entry module          | Every app would carry the same lines, and one without them would call nothing in `vp dev`; the preset starts it from `index.html`.                                                                                                                       |
 
 ## Facts behind the decisions
 
@@ -447,6 +463,7 @@ Each fact was checked on 2026-11-06 against the source named, unless it says sec
 | Parallax's wasm build was 5.0 MB, or 1.07 MB gzipped, before export moved in, and is 1.01 MB brotli with it; Recharts 3.10.1's line and bar charts bundle to 408 kB minified, or 118 kB gzipped, without React                                                                         | Measured here on 2026-11-06 and in spike 0.3                    |
 | Chromium's CDP CPU throttling does not reach Web Workers, so throttled figures for a worker-held engine need a CPU quota on the whole browser                                                                                                                                          | Spike 0.3                                                       |
 | Parallax's engine holds about four times a table's Arrow size in memory, and an xlsx written in wasm about 190 bytes a cell, which WebAssembly never returns                                                                                                                           | Spike 0.3                                                       |
+| orval 8.46's MSW mocks pick an enum field's value from `Object.values` of its Zod schema, which is no value of the enum, so a generated response with an enum fails its schema; its Arrow mock is 1 to 64 random bytes                                                                 | Measured here on 2026-11-07, and in spike 0.2                   |
 
 ## Not yet verified
 

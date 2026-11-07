@@ -41,11 +41,18 @@ function clientTask(verb: "check" | "pull"): Task {
   return { cache: false, command: `node "${clientScript}" ${verb}` };
 }
 
-/** With `BASIS_API_URL` set, such as `http://127.0.0.1:8000`, `vp dev` sends `/api` to that API with the prefix
- * removed, as the ingress does, so the app runs against a live API on the desktop; without it, nothing is proxied. */
-function apiProxy(): Pick<ViteUserConfig, "server"> {
+/** The live API `vp dev` calls, from `BASIS_API_URL`, such as `http://127.0.0.1:8000`, or `undefined` for fixture
+ * mode. */
+function liveApi(): string | undefined {
   const target = process.env["BASIS_API_URL"];
-  if (target === undefined || target === "") {
+  return target === undefined || target === "" ? undefined : target;
+}
+
+/** With `BASIS_API_URL` set, `vp dev` sends `/api` to that API with the prefix removed, as the ingress does, so the app
+ * runs against a live API on the desktop, and fixture mode is off; without it, nothing is proxied. */
+function apiProxy(): Pick<ViteUserConfig, "server"> {
+  const target = liveApi();
+  if (target === undefined) {
     return {};
   }
   return {
@@ -104,8 +111,9 @@ function testDependenciesPlugin(): Plugin {
 /** React with the React Compiler, which fails the build on any component it cannot optimize, Tailwind, the head
  * script that applies the stored mode and density before the first paint, written into the app's index.html, and, in
  * `vp dev` and `vp test` only, MSW's service worker at `/mockServiceWorker.js`, so tests serve the generated client's
- * handlers; in `vp test`, every dependency of the app's modules is pre-bundled before the tests start. They load only
- * when a command needs them, so `vp lint` and `vp fmt` stay fast. */
+ * handlers; in `vp dev`, a port of the app's own and fixture mode (fixture-mode.ts); in `vp test`, every dependency of
+ * the app's modules is pre-bundled before the tests start. They load only when a command needs them, so `vp lint` and
+ * `vp fmt` stay fast. */
 function basisPlugins(): PluginOption[] {
   return (
     lazyPlugins(async () => {
@@ -114,19 +122,22 @@ function basisPlugins(): PluginOption[] {
         { default: babel },
         { default: tailwindcss },
         { msw },
+        { fixtureModePlugin },
       ] = await Promise.all([
         import("@vitejs/plugin-react"),
         import("@rolldown/plugin-babel"),
         import("@tailwindcss/vite"),
         import("msw/vite"),
+        import("./fixture-mode.ts"),
       ]);
       return [
         headScriptPlugin(),
         react(),
         babel({ presets: [reactCompilerPreset({ panicThreshold: "all_errors" })] }),
         tailwindcss(),
-        // Worker-only: the app starts the worker itself, in a test or in fixture mode, and no build carries it.
+        // Worker-only: a test starts the worker itself, and fixture mode's script does in vp dev; no build carries it.
         { ...msw({ mode: "worker-only" }), apply: "serve" },
+        fixtureModePlugin({ liveApi: liveApi() }),
         testDependenciesPlugin(),
       ];
     }) ?? []
