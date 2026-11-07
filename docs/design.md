@@ -157,7 +157,7 @@ Each component starts from shadcn's source for Base UI, which is MIT-licensed, a
 takes the components a business app uses:
 
 - **Forms and inputs:** Button, Button Group, Input, Input Group, Textarea, Field, Label, Checkbox, Radio Group,
-  Switch, Slider, Select, Native Select, Combobox, Toggle, Toggle Group, Calendar and Date Picker.
+  Switch, Slider, Select, Native Select, Combobox, Toggle and Toggle Group.
 - **Overlays and menus:** Dialog, Alert Dialog, Sheet, Drawer, Popover, Hover Card, Tooltip, Dropdown Menu, Context
   Menu, Menubar and Command.
 - **Navigation and layout:** Sidebar, Navigation Menu, Tabs, Breadcrumb, Pagination, Accordion, Collapsible, Resizable,
@@ -166,7 +166,8 @@ takes the components a business app uses:
   Empty, Table and Typography.
 
 It leaves out shadcn's chat and AI components (Attachment, Bubble, Message, Message Scroller, Trace, Code Block, Marker
-and Questionnaire), Carousel, Input OTP, Direction, and Chart, since [every chart is parallax's](#charts).
+and Questionnaire), Carousel, Input OTP, Direction, Calendar and Date Picker, whose react-day-picker brings date-fns
+(the as-of date picker below is built on Temporal instead), and Chart, since [every chart is parallax's](#charts).
 
 The firm's own components cover what shadcn does not:
 
@@ -356,7 +357,7 @@ repeat moves the limit to what a desktop's own browser meets, and restates paral
 views held on a server, for tables held in the browser. A load past the engine's memory traps the wasm, so the worker
 treats a trap as fatal: it fails every view with the reason and starts again. React components replace the 44 Angular
 files of its web layer; the canvas renderers, the formatter, the charts and the technical-analysis tools stay, as do the
-DuckDB and Perspective comparisons that test the engine's numbers. App developers install one npm package with the wasm
+DuckDB comparisons that test the engine's numbers. App developers install one npm package with the wasm
 built into it, and Rust stays inside this repo's build. Parallax keeps its Apache-2.0 license.
 
 ## Versions
