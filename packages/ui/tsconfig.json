@@ -1,7 +1,10 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "types": []
+    "types": [],
+    // src/api/mutator.ts imports the package by its own name, which outside this package means its build. Here it
+    // means the source, or the build's declarations would merge into the source's a second time.
+    "paths": { "@basis/ui": ["./src/index.ts"] }
   },
   "include": ["src", "vite.config.ts"]
 }

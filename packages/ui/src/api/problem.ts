@@ -4,11 +4,12 @@
 
 import { z } from "zod";
 
-/** Problem details. Every member is optional in RFC 9457; `type` defaults to `about:blank`. Unknown members are kept,
- * since a problem type may add its own. */
+/** Problem details. Every member is optional in RFC 9457; `type` defaults to `about:blank`. basis's document declares
+ * `detail` and `instance` as a string or `null`. Unknown members are kept, since a problem type may add its own, as
+ * basis's `data` does. */
 const problemSchema = z.looseObject({
-  detail: z.string().optional(),
-  instance: z.string().optional(),
+  detail: z.string().nullish(),
+  instance: z.string().nullish(),
   status: z.number().int().optional(),
   title: z.string().optional(),
   type: z.string().default("about:blank"),

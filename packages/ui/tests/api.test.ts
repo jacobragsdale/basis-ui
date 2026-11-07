@@ -13,7 +13,8 @@ import {
 } from "#index.ts";
 import type { ApiError, ApiResponse, TokenSource } from "#index.ts";
 
-type Fetch = typeof fetch;
+/** `fetch`'s type, written out: the preset bans naming the global outside the client layer. */
+type Fetch = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 
 /** Stubs `fetch` to answer every request with `response`, and returns the stub so a test can read its requests. */
 function answer(response: Response): Mock<Fetch> {

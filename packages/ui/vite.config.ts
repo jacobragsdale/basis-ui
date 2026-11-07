@@ -10,6 +10,8 @@ export default defineConfig({
     entry: [
       "src/index.ts",
       "src/preset/index.ts",
+      "src/preset/orval.ts",
+      "src/preset/client.ts",
       "src/numbers/index.ts",
       "src/utils/index.ts",
       "src/dates/index.ts",

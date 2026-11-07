@@ -32,17 +32,18 @@ fix reaches all of them in one upgrade.
 
 ## What a developer sees
 
-| Command                         | What it does                                                                                                              |
-| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `vp check`                      | Formatting, linting and type checking together, plus whether the generated client still matches the repo's `openapi.json` |
-| `vp test`                       | The Vitest suites, in Vitest's browser mode with the Playwright provider                                                  |
-| `vp dev`                        | The app in fixture mode, on a free port per git worktree, with no backend                                                 |
-| `vp run check-full`             | `check` and `test`, plus screenshot comparison in WSL                                                                     |
-| `vp run shot ROUTE`             | A screenshot of a page, its accessibility tree and its console errors                                                     |
-| `vp run client-pull`            | Copies the API's `openapi.json` from the API repo at a tag, or from a deployed API, and regenerates the client            |
-| `vp run review`                 | A pull request's summary: screenshot diffs, the client's diff, the versions, and the commit that was checked              |
-| `vp run sync`, `vp run upgrade` | Rewrite the framework's files from the installed version; update `@basis/ui`, sync and check in one step                  |
-| `vp run doctor`, `vp run docs`  | Check the desktop's setup and print the fix for each problem; print the docs for the installed version                    |
+| Command                         | What it does                                                                                                                          |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `vp check`                      | Formatting, linting and type checking together                                                                                        |
+| `vp test`                       | The Vitest suites, in Vitest's browser mode with the Playwright provider                                                              |
+| `vp dev`                        | The app in fixture mode, on a free port per git worktree, with no backend                                                             |
+| `vp run check-full`             | `client-check`, `check` and `test`, plus screenshot comparison in WSL                                                                 |
+| `vp run shot ROUTE`             | A screenshot of a page, its accessibility tree and its console errors                                                                 |
+| `vp run client-pull`            | Copies the API's `openapi.json` from the API repo at a tag, or from a deployed API, and regenerates the client                        |
+| `vp run client-check`           | Whether the generated client still matches the repo's `openapi.json`: a task of its own, since an app cannot add a step to `vp check` |
+| `vp run review`                 | A pull request's summary: screenshot diffs, the client's diff, the versions, and the commit that was checked                          |
+| `vp run sync`, `vp run upgrade` | Rewrite the framework's files from the installed version; update `@basis/ui`, sync and check in one step                              |
+| `vp run doctor`, `vp run docs`  | Check the desktop's setup and print the fix for each problem; print the docs for the installed version                                |
 
 The `vp run` tasks come from `@basis/ui`'s preset, which an app's `vite.config.ts` spreads in, so every UI repo has the
 same ones. As in basis, every file `vp run sync` writes opens with a line saying that basis-ui manages it, the drift

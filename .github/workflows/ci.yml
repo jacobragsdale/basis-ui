@@ -44,8 +44,11 @@ jobs:
             ui:
               - "packages/ui/**"
               - "packages/gallery/**"
+              - "packages/example/**"
               # The formatter's tests read the fixtures parallax's Rust formatter writes.
               - "packages/parallax/crates/parallax-engine/tests/fixtures/format.json"
+              # The client tasks' tests generate a client from spike 0.2's document.
+              - "docs/spikes/orval/openapi.json"
               - "package.json"
               - "pnpm-lock.yaml"
               - "pnpm-workspace.yaml"
@@ -69,11 +72,15 @@ jobs:
           cache: true
       - run: vp run @basis/ui#build
       - run: vp run @basis/ui#test
-      # The gallery consumes @basis/ui's build, and its browser tests run in the Chromium that the preset's Playwright
-      # version pins.
+      # The gallery and the example consume @basis/ui's build, and their browser tests run in the Chromium that the
+      # preset's Playwright version pins.
       - run: vp exec --filter @basis/ui playwright install --with-deps chromium
       - run: vp run @basis/gallery#test
       - run: vp run @basis/gallery#build
+      # The example app proves the app shell: its client must match its openapi.json, and its tests run in Chromium.
+      - run: vp run @basis/example#client-check
+      - run: vp run @basis/example#test
+      - run: vp run @basis/example#build
 
   # Parallax's jobs, moved with it from its own repo. It runs only in the browser, so none needs a database or a server.
   parallax-rust:

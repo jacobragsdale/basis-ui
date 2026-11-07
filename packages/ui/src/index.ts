@@ -1,6 +1,5 @@
 /* @basis/ui's entry point. It names every export rather than using `export *`: `oxc/no-barrel-file` fails a file whose
- * `export *` lines load more than 100 modules, and Base UI's Select alone loads more than 180. The app shell arrives in
- * a later roadmap step. */
+ * `export *` lines load more than 100 modules, and Base UI's Select alone loads more than 180. */
 
 // Forms and inputs. Each family's agent edits only its family's block, so families built at once do not collide.
 export { Button } from "./components/button.tsx";
@@ -526,3 +525,24 @@ export {
   type Problem,
   type ValidationProblem,
 } from "./api/problem.ts";
+
+// The app shell: its providers, the sign-in adapter and its fake, telemetry, and how errors are shown.
+export { ErrorAlert, type ErrorAlertProps } from "./components/error-alert.tsx";
+export { BasisApp, type BasisAppProps } from "./shell/basis-app.tsx";
+export { describeError, type ErrorDescription, type FieldProblem } from "./shell/describe-error.ts";
+export { createQueryClient } from "./shell/query-client.ts";
+export { useSession, type Session } from "./shell/session.ts";
+export { toastError } from "./shell/toast-error.tsx";
+export {
+  fakeSignIn,
+  fakeUser,
+  type FakeSignInOptions,
+  type SignIn,
+  type User,
+} from "./shell/sign-in.ts";
+export {
+  consoleTelemetry,
+  useTelemetry,
+  type Telemetry,
+  type TelemetryAttributes,
+} from "./shell/telemetry.ts";

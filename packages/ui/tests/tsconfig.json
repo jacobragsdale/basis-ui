@@ -1,7 +1,9 @@
 {
   "extends": "../../../tsconfig.base.json",
   "compilerOptions": {
-    "types": ["node"]
+    "types": ["node"],
+    // As in the package's tsconfig: the package's own name means its source here.
+    "paths": { "@basis/ui": ["../src/index.ts"] }
   },
   "include": [".", "../src"]
 }

@@ -19,7 +19,8 @@ const nodeCode = ["packages/*/scripts/**", "packages/*/tests/**", "packages/ui/s
 
 export default defineConfig({
   fmt: {
-    ignorePatterns: [parallax, generatedFixtures],
+    ...preset.fmt,
+    ignorePatterns: [...(preset.fmt.ignorePatterns ?? []), parallax, generatedFixtures],
   },
   lint: {
     ...lint,
