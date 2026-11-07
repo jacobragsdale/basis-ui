@@ -35,8 +35,6 @@ import {
   viewChild
 } from "@angular/core";
 
-import * as z from "zod/mini";
-
 import type { DistinctValues, Viewport } from "../connection";
 import { isNegativeText } from "../format";
 import { CellFlag } from "../frame";
@@ -87,12 +85,9 @@ export interface DrillRequest {
   readonly label: string;
 }
 
-/** The message a refused export posts from its hidden frame. */
-const exportRefusal = z.strictObject({ source: z.literal("parallax-export"), token: z.string(), error: z.string() });
-
 const EXPORT_TIME = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
 
-/** An export's file name, as the server names it: the dataset, made safe, and the time in New York, such as `positions-2026-11-07-1430.xlsx`. */
+/** An export's file name: the dataset, made safe, and the time in New York, such as `positions-2026-11-07-1430.xlsx`. */
 export function exportFileName(dataset: string, extension: string, at: Date): string {
   const parts = new Map(EXPORT_TIME.formatToParts(at).map((p) => [p.type, p.value]));
   const part = (type: Intl.DateTimeFormatPartTypes): string => parts.get(type) ?? "";
@@ -454,7 +449,6 @@ const GRID_STYLES = `
       [viewRows]="source.frame()?.totalRows ?? null"
       [sourceAsOf]="source.frame()?.sourceAsOfMicros ?? null"
       [status]="source.status()"
-      [placement]="source.placement()"
       [message]="message()"
     />
   `,
@@ -746,62 +740,15 @@ export class GridComponent {
   }
 
   /**
-   * Downloads the view as an Excel workbook or a CSV file. A view of data the app
-   * loaded is written by the browser's engine, which holds its table. Otherwise the
-   * browser posts the layout in a form to the server and streams the answer to
-   * disk, so a large export never sits in the page's memory. A refusal, such as
-   * more rows than Excel holds, comes back as text, which the status bar shows.
+   * Downloads the view as an Excel workbook or a CSV file, written by the engine in the browser, which holds its
+   * table, and saved as a download. An export of another load than the screen shows is refused, so the file holds what
+   * the screen does. A refusal, such as more cells than an xlsx in the browser holds, shows in the status bar.
    */
   public export(format: "xlsx" | "csv"): void {
     const layout = this.current();
     if (layout === null) {
       return;
     }
-    if (this.source.placement()?.loaded === true) {
-      this.exportInBrowser(layout, format);
-      return;
-    }
-    const token = `${String(Date.now())}-${String(Math.random()).slice(2)}`;
-    const target = `px-export-${token}`;
-    const frame = this.document.createElement("iframe");
-    frame.name = target;
-    frame.hidden = true;
-    // Downloads never reach the page; a refusal posts its reason here, which works
-    // even when the server is on another origin and the frame cannot be read.
-    const window = this.document.defaultView;
-    const listen = (event: MessageEvent<unknown>): void => {
-      const posted = exportRefusal.safeParse(event.data);
-      if (posted.success && posted.data.token === token) {
-        this.message.set(`Export failed: ${posted.data.error}`);
-      }
-    };
-    window?.addEventListener("message", listen);
-    this.document.body.append(frame);
-    setTimeout(() => {
-      window?.removeEventListener("message", listen);
-      frame.remove();
-    }, 600_000);
-    const form = this.document.createElement("form");
-    form.method = "post";
-    form.action = this.client.exportUrl();
-    form.target = target;
-    // The server refuses to export another load than the screen shows, so the file holds what the screen does.
-    const shown = this.source.frame()?.loadVersion;
-    for (const [name, value] of [["layout", JSON.stringify(layout)], ["format", format], ["token", token], ...(shown === undefined ? [] : [["load_version", shown.toString()] as const])] as const) {
-      const field = this.document.createElement("input");
-      field.type = "hidden";
-      field.name = name;
-      field.value = value;
-      form.append(field);
-    }
-    this.document.body.append(form);
-    form.submit();
-    form.remove();
-    this.message.set(format === "xlsx" ? "Exporting to Excel; your browser will save the file." : "Exporting to CSV; your browser will save the file.");
-  }
-
-  /** Writes the export in the browser's engine and saves it as a download, refusing another load than the screen shows. */
-  private exportInBrowser(layout: Layout, format: "xlsx" | "csv"): void {
     const shown = this.source.frame()?.loadVersion ?? null;
     const name = exportFileName(layout.dataset, format, new Date());
     this.message.set(format === "xlsx" ? "Exporting to Excel…" : "Exporting to CSV…");

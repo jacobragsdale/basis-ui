@@ -1,7 +1,8 @@
-import { ChangeDetectionStrategy, Component, input, signal, viewChild } from "@angular/core";
+import { ChangeDetectionStrategy, Component, inject, input, signal, viewChild } from "@angular/core";
 import { GridComponent, standardTheme } from "parallax";
 import type { Density, LayoutInput, ParallaxTheme, Scheme } from "parallax";
 
+import { DemoData } from "./data";
 import type { GridStats } from "./performance.component";
 
 /** The book: positions with their ticker pinned, and market value and P&L totalled, in columns near the left. */
@@ -28,9 +29,9 @@ export const BLOTTER: LayoutInput = {
 };
 
 /**
- * Two small tables side by side: a few hundred rows, the size most tables are. The book is held in the page and
- * run by the WebAssembly engine; the blotter is held on the server. Each sizes itself to its rows, keeps its ticker
- * pinned at the left and totals its amounts at the bottom. Every change should feel instant at this size, and the
+ * Two small tables side by side: a few hundred rows, the size most tables are, each loaded into the page and run by
+ * the WebAssembly engine. Each sizes itself to its rows, keeps its ticker pinned at the left and totals its amounts
+ * at the bottom. Every change should feel instant at this size, and the
  * performance overlay times each one.
  */
 @Component({
@@ -43,7 +44,7 @@ export const BLOTTER: LayoutInput = {
       <px-grid #bookGrid [(layout)]="book" [scheme]="scheme()" [theme]="theme()" [density]="density()" height="auto" [maxHeight]="maxHeight" />
     </section>
     <section data-table="blotter">
-      <h2>Blotter <span>500 trades, held on the server</span></h2>
+      <h2>Blotter <span>500 trades, held in this page</span></h2>
       <px-grid #blotterGrid [(layout)]="blotter" [scheme]="scheme()" [theme]="theme()" [density]="density()" height="auto" [maxHeight]="maxHeight" />
     </section>
   `,
@@ -89,6 +90,10 @@ export class SmallComponent {
 
   private readonly bookGrid = viewChild("bookGrid", { read: GridComponent });
   private readonly blotterGrid = viewChild("blotterGrid", { read: GridComponent });
+
+  constructor() {
+    inject(DemoData).need("book", "blotter");
+  }
 
   /** Each grid's drawing counters, for the performance overlay. */
   public stats(): readonly GridStats[] {

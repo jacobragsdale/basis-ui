@@ -6,23 +6,19 @@ research already done.
 
 ## Data sources
 
-- **Data lake connector.** Which lake is in use (ADLS Gen2, S3, Databricks or
-  Delta, Fabric OneLake) is unknown. The `object_store` crate covers the object
-  stores once the lake is known.
-- **Snowflake.** The planned move to Snowflake hasn't happened yet. Its ADBC
-  driver moved from Apache Arrow to the ADBC Driver Foundry in ADBC 24
-  (2026-07-28). `adbc_core` 0.25 is the Rust entry point.
+Parallax has had no connectors since basis-ui's step 2.2 deleted its server
+with them: an app's API reads the data and sends it as Arrow. What waited for
+the connectors, a data lake, Snowflake and JSON converted inside SQL Server,
+is the APIs' to decide now.
+
 - **Live sources and RabbitMQ.** No streaming source exists, although RabbitMQ
-  has been used before. When one arrives, it gets an adapter on the ingest
-  interface, along with the live-update budget of 10,000 row updates per second
-  with a p99 of ≤ 250 ms from update to screen.
-- **Converting JSON inside SQL Server.** `OPENJSON ... WITH` could move JSON
-  conversion onto the database server. The first milestone converts JSON in
-  Rust, with the same code that handles MongoDB documents.
-- **Arrays in documents.** All arrays are rejected for now, because the engine
-  has no list columns. Arrays of scalars need list columns in the engine and the
-  grid; arrays of objects also need a choice between exploding them into child
-  rows and using Arrow struct lists.
+  has been used before. When one arrives, the browser engine needs a way to
+  take a stream of upserts, along with the live-update budget of 10,000 row
+  updates per second with a p99 of ≤ 250 ms from update to screen.
+- **Arrays.** The engine has no list columns, so a load with one is refused.
+  Arrays of scalars need list columns in the engine and the grid; arrays of
+  objects also need a choice between exploding them into child rows and using
+  Arrow struct lists.
 
 ## Engine
 
@@ -31,11 +27,6 @@ research already done.
 - **Running views as SQL in another engine.** View configurations would be
   translated to SQL for DuckDB or ClickHouse, as Perspective's virtual servers
   do.
-- **Refreshing copies in the browser.** A copy is fetched once per page, so a
-  reload on the server reaches a browser-held view only when the page reloads.
-  Pushing reloads to copies, as a diff, waits until pages stay open long enough
-  for it to matter. Copies are also never evicted from the worker during a page's
-  life.
 - **Browser threads and 64-bit WebAssembly memory.** Rust's
   `wasm64-unknown-unknown` target is Tier 3. Threads need nightly Rust,
   `-Z build-std` and cross-origin isolation headers. Revisit if a
@@ -63,12 +54,9 @@ Left out of milestone 4 (2026-11-03 to 2026-11-04), for the reasons given.
 - **Exporting only the selected cells.** Export writes the whole view, which is
   what the screen's filters, search and totals describe; copying covers a
   selection.
-- **Running sessions concurrently on one socket.** One socket runs one message
+- **Running sessions concurrently in one worker.** One worker runs one message
   at a time, so a small grid can wait behind a heavy rebuild on the same page.
   The overlay's report hasn't shown it mattering.
-- **Opening a browser-held view on the server while its copy loads.** The first
-  rows of a browser-held table wait for the worker and the copy. Prewarming made
-  the wait small enough to meet the budget.
 - **Hiding a grouped column.** DevExtreme hides a column from the data area
   when the grid is grouped by it (`showWhenGrouped`); parallax keeps it shown,
   so the export and the clipboard keep every column. Whether to follow
@@ -108,19 +96,14 @@ Left out of milestone 5 (2026-11-04), for the reasons given.
 
 - **Python package with Streamlit and Dash components.** Python is dropped for
   now, but these findings from 2026-11-02 still apply:
-  - PyO3 0.30.1, maturin 1.16.0 and `pyo3-arrow` 0.20.0 can expose the engine,
-    server and export without copying data from polars or pyarrow.
+  - PyO3 0.30.1, maturin 1.16.0 and `pyo3-arrow` 0.20.0 can expose the engine
+    and export without copying data from polars or pyarrow.
   - Streamlit 1.66 Components v2 render inside the page without an iframe and
     pass Streamlit's theme through CSS custom properties. A custom-element
     build of the Angular components could mount there directly.
   - Dash 4.5 components must be React, so Dash needs a thin React wrapper
     around the same custom element.
-  - The components must talk to the engine over their own WebSocket. Routing
-    scroll and pivot traffic through Python would rerun Streamlit scripts and
-    fire Dash callbacks.
-  - Dash under gunicorn runs several workers, so it needs a client mode that
-    connects to a separate server. Single-process Streamlit can run the server
-    inside Python.
-  - A server started from Python needs at least localhost binding and
-    unguessable per-view tokens, because the library has no auth.
+  - The components must talk to the engine directly, as they do to the
+    browser's worker. Routing scroll and pivot traffic through Python would
+    rerun Streamlit scripts and fire Dash callbacks.
 - **Jupyter widget.** Not wanted.

@@ -1,11 +1,10 @@
 /**
  * The engine in the browser: a Web Worker running the WebAssembly build, holding
- * the tables the app loads and copies of server tables.
+ * the tables the app loads.
  *
  * One worker serves the page. The app hands it Arrow bytes with `load`, which move
  * to the worker rather than being copied, and the worker's connection answers
- * views of those tables with no server at all. A dataset the server marks for the
- * browser is copied in the first time a view needs it.
+ * views of those tables.
  *
  * The browser's limits are checked before a load costs any memory, and say so
  * plainly. A load or export that runs the engine out of memory traps it, which
@@ -26,9 +25,6 @@ export interface WorkerPort {
   readonly addEventListener: (type: string, listener: (event: Event) => void) => void;
   readonly terminate: () => void;
 }
-
-/** How long a copy may take to arrive and load before the view runs on the server instead. */
-export const COPY_TIMEOUT_MS = 120_000;
 
 /**
  * The most bytes of Arrow one table the app loads may have: spike 0.3's limit for a table held in the browser,
@@ -59,7 +55,6 @@ export const EXPORT_TYPES: Readonly<Record<ExportFormat, string>> = { xlsx: "app
 /** Messages the worker sends; see `worker/worker.ts`. */
 const outboundSchema = z.discriminatedUnion("kind", [
   z.strictObject({ kind: z.literal("reply"), bytes: z.instanceof(Uint8Array) }),
-  z.strictObject({ kind: z.literal("copied"), id: z.int(), rows: z.int().check(z.nonnegative()) }),
   z.strictObject({ kind: z.literal("loaded"), id: z.int(), rows: z.int().check(z.nonnegative()) }),
   z.strictObject({ kind: z.literal("chunk"), id: z.int(), bytes: z.instanceof(Uint8Array) }),
   z.strictObject({ kind: z.literal("exported"), id: z.int(), bytes: z.nullable(z.instanceof(Uint8Array)) }),
@@ -71,7 +66,7 @@ const outboundSchema = z.discriminatedUnion("kind", [
 type Outbound = z.output<typeof outboundSchema>;
 
 /** An answer to one request. */
-type Answer = Extract<Outbound, { kind: "copied" | "loaded" | "exported" }>;
+type Answer = Extract<Outbound, { kind: "loaded" | "exported" }>;
 
 /** How a load of the app's Arrow bytes is keyed and stamped. */
 export interface LoadOptions {
@@ -100,9 +95,9 @@ interface Pending {
   parts: Blob | null;
 }
 
-/** The key a copy is held under: the dataset and its parameters, in a fixed order. */
-function copyKey(dataset: string, parameters: Readonly<Record<string, string>>): string {
-  return JSON.stringify([dataset, Object.entries(parameters).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))]);
+/** Whether `bytes` are still on their way, rather than in hand. */
+function arriving(bytes: ArrayBuffer | PromiseLike<ArrayBuffer>): bytes is PromiseLike<ArrayBuffer> {
+  return "then" in bytes && typeof bytes.then === "function";
 }
 
 /** The reason every view and request is given after the engine traps. */
@@ -121,7 +116,6 @@ export class BrowserEngine {
   private running: Running;
   private nextId = 1;
   private readonly pending = new Map<number, Pending>();
-  private readonly copies = new Map<string, Promise<void>>();
   /** Datasets the app has loaded into the running worker. */
   private readonly held = new Set<string>();
   /** The latest load of each dataset still waiting for its answer. */
@@ -151,17 +145,14 @@ export class BrowserEngine {
 
   private spawn(): Running {
     const worker = this.start();
-    const connection = new Connection(
-      {
-        send: (bytes) => {
-          worker.postMessage({ kind: "message", bytes });
-        },
-        close: () => {
-          worker.terminate();
-        }
+    const connection = new Connection({
+      send: (bytes) => {
+        worker.postMessage({ kind: "message", bytes });
       },
-      "browser"
-    );
+      close: () => {
+        worker.terminate();
+      }
+    });
     // A worker that has been replaced is never heard from again.
     const current = (): boolean => this.running.worker === worker;
     worker.addEventListener("message", (event) => {
@@ -185,72 +176,21 @@ export class BrowserEngine {
   }
 
   /**
-   * Loads the copy of `dataset` for `parameters` from `url`, once: later calls for
-   * the same table share the first load. A load that fails, or takes longer than
-   * `timeoutMs`, is forgotten, so a later call tries again.
-   */
-  public copy(dataset: string, parameters: Readonly<Record<string, string>>, url: string, timeoutMs: number = COPY_TIMEOUT_MS): Promise<void> {
-    const key = copyKey(dataset, parameters);
-    const known = this.copies.get(key);
-    if (known !== undefined) {
-      return known;
-    }
-    let sent = 0;
-    const loaded = this.request((id) => {
-      sent = id;
-      this.running.worker.postMessage({ kind: "copy", id, dataset, parameters: { ...parameters }, url });
-    }).then(() => undefined);
-    if (this.failure !== null) {
-      return loaded;
-    }
-    this.copies.set(key, loaded);
-    const timer = setTimeout(() => {
-      this.running.worker.postMessage({ kind: "cancel", id: sent });
-      this.settle(sent, new Error(`the copy took longer than ${String(timeoutMs / 1000)} s`));
-    }, timeoutMs);
-    loaded.then(
-      () => {
-        clearTimeout(timer);
-      },
-      () => {
-        clearTimeout(timer);
-        if (this.copies.get(key) === loaded) {
-          this.copies.delete(key);
-        }
-      }
-    );
-    return loaded;
-  }
-
-  /**
    * Loads Arrow IPC stream bytes that the app holds, such as its API's response, as `dataset`. The buffer moves to
    * the worker, so the page can no longer read it, and it is never copied between threads. A second load of the same
    * dataset reloads it, and its open views show the new rows.
+   *
+   * `bytes` may also be a promise of them, such as a fetch's `arrayBuffer()`: the load counts as in flight from this
+   * call, so a view that opens before the bytes arrive waits for them, and a fetch that fails fails its views with
+   * the reason.
    *
    * Bytes past {@link MAX_ARROW_BYTES} are refused before they leave the page, and the buffer stays the app's; a
    * stream of more than {@link MAX_ROWS} rows is refused by the engine before it decodes any data. The stream's schema
    * metadata may carry the load's status, as `parallax.load`: when the source was read, and NaNs the API turned
    * blank. A refused reload leaves the dataset's previous rows in place.
    */
-  public load(dataset: string, bytes: ArrayBuffer, options: LoadOptions = {}): Promise<Loaded> {
-    if (bytes.byteLength > MAX_ARROW_BYTES) {
-      return Promise.reject(
-        new Error(`${dataset} is ${String(bytes.byteLength)} bytes of Arrow, more than the ${String(MAX_ARROW_BYTES)} a table in the browser holds; have its API filter or aggregate the data to fit`)
-      );
-    }
-    const nowMicros = options.receivedAtMicros ?? Date.now() * 1000;
-    const loading = this.request((id) => {
-      this.running.worker.postMessage(
-        { kind: "load", id, dataset, bytes, primaryKey: options.primaryKey ?? null, nowMicros, sourceAsOfMicros: options.sourceAsOfMicros ?? null, maxRows: MAX_ROWS },
-        { transfer: [bytes] }
-      );
-    }).then((answer): Loaded => {
-      if (answer.kind !== "loaded") {
-        throw new Error("the parallax worker answered a load with something else");
-      }
-      this.held.add(dataset);
-      return { dataset, rows: answer.rows };
-    });
+  public load(dataset: string, bytes: ArrayBuffer | PromiseLike<ArrayBuffer>, options: LoadOptions = {}): Promise<Loaded> {
+    const loading = arriving(bytes) ? Promise.resolve(bytes).then((arrived) => this.send(dataset, arrived, options)) : this.send(dataset, bytes, options);
     if (this.failure !== null) {
       return loading;
     }
@@ -262,6 +202,28 @@ export class BrowserEngine {
     };
     loading.then(settled, settled);
     return loading;
+  }
+
+  /** Checks the bytes against the byte limit and moves them to the worker to load as `dataset`. */
+  private send(dataset: string, bytes: ArrayBuffer, options: LoadOptions): Promise<Loaded> {
+    if (bytes.byteLength > MAX_ARROW_BYTES) {
+      return Promise.reject(
+        new Error(`${dataset} is ${String(bytes.byteLength)} bytes of Arrow, more than the ${String(MAX_ARROW_BYTES)} a table in the browser holds; have its API filter or aggregate the data to fit`)
+      );
+    }
+    const nowMicros = options.receivedAtMicros ?? Date.now() * 1000;
+    return this.request((id) => {
+      this.running.worker.postMessage(
+        { kind: "load", id, dataset, bytes, primaryKey: options.primaryKey ?? null, nowMicros, sourceAsOfMicros: options.sourceAsOfMicros ?? null, maxRows: MAX_ROWS },
+        { transfer: [bytes] }
+      );
+    }).then((answer): Loaded => {
+      if (answer.kind !== "loaded") {
+        throw new Error("the parallax worker answered a load with something else");
+      }
+      this.held.add(dataset);
+      return { dataset, rows: answer.rows };
+    });
   }
 
   /**
@@ -346,7 +308,6 @@ export class BrowserEngine {
       case "reply":
         this.connection.receive(message.bytes);
         return;
-      case "copied":
       case "loaded":
       case "exported":
         this.settle(message.id, message);
@@ -376,7 +337,6 @@ export class BrowserEngine {
     for (const id of [...this.pending.keys()]) {
       this.settle(id, new Error(reason));
     }
-    this.copies.clear();
     this.held.clear();
     this.loading.clear();
     worker.connection.disconnect(reason);

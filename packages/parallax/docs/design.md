@@ -39,53 +39,33 @@ included. Canvas 2D, which Skia rasterizes on the CPU, is the drawing surface
 that works.
 
 Citrix adds two more pressures. A VDI's CPU and memory are shared and limited,
-so the browser should hold as little data as possible. Citrix's display
+so a table held in the browser has a documented limit. Citrix's display
 protocol sends only the screen regions that changed. A redraw confined to the
 changed cells therefore costs less than a full repaint, both on the VDI and on
 the network.
 
-## One engine, two places to run
+## One engine, in the browser
 
-The engine is a Rust library compiled two ways: natively for the server, and
-to `wasm32-unknown-unknown` for the browser, where it runs in a Web Worker off
-the main thread. Both builds sit behind the same client protocol, so a dataset
-can choose where it lives without the UI noticing. Small datasets are copied to
-the browser, where pivots respond without a network round trip. Large datasets
-stay on the server, and the browser receives only the visible window.
+The engine is a Rust library compiled to `wasm32-unknown-unknown` and run in a
+Web Worker, off the page's main thread. It is also compiled natively, for the
+tests: the comparisons with DuckDB run natively, and a fixed protocol
+conversation must produce byte-identical replies from both builds, so what the
+native tests prove holds in the browser.
 
-A dataset marked `browser` in its definition is still loaded and cached on the
-server, which keeps serving exports and clients without a worker. The first view
-of such a dataset in a page fetches a copy of the server's table for its
-parameters from `GET /copy/{dataset}`, loads it into the worker and runs every
-later view of that table there. The copy is an Arrow IPC stream of the rows in
-insertion order, with the table's status (load number, load and source times,
-NaNs turned blank, a failed refresh) in its schema metadata, so views of the copy
-show the same rows, order and status as views on the server. The server writes
-a table's copy once per load and streams that file to every page that asks, so
-many pages opening at once neither re-encode the table nor hold up its reload.
-The cache follows the table itself, so callers whose connection context
-resolves to different tables never share a copy. A test runs a set
-of layouts against a reloaded table and its copy and requires identical frames,
-and an end-to-end test compares a pivot's copied cells across the two. A copy
-that fails to load, or takes longer than two minutes, leaves the view on the
-server, and the status bar says why.
-A copy is fetched once per page: a reload on the server reaches it when the page
-reloads, and its status bar shows the copy's age meanwhile.
-
-An app can also load its own data into the browser, with no parallax server:
-Arrow IPC stream bytes it fetched from its API move to the worker in the
-message's transfer list, so they are never copied between threads, and the
-engine decodes them in place, its arrays pointing into the bytes rather than a
-second copy of them. Views of such a dataset are placed by the load's answer,
-since the worker's welcome is sent before any load. Spike 0.3 set the limit of
-one such table at 150,000 rows and 70 MB of Arrow, where the reference pivot
-meets its 500 ms budget on a slow desktop; `MAX_ROWS` and `MAX_ARROW_BYTES` in
-the browser engine hold them. The bytes are checked before they leave the page,
-and the rows are counted from the stream's batch headers before any data is
-decoded, so a larger load fails with a message naming the limit and the size
-before it costs memory. The load's status is the app's to give: its API writes
-when it read the source, and the NaNs it turned blank, in the schema metadata
-under `parallax.load`.
+The app loads its own data: Arrow IPC stream bytes it fetched from its API move
+to the worker in the message's transfer list, so they are never copied between
+threads, and the engine decodes them in place, its arrays pointing into the
+bytes rather than a second copy of them. A view of a dataset waits for its load,
+which the app may start before the bytes arrive, and fails with the reason if
+the load does; the worker's welcome is sent before any load, so it lists no
+datasets. Spike 0.3 set the limit of one such table at 150,000 rows and 70 MB of
+Arrow, where the reference pivot meets its 500 ms budget on a slow desktop;
+`MAX_ROWS` and `MAX_ARROW_BYTES` in the browser engine hold them. The bytes are
+checked before they leave the page, and the rows are counted from the stream's
+batch headers before any data is decoded, so a larger load fails with a message
+naming the limit and the size before it costs memory. The load's status is the
+app's to give: its API writes when it read the source, and the NaNs it turned
+blank, in the schema metadata under `parallax.load`.
 
 WebAssembly memory grows and never shrinks, and a load or export past it ends
 in a trap that says only `unreachable`. A trap leaves the engine half-changed
@@ -94,6 +74,15 @@ and answers nothing more, and the page ends the worker, which frees all its
 memory, fails every waiting request and open view with the reason, and starts
 an empty one. The release build drops the module's name section, a quarter of
 its bytes, which only stack traces use.
+
+Until basis-ui's step 2.2, parallax also had a server: it held tables too large
+for the browser and sent the browser only the rows on screen, read them through
+connectors to databases and files, and copied small ones into the worker. The
+firm's tables fit within the browser's limit, and every app would have deployed
+a server beside it, so it was deleted;
+[basis-ui's design](../../../docs/design.md#parallax-basisparallax) has the
+reasons. A table larger than the limit is narrowed by its API, which filters or
+aggregates it.
 
 The browser build is single-threaded and stays under the 4 GB limit of 32-bit
 WebAssembly. Going further would cost a lot:
@@ -104,8 +93,8 @@ WebAssembly. Going further would cost a lot:
 - Threads also need cross-origin isolation headers on the host application.
 - The `wasm-bindgen-rayon` helper was last released in December 2024.
 
-That cost isn't worth paying when large data belongs on the server anyway. The
-server build parallelizes with rayon.
+That cost isn't worth paying for tables within the limit. The native build,
+which the tests run, parallelizes with rayon.
 
 ## Inside the engine
 
@@ -144,8 +133,8 @@ refresh. About 90% of pages show snapshot data, and applying a reload as a diff
 keeps an open pivot's expanded rows, sort and scroll position intact.
 
 A flat view re-filters and re-sorts the table on every change, using every core
-on the server. Incremental maintenance of flat views waits for live sources,
-which are deferred.
+natively and the worker's one thread in the browser. Incremental maintenance of
+flat views waits for live sources, which are deferred.
 
 Text is stored as dictionary codes, so a filter on a text column decides each
 distinct string once. It keeps a bit per code saying whether that string
@@ -215,7 +204,7 @@ computed:
 - incrementally
 - from scratch
 - in the browser
-- on the server
+- natively
 - in DuckDB
 
 Removing a value adds its negative, which is equally exact. Integer and
@@ -296,36 +285,31 @@ column declares, defaulting to `America/New_York`, and headers name the zone.
 Digits below the shown precision are cut rather than rounded, so a time never
 shows later than it happened and 23:59:59.9 never becomes the next day.
 
-SQL Server `datetime` and `datetime2` values carry no zone, so each such column
-declares its source zone, also defaulting to New York. Daylight-saving changes
-produce local times that are ambiguous or don't exist:
-
-- In autumn, local times from 01:00 to 01:59 occur twice. Such a time is a load
-  error unless the column declares whether to take the earlier or the later
-  instant.
-- In spring, an hour of local time is skipped. A time in that gap is always an
-  error.
+A timestamp without a zone, such as SQL Server's `datetime2`, is a wall-clock
+time: it is shown as it is and never moved between zones. An API that knows the
+source's zone turns such times into instants before it sends them, and decides
+what the hour daylight saving repeats in autumn, and the one it skips in spring,
+mean.
 
 Business dates such as trade date stay dates and never pass through a zone.
 Chart buckets are cut in the display zone, so a day is a New York day. The
 engine uses `jiff` with a bundled, version-pinned time-zone database, so the
-server and browser builds agree. Diagnostics show the database version.
+native and browser builds agree. Diagnostics show the database version.
 
 ### Loads
 
 A load that would change the meaning of the data fails loudly instead:
 
-- Duplicate primary keys are an error, unless the dataset opts into
+- Duplicate primary keys are an error, unless the table opts into
   last-one-wins.
 - A column that changes type or disappears is an error naming the column.
-- A document field whose value has the wrong type is an error naming the row
-  key, path and value.
-- Oversized text is an error, never a truncation.
+- A table past the browser's row or byte limit is refused before it is decoded,
+  with the limit and its size.
 
-A load that fails partway never replaces the last good table. The view keeps
-the old data and shows a "refresh failed" badge with the time. Each table
-records its row count, a hash of the source query, its load times and a
-checksum, all visible in the view's info panel.
+A reload that fails never replaces the last good table. The view keeps the old
+data and shows a "refresh failed" badge with the time. Each table records its
+row count, its load number and its load times, all visible in the view's info
+panel.
 
 Every frame of rows sent to the screen carries two versions: the view
 configuration that produced it, and the table load. The UI discards frames
@@ -508,16 +492,15 @@ provides separately; screen-reader support isn't a first-milestone requirement.
 
 ## The wire protocol
 
-Each browser tab opens one binary WebSocket and carries all of its views over
-it, tagged by view ID.
+The page and the engine's worker exchange binary messages over `postMessage`,
+every view's tagged by its ID.
 
 - Control messages are protobuf: create a view, change its configuration, set
   the visible window, subscribe. The `.proto` files are the single source of
   truth and generate both the Rust and the TypeScript code.
-- Data travels as Arrow IPC. Frames for the visible window are small and go
-  uncompressed. A copy of a table for the browser goes over HTTP, compressed
-  with zstd, or gzip for a browser that doesn't offer zstd, and the worker's
-  `fetch` decodes it natively, off the main thread.
+- Data travels as Arrow IPC. The app's table reaches the worker as one Arrow
+  stream, moved rather than copied; frames for the visible window come back as
+  small streams of their own.
 - Every data frame carries the view ID, configuration version, window bounds,
   table load version and source timestamp.
 - A client can fetch a window once without moving the view's viewport, which
@@ -554,180 +537,9 @@ it, tagged by view ID.
   reads each field from the schema the stream declares, matching vectors by
   position.
 
-The browser worker that hosts the WebAssembly engine speaks the same messages
-over `postMessage`, through the same session code as the server. The server
-and the worker therefore can't drift apart: a fixed conversation must produce
-byte-identical replies from the native and WebAssembly builds.
-
-gRPC-web was ruled out because browsers can't use it for bidirectional
-streaming. WebTransport was ruled out because it runs over UDP, which corporate
-proxies often block.
-
-## The server and its data
-
-`parallax-server` is a crate that a host application embeds. It exposes an
-axum router and an engine handle. A small reference binary wraps it for
-deployment as a Linux container on Kubernetes (AKS), close to the Citrix farm
-on the network.
-
-The router is served with Nagle's algorithm off. With it on, a frame written
-just after another reply waited for the browser to acknowledge that reply,
-which its operating system may delay: by 40 ms on Linux, and by up to 200 ms
-on Windows, which Citrix desktops run. On the demo's Small tables page, the blotter's
-first frame waited 44 ms behind its own ViewOpened. A host that serves the
-router itself must turn it off too.
-
-The library contains no authentication, entitlement or audit code. Its one
-extension point is a per-connection value: the host's middleware sets it,
-dataset code receives it, and the library passes it through without
-interpreting it.
-
-A host registers datasets through a Rust API, and the reference binary reads
-the same definitions from TOML. A definition names the source, query,
-parameters, primary key, schema and refresh policy.
-
-Tables are cached in memory and shared across users, keyed by dataset and
-parameters, so fifty people opening the same page cost one load. A table
-refreshes in one of three cases:
-
-- it is older than a time limit when a view opens
-- its schedule says so
-- a publisher calls an invalidation endpoint
-
-Each refresh applies as a diff. A reload fetches without holding up readers:
-views keep showing the current rows until the new ones apply, and tables due at
-the same time reload in parallel, so one slow source does not delay the others.
-A memory budget evicts the least recently used tables, and an Arrow copy on
-local SSD makes reloading fast. Existing Python
-and C# services keep their business logic. parallax pulls from their existing
-GET endpoints through the HTTP connector, and live sources push Arrow batches
-through an ingest API.
-
-The connectors live in the `parallax-sources` crate, behind one interface: a
-source reads every row for a set of parameters in one call. The reference
-server's TOML names them by `kind`; `examples/sources.toml` shows each. The first
-connectors cover where the data already lives:
-
-- **SQL Server** goes through `arrow-odbc` and Microsoft ODBC Driver 18, which
-  fetch column batches instead of rows. SQL Server 2025's
-  [`json` type](https://learn.microsoft.com/en-us/sql/t-sql/data-types/json-data-type)
-  and JSON stored in `nvarchar(max)` both arrive as text. ODBC isn't among the
-  clients that support the native type.
-- **Oracle Database** goes through the same `arrow-odbc` path, with Oracle's
-  Instant Client ODBC driver. Three Oracle behaviours meet the load rules in
-  [What "never wrong" means](#what-never-wrong-means):
-  - `NUMBER` without a declared precision is a floating decimal of up to 38
-    digits, but Oracle's ODBC driver reports it as a double and converts it
-    through one even when asked for text. Such a column must be selected as
-    `TO_CHAR(col, 'TM9', 'NLS_NUMERIC_CHARACTERS=''.,''')` and declare its Arrow
-    type, so the text made by the database is parsed exactly, never through f64.
-  - `DATE` carries a time of day but no zone, so it follows the rule for
-    zoneless timestamps. `TIMESTAMP WITH TIME ZONE` is an instant.
-  - Oracle stores an empty string as NULL, so text columns from Oracle can't
-    distinguish the two.
-- Database connections and queries are configuration. A connection string may
-  name environment variables as `${NAME}`, so passwords stay out of files, and
-  dataset parameters bind to the query's `?` markers in a declared order. A
-  column fetched as text to stay exact, a zoneless time's zone and choice in the
-  repeated hour, a time kept as wall-clock, and a JSON column's fields are all
-  declared per dataset. Digits below the microsecond refuse the load rather than
-  being cut. Every column a setting names must be in the query's result, so a
-  misspelt name fails instead of falling back to defaults. On Oracle, a column
-  the driver reports as a double refuses the load unless it is listed as a real
-  `BINARY_DOUBLE` or declared as a float, and the refusal names the `TO_CHAR`
-  form to select instead. An environment value is quoted for its setting: braced in an ODBC
-  string, percent-encoded in a MongoDB URI; `env:NAME` takes a whole setting from
-  the environment. The ODBC and MongoDB connectors are features of `parallax-sources`
-  and the server, because they need unixODBC and the database drivers
-  installed. CI runs them against SQL Server, Oracle Database and MongoDB in
-  service containers.
-- **JSON columns and MongoDB documents** go through one shared converter that
-  maps declared paths to declared Arrow types.
-  - Numbers are parsed from text straight into the declared type, and decimals
-    are parsed exactly, never through f64.
-  - A missing path is null.
-  - Nested fields are reached by dotted paths. Arrays are refused for now,
-    because the engine has no list columns yet; see
-    [Deferred work](future.md).
-  - Wall-clock text without an offset follows the zoneless-timestamp rule in
-    the column's zone.
-  - MongoDB uses the official `mongodb` driver. `Decimal128` values keep every
-    digit, dates become instants, and object ids become their hex text. The
-    filter is extended JSON with `{name}` placeholders, filled as JSON strings
-    so that a parameter cannot change the filter's shape.
-- **Parquet** goes through the `parquet` crate, behind a local SSD cache keyed
-  by path, size and modification time, so the slow NFS share is read only once.
-  Older copies of a file are removed when a newer one is cached. Dataset
-  parameters may fill placeholders in the path, but not with path separators or
-  a leading dot, so a parameter cannot reach outside the configured directory.
-- **HTTP** pulls from the existing C# and Python REST GET endpoints, on the
-  same refresh rules as any other source.
-  - Dataset parameters map onto the GET's query string, so a table is still
-    cached by dataset and parameters.
-  - The host supplies a service credential, as it supplies the per-connection
-    value: a header read from an environment variable at each fetch, or a
-    function that returns headers. The library still contains no auth code.
-  - Certificates are checked against the operating system's trust store, so
-    endpoints signed by the company's own authority work. A response larger
-    than the dataset's limit, 2 GiB by default, refuses the load.
-  - The connector asks for an Arrow IPC stream with
-    `Accept: application/vnd.apache.arrow.stream`, the
-    [IANA-registered type](https://www.iana.org/assignments/media-types/application/vnd.apache.arrow.stream),
-    and falls back to JSON, which goes through the shared JSON converter. A
-    service can add Arrow beside JSON on the same route, with pyarrow in Python
-    or the Apache.Arrow NuGet package in C#, and its other callers keep getting
-    JSON.
-
-### Choosing a source
-
-Pulling suits snapshot data better than pushing, because a service can't know
-in advance which parameters a PM will open, such as an as-of date and a fund.
-Push ingest stays for live streams and for "data changed" signals.
-
-Which connector a dataset uses depends on what its existing GET does:
-
-- A GET that wraps one query or file: connect directly with the SQL Server,
-  Oracle, Parquet or MongoDB connector, and move the SQL into the dataset
-  definition.
-- A GET that carries business logic, such as calculations, joins across sources,
-  adjustments or Python models: use the HTTP connector. Rewriting that logic as
-  SQL inside parallax would let the grid and the app's other pages show
-  different numbers for the same thing.
-- A GET that filters rows by the calling user: tables are shared across users,
-  so it needs an unfiltered variant called with the service credential, with
-  the host applying entitlements. The alternative, per-user parameters, gives up
-  the sharing. Whether the existing GETs filter by user is still an open
-  question.
-
-JSON costs far more than Arrow at this size. 100,000 rows of 20 floats and 2
-strings were serialized in Python on 2026-11-02:
-
-| Serializer | Time | Size |
-|---|---|---|
-| Standard library `json.dumps` | 873 ms | 56 MB |
-| orjson | 96 ms | 52 MB |
-| pyarrow IPC stream | 33 ms | 18 MB |
-
-JSON is workable up to about a million rows. Past that the endpoint needs Arrow:
-twenty million trades would be about 11 GB of JSON per load.
-
-HTTP responses follow the load rules in [Loads](#loads), plus these:
-
-- **Pagination:** pages fetched one after another can come from different
-  moments. A load must be a single response, or pages pinned to one snapshot by
-  an as-of parameter.
-- **Decimals:** they arrive as JSON numbers or strings, and both are parsed
-  exactly. Python's standard `json` module can't serialize `Decimal`, so
-  services often convert money to float first. Those values have already passed
-  through a double, which keeps 15 to 17 significant digits. Pydantic v2 writes
-  decimals as strings.
-- **Zoneless datetimes:** these follow the zoneless-timestamp rule. Pydantic
-  and orjson both emit `2026-11-01T01:30:00`, which falls in New York's repeated
-  hour, so it fails unless the column declares the earlier or later instant.
-- **Bare `NaN`:** Python's `json.dumps` writes a bare `NaN` token by default,
-  which isn't valid JSON. The converter accepts it as NaN, which becomes null and
-  is counted, as for other sources.
-- **Missing or changed fields:** these are load errors naming the column.
+The session code that answers these messages is the same natively and in
+WebAssembly, and a fixed conversation must produce byte-identical replies from
+both builds, so the two can't drift apart.
 
 ## The Angular library
 
@@ -736,19 +548,17 @@ standalone components.
 
 - `<px-grid>`, `<px-pivot>` and `<px-chart>` each take a single `layout` and
   emit `layoutChange`, so `[(layout)]` keeps the host's copy current.
-- `provideParallax({ url, worker })` configures the connection, and where the
-  application serves the browser engine's worker script. Without `worker`,
-  every view runs on the server.
-- A `ParallaxClient` service offers the same operations to code.
+- `provideParallax({ worker })` says where the application serves the engine's
+  worker script.
+- A `ParallaxClient` service loads the app's data, with `load`, and offers the
+  components' operations to code.
 - The npm package ships the WebAssembly engine and its worker script in its
   `wasm` folder, which the application serves as static files. The worker
-  starts only when a page first opens a dataset marked for the browser, so pages
-  that don't use one never download the engine. `prewarm: true` starts it when
-  the application starts instead, beside the connection to the server. A
-  browser dataset's first rows otherwise wait for the server's welcome, then the
-  worker, then the engine: on the build host, with the CPU throttled four times
-  and an empty cache, they came 372 ms after the page began loading with
-  prewarming and 510 ms without. The demo prewarms.
+  starts when the app first loads data or a view opens, so pages without
+  parallax never download the engine. `prewarm: true` starts it when the
+  application starts instead, so that the engine's start, about 0.2 s with the
+  CPU throttled four times in spike 0.3, overlaps the app's own. The demo
+  prewarms.
 
 A layout is a JSON document that describes a whole view: dataset and
 parameters, grouping, pivots, filters, sorts, formats, column widths, chart
@@ -883,16 +693,11 @@ each time.
 
 ## Excel export
 
-The server writes exports with `rust_xlsxwriter` and streams them as downloads,
-because VDI memory is scarce: the page posts the layout in a form to
-`POST /export`, and the browser saves the answer to disk instead of holding it.
-An export runs the layout through the same engine and formatter as the screen,
-so it holds the same numbers.
-
-A view of data the app loaded into the browser is exported by the browser's
-worker, which already holds the table, from the same code compiled to
-WebAssembly. The browser has no file system for `rust_xlsxwriter`'s temporary
-files, so there every sheet is held in memory, at about 190 bytes a cell that
+The engine's worker writes exports with `rust_xlsxwriter`, from the table it
+already holds, and the page saves the file as a download. An export runs the
+layout through the same engine and formatter as the screen, so it holds the
+same numbers. The browser has no file system for `rust_xlsxwriter`'s temporary
+files, so every sheet is held in memory, at about 190 bytes a cell that
 WebAssembly never returns, and the workbook takes its timestamps from
 JavaScript's clock. An Excel export there is capped at 1,000,000 cells, about
 190 MB beside a table at the row limit, and a larger view is refused with a
@@ -918,9 +723,10 @@ held whole in WebAssembly memory as well as in the page.
   the group rows, which come first as on screen. Groups start expanded:
   `rust_xlsxwriter` 0.102 marks a collapsed group on the row after it, which is
   right only for buttons below the groups. It also writes outline levels only for
-  sheets it holds in memory, so pivots of up to 2,000,000 cells are outlined and
-  larger ones stream without an outline, indented by level. Native Excel pivot
-  tables are not written.
+  sheets it holds in memory, which every sheet in the browser is; the native
+  build, which the tests use, streams pivots of more than 2,000,000 cells
+  without an outline, indented by level. Native Excel pivot tables are not
+  written.
 - A Notes sheet records the dataset, when the source was read, the layout, and
   every place Excel cannot match the screen: values with more than 15
   significant digits, which Excel rounds; infinities, which it lacks; and the
@@ -932,14 +738,11 @@ held whole in WebAssembly memory as well as in the page.
   reads non-ASCII text in the system code page, and text that a spreadsheet
   would run as a formula gets a leading apostrophe.
 
-The export reads the table one chunk at a time, each under its own read lock,
-so a long export never holds up a reload; if the table reloads part way, the
-export stops rather than mix two loads. The form also carries the load the
-screen shows, and an export of any other load is refused with the reason: a
-browser copy is fetched once per page, so without this a browser-held view
-could export newer numbers than it shows. A refusal reaches the page even when the
-server is on another origin: the form carries a token, and the answer posts the
-reason to the page, which shows it in the status bar.
+The export reads the table one chunk at a time, and if the table reloads part
+way, it stops rather than mix two loads. The page asks for the load the screen
+shows, and an export of any other load is refused with the reason, so a file
+never holds newer numbers than the screen did. A refusal shows in the status
+bar.
 
 The read-back tests open each export with `calamine` and compare every cell
 with the engine's value, bit for bit for doubles. Excel can't run on the build
@@ -948,7 +751,7 @@ whose second and third columns must read the same in real Excel on a VDI.
 
 ## Deliberately out of scope
 
-Authentication, entitlements and audit belong to the host application. Cell
+Authentication, entitlements and audit belong to the app and its API. Cell
 editing, Python bindings and the other deferred items are listed with their
 reasons in [Deferred work](future.md). The milestones, build order and
 performance budgets are in the [Roadmap](roadmap.md).

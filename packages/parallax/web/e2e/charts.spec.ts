@@ -63,7 +63,6 @@ test("every chart kind draws its data, with an accessible name and no errors", a
     expect(await inked(canvas)).toBeGreaterThan(5_000);
   }
   await expect(page.locator("px-chart .px-error")).toHaveCount(0);
-  await expect(card(page, "closes-log").locator(".px-status-where")).toHaveText("in browser");
   expect(errors).toEqual([]);
 });
 
@@ -306,7 +305,7 @@ test.describe("pies", () => {
     await open(page);
     const donut = card(page, "donut");
     const grid = page.locator('section[data-linked="donut"] [role="grid"]');
-    await expect(grid).toHaveAttribute("aria-rowcount", "200000", { timeout: 60_000 });
+    await expect(grid).toHaveAttribute("aria-rowcount", "150000", { timeout: 60_000 });
     const plot = donut.locator(".px-chart-plot");
     await plot.scrollIntoViewIfNeeded();
     const box = await plot.boundingBox();
@@ -320,8 +319,8 @@ test.describe("pies", () => {
     await expect(donut.locator(".px-chart-tip")).toContainText("Equity");
     await plot.click({ position: at });
     await expect(page.locator('section[data-linked="donut"] h2')).toHaveText("Positions in Equity, the slice selected");
-    await expect.poll(async () => Number(await grid.getAttribute("aria-rowcount"))).toBeLessThan(200_000);
+    await expect.poll(async () => Number(await grid.getAttribute("aria-rowcount"))).toBeLessThan(150_000);
     await plot.click({ position: at });
-    await expect(grid).toHaveAttribute("aria-rowcount", "200000");
+    await expect(grid).toHaveAttribute("aria-rowcount", "150000");
   });
 });

@@ -1,17 +1,15 @@
 //! The parallax engine for the browser.
 //!
 //! A [`Worker`] hosts tables and one protocol session inside a Web Worker. The
-//! page sends it the same protobuf messages it would send the server over a
-//! WebSocket, and gets the same replies, so a dataset can live in the browser or on
-//! the server without the UI noticing. The worker never reads a clock; callers pass
-//! times in.
+//! page sends it protobuf messages and gets the replies a native session gives,
+//! byte for byte, which the transcript test checks. The worker never reads a
+//! clock; callers pass times in.
 //!
 //! An app loads its own Arrow bytes with [`Worker::load_table`], within the row
 //! limit its caller passes, and exports views as Excel or CSV with
 //! [`Worker::export_xlsx`] and [`Worker::export_csv`], which read the table the
 //! worker already holds.
 
-use std::collections::BTreeMap;
 use std::io::Write;
 use std::sync::{Arc, RwLock};
 
@@ -21,7 +19,7 @@ use parallax_export::{ExportSource, ReadTable, write_csv, write_xlsx};
 use parallax_protocol::ipc::{decode_stream_in_place, stream_rows};
 use parallax_protocol::layout::Layout;
 use parallax_session::{
-    Catalog, LoadStatus, MemoryCatalog, Session, SharedTable, TableState, no_context, read_table,
+    Catalog, LoadStatus, MemoryCatalog, Session, SharedTable, TableState, read_table,
 };
 use wasm_bindgen::prelude::*;
 
@@ -90,33 +88,6 @@ impl Worker {
             },
         )
         .map_err(|e| JsError::new(&e))
-    }
-
-    /// Loads a copy of a server table, as `GET /copy/{name}` sends it, for one set
-    /// of parameters given as a JSON object of strings. Views of the copy show what
-    /// views of the server's table show, status included. A second copy for the
-    /// same name and parameters replaces the first for views opened afterwards.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the parameters are not an object of strings, or the bytes
-    /// are not a copy.
-    #[wasm_bindgen(js_name = loadCopy)]
-    pub fn load_copy(
-        &mut self,
-        name: &str,
-        parameters_json: &str,
-        copy: &[u8],
-    ) -> Result<u64, JsError> {
-        let parameters: BTreeMap<String, String> =
-            serde_json::from_str(parameters_json).map_err(|e| {
-                JsError::new(&format!("the parameters must be an object of strings: {e}"))
-            })?;
-        let state = TableState::read_copy(copy).map_err(|e| JsError::new(&e))?;
-        let rows = state.table.num_rows() as u64;
-        self.catalog
-            .insert_with_parameters(name, parameters, Arc::new(RwLock::new(state)));
-        Ok(rows)
     }
 
     /// Writes the layout's view as an Excel workbook, held in memory, and returns
@@ -297,9 +268,7 @@ impl Worker {
         load_version: Option<u64>,
     ) -> Result<(Shared, Layout, ExportSource), String> {
         let layout = Layout::from_json(layout_json).map_err(|e| e.to_string())?;
-        let table = self
-            .catalog
-            .open(&layout.dataset, &layout.parameters, &no_context())?;
+        let table = self.catalog.open(&layout.dataset, &layout.parameters)?;
         let as_of_micros = read_table(&table)?.source_as_of_micros();
         let as_of = Formatter::default().timestamp(as_of_micros, true);
         let source = ExportSource {

@@ -2,12 +2,12 @@
  * Public API Surface of @jacobragsdale/parallax
  */
 
-export { copyUrlFor, exportUrlFor, httpBaseFor, placeView, provideParallax, ParallaxClient } from "./lib/client";
-export type { CopyingEngine, ParallaxConfig, Placement } from "./lib/client";
-export { BrowserEngine, COPY_TIMEOUT_MS, EXPORT_TYPES, MAX_ARROW_BYTES, MAX_ROWS, MAX_XLSX_CELLS, trapReason } from "./lib/browser-engine";
+export { provideParallax, ParallaxClient } from "./lib/client";
+export type { ParallaxConfig } from "./lib/client";
+export { BrowserEngine, EXPORT_TYPES, MAX_ARROW_BYTES, MAX_ROWS, MAX_XLSX_CELLS, trapReason } from "./lib/browser-engine";
 export type { ExportFormat, LoadOptions, Loaded, WorkerPort } from "./lib/browser-engine";
 export { Connection, ViewHandle } from "./lib/connection";
-export type { ChartWindow, DistinctValues, EngineLocation, Measurement, Transport, Viewport, ViewListener } from "./lib/connection";
+export type { ChartWindow, DistinctValues, Measurement, Transport, Viewport, ViewListener } from "./lib/connection";
 export { decodeChartFrame } from "./lib/chart-frame";
 export type { CandleData, ChartContent, ChartEventData, ChartFrameData, ChartTickData, HistogramSeries, IndicatorLineData, SeriesData } from "./lib/chart-frame";
 export { CellFlag, decodeFrame, decimalFromWords, FrameError } from "./lib/frame";
@@ -35,7 +35,7 @@ export type { ChartColors, ParallaxTheme, ResolvedScheme, Scheme, Theme, ThemePa
 export { ThemeWatcher } from "./lib/theming";
 export { GridComponent } from "./lib/grid/grid.component";
 export type { Density, DrawStats, DrillRequest } from "./lib/grid/grid.component";
-export type { FieldKind, SourceField, ViewPlacement } from "./lib/grid/grid-source";
+export type { FieldKind, SourceField } from "./lib/grid/grid-source";
 export { PivotComponent } from "./lib/pivot/pivot.component";
 export { ChartComponent } from "./lib/chart/chart.component";
 export type { ChartSelection } from "./lib/chart/chart.component";

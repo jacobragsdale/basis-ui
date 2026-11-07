@@ -1,10 +1,11 @@
-import { ChangeDetectionStrategy, Component, computed, input, signal } from "@angular/core";
+import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from "@angular/core";
 import { ChartComponent, standardTheme } from "parallax";
 import type { ChartSelection, LayoutFilter, LayoutInput, ParallaxTheme, Scheme } from "parallax";
 
+import { DemoData } from "./data";
 import { withShare } from "./layouts";
 
-/** The two datasets the page charts, both held on the server. */
+/** The two datasets the page charts, both loaded into the page. */
 type Dataset = "positions" | "trades";
 
 /** A big chart on the page, over one dataset. */
@@ -30,7 +31,7 @@ function breakdown(id: string, title: string, dataset: Dataset, layout: Omit<Lay
 const LARGEST_FIRST = { by: { measure: 0 }, descending: true } as const;
 
 /**
- * Big pies, donuts and bars over the 200,000 positions and the 1,000,000 trades, both held on the server. Gross
+ * Big pies, donuts and bars over 150,000 positions and 150,000 trades, both loaded into the page. Gross
  * notional rather than market value, because short positions' market values are negative, which a pie refuses.
  */
 const BREAKDOWNS: readonly Breakdown[] = [
@@ -212,7 +213,7 @@ export class BreakdownsComponent {
       const pick = picks[dataset];
       return {
         dataset,
-        title: dataset === "positions" ? "200,000 positions, held on the server" : "1,000,000 trades, held on the server",
+        title: dataset === "positions" ? "150,000 positions, held in this page" : "150,000 trades, held in this page",
         pick,
         charts: BREAKDOWNS.filter((b) => b.dataset === dataset).map((b) => {
           const layout = narrowed(b, pick);
@@ -221,6 +222,10 @@ export class BreakdownsComponent {
       };
     });
   });
+
+  constructor() {
+    inject(DemoData).need("positions", "trades");
+  }
 
   protected select(chart: string, dataset: Dataset, selection: ChartSelection | null): void {
     const earlier = this.picks()[dataset];

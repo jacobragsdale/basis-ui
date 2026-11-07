@@ -1,27 +1,45 @@
 # @jacobragsdale/parallax
 
 Angular components for the parallax engine: a data grid, a pivot table and
-charts drawn on a Canvas 2D surface, for desktops without a GPU. The design and its
-correctness rules are in [How parallax is designed](../../../docs/design.md).
+charts drawn on a Canvas 2D surface, for desktops without a GPU. The engine,
+compiled to WebAssembly, runs in a Web Worker in the page, on Arrow data the app
+loads into it. The design and its correctness rules are in
+[How parallax is designed](../../../docs/design.md).
 
 ## Show a view
 
-Provide the connection once, then bind a layout to a grid:
+Serve the package's `wasm` folder, which holds the engine and its worker script:
+
+```jsonc
+// angular.json, in the application's build options
+"assets": [{ "glob": "**/*", "input": "node_modules/@jacobragsdale/parallax/wasm", "output": "parallax" }]
+```
+
+Provide the client once with the worker's address, load the data, then bind a
+layout that names it to a grid:
 
 ```ts
 // app.config.ts
 import { provideParallax } from "@jacobragsdale/parallax";
 
-export const appConfig: ApplicationConfig = { providers: [provideParallax({ url: "/ws" })] };
+export const appConfig: ApplicationConfig = { providers: [provideParallax({ worker: "/parallax/worker.js" })] };
 ```
 
 ```ts
 // positions.component.ts
-import { GridComponent } from "@jacobragsdale/parallax";
+import { GridComponent, ParallaxClient } from "@jacobragsdale/parallax";
 import type { LayoutInput } from "@jacobragsdale/parallax";
 
 @Component({ selector: "app-positions", imports: [GridComponent], template: `<px-grid [(layout)]="layout" scheme="dark" />` })
 export class PositionsComponent {
+  constructor() {
+    const bytes = fetch("/api/positions", { headers: { accept: "application/vnd.apache.arrow.stream" } }).then((r) => r.arrayBuffer());
+    // Views that open while the bytes arrive wait for them; a load that fails fails them with its reason.
+    inject(ParallaxClient)
+      .load("positions", bytes, { primaryKey: "position_id" })
+      .catch(() => undefined);
+  }
+
   protected readonly layout = signal<LayoutInput>({
     dataset: "positions",
     group_by: ["fund", "strategy"],
@@ -31,9 +49,8 @@ export class PositionsComponent {
 }
 ```
 
-`url` is the reference server's WebSocket endpoint. A path such as `/ws` is
-resolved against the page. The grid fills its container, so give the container
-a height.
+[Load the app's data](#load-the-apps-data) says what a load holds and how it
+fails. The grid fills its container, so give the container a height.
 
 The two-way binding keeps the layout current as the user sorts, resizes and
 expands groups, so saving the layout saves the view. `parseLayout` checks a
@@ -91,50 +108,11 @@ wherever they fit, unless `labels: false`. A donut's hole names the slice under
 the pointer. A chart smaller than 260 by 200 pixels drops its legend and
 padding.
 
-## Run views in the browser
+## Load the app's data
 
-A dataset whose server definition says `browser = true` can run in the page:
-the first view of it fetches a copy of the server's table into a Web Worker
-running the same engine, compiled to WebAssembly, and later views of that table
-need no round trip. Serve the package's `wasm` folder and tell the client where
-its worker script is:
-
-```jsonc
-// angular.json, in the application's build options
-"assets": [{ "glob": "**/*", "input": "node_modules/@jacobragsdale/parallax/wasm", "output": "parallax" }]
-```
-
-```ts
-provideParallax({ url: "/ws", worker: "/parallax/worker.js" });
-```
-
-The status bar shows **in browser** on such a view. If the copy does not load,
-the view runs on the server instead, which holds the same table, and the status
-bar shows **on server** with the reason. Without `worker`, every view runs on
-the server. The worker starts, and the engine downloads, only when a page
-first opens a browser dataset.
-
-To show a browser dataset's first rows sooner, start the worker when the
-application starts, along with the connection to the server:
-
-```ts
-provideParallax({ url: "/ws", worker: "/parallax/worker.js", prewarm: true });
-```
-
-The engine then starts without waiting for the server's welcome. In exchange,
-every page downloads the engine, about 1 MB compressed, and runs its worker,
-even a page that opens no browser dataset.
-
-## Load the app's own data
-
-An app can hand the engine Arrow bytes it fetched itself, such as its API's
+The app hands the engine Arrow bytes it fetched itself, such as its API's
 answer to a request for `application/vnd.apache.arrow.stream`, and every view
-of them runs in the page, with no parallax server. Serve the `wasm` folder as
-above and give `worker`; `url` is then optional:
-
-```ts
-provideParallax({ worker: "/parallax/worker.js" });
-```
+of them runs in the page:
 
 ```ts
 const response = await fetch("/api/positions", { headers: { accept: "application/vnd.apache.arrow.stream" } });
@@ -147,6 +125,20 @@ it, and the engine decodes it in place. A second load of the same dataset
 reloads it, and its open views show the new rows; give `primaryKey` in the
 options so that a reload applies as a diff. Load before showing the views, or
 while they open: a view of a dataset whose load is under way waits for it.
+`load` also takes a promise of the bytes, such as the fetch's
+`arrayBuffer()`, so that the load is under way before they arrive. A view of a
+dataset the page never loaded fails with a message that says so.
+
+The worker starts, and the engine downloads, when the app first loads data or
+a view opens. To show the first rows sooner, start it when the application
+starts:
+
+```ts
+provideParallax({ worker: "/parallax/worker.js", prewarm: true });
+```
+
+In exchange, every page downloads the engine, about 1 MB compressed, and runs
+its worker, even a page that shows no parallax view.
 
 A table in the browser holds at most `MAX_ROWS` rows (150,000) and
 `MAX_ARROW_BYTES` bytes of Arrow (70,000,000), the limits spike 0.3 measured
@@ -179,17 +171,11 @@ its data again.
 ## Export a view
 
 The status bar under every grid has **Export to Excel** and **CSV**, and
-`GridComponent.export("xlsx")` does the same from code. A view of data the app
-loaded is written in the browser's worker, which holds its table, and saved as
-a download. An Excel export there holds at most `MAX_XLSX_CELLS` cells
-(1,000,000), since the browser keeps the sheet in memory; a larger view is
-refused with a reason that says to export CSV, which reaches the page in
-chunks as it is written.
-
-Other views post their layout to the server's `/export`, and the browser saves
-the file. If the server is not at `/export` next to `url`, set `httpUrl` in
-`provideParallax` to its HTTP base, such as `https://api.host/px`; browser
-copies come from `/copy` there too.
+`GridComponent.export("xlsx")` does the same from code. The view is written in
+the browser's worker, which holds its table, and saved as a download. An Excel
+export holds at most `MAX_XLSX_CELLS` cells (1,000,000), since the browser
+keeps the sheet in memory; a larger view is refused with a reason that says to
+export CSV, which reaches the page in chunks as it is written.
 
 ## Share a view
 

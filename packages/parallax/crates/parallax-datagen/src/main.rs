@@ -8,7 +8,7 @@ use jiff::civil::Date;
 use parallax_datagen::positions::{Positions, PositionsOptions};
 use parallax_datagen::prices::{Prices, PricesOptions};
 use parallax_datagen::trades::{Trades, TradesOptions};
-use parallax_datagen::{Dataset, write_ipc_file};
+use parallax_datagen::{Dataset, IpcFormat, write_ipc};
 
 #[derive(Parser)]
 #[command(
@@ -37,6 +37,10 @@ struct Common {
     /// Rows per record batch. Does not change the values.
     #[arg(long, default_value_t = 65_536)]
     batch_rows: u64,
+    /// Write the IPC stream format, as an API sends it and the browser's engine
+    /// loads it, rather than the file format.
+    #[arg(long)]
+    stream: bool,
 }
 
 #[derive(Subcommand)]
@@ -143,7 +147,12 @@ fn main() -> anyhow::Result<()> {
         ),
     };
     let started = Instant::now();
-    let summary = write_ipc_file(dataset.as_ref(), &common.out, common.batch_rows)?;
+    let format = if common.stream {
+        IpcFormat::Stream
+    } else {
+        IpcFormat::File
+    };
+    let summary = write_ipc(dataset.as_ref(), &common.out, common.batch_rows, format)?;
     println!(
         "wrote {} rows in {} batches to {} ({:.1} MB) in {:.1} s",
         summary.rows,

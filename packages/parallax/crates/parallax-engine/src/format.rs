@@ -15,8 +15,8 @@
 //! rounds to zero never shows a minus sign.
 //!
 //! Instants are shown in a display zone, `America/New_York` unless the format names
-//! another, using the time-zone database bundled into the build, so the server and
-//! the browser worker agree. Sub-second digits beyond the shown precision are cut,
+//! another, using the time-zone database bundled into the build, so the native build
+//! and the browser worker agree. Sub-second digits beyond the shown precision are cut,
 //! never rounded, so a time is never shown later than it happened.
 
 use std::fmt::Write as _;

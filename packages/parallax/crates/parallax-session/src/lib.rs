@@ -1,8 +1,9 @@
 //! Runs the parallax protocol over the engine, independent of transport.
 //!
-//! A [`Session`] belongs to one connection: a WebSocket on the server, or the
-//! browser worker that hosts the WebAssembly engine. It turns client messages into
-//! server messages. Tables come from a [`Catalog`] and are shared between sessions.
+//! A [`Session`] belongs to one connection: the browser worker that hosts the
+//! WebAssembly engine, or a test. It turns client messages into server messages,
+//! as the protocol names the engine's side. Tables come from a [`Catalog`] and are
+//! shared between sessions.
 //!
 //! A table can reload at any moment, and a reload reuses freed row slots. Before a
 //! view answers anything, it first applies the change sets it missed, under the same
@@ -10,7 +11,7 @@
 //! the table as it is, and carries that load's version.
 //!
 //! The session never reads a clock. Times on tables are supplied by whoever loads
-//! them, which keeps the code identical on the server and in WebAssembly.
+//! them, which keeps the code identical natively and in WebAssembly.
 
 use std::collections::{BTreeMap, VecDeque};
 use std::ops::Range;
@@ -34,12 +35,10 @@ use parallax_protocol::v1::{
 use prost::Message;
 
 mod chart;
-mod copy;
 mod load;
 #[cfg(feature = "testing")]
 pub mod testing;
 
-pub use copy::COPY_METADATA;
 pub use load::{LOAD_METADATA, LoadStatus};
 
 /// How many recent change sets a table keeps for views that are behind.
@@ -132,22 +131,6 @@ impl TableState {
         }
     }
 
-    /// Changes whenever a copy of the table would: with every load, and with every
-    /// failed refresh, whose error the copy carries.
-    #[must_use]
-    pub fn copy_version(&self) -> (u64, Option<i64>) {
-        (
-            self.table.load_version(),
-            self.refresh_error.as_ref().map(|(_, at)| *at),
-        )
-    }
-
-    /// Records a refresh that failed before reaching the table, such as an
-    /// unreachable source.
-    pub fn record_failure(&mut self, message: String, now_micros: i64) {
-        self.refresh_error = Some((message, now_micros));
-    }
-
     fn status(&self, view_id: u32) -> TableStatus {
         TableStatus {
             view_id,
@@ -184,31 +167,20 @@ pub fn read_table(table: &SharedTable) -> Result<RwLockReadGuard<'_, TableState>
         .map_err(|_| "the table is unavailable after an internal error".to_owned())
 }
 
-/// A value the host attaches to a connection, such as the signed-in user, and that
-/// dataset code receives. The library passes it through without interpreting it.
-pub type ConnectionContext = Arc<dyn std::any::Any + Send + Sync>;
-
-/// Returns a context that carries nothing.
-#[must_use]
-pub fn no_context() -> ConnectionContext {
-    Arc::new(())
-}
-
 /// Where sessions find tables.
 pub trait Catalog: Send + Sync {
     /// The datasets a client may open.
     fn datasets(&self) -> Vec<DatasetInfo>;
 
-    /// Returns the table for a dataset and its parameters, loading it if needed.
+    /// Returns the table for a dataset and its parameters.
     ///
     /// # Errors
     ///
-    /// Returns a message for unknown datasets, bad parameters, or a failed load.
+    /// Returns a message for unknown datasets or parameters.
     fn open(
         &self,
         dataset: &str,
         parameters: &BTreeMap<String, String>,
-        context: &ConnectionContext,
     ) -> Result<SharedTable, String>;
 }
 
@@ -286,7 +258,6 @@ impl Catalog for MemoryCatalog {
             .map(|(name, parameters)| DatasetInfo {
                 name: name.to_owned(),
                 parameters: parameters.into_iter().map(str::to_owned).collect(),
-                browser: false,
             })
             .collect()
     }
@@ -295,7 +266,6 @@ impl Catalog for MemoryCatalog {
         &self,
         dataset: &str,
         parameters: &BTreeMap<String, String>,
-        _: &ConnectionContext,
     ) -> Result<SharedTable, String> {
         self.get_with_parameters(dataset, parameters)
             .ok_or_else(|| {
@@ -495,7 +465,6 @@ impl OpenView {
 /// The protocol state of one connection.
 pub struct Session {
     catalog: Arc<dyn Catalog>,
-    context: ConnectionContext,
     views: BTreeMap<u32, OpenView>,
 }
 
@@ -517,18 +486,11 @@ fn reply(request_id: u64, body: server_message::Body) -> ServerMessage {
 }
 
 impl Session {
-    /// Starts a session over `catalog` with no connection context.
+    /// Starts a session over `catalog`.
     #[must_use]
     pub fn new(catalog: Arc<dyn Catalog>) -> Self {
-        Self::with_context(catalog, no_context())
-    }
-
-    /// Starts a session whose dataset requests carry `context`.
-    #[must_use]
-    pub fn with_context(catalog: Arc<dyn Catalog>, context: ConnectionContext) -> Self {
         Self {
             catalog,
-            context,
             views: BTreeMap::new(),
         }
     }
@@ -591,9 +553,7 @@ impl Session {
                 let parameters: BTreeMap<String, String> = open.parameters.into_iter().collect();
                 let layout = Layout::from_json(&open.layout_json).map_err(|e| e.to_string())?;
                 same_source(&layout, &open.dataset, &parameters)?;
-                let table = self
-                    .catalog
-                    .open(&open.dataset, &parameters, &self.context)?;
+                let table = self.catalog.open(&open.dataset, &parameters)?;
                 self.open_view(id, open.view_id, table, &open.dataset, parameters, layout)?
             }
             client_message::Body::UpdateView(update) => {

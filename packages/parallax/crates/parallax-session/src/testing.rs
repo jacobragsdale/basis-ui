@@ -63,7 +63,7 @@ const DETAIL: &str = r#"{"version":2,"group_by":["fund"],"detail":true,"expand_d
 const FILTERED: &str = r#"{"version":1,"columns":["position_id","ticker","market_value_usd"],
 "filters":[{"column":"asset_class","op":"in","values":["Bond"]}]}"#;
 
-/// Runs the conversation and returns every server message, encoded, in order.
+/// Runs the conversation and returns every reply, encoded, in order.
 ///
 /// # Panics
 ///

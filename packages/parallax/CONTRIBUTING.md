@@ -33,23 +33,11 @@ cargo test -p parallax-wasm --target wasm32-unknown-unknown
 ```
 
 That test replays the protocol conversation in `parallax-session`'s `testing`
-module and checks its fingerprint against the native build's. The browser engine
-must answer byte for byte like the server. The others load an app's Arrow bytes
-and export them as WebAssembly, through the methods the browser's worker calls:
-the row limit, the Excel cell cap, and CSV in chunks.
-
-## Run the server
-
-`examples/parallax.toml` serves generated positions, trades and prices on
-`127.0.0.1:8790`:
-
-```sh
-cargo run --release -p parallax-server -- --config examples/parallax.toml
-```
-
-The protocol runs on `/ws`. `POST /invalidate/DATASET` reloads every cached
-table of `DATASET` and pushes fresh frames to open views. `GET /health` answers
-`ok`.
+module and checks its fingerprint against the native build's: the browser
+engine must answer byte for byte like the native build, which the other tests
+check. The other WebAssembly tests load an app's Arrow bytes and export them,
+through the methods the browser's worker calls: the row limit, the Excel cell
+cap, and CSV in chunks.
 
 ## Generate test data
 
@@ -68,8 +56,11 @@ The defaults give 5 million positions, 20 million trades, and daily bars for 500
 equities from 2016-01-04 to 2026-10-30. Add `--hostile` for nulls, NaN,
 infinities, negative zero, extreme magnitudes, Unicode and blank tickers, and
 wall-clock times that daylight-saving changes make ambiguous or impossible. Add
-`--duplicate-key-rate 0.01` for repeated primary keys. Run
-`parallax-datagen <dataset> --help` for every option. `data/` is ignored by git.
+`--duplicate-key-rate 0.01` for repeated primary keys, and `--stream` for the
+Arrow IPC stream format, which the browser's engine loads, rather than the file
+format. Run `parallax-datagen <dataset> --help` for every option. `data/` is
+ignored by git. The demo's datasets come from the same generator:
+`pnpm build:data`, run from `web`, writes them.
 
 The `golden_rows_are_stable` tests lock the generator's output with hashes. If a
 change alters generated values on purpose, update the hashes in the same pull
@@ -104,34 +95,16 @@ recorded in the file.
 
 ## Release
 
-A release publishes the `parallax-*` crates to crates.io and
-`@jacobragsdale/parallax`, with its WebAssembly worker, to npm. Publishing
-cannot be undone, so it is done by hand by the maintainer, never by CI. From a
-clean checkout of `main` with CI green:
+Basis-ui releases parallax with its own version as `@basis/parallax`, one npm
+package with the WebAssembly engine and its worker built into it; its roadmap's
+step 2.7 sets that up. The Rust crates stay inside this repository and are not
+published. Until then, check what npm would receive from a clean checkout:
 
-1. Set the version in `Cargo.toml` (`[workspace.package]` and the
-   `[workspace.dependencies]` entries of the `parallax-*` crates) and in
-   `web/projects/parallax/package.json`.
-2. Check that every crate packages:
-
-   ```sh
-   cargo package --workspace
-   ```
-
-   Dev-dependencies on other `parallax-*` crates name only a path, so
-   publishing drops them; the generator and the engine depend on each other
-   only through tests.
-3. Build the library and its worker, and look at what npm would receive:
-
-   ```sh
-   cd web
-   pnpm build:wasm && pnpm build
-   cd dist/parallax && npm pack --dry-run
-   ```
-
-4. Publish the crates (`cargo publish --workspace`), then the package
-   (`npm publish --access public` from `web/dist/parallax`), and tag the
-   commit `v<version>`.
+```sh
+cd web
+pnpm build:wasm && pnpm build
+cd dist/parallax && npm pack --dry-run
+```
 
 ## Dependencies
 
