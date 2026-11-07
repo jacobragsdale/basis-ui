@@ -100,7 +100,7 @@ Left out of milestone 5 (2026-11-04), for the reasons given.
     and export without copying data from polars or pyarrow.
   - Streamlit 1.66 Components v2 render inside the page without an iframe and
     pass Streamlit's theme through CSS custom properties. A custom-element
-    build of the Angular components could mount there directly.
+    build of the components could mount there directly.
   - Dash 4.5 components must be React, so Dash needs a thin React wrapper
     around the same custom element.
   - The components must talk to the engine directly, as they do to the

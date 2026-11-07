@@ -230,7 +230,9 @@ phase 1.
    Each family's existing Playwright specs and pixel baselines are rewritten for React. Needs 2.5.
 
 7. **2.7 Demo and release.** Rebuild the demo as a React app on `@basis/ui` with fixture data, with its screenshot tests
-   at threshold 0. Release `@basis/parallax` with the next basis-ui version. Needs 2.4 and 2.6.
+   at threshold 0, and delete the Angular layer. Release `@basis/parallax` with the next basis-ui version, which step
+   1.8's releases make. Needs 2.4 and 2.6. The demo and the deletion are done: the demo is `packages/parallax-demo`,
+   and [the design](design.md#parallax-basisparallax) records what was removed.
 8. **2.8 Fixed income.** Seven additions that fit parallax's charts to the firm's desks, from a study of what Aladdin,
    PORT, Yield Book, FactSet, BarraOne, ICE and Marquee show fixed-income portfolio managers and traders. Analytics stay
    in the API, which sends them as columns: curve fits, key-rate durations, scenario P&L and attribution. Parallax
@@ -240,9 +242,8 @@ phase 1.
    The additions land one pull request each, in the order below, each on a branch and worktree named after its id. A
    step that needs an earlier one's code branches from that step's branch until it merges. They follow four rules:
    - **Layouts.** Changes are additive and stay at version 2. A new field defaults to what its absence meant and is
-     left out of a layout written without it, so the committed fixtures and the Angular layer read every layout as
-     before, and a reader that lacks the field refuses a layout that sets it, as `deny_unknown_fields` already makes it
-     do. Layouts that set the new fields go in `tests/fixtures/layouts-2.8.json`, which only the React layer reads.
+     left out of a layout written without it, so the committed fixtures read every layout as before, and a reader that
+     lacks the field refuses a layout that sets it, as `deny_unknown_fields` already makes it do. Layouts that set the new fields go in `tests/fixtures/layouts-2.8.json`, which only the React layer reads.
    - **Frames.** A change to frames keeps the native and wasm transcript fingerprints in step.
    - **Data.** `parallax-datagen` writes the data the new views draw, as deterministically as its other datasets:
      `bonds`, a row per bond with its CUSIP, issuer, sector, rating, coupon, maturity, tenor bucket, duration, yield,

@@ -82,7 +82,13 @@ function listenerFor({ change, isClosed, takeChart, takeFrame }: ListenerParts):
       change((state) => (taken ? shown(state, accepted) : { ...shown(state, accepted), frame }));
     },
     opened: (opened) => {
-      change((state) => ({ ...state, opened, status: "open" }));
+      // The opened view carries its table's status, which later status messages replace only after a reload.
+      change((state) => ({
+        ...state,
+        opened,
+        status: "open",
+        table: opened.status ?? state.table,
+      }));
     },
     status: (table) => {
       change((state) => ({ ...state, table }));

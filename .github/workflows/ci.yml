@@ -57,6 +57,7 @@ jobs:
               - ".github/workflows/ci.yml"
             parallax:
               - "packages/parallax/**"
+              - "packages/parallax-demo/**"
               - ".github/workflows/ci.yml"
 
   ui:
@@ -81,10 +82,11 @@ jobs:
       - run: vp run @basis/example#test
       - run: vp run @basis/example#build
 
-  # @basis/parallax: the engine built for the browser, the package built around it, and its tests, in Node and in
-  # Chromium. It depends on @basis/ui, so it runs when either changes.
+  # @basis/parallax: the protocol's generated code, the engine built for the browser, the package built around it, and
+  # its tests, in Node and in Chromium, then the demo's tests and build on it. It depends on @basis/ui, so it runs when
+  # either changes.
   parallax-package:
-    name: parallax / @basis/parallax (build, unit and browser tests)
+    name: parallax / @basis/parallax and its demo (build, unit and browser tests)
     needs: changes
     if: needs.changes.outputs.parallax == 'true' || needs.changes.outputs.ui == 'true'
     runs-on: ubuntu-latest
@@ -108,6 +110,8 @@ jobs:
           version=$(cargo metadata --format-version 1 --locked | jq -r '.packages[] | select(.name == "wasm-bindgen") | .version')
           curl -sSL "https://github.com/wasm-bindgen/wasm-bindgen/releases/download/${version}/wasm-bindgen-${version}-x86_64-unknown-linux-musl.tar.gz" | tar xz
           sudo install -m 755 "wasm-bindgen-${version}-x86_64-unknown-linux-musl/wasm-bindgen" /usr/local/bin/
+      # The committed protocol code must be what buf generates from crates/parallax-protocol/proto/parallax.proto.
+      - run: vp run @basis/parallax#proto && git diff --exit-code -- packages/parallax/src/proto
       - run: vp run @basis/ui#build
       # Builds the engine first, with wasm-bindgen --remove-name-section.
       - run: vp run @basis/parallax#build
@@ -115,6 +119,10 @@ jobs:
       - run: git diff --exit-code -- packages/parallax/wasm/parallax_wasm.d.ts
       - run: vp exec --filter @basis/ui playwright install --with-deps chromium
       - run: vp run @basis/parallax#test
+      # The demo runs the package's build, as an app does: its browser tests, with the engine's real worker, and its
+      # build.
+      - run: vp run @basis/parallax-demo#test
+      - run: vp run @basis/parallax-demo#build
 
   # The React chart's end-to-end specs and screenshots, in the pinned Playwright image, against the harness built from
   # the package's source and the datasets parallax-datagen writes. Its chrome is @basis/ui's, so a change to either runs
@@ -152,8 +160,8 @@ jobs:
           name: parallax-charts-e2e-results
           path: packages/parallax/test-results/charts-e2e
 
-  # The React grid's end-to-end specs, its screenshots and its canvas against the Angular demo's, in the same Playwright
-  # image, against its own harness, built here from the package's source and the Angular demo's datasets.
+  # The React grid's end-to-end specs, its screenshots and its canvas against the Angular demo's recorded screenshots, in
+  # the same Playwright image, against its own harness, built here from the package's source and the demo's datasets.
   parallax-grid-e2e:
     name: parallax / Grid end to end (React harness, Playwright image)
     needs: changes
@@ -187,8 +195,8 @@ jobs:
           name: parallax-grid-e2e-results
           path: packages/parallax/test-results/grid-e2e
 
-  # The React pivot's end-to-end specs, its screenshots and its canvas against the Angular pivot's, in the same
-  # Playwright image, against its own harness, built here from the package's source and the Angular demo's positions.
+  # The React pivot's end-to-end specs, its screenshots and its canvas against the Angular pivot's recorded canvas, in the
+  # same Playwright image, against its own harness, built here from the package's source and the demo's positions.
   parallax-pivot-e2e:
     name: parallax / Pivot end to end (React harness, Playwright image)
     needs: changes
@@ -221,6 +229,41 @@ jobs:
         with:
           name: parallax-pivot-e2e-results
           path: packages/parallax/test-results/pivot-e2e
+
+  # The demo's end-to-end specs and screenshots, in the same Playwright image, against the demo built here as an app
+  # builds it, from the package's build, and the datasets parallax-datagen writes.
+  parallax-demo-e2e:
+    name: parallax / Demo end to end (React app on @basis/ui, Playwright image)
+    needs: changes
+    if: needs.changes.outputs.parallax == 'true' || needs.changes.outputs.ui == 'true'
+    runs-on: ubuntu-latest
+    env:
+      CARGO_BUILD_JOBS: 4
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: voidzero-dev/setup-vp@v1.22.0
+        with:
+          node-version-file: .node-version
+          cache: true
+      - run: rustup toolchain install
+        working-directory: packages/parallax
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: packages/parallax -> target
+      - name: Install wasm-bindgen
+        working-directory: packages/parallax
+        run: |
+          version=$(cargo metadata --format-version 1 --locked | jq -r '.packages[] | select(.name == "wasm-bindgen") | .version')
+          curl -sSL "https://github.com/wasm-bindgen/wasm-bindgen/releases/download/${version}/wasm-bindgen-${version}-x86_64-unknown-linux-musl.tar.gz" | tar xz
+          sudo install -m 755 "wasm-bindgen-${version}-x86_64-unknown-linux-musl/wasm-bindgen" /usr/local/bin/
+      - run: vp run @basis/ui#build
+      # Builds the package, writes the datasets, builds the demo, and runs every spec in the image.
+      - run: vp run @basis/parallax-demo#e2e
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: parallax-demo-e2e-results
+          path: packages/parallax-demo/test-results/e2e
 
   # Parallax's jobs, moved with it from its own repo. It runs only in the browser, so none needs a database or a server.
   parallax-rust:
@@ -263,86 +306,6 @@ jobs:
           curl -sSL "https://github.com/wasm-bindgen/wasm-bindgen/releases/download/${version}/wasm-bindgen-${version}-x86_64-unknown-linux-musl.tar.gz" | tar xz
           sudo install -m 755 "wasm-bindgen-${version}-x86_64-unknown-linux-musl/wasm-bindgen-test-runner" /usr/local/bin/
       - run: cargo test -p parallax-wasm --target wasm32-unknown-unknown --locked
-
-  parallax-web:
-    name: parallax / Web (lint, format, unit tests, build)
-    needs: changes
-    if: needs.changes.outputs.parallax == 'true'
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: packages/parallax/web
-    steps:
-      - uses: actions/checkout@v7.0.1
-      - uses: pnpm/action-setup@v6
-        with:
-          package_json_file: packages/parallax/web/package.json
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 24
-          cache: pnpm
-          cache-dependency-path: packages/parallax/web/pnpm-lock.yaml
-      - run: pnpm install --frozen-lockfile
-      # The generated protocol code must match crates/parallax-protocol/proto/parallax.proto.
-      - run: pnpm generate && git diff --exit-code -- projects/parallax/src/lib/proto
-      # The browser engine: the worker's types and the package's wasm folder come from it.
-      - run: rustup toolchain install
-        working-directory: packages/parallax
-      - uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: packages/parallax -> target
-      - name: Install wasm-bindgen
-        working-directory: packages/parallax
-        run: |
-          version=$(cargo metadata --format-version 1 --locked | jq -r '.packages[] | select(.name == "wasm-bindgen") | .version')
-          curl -sSL "https://github.com/wasm-bindgen/wasm-bindgen/releases/download/${version}/wasm-bindgen-${version}-x86_64-unknown-linux-musl.tar.gz" | tar xz
-          sudo install -m 755 "wasm-bindgen-${version}-x86_64-unknown-linux-musl/wasm-bindgen" /usr/local/bin/
-      - run: pnpm build:wasm
-      - run: pnpm lint
-      - run: pnpm format:check
-      - run: pnpm test
-      # The demo's datasets, generated by parallax-datagen into the demo's public folder, which the build copies.
-      - run: pnpm build:data
-      - run: pnpm build
-      # The end-to-end job tests this build of the demo, browser engine and data included.
-      - uses: actions/upload-artifact@v7
-        with:
-          name: parallax-demo
-          path: packages/parallax/web/dist/demo
-          retention-days: 1
-
-  parallax-e2e:
-    name: parallax / End to end (Playwright, Chromium without a GPU)
-    needs: parallax-web
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: packages/parallax/web
-    steps:
-      - uses: actions/checkout@v7.0.1
-      - uses: pnpm/action-setup@v6
-        with:
-          package_json_file: packages/parallax/web/package.json
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 24
-          cache: pnpm
-          cache-dependency-path: packages/parallax/web/pnpm-lock.yaml
-      - run: pnpm install --frozen-lockfile
-      - uses: actions/download-artifact@v8
-        with:
-          name: parallax-demo
-          path: packages/parallax/web/dist/demo
-      # Every spec, the screenshots included, runs in the Playwright image matching @playwright/test, so that the
-      # browser and fonts match the committed screenshots, against the demo built above, served as static files.
-      - run: pnpm e2e:image
-        env:
-          PARALLAX_PREBUILT: "1"
-      - uses: actions/upload-artifact@v7
-        if: failure()
-        with:
-          name: parallax-playwright-results
-          path: packages/parallax/web/test-results
 
   parallax-dependencies:
     name: parallax / Dependency licences and advisories

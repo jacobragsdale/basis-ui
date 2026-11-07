@@ -1,0 +1,11 @@
+# Generates the protocol's TypeScript, src/proto/parallax_pb.ts, from crates/parallax-protocol/proto/parallax.proto, the
+# file the Rust crates compile. Run `vp run @basis/parallax#proto`; CI fails when the committed file differs from it.
+version: v2
+inputs:
+  - directory: crates/parallax-protocol/proto
+plugins:
+  - local: protoc-gen-es
+    out: src/proto
+    opt:
+      - target=ts
+      - import_extension=none

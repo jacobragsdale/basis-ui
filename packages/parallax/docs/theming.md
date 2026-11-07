@@ -8,8 +8,12 @@ some of them. For why the tokens work as they do, see
 ## How to apply your own theme
 
 Set tokens in CSS for the quickest route, or define a named theme in
-TypeScript to type-check it and give it to some components but not others.
-Both take effect on any grid, pivot or chart in the page.
+TypeScript to type-check it and give it to the components under a provider.
+Both take effect on the canvases of every grid, pivot and chart they reach.
+`basisTheme`, the default, takes every token from `@basis/ui`'s theme, which a
+basis-ui app does not change; the grid's toolbar, menus and status bar, the
+pivot's settings and the charts' chrome are `@basis/ui`'s components, and keep
+its theme whatever the tokens say.
 
 To start from a theme you can see, open the demo's **Theme studio**, set the
 accent, background, text, font, sizes and lines, and copy the result with
@@ -42,11 +46,11 @@ accent, background, text, font, sizes and lines, and copy the result with
    }
    ```
 
-3. If your application changes tokens while it runs by any means other than an
-   attribute of `<html>` or `<body>`, such as a class on a wrapper, call
-   `refreshTheme()` on each grid, pivot and chart afterwards. The canvas reads
-   tokens only when it is told they may have changed; a dark class on
-   `<html>` or `<body>` tells it.
+3. Change tokens while the application runs through an attribute of `<html>`
+   or `<body>`, such as a class or a style there. The canvas reads its tokens
+   only when it is told they may have changed: when an attribute of `<html>`
+   or `<body>` changes, as `@basis/ui`'s mode and density do, when the
+   system's colour scheme changes, and when a font loads.
 
 ### Define a named theme
 
@@ -55,7 +59,7 @@ accent, background, text, font, sizes and lines, and copy the result with
    be numbers of pixels. `token()` refers to another token's value:
 
    ```ts
-   import { airyTheme, defineTheme, token } from "@jacobragsdale/parallax";
+   import { airyTheme, defineTheme, token } from "@basis/parallax";
 
    export const acme = defineTheme({
      name: "acme",
@@ -72,16 +76,13 @@ accent, background, text, font, sizes and lines, and copy the result with
    A theme's name must be lowercase letters, digits and hyphens, and two
    different themes can't share one: `defineTheme` throws.
 
-2. Give the theme to every component in `provideParallax`, with the scheme:
+2. Give the theme to every component under the provider, with the scheme,
+   which follows `@basis/ui`'s mode by default:
 
-   ```ts
-   provideParallax({ url: "/ws", theme: acme, scheme: "auto" });
-   ```
-
-   Or give it to one component, which overrides the application's:
-
-   ```html
-   <px-grid [(layout)]="layout" [theme]="acme" scheme="dark" />
+   ```tsx
+   <ParallaxProvider worker={startParallax} theme={acme}>
+     <Positions />
+   </ParallaxProvider>
    ```
 
 To confirm the theme applies, inspect a grid's element in the browser's
@@ -91,7 +92,7 @@ developer tools: its computed `--_px-accent` is your accent, and its
 ## Tokens
 
 The tokens below are every one that grids, pivots and charts read, as of
-milestone 5. `TOKEN_PROPERTIES` lists the same properties in code.
+milestone 5. `tokenProperties` lists the same properties in code.
 
 ### Precedence
 
@@ -104,9 +105,9 @@ A token's value is the first of these that is set:
 
 A default derived from other tokens, such as "`--px-foreground` 12% in
 `--px-background`", follows the values in effect for those tokens. A value
-CSS refuses is ignored, and the component logs one warning naming it.
+CSS refuses is ignored.
 
-`density="comfortable"` adds 6 px to `--px-row-height` and
+The comfortable density, `@basis/ui`'s, adds 6 px to `--px-row-height` and
 `--px-header-height`, whoever set them.
 
 ### Colours, fonts and sizes

@@ -14,7 +14,8 @@ decoder, the formatter, virtual scrolling, and the rule that at most one viewpor
 request per view is in flight. Both draw only the visible rows and columns. When
 a frame arrives for rows already on screen, the canvas grid redraws only the cells
 whose text changed, but any scroll redraws every visible cell. The DOM grid renders
-positioned cell elements through Angular's templates.
+positioned cell elements through the Angular layer's templates, which basis-ui's
+roadmap step 2.7 deleted with the rest of that layer.
 
 The Playwright suite in `web/e2e/grid-experiment.spec.ts`, as of commit
 `b255e25`, runs against the reference server with `examples/experiment.toml`,
@@ -104,6 +105,11 @@ That commit served the demo from the reference server, which held the data and
 sent the browser the rows on screen; basis-ui's step 2.2 deleted it. The same
 method measures the current canvas grid alone, on the demo's 150,000 trades and
 positions held in the browser, so its figures are not comparable with the
-experiment's. From `web/`, after `pnpm build:wasm`, `pnpm build:data` and
-`pnpm build:demo`, run `pnpm performance`; the results go to
-`web/test-results/grid-performance.json`.
+experiment's. The React grid's performance spec measures it so, in the pinned
+Playwright image, from `packages/parallax`:
+
+```sh
+PARALLAX_PERFORMANCE=1 bash tests/e2e/grid/in-image.sh grid-performance
+```
+
+The results go to `test-results/grid-performance.json`.

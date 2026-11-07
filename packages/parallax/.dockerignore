@@ -3,8 +3,3 @@
 target
 data
 **/node_modules
-web/dist
-web/.angular
-web/projects/parallax/wasm
-web/test-results
-web/playwright-report

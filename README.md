@@ -15,8 +15,8 @@ generated client, and runs with no API in `vp dev`'s fixture mode; the roadmap's
 
 [parallax](packages/parallax) moved into this repo with its history, from
 [its own repo](https://github.com/jacobragsdale/parallax), at the start of the roadmap's phase 2. `@basis/parallax`, its
-engine with its worker built in and the React provider and hooks it is shown through, sits beside its Rust; phase 2
-replaces its Angular layer with React components.
+engine with its worker built in and its React grid, pivot and charts, sits beside its Rust, and
+[its demo](packages/parallax-demo) shows them in a React app on `@basis/ui`.
 
 ## License
 

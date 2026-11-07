@@ -6,11 +6,9 @@ import { basisPreset } from "./packages/ui/src/preset/index.ts";
 const preset = basisPreset();
 const { lint } = preset;
 
-/* Parallax's Rust and its Angular layer keep their own checks (cargo, and ESLint and Prettier) until roadmap step 2.6
- * replaces that layer with React, so the root checks skip them, the Rust's configuration, and the docs written to their
- * width. The package `@basis/parallax` beside them, its TypeScript and React, is checked here as `@basis/ui` is. */
+/* Parallax's Rust keeps its own checks (cargo), so the root checks skip it, its configuration, and the docs written to
+ * its width. The package `@basis/parallax` beside it, its TypeScript and React, is checked here as `@basis/ui` is. */
 const parallax = [
-  "packages/parallax/web/**",
   "packages/parallax/crates/**",
   "packages/parallax/.cargo/**",
   "packages/parallax/*.toml",

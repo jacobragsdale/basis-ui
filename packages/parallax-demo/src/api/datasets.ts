@@ -1,0 +1,46 @@
+/* The demo's datasets: the Arrow streams `scripts/data.sh` writes with parallax-datagen into `public/data`, which the
+ * build serves beside the app. This is the demo's client layer: it calls no API, so its one `fetch` reads those files,
+ * as an app's generated client reads its API's Arrow. */
+
+/** Each dataset's primary key, which makes a reload a diff, or null for none. */
+const datasetKeys = {
+  /** 150,000 positions. */
+  positions: "position_id",
+  /** 150,000 trades. */
+  trades: "trade_id",
+  /** Daily prices for 50 tickers since 2016, about 136,000 rows. */
+  prices: null,
+  /** 300 positions. */
+  book: "position_id",
+  /** 500 trades. */
+  blotter: "trade_id",
+  /** 600 bonds, with their spreads and the fitted curve's. */
+  bonds: "cusip",
+} as const satisfies Readonly<Record<string, string | null>>;
+
+/** A dataset the demo serves. */
+type DemoDataset = keyof typeof datasetKeys;
+
+const datasetNames = Object.keys(datasetKeys).filter((name): name is DemoDataset =>
+  Object.hasOwn(datasetKeys, name),
+);
+
+/** Whether `name` is a dataset the demo serves, such as the one a shared link's layout names. */
+function isDemoDataset(name: string): name is DemoDataset {
+  return Object.hasOwn(datasetKeys, name);
+}
+
+/** Fetches a dataset's Arrow stream, as the app's API would send it. */
+async function datasetBytes(name: DemoDataset): Promise<ArrayBuffer> {
+  const url = `data/${name}.arrows`;
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(
+      `${url} answered ${String(response.status)}; write the demo's data with vp run @basis/parallax-demo#data, then build it again.`,
+    );
+  }
+  return response.arrayBuffer();
+}
+
+export { datasetBytes, datasetKeys, datasetNames, isDemoDataset };
+export type { DemoDataset };

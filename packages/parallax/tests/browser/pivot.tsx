@@ -52,6 +52,7 @@ function Pivot({
     <section>
       <output aria-label="positions">{loaded.status}</output>
       <output aria-label="view">{view.status}</output>
+      <output aria-label="table rows">{view.table === null ? "" : String(view.table.rows)}</output>
       <output aria-label="other">{second.status}</output>
       <p aria-label="other error">{second.error}</p>
       <p aria-label="view error">{view.error}</p>

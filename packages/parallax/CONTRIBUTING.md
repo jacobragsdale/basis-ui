@@ -53,6 +53,7 @@ vp run @basis/parallax#test   # unit tests in Node, browser tests in Chromium
 vp run @basis/parallax#charts-e2e  # the charts' end-to-end specs and screenshots, in Docker
 vp run @basis/parallax#grid-e2e    # the grid's
 vp run @basis/parallax#pivot-e2e   # the pivot's
+vp run @basis/parallax#proto  # buf generate: the protocol's TypeScript, src/proto
 ```
 
 `wasm` builds `parallax-wasm` for `wasm32-unknown-unknown` in release and runs
@@ -64,21 +65,29 @@ replays it from its cache until the Rust changes. `build` runs it first, and
 app gets it. The browser tests need the Chromium that `@basis/ui`'s preset
 pins: `vp exec --filter @basis/ui playwright install chromium`.
 
+`proto` regenerates `src/proto/parallax_pb.ts` with `buf generate` and
+protoc-gen-es, from `crates/parallax-protocol/proto/parallax.proto`, the file
+the Rust compiles, as `buf.gen.yaml` says. The generated file is committed; run
+the task after changing the `.proto`, and commit its output with the change. CI
+fails when the committed file differs from what the task writes.
+
 `charts-e2e` runs the React charts' Playwright specs in `tests/e2e/charts`
 against a small React app, the harness in `tests/e2e/charts/harness`, over the
-Angular demo's datasets and the fixed-income page's bonds, which it writes with
-`parallax-datagen` into `tests/e2e/charts/data` when they are missing. Text renders differently from one machine to the next, so it runs
-Playwright in the Docker image `mcr.microsoft.com/playwright` of the installed
-`@playwright/test` version, the Angular layer's, against the harness it builds
-and serves from this machine, and compares screenshots at threshold 0. Its
-parity spec compares each chart's canvas pixel for pixel with the Angular
-layer's screenshots, until step 2.7 deletes them. After an intended change to
-how charts look, run `node tests/e2e/charts/run.ts --update-snapshots`, look at the
-new screenshots, and commit them.
+demo's datasets and the fixed-income page's bonds, which it writes with
+`parallax-datagen` into `tests/e2e/charts/data` when they are missing. Text
+renders differently from one machine to the next, so it runs Playwright in the
+Docker image `mcr.microsoft.com/playwright` of the installed `@playwright/test`
+version, against the harness it builds and serves from this machine, and
+compares screenshots at threshold 0. Its parity spec compares each chart's
+canvas pixel for pixel with the Angular layer's screenshots, recorded in the
+same image and kept in `tests/e2e/charts/angular` since step 2.7 deleted that
+layer. After an intended change to how charts look, run
+`node tests/e2e/charts/run.ts --update-snapshots`, look at the new screenshots,
+and commit them.
 
 `grid-e2e` runs the React grid's Playwright specs in `tests/e2e/grid` the same
 way, in the same image, against a harness of its own in
-`tests/e2e/grid/harness`, over the Angular demo's datasets, which
+`tests/e2e/grid/harness`, over the demo's datasets, which
 `tests/e2e/grid/data.sh` writes with `parallax-datagen`:
 
 ```sh
@@ -91,14 +100,14 @@ The task runs `tests/e2e/grid/in-image.sh`, which writes the data, builds the
 harness, serves it on port 8793 and runs `playwright test` in the image, passing
 its arguments on; with `PARALLAX_PREBUILT=1` it takes the data and the harness
 as built. Its parity spec compares the grid's canvas pixel for pixel with the
-Angular layer's screenshots, until step 2.7 deletes them. Its performance spec
-measures scrolling as the Angular layer's does, and runs only when asked. Look
+Angular layer's screenshots, kept in `tests/e2e/grid/angular`. Its performance
+spec measures scrolling as the Angular layer's did, and runs only when asked. Look
 at new screenshots before committing them.
 
 `pivot-e2e` runs the React pivot's Playwright specs in `tests/e2e/pivot` the
 same way, in the same image, against its own harness in
-`tests/e2e/pivot/harness` on port 8794, over the Angular demo's 150,000
-positions, which `tests/e2e/pivot/data.sh` writes:
+`tests/e2e/pivot/harness` on port 8794, over the demo's 150,000 positions,
+which `tests/e2e/pivot/data.sh` writes:
 
 ```sh
 vp run @basis/parallax#pivot-e2e        # every spec, the screenshots at threshold 0
@@ -106,8 +115,36 @@ bash tests/e2e/pivot/in-image.sh screenshots --update-snapshots   # from package
 ```
 
 Its parity spec compares the pivot's canvas pixel for pixel with the Angular
-pivot's, which `tests/e2e/pivot/angular/` recorded from the Angular demo, since
-the Angular layer had no pivot screenshots; both go with `web/` in step 2.7.
+pivot's, recorded from the Angular demo in the same image before step 2.7
+deleted it, and kept in `tests/e2e/pivot/angular/`.
+
+## The demo
+
+The demo, `@basis/parallax-demo` in `packages/parallax-demo`, is a React app on
+`@basis/ui` that runs this package's build, as an app does. Its tasks, run from
+anywhere in the repository:
+
+```sh
+vp run @basis/parallax-demo#data   # its datasets, with parallax-datagen, into public/data
+vp run @basis/parallax-demo#build  # this package's build, then the demo's, into dist/
+vp run @basis/parallax-demo#test   # its browser tests, with the engine's real worker
+vp run @basis/parallax-demo#e2e    # its end-to-end specs and screenshots, in Docker
+```
+
+`e2e` runs `tests/e2e/in-image.sh` in `packages/parallax-demo`, which writes
+the data, builds the demo, serves it on port 8791 and runs `playwright test` in
+the same image as the harnesses, passing its arguments on; with
+`PARALLAX_PREBUILT=1` it takes the data and the build as they are. Its specs
+drive the demo's frame and pages, the app's own data with the browser's limits
+and an engine that runs out of memory, and compare every page, in light and
+dark at the comfortable density, with the screenshots in
+`tests/e2e/screenshots` at threshold 0:
+
+```sh
+bash tests/e2e/in-image.sh screenshots --update-snapshots   # from packages/parallax-demo: new screenshots
+```
+
+Look at new screenshots before committing them.
 
 wasm-bindgen's output in `wasm/` is ignored by git, except its declaration of
 the glue, `wasm/parallax_wasm.d.ts`, which is committed so that the package
@@ -139,7 +176,7 @@ wall-clock times that daylight-saving changes make ambiguous or impossible. Add
 Arrow IPC stream format, which the browser's engine loads, rather than the file
 format. Run `parallax-datagen <dataset> --help` for every option. `data/` is
 ignored by git. The demo's datasets come from the same generator:
-`pnpm build:data`, run from `web`, writes them.
+`vp run @basis/parallax-demo#data` writes them.
 
 The `golden_rows_are_stable` tests lock the generator's output with hashes. If a
 change alters generated values on purpose, update the hashes in the same pull
@@ -175,9 +212,9 @@ recorded in the file.
 ## Release
 
 Basis-ui releases parallax with its own version as `@basis/parallax`, one npm
-package with the WebAssembly engine and its worker built into it; its roadmap's
-step 2.7 sets that up. The Rust crates stay inside this repository and are not
-published. Until then, check what npm would receive:
+package with the WebAssembly engine and its worker built into it, through its
+releases (its roadmap's step 1.8). The Rust crates stay inside this repository
+and are not published. Until then, check what npm would receive:
 
 ```sh
 vp run @basis/parallax#build

@@ -1,0 +1,30 @@
+{
+  "name": "@basis/parallax-demo",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Parallax's demo: its grid, pivot and charts over generated positions, trades, prices and bonds, in a React app on @basis/ui.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "imports": {
+    "#*": "./src/*"
+  },
+  "dependencies": {
+    "@basis/parallax": "workspace:*",
+    "@basis/ui": "workspace:*",
+    "@tanstack/react-router": "catalog:",
+    "apache-arrow": "catalog:",
+    "cn": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@playwright/test": "catalog:",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "typescript": "catalog:",
+    "vite-plus": "catalog:",
+    "vitest-browser-react": "catalog:"
+  }
+}

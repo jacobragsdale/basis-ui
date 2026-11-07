@@ -417,6 +417,20 @@ export {
 } from "./vendor/lucide/arrow-up-narrow-wide.tsx";
 export { ArrowUpRightIcon } from "./vendor/lucide/arrow-up-right.tsx";
 export { CalendarIcon } from "./vendor/lucide/calendar.tsx";
+export {
+  ChartCandlestickIcon,
+  ChartCandlestickIcon as CandlestickChartIcon,
+} from "./vendor/lucide/chart-candlestick.tsx";
+export {
+  ChartColumnIcon,
+  ChartColumnIcon as BarChart3Icon,
+} from "./vendor/lucide/chart-column.tsx";
+export { ChartLineIcon, ChartLineIcon as LineChartIcon } from "./vendor/lucide/chart-line.tsx";
+export { ChartPieIcon, ChartPieIcon as PieChartIcon } from "./vendor/lucide/chart-pie.tsx";
+export {
+  ChartScatterIcon,
+  ChartScatterIcon as ScatterChartIcon,
+} from "./vendor/lucide/chart-scatter.tsx";
 export { CheckIcon } from "./vendor/lucide/check.tsx";
 export { ChevronDownIcon } from "./vendor/lucide/chevron-down.tsx";
 export { ChevronLeftIcon } from "./vendor/lucide/chevron-left.tsx";
@@ -454,9 +468,11 @@ export { ExternalLinkIcon } from "./vendor/lucide/external-link.tsx";
 export { EyeIcon } from "./vendor/lucide/eye.tsx";
 export { EyeOffIcon } from "./vendor/lucide/eye-off.tsx";
 export { FunnelIcon, FunnelIcon as FilterIcon } from "./vendor/lucide/funnel.tsx";
+export { GaugeIcon } from "./vendor/lucide/gauge.tsx";
 export { GripVerticalIcon } from "./vendor/lucide/grip-vertical.tsx";
 export { GroupIcon } from "./vendor/lucide/group.tsx";
 export { InfoIcon } from "./vendor/lucide/info.tsx";
+export { LayoutDashboardIcon } from "./vendor/lucide/layout-dashboard.tsx";
 export {
   LoaderCircleIcon,
   LoaderCircleIcon as Loader2Icon,
@@ -465,6 +481,7 @@ export { LogOutIcon } from "./vendor/lucide/log-out.tsx";
 export { MenuIcon } from "./vendor/lucide/menu.tsx";
 export { MinusIcon } from "./vendor/lucide/minus.tsx";
 export { OctagonXIcon, OctagonXIcon as XOctagonIcon } from "./vendor/lucide/octagon-x.tsx";
+export { PaletteIcon } from "./vendor/lucide/palette.tsx";
 export { PanelLeftIcon, PanelLeftIcon as SidebarIcon } from "./vendor/lucide/panel-left.tsx";
 export { PencilIcon } from "./vendor/lucide/pencil.tsx";
 export { PinIcon } from "./vendor/lucide/pin.tsx";
@@ -479,6 +496,8 @@ export {
   SquarePenIcon as PenBoxIcon,
   SquarePenIcon as PenSquareIcon,
 } from "./vendor/lucide/square-pen.tsx";
+export { SunMoonIcon } from "./vendor/lucide/sun-moon.tsx";
+export { TableIcon } from "./vendor/lucide/table.tsx";
 export { TrashIcon, TrashIcon as Trash2Icon } from "./vendor/lucide/trash.tsx";
 export { TrendingDownIcon } from "./vendor/lucide/trending-down.tsx";
 export { TrendingUpIcon } from "./vendor/lucide/trending-up.tsx";

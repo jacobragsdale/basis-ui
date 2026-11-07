@@ -1,8 +1,8 @@
 /* The React pivot's canvas against the Angular pivot's: drawn in parallax's standard look, at the Angular canvas's size,
  * over the same 150,000 positions and the same reference pivot, its tree, its column pivots and its values match the
- * canvas `angular/capture.ts` recorded from the Angular demo pixel for pixel. The settings, toolbar and status bar
- * around it are React's, on @basis/ui, so only the canvas is compared. Runs only in the pinned Playwright image, where
- * the Angular canvas was recorded. The comparison goes with web/ in roadmap step 2.7. */
+ * canvas recorded from the Angular demo, in `angular/`, pixel for pixel. The settings, toolbar and status bar around it
+ * are React's, on @basis/ui, so only the canvas is compared. Runs only in the pinned Playwright image, where the
+ * Angular canvas was recorded, before roadmap step 2.7 deleted the Angular layer. */
 
 import { readFileSync } from "node:fs";
 import path from "node:path";

@@ -2,7 +2,7 @@
  * Angular canvas's size, over the same data and layout, after the same clicks, the book and the grouped blotter match
  * their Angular screenshots' canvases pixel for pixel. The toolbars, menus and status bars around them are React's,
  * on @basis/ui, so only the canvas is compared. Runs only in the pinned Playwright image, the Angular screenshots'
- * own. The comparison goes with web/ in roadmap step 2.7. */
+ * own. The screenshots are kept in `angular/` since roadmap step 2.7 deleted the Angular layer. */
 
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -17,10 +17,7 @@ test.skip(
   "The Angular screenshots are compared only in the pinned Playwright image: run tests/e2e/grid/in-image.sh.",
 );
 
-const screenshots = path.join(
-  import.meta.dirname,
-  "../../../web/e2e/screenshots/screenshots.spec.ts/chromium",
-);
+const screenshots = path.join(import.meta.dirname, "angular");
 
 /** Where the canvas sits in an Angular screenshot of a small table's section, in CSS pixels: inside the grid's border,
  * under the section's title, the toolbar and the group panel, which the airy look makes taller. */

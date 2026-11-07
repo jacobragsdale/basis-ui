@@ -2,7 +2,11 @@
 
 This roadmap lists the milestones, the build order within milestone 1, and the
 performance budgets that decide when a milestone is done. For the reasons
-behind the design, see [How parallax is designed](design.md).
+behind the design, see [How parallax is designed](design.md). The milestones
+were built in parallax's own repository, with an Angular front end and demo;
+basis-ui's roadmap, phase 2, replaced both with React, `@basis/parallax` and
+the demo in `packages/parallax-demo`, and its step 2.7 deleted the Angular
+layer.
 
 ## Milestones
 
@@ -341,7 +345,8 @@ A budget for live updates, 10,000 row updates per second with a p99 of
 
 ## Verification on a VDI
 
-The demo app has a performance overlay, opened by its **Performance** button.
+The demo app has a performance overlay, opened by the **Performance** button in
+its sidebar.
 It shows frame time and the main-thread time blocked by long frames. For each
 grid on the page, it shows the drawing time per frame, the time to the first
 rows, the time from an input such as a click or a keystroke to drawing the

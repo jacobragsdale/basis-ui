@@ -460,10 +460,21 @@ positions-shaped table and 70 MB of Arrow, whichever comes first: time follows r
 rows the reference pivot met its 500 ms budget with the CPU held to a quarter, and the engine held 350 MB. The Citrix
 repeat moves the limit to what a desktop's own browser meets, and restates parallax's 300 MB memory budget, written for
 views held on a server, for tables held in the browser. A load past the engine's memory traps the wasm, so the worker
-treats a trap as fatal: it fails every view with the reason and starts again. React components replace the 44 Angular
-files of its web layer; the canvas renderers, the formatter, the charts and the technical-analysis tools stay, as do the
-DuckDB comparisons that test the engine's numbers. Each column is formatted by the display format its Arrow field carries, as [Numbers](#numbers) describes. App developers install one npm package with the wasm
-built into it, and Rust stays inside this repo's build. Parallax keeps its Apache-2.0 license.
+treats a trap as fatal: it fails every view with the reason and starts again. React components replaced the 44 Angular
+component files of its web layer in step 2.6, the canvas renderers, the formatter, the charts and the technical-analysis
+tools ported unchanged and checked pixel for pixel against the Angular layer's, and the DuckDB comparisons that test the
+engine's numbers stayed. Each column is formatted by the display format its Arrow field carries, as [Numbers](#numbers)
+describes. App developers install one npm package with the wasm built into it, and Rust stays inside this repo's build.
+Parallax keeps its Apache-2.0 license.
+
+Step 2.7 deleted the Angular layer, `packages/parallax/web`: the Angular library, its demo app, their own pnpm
+workspace, ESLint, Prettier and unit tests, their Playwright specs and screenshots, CI's two Angular jobs, and the
+script that recorded the Angular pivot's canvas, about 25,000 lines with the lockfile left out. The Angular
+screenshots and the pivot canvas that the React layer's parity specs compare with are kept beside those specs, so
+they go on guarding the canvases against drift. The protocol's TypeScript is generated in the package itself, by `buf
+generate`. The demo is now a React app on `@basis/ui`, `packages/parallax-demo`, which runs the package's build as an
+app does: the grid, pivot and charts over generated positions, trades, prices and bonds, with the performance overlay
+and the theme studio, served as static files and screenshotted in light and dark.
 
 ## Versions
 

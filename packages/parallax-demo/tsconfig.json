@@ -1,0 +1,13 @@
+{
+  "extends": "@basis/ui/tsconfig.json",
+  "compilerOptions": {
+    /* The demo runs @basis/parallax's build, as an app does, but is checked against its source, so that `vp check`
+     * needs no Rust toolchain to build the engine first and reads the same modules whether or not it has been built.
+     * The build's declarations are generated from the same source. */
+    "paths": {
+      "@basis/parallax": ["../parallax/src/index.ts"],
+      "@basis/parallax/worker": ["../parallax/src/worker.ts"]
+    }
+  },
+  "include": ["src", "vite.config.ts"]
+}

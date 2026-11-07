@@ -7,8 +7,8 @@ page](https://github.com/jacobragsdale/basis/blob/main/docs/design.md#what-a-ui-
 [docs/design.md](docs/design.md) holds the decisions and their reasons, and [docs/roadmap.md](docs/roadmap.md) the
 phases, their steps, and the lanes that run at the same time. The code is a pnpm workspace run by Vite+'s `vp`, with
 `@basis/ui` in `packages/ui`, its gallery in `packages/gallery`, an example app on the app shell and a generated client
-in `packages/example`, and parallax, moved in with its history, in `packages/parallax`: its Rust crates, its Angular
-layer in `web/` until roadmap step 2.6 replaces it, and the `@basis/parallax` package.
+in `packages/example`, parallax, moved in with its history, in `packages/parallax`: its Rust crates and the
+`@basis/parallax` package, and parallax's demo, a React app on both packages, in `packages/parallax-demo`.
 [packages/ui/README.md](packages/ui/README.md) says how an app uses `@basis/ui` and how a component is added, and
 [packages/parallax/README.md](packages/parallax/README.md) how it uses `@basis/parallax`.
 
@@ -47,15 +47,15 @@ engine for the browser, which needs the Rust toolchain and the `wasm-bindgen` co
 Vite+ replays that build from its cache until the Rust changes, and the first one in a fresh clone takes minutes. Its
 charts' end-to-end specs and screenshots run with `vp run @basis/parallax#charts-e2e`, its grid's with
 `vp run @basis/parallax#grid-e2e`, and its pivot's with `vp run @basis/parallax#pivot-e2e`, in Docker, as its
-`CONTRIBUTING.md` says.
+`CONTRIBUTING.md` says. The demo runs the package's build, as an app does: its datasets come from
+`vp run @basis/parallax-demo#data`, and its end-to-end specs and screenshots from `vp run @basis/parallax-demo#e2e`.
 
-Parallax's Rust and its Angular layer keep their own checks until roadmap step 2.7 deletes that layer, and the root
-checks skip them. Its `CONTRIBUTING.md` has them; in short:
+Parallax's Rust keeps its own checks, and the root checks skip it. Its `CONTRIBUTING.md` has them; in short:
 
 ```sh
 cd packages/parallax
 cargo fmt --all --check && cargo clippy --workspace --all-targets --locked && cargo test --workspace --locked
-cd web && pnpm install && pnpm build:wasm && pnpm lint && pnpm format:check && pnpm test
+cargo test -p parallax-wasm --target wasm32-unknown-unknown --locked
 ```
 
 On this machine, build Rust with `CARGO_BUILD_JOBS=1`: parallel rustc jobs run out of memory.

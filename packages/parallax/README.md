@@ -9,12 +9,12 @@ its own API; one table holds at most 150,000 rows and 70 MB of Arrow.
 This package, `@basis/parallax`, is the engine with its worker built in, the
 framework-free client, and its React layer. App developers install it and never
 build Rust. basis-ui's [roadmap](../../docs/roadmap.md), phase 2, builds it:
-step 2.5 built the provider, the worker connection and the hooks below, and
-step 2.6 ports the grid, pivot and chart components from the Angular layer in
-`web/`, which it then deletes. Nothing is published yet; step 2.7 releases it
-with basis-ui. parallax's own [roadmap](docs/roadmap.md) records the milestones
-it was built in. [Contributing](CONTRIBUTING.md) shows how to build it and run
-the tests.
+step 2.5 built the provider, the worker connection and the hooks below, step
+2.6 ported the grid, pivot and chart components from the Angular layer, and
+step 2.7 rebuilt the demo in React and deleted that layer. Nothing is published
+yet; it releases with basis-ui. parallax's own [roadmap](docs/roadmap.md)
+records the milestones it was built in. [Contributing](CONTRIBUTING.md) shows
+how to build it and run the tests.
 
 ## Show a view in a React app
 
@@ -335,56 +335,44 @@ data. If the engine stops a third time within a minute, parallax stops
 recovering, and everything stays failed with a reason that says to reload the
 page.
 
-## The Angular layer
+## Run the demo
 
-Until step 2.6 deletes it, `web/` holds the Angular components and the demo,
-with their own copies of the client, and their own checks.
+The demo, in [`packages/parallax-demo`](../parallax-demo), is a React app on
+`@basis/ui` that runs this package's build as an app does. Its sidebar opens
+the positions' pivot, grids of trades and prices, the small tables, data the app
+makes itself, a dashboard, the breakdowns, every chart kind, the
+technical-analysis page, small charts and the fixed-income page, in the user's
+mode and density, with the performance overlay and the theme studio. It needs
+the Rust toolchain that `rust-toolchain.toml` names and the `wasm-bindgen`
+command-line tool at the version in `Cargo.lock`, as the package's build does.
 
-### Run the demo
-
-The demo shows the grid, pivot and charts over generated positions, trades and
-prices, with a performance overlay. It needs the Rust toolchain that
-`rust-toolchain.toml` names, the `wasm-bindgen` command-line tool at the version
-in `Cargo.lock`, Node.js 24 and pnpm.
-
-1. Build the browser engine, the demo's data and the demo, from `web`:
-
-   ```sh
-   pnpm install
-   pnpm build:wasm
-   pnpm build:data
-   pnpm build:demo
-   ```
-
-   `pnpm build:data` generates the datasets with `parallax-datagen` as Arrow
-   streams in `projects/demo/public/data`: 150,000 positions and 150,000
-   trades, at the browser's row limit, daily prices for 50 tickers, and the
-   small tables' 300 positions and 500 trades.
-
-2. Serve the built demo as static files:
+1. Write its datasets and build it, from anywhere in the repository:
 
    ```sh
-   pnpm serve:demo
+   vp run @basis/parallax-demo#data
+   vp run @basis/parallax-demo#build
    ```
+
+   The data task writes the datasets with `parallax-datagen` as Arrow streams
+   in `packages/parallax-demo/public/data`: 150,000 positions and 150,000
+   trades, at the browser's row limit, daily prices for 50 tickers, the small
+   tables' 300 positions and 500 trades, and 600 bonds. The build copies them
+   into `dist/` beside the app, and builds `@basis/parallax` first.
+
+2. Serve `packages/parallax-demo/dist` as static files. Its addresses are
+   relative and its routes live in the address's hash, so any static file
+   server serves it, from any folder, with no rewrites. From
+   `packages/parallax-demo`, `vp preview --port 8791` serves it cross-origin
+   isolated, which lets the performance overlay measure the whole tab, the
+   engine's worker included.
 
 3. Open <http://127.0.0.1:8791>.
 
 Each page fetches the datasets it shows and loads them into the page's engine,
-as an app loads its API's answers. `pnpm e2e`, run from `web`, tests the demo in
-Chromium with the GPU off, serving the build from step 1 if nothing answers on
-port 8791 yet.
-
-`pnpm screenshots`, also run from `web`, compares every chart in the demo, in
-both themes, pixel for pixel with the screenshots in `web/e2e/screenshots`.
-Text renders differently from one machine to the next, so it runs Playwright in
-the Docker image `mcr.microsoft.com/playwright` of the installed
-`@playwright/test` version, against the demo it serves from this machine;
-`pnpm e2e:image` runs every end-to-end spec that way, as CI does. Both need
-Docker, build the wasm worker, the data and the demo first, and refuse to run
-while something else answers on port 8791, which could be serving an older
-build. After an intended change to how charts look, run
-`pnpm screenshots --update-snapshots`, look at the new screenshots, and commit
-them.
+as an app loads its API's answers, and they stay loaded while the demo is open.
+`vp run @basis/parallax-demo#e2e` runs its end-to-end specs and compares every
+page, in light and dark, pixel for pixel with its screenshots, in Docker, as
+[Contributing](CONTRIBUTING.md) says.
 
 ## Documentation
 

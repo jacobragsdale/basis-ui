@@ -1,7 +1,7 @@
 # How parallax is designed
 
 parallax is a data grid, pivot table and charting stack for portfolio managers
-and quant researchers. It is a Rust engine with an Angular front end. Three
+and quant researchers. It is a Rust engine with a React front end. Three
 facts about its users drive the design. The datasets are large. The browsers
 have no GPU. A wrong number on screen costs more than a slow one.
 [Perspective](https://github.com/perspective-dev/perspective) is the model for
@@ -562,9 +562,9 @@ The client draws with Canvas 2D:
 - with updates batched to a configurable visual rate, 4 Hz by default for
   flashing cells
 
-Renderers, hit-testing and interaction are TypeScript inside the Angular
-library. Drawing from Rust would cross the WebAssembly boundary on every text
-call and make theming harder.
+Renderers, hit-testing and interaction are TypeScript inside `@basis/parallax`.
+Drawing from Rust would cross the WebAssembly boundary on every text call and
+make theming harder.
 
 The grid draws on a canvas too. A virtualized DOM grid, Perspective's choice, was
 measured against it on the same views in Chromium with the GPU disabled and the
@@ -625,24 +625,28 @@ The session code that answers these messages is the same natively and in
 WebAssembly, and a fixed conversation must produce byte-identical replies from
 both builds, so the two can't drift apart.
 
-## The Angular library
+## The React layer
 
-The library targets Angular 22 and later, zoneless, with signals and
-standalone components.
+The package, `@basis/parallax`, is React 19 on `@basis/ui`, whose components
+draw the grid's toolbar, menus and status bar, the pivot's settings and the
+charts' chrome. Its React layer replaced an Angular one in basis-ui's roadmap
+step 2.6, and step 2.7 deleted that layer; its README has the API.
 
-- `<px-grid>`, `<px-pivot>` and `<px-chart>` each take a single `layout` and
-  emit `layoutChange`, so `[(layout)]` keeps the host's copy current.
-- `provideParallax({ worker })` says where the application serves the engine's
-  worker script.
-- A `ParallaxClient` service loads the app's data, with `load`, and offers the
-  components' operations to code.
-- The npm package ships the WebAssembly engine and its worker script in its
-  `wasm` folder, which the application serves as static files. The worker
-  starts when the app first loads data or a view opens, so pages without
-  parallax never download the engine. `prewarm: true` starts it when the
-  application starts instead, so that the engine's start, about 0.2 s with the
-  CPU throttled four times in spike 0.3, overlaps the app's own. The demo
-  prewarms.
+- `<Grid>`, `<Pivot>` and `<Chart>` each take a single `layout` and hand every
+  change the user makes to `onLayoutChange`, so the host keeps its copy
+  current.
+- `<ParallaxProvider worker>` starts the engine's worker for the tree inside it,
+  and ends it when it unmounts.
+- `useDataset` loads the app's data, and `useView` opens a view of it, which
+  the components build on; `useParallaxClient` offers the engine's operations
+  to code.
+- The npm package ships the WebAssembly engine and its worker built in; the
+  app's bundler bundles the worker from `@basis/parallax/worker?worker` with
+  the engine beside it. The worker starts when the app first loads data or a
+  view opens, so pages without parallax never download the engine. `prewarm`
+  starts it with the provider instead, so that the engine's start, about 0.2 s
+  with the CPU throttled four times in spike 0.3, overlaps the app's own. The
+  demo prewarms.
 
 A layout is a JSON document that describes a whole view: dataset and
 parameters, grouping, pivots, filters, sorts, formats, column widths, chart
@@ -669,7 +673,7 @@ every new field defaults to what version 1 meant.
 
 Frames carry the totals row beside the rows, computed for the same columns.
 
-`<px-grid>` keeps everything the user changes in the layout. Clicking a header
+`<Grid>` keeps everything the user changes in the layout. Clicking a header
 sorts by that column, then reverses it, then clears it; Shift adds a sort. In a
 pivot, a header sorts groups by that measure. Dragging a header edge resizes
 the column, and double-clicking it fits the loaded values. Clicking a group
@@ -688,7 +692,7 @@ on screen is fetched first, up to 1,000,000 cells, without moving the view.
 Hovering over a cell whose text was cut, a `###`, or a flagged cell shows the
 full text or what the flag means.
 
-`<px-pivot>` puts a field list beside a grid, laid out as Excel's PivotTable
+`<Pivot>` puts a field list beside a grid, laid out as Excel's PivotTable
 field list is, since that is the pivot its users already know. The dataset's
 fields are listed with a search, ticked when the pivot uses them, and dragged
 into the Filters, Columns, Rows and Values areas, or between them; a drop line
@@ -717,11 +721,11 @@ and stays out of the layout until it names a value, because an empty "is one
 of" would hide every row. The pivot's toolbar has the grid's search, chips and
 export, plus Expand all and Collapse all.
 
-Double-clicking a value opens the rows behind its cell in a drawer: a flat view
-with the pivot's filters plus one filter per group level and per column-pivot
-level. The drawer has its own toolbar, to search those rows, choose their
-columns and export them. Its filters are what put the rows there, so they show
-in its title rather than as chips to remove. The drawer closes when the pivot's
+Double-clicking a value opens the rows behind its cell below the pivot: a flat
+view with the pivot's filters plus one filter per group level and per
+column-pivot level. Its grid has its own toolbar, to search those rows, choose
+their columns and export them. Its filters are what put the rows there, so they
+show in its title rather than as chips to remove. It closes when the pivot's
 filters or groups change, since its rows would no longer add up to the cells
 above.
 
@@ -737,9 +741,10 @@ details.
 ### Themes
 
 Every colour, font, size and border the components draw is a design token,
-listed once in `theme.ts` with its defaults for the light and dark schemes; the
-library's stylesheet, the TypeScript types and `readTheme` are all generated
-from that list. [Themes](theming.md) lists the tokens and shows how to apply
+listed once in `src/theme/tokens.ts` with its defaults for the light and dark
+schemes; the package's stylesheet, the TypeScript types and `readTheme` are all
+generated from that list. `basisTheme`, the default, gives each token one of
+`@basis/ui`'s. [Themes](theming.md) lists the tokens and shows how to apply
 your own.
 
 Each token has three custom properties. The public one, `--px-accent`, is never
@@ -763,8 +768,8 @@ resolved properties are registered with `@property` as colours and lengths.
 as they are. CSS can't announce that a computed value changed, so a shared
 watcher counts the page changes that usually mean a new theme: an attribute of
 `<html>` or `<body>` changing, the system's colour scheme changing, and fonts
-loading. The components read their tokens again then, and when their inputs
-change; `refreshTheme()` covers anything else. Reading tokens on every redraw
+loading. The components read their tokens again then, when
+`useParallaxTheme()`'s `read` changes, and when their inputs change. Reading tokens on every redraw
 would cost a style recalculation per frame, and Citrix desktops have no cycles
 to spare. Text widths are cached per font, so a theme that changes the font
 measures again.

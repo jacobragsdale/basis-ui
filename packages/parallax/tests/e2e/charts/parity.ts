@@ -1,7 +1,7 @@
 /* How the parity spec compares a React chart's canvas with the Angular demo's screenshot of the same chart: the React
  * card is sized until its canvas is exactly the Angular canvas's size, and the canvas's pixels are compared with the
- * screenshot's at the Angular canvas's place. The Angular layer's screenshots go with web/ in roadmap step 2.7, and
- * this comparison with them. */
+ * screenshot's at the Angular canvas's place. The Angular demo's screenshots are kept in `angular/` since roadmap step
+ * 2.7 deleted the Angular layer, so the comparison guards the React canvases against drifting from them. */
 
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -27,10 +27,7 @@ interface Comparison {
   readonly first: readonly [number, number] | null;
 }
 
-const screenshots = path.join(
-  import.meta.dirname,
-  "../../../web/e2e/screenshots/screenshots.spec.ts/chromium",
-);
+const screenshots = path.join(import.meta.dirname, "angular");
 /** How long a size must hold to count as steady, and how long a canvas must read the same to count as drawn. */
 const steadyMs = 150;
 const settleMs = 300;

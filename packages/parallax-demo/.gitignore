@@ -1,0 +1,2 @@
+# The datasets `scripts/data.sh` writes with parallax-datagen, which the build copies beside the app.
+/public/data

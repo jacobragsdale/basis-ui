@@ -30,6 +30,8 @@ describe("useDataset and useView", () => {
     ).toStrictEqual(["Total: 652.75", "Atlas: 250.75", "Boreal: 402.00"]);
     await expect.element(screen.getByLabelText("positions")).toHaveTextContent("loaded");
     await expect.element(screen.getByLabelText("view")).toHaveTextContent("open");
+    // The view knows its table's status from the moment it opens, as a grid's status line shows it.
+    await expect.element(screen.getByLabelText("table rows")).toHaveTextContent("6");
   });
 
   test("copy bytes the app holds, so the app can still read them", async () => {

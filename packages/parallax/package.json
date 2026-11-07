@@ -38,6 +38,8 @@
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@bufbuild/buf": "catalog:",
+    "@bufbuild/protoc-gen-es": "catalog:",
     "@playwright/test": "catalog:",
     "@rolldown/plugin-babel": "catalog:",
     "@types/node": "catalog:",
