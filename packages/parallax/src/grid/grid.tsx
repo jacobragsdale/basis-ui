@@ -23,6 +23,7 @@ import type { View } from "#react/use-view.ts";
 import { GridController } from "./controller.ts";
 import { isPivotLayout } from "./edit.ts";
 import { readFields } from "./fields.ts";
+import type { SourceField } from "./fields.ts";
 import { GridBody } from "./grid-body.tsx";
 import type { MeasureMenuProps } from "./grid-menu.tsx";
 import { GroupPanel } from "./group-panel.tsx";
@@ -56,6 +57,9 @@ interface GridProps {
   readonly label?: string | undefined;
   /** A pivot measure header's menu, which the pivot gives the grid. Without it, a measure's header has no menu. */
   readonly measureMenu?: ((props: MeasureMenuProps) => ReactNode) | undefined;
+  /** Takes the dataset's columns when the view opens, and again whenever they change, as the pivot's field list
+   * reads them. */
+  readonly onFieldsChange?: ((fields: readonly SourceField[]) => void) | undefined;
   readonly ref?: Ref<GridHandle> | undefined;
 }
 
@@ -80,13 +84,25 @@ interface GridState {
   readonly controller: GridController;
   readonly snapshot: GridSnapshot;
   readonly view: View;
-  readonly fields: ReturnType<typeof readFields>;
+  readonly fields: readonly SourceField[];
   readonly change: (layout: Layout) => void;
+}
+
+/** The dataset's columns, from the schema the view opened with, which `onFieldsChange` hears of when they change. */
+function useFields(
+  schema: Uint8Array | null,
+  onFieldsChange: GridProps["onFieldsChange"],
+): readonly SourceField[] {
+  const fields = useMemo(() => readFields(schema ?? new Uint8Array()), [schema]);
+  useEffect(() => {
+    onFieldsChange?.(fields);
+  }, [fields, onFieldsChange]);
+  return fields;
 }
 
 /** Opens the grid's view on the controller, which takes its frames, and keeps the controller's inputs current. */
 function useGrid(props: GridProps): GridState {
-  const { dataset, height = "fill", maxHeight = defaultMaxHeight } = props;
+  const { dataset, height = "fill", maxHeight = defaultMaxHeight, onFieldsChange } = props;
   const [layout, change] = useGridLayout(props.layout, props.onLayoutChange);
   // oxlint-disable-next-line react/hook-use-state -- one controller for the grid's life, made once; nothing sets it.
   const [controller] = useState(() => new GridController());
@@ -96,10 +112,7 @@ function useGrid(props: GridProps): GridState {
     onFrame: controller.receiveFrame,
     ...(opening === null ? {} : { viewport: opening }),
   });
-  const fields = useMemo(
-    () => readFields(view.opened?.tableSchema ?? new Uint8Array()),
-    [view.opened],
-  );
+  const fields = useFields(view.opened?.tableSchema ?? null, onFieldsChange);
   useEffect(() => {
     controller.setHandle(view.handle);
   }, [controller, view.handle]);

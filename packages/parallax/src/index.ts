@@ -39,6 +39,10 @@ export type { DrillRequest } from "./grid/types.ts";
 export type { FieldKind, SourceField } from "./grid/fields.ts";
 export type { DrawStats } from "./grid/paint/stats.ts";
 
+// The pivot.
+export { Pivot, type PivotProps } from "./pivot/pivot.tsx";
+export { drillLayout } from "./pivot/drill.ts";
+
 // The engine, its worker and its protocol.
 export {
   ParallaxClient,

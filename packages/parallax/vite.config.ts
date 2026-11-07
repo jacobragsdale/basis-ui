@@ -45,6 +45,13 @@ export default defineConfig({
        * are needed. Arguments go to Playwright, such as spec names or --update-snapshots. It is never cached, so it sees
        * the whole environment, such as PARALLAX_PREBUILT and CARGO_TARGET_DIR. */
       "grid-e2e": { cache: false, command: "bash tests/e2e/grid/in-image.sh", dependsOn: ["wasm"] },
+      /* The pivot's end-to-end specs, the same way against a harness of its own: its settings, menus, filters, the
+       * rows behind a value, links, screenshots, and its canvas against the Angular pivot's. */
+      "pivot-e2e": {
+        cache: false,
+        command: "bash tests/e2e/pivot/in-image.sh",
+        dependsOn: ["wasm"],
+      },
       // The browser tests run the built worker too, as an app gets it.
       test: { command: "vp test", dependsOn: ["build"] },
       wasm: {

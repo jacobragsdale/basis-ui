@@ -12,3 +12,5 @@ __pycache__/
 /tests/e2e/charts/data/
 # The grid's harness's datasets, which tests/e2e/grid/data.sh writes with parallax-datagen.
 /tests/e2e/grid/harness/public/data
+# The pivot's harness's datasets, which tests/e2e/pivot/data.sh writes with parallax-datagen.
+/tests/e2e/pivot/harness/public/data

@@ -89,7 +89,7 @@ describe("Grid's menus and tools", () => {
     await pressAt(grid, { x: 300, y: firstRow });
     await userEvent.keyboard("{Alt>}{ArrowDown}{/Alt}");
     await expect
-      .element(screen.getByRole("dialog", { name: "Value" }))
+      .element(screen.getByRole("dialog", { name: "Value Sum of market_value" }))
       .toHaveTextContent("Measure 0");
   });
 

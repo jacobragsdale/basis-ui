@@ -51,6 +51,8 @@ vp run @basis/parallax#wasm   # the engine for the browser, into wasm/
 vp run @basis/parallax#build  # vp pack: dist/, the engine and its worker included
 vp run @basis/parallax#test   # unit tests in Node, browser tests in Chromium
 vp run @basis/parallax#charts-e2e  # the charts' end-to-end specs and screenshots, in Docker
+vp run @basis/parallax#grid-e2e    # the grid's
+vp run @basis/parallax#pivot-e2e   # the pivot's
 ```
 
 `wasm` builds `parallax-wasm` for `wasm32-unknown-unknown` in release and runs
@@ -93,6 +95,20 @@ as built. Its parity spec compares the grid's canvas pixel for pixel with the
 Angular layer's screenshots, until step 2.7 deletes them. Its performance spec
 measures scrolling as the Angular layer's does, and runs only when asked. Look
 at new screenshots before committing them.
+
+`pivot-e2e` runs the React pivot's Playwright specs in `tests/e2e/pivot` the
+same way, in the same image, against its own harness in
+`tests/e2e/pivot/harness` on port 8794, over the Angular demo's 150,000
+positions, which `tests/e2e/pivot/data.sh` writes:
+
+```sh
+vp run @basis/parallax#pivot-e2e        # every spec, the screenshots at threshold 0
+bash tests/e2e/pivot/in-image.sh screenshots --update-snapshots   # from packages/parallax: new screenshots
+```
+
+Its parity spec compares the pivot's canvas pixel for pixel with the Angular
+pivot's, which `tests/e2e/pivot/angular/` recorded from the Angular demo, since
+the Angular layer had no pivot screenshots; both go with `web/` in step 2.7.
 
 wasm-bindgen's output in `wasm/` is ignored by git, except its declaration of
 the glue, `wasm/parallax_wasm.d.ts`, which is committed so that the package

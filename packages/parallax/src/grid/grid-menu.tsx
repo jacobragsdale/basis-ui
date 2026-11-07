@@ -11,6 +11,7 @@ import type { Layout } from "#layout/layout.ts";
 import type { GridController } from "./controller.ts";
 import type { SourceField } from "./fields.ts";
 import { HeaderMenu } from "./header-menu.tsx";
+import { measureName } from "./labels.ts";
 import type { OpenMenu } from "./types.ts";
 import type { ValueSource } from "./value-picker.tsx";
 
@@ -83,6 +84,7 @@ function MenuBody({
 function GridMenu(props: GridMenuProps): ReactNode {
   const { controller, menu, layout, anchorRef, scrollRef } = props;
   const title = menu === null || layout === null ? "" : (layout.titles[menu.name] ?? menu.name);
+  const measure = menu?.measure === null ? undefined : layout?.measures[menu?.measure ?? -1];
   return (
     <Popover
       open={menu !== null && layout !== null}
@@ -106,7 +108,11 @@ function GridMenu(props: GridMenuProps): ReactNode {
       />
       <PopoverContent
         align="end"
-        aria-label={menu?.measure === null ? `Column ${title}` : "Value"}
+        aria-label={
+          menu?.measure === null
+            ? `Column ${title}`
+            : `Value ${measure === undefined ? "" : measureName(measure)}`.trim()
+        }
         finalFocus={scrollRef}
         className="w-72"
       >

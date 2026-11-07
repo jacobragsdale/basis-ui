@@ -74,7 +74,8 @@ on at its own version.
    ```
 
 4. Or give the dataset to a component that opens its own view and draws its
-   frames: [a grid](#show-a-grid) or [a chart](#draw-a-chart).
+   frames: [a grid](#show-a-grid), [a pivot](#pivot-a-table) or
+   [a chart](#draw-a-chart).
 
 ## Show a grid
 
@@ -115,6 +116,7 @@ frame for rows already on screen redraws only the cells whose text changed.
 | `onDrill`        | Takes a double click on a pivot's value: the group's path, the column's pivot values and a label, for the rows behind it                     |
 | `label`          | What screen readers call the grid; the dataset's name by default                                                                            |
 | `measureMenu`    | The menu a pivot's measure header opens, which the pivot gives the grid; without it, a measure's header has none                            |
+| `onFieldsChange` | Takes the dataset's columns when the view opens, as the pivot's field list reads them                                                       |
 | `ref`            | `drawStats()`, the drawing counters; `export(format)`, `xlsx` or `csv`; and `distinctValues(column, search, limit)`                         |
 
 The user sorts by clicking a header, Shift adding a sort; resizes a column by
@@ -138,6 +140,57 @@ totals row is said as text. The canvas draws in the theme's tokens, which
 `basisTheme` takes from `@basis/ui`'s, in either mode, and reads them again when
 the mode, the density or the fonts change. Its toolbar, menus and status bar are
 `@basis/ui`'s components, in `@basis/ui`'s theme.
+
+## Pivot a table
+
+`<Pivot>` is a pivot table with its settings beside it, as Excel's PivotTable
+and its field list. The table is a `<Grid>`; the settings edit the same layout:
+
+```tsx
+import { Pivot, useDataset } from "@basis/parallax";
+import type { LayoutInput } from "@basis/parallax";
+
+function Exposure(): ReactNode {
+  const positions = useDataset("positions", positionsBytes, {
+    primaryKey: "position_id",
+  });
+  const [layout, setLayout] = useState<LayoutInput>({
+    group_by: ["fund", "strategy"],
+    split_by: ["asset_class"],
+    measures: [{ aggregate: "sum", column: "market_value_usd" }],
+  });
+  return <Pivot dataset={positions} layout={layout} onLayoutChange={setLayout} />;
+}
+```
+
+| Prop                  | What it is                                                                                         |
+| --------------------- | -------------------------------------------------------------------------------------------------- |
+| `dataset`, `layout`   | The dataset, from `useDataset`, and the pivot: its row and column groups, values, filters and more |
+| `onLayoutChange`      | Takes each layout the user makes; without it, the pivot keeps its changes until `layout` changes   |
+| `toolbar`             | The table's toolbar, as `<Grid>` takes it                                                          |
+| `defaultSettingsOpen` | Whether the settings start open; they do by default, and the user hides and shows them             |
+| `label`               | What screen readers call the table; the dataset's name by default                                  |
+| `ref`                 | The table's `GridHandle`: `drawStats()`, `export(format)` and `distinctValues(column, search, limit)` |
+
+The settings list the dataset's fields, searchable, ticked when the pivot uses
+them: ticking puts a number in Values and anything else in Rows, and unticking
+takes a field out of every area. A field or a chip is dragged into Filters,
+Columns, Rows or Values, or moved with its menu, so dragging is never needed;
+Alt+Up and Alt+Down move a chip a place, and a screen reader hears where it
+went. A row or column chip's menu moves it, filters by it or removes it; a
+value's menu sets its aggregate, column, weight or percentile, how it shows (a
+value or a share of a total) and its number format. A measure's header opens
+the same menu with sorting the groups by it. A filter's chip opens the grid's
+filter editor, a list of the column's values with their counts, `(blank)` among
+them, or a condition; a field put in Filters shows `(All)` until a value is
+picked. The options set how many levels open and top-N.
+
+Double-clicking a value opens the rows behind it in a grid below the pivot,
+filtered to its group and pivot values, which its toolbar searches and
+exports; it closes when the pivot's groups or filters change. `drillLayout`
+gives that view for an app that shows the rows elsewhere. Every change is a
+layout, so a pivot round-trips through a link with `encodeLayout` and
+`decodeLayout`.
 
 ## Draw a chart
 
@@ -202,6 +255,7 @@ them.
 | `useDataset(name, source, opts)` | Loads Arrow IPC stream bytes, or a function that returns them, as `name`, and returns the load's `status` (`idle`, `loading`, `loaded` or `failed`), `rows`, `error` and `reload()`. `opts` are the load's primary key and times                  |
 | `useView(dataset, layout, opts)` | Opens a view of the dataset as the layout describes it, and returns its `status` (`waiting`, `opening`, `open` or `failed`), its latest `frame` and `chart`, its table's status, its `error`, and its `handle`. `opts` are the viewport (null for a chart the engine reduces, which has no rows), the chart window, `onFrame`, which takes each frame in place of `frame`, and `onChart`, which takes each reduction in place of `chart`, so a canvas can paint them without a React render |
 | `<Grid>` | A data grid and pivot table of a dataset as a layout describes it; see [Show a grid](#show-a-grid) |
+| `<Pivot>` | A pivot table with its settings beside it, and the rows behind a value; see [Pivot a table](#pivot-a-table) |
 | `<Chart>` | A chart of a dataset as a layout describes it, or of rows the page holds; see [Draw a chart](#draw-a-chart) |
 | `useParallaxTheme()`             | The theme a component draws in, the `attributes` its element carries, and `read(element)`, which reads the tokens in effect and changes whenever they may have                                                                                     |
 

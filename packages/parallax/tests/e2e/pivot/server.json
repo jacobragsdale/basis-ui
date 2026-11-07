@@ -1,0 +1,4 @@
+{
+  "command": "vp preview tests/e2e/pivot/harness --port 8794 --strictPort --host 127.0.0.1",
+  "url": "http://127.0.0.1:8794"
+}
