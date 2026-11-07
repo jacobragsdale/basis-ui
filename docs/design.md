@@ -164,7 +164,8 @@ The firm's own components cover what shadcn does not:
 - **Forms.** Fields bind to the Zod schemas orval generates, so a form checks what the API's document declares. Errors
   the API returns land on the fields they name, leaving a page with unsaved changes asks first, and a destructive action
   asks for typed confirmation. Placing errors on fields needs basis's contract to say where a problem details response
-  names the field at fault, which it does not yet.
+  names the field at fault, which it does not yet. Spike 0.2 found the shape it needs, RFC 9457's own `errors` list of
+  `{detail, pointer}`, and basis-ui has asked basis for it (jacobragsdale/basis#7).
 - **Data.** `DataTable`, on TanStack Table, is for small data whose cells hold links and buttons; past its row cap it
   fails with a message that points to parallax's grid. An entity picker searches through the generated client. File
   import reads CSV and xlsx, previews the rows, and checks them against a schema before anything is sent.
@@ -301,9 +302,11 @@ built into it, and Rust stays inside this repo's build. Parallax keeps its Apach
 ## Versions
 
 TypeScript 7.0.2 is the stable release and 7.1 is in beta. The 7.1 plan schedules its release candidate for 2026-11-10
-and its stable release for 2026-11-24, but its beta shipped two weeks behind that plan. Work starts on the 7.1 beta,
-since tsdown recommends 7.1, and releases pin 7.1 stable if it has shipped by then, or 7.0.2 if not. Node is the current
-LTS, managed by `vp env`.
+and its stable release for 2026-11-24, but its beta shipped two weeks behind that plan. The workspace pins 7.0.2: the
+tsdown inside Vite+ 1.5.0 makes declaration files only with TypeScript 7.0, which it detects by the version's prefix, so
+on the 7.1 beta a package build fails. The pin moves to 7.1 stable once a Vite+ release accepts it. orval brings
+TypeScript 6 with it, which a pnpm override replaces with the workspace's version (spike 0.2). Node is the current LTS,
+managed by `vp env`.
 
 ## Decided against
 
@@ -328,30 +331,30 @@ LTS, managed by `vp env`.
 | Rejecting unknown fields in API responses              | A UI and its API deploy separately; a UI that rejected a new field would break on every additive change.                                                                                                                                                 |
 | Parallax's server                                      | The firm does not need million-row tables in the browser, and every app would have deployed one.                                                                                                                                                         |
 | Storybook visual tests, Argos, Lost Pixel              | Storybook's visual tests send stories to Chromatic's cloud, Argos's maintainers do not support self-hosting, and Lost Pixel was archived in April 2026. Playwright compares screenshots locally.                                                         |
-| @hey-api/openapi-ts                                    | It lists `typescript` as a peer, and TypeScript 7 ships no compiler API; orval depends on no `typescript` package.                                                                                                                                       |
+| @hey-api/openapi-ts                                    | It lists `typescript` as a peer, and TypeScript 7 ships no compiler API. orval also depends on TypeScript 6 since 8.45, but runs with it overridden to 7 (spike 0.2); hey-api was not tried that way.                                                    |
 
 ## Facts behind the decisions
 
 Each fact was checked on 2026-11-06 against the source named, unless it says secondhand.
 
-| Fact                                                                                                                                                                                                                                          | Source                                                          |
-| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
-| typescript-eslint 8.72 peers on `typescript <6.1.0`; its maintainers closed TypeScript 7 support as not planned (issue #12518) while TypeScript 7.1's API is in progress (issue #10940)                                                       | npm registry; GitHub issues                                     |
-| TypeScript 7.0.2 is npm's `latest` (2026-07-08); 7.1.0-beta shipped 2026-10-20; the 7.1 plan dates the RC 2026-11-10 and stable 2026-11-24                                                                                                    | npm registry; microsoft/TypeScript#63703                        |
-| Oxlint's type-aware mode needs TypeScript 7 and covers 59 of typescript-eslint's 61 type-aware rules; its JS plugins are alpha and cannot use type information                                                                                | oxc.rs docs                                                     |
-| Vite+ is MIT-licensed and bundles Vite, Rolldown, Vitest, Oxlint, Oxfmt, tsdown and a task runner; it ships commit hooks through `vp config` and `vp staged`                                                                                  | viteplus.dev; GitHub release v1.5.0                             |
-| Cloudflare announced on 2026-06-04 that it was acquiring VoidZero, which says its tools remain open source and MIT-licensed                                                                                                                   | voidzero.dev; the acquisition date is secondhand                |
-| React Compiler 1.0 was released 2025-10-07                                                                                                                                                                                                    | react.dev                                                       |
-| orval 8.46 generates TanStack Query hooks, Zod schemas and MSW mocks, and depends on no `typescript` package; @hey-api/openapi-ts 0.99, which FastAPI's own full-stack template uses, lists `typescript` as a peer                            | npm registry; fastapi/full-stack-fastapi-template               |
-| Playwright's docs warn that rendering varies by operating system, version, settings and hardware, and advise making baselines where they are compared                                                                                         | playwright.dev                                                  |
-| Bun has no browser mode in `bun test`; Anthropic acquired Bun on 2025-12-03                                                                                                                                                                   | bun.com; anthropic.com                                          |
-| shadcn/ui made Base UI its default in July 2026, with Radix still supported                                                                                                                                                                   | ui.shadcn.com changelog                                         |
-| shadcn/ui added React Aria as a component base, and a Toast for Base UI projects, in July 2026; its theme tokens are OKLCH CSS variables, redefined under `.dark`                                                                             | ui.shadcn.com changelog and theming page                        |
-| `@shadcn/lint` 0.2.5 (2026-11-02) runs on ESLint or as an Oxlint JS plugin on Oxlint 1.80 or later; its rules are `no-restyle`, `no-raw-colors`, `no-arbitrary-values`, `no-inline-styles`, `no-unknown-classes` and `require-static-classes` | npm registry; github.com/shadcn-ui/lint                         |
-| Vite+ 1.5.0 pins `oxlint` 1.91.0 and `@oxlint/plugins` 1.91.0; its lint configuration lives in `vite.config.ts`'s `lint` block, which takes `jsPlugins`, `typeAware` and `typeCheck`                                                          | npm registry; viteplus.dev/guide/lint                           |
-| Oxlint's JS plugins have been alpha since 2026-03-11; no stable release was found                                                                                                                                                             | oxc.rs blog; the absence of a stable release is secondhand      |
-| The React Compiler's lint lists React Hook Form's `useForm` as an incompatible library, because the compiler memoizes what `watch()` returns                                                                                                  | facebook/react issue #29144 and pull request #35465, secondhand |
-| Parallax's wasm build is 5.0 MB, or 1.07 MB gzipped; Recharts 3.10.1's line and bar charts bundle to 408 kB minified, or 118 kB gzipped, without React                                                                                        | Measured here on 2026-11-06                                     |
+| Fact                                                                                                                                                                                                                                                                                   | Source                                                          |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| typescript-eslint 8.72 peers on `typescript <6.1.0`; its maintainers closed TypeScript 7 support as not planned (issue #12518) while TypeScript 7.1's API is in progress (issue #10940)                                                                                                | npm registry; GitHub issues                                     |
+| TypeScript 7.0.2 is npm's `latest` (2026-07-08); 7.1.0-beta shipped 2026-10-20; the 7.1 plan dates the RC 2026-11-10 and stable 2026-11-24                                                                                                                                             | npm registry; microsoft/TypeScript#63703                        |
+| Oxlint's type-aware mode needs TypeScript 7 and covers 59 of typescript-eslint's 61 type-aware rules; its JS plugins are alpha and cannot use type information                                                                                                                         | oxc.rs docs                                                     |
+| Vite+ is MIT-licensed and bundles Vite, Rolldown, Vitest, Oxlint, Oxfmt, tsdown and a task runner; it ships commit hooks through `vp config` and `vp staged`                                                                                                                           | viteplus.dev; GitHub release v1.5.0                             |
+| Cloudflare announced on 2026-06-04 that it was acquiring VoidZero, which says its tools remain open source and MIT-licensed                                                                                                                                                            | voidzero.dev; the acquisition date is secondhand                |
+| React Compiler 1.0 was released 2025-10-07                                                                                                                                                                                                                                             | react.dev                                                       |
+| orval 8.46 generates TanStack Query hooks, Zod schemas and MSW mocks; since 8.45 its `@orval/zod` and `@orval/hono` depend on `typescript` 6.0.3, which a pnpm override replaces; @hey-api/openapi-ts 0.99, which FastAPI's own full-stack template uses, lists `typescript` as a peer | npm registry; fastapi/full-stack-fastapi-template               |
+| Playwright's docs warn that rendering varies by operating system, version, settings and hardware, and advise making baselines where they are compared                                                                                                                                  | playwright.dev                                                  |
+| Bun has no browser mode in `bun test`; Anthropic acquired Bun on 2025-12-03                                                                                                                                                                                                            | bun.com; anthropic.com                                          |
+| shadcn/ui made Base UI its default in July 2026, with Radix still supported                                                                                                                                                                                                            | ui.shadcn.com changelog                                         |
+| shadcn/ui added React Aria as a component base, and a Toast for Base UI projects, in July 2026; its theme tokens are OKLCH CSS variables, redefined under `.dark`                                                                                                                      | ui.shadcn.com changelog and theming page                        |
+| `@shadcn/lint` 0.2.5 (2026-11-02) runs on ESLint or as an Oxlint JS plugin on Oxlint 1.80 or later; its rules are `no-restyle`, `no-raw-colors`, `no-arbitrary-values`, `no-inline-styles`, `no-unknown-classes` and `require-static-classes`                                          | npm registry; github.com/shadcn-ui/lint                         |
+| Vite+ 1.5.0 pins `oxlint` 1.91.0 and `@oxlint/plugins` 1.91.0; its lint configuration lives in `vite.config.ts`'s `lint` block, which takes `jsPlugins`, `typeAware` and `typeCheck`                                                                                                   | npm registry; viteplus.dev/guide/lint                           |
+| Oxlint's JS plugins have been alpha since 2026-03-11; no stable release was found                                                                                                                                                                                                      | oxc.rs blog; the absence of a stable release is secondhand      |
+| The React Compiler's lint lists React Hook Form's `useForm` as an incompatible library, because the compiler memoizes what `watch()` returns                                                                                                                                           | facebook/react issue #29144 and pull request #35465, secondhand |
+| Parallax's wasm build is 5.0 MB, or 1.07 MB gzipped; Recharts 3.10.1's line and bar charts bundle to 408 kB minified, or 118 kB gzipped, without React                                                                                                                                 | Measured here on 2026-11-06                                     |
 
 ## Not yet verified
 
@@ -367,8 +370,6 @@ Each item is a spike in [Phase 0 of the roadmap](roadmap.md#phase-0-spikes):
   package;
 - that Vite+'s hooks install on a fresh clone on Windows and in WSL (Vite+ issue #2252 reports a case where they do
   not);
-- that orval emits Zod 4 schemas that drop unknown fields, TanStack Query v5 hooks and MSW 3 handlers, and handles an
-  Arrow response;
 - that screenshots of the same page match between two Citrix desktops' WSL setups;
 - that rust_xlsxwriter builds for wasm, and how many rows parallax holds on a Citrix desktop;
 - that `@shadcn/lint` runs under `vp lint` through `lint.jsPlugins`, finds components imported from `@basis/ui` and the
