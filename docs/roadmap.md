@@ -13,11 +13,11 @@ Actions.
 
 ## Lanes
 
-| Lane | Builds | Phases |
-|---|---|---|
-| A. UI | `@basis/ui` | 1, 3, 5 |
-| B. Parallax | `@basis/parallax` | 2 |
-| C. Ports | the firm's Angular library and apps | 4 |
+| Lane        | Builds                              | Phases  |
+| ----------- | ----------------------------------- | ------- |
+| A. UI       | `@basis/ui`                         | 1, 3, 5 |
+| B. Parallax | `@basis/parallax`                   | 2       |
+| C. Ports    | the firm's Angular library and apps | 4       |
 
 The critical path runs through lane A: the Vite+ and orval spikes, the workspace, the preset, the shell, fixture mode,
 screenshots, the firm's components, the template, and the pilot. Parallax runs alongside phase 1 once the preset exists, and the ports start at
@@ -80,6 +80,7 @@ and the fallback for each no.
    **(work)** On a Citrix desktop, on Windows and in WSL: install `vp` without admin rights, run `vp install` from the
    internal npm feed, and install the hooks on a fresh clone. Done when the result names the exact Oxlint configuration,
    as the preset step 1.2 starts from.
+
 2. **0.2 orval.** Write a FastAPI app with strict models, operation ids taken from handler names, a list endpoint and an
    endpoint that returns Arrow. Generate its client with orval while TypeScript 7 is installed, and check for Zod 4
    schemas that drop unknown fields, TanStack Query v5 hooks, MSW 3 handlers, and a binary response for the Arrow
@@ -130,6 +131,7 @@ Lane A. Steps 1.3 and 1.4 run at once, and so do 1.8 and 1.9.
 
    Needs 1.6 and 1.10. Done when a generated UI repo passes `vp run check-full` in WSL, `vp dev` serves its fixture
    pages, and its image serves the build.
+
 8. **1.8 Releases.** One tag releases every package at one version. **(work)** Publish to the internal npm feed through
    Azure DevOps. Needs 1.7. Done when `v0.1.0` installs from git here and from the internal feed at the firm.
 9. **1.9 Sign-in (work).** Write the adapter for the firm's sign-in system, against the interface from step 1.3. Needs
@@ -170,6 +172,7 @@ phase 1.
    - the shared pieces.
 
    Each family's existing Playwright specs and pixel baselines are rewritten for React. Needs 2.5.
+
 7. **2.7 Demo and release.** Rebuild the demo as a React app on `@basis/ui` with fixture data, with its screenshot tests
    at threshold 0. Release `@basis/parallax` with the next basis-ui version. Needs 2.4 and 2.6.
 

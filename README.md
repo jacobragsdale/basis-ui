@@ -5,7 +5,8 @@ are built on, `@basis/ui` and `@basis/parallax`, for a codebase that agents writ
 Vite+ at its strictest settings, and its apps call basis APIs through the contract on basis's design page. The name is a
 placeholder.
 
-Nothing is built yet. The repo holds the design and the build order:
+The workspace exists and `@basis/ui` is an empty package; the roadmap's phase 1 fills it. The design and the build
+order:
 
 - [The basis-ui design](docs/design.md): the toolchain, the stack, how agents see a UI, parallax in the browser, and
   why.
