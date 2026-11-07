@@ -355,6 +355,22 @@ export {
   TypographyP,
 } from "./components/typography.ts";
 
+// Numbers and dates: the firm's own components, which show and take values by parallax's rules.
+export { AmountInput } from "./components/amount-input.tsx";
+export { amountSchema } from "./components/amount-schema.ts";
+export { AsOfDatePicker } from "./components/as-of-date-picker.tsx";
+export { DateRangePicker } from "./components/date-range-picker.tsx";
+export {
+  dateRangePresets,
+  rangeForPreset,
+  type DateRangePreset,
+} from "./components/date-range-presets.ts";
+export { defaultAsOfDate, type AsOfOptions } from "./components/date-picking.ts";
+export { DateTime } from "./components/date-time.tsx";
+export type { DateTimePart, DateTimeValue } from "./components/date-time-text.ts";
+export { Bps, Money, Num, Pct, Price32 } from "./components/num.tsx";
+export type { BpsUnit, DecimalLike, NumericValue, PercentUnit } from "./components/num-text.ts";
+
 export type { CssVariable } from "./components/css-variables.ts";
 
 /* The icons, copied from lucide-react 1.70.0: each under every name lucide-react gives it with the `Icon` suffix, its
