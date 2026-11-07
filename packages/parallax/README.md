@@ -1,18 +1,109 @@
-# parallax
+# @basis/parallax
 
 parallax is a data grid, pivot table and charting stack for portfolio managers
 and quant researchers. It is a Rust engine, compiled to WebAssembly and run in a
-Web Worker in the page, with an Angular front end, built to pivot and chart
-tables on GPU-less Citrix desktops without showing a wrong number. The app
-loads the data, as Arrow from its own API; one table holds at most 150,000
-rows and 70 MB of Arrow.
+Web Worker in the page, built to pivot and chart tables on GPU-less Citrix
+desktops without showing a wrong number. The app loads the data, as Arrow from
+its own API; one table holds at most 150,000 rows and 70 MB of Arrow.
 
-parallax is moving into basis-ui as `@basis/parallax`; see basis-ui's
-[roadmap](../../docs/roadmap.md), phase 2. Its own [roadmap](docs/roadmap.md)
-records the milestones it was built in. Nothing is published to npm yet.
-[Contributing](CONTRIBUTING.md) shows how to build it and run the tests.
+This package, `@basis/parallax`, is the engine with its worker built in, the
+framework-free client, and its React layer. App developers install it and never
+build Rust. basis-ui's [roadmap](../../docs/roadmap.md), phase 2, builds it:
+step 2.5 built the provider, the worker connection and the hooks below, and
+step 2.6 ports the grid, pivot and chart components from the Angular layer in
+`web/`, which it then deletes. Nothing is published yet; step 2.7 releases it
+with basis-ui. parallax's own [roadmap](docs/roadmap.md) records the milestones
+it was built in. [Contributing](CONTRIBUTING.md) shows how to build it and run
+the tests.
 
-## Run the demo
+## Show a view in a React app
+
+The app is a basis-ui app, on `@basis/ui`'s preset, which this package depends
+on at its own version.
+
+1. Start the engine's worker in a provider around the part of the app that
+   shows parallax. Vite bundles the worker and the engine beside it from the
+   `?worker` import:
+
+   ```tsx
+   import { ParallaxProvider } from "@basis/parallax";
+   import ParallaxWorker from "@basis/parallax/worker?worker";
+
+   const startParallax = (): Worker => new ParallaxWorker();
+
+   function App(): ReactNode {
+     return (
+       <ParallaxProvider worker={startParallax} prewarm>
+         <Positions />
+       </ParallaxProvider>
+     );
+   }
+   ```
+
+   `prewarm` starts the worker at once, so the first rows show sooner; every
+   page under the provider then downloads the engine, about 1 MB compressed.
+   Unmounting the provider ends the worker and frees its memory.
+
+2. Load a dataset and open a view of it:
+
+   ```tsx
+   import { useDataset, useView } from "@basis/parallax";
+
+   // The generated client's call for an Arrow endpoint answers with a Blob.
+   const positionsBytes = async (): Promise<ArrayBuffer> =>
+     (await listPositions()).data.arrayBuffer();
+
+   function Positions(): ReactNode {
+     const positions = useDataset("positions", positionsBytes, {
+       primaryKey: "position_id",
+     });
+     const view = useView(positions, {
+       group_by: ["fund"],
+       measures: [{ aggregate: "sum", column: "market_value_usd" }],
+     });
+     return <p>{view.status}: {view.frame?.totalRows ?? 0} rows</p>;
+   }
+   ```
+
+   Step 2.6's grid, pivot and chart components take the view and draw its
+   frames.
+
+## The React API
+
+| Export                           | What it does                                                                                                                                                                                                                                       |
+| -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `<ParallaxProvider>`             | Starts the engine's worker for the tree inside it (`worker`, `prewarm`), and gives parallax its theme (`theme`, `basisTheme` by default) and scheme (`scheme`, the page's mode by default)                                                         |
+| `useDataset(name, source, opts)` | Loads Arrow IPC stream bytes, or a function that returns them, as `name`, and returns the load's `status` (`idle`, `loading`, `loaded` or `failed`), `rows`, `error` and `reload()`. `opts` are the load's primary key and times                  |
+| `useView(dataset, layout, opts)` | Opens a view of the dataset as the layout describes it, and returns its `status` (`waiting`, `opening`, `open` or `failed`), its latest `frame` and `chart`, its table's status, its `error`, and its `handle`. `opts` are the viewport and chart window |
+| `useParallaxTheme()`             | The theme a component draws in, the `attributes` its element carries, and `read(element)`, which reads the tokens in effect and changes whenever they may have                                                                                     |
+
+A changed layout updates the open view in place, and a changed viewport or chart
+window asks for that window; neither reopens it. Bytes given to `useDataset`
+are copied before they move to the worker, so the app's copy, such as a query
+cache's, stays readable; a function's bytes move without a copy.
+
+The theme follows `@basis/ui`'s: `basisTheme` gives every token one of
+`@basis/ui`'s, and charts take `chart-1` to `chart-8`, the sequential scale and
+the diverging scale's red arm. When the page's mode or density changes,
+`useParallaxTheme()`'s `read` changes, and the canvases read their tokens again.
+
+### When the engine runs out of memory
+
+A load, pivot or export past the engine's memory traps it. The engine then
+starts again, empty, and every view fails with the reason. Each dataset that
+was loaded loads again from its source, and its views reopen. A dataset whose
+load was under way, most likely the one that ran the engine out of memory,
+stays failed with the reason until the app calls `reload` or gives it other
+data. If the engine stops a third time within a minute, parallax stops
+recovering, and everything stays failed with a reason that says to reload the
+page.
+
+## The Angular layer
+
+Until step 2.6 deletes it, `web/` holds the Angular components and the demo,
+with their own copies of the client, and their own checks.
+
+### Run the demo
 
 The demo shows the grid, pivot and charts over generated positions, trades and
 prices, with a performance overlay. It needs the Rust toolchain that

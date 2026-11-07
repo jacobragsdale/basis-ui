@@ -3,3 +3,8 @@
 node_modules/
 /data
 __pycache__/
+/dist
+# wasm-bindgen's output, which `vp run @basis/parallax#wasm` writes; only the glue's declaration is committed, so the
+# package type-checks before the engine is built, and CI checks it still matches.
+/wasm/*
+!/wasm/parallax_wasm.d.ts

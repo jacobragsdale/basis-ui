@@ -1,0 +1,53 @@
+{
+  "name": "@basis/parallax",
+  "version": "0.0.0",
+  "description": "The firm's grid, pivot table and charts: a Rust engine compiled to WebAssembly, in a Web Worker, with its React layer.",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jacobragsdale/basis-ui.git",
+    "directory": "packages/parallax"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "sideEffects": [
+    "./dist/worker.mjs",
+    "./src/worker.ts"
+  ],
+  "imports": {
+    "#wasm/*": "./wasm/*",
+    "#*": "./src/*"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "default": "./dist/index.mjs"
+    },
+    "./worker": "./dist/worker.mjs",
+    "./package.json": "./package.json"
+  },
+  "dependencies": {
+    "@basis/ui": "workspace:*",
+    "@bufbuild/protobuf": "catalog:",
+    "apache-arrow": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@rolldown/plugin-babel": "catalog:",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@vitejs/plugin-react": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "typescript": "catalog:",
+    "vite-plus": "catalog:",
+    "vitest-browser-react": "catalog:"
+  },
+  "peerDependencies": {
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
+  }
+}
