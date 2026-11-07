@@ -207,7 +207,68 @@ export {
 } from "./components/card.tsx";
 
 // Feedback and display.
+export { Alert, AlertAction, AlertDescription, AlertTitle } from "./components/alert.tsx";
+export {
+  Avatar,
+  AvatarBadge,
+  AvatarFallback,
+  AvatarGroup,
+  AvatarGroupCount,
+  AvatarImage,
+} from "./components/avatar.tsx";
 export { Badge } from "./components/badge.ts";
+export {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "./components/empty.tsx";
+export { Kbd, KbdGroup } from "./components/kbd.tsx";
+export {
+  Progress,
+  ProgressIndicator,
+  ProgressLabel,
+  ProgressTrack,
+  ProgressValue,
+} from "./components/progress.tsx";
+export { Skeleton } from "./components/skeleton.tsx";
+export { Spinner } from "./components/spinner.tsx";
+export {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableFooter,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "./components/table.tsx";
+export {
+  Toast,
+  ToastAction,
+  ToastClose,
+  ToastContent,
+  ToastDescription,
+  ToastPortal,
+  ToastProvider,
+  ToastTitle,
+  ToastViewport,
+  Toaster,
+} from "./components/toast.tsx";
+export { createToastManager, toast, useToastManager } from "./components/toast-manager.ts";
+export {
+  TypographyH1,
+  TypographyH2,
+  TypographyH3,
+  TypographyH4,
+  TypographyInlineCode,
+  TypographyLead,
+  TypographyList,
+  TypographyMuted,
+  TypographyP,
+} from "./components/typography.ts";
 
 export type { CssVariable } from "./components/css-variables.ts";
 

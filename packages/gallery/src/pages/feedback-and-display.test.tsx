@@ -84,13 +84,77 @@ describe("Badge", () => {
   );
 });
 
+/** The values of `attribute` on the page's elements of a slot, such as each Alert's `data-variant`. */
+function shown(container: HTMLElement, slot: string, attribute: string): Set<string | null> {
+  const elements = container.querySelectorAll(`[data-slot="${slot}"]`);
+  return new Set([...elements].map((element) => element.getAttribute(attribute)));
+}
+
+const sections = [
+  "Alert",
+  "Toast",
+  "Badge",
+  "Avatar",
+  "Kbd",
+  "Progress",
+  "Spinner",
+  "Skeleton",
+  "Empty",
+  "Table",
+  "Typography",
+] as const;
+
 describe("the feedback and display page", () => {
+  test("has a section for each component, named by its heading", async () => {
+    const screen = await render(<FeedbackAndDisplay />);
+    await Promise.all(
+      sections.map(async (name) =>
+        expect.element(screen.getByRole("region", { name, exact: true })).toBeVisible(),
+      ),
+    );
+  });
+
   test("shows every Badge variant", async () => {
     const screen = await render(<FeedbackAndDisplay />);
-    const badges = screen.container.querySelectorAll<HTMLElement>('[data-slot="badge"]');
-    const shown = new Set([...badges].map((badge) => badge.dataset["variant"]));
     for (const variant of variants) {
-      expect(shown, variant).toContain(variant);
+      expect(shown(screen.container, "badge", "data-variant"), variant).toContain(variant);
+    }
+  });
+
+  test("shows every variant of Alert, Empty and Skeleton, every Avatar size, and numeric table cells", async () => {
+    const screen = await render(<FeedbackAndDisplay />);
+    const expected = [
+      ["alert", "data-variant", ["default", ...statuses]],
+      ["empty", "data-variant", ["default", "outline"]],
+      ["empty-icon", "data-variant", ["default", "icon"]],
+      ["skeleton", "data-variant", ["default", "circle"]],
+      ["avatar", "data-size", ["sm", "default", "lg"]],
+      ["table-head", "data-variant", ["default", "numeric"]],
+      ["table-cell", "data-variant", ["default", "numeric"]],
+    ] as const;
+    for (const [slot, attribute, values] of expected) {
+      const found = shown(screen.container, slot, attribute);
+      for (const value of values) {
+        expect(found, `${slot} ${value}`).toContain(value);
+      }
+    }
+  });
+
+  test("its Toast buttons raise a toast of each variant", async () => {
+    const screen = await render(<FeedbackAndDisplay />);
+    const labels = ["Default", "Success", "Warning", "Info", "Destructive"] as const;
+    for (const label of labels) {
+      const button = screen.getByRole("button", { name: label, exact: true }).element();
+      if (button instanceof HTMLElement) {
+        button.click();
+      }
+    }
+    await expect
+      .element(screen.getByRole("dialog", { name: "Order rejected" }))
+      .toHaveAttribute("data-variant", "destructive");
+    const raised = shown(document.body, "toast", "data-variant");
+    for (const variant of ["default", ...statuses]) {
+      expect(raised, variant).toContain(variant);
     }
   });
 });
