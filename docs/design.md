@@ -192,8 +192,10 @@ The firm's own components cover what shadcn does not:
   asked basis for (jacobragsdale/basis#7). `fieldErrors` names each field as TanStack Form does, so the errors go
   straight onto the form; the example app's settlement form does this.
 - **Data.** `DataTable`, on TanStack Table, is for small data whose cells hold links and buttons; past its row cap it
-  fails with a message that points to parallax's grid. An entity picker searches through the generated client. File
-  import reads CSV and xlsx, previews the rows, and checks them against a schema before anything is sent.
+  fails with a message that points to parallax's grid. `EntityPicker` searches through the generated client, and
+  `SecurityPicker` sends only a valid CUSIP, ISIN or SEDOL. `FileImport` reads CSV, previews the rows, and checks them
+  against a schema before anything is sent; xlsx waits for the measured choice of a reader that the Rust and
+  WebAssembly section below describes, and until then a file in it is refused with a message to save it as CSV.
 - **The shell's parts.** A sidebar built from the route tree, breadcrumbs, a user menu holding the mode and density, a
   banner naming the environment, a command palette (Ctrl+K) filled from the routes, a filter bar whose state lives in
   the URL's search parameters, saved views, split panes for master and detail, and a shortcut registry with a `?`

@@ -27,10 +27,22 @@
     "./preset": "./src/preset/index.ts",
     "./orval": "./src/preset/orval.ts",
     "./mutator": "./src/api/mutator.ts",
-    "./numbers": "./src/numbers/index.ts",
-    "./utils": "./src/utils/index.ts",
-    "./dates": "./src/dates/index.ts",
-    "./securities": "./src/securities/index.ts",
+    "./numbers": {
+      "types": "./dist/numbers/index.d.mts",
+      "default": "./dist/numbers/index.mjs"
+    },
+    "./utils": {
+      "types": "./dist/utils/index.d.mts",
+      "default": "./dist/utils/index.mjs"
+    },
+    "./dates": {
+      "types": "./dist/dates/index.d.mts",
+      "default": "./dist/dates/index.mjs"
+    },
+    "./securities": {
+      "types": "./dist/securities/index.d.mts",
+      "default": "./dist/securities/index.mjs"
+    },
     "./styles.css": "./src/styles/styles.css",
     "./theme.css": "./src/styles/theme.css",
     "./tsconfig.json": "./config/tsconfig.json",
