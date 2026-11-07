@@ -41,6 +41,8 @@ jobs:
           filters: |
             ui:
               - "packages/ui/**"
+              # The formatter's tests read the fixtures parallax's Rust formatter writes.
+              - "packages/parallax/crates/parallax-engine/tests/fixtures/format.json"
               - "package.json"
               - "pnpm-lock.yaml"
               - "pnpm-workspace.yaml"
