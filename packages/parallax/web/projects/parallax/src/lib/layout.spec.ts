@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import * as z from "zod/mini";
 
 import { LAYOUT_VERSION, checkLayout, layoutSchema, parseLayout } from "./layout";
-import fixtures from "./testing/layouts.json";
+import fixtures from "../../../../../tests/fixtures/layouts.json";
 
 // The fixtures are written by parallax-protocol's tests, from the Rust types.
 const written: readonly unknown[] = fixtures;

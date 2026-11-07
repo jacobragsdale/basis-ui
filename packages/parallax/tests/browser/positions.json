@@ -1,0 +1,5 @@
+{
+  "desk": ["Rates", "Credit", "Rates", "Rates", "Credit", "Credit"],
+  "fund": ["Atlas", "Atlas", "Atlas", "Boreal", "Boreal", "Boreal"],
+  "market_value": [100.5, 200.25, -50, 400, 1.75, 0.25]
+}

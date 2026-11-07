@@ -14,7 +14,9 @@ generated client; the roadmap's phase 1 fills in the rest. The design and the bu
 - [Roadmap](docs/roadmap.md): the phases, the steps in each, and which run at the same time.
 
 [parallax](packages/parallax) moved into this repo with its history, from
-[its own repo](https://github.com/jacobragsdale/parallax), at the start of the roadmap's phase 2.
+[its own repo](https://github.com/jacobragsdale/parallax), at the start of the roadmap's phase 2. `@basis/parallax`, its
+engine with its worker built in and the React provider and hooks it is shown through, sits beside its Rust; phase 2
+replaces its Angular layer with React components.
 
 ## License
 

@@ -1,0 +1,149 @@
+/* A layout's chart: what it draws, its technical-analysis indicators and the drawings on it, mirroring
+ * parallax-protocol's Rust types as the rest of the layout does. */
+
+import { z } from "zod";
+
+import { name } from "./scalars.ts";
+
+// The engine's bounds, as the Rust types state them.
+const maxPeriod = 100_000;
+/** The longest note a drawing holds, in characters, as in the engine. */
+const maxNote = 500;
+
+// TA-Lib's usual periods, which the engine defaults to.
+const talib = {
+  bands: 20,
+  deviations: 2,
+  fast: 12,
+  oscillator: 14,
+  signal: 9,
+  slow: 26,
+  smoothing: 3,
+} as const;
+
+/** What a chart draws. Bar charts, heatmaps and pies draw the layout's grouped view; the engine reduces the others. */
+const chartKinds = [
+  "line",
+  "area",
+  "bar",
+  "scatter",
+  "heatmap",
+  "histogram",
+  "candlestick",
+  "ohlc",
+  "pie",
+] as const;
+
+/** The technical-analysis indicators a chart computes. */
+const indicatorKinds = [
+  "sma",
+  "ema",
+  "wma",
+  "bollinger",
+  "rsi",
+  "macd",
+  "atr",
+  "stochastic",
+  "vwap",
+  "volume",
+] as const;
+
+/** A period of rows, `fallback` when the layout gives none. */
+function period(fallback: number): z.ZodDefault<z.ZodInt> {
+  return z.int().min(1).max(maxPeriod).default(fallback);
+}
+
+const indicatorSchema = z.discriminatedUnion("kind", [
+  z.strictObject({ kind: z.literal("sma"), period: period(talib.bands) }),
+  z.strictObject({ kind: z.literal("ema"), period: period(talib.bands) }),
+  z.strictObject({ kind: z.literal("wma"), period: period(talib.bands) }),
+  z.strictObject({
+    kind: z.literal("bollinger"),
+    period: period(talib.bands),
+    deviations: z.number().positive().default(talib.deviations),
+  }),
+  z.strictObject({ kind: z.literal("rsi"), period: period(talib.oscillator) }),
+  z
+    .strictObject({
+      kind: z.literal("macd"),
+      fast: period(talib.fast),
+      slow: period(talib.slow),
+      signal: period(talib.signal),
+    })
+    .refine((macd) => macd.fast < macd.slow, {
+      message: "MACD's fast average must be shorter than its slow one",
+      path: ["fast"],
+    }),
+  z.strictObject({ kind: z.literal("atr"), period: period(talib.oscillator) }),
+  z.strictObject({
+    kind: z.literal("stochastic"),
+    // oxlint-disable-next-line eslint/id-length -- %K is the layout's JSON field, as parallax-protocol's Rust names it.
+    k: period(talib.oscillator),
+    k_smooth: period(talib.smoothing),
+    // oxlint-disable-next-line eslint/id-length -- %D is the layout's JSON field, as parallax-protocol's Rust names it.
+    d: period(talib.smoothing),
+  }),
+  z.strictObject({ kind: z.literal("vwap") }),
+  z.strictObject({ kind: z.literal("volume") }),
+]);
+
+/** Chart kinds drawn along an x axis over a price: they take drawings and share crosshairs. */
+const drawableKinds: readonly (typeof chartKinds)[number][] = [
+  "line",
+  "area",
+  "candlestick",
+  "ohlc",
+];
+
+/** The kinds of drawing a chart holds. */
+const drawingKinds = ["trend", "horizontal", "fibonacci", "rectangle", "note"] as const;
+
+/** A point a drawing is anchored to: a value of the x column, as in a filter, and a value on the price's axis. */
+const anchorSchema = z.strictObject({
+  x: z.union([z.string(), z.number(), z.boolean()]),
+  y: z.number(),
+});
+
+const drawingSchema = z.discriminatedUnion("kind", [
+  z.strictObject({ kind: z.literal("trend"), from: anchorSchema, to: anchorSchema }),
+  z.strictObject({ kind: z.literal("horizontal"), y: z.number() }),
+  z.strictObject({ kind: z.literal("fibonacci"), from: anchorSchema, to: anchorSchema }),
+  z.strictObject({ kind: z.literal("rectangle"), from: anchorSchema, to: anchorSchema }),
+  z.strictObject({ kind: z.literal("note"), at: anchorSchema, text: z.string().max(maxNote) }),
+]);
+
+const chartSchema = z.strictObject({
+  kind: z.enum(chartKinds),
+  x: z.string().default(""),
+  y: z.array(name).default([]),
+  y_right: z.array(name).default([]),
+  series: name.nullable().default(null),
+  ohlc: z.strictObject({ open: name, high: name, low: name, close: name }).nullable().default(null),
+  axis: z.enum(["value", "trading"]).default("value"),
+  log_y: z.boolean().default(false),
+  stacked: z.boolean().default(false),
+  horizontal: z.boolean().default(false),
+  range: z.strictObject({ from: z.number(), to: z.number() }).nullable().default(null),
+  hidden: z.array(z.string()).default([]),
+  indicators: z.array(indicatorSchema).default([]),
+  volume: name.nullable().default(null),
+  drawings: z.array(drawingSchema).default([]),
+  compare: z.boolean().default(false),
+  events: name.nullable().default(null),
+  // A pie is a ring, with the total in the middle, unless this is off.
+  donut: z.boolean().default(true),
+  // Values on bars and shares on slices, where they fit, unless this is off.
+  labels: z.boolean().default(true),
+});
+
+/** A chart of a layout. */
+type LayoutChart = z.output<typeof chartSchema>;
+/** A technical-analysis indicator of a chart. */
+type LayoutIndicator = z.output<typeof indicatorSchema>;
+/** A drawing on a chart. */
+type LayoutDrawing = z.output<typeof drawingSchema>;
+/** A point a drawing is anchored to. */
+type LayoutAnchor = z.output<typeof anchorSchema>;
+
+export { chartKinds, chartSchema, drawableKinds, drawingKinds, indicatorKinds, maxNote };
+export type { LayoutAnchor, LayoutChart, LayoutDrawing, LayoutIndicator };

@@ -1,0 +1,152 @@
+/* The page's engine, started on first use, independent of any framework; `ParallaxProvider` holds one for a React
+ * tree.
+ *
+ * When the engine traps, every view fails and a new, empty engine starts; the client then tells its listeners whether
+ * to recover, by loading their data again and reopening their views. An engine that traps again and again soon after
+ * each recovery would load, trap and restart for ever, and hold a desktop's CPU while it did, so past a few restarts
+ * in a minute the client says not to, and the views stay failed with the reason. */
+
+import { BrowserEngine } from "./browser-engine.ts";
+import type { Connection } from "./connection.ts";
+import type { LoadOptions, Loaded } from "./limits.ts";
+import type { ExportFormat } from "./messages.ts";
+import type { WorkerPort } from "./port.ts";
+
+/** Where the engine's worker comes from: the URL that serves `@basis/parallax/worker`, or a function that starts
+ * it, such as Vite's `?worker` import's constructor: `() => new ParallaxWorker()`. */
+type WorkerSource = string | URL | (() => WorkerPort);
+
+/** A restart, as the client's listeners hear of it. */
+interface Restart {
+  /** Why the engine stopped, which every view that was open has failed with. */
+  readonly reason: string;
+  /** Whether to load the data again and reopen the views; false once the engine keeps stopping. */
+  readonly recover: boolean;
+}
+
+/** How the client counts restarts, which tests change. */
+interface ClientOptions {
+  /** The most restarts recovered from within `recoveryWindowMs`; 2 by default. */
+  readonly maxRecoveries?: number;
+  /** 60 seconds by default. */
+  readonly recoveryWindowMs?: number;
+  /** The clock, in milliseconds; `performance.now()` by default. */
+  readonly now?: () => number;
+}
+
+const defaultRecoveries = 2;
+const defaultWindowMs = 60_000;
+
+/** The reason a restart gives when the client will not recover from it. */
+function givenUp(reason: string): string {
+  return `${reason} It stopped again soon after its data was loaded again, so parallax leaves it stopped: reload the page, or narrow the data the page loads.`;
+}
+
+/** A function that starts the worker from its source. */
+function starter(source: WorkerSource): () => WorkerPort {
+  if (typeof source === "function") {
+    return source;
+  }
+  return () =>
+    new Worker(new URL(source, globalThis.location.href), { name: "parallax", type: "module" });
+}
+
+/** The page's engine and its worker, started on first use. */
+class ParallaxClient {
+  readonly #start: () => WorkerPort;
+  readonly #listeners = new Set<(restart: Restart) => void>();
+  readonly #maxRecoveries: number;
+  readonly #recoveryWindowMs: number;
+  readonly #now: () => number;
+  #engine: BrowserEngine | null = null;
+  #restarts: readonly number[] = [];
+  #generation = 0;
+
+  public constructor(worker: WorkerSource, options: ClientOptions = {}) {
+    this.#start = starter(worker);
+    this.#maxRecoveries = options.maxRecoveries ?? defaultRecoveries;
+    this.#recoveryWindowMs = options.recoveryWindowMs ?? defaultWindowMs;
+    this.#now = options.now ?? ((): number => performance.now());
+  }
+
+  /** Counts the engines this client has started: it rises when the engine restarts, or starts again after `close`.
+   * Views opened on an older engine are gone. */
+  public get generation(): number {
+    return this.#generation;
+  }
+
+  /** Starts the engine's worker before any data or view needs it, so the first rows show sooner. */
+  public prewarm(): void {
+    this.#current();
+  }
+
+  /**
+   * Loads Arrow IPC stream bytes the app fetched, such as its API's response, into the engine as `dataset`; views of
+   * it then run there. The buffer moves to the engine's worker, so the app can no longer read it. `bytes` may be a
+   * promise of them, such as a fetch still on its way: views that open meanwhile wait for the load rather than fail.
+   * See `BrowserEngine.load` for the limits and the load's status.
+   */
+  public async load(
+    dataset: string,
+    bytes: ArrayBuffer | PromiseLike<ArrayBuffer>,
+    options: LoadOptions = {},
+  ): Promise<Loaded> {
+    return this.#current().load(dataset, bytes, options);
+  }
+
+  /** The connection for views of `dataset`, once its load has succeeded; see `BrowserEngine.connectionFor`. */
+  public async connectionFor(dataset: string): Promise<Connection> {
+    return this.#current().connectionFor(dataset);
+  }
+
+  /** Writes a view of a table the app loaded as xlsx or CSV in the engine; see `BrowserEngine.export`. */
+  public async export(
+    layoutJson: string,
+    format: ExportFormat,
+    loadVersion: bigint | null = null,
+  ): Promise<Blob> {
+    return this.#current().export(layoutJson, format, loadVersion);
+  }
+
+  /** Calls `listener` whenever the engine stops and starts again empty, with whether to recover. Returns a function
+   * that stops calling it. */
+  public onRestart(listener: (restart: Restart) => void): () => void {
+    this.#listeners.add(listener);
+    return () => {
+      this.#listeners.delete(listener);
+    };
+  }
+
+  /** Ends the worker, freeing every table it held; views open on it fail. A later use starts a new one. */
+  public close(): void {
+    this.#engine?.close();
+    this.#engine = null;
+  }
+
+  #current(): BrowserEngine {
+    if (this.#engine !== null) {
+      return this.#engine;
+    }
+    const engine = new BrowserEngine(this.#start);
+    this.#generation += 1;
+    engine.onRestart((reason) => {
+      this.#restarted(reason);
+    });
+    this.#engine = engine;
+    return engine;
+  }
+
+  #restarted(reason: string): void {
+    this.#generation += 1;
+    const now = this.#now();
+    this.#restarts = [...this.#restarts.filter((at) => now - at < this.#recoveryWindowMs), now];
+    const recover = this.#restarts.length <= this.#maxRecoveries;
+    const restart: Restart = { reason: recover ? reason : givenUp(reason), recover };
+    for (const listener of this.#listeners) {
+      listener(restart);
+    }
+  }
+}
+
+export { ParallaxClient };
+export type { ClientOptions, Restart, WorkerSource };

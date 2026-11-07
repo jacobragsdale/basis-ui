@@ -7,8 +7,10 @@ page](https://github.com/jacobragsdale/basis/blob/main/docs/design.md#what-a-ui-
 [docs/design.md](docs/design.md) holds the decisions and their reasons, and [docs/roadmap.md](docs/roadmap.md) the
 phases, their steps, and the lanes that run at the same time. The code is a pnpm workspace run by Vite+'s `vp`, with
 `@basis/ui` in `packages/ui`, its gallery in `packages/gallery`, an example app on the app shell and a generated client
-in `packages/example`, and parallax, moved in with its history, in `packages/parallax`.
-[packages/ui/README.md](packages/ui/README.md) says how an app uses `@basis/ui` and how a component is added.
+in `packages/example`, and parallax, moved in with its history, in `packages/parallax`: its Rust crates, its Angular
+layer in `web/` until roadmap step 2.6 replaces it, and the `@basis/parallax` package.
+[packages/ui/README.md](packages/ui/README.md) says how an app uses `@basis/ui` and how a component is added, and
+[packages/parallax/README.md](packages/parallax/README.md) how it uses `@basis/parallax`.
 
 ## Working here
 
@@ -30,7 +32,7 @@ in `packages/example`, and parallax, moved in with its history, in `packages/par
 vp install              # once per clone: installs dependencies and the commit hook (.vite-hooks/pre-commit)
 vp run @basis/ui#build  # first, and after every change to @basis/ui: the gallery checks and tests against its build
 vp check                # formatting, linting and type checking, docs included
-vp run -r test          # every package's tests; the gallery's run in Chromium
+vp run -r test          # every package's tests; the gallery's and parallax's browser tests run in Chromium
 vp run -r build         # every package's build
 ```
 
@@ -39,8 +41,11 @@ Chromium that the preset's Playwright pins: `vp exec --filter @basis/ui playwrig
 builds `@basis/ui`, then runs `vp staged`, `vp check` and the tests. CI runs `vp check` on every change, and each
 package's tests and build when its paths change.
 
-Parallax keeps its own checks until roadmap step 2.6 replaces its Angular layer, and the root checks skip it. Its
-`CONTRIBUTING.md` has them; in short:
+`@basis/parallax`'s TypeScript is checked by the root checks, as `@basis/ui`'s is. Its build and tests first build the
+engine for the browser, which needs the Rust toolchain and the `wasm-bindgen` command that its `CONTRIBUTING.md` names;
+Vite+ replays that build from its cache until the Rust changes, and the first one in a fresh clone takes minutes.
+Parallax's Rust and its Angular layer keep their own checks until roadmap step 2.6 replaces that layer, and the root
+checks skip them. Its `CONTRIBUTING.md` has them; in short:
 
 ```sh
 cd packages/parallax

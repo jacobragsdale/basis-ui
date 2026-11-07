@@ -39,6 +39,33 @@ check. The other WebAssembly tests load an app's Arrow bytes and export them,
 through the methods the browser's worker calls: the row limit, the Excel cell
 cap, and CSV in chunks.
 
+## The @basis/parallax package
+
+The TypeScript package beside the crates, in `src/` and `tests/`, is a member of
+basis-ui's workspace, and the root `vp check` checks it as it does `@basis/ui`.
+Its tasks, run from anywhere in the repository:
+
+```sh
+vp run @basis/ui#build        # first: the package type-checks against it
+vp run @basis/parallax#wasm   # the engine for the browser, into wasm/
+vp run @basis/parallax#build  # vp pack: dist/, the engine and its worker included
+vp run @basis/parallax#test   # unit tests in Node, browser tests in Chromium
+```
+
+`wasm` builds `parallax-wasm` for `wasm32-unknown-unknown` in release and runs
+`wasm-bindgen --remove-name-section` on it, which needs the Rust toolchain and
+the `wasm-bindgen` command as above. It builds with one rustc job unless
+`CARGO_BUILD_JOBS` says otherwise, and honours `CARGO_TARGET_DIR`. Vite+
+replays it from its cache until the Rust changes. `build` runs it first, and
+`test` runs `build` first, since the browser tests run the built worker as an
+app gets it. The browser tests need the Chromium that `@basis/ui`'s preset
+pins: `vp exec --filter @basis/ui playwright install chromium`.
+
+wasm-bindgen's output in `wasm/` is ignored by git, except its declaration of
+the glue, `wasm/parallax_wasm.d.ts`, which is committed so that the package
+type-checks before the engine is built. CI fails when a build changes it;
+commit the new one with the Rust change that caused it.
+
 ## Generate test data
 
 `parallax-datagen` writes reproducible synthetic finance data as Arrow IPC
@@ -98,12 +125,11 @@ recorded in the file.
 Basis-ui releases parallax with its own version as `@basis/parallax`, one npm
 package with the WebAssembly engine and its worker built into it; its roadmap's
 step 2.7 sets that up. The Rust crates stay inside this repository and are not
-published. Until then, check what npm would receive from a clean checkout:
+published. Until then, check what npm would receive:
 
 ```sh
-cd web
-pnpm build:wasm && pnpm build
-cd dist/parallax && npm pack --dry-run
+vp run @basis/parallax#build
+cd packages/parallax && vp pm pack -- --dry-run
 ```
 
 ## Dependencies

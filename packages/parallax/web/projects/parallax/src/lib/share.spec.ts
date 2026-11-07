@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { parseLayout } from "./layout";
 import { decodeLayout, encodeLayout } from "./share";
-import fixtures from "./testing/layouts.json";
+import fixtures from "../../../../../tests/fixtures/layouts.json";
 
 const written: readonly unknown[] = fixtures;
 

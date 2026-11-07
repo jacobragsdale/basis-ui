@@ -1823,9 +1823,6 @@ mod tests {
         let schema = serde_json::to_string_pretty(&schema()).unwrap() + "\n";
         check_generated("../../schema/layout.schema.json", &schema);
         let fixtures = serde_json::to_string_pretty(&fixture_layouts()).unwrap() + "\n";
-        check_generated(
-            "../../web/projects/parallax/src/lib/testing/layouts.json",
-            &fixtures,
-        );
+        check_generated("../../tests/fixtures/layouts.json", &fixtures);
     }
 }
