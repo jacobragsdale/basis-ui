@@ -25,7 +25,8 @@
   },
   "dependencies": {
     "@fontsource-variable/inter": "catalog:",
-    "@fontsource-variable/jetbrains-mono": "catalog:"
+    "@fontsource-variable/jetbrains-mono": "catalog:",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@tailwindcss/node": "catalog:",
