@@ -2,6 +2,7 @@
  * sources answer in: a record in .fixtures/, then a committed fixture, then orval's generated handlers. */
 
 import { describe, expect, test } from "vite-plus/test";
+import type { RenderResult } from "vitest-browser-react";
 
 import { conventions, dirtyPrice } from "#api/client.ts";
 import { fixtureMode, json, record } from "#fixture-mode-support.ts";
@@ -17,6 +18,14 @@ function priced(accrued: string): Readonly<Record<string, unknown>> {
     security_id: "US91282CRF04",
     settle: "2026-11-10",
   });
+}
+
+/** Fills the settlement form with the settlement fixtures/settlement.json answers, and sends it. */
+async function recordSettlement(screen: RenderResult): Promise<void> {
+  await screen.getByLabelText("ISIN").fill("US91282CRF04");
+  await screen.getByLabelText("Face amount").fill("1000000.00");
+  await screen.getByLabelText("Settlement date").fill("2026-11-10");
+  await screen.getByRole("button", { name: "Record settlement" }).click();
 }
 
 describe("the app on its committed fixtures, with no API", () => {
@@ -52,30 +61,29 @@ describe("the app on its committed fixtures, with no API", () => {
   test("records a settlement with the answer fixtures/settlement.json holds, and opens its bond", async () => {
     const answers = fixtureMode();
     const { screen } = await renderApp("/settlements/new");
-    await screen.getByLabelText("ISIN").fill("US91282CRF04");
-    await screen.getByLabelText("Face amount").fill("1000000.00");
-    await screen.getByLabelText("Settlement date").fill("2026-11-10");
-    await screen.getByRole("button", { name: "Record settlement" }).click();
+    await recordSettlement(screen);
     const notifications = screen.getByRole("region", { name: "Notifications" });
     await expect
       .element(notifications.getByText("Recorded the settlement of US91282CRF04"))
       .toBeVisible();
+    // The heading shows the route's ISIN at once; the terms come only from the bond fixture's answer.
     await expect.element(screen.getByRole("heading", { name: "Bond US91282CRF04" })).toBeVisible();
-    expect(answers.map(({ file }) => file)).toStrictEqual([
-      "fixtures/settlement.json",
-      "fixtures/bond-US91282CRF04.json",
-    ]);
+    await expect.element(screen.getByText("Issued 2026-05-15, matures 2036-05-15")).toBeVisible();
+    await expect
+      .poll(() => answers.map(({ file }) => file))
+      .toStrictEqual(["fixtures/settlement.json", "fixtures/bond-US91282CRF04.json"]);
   });
 });
 
 describe("the order fixture mode answers in", () => {
   test("a record in .fixtures/ answers before the committed fixture of the same request", async () => {
-    const recorded = [{ convention: "ACT/360", year_days: 360 }];
+    // 366 days is the record's alone, so its cell shows only once the record has answered.
+    const recorded = [{ convention: "ACT/365F", year_days: 366 }];
     const answers = fixtureMode({
       ".fixtures/conventions.json": record("conventions", { path: "/conventions" }, json(recorded)),
     });
     const { screen } = await renderApp("/");
-    await expect.element(screen.getByRole("cell", { name: "ACT/360" })).toBeVisible();
+    await expect.element(screen.getByRole("cell", { name: "366" })).toBeVisible();
     expect(screen.getByRole("row").elements()).toHaveLength(2);
     expect(answers).toMatchObject([{ file: ".fixtures/conventions.json", source: "record" }]);
   });
