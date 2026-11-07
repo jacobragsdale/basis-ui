@@ -231,4 +231,4 @@ function HeaderMenu({
   );
 }
 
-export { HeaderMenu };
+export { HeaderMenu, Item as MenuItem, Menu };

@@ -1,0 +1,42 @@
+/* The harness's page: a header of controls, then the pivot or grid filling the rest, inset as the Angular demo's. The
+   components themselves are @basis/parallax's, in @basis/ui's styles. */
+
+@import "@basis/ui/styles.css";
+
+@source "../../../../src";
+
+#root {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  height: 100vh;
+}
+
+header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+
+header pre {
+  position: absolute;
+  z-index: 5;
+  max-height: 60vh;
+  overflow: auto;
+  background: var(--popover);
+  font-size: 12px;
+}
+
+header output {
+  color: var(--muted-foreground);
+  font-size: 12px;
+}
+
+main {
+  min-height: 0;
+  box-sizing: border-box;
+  padding: 12px;
+}

@@ -51,6 +51,13 @@ function aggregateLabel(aggregate: LayoutMeasure["aggregate"]): string {
   return label(aggregate);
 }
 
+/** A measure's short name, such as `Sum of pnl`, as a pivot's chips and menus say it. */
+function measureName(measure: LayoutMeasure): string {
+  return measure.aggregate === "count_all"
+    ? label("count_all")
+    : `${label(measure.aggregate)} of ${measure.column ?? "?"}`;
+}
+
 /** How many values a filter operator takes: a list, one, or none. */
 function operandOf(op: FilterOp): "one" | "many" | "none" {
   if (op === "in" || op === "not_in") {
@@ -92,4 +99,4 @@ function filterValue(kind: FieldKind, text: string): LayoutScalar {
   return kind === "text" ? text : trimmed;
 }
 
-export { aggregateLabel, filterValue, label, operandOf };
+export { aggregateLabel, filterValue, label, measureName, operandOf };
