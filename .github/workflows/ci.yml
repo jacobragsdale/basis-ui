@@ -26,6 +26,8 @@ jobs:
         with:
           node-version-file: .node-version
           cache: true
+      # The gallery type-checks against @basis/ui's built declarations, as an app does.
+      - run: vp run @basis/ui#build
       - run: vp check
 
   changes:
@@ -41,6 +43,7 @@ jobs:
           filters: |
             ui:
               - "packages/ui/**"
+              - "packages/gallery/**"
               # The formatter's tests read the fixtures parallax's Rust formatter writes.
               - "packages/parallax/crates/parallax-engine/tests/fixtures/format.json"
               - "package.json"
@@ -64,8 +67,13 @@ jobs:
         with:
           node-version-file: .node-version
           cache: true
-      - run: vp run @basis/ui#test
       - run: vp run @basis/ui#build
+      - run: vp run @basis/ui#test
+      # The gallery consumes @basis/ui's build, and its browser tests run in the Chromium that the preset's Playwright
+      # version pins.
+      - run: vp exec --filter @basis/ui playwright install --with-deps chromium
+      - run: vp run @basis/gallery#test
+      - run: vp run @basis/gallery#build
 
   # Parallax's jobs, moved with it from its own repo. Step 2.2 deletes the server, the connectors and the databases job.
   parallax-rust:

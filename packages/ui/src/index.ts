@@ -1,4 +1,18 @@
-// @basis/ui's entry point. The components, app shell and preset arrive in later roadmap steps.
+// @basis/ui's entry point. The app shell arrives in a later roadmap step.
+export { Badge } from "./components/badge.ts";
+export { badgeVariants } from "./components/badge-variants.ts";
+export { Button } from "./components/button.tsx";
+export { buttonVariants } from "./components/button-variants.ts";
+export {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "./components/card.tsx";
+export type { CssVariable } from "./components/css-variables.ts";
 export {
   FormatError,
   createFormatter,

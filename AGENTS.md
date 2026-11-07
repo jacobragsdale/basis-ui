@@ -6,7 +6,9 @@ through [the contract on basis's design
 page](https://github.com/jacobragsdale/basis/blob/main/docs/design.md#what-a-ui-can-rely-on).
 [docs/design.md](docs/design.md) holds the decisions and their reasons, and [docs/roadmap.md](docs/roadmap.md) the
 phases, their steps, and the lanes that run at the same time. The code is a pnpm workspace run by Vite+'s `vp`, with
-`@basis/ui` in `packages/ui` and parallax, moved in with its history, in `packages/parallax`.
+`@basis/ui` in `packages/ui`, its gallery in `packages/gallery`, and parallax, moved in with its history, in
+`packages/parallax`. [packages/ui/README.md](packages/ui/README.md) says how an app uses `@basis/ui` and how a component
+is added.
 
 ## Working here
 
@@ -25,14 +27,17 @@ phases, their steps, and the lanes that run at the same time. The code is a pnpm
 ## Checks
 
 ```sh
-vp install            # once per clone: installs dependencies and the commit hook (.vite-hooks/pre-commit)
-vp check              # formatting, linting and type checking, docs included
-vp run -r test        # every package's tests
-vp run -r build       # every package's build
+vp install              # once per clone: installs dependencies and the commit hook (.vite-hooks/pre-commit)
+vp run @basis/ui#build  # first, and after every change to @basis/ui: the gallery checks and tests against its build
+vp check                # formatting, linting and type checking, docs included
+vp run -r test          # every package's tests; the gallery's run in Chromium
+vp run -r build         # every package's build
 ```
 
-`vp` is Vite+'s command: install it with `curl -fsSL https://vite.plus | bash`. The commit hook runs `vp staged`, `vp
-check` and the tests. CI runs `vp check` on every change, and each package's tests and build when its paths change.
+`vp` is Vite+'s command: install it with `curl -fsSL https://vite.plus | bash`. The gallery's browser tests need the
+Chromium that the preset's Playwright pins: `vp exec --filter @basis/ui playwright install chromium`. The commit hook
+builds `@basis/ui`, then runs `vp staged`, `vp check` and the tests. CI runs `vp check` on every change, and each
+package's tests and build when its paths change.
 
 Parallax keeps its own checks until roadmap step 2.6 replaces its Angular layer, and the root checks skip it. Its
 `CONTRIBUTING.md` has them; in short:

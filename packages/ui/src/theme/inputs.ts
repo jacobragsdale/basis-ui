@@ -36,5 +36,10 @@ const spacing = {
   compact: "0.1875rem",
 } as const;
 
-export { fonts, hues, radius, spacing };
+/** The smallest a control may be, across and down: WCAG 2.2's minimum target size, 24 CSS pixels. It is a fixed length
+ * rather than a multiple of the spacing unit, so the compact density cannot shrink it. It gives `min-h-target` and
+ * `min-w-target`, which every control shorter than `h-8` carries. */
+const targetSize = "1.5rem";
+
+export { fonts, hues, radius, spacing, targetSize };
 export type { Hue, HueName };

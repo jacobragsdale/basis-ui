@@ -202,6 +202,16 @@ describe("the theme under Tailwind", () => {
     }
   });
 
+  test("min-h-target and min-w-target hold WCAG 2.2's 24 px target in either density", async () => {
+    const css = await build(["min-h-target", "min-w-target"]);
+    expect(css).toContain(".min-h-target {\n    min-height: var(--spacing-target);");
+    expect(css).toContain(".min-w-target {\n    min-width: var(--spacing-target);");
+    // A fixed 1.5rem, not a multiple of `--spacing`, which the compact density shrinks; 1rem is 16 px.
+    expect(css).toContain("--spacing-target: 1.5rem;");
+    const [, compact] = committed.split(':root[data-density="compact"] {');
+    expect(compact?.slice(0, compact.indexOf("}"))).not.toContain("--spacing-target");
+  });
+
   test("`dark:` follows the dark class, not the operating system", async () => {
     const css = await build(["dark:bg-card"]);
     expect(css).toContain(".dark");
