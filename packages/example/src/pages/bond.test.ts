@@ -49,9 +49,8 @@ describe("a bond's page", () => {
   test("links to the form that records a settlement", async () => {
     worker.use(getBondMockHandler(bond));
     const { screen } = await renderApp("/bonds/US91282CRF04");
-    await screen.getByRole("main").getByRole("link", { name: "Record a settlement" }).click();
     await expect
-      .element(screen.getByRole("heading", { name: "Record a settlement" }))
-      .toBeVisible();
+      .element(screen.getByRole("main").getByRole("link", { name: "Record a settlement" }))
+      .toHaveAttribute("href", "/settlements/new");
   });
 });

@@ -9,7 +9,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { build } from "vite-plus";
+import { build, resolveConfig } from "vite-plus";
 import { describe, expect, test } from "vite-plus/test";
 
 import { headScript } from "#index.ts";
@@ -63,12 +63,26 @@ async function typeCheckApp(client: string): Promise<{ status: number | null; st
   }
 }
 
+/** The modules Vite crawls for dependencies to pre-bundle when it serves an app in `mode`, with `basisPlugins()`. */
+async function crawledIn(mode: string): Promise<unknown> {
+  const config = await resolveConfig(
+    { configFile: false, logLevel: "silent", mode, plugins: basisPlugins() },
+    "serve",
+  );
+  return config.optimizeDeps.entries;
+}
+
 describe(basisPlugins, () => {
   test("a build's index.html runs headScript as a classic inline script in its head", async () => {
     const html = await builtPage();
     const script = html.indexOf(`<script>${headScript}</script>`);
     expect(script).toBeGreaterThan(html.indexOf("<head>"));
     expect(script).toBeLessThan(html.indexOf("</head>"));
+  });
+
+  test("vp test pre-bundles what every module of the app imports; vp dev crawls the pages as Vite does", async () => {
+    expect(await crawledIn("test")).toStrictEqual(["src/**/*.{ts,tsx}"]);
+    expect(await crawledIn("development")).toBeUndefined();
   });
 });
 

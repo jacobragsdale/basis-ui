@@ -7,7 +7,7 @@
 import { fileURLToPath } from "node:url";
 
 import { lazyPlugins } from "vite-plus";
-import type { PluginOption, ViteUserConfig } from "vite-plus";
+import type { Plugin, PluginOption, ViteUserConfig } from "vite-plus";
 import type { OxlintConfig } from "vite-plus/lint";
 
 import { headScriptPlugin } from "./head-script.ts";
@@ -85,10 +85,27 @@ function basisPreset(): BasisPreset {
   };
 }
 
+/** The modules Vite crawls for dependencies in `vp test`, besides the test files Vitest names: every module of the
+ * app's own. */
+const appModules = "src/**/*.{ts,tsx}";
+
+/** In `vp test`, Vite pre-bundles what every module under `src/` imports before the browser tests start. Vitest crawls
+ * only the test files, so a dependency that only app code imports, such as `react-dom/client` in an app's entry, is
+ * found only when a test loads that code, and then Vite bundles it and reloads every test page while the tests run,
+ * which fails the tests importing at that moment. Derived from the app's modules, the list never needs keeping. */
+function testDependenciesPlugin(): Plugin {
+  return {
+    apply: (_config, { mode }) => mode === "test",
+    config: () => ({ optimizeDeps: { entries: [appModules] } }),
+    name: "basis:test-dependencies",
+  };
+}
+
 /** React with the React Compiler, which fails the build on any component it cannot optimize, Tailwind, the head
  * script that applies the stored mode and density before the first paint, written into the app's index.html, and, in
  * `vp dev` and `vp test` only, MSW's service worker at `/mockServiceWorker.js`, so tests serve the generated client's
- * handlers. They load only when a command needs them, so `vp lint` and `vp fmt` stay fast. */
+ * handlers; in `vp test`, every dependency of the app's modules is pre-bundled before the tests start. They load only
+ * when a command needs them, so `vp lint` and `vp fmt` stay fast. */
 function basisPlugins(): PluginOption[] {
   return (
     lazyPlugins(async () => {
@@ -110,6 +127,7 @@ function basisPlugins(): PluginOption[] {
         tailwindcss(),
         // Worker-only: the app starts the worker itself, in a test or in fixture mode, and no build carries it.
         { ...msw({ mode: "worker-only" }), apply: "serve" },
+        testDependenciesPlugin(),
       ];
     }) ?? []
   );
