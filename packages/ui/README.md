@@ -7,10 +7,11 @@ design](../../docs/design.md) holds the decisions behind them.
 ## How to build an app on @basis/ui
 
 An app takes its checks, its plugins, its stylesheet and its components from this one package, and declares no styles
-of its own. `packages/gallery` in this repo is an app built this way.
+of its own. basis-ui's `packages/gallery` is an app built this way.
 
-Prerequisites: an app with `@basis/ui`, `react` and `react-dom` 19.3 as dependencies, and `vite-plus` 1.5.0 and
-TypeScript 7.0 as dev dependencies.
+Prerequisites: an app repo, in git, with `react` and `react-dom` 19.3 as dependencies and `vite-plus` 1.5.0 and
+TypeScript 7.0 as dev dependencies. Until roadmap step 1.8 publishes `@basis/ui`, install it from a tarball made with
+`vp pm pack` in this package.
 
 To set the app up:
 
@@ -27,11 +28,17 @@ To set the app up:
    });
    ```
 
-   `basisPreset()` brings the lint, format and staged-file configuration and the `vp run` tasks. `basisPlugins()` adds
-   React with the React Compiler, which fails the build on a component that breaks the rules of React, and Tailwind.
-   `basisTest()` runs `vp test` in headless Chromium through Playwright.
+   `basisPreset()` brings the lint, format and staged-file configuration, with `@shadcn/lint`'s design-system rules,
+   and the `vp run` tasks. `basisPlugins()` adds React with the React Compiler, which fails the build on a component
+   that breaks the rules of React, and Tailwind. `basisTest()` runs `vp test` in headless Chromium through Playwright.
 
-2. Make the app's whole stylesheet one line, and import it once from the entry module:
+2. Install the Chromium that the preset's Playwright pins:
+
+   ```sh
+   vpx playwright@1.65.0 install chromium
+   ```
+
+3. Make `src/styles.css` this one line, and import it from the entry module, `src/main.tsx`, as `import "./styles.css";`:
 
    ```css
    @import "@basis/ui/styles.css";
@@ -40,7 +47,7 @@ To set the app up:
    It brings Tailwind, the theme with its fonts, and the classes the components use, which Tailwind would otherwise
    miss, since it does not scan `node_modules`.
 
-3. Extend the strict tsconfig, adding JSX and Vite's client types, which it does not set yet:
+4. Extend the strict tsconfig, adding JSX and Vite's client types, which it does not set yet:
 
    ```json
    {
@@ -50,30 +57,45 @@ To set the app up:
    }
    ```
 
-4. Put the text of `headScript`, exported from `@basis/ui`, in an inline `<script>` in `index.html`'s `<head>`, so the
-   stored mode and density apply before the first paint. The gallery's `index.test.ts` holds its copy to the package's.
+5. Copy the inline `<script>` in the gallery's `index.html` into the `<head>` of the app's `index.html`. It is the text
+   of `headScript`, exported from `@basis/ui`, and applies the stored mode and density before the first paint. The
+   gallery's `index.test.ts` fails when its copy differs from `headScript`; copy that test too.
 
-5. Import the components from the package's root:
+6. Import the components from the package's root:
 
    ```tsx
    import { Badge, Button, Card, CardContent, CardHeader, CardTitle } from "@basis/ui";
    ```
 
-To confirm the setup, run `vp check` and `vp build`. `vp check` must be run inside a git repository.
+To confirm the setup, run `vp check`, `vp test` and `vp build`.
 
 ## Using the components
 
 A component's look comes from its props, `variant` and `size`, never from `className`. `className` places a component:
-margin, width, and flex or grid placement. `shadcn/no-restyle` rejects anything else, and its error lists the
-component's variants and sizes. When no variant fits, the variant is added here, not restyled in the app.
+margin, width, and flex or grid placement. The lint rule `shadcn/no-restyle` rejects any other class, and its error
+lists the component's variants and sizes. When no variant fits, the variant is added to `@basis/ui` in a basis-ui pull
+request, never restyled in the app.
 
-- A link that looks like a button is an `<a>` with `buttonVariants` as its class. `Button`'s `render` prop swaps its
-  element but keeps the button role.
-- With `render`, put the rendered element's text inside it, as in `<Badge render={<a href="/trades">Trades</a>} />`,
-  where `jsx-a11y/control-has-associated-label` looks for it.
-- `style` may set CSS variables and nothing else, read by a class: `style={{ "--fill": "40%" }}` with `w-(--fill)`.
-  `@basis/ui`'s types let `style` take a variable.
-- Controls shorter than `h-8` keep a 24 px target in the compact density through `min-h-target` and `min-w-target`.
+A link that looks like a button is an `<a>` with `buttonVariants` as its class, since `Button`'s `render` prop swaps
+its element but keeps the button role:
+
+```tsx
+import { buttonVariants } from "@basis/ui";
+
+<a href="/trades" className={buttonVariants({ variant: "outline" })}>
+  View trades
+</a>;
+```
+
+With `render` on any other component, put the rendered element's text inside it, as in
+`<Badge render={<a href="/trades">Trades</a>} />`, which is where `jsx-a11y/control-has-associated-label` looks for
+it.
+
+`style` may set CSS variables and nothing else, and a class reads the variable: `style={{ "--fill": "40%" }}` with the
+class `w-(--fill)`. `@basis/ui`'s types let `style` take a variable.
+
+The components already keep WCAG 2.2's 24 px minimum target in the compact density: every control shorter than `h-8`
+carries `min-h-target` and `min-w-target`.
 
 ## Adding a component
 
