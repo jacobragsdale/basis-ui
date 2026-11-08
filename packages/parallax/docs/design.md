@@ -547,7 +547,11 @@ negative parts, so a pie refuses negative values with a message rather than
 drawing them. Clicking a bar or slice selects its group: the chart emits
 `selectionChange` with the outermost group column and the group's exact key,
 for a host to filter a linked view by, dims the other groups, and clears it on
-a second click. "Other" stands for several groups and selects nothing.
+a second click. "Other" stands for several groups and selects nothing. A
+grouped chart given an x column and y columns rather than `group_by` and
+measures groups by x and sums each y, split by its series, as the small-data
+form does; given neither, it says what it lacks and how to give it, rather
+than drawing an empty plot.
 
 Waterfalls, for attribution and P&L explain, draw the grouped view too: each
 group's bar floats from the running total before it to its own, rising bars in

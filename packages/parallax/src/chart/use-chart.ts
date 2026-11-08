@@ -17,7 +17,7 @@ import type { CategoryData, LegendEntry } from "./model-types.ts";
 import type { PlotSize } from "./scene-inputs.ts";
 import { ChartScene } from "./scene.ts";
 import type { ChartSelection } from "./scene.ts";
-import { drawsGroups, groupsViewport } from "./source.ts";
+import { drawsGroups, groupsViewport, withGroupsFromXY } from "./source.ts";
 
 /** Below this size a chart is compact: less padding, and no legend. */
 const compactWidth = 260;
@@ -187,7 +187,9 @@ function useSceneInputs(
 function useChart(input: ChartInput): ChartState {
   const { current, keep } = useOwnLayout(input.layout);
   const checked = checkLayout({ ...current, dataset: input.dataset.name });
-  const layout = checked.ok && checked.layout.chart !== null ? checked.layout : null;
+  // A grouped chart given as x and y draws the grouped view they make, as the small-data form's does.
+  const layout =
+    checked.ok && checked.layout.chart !== null ? withGroupsFromXY(checked.layout) : null;
   const scene = useMemo(() => new ChartScene(), []);
   const [sizes, setSizes] = useState(noSizes);
   const compact = isCompact(sizes.outer);

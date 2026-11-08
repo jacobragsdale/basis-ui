@@ -12,6 +12,7 @@ import type { CellValue } from "#frame/cell.ts";
 import type { FrameColumn } from "#frame/columns.ts";
 import type { FrameData } from "#frame/frame.ts";
 import { groupedKinds } from "#layout/chart.ts";
+import { parseLayout } from "#layout/layout.ts";
 import type { Layout } from "#layout/layout.ts";
 
 import type { CategoryData, CategorySeries } from "./model-types.ts";
@@ -41,6 +42,45 @@ const titleJoin = " | ";
 function drawsGroups(layout: Layout): boolean {
   const kind = layout.chart?.kind;
   return kind !== undefined && groupedKinds.has(kind);
+}
+
+/**
+ * A chart of the grouped view given as `x` and `y`, as the small-data form takes it, as the grouped view it draws:
+ * grouped by `x`, each `y` summed, split by `series`. A layout that groups or has measures of its own is left as it is.
+ * The result is read as a layout is, so that it is written as the engine's answer to it is read back.
+ */
+function withGroupsFromXY(layout: Layout): Layout {
+  const { chart } = layout;
+  if (
+    chart === null ||
+    !groupedKinds.has(chart.kind) ||
+    layout.group_by.length > 0 ||
+    layout.measures.length > 0 ||
+    chart.x === "" ||
+    chart.y.length === 0
+  ) {
+    return layout;
+  }
+  return parseLayout({
+    ...layout,
+    group_by: [chart.x],
+    measures: chart.y.map((column) => ({ aggregate: "sum", column })),
+    split_by: chart.series === null ? layout.split_by : [chart.series],
+  });
+}
+
+/** What a chart that draws its grouped view lacks, said with the fix, or null when it lacks nothing. */
+function groupsProblem(layout: Layout): string | null {
+  const kind = layout.chart?.kind;
+  if (kind === undefined || !groupedKinds.has(kind)) {
+    return null;
+  }
+  if (layout.group_by.length === 0) {
+    return `A ${kind} chart draws groups: give its layout group_by and measures, or its chart an x column and y columns.`;
+  }
+  return layout.measures.length === 0
+    ? `A ${kind} chart draws its groups' measures: give its layout measures, such as { aggregate: "sum", column }.`
+    : null;
 }
 
 /**
@@ -113,9 +153,11 @@ function rowsPart(layout: Layout): string {
 
 /**
  * What a frame's data looks like: the chart's kind, the columns it plots and its indicators, whose lines a frame names
- * by their place in the list.
+ * by their place in the list. It is the same for a layout as for the layout the engine is sent for it, which carries a
+ * waterfall's running total, so that the chart takes the frames the engine answers with.
  */
-function shapeOf(layout: Layout): string {
+function shapeOf(given: Layout): string {
+  const layout = withWaterfallRun(given);
   const { chart } = layout;
   return JSON.stringify(
     chart === null
@@ -225,10 +267,12 @@ export {
   categoriesOf,
   computedPart,
   drawsGroups,
+  groupsProblem,
   groupsViewport,
   pieSlices,
   rowsPart,
   shapeOf,
+  withGroupsFromXY,
   withPieLimit,
   withWaterfallRun,
 };

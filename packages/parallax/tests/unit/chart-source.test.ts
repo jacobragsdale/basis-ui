@@ -1,12 +1,15 @@
 import { Float64, Int32, Utf8, makeData } from "apache-arrow";
 import { describe, expect, test } from "vite-plus/test";
 
+import { engineLayout } from "#chart/engine-layout.ts";
 import {
   categoriesOf,
   computedPart,
   drawsGroups,
+  groupsProblem,
   rowsPart,
   shapeOf,
+  withGroupsFromXY,
   withPieLimit,
 } from "#chart/source.ts";
 import { decodeFrame } from "#frame/frame.ts";
@@ -190,5 +193,72 @@ describe(categoriesOf, () => {
       "Bond",
       "Equity",
     ]);
+  });
+});
+
+/** The shape of a frame's layout, as the scene reads it back from what the view sent. */
+function sentShape(layout: Parameters<typeof engineLayout>[0]): string {
+  const sent = structuredClone(engineLayout(layout));
+  return shapeOf(parseLayout(sent));
+}
+
+describe("what the engine is sent for a chart", () => {
+  const charts = [
+    { chart: { kind: "waterfall" as const }, group_by: ["factor"] },
+    { chart: { kind: "pie" as const }, group_by: ["sector"] },
+    { chart: { kind: "bar" as const, stacked: true }, group_by: ["sector"] },
+    { chart: { kind: "line" as const, x: "date", y: ["close"] } },
+  ];
+
+  test("has the shape of the chart's own layout, so the chart takes the frames it answers with", () => {
+    for (const given of charts) {
+      const layout = parseLayout({
+        ...given,
+        dataset: "book",
+        measures: [{ aggregate: "sum", column: "pnl" }],
+      });
+      expect(sentShape(layout), layout.chart?.kind).toBe(shapeOf(layout));
+    }
+    const xy = withGroupsFromXY(
+      parseLayout({ chart: { kind: "bar", x: "sector", y: ["dv01"] }, dataset: "bonds" }),
+    );
+    expect(sentShape(xy)).toBe(shapeOf(xy));
+  });
+});
+
+describe(withGroupsFromXY, () => {
+  test("groups a bar chart given as x and y by x, sums each y, and splits it by its series", () => {
+    const layout = withGroupsFromXY(
+      parseLayout({ chart: { kind: "bar", series: "side", x: "category", y: ["value", "cost"] } }),
+    );
+    expect([layout.group_by, layout.split_by]).toStrictEqual([["category"], ["side"]]);
+    expect(layout.measures.map((entry) => [entry.aggregate, entry.column])).toStrictEqual([
+      ["sum", "value"],
+      ["sum", "cost"],
+    ]);
+    expect(groupsProblem(layout)).toBeNull();
+  });
+
+  test("leaves a layout that groups, a reduced kind, and a chart without x or y as they are", () => {
+    const grouped = parseLayout({
+      chart: { kind: "bar", x: "category", y: ["value"] },
+      group_by: ["sector"],
+      measures: [{ aggregate: "count_all" }],
+    });
+    const line = parseLayout({ chart: { kind: "line", x: "date", y: ["close"] } });
+    const bare = parseLayout({ chart: { kind: "bar" } });
+    expect(
+      [grouped, line, bare].map((layout) => withGroupsFromXY(layout) === layout),
+    ).toStrictEqual([true, true, true]);
+  });
+
+  test("says what a grouped chart lacks, and how to give it", () => {
+    expect(groupsProblem(parseLayout({ chart: { kind: "bar" } }))).toBe(
+      "A bar chart draws groups: give its layout group_by and measures, or its chart an x column and y columns.",
+    );
+    expect(groupsProblem(parseLayout({ chart: { kind: "pie" }, group_by: ["sector"] }))).toBe(
+      'A pie chart draws its groups\' measures: give its layout measures, such as { aggregate: "sum", column }.',
+    );
+    expect(groupsProblem(parseLayout({ chart: { kind: "line", x: "date" } }))).toBeNull();
   });
 });

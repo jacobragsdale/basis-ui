@@ -4,7 +4,7 @@
 import { cn } from "cn";
 import type { ReactNode } from "react";
 
-import type { Layout, LayoutCheck, LayoutFilter, LayoutInput } from "#layout/layout.ts";
+import type { Layout, LayoutFilter, LayoutInput } from "#layout/layout.ts";
 import type { Dataset } from "#react/use-dataset.ts";
 
 import { ChartLegend, ChartStatus, ChartTools } from "./chart-chrome.tsx";
@@ -12,6 +12,7 @@ import { ChartPlot } from "./chart-plot.tsx";
 import { describeChart } from "./describe.ts";
 import type { CategoryData } from "./model-types.ts";
 import { isDrawable } from "./scene-inputs.ts";
+import { groupsProblem } from "./source.ts";
 import type { ChartSelection } from "./scene.ts";
 import { useChart } from "./use-chart.ts";
 import type { ChartState } from "./use-chart.ts";
@@ -49,12 +50,15 @@ interface ChartViewProps extends ChartOptions {
   readonly source?: string;
 }
 
-/** What the chart says is wrong, or null. */
-function problemOf(checked: LayoutCheck, error: string | null): string | null {
+/** What the chart says is wrong, or null: its layout, what a grouped chart lacks, or the view's error. */
+function problemOf({ checked, layout, view }: ChartState): string | null {
   if (!checked.ok) {
     return `Invalid layout: ${checked.error}`;
   }
-  return checked.layout.chart === null ? "The layout has no chart section." : error;
+  if (layout === null) {
+    return "The layout has no chart section.";
+  }
+  return groupsProblem(layout) ?? view.error;
 }
 
 /** The chart's head: its legend, and the drawing tools on charts that take drawings. */
@@ -104,6 +108,8 @@ function ChartView(props: ChartViewProps): ReactNode {
   const { layout, scene } = chart;
   const { root, summary, asOf, words } = scene.parts.mount;
   const source = props.source ?? props.dataset.name;
+  // A chart with a problem says it in place of the plot, with no legend of what it cannot draw.
+  const problem = problemOf(chart);
   const description =
     props.label ?? (layout === null ? "Chart" : describeChart({ ...layout, dataset: source }));
   return (
@@ -111,16 +117,20 @@ function ChartView(props: ChartViewProps): ReactNode {
       {...chart.attributes}
       ref={root}
       data-slot="chart"
-      className={cn("flex min-h-30 flex-col bg-card text-xs text-card-foreground", props.className)}
+      className={cn(
+        // It fills a parent of a set height, a block's as well as a flex column's, and is at least 120 px tall.
+        "flex h-full min-h-30 flex-col bg-card text-xs text-card-foreground",
+        props.className,
+      )}
     >
       <div className={cn("flex min-h-0 flex-1 flex-col", chart.beside && "flex-row-reverse")}>
-        <ChartHead chart={chart} />
+        {problem === null ? <ChartHead chart={chart} /> : null}
         <ChartPlot
           scene={scene}
           editor={chart.editor}
           description={description}
           wordsId={chart.wordsId}
-          problem={problemOf(chart.checked, chart.view.error)}
+          problem={problem}
         />
       </div>
       {(props.status ?? true) ? (

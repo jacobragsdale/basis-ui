@@ -4,13 +4,18 @@
 import { barLabel, barPlot, barRect, barSlots } from "./model-bar-plot.ts";
 import { categoryAxis } from "./model-categories.ts";
 import type { CategoryData, Mark, ModelInput, Rect, Scale } from "./model-types.ts";
-import { dimmed, xAxisHeight } from "./model-shared.ts";
+import { dimmed, lineHeight, padOf, xAxisHeight } from "./model-shared.ts";
 import { pixel } from "./scale.ts";
 
 /** The total bar's category label. */
 const totalLabel = "Total";
 /** The room a step's label leaves at its band's edges. */
 const bandMargin = 4;
+
+/** The gap between a step's end and its label, with a margin. */
+const labelGap = 6;
+/** The room a step's label takes past its end: a line and its gap. */
+const labelSpace = lineHeight + labelGap;
 
 /** A group's step: from the running total before it to its own. */
 interface Step {
@@ -29,6 +34,20 @@ interface Placement {
   readonly labels: ReturnType<typeof categoryAxis>;
 }
 
+/**
+ * The values a waterfall's scale covers, with room past both ends for a label: steps fall below zero as well as rise
+ * above it, so the bottom's label needs room as much as the top's.
+ */
+function withLabelSpace(input: ModelInput, values: readonly number[]): readonly number[] {
+  if (!input.chart.labels) {
+    return values;
+  }
+  const [low, high] = [Math.min(0, ...values), Math.max(0, ...values)];
+  const length = input.height - xAxisHeight - padOf(input);
+  const room = ((high - low) * labelSpace) / Math.max(1, length - 2 * labelSpace);
+  return [...values, low < 0 ? low - room : low, high > 0 ? high + room : high];
+}
+
 /** The plot, value scale and bands of a waterfall's groups and its total, with room for their labels. */
 function placement(
   input: ModelInput,
@@ -45,7 +64,7 @@ function placement(
 ): Placement {
   const categories = [...data.categories, ...(Number.isFinite(total) ? [totalLabel] : [])];
   const ends = steps.flatMap((step) => (step === null ? [] : [step.from, step.to]));
-  const totals = [0, ...ends, ...(Number.isFinite(total) ? [total] : [])];
+  const totals = withLabelSpace(input, [0, ...ends, ...(Number.isFinite(total) ? [total] : [])]);
   const fit = (xAxis: number): ReturnType<typeof barPlot> =>
     barPlot(input, { labelWidth: 0, texts, totals, xAxis });
   const labels = categoryAxis(input, categories, fit(xAxisHeight).plot.width);

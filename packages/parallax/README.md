@@ -200,7 +200,9 @@ rows in the range shown, a density past that), heatmap,
 histogram, candlestick, OHLC, pie, donut and waterfall, on a value, trading-time or tenor axis,
 with technical-analysis indicators and panes, drawings, a compare mode and
 events. Give it a dataset that `useDataset` loads and a layout whose `chart`
-section says what to draw:
+section says what to draw. A chart takes its parent's height, in a block or a
+flex column alike, and is at least 120 pixels tall, so give its parent a
+height, such as a card's `h-80`:
 
 ```tsx
 import { Chart } from "@basis/parallax";
@@ -303,6 +305,11 @@ fraction, as an API sends it, so `{ bps: true }` writes 0.0025 as `25 bp`,
 `{ percent: true }` writes 0.0525 as `5.25%`, `{ thirty_seconds: "halves" }` writes 99.515625 as `99-16+`, and
 `{ abbreviate: "millions", suffixes: "par" }` writes $5 million of par as
 `5.0MM`.
+
+A bar chart, heatmap, pie or waterfall draws the layout's grouped view: give
+the layout `group_by` and `measures`, or give the chart `x` and `y`, which
+group by `x` and sum each `y`, split by `series`, as the small-data form does.
+One given neither says so in place of the plot.
 
 A small chart takes the rows the page already holds, and loads them as a table
 of its own, in their order:

@@ -136,8 +136,8 @@ function Explain(): ReactNode {
   const attribution = useDemoDataset("attribution");
   const [selected, setSelected] = useState<ChartSelection | null>(null);
   return (
-    <div className="grid gap-3 xl:grid-cols-5">
-      <Card size="sm" data-card="pnl-explain" className="h-110 xl:col-span-3">
+    <>
+      <Card size="sm" data-card="pnl-explain" className="h-110">
         <CardHeader>
           <CardTitle>
             October&apos;s P&amp;L explained by factor, in thousands: click a factor
@@ -152,7 +152,7 @@ function Explain(): ReactNode {
           />
         </CardContent>
       </Card>
-      <section data-linked="pnl-explain" className="flex h-110 flex-col gap-1.5 xl:col-span-2">
+      <section data-linked="pnl-explain" className="flex h-80 flex-col gap-1.5">
         <h2 className="text-sm font-semibold">
           {selected === null
             ? "P&L by portfolio and factor group, until a factor is clicked"
@@ -160,7 +160,7 @@ function Explain(): ReactNode {
         </h2>
         <Pivot dataset={attribution} defaultSettingsOpen={false} layout={byPortfolio(selected)} />
       </section>
-    </div>
+    </>
   );
 }
 
