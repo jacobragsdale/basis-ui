@@ -10,7 +10,15 @@ import type { ComponentProps, ReactElement } from "react";
 import { LoaderCircleIcon } from "#vendor/lucide/loader-circle.tsx";
 
 /** A loading indicator, 16 px square unless `className` sizes it, as with `size-6`. It is a status named "Loading";
- * give it an `aria-label` that says what is loading, such as "Loading positions", when the page shows more than one. */
+ * give it an `aria-label` that says what is loading, such as "Loading positions", when the page shows more than one.
+ *
+ * @example
+ * ```tsx
+ * import { Spinner } from "@basis/ui";
+ *
+ * <Spinner />;
+ * ```
+ */
 function Spinner({ className, ...props }: ComponentProps<"output">): ReactElement {
   return (
     <output

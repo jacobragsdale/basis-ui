@@ -19,7 +19,20 @@ import { inputGroupAddonVariants, inputGroupButtonVariants } from "./input-group
 import { inputVariants } from "./input-variants.ts";
 import { textareaVariants } from "./textarea-variants.ts";
 
-/** An input's outline holding the input and its addons. Name the input itself, with a `<label>` or `aria-label`. */
+/** An input's outline holding the input and its addons. Name the input itself, with a `<label>` or `aria-label`.
+ *
+ * @example
+ * ```tsx
+ * import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from "@basis/ui";
+ *
+ * <InputGroup>
+ *   <InputGroupInput aria-label="Notional" placeholder="0" />
+ *   <InputGroupAddon align="inline-end">
+ *     <InputGroupText>USD</InputGroupText>
+ *   </InputGroupAddon>
+ * </InputGroup>;
+ * ```
+ */
 function InputGroup({ className, ...props }: ComponentProps<"div">): ReactElement {
   return (
     <div

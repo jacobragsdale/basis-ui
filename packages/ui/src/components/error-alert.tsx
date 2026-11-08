@@ -22,7 +22,15 @@ interface ErrorAlertProps {
   readonly className?: string | undefined;
 }
 
-/** A destructive Alert describing `error`, announced at once to a screen reader and named by its title. */
+/** A destructive Alert describing `error`, announced at once to a screen reader and named by its title.
+ *
+ * @example
+ * ```tsx
+ * import { ErrorAlert } from "@basis/ui";
+ *
+ * <ErrorAlert error={new Error("The positions could not be loaded.")} onRetry={() => undefined} />;
+ * ```
+ */
 function ErrorAlert({ error, onRetry, className }: ErrorAlertProps): ReactElement | null {
   if (error === null || error === undefined) {
     return null;

@@ -5,7 +5,18 @@
 import { cn } from "cn";
 import type { ComponentProps, ReactElement } from "react";
 
-/** A key, such as `Ctrl` or `K`, in a `<kbd>` element. An icon inside it is sized to the key. */
+/** A key, such as `Ctrl` or `K`, in a `<kbd>` element. An icon inside it is sized to the key.
+ *
+ * @example
+ * ```tsx
+ * import { Kbd, KbdGroup } from "@basis/ui";
+ *
+ * <KbdGroup>
+ *   <Kbd>Ctrl</Kbd>
+ *   <Kbd>K</Kbd>
+ * </KbdGroup>;
+ * ```
+ */
 function Kbd({ className, ...props }: ComponentProps<"kbd">): ReactElement {
   return (
     <kbd

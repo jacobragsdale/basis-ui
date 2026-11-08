@@ -31,7 +31,18 @@ const TitleIdContext = createContext<Dispatch<SetStateAction<string | undefined>
 );
 
 /** A callout: an optional icon first, then an AlertTitle, an AlertDescription and an AlertAction. A status variant
- * pairs its colour with an icon, such as `CircleCheckIcon` for `success`. */
+ * pairs its colour with an icon, such as `CircleCheckIcon` for `success`.
+ *
+ * @example
+ * ```tsx
+ * import { Alert, AlertDescription, AlertTitle } from "@basis/ui";
+ *
+ * <Alert variant="warning">
+ *   <AlertTitle>Prices are stale</AlertTitle>
+ *   <AlertDescription>The last price arrived at 09:30.</AlertDescription>
+ * </Alert>;
+ * ```
+ */
 function Alert({
   className,
   variant = "default",
@@ -76,6 +87,7 @@ function AlertTitle({ className, id, ...props }: ComponentProps<"div">): ReactEl
   );
 }
 
+/** The alert's text, under its title. */
 function AlertDescription({ className, ...props }: ComponentProps<"div">): ReactElement {
   return (
     <div

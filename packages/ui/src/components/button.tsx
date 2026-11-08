@@ -10,7 +10,17 @@ import type { VariantProps } from "#vendor/cva/cva.ts";
 import { buttonVariants } from "./button-variants.ts";
 
 /** A button. `render` swaps its element but keeps a button's role, so a link that should look like a button is a
- * `ButtonLink` instead. */
+ * `ButtonLink` instead.
+ *
+ * @example
+ * ```tsx
+ * import { Button } from "@basis/ui";
+ *
+ * <Button variant="outline" size="sm" onClick={() => undefined}>
+ *   Export
+ * </Button>;
+ * ```
+ */
 function Button({
   className,
   variant = "default",

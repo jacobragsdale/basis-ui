@@ -149,7 +149,24 @@ function Previewing<TRow>({
   );
 }
 
-/** A CSV import, checked against `schema`, that hands the app the valid rows once the user confirms. */
+/** A CSV import, checked against `schema`, that hands the app the valid rows once the user confirms.
+ *
+ * @example
+ * ```tsx
+ * import { FileImport, amountSchema, parSuffixes } from "@basis/ui";
+ * import { z } from "zod";
+ *
+ * const positionRow = z.object({ cusip: z.string(), par: amountSchema(parSuffixes) });
+ *
+ * <FileImport
+ *   schema={positionRow}
+ *   headers={{ par: ["Par", "Par amount"] }}
+ *   onImport={async () => {
+ *     await Promise.resolve();
+ *   }}
+ * />;
+ * ```
+ */
 function FileImport<TSchema extends ImportSchema>({
   schema,
   headers,

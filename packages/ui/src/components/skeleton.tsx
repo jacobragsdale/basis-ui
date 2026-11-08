@@ -9,7 +9,15 @@ import type { VariantProps } from "#vendor/cva/cva.ts";
 import { skeletonVariants } from "./skeleton-variants.ts";
 
 /** A placeholder block. `className` gives it the size of what it stands for, such as `h-4 w-32`, or `size-8` with
- * `variant="circle"` for an avatar. */
+ * `variant="circle"` for an avatar.
+ *
+ * @example
+ * ```tsx
+ * import { Skeleton } from "@basis/ui";
+ *
+ * <Skeleton className="h-4 w-32" />;
+ * ```
+ */
 function Skeleton({
   className,
   variant = "default",

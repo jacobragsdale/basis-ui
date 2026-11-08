@@ -5,7 +5,23 @@
 import { cn } from "cn";
 import type { ComponentProps, ReactElement } from "react";
 
-/** A card: a raised panel on the `card` surface. `size="sm"` tightens its spacing. */
+/** A card: a raised panel on the `card` surface. `size="sm"` tightens its spacing.
+ *
+ * @example
+ * ```tsx
+ * import { Card, CardContent, CardDescription, CardHeader, CardTitle, Money } from "@basis/ui";
+ *
+ * <Card>
+ *   <CardHeader>
+ *     <CardTitle>Market value</CardTitle>
+ *     <CardDescription>At yesterday's close</CardDescription>
+ *   </CardHeader>
+ *   <CardContent>
+ *     <Money value={1_234_567.89} />
+ *   </CardContent>
+ * </Card>;
+ * ```
+ */
 function Card({
   className,
   size = "default",
@@ -38,6 +54,7 @@ function CardHeader({ className, ...props }: ComponentProps<"div">): ReactElemen
   );
 }
 
+/** The card's title. */
 function CardTitle({ className, ...props }: ComponentProps<"div">): ReactElement {
   return (
     <div
@@ -51,6 +68,7 @@ function CardTitle({ className, ...props }: ComponentProps<"div">): ReactElement
   );
 }
 
+/** A line under the card's title saying what the card shows. */
 function CardDescription({ className, ...props }: ComponentProps<"div">): ReactElement {
   return (
     <div
@@ -72,6 +90,7 @@ function CardAction({ className, ...props }: ComponentProps<"div">): ReactElemen
   );
 }
 
+/** The card's body. */
 function CardContent({ className, ...props }: ComponentProps<"div">): ReactElement {
   return (
     <div
@@ -82,6 +101,7 @@ function CardContent({ className, ...props }: ComponentProps<"div">): ReactEleme
   );
 }
 
+/** The card's last row, for its actions or a note. */
 function CardFooter({ className, ...props }: ComponentProps<"div">): ReactElement {
   return (
     <div

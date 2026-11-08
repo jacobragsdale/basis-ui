@@ -123,7 +123,33 @@ function MultipleEntityPicker<TItem>({
 }
 
 /** A combobox that searches as the user types. Label it with a `FieldLabel` whose `htmlFor` is its `id`, or with
- * `aria-label`. */
+ * `aria-label`.
+ *
+ * @example
+ * ```tsx
+ * import { EntityPicker, Field, FieldLabel } from "@basis/ui";
+ *
+ * interface Issuer {
+ *   readonly id: string;
+ *   readonly name: string;
+ * }
+ *
+ * const issuers: readonly Issuer[] = [{ id: "ust", name: "US Treasury" }];
+ *
+ * <Field>
+ *   <FieldLabel htmlFor="issuer">Issuer</FieldLabel>
+ *   <EntityPicker
+ *     id="issuer"
+ *     search={async (text) =>
+ *       Promise.resolve(issuers.filter((issuer) => issuer.name.toLowerCase().includes(text.toLowerCase())))
+ *     }
+ *     itemKey={(issuer) => issuer.id}
+ *     itemLabel={(issuer) => issuer.name}
+ *     onValueChange={() => undefined}
+ *   />
+ * </Field>;
+ * ```
+ */
 function EntityPicker<TItem>(props: EntityPickerProps<TItem>): ReactElement {
   return props.multiple === true ? (
     <MultipleEntityPicker {...props} />

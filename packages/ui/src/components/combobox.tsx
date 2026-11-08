@@ -33,7 +33,36 @@ import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "
 const popupOffset = 6;
 
 /** A combobox: an input and the list it filters. Give it `items`, and render each in ComboboxList's child function;
- * `multiple` chooses several, shown as ComboboxChips. */
+ * `multiple` chooses several, shown as ComboboxChips.
+ *
+ * @example
+ * ```tsx
+ * import {
+ *   Combobox,
+ *   ComboboxContent,
+ *   ComboboxEmpty,
+ *   ComboboxInput,
+ *   ComboboxItem,
+ *   ComboboxList,
+ * } from "@basis/ui";
+ *
+ * const issuers = ["Treasury", "Fannie Mae", "Freddie Mac", "World Bank"];
+ *
+ * <Combobox items={issuers}>
+ *   <ComboboxInput placeholder="Issuer" aria-label="Issuer" />
+ *   <ComboboxContent>
+ *     <ComboboxEmpty>No issuer matches.</ComboboxEmpty>
+ *     <ComboboxList>
+ *       {(issuer: string) => (
+ *         <ComboboxItem key={issuer} value={issuer}>
+ *           {issuer}
+ *         </ComboboxItem>
+ *       )}
+ *     </ComboboxList>
+ *   </ComboboxContent>
+ * </Combobox>;
+ * ```
+ */
 const Combobox = ComboboxPrimitive.Root;
 
 /** The chosen value as text, or a render function of the chosen items. */

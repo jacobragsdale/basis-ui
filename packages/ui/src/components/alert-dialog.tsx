@@ -20,15 +20,49 @@ import {
 } from "./button-variants.ts";
 
 /** An alert dialog: a dialog that asks the user to confirm or cancel an action. Unlike Dialog, a click outside does
- * not close it; Escape and its cancel button do, and focus returns to the trigger. */
+ * not close it; Escape and its cancel button do, and focus returns to the trigger.
+ *
+ * @example
+ * ```tsx
+ * import {
+ *   AlertDialog,
+ *   AlertDialogAction,
+ *   AlertDialogCancel,
+ *   AlertDialogContent,
+ *   AlertDialogDescription,
+ *   AlertDialogFooter,
+ *   AlertDialogHeader,
+ *   AlertDialogTitle,
+ *   AlertDialogTrigger,
+ *   Button,
+ * } from "@basis/ui";
+ *
+ * <AlertDialog>
+ *   <AlertDialogTrigger render={<Button variant="destructive" />}>Cancel order</AlertDialogTrigger>
+ *   <AlertDialogContent>
+ *     <AlertDialogHeader>
+ *       <AlertDialogTitle>Cancel this order?</AlertDialogTitle>
+ *       <AlertDialogDescription>The order leaves the book and cannot be restored.</AlertDialogDescription>
+ *     </AlertDialogHeader>
+ *     <AlertDialogFooter>
+ *       <AlertDialogCancel>Keep it</AlertDialogCancel>
+ *       <AlertDialogAction>Cancel order</AlertDialogAction>
+ *     </AlertDialogFooter>
+ *   </AlertDialogContent>
+ * </AlertDialog>;
+ * ```
+ */
 function AlertDialog(props: AlertDialogPrimitive.Root.Props): ReactElement {
   return <AlertDialogPrimitive.Root data-slot="alert-dialog" {...props} />;
 }
 
+/** The control that opens the alert dialog; `render={<Button variant="destructive" />}` makes it a button. */
 function AlertDialogTrigger(props: AlertDialogPrimitive.Trigger.Props): ReactElement {
   return <AlertDialogPrimitive.Trigger data-slot="alert-dialog-trigger" {...props} />;
 }
 
+/** Renders the alert dialog's popup into the page's body, outside the trigger's layout. `AlertDialogContent`
+ * includes one. */
 function AlertDialogPortal(props: AlertDialogPrimitive.Portal.Props): ReactElement {
   return <AlertDialogPrimitive.Portal data-slot="alert-dialog-portal" {...props} />;
 }

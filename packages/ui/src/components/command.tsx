@@ -40,7 +40,24 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from "./input-group.tsx"
 
 /** A command menu: a CommandInput over a CommandList of CommandItems. The list narrows as the user types, the arrow
  * keys move the highlight, and Enter or a click runs the highlighted item's `onSelect`. `label` names the menu for
- * assistive technology, and `shouldFilter={false}` shows every item, for a list the app filters itself. */
+ * assistive technology, and `shouldFilter={false}` shows every item, for a list the app filters itself.
+ *
+ * @example
+ * ```tsx
+ * import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@basis/ui";
+ *
+ * <Command label="Go to">
+ *   <CommandInput placeholder="Search pages" />
+ *   <CommandList>
+ *     <CommandEmpty>No page matches.</CommandEmpty>
+ *     <CommandGroup heading="Pages">
+ *       <CommandItem onSelect={() => undefined}>Positions</CommandItem>
+ *       <CommandItem onSelect={() => undefined}>Trades</CommandItem>
+ *     </CommandGroup>
+ *   </CommandList>
+ * </Command>;
+ * ```
+ */
 function Command({
   className,
   label = "Commands",

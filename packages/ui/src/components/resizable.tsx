@@ -41,7 +41,19 @@ interface ResizablePanelGroupProps extends Omit<ComponentProps<"div">, "ref"> {
   readonly disabled?: boolean | undefined;
 }
 
-/** A group of panels split by handles, filling its parent. Give each panel an `id` when its layout is stored. */
+/** A group of panels split by handles, filling its parent. Give each panel an `id` when its layout is stored.
+ *
+ * @example
+ * ```tsx
+ * import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@basis/ui";
+ *
+ * <ResizablePanelGroup orientation="horizontal">
+ *   <ResizablePanel>Positions</ResizablePanel>
+ *   <ResizableHandle />
+ *   <ResizablePanel>Position details</ResizablePanel>
+ * </ResizablePanelGroup>;
+ * ```
+ */
 function ResizablePanelGroup({
   orientation = "horizontal",
   defaultLayout,

@@ -16,7 +16,17 @@ import type { VariantProps } from "#vendor/cva/cva.ts";
 import { buttonVariants as buttonLinkVariants } from "./button-variants.ts";
 
 /** A link that looks like a Button: an `<a>`, or the element `render` names, with `data-slot="button"` so that it
- * sits in a button group as a Button does, and its variant and size as `data-variant` and `data-size`. */
+ * sits in a button group as a Button does, and its variant and size as `data-variant` and `data-size`.
+ *
+ * @example
+ * ```tsx
+ * import { ButtonLink } from "@basis/ui";
+ *
+ * <ButtonLink href="/trades" variant="outline">
+ *   View trades
+ * </ButtonLink>;
+ * ```
+ */
 function ButtonLink({
   className,
   variant = "default",

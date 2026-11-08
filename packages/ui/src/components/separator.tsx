@@ -7,7 +7,19 @@ import type { ReactElement } from "react";
 
 import { separatorVariants } from "./separator-variants.ts";
 
-/** A line between groups of content, horizontal by default. Screen readers announce it as a separator. */
+/** A line between groups of content, horizontal by default. Screen readers announce it as a separator.
+ *
+ * @example
+ * ```tsx
+ * import { Separator } from "@basis/ui";
+ *
+ * <>
+ *   <p>Rates</p>
+ *   <Separator />
+ *   <p>Credit</p>
+ * </>;
+ * ```
+ */
 function Separator({
   className,
   orientation = "horizontal",

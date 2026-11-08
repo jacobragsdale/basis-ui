@@ -52,7 +52,28 @@ const names: Readonly<Record<SecurityIdentifierKind, string>> = {
 const either = new Intl.ListFormat("en-US", { type: "disjunction" });
 
 /** A picker that searches for securities by CUSIP, ISIN or SEDOL. It waits for as many characters as the shortest
- * identifier it takes has, saying which it takes, then checks each text before searching. */
+ * identifier it takes has, saying which it takes, then checks each text before searching.
+ *
+ * @example
+ * ```tsx
+ * import { Field, FieldLabel, SecurityPicker } from "@basis/ui";
+ *
+ * interface Security {
+ *   readonly cusip: string;
+ *   readonly description: string;
+ * }
+ *
+ * <Field>
+ *   <FieldLabel htmlFor="security">Security</FieldLabel>
+ *   <SecurityPicker
+ *     id="security"
+ *     search={async () => Promise.resolve<readonly Security[]>([])}
+ *     itemKey={(security) => security.cusip}
+ *     itemLabel={(security) => security.description}
+ *   />
+ * </Field>;
+ * ```
+ */
 function SecurityPicker<TItem>({
   search,
   kinds = securityIdentifierKinds,

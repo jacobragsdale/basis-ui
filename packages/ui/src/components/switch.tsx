@@ -13,7 +13,18 @@ import { cn } from "cn";
 import type { ReactElement } from "react";
 
 /** A switch that turns a setting on or off at once. Name it with a `<label>` around it or a `Label` whose `htmlFor`
- * is its `id`. `size="sm"` draws a smaller track. */
+ * is its `id`. `size="sm"` draws a smaller track.
+ *
+ * @example
+ * ```tsx
+ * import { Field, FieldLabel, Switch } from "@basis/ui";
+ *
+ * <Field orientation="horizontal">
+ *   <Switch id="live-prices" defaultChecked />
+ *   <FieldLabel htmlFor="live-prices">Live prices</FieldLabel>
+ * </Field>;
+ * ```
+ */
 function Switch({
   className,
   size = "default",

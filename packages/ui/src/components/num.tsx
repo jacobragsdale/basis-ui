@@ -60,7 +60,20 @@ function NumberText({
 
 type NumProps = NumberProps & NumberFormat;
 
-/** A number, by the formatter's defaults: a decimal at its own scale, an integer with none, a double with two. */
+/** A number, by the formatter's defaults: a decimal at its own scale, an integer with none, a double with two.
+ *
+ * @example
+ * ```tsx
+ * import { Bps, Money, Num, Pct, Price32 } from "@basis/ui";
+ *
+ * <Num value={1234.5} decimals={2} />; // 1,234.50
+ * <Num value={-1250.5} signed />; // -1,250.50, in the loss colour
+ * <Money value={2_500_000_000} abbreviate="B" />; // $2.5B
+ * <Pct value={0.0525} />; // 5.25%: rates are fractions
+ * <Bps value={0.0025} />; // 25 bp
+ * <Price32 value={99.515625} />; // 99-16+
+ * ```
+ */
 function Num({
   value,
   decimals,

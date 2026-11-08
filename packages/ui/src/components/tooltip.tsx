@@ -19,11 +19,23 @@ function TooltipProvider({ delay = 0, ...props }: TooltipPrimitive.Provider.Prop
 }
 
 /** A tooltip: a short label for its trigger, shown while the pointer rests on it or it has keyboard focus. It names
- * nothing for assistive technology, so an icon-only trigger still takes an `aria-label`. */
+ * nothing for assistive technology, so an icon-only trigger still takes an `aria-label`.
+ *
+ * @example
+ * ```tsx
+ * import { Button, Tooltip, TooltipContent, TooltipTrigger } from "@basis/ui";
+ *
+ * <Tooltip>
+ *   <TooltipTrigger render={<Button variant="ghost" size="sm" />}>DV01</TooltipTrigger>
+ *   <TooltipContent>Dollar value of a basis point</TooltipContent>
+ * </Tooltip>;
+ * ```
+ */
 function Tooltip(props: TooltipPrimitive.Root.Props): ReactElement {
   return <TooltipPrimitive.Root data-slot="tooltip" {...props} />;
 }
 
+/** The element the tooltip describes; hovering or focusing it shows the tooltip. */
 function TooltipTrigger(props: TooltipPrimitive.Trigger.Props): ReactElement {
   return <TooltipPrimitive.Trigger data-slot="tooltip-trigger" {...props} />;
 }

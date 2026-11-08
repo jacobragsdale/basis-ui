@@ -24,11 +24,26 @@ const alignShift = 4;
 
 /** A context menu: actions on what is under the pointer, opened by a right click or a long press on its trigger, or
  * by the keyboard's context-menu key or Shift+F10. Arrow keys move through its items, Enter or a click runs one, and
- * Escape closes the menu. */
+ * Escape closes the menu.
+ *
+ * @example
+ * ```tsx
+ * import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from "@basis/ui";
+ *
+ * <ContextMenu>
+ *   <ContextMenuTrigger>Right-click a position</ContextMenuTrigger>
+ *   <ContextMenuContent>
+ *     <ContextMenuItem onClick={() => undefined}>Allocate</ContextMenuItem>
+ *     <ContextMenuItem onClick={() => undefined}>Copy CUSIP</ContextMenuItem>
+ *   </ContextMenuContent>
+ * </ContextMenu>;
+ * ```
+ */
 function ContextMenu(props: ContextMenuPrimitive.Root.Props): ReactElement {
   return <ContextMenuPrimitive.Root data-slot="context-menu" {...props} />;
 }
 
+/** Renders the context menu's popup into the page's body. `ContextMenuContent` includes one. */
 function ContextMenuPortal(props: ContextMenuPrimitive.Portal.Props): ReactElement {
   return <ContextMenuPrimitive.Portal data-slot="context-menu-portal" {...props} />;
 }
@@ -141,6 +156,7 @@ function ContextMenuRadioItem(
   return <DropdownMenuRadioItem data-slot="context-menu-radio-item" {...props} />;
 }
 
+/** A line between groups of a context menu's items. */
 function ContextMenuSeparator(props: ContextMenuPrimitive.Separator.Props): ReactElement {
   return <DropdownMenuSeparator data-slot="context-menu-separator" {...props} />;
 }

@@ -13,7 +13,18 @@ const sideGap = 4;
 const alignShift = 4;
 
 /** A hover card: a preview of what a link leads to, shown while the pointer rests on the link or the link has
- * keyboard focus. It is for sighted pointer users; what it shows must also be reachable by following the link. */
+ * keyboard focus. It is for sighted pointer users; what it shows must also be reachable by following the link.
+ *
+ * @example
+ * ```tsx
+ * import { HoverCard, HoverCardContent, HoverCardTrigger } from "@basis/ui";
+ *
+ * <HoverCard>
+ *   <HoverCardTrigger href="/bonds/US91282CRF04">US91282CRF04</HoverCardTrigger>
+ *   <HoverCardContent>Treasury 4.125% 2036</HoverCardContent>
+ * </HoverCard>;
+ * ```
+ */
 function HoverCard(props: PreviewCardPrimitive.Root.Props): ReactElement {
   return <PreviewCardPrimitive.Root data-slot="hover-card" {...props} />;
 }

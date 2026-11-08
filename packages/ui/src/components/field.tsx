@@ -63,7 +63,24 @@ function FieldGroup({ className, ...props }: ComponentProps<"div">): ReactElemen
 }
 
 /** One field: a label, its control, and the field's description and error. Mark it `data-invalid` while its value is
- * invalid. */
+ * invalid.
+ *
+ * @example
+ * ```tsx
+ * import { Field, FieldDescription, FieldGroup, FieldLabel, FieldLegend, FieldSet, Input } from "@basis/ui";
+ *
+ * <FieldSet>
+ *   <FieldLegend>Ticket</FieldLegend>
+ *   <FieldGroup>
+ *     <Field>
+ *       <FieldLabel htmlFor="cusip">CUSIP</FieldLabel>
+ *       <Input id="cusip" aria-describedby="cusip-help" />
+ *       <FieldDescription id="cusip-help">Nine characters, check digit last.</FieldDescription>
+ *     </Field>
+ *   </FieldGroup>
+ * </FieldSet>;
+ * ```
+ */
 function Field({
   className,
   orientation = "vertical",

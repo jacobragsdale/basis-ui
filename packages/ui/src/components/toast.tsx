@@ -52,6 +52,7 @@ function ToastProvider(props: ToastPrimitive.Provider.Props): ReactElement {
   return <ToastPrimitive.Provider {...props} />;
 }
 
+/** Renders the toasts into the page's body. `Toaster` includes one. */
 function ToastPortal(props: ToastPrimitive.Portal.Props): ReactElement {
   return <ToastPrimitive.Portal data-slot="toast-portal" {...props} />;
 }
@@ -88,6 +89,7 @@ function Toast({
   );
 }
 
+/** A toast's text and action, inside the toast. */
 function ToastContent({ className, ...props }: ToastPrimitive.Content.Props): ReactElement {
   return (
     <ToastPrimitive.Content
@@ -109,6 +111,7 @@ function ToastTitle({ className, ...props }: ToastPrimitive.Title.Props): ReactE
   );
 }
 
+/** A toast's text, under its title. */
 function ToastDescription({ className, ...props }: ToastPrimitive.Description.Props): ReactElement {
   return (
     <ToastPrimitive.Description
@@ -210,7 +213,24 @@ function ToastList(): ReactElement[] {
 
 /** The provider and the viewport, with every toast the manager raises: the app's `toast` unless `toastManager` names
  * another. Render it once, around the app or beside it. `limit` (3 by default) caps how many show at once, and
- * `timeout` (5000 ms) how long each stays. */
+ * `timeout` (5000 ms) how long each stays.
+ *
+ * @example
+ * ```tsx
+ * import { Button, Toaster, toast } from "@basis/ui";
+ *
+ * <>
+ *   <Toaster />
+ *   <Button
+ *     onClick={() => {
+ *       toast.add({ description: "Bought 5,000 par at 99-16.", title: "Trade booked", type: "success" });
+ *     }}
+ *   >
+ *     Book
+ *   </Button>
+ * </>;
+ * ```
+ */
 function Toaster({
   children,
   toastManager = toast,

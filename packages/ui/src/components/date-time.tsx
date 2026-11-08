@@ -21,7 +21,15 @@ interface DateTimeProps
 }
 
 /** A time: `2026-11-06 09:30:00` for the instant 14:30 UTC, in tabular figures. `show` picks the date or the time
- * alone, and `precision` adds milliseconds or microseconds. */
+ * alone, and `precision` adds milliseconds or microseconds.
+ *
+ * @example
+ * ```tsx
+ * import { DateTime } from "@basis/ui";
+ *
+ * <DateTime value="2026-11-06T14:30:00Z" />; // 2026-11-06 09:30:00, in New York time
+ * ```
+ */
 function DateTime({
   value,
   zone,

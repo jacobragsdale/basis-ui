@@ -10,7 +10,24 @@ import { RadioGroup as RadioGroupPrimitive } from "@base-ui/react/radio-group";
 import { cn } from "cn";
 import type { ReactElement } from "react";
 
-/** A set of radio items, one of which is chosen. Name it with `aria-labelledby` pointing at its legend or label. */
+/** A set of radio items, one of which is chosen. Name it with `aria-labelledby` pointing at its legend or label.
+ *
+ * @example
+ * ```tsx
+ * import { Field, FieldLabel, RadioGroup, RadioGroupItem } from "@basis/ui";
+ *
+ * <RadioGroup defaultValue="buy" aria-label="Side">
+ *   <Field orientation="horizontal">
+ *     <RadioGroupItem id="side-buy" value="buy" />
+ *     <FieldLabel htmlFor="side-buy">Buy</FieldLabel>
+ *   </Field>
+ *   <Field orientation="horizontal">
+ *     <RadioGroupItem id="side-sell" value="sell" />
+ *     <FieldLabel htmlFor="side-sell">Sell</FieldLabel>
+ *   </Field>
+ * </RadioGroup>;
+ * ```
+ */
 function RadioGroup({
   className,
   ...props

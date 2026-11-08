@@ -25,7 +25,15 @@ function thumbCount(value: SliderValue, defaultValue: SliderValue): number {
 }
 
 /** A slider. Give it `value` and `onValueChange`, or `defaultValue`; an array of two values draws a range. Name it
- * with `aria-label`, which names each thumb. */
+ * with `aria-label`, which names each thumb.
+ *
+ * @example
+ * ```tsx
+ * import { Slider } from "@basis/ui";
+ *
+ * <Slider defaultValue={25} aria-label="Hedge ratio" />;
+ * ```
+ */
 function Slider({
   className,
   "aria-label": ariaLabel,

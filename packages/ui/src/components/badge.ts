@@ -10,7 +10,15 @@ import type { VariantProps } from "#vendor/cva/cva.ts";
 
 import { badgeVariants } from "./badge-variants.ts";
 
-/** A badge: a `<span>`, or the element `render` names, with `data-slot="badge"` and its variant as `data-variant`. */
+/** A badge: a `<span>`, or the element `render` names, with `data-slot="badge"` and its variant as `data-variant`.
+ *
+ * @example
+ * ```tsx
+ * import { Badge } from "@basis/ui";
+ *
+ * <Badge variant="secondary">Settled</Badge>;
+ * ```
+ */
 function Badge({
   className,
   variant = "default",

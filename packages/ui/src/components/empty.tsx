@@ -10,7 +10,23 @@ import type { VariantProps } from "#vendor/cva/cva.ts";
 import { emptyMediaVariants, emptyVariants } from "./empty-variants.ts";
 
 /** An empty state, centred in the space it fills: EmptyHeader, then EmptyContent for what to do next. `outline` draws
- * a dashed border round it. */
+ * a dashed border round it.
+ *
+ * @example
+ * ```tsx
+ * import { Button, Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from "@basis/ui";
+ *
+ * <Empty>
+ *   <EmptyHeader>
+ *     <EmptyTitle>No trades today</EmptyTitle>
+ *     <EmptyDescription>Trades booked today show here.</EmptyDescription>
+ *   </EmptyHeader>
+ *   <EmptyContent>
+ *     <Button variant="outline">Book a trade</Button>
+ *   </EmptyContent>
+ * </Empty>;
+ * ```
+ */
 function Empty({
   className,
   variant = "default",
@@ -53,6 +69,7 @@ function EmptyMedia({
   );
 }
 
+/** The empty state's title. */
 function EmptyTitle({ className, ...props }: ComponentProps<"div">): ReactElement {
   return (
     <div
@@ -63,6 +80,7 @@ function EmptyTitle({ className, ...props }: ComponentProps<"div">): ReactElemen
   );
 }
 
+/** A line under the empty state's title saying why it is empty and what to do. */
 function EmptyDescription({ className, ...props }: ComponentProps<"div">): ReactElement {
   return (
     <div

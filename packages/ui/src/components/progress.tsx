@@ -7,6 +7,7 @@ import { Progress as ProgressPrimitive } from "@base-ui/react/progress";
 import { cn } from "cn";
 import type { ReactElement } from "react";
 
+/** The progress bar's track. `Progress` includes it. */
 function ProgressTrack({ className, ...props }: ProgressPrimitive.Track.Props): ReactElement {
   return (
     <ProgressPrimitive.Track
@@ -20,6 +21,7 @@ function ProgressTrack({ className, ...props }: ProgressPrimitive.Track.Props): 
   );
 }
 
+/** The filled part of the progress bar's track. `Progress` includes it. */
 function ProgressIndicator({
   className,
   ...props
@@ -34,7 +36,18 @@ function ProgressIndicator({
 }
 
 /** A progress bar: its children, such as a label and the value, above a full-width track. `value` is out of `max`,
- * 100 by default, and `null` makes it indeterminate. */
+ * 100 by default, and `null` makes it indeterminate.
+ *
+ * @example
+ * ```tsx
+ * import { Progress, ProgressLabel, ProgressValue } from "@basis/ui";
+ *
+ * <Progress value={40}>
+ *   <ProgressLabel>Allocating</ProgressLabel>
+ *   <ProgressValue />
+ * </Progress>;
+ * ```
+ */
 function Progress({
   className,
   children,

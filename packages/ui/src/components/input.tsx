@@ -7,7 +7,18 @@ import type { ComponentProps, ReactElement } from "react";
 
 import { inputVariants } from "./input-variants.ts";
 
-/** A text input. With `aria-invalid` its outline turns the destructive colour; a `FieldError` beside it says why. */
+/** A text input. With `aria-invalid` its outline turns the destructive colour; a `FieldError` beside it says why.
+ *
+ * @example
+ * ```tsx
+ * import { Field, FieldLabel, Input } from "@basis/ui";
+ *
+ * <Field>
+ *   <FieldLabel htmlFor="book">Book</FieldLabel>
+ *   <Input id="book" placeholder="Rates" />
+ * </Field>;
+ * ```
+ */
 function Input({ className, type, ...props }: ComponentProps<"input">): ReactElement {
   return (
     <InputPrimitive

@@ -16,15 +16,33 @@ import { Button } from "./button.tsx";
 import { sheetContentVariants, sheetOverlayVariants } from "./sheet-variants.ts";
 
 /** A sheet: a panel over the page from one edge, for a form or details beside the current page. It is a dialog:
- * Escape, a click outside and its close button close it, and focus returns to the trigger. */
+ * Escape, a click outside and its close button close it, and focus returns to the trigger.
+ *
+ * @example
+ * ```tsx
+ * import { Button, Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@basis/ui";
+ *
+ * <Sheet>
+ *   <SheetTrigger render={<Button variant="outline" />}>Trade details</SheetTrigger>
+ *   <SheetContent>
+ *     <SheetHeader>
+ *       <SheetTitle>Trade details</SheetTitle>
+ *       <SheetDescription>Bought 5,000 par at 99-16.</SheetDescription>
+ *     </SheetHeader>
+ *   </SheetContent>
+ * </Sheet>;
+ * ```
+ */
 function Sheet(props: SheetPrimitive.Root.Props): ReactElement {
   return <SheetPrimitive.Root data-slot="sheet" {...props} />;
 }
 
+/** The control that opens the sheet; `render={<Button />}` makes it a button. */
 function SheetTrigger(props: SheetPrimitive.Trigger.Props): ReactElement {
   return <SheetPrimitive.Trigger data-slot="sheet-trigger" {...props} />;
 }
 
+/** A control that closes the sheet; `render={<Button variant="outline" />}` makes it a button. */
 function SheetClose(props: SheetPrimitive.Close.Props): ReactElement {
   return <SheetPrimitive.Close data-slot="sheet-close" {...props} />;
 }
@@ -79,6 +97,7 @@ function SheetContent({
   );
 }
 
+/** The sheet's title and description, stacked at its top. */
 function SheetHeader({ className, ...props }: ComponentProps<"div">): ReactElement {
   return (
     <div
@@ -111,6 +130,7 @@ function SheetTitle({ className, ...props }: SheetPrimitive.Title.Props): ReactE
   );
 }
 
+/** The sheet's description, under its title, which screen readers announce with it. */
 function SheetDescription({ className, ...props }: SheetPrimitive.Description.Props): ReactElement {
   return (
     <SheetPrimitive.Description

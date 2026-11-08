@@ -9,7 +9,17 @@ import type { VariantProps } from "#vendor/cva/cva.ts";
 
 import { toggleVariants } from "./toggle-variants.ts";
 
-/** A toggle button, with `aria-pressed` while it is on. An icon-only toggle takes an `aria-label`. */
+/** A toggle button, with `aria-pressed` while it is on. An icon-only toggle takes an `aria-label`.
+ *
+ * @example
+ * ```tsx
+ * import { Toggle } from "@basis/ui";
+ *
+ * <Toggle variant="outline" aria-label="Show matured bonds">
+ *   Matured
+ * </Toggle>;
+ * ```
+ */
 function Toggle({
   className,
   variant = "default",

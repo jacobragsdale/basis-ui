@@ -15,7 +15,19 @@ import type { VariantProps } from "#vendor/cva/cva.ts";
 import { buttonGroupVariants } from "./button-group-variants.ts";
 
 /** A group of buttons, inputs or selects drawn as one control. Name it with `aria-label` when its purpose is not plain
- * from its buttons. Groups nest, with a gap between them. */
+ * from its buttons. Groups nest, with a gap between them.
+ *
+ * @example
+ * ```tsx
+ * import { Button, ButtonGroup, ButtonGroupSeparator } from "@basis/ui";
+ *
+ * <ButtonGroup aria-label="Order side">
+ *   <Button variant="outline">Buy</Button>
+ *   <ButtonGroupSeparator />
+ *   <Button variant="outline">Sell</Button>
+ * </ButtonGroup>;
+ * ```
+ */
 function ButtonGroup({
   className,
   orientation = "horizontal",

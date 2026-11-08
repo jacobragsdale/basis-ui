@@ -14,7 +14,8 @@
     "src/styles",
     "src/vendor/*/LICENSE",
     "config",
-    "schema"
+    "schema",
+    "catalogue.json"
   ],
   "type": "module",
   "imports": {
@@ -52,7 +53,8 @@
     "./styles.css": "./src/styles/styles.css",
     "./theme.css": "./src/styles/theme.css",
     "./tsconfig.json": "./config/tsconfig.json",
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./catalogue.json": "./catalogue.json"
   },
   "publishConfig": {
     "exports": {
@@ -93,14 +95,16 @@
       "./styles.css": "./src/styles/styles.css",
       "./theme.css": "./src/styles/theme.css",
       "./tsconfig.json": "./config/tsconfig.json",
-      "./package.json": "./package.json"
+      "./package.json": "./package.json",
+      "./catalogue.json": "./catalogue.json"
     }
   },
   "scripts": {
     "build": "vp pack",
     "fixture-schema": "node scripts/write-fixture-schema.ts",
     "test": "vp test",
-    "theme": "node scripts/build-theme.ts"
+    "theme": "node scripts/build-theme.ts",
+    "catalogue": "node scripts/write-catalogue.ts"
   },
   "dependencies": {
     "@babel/core": "catalog:",
@@ -130,6 +134,7 @@
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "culori": "catalog:",
+    "oxc-parser": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
     "typescript": "catalog:",

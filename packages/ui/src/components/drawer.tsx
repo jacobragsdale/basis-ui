@@ -42,7 +42,23 @@ type DrawerProps = Omit<
 };
 
 /** A drawer: a panel that slides in from an edge and can be swiped away, `down` by default. It is a dialog: Escape,
- * a click outside and a swipe in `swipeDirection` close it, and focus returns to the trigger. */
+ * a click outside and a swipe in `swipeDirection` close it, and focus returns to the trigger.
+ *
+ * @example
+ * ```tsx
+ * import { Button, Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle, DrawerTrigger } from "@basis/ui";
+ *
+ * <Drawer>
+ *   <DrawerTrigger render={<Button variant="outline" />}>Show filters</DrawerTrigger>
+ *   <DrawerContent>
+ *     <DrawerHeader>
+ *       <DrawerTitle>Filters</DrawerTitle>
+ *       <DrawerDescription>Narrow the positions shown.</DrawerDescription>
+ *     </DrawerHeader>
+ *   </DrawerContent>
+ * </Drawer>;
+ * ```
+ */
 function Drawer({
   modal = true,
   showSwipeHandle = false,
@@ -65,14 +81,17 @@ function Drawer({
   );
 }
 
+/** The control that opens the drawer; `render={<Button />}` makes it a button. */
 function DrawerTrigger(props: DrawerPrimitive.Trigger.Props): ReactElement {
   return <DrawerPrimitive.Trigger data-slot="drawer-trigger" {...props} />;
 }
 
+/** Renders the drawer's popup into the page's body. `DrawerContent` includes one. */
 function DrawerPortal(props: DrawerPrimitive.Portal.Props): ReactElement {
   return <DrawerPrimitive.Portal data-slot="drawer-portal" {...props} />;
 }
 
+/** A control that closes the drawer; `render={<Button variant="outline" />}` makes it a button. */
 function DrawerClose(props: DrawerPrimitive.Close.Props): ReactElement {
   return <DrawerPrimitive.Close data-slot="drawer-close" {...props} />;
 }
@@ -148,6 +167,7 @@ function DrawerContent({
   );
 }
 
+/** The drawer's title and description, stacked at its top. */
 function DrawerHeader({ className, ...props }: ComponentProps<"div">): ReactElement {
   return (
     <div
@@ -183,6 +203,7 @@ function DrawerTitle({ className, ...props }: DrawerPrimitive.Title.Props): Reac
   );
 }
 
+/** The drawer's description, under its title, which screen readers announce with it. */
 function DrawerDescription({
   className,
   ...props

@@ -8,6 +8,7 @@ import { useRender } from "@base-ui/react/use-render";
 import { cn } from "cn";
 import type { ComponentProps, ReactElement } from "react";
 
+/** A group of the sidebar's content, with an optional `SidebarGroupLabel`. */
 function SidebarGroup({ className, ...props }: ComponentProps<"div">): ReactElement {
   return (
     <div
@@ -55,6 +56,7 @@ function SidebarGroupAction({
   });
 }
 
+/** The body of a sidebar group, under its label. */
 function SidebarGroupContent({ className, ...props }: ComponentProps<"div">): ReactElement {
   return (
     <div

@@ -11,7 +11,20 @@ import type { ReactElement } from "react";
 import { ChevronDownIcon } from "#vendor/lucide/chevron-down.tsx";
 import { ChevronUpIcon } from "#vendor/lucide/chevron-up.tsx";
 
-/** A stack of sections, each opened by its trigger. One opens at a time unless `multiple` is set. */
+/** A stack of sections, each opened by its trigger. One opens at a time unless `multiple` is set.
+ *
+ * @example
+ * ```tsx
+ * import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@basis/ui";
+ *
+ * <Accordion>
+ *   <AccordionItem value="terms">
+ *     <AccordionTrigger>Terms</AccordionTrigger>
+ *     <AccordionContent>Semi-annual coupon, 30/360.</AccordionContent>
+ *   </AccordionItem>
+ * </Accordion>;
+ * ```
+ */
 function Accordion({ className, ...props }: AccordionPrimitive.Root.Props): ReactElement {
   return (
     <AccordionPrimitive.Root

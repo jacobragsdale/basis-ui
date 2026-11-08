@@ -16,19 +16,51 @@ import { XIcon } from "#vendor/lucide/x.tsx";
 import { Button } from "./button.tsx";
 
 /** A dialog: a window over the page that holds the user until it closes. Escape, a click outside and its close
- * button close it, and focus returns to the trigger. */
+ * button close it, and focus returns to the trigger.
+ *
+ * @example
+ * ```tsx
+ * import {
+ *   Button,
+ *   Dialog,
+ *   DialogClose,
+ *   DialogContent,
+ *   DialogDescription,
+ *   DialogFooter,
+ *   DialogHeader,
+ *   DialogTitle,
+ *   DialogTrigger,
+ * } from "@basis/ui";
+ *
+ * <Dialog>
+ *   <DialogTrigger render={<Button variant="outline" />}>Edit position</DialogTrigger>
+ *   <DialogContent>
+ *     <DialogHeader>
+ *       <DialogTitle>Edit position</DialogTitle>
+ *       <DialogDescription>Change the book this position sits in.</DialogDescription>
+ *     </DialogHeader>
+ *     <DialogFooter>
+ *       <DialogClose render={<Button variant="outline" />}>Close</DialogClose>
+ *     </DialogFooter>
+ *   </DialogContent>
+ * </Dialog>;
+ * ```
+ */
 function Dialog(props: DialogPrimitive.Root.Props): ReactElement {
   return <DialogPrimitive.Root data-slot="dialog" {...props} />;
 }
 
+/** The control that opens the dialog; `render={<Button />}` makes it a button. */
 function DialogTrigger(props: DialogPrimitive.Trigger.Props): ReactElement {
   return <DialogPrimitive.Trigger data-slot="dialog-trigger" {...props} />;
 }
 
+/** Renders the dialog's popup into the page's body. `DialogContent` includes one. */
 function DialogPortal(props: DialogPrimitive.Portal.Props): ReactElement {
   return <DialogPrimitive.Portal data-slot="dialog-portal" {...props} />;
 }
 
+/** A control that closes the dialog; `render={<Button variant="outline" />}` makes it a button. */
 function DialogClose(props: DialogPrimitive.Close.Props): ReactElement {
   return <DialogPrimitive.Close data-slot="dialog-close" {...props} />;
 }
@@ -86,6 +118,7 @@ function DialogContent({
   );
 }
 
+/** The dialog's title and description, stacked at its top. */
 function DialogHeader({ className, ...props }: ComponentProps<"div">): ReactElement {
   return (
     <div data-slot="dialog-header" className={cn("flex flex-col gap-2", className)} {...props} />

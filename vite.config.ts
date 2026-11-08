@@ -25,7 +25,12 @@ const generatedFixtures = "packages/*/tests/fixtures/*.json";
 // A spike's reference code runs in the spike's own throwaway project, whose dependencies this workspace lacks.
 const spikeCode = ["docs/spikes/**/*.ts", "docs/spikes/**/*.mjs"];
 // The repo's own scripts, package tests and the preset run in Node, unlike an app's code, which runs in a browser.
-const nodeCode = ["packages/*/scripts/**", "packages/*/tests/**", "packages/ui/src/preset/**"];
+const nodeCode = [
+  "packages/*/scripts/**",
+  "packages/*/tests/**",
+  "packages/ui/src/preset/**",
+  "packages/ui/src/catalogue/**",
+];
 
 export default defineConfig({
   fmt: {
@@ -35,6 +40,8 @@ export default defineConfig({
       ...parallax,
       ...parallaxGenerated,
       generatedFixtures,
+      // Written by `vp run @basis/ui#catalogue` as JSON.stringify writes it, which its test compares exactly.
+      "packages/ui/catalogue.json",
     ],
   },
   lint: {

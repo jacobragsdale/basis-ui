@@ -7,7 +7,18 @@ import { Avatar as AvatarPrimitive } from "@base-ui/react/avatar";
 import { cn } from "cn";
 import type { ComponentProps, ReactElement } from "react";
 
-/** A person's picture or initials in a circle: 32 px, or 24 px at `size="sm"` and 40 px at `size="lg"`. */
+/** A person's picture or initials in a circle: 32 px, or 24 px at `size="sm"` and 40 px at `size="lg"`.
+ *
+ * @example
+ * ```tsx
+ * import { Avatar, AvatarFallback, AvatarImage } from "@basis/ui";
+ *
+ * <Avatar>
+ *   <AvatarImage src="/people/dev-user.png" alt="Dev User" />
+ *   <AvatarFallback>DU</AvatarFallback>
+ * </Avatar>;
+ * ```
+ */
 function Avatar({
   className,
   size = "default",

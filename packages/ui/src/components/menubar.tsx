@@ -36,7 +36,22 @@ const menuShift = -4;
 const menuGap = 8;
 
 /** A menubar: a row of menus, as at the top of a desktop application. The arrow keys move between its menus and
- * through each one's items, and Escape closes the open menu and returns focus to its trigger. */
+ * through each one's items, and Escape closes the open menu and returns focus to its trigger.
+ *
+ * @example
+ * ```tsx
+ * import { Menubar, MenubarContent, MenubarItem, MenubarMenu, MenubarTrigger } from "@basis/ui";
+ *
+ * <Menubar>
+ *   <MenubarMenu>
+ *     <MenubarTrigger>File</MenubarTrigger>
+ *     <MenubarContent>
+ *       <MenubarItem onClick={() => undefined}>Export</MenubarItem>
+ *     </MenubarContent>
+ *   </MenubarMenu>
+ * </Menubar>;
+ * ```
+ */
 function Menubar({ className, ...props }: MenubarPrimitive.Props): ReactElement {
   return (
     <MenubarPrimitive
@@ -52,10 +67,12 @@ function MenubarMenu(props: ComponentProps<typeof DropdownMenu>): ReactElement {
   return <DropdownMenu data-slot="menubar-menu" {...props} />;
 }
 
+/** A group of a menubar menu's items, which a `MenubarSeparator` sets apart from the next. */
 function MenubarGroup(props: ComponentProps<typeof DropdownMenuGroup>): ReactElement {
   return <DropdownMenuGroup data-slot="menubar-group" {...props} />;
 }
 
+/** Renders a menubar menu's popup into the page's body. `MenubarContent` includes one. */
 function MenubarPortal(props: ComponentProps<typeof DropdownMenuPortal>): ReactElement {
   return <DropdownMenuPortal data-slot="menubar-portal" {...props} />;
 }
@@ -182,6 +199,7 @@ function MenubarLabel({
   );
 }
 
+/** A line between groups of a menubar menu's items. */
 function MenubarSeparator(props: ComponentProps<typeof DropdownMenuSeparator>): ReactElement {
   return <DropdownMenuSeparator data-slot="menubar-separator" {...props} />;
 }

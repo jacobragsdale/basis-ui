@@ -33,7 +33,17 @@ function ScrollBar({
 }
 
 /** A region that scrolls its content with a thin scrollbar of the theme's own, vertical by default. Give it a height,
- * such as `h-72`, and it scrolls what overflows. Add a horizontal `ScrollBar` for content wider than it. */
+ * such as `h-72`, and it scrolls what overflows. Add a horizontal `ScrollBar` for content wider than it.
+ *
+ * @example
+ * ```tsx
+ * import { ScrollArea } from "@basis/ui";
+ *
+ * <ScrollArea className="h-48">
+ *   <p>A long list of trades.</p>
+ * </ScrollArea>;
+ * ```
+ */
 function ScrollArea({
   className,
   children,

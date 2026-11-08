@@ -6,7 +6,18 @@ import type { ComponentProps, ReactElement } from "react";
 
 import { textareaVariants } from "./textarea-variants.ts";
 
-/** A multi-line text input, at least 16 steps of the spacing scale tall, growing with its content. */
+/** A multi-line text input, at least 16 steps of the spacing scale tall, growing with its content.
+ *
+ * @example
+ * ```tsx
+ * import { Field, FieldLabel, Textarea } from "@basis/ui";
+ *
+ * <Field>
+ *   <FieldLabel htmlFor="note">Note</FieldLabel>
+ *   <Textarea id="note" placeholder="Why the trade was amended" />
+ * </Field>;
+ * ```
+ */
 function Textarea({ className, ...props }: ComponentProps<"textarea">): ReactElement {
   return <textarea data-slot="textarea" className={cn(textareaVariants(), className)} {...props} />;
 }

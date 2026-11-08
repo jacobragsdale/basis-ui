@@ -21,7 +21,36 @@ import { ButtonLink } from "./button-link.ts";
 // oxlint-disable-next-line typescript/consistent-type-imports -- `@shadcn/lint` reads no type-only import, and this value import is how its errors on PaginationLink list Button's sizes.
 import { buttonVariants as paginationLinkVariants } from "./button-variants.ts";
 
-/** The pages' links: a navigation landmark named "pagination". */
+/** The pages' links: a navigation landmark named "pagination".
+ *
+ * @example
+ * ```tsx
+ * import {
+ *   Pagination,
+ *   PaginationContent,
+ *   PaginationItem,
+ *   PaginationLink,
+ *   PaginationNext,
+ *   PaginationPrevious,
+ * } from "@basis/ui";
+ *
+ * <Pagination>
+ *   <PaginationContent>
+ *     <PaginationItem>
+ *       <PaginationPrevious href="?page=1" />
+ *     </PaginationItem>
+ *     <PaginationItem>
+ *       <PaginationLink href="?page=2" isActive>
+ *         2
+ *       </PaginationLink>
+ *     </PaginationItem>
+ *     <PaginationItem>
+ *       <PaginationNext href="?page=3" />
+ *     </PaginationItem>
+ *   </PaginationContent>
+ * </Pagination>;
+ * ```
+ */
 function Pagination({ className, ...props }: ComponentProps<"nav">): ReactElement {
   return (
     <nav
@@ -33,6 +62,7 @@ function Pagination({ className, ...props }: ComponentProps<"nav">): ReactElemen
   );
 }
 
+/** The row of the pagination's items. */
 function PaginationContent({ className, ...props }: ComponentProps<"ul">): ReactElement {
   return (
     <ul
@@ -43,6 +73,7 @@ function PaginationContent({ className, ...props }: ComponentProps<"ul">): React
   );
 }
 
+/** One item of the pagination: a link, the previous or next link, or an ellipsis. */
 function PaginationItem(props: ComponentProps<"li">): ReactElement {
   return <li data-slot="pagination-item" {...props} />;
 }

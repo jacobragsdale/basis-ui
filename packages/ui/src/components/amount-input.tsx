@@ -157,7 +157,18 @@ function useAmountField({
 }
 
 /** An amount or rate field. Label it with a FieldLabel's `htmlFor` and this `id`, and put it in a `Field`; it draws the
- * line under the input that echoes the number and the error line. */
+ * line under the input that echoes the number and the error line.
+ *
+ * @example
+ * ```tsx
+ * import { AmountInput, Field, FieldLabel, parSuffixes } from "@basis/ui";
+ *
+ * <Field>
+ *   <FieldLabel htmlFor="par">Par</FieldLabel>
+ *   <AmountInput id="par" suffixes={parSuffixes} onValueChange={() => undefined} />
+ * </Field>;
+ * ```
+ */
 function AmountInput({ className, errors, ...props }: AmountInputProps): ReactElement {
   const field = useAmountField(props);
   return (

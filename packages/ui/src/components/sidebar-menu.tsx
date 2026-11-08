@@ -12,6 +12,47 @@ import type { ComponentProps, ReactElement } from "react";
 
 import { Skeleton } from "./skeleton.tsx";
 
+/** A list of the sidebar's menu items.
+ *
+ * @example
+ * ```tsx
+ * import {
+ *   Sidebar,
+ *   SidebarContent,
+ *   SidebarGroup,
+ *   SidebarGroupContent,
+ *   SidebarGroupLabel,
+ *   SidebarInset,
+ *   SidebarMenu,
+ *   SidebarMenuButton,
+ *   SidebarMenuItem,
+ *   SidebarProvider,
+ *   SidebarTrigger,
+ * } from "@basis/ui";
+ *
+ * <SidebarProvider>
+ *   <Sidebar>
+ *     <SidebarContent>
+ *       <SidebarGroup>
+ *         <SidebarGroupLabel>Books</SidebarGroupLabel>
+ *         <SidebarGroupContent>
+ *           <SidebarMenu>
+ *             <SidebarMenuItem>
+ *               <SidebarMenuButton isActive render={<a href="/positions" />}>
+ *                 Positions
+ *               </SidebarMenuButton>
+ *             </SidebarMenuItem>
+ *           </SidebarMenu>
+ *         </SidebarGroupContent>
+ *       </SidebarGroup>
+ *     </SidebarContent>
+ *   </Sidebar>
+ *   <SidebarInset>
+ *     <SidebarTrigger />
+ *   </SidebarInset>
+ * </SidebarProvider>;
+ * ```
+ */
 function SidebarMenu({ className, ...props }: ComponentProps<"ul">): ReactElement {
   return (
     <ul
@@ -23,6 +64,7 @@ function SidebarMenu({ className, ...props }: ComponentProps<"ul">): ReactElemen
   );
 }
 
+/** One item of a sidebar menu, holding a `SidebarMenuButton` and, optionally, a submenu. */
 function SidebarMenuItem({ className, ...props }: ComponentProps<"li">): ReactElement {
   return (
     <li
@@ -133,6 +175,7 @@ function SidebarMenuSub({ className, ...props }: ComponentProps<"ul">): ReactEle
   );
 }
 
+/** One item of a sidebar submenu, holding a `SidebarMenuSubButton`. */
 function SidebarMenuSubItem({ className, ...props }: ComponentProps<"li">): ReactElement {
   return (
     <li

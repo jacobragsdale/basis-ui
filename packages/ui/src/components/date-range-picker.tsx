@@ -234,7 +234,18 @@ function RangeTrigger({
   );
 }
 
-/** A date range field. Name it with a FieldLabel's `htmlFor` and this `id`, or with `aria-label`. */
+/** A date range field. Name it with a FieldLabel's `htmlFor` and this `id`, or with `aria-label`.
+ *
+ * @example
+ * ```tsx
+ * import { DateRangePicker, Field, FieldLabel } from "@basis/ui";
+ *
+ * <Field>
+ *   <FieldLabel htmlFor="period">Period</FieldLabel>
+ *   <DateRangePicker id="period" onValueChange={() => undefined} />
+ * </Field>;
+ * ```
+ */
 function DateRangePicker({
   value,
   defaultValue,

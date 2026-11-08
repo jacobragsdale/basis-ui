@@ -191,10 +191,12 @@ second consumer on 2026-11-07: 1.12 and 1.13 wait on basis's contract, and 1.14 
     Parallax's components need a canvas and a worker, so under it they render their text alternative and say that
     their pixels need a browser. Done when the example app's tests pass in both setups. Needs 1.2.
 
-15. **1.15 Component catalogue.** `vp run @basis/ui#build` writes a JSON catalogue of every exported component, from
-    the source's types and doc comments: its name, what it is for, its props with their types and docs, its variants,
-    and one example. The catalogue ships in the package, and a test fails when a component lacks a purpose or an
-    example, or when an example does not type-check. Needs 1.10.
+15. **1.15 Component catalogue.** `vp run @basis/ui#catalogue` writes a JSON catalogue of every exported component,
+    from the source's types and doc comments: its name, what it is for, its props with their types and docs, its
+    variants, and one example per family. The catalogue ships in the package, and a test fails when it is stale, when
+    a component lacks a purpose or a family an example, or when an example does not type-check. Needs 1.10. Built:
+    `catalogue.json`, read by `src/catalogue/` with oxc's parser, 317 components in 63 families and 92 icons, each
+    example type-checked in `packages/consumer`.
 
 16. **1.16 ctzd's surface.** Keep working what the design's [Consumers](design.md#consumers) section says ctzd uses:
     - a test app in this repo whose `vite.config.ts`, `tsconfig.json` and `styles.css` are exactly the lines

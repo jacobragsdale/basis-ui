@@ -171,7 +171,8 @@ function SidebarDesktop({
   );
 }
 
-/** The app's sidebar, for its navigation. It folds by `collapsible`, and is a sheet below the `md` breakpoint. */
+/** The app's sidebar, for its navigation. It folds by `collapsible`, and is a sheet below the `md` breakpoint.
+ */
 function Sidebar({
   side = "left",
   variant = "sidebar",

@@ -11,11 +11,27 @@ import type { ComponentProps, ReactElement } from "react";
 const sideGap = 4;
 
 /** A popover: a panel anchored to its trigger, for a short form or details. Escape and a click outside close it, and
- * focus moves into it and returns to the trigger. */
+ * focus moves into it and returns to the trigger.
+ *
+ * @example
+ * ```tsx
+ * import { Button, Popover, PopoverContent, PopoverHeader, PopoverTitle, PopoverTrigger } from "@basis/ui";
+ *
+ * <Popover>
+ *   <PopoverTrigger render={<Button variant="outline" />}>Columns</PopoverTrigger>
+ *   <PopoverContent>
+ *     <PopoverHeader>
+ *       <PopoverTitle>Columns shown</PopoverTitle>
+ *     </PopoverHeader>
+ *   </PopoverContent>
+ * </Popover>;
+ * ```
+ */
 function Popover(props: PopoverPrimitive.Root.Props): ReactElement {
   return <PopoverPrimitive.Root data-slot="popover" {...props} />;
 }
 
+/** The control that opens the popover; `render={<Button variant="outline" />}` makes it a button. */
 function PopoverTrigger(props: PopoverPrimitive.Trigger.Props): ReactElement {
   return <PopoverPrimitive.Trigger data-slot="popover-trigger" {...props} />;
 }
@@ -56,6 +72,7 @@ function PopoverContent({
   );
 }
 
+/** The popover's title and description, stacked at its top. */
 function PopoverHeader({ className, ...props }: ComponentProps<"div">): ReactElement {
   return (
     <div
@@ -77,6 +94,7 @@ function PopoverTitle({ className, ...props }: PopoverPrimitive.Title.Props): Re
   );
 }
 
+/** The popover's description, under its title. */
 function PopoverDescription({
   className,
   ...props

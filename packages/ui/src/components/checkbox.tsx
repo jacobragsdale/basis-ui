@@ -15,7 +15,18 @@ import { CheckIcon } from "#vendor/lucide/check.tsx";
 import { MinusIcon } from "#vendor/lucide/minus.tsx";
 
 /** A checkbox. Name it with a `<label>` around it or a `Label` whose `htmlFor` is its `id`. `indeterminate`, for a
- * checkbox over others of which some are checked, fills the box and draws a dash in place of the check. */
+ * checkbox over others of which some are checked, fills the box and draws a dash in place of the check.
+ *
+ * @example
+ * ```tsx
+ * import { Checkbox, Field, FieldLabel } from "@basis/ui";
+ *
+ * <Field orientation="horizontal">
+ *   <Checkbox id="include-matured" defaultChecked />
+ *   <FieldLabel htmlFor="include-matured">Include matured bonds</FieldLabel>
+ * </Field>;
+ * ```
+ */
 function Checkbox({
   className,
   ...props

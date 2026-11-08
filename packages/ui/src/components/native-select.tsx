@@ -17,7 +17,18 @@ import { nativeSelectVariants } from "./native-select-variants.ts";
 type NativeSelectProps = Omit<ComponentProps<"select">, "size"> &
   VariantProps<typeof nativeSelectVariants>;
 
-/** A native `<select>`. `className` places its wrapper; name it with a `Label` whose `htmlFor` is its `id`. */
+/** A native `<select>`. `className` places its wrapper; name it with a `Label` whose `htmlFor` is its `id`.
+ *
+ * @example
+ * ```tsx
+ * import { NativeSelect, NativeSelectOption } from "@basis/ui";
+ *
+ * <NativeSelect aria-label="Currency" defaultValue="USD">
+ *   <NativeSelectOption value="USD">USD</NativeSelectOption>
+ *   <NativeSelectOption value="EUR">EUR</NativeSelectOption>
+ * </NativeSelect>;
+ * ```
+ */
 function NativeSelect({ className, size = "default", ...props }: NativeSelectProps): ReactElement {
   return (
     <div

@@ -7,7 +7,18 @@ import type { ComponentProps, ReactElement } from "react";
 
 import { labelVariants } from "./label-variants.ts";
 
-/** A label. Point `htmlFor` at the control's `id`, or wrap the control in it. */
+/** A label. Point `htmlFor` at the control's `id`, or wrap the control in it.
+ *
+ * @example
+ * ```tsx
+ * import { Input, Label } from "@basis/ui";
+ *
+ * <>
+ *   <Label htmlFor="desk">Desk</Label>
+ *   <Input id="desk" />
+ * </>;
+ * ```
+ */
 function Label({ className, ...props }: ComponentProps<"label">): ReactElement {
   return (
     // oxlint-disable-next-line jsx-a11y/label-has-associated-control -- the caller associates it, through `htmlFor` or the control it wraps, both in `props`.

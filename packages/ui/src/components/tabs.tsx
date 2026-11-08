@@ -12,7 +12,22 @@ import type { VariantProps } from "#vendor/cva/cva.ts";
 
 import { tabsListVariants } from "./tabs-variants.ts";
 
-/** A set of panels shown one at a time, horizontal by default. `defaultValue` or `value` names the open tab. */
+/** A set of panels shown one at a time, horizontal by default. `defaultValue` or `value` names the open tab.
+ *
+ * @example
+ * ```tsx
+ * import { Tabs, TabsContent, TabsList, TabsTrigger } from "@basis/ui";
+ *
+ * <Tabs defaultValue="positions">
+ *   <TabsList>
+ *     <TabsTrigger value="positions">Positions</TabsTrigger>
+ *     <TabsTrigger value="trades">Trades</TabsTrigger>
+ *   </TabsList>
+ *   <TabsContent value="positions">42 positions</TabsContent>
+ *   <TabsContent value="trades">7 trades today</TabsContent>
+ * </Tabs>;
+ * ```
+ */
 function Tabs({
   className,
   orientation = "horizontal",

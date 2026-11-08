@@ -973,6 +973,19 @@ parseSecurityIdentifier("91282CRF1", ["cusip"]); // { ok: false, reason: '"91282
    test file: its role and accessible name, its variants, and, for a control, its 24 px target in the compact density.
    Leave no popup open on the page: an open Base UI Select or Combobox hides the rest of the page from assistive
    technology, and an open Select takes the focus, so the page would load scrolled to it. The tests open them instead.
+8. Give each exported component a doc comment saying what it is for, and give the family's main component an
+   `@example`: a module that imports from `@basis/ui` and ends in the component's JSX, with `//` comments only, since
+   `*/` would end the doc comment. Then run `vp run @basis/ui#catalogue` and commit `catalogue.json`.
+
+## The component catalogue
+
+`@basis/ui/catalogue.json` lists every component the package exports, for agents that write apps without reading the
+package's code: each one's name, its family, what it is for, the props it declares with their types and docs, the
+types whose props it also takes (such as Base UI's), its variants with their options and defaults, and one example per
+family. The package's icons are listed by name. `src/catalogue/` reads it all from the source with oxc's parser, and
+`vp run @basis/ui#catalogue` writes it. `tests/catalogue.test.ts` fails while the file is stale, when a component has no
+doc comment, when a family has no example, or when an example does not compile in `packages/consumer`, the app
+configured exactly as this README says.
 
 ## Adding an icon
 

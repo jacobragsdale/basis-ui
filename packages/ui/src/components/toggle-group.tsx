@@ -38,7 +38,19 @@ const ToggleGroupContext = createContext<ToggleGroupSettings>({
 });
 
 /** A group of toggles in one look and size. `spacing` is the gap between them in steps of the spacing scale; at 0 they
- * join into one control. Name the group with `aria-label`. */
+ * join into one control. Name the group with `aria-label`.
+ *
+ * @example
+ * ```tsx
+ * import { ToggleGroup, ToggleGroupItem } from "@basis/ui";
+ *
+ * <ToggleGroup variant="outline" defaultValue={["1m"]} aria-label="Range">
+ *   <ToggleGroupItem value="1m">1M</ToggleGroupItem>
+ *   <ToggleGroupItem value="3m">3M</ToggleGroupItem>
+ *   <ToggleGroupItem value="1y">1Y</ToggleGroupItem>
+ * </ToggleGroup>;
+ * ```
+ */
 function ToggleGroup({
   className,
   variant,

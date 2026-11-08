@@ -1,0 +1,5106 @@
+{
+  "components": [
+    {
+      "extends": [
+        "ButtonPrimitive.Props"
+      ],
+      "family": "button",
+      "name": "Button",
+      "props": [],
+      "purpose": "A button. `render` swaps its element but keeps a button's role, so a link that should look like a button is a `ButtonLink` instead.",
+      "variants": {
+        "variant": {
+          "default": "default",
+          "options": [
+            "default",
+            "outline",
+            "secondary",
+            "ghost",
+            "destructive",
+            "link"
+          ]
+        },
+        "size": {
+          "default": "default",
+          "options": [
+            "default",
+            "xs",
+            "sm",
+            "lg",
+            "icon",
+            "icon-xs",
+            "icon-sm",
+            "icon-lg"
+          ]
+        }
+      },
+      "example": "import { Button } from \"@basis/ui\";\n\n<Button variant=\"outline\" size=\"sm\" onClick={() => undefined}>\n  Export\n</Button>;\n"
+    },
+    {
+      "extends": [
+        "ComponentProps<\"div\">"
+      ],
+      "family": "button-group",
+      "name": "ButtonGroup",
+      "props": [],
+      "purpose": "A group of buttons, inputs or selects drawn as one control. Name it with `aria-label` when its purpose is not plain from its buttons. Groups nest, with a gap between them.",
+      "variants": {
+        "orientation": {
+          "default": "horizontal",
+          "options": [
+            "horizontal",
+            "vertical"
+          ]
+        }
+      },
+      "example": "import { Button, ButtonGroup, ButtonGroupSeparator } from \"@basis/ui\";\n\n<ButtonGroup aria-label=\"Order side\">\n  <Button variant=\"outline\">Buy</Button>\n  <ButtonGroupSeparator />\n  <Button variant=\"outline\">Sell</Button>\n</ButtonGroup>;\n"
+    },
+    {
+      "extends": [
+        "SeparatorPrimitive.Props"
+      ],
+      "family": "button-group",
+      "name": "ButtonGroupSeparator",
+      "props": [
+        {
+          "description": "",
+          "name": "className",
+          "optional": true,
+          "type": "string"
+        }
+      ],
+      "purpose": "A line between a group's buttons, for groups whose buttons have no border of their own.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "useRender.ComponentProps<\"div\">"
+      ],
+      "family": "button-group",
+      "name": "ButtonGroupText",
+      "props": [],
+      "purpose": "Text inside a button group, such as a unit or a prefix, on the muted surface. `render` makes it another element, such as a `<label>` for the group's input.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "useRender.ComponentProps<\"a\">"
+      ],
+      "family": "button-link",
+      "name": "ButtonLink",
+      "props": [],
+      "purpose": "A link that looks like a Button: an `<a>`, or the element `render` names, with `data-slot=\"button\"` so that it sits in a button group as a Button does, and its variant and size as `data-variant` and `data-size`.",
+      "variants": {
+        "variant": {
+          "default": "default",
+          "options": [
+            "default",
+            "outline",
+            "secondary",
+            "ghost",
+            "destructive",
+            "link"
+          ]
+        },
+        "size": {
+          "default": "default",
+          "options": [
+            "default",
+            "xs",
+            "sm",
+            "lg",
+            "icon",
+            "icon-xs",
+            "icon-sm",
+            "icon-lg"
+          ]
+        }
+      },
+      "example": "import { ButtonLink } from \"@basis/ui\";\n\n<ButtonLink href=\"/trades\" variant=\"outline\">\n  View trades\n</ButtonLink>;\n"
+    },
+    {
+      "extends": [
+        "CheckboxPrimitive.Root.Props"
+      ],
+      "family": "checkbox",
+      "name": "Checkbox",
+      "props": [
+        {
+          "description": "",
+          "name": "className",
+          "optional": true,
+          "type": "string"
+        }
+      ],
+      "purpose": "A checkbox. Name it with a `<label>` around it or a `Label` whose `htmlFor` is its `id`. `indeterminate`, for a checkbox over others of which some are checked, fills the box and draws a dash in place of the check.",
+      "variants": {},
+      "example": "import { Checkbox, Field, FieldLabel } from \"@basis/ui\";\n\n<Field orientation=\"horizontal\">\n  <Checkbox id=\"include-matured\" defaultChecked />\n  <FieldLabel htmlFor=\"include-matured\">Include matured bonds</FieldLabel>\n</Field>;\n"
+    },
+    {
+      "extends": [
+        "ComboboxPrimitive.Root.Props"
+      ],
+      "family": "combobox",
+      "name": "Combobox",
+      "props": [],
+      "purpose": "A combobox: an input and the list it filters. Give it `items`, and render each in ComboboxList's child function; `multiple` chooses several, shown as ComboboxChips.",
+      "variants": {},
+      "example": "import {\n  Combobox,\n  ComboboxContent,\n  ComboboxEmpty,\n  ComboboxInput,\n  ComboboxItem,\n  ComboboxList,\n} from \"@basis/ui\";\n\nconst issuers = [\"Treasury\", \"Fannie Mae\", \"Freddie Mac\", \"World Bank\"];\n\n<Combobox items={issuers}>\n  <ComboboxInput placeholder=\"Issuer\" aria-label=\"Issuer\" />\n  <ComboboxContent>\n    <ComboboxEmpty>No issuer matches.</ComboboxEmpty>\n    <ComboboxList>\n      {(issuer: string) => (\n        <ComboboxItem key={issuer} value={issuer}>\n          {issuer}\n        </ComboboxItem>\n      )}\n    </ComboboxList>\n  </ComboboxContent>\n</Combobox>;\n"
+    },
+    {
+      "extends": [
+        "ComboboxPrimitive.Collection.Props"
+      ],
+      "family": "combobox",
+      "name": "ComboboxCollection",
+      "props": [],
+      "purpose": "A group's items, rendered by a child function, as ComboboxList renders the root's.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComboboxPrimitive.Popup.Props",
+        "Pick< ComboboxPrimitive.Positioner.Props, \"side\" | \"align\" | \"sideOffset\" | \"alignOffset\" | \"anchor\" >"
+      ],
+      "family": "combobox",
+      "name": "ComboboxContent",
+      "props": [
+        {
+          "description": "",
+          "name": "className",
+          "optional": true,
+          "type": "string"
+        }
+      ],
+      "purpose": "The popup that holds the list, under the input by default. Pass `anchor` from `useComboboxAnchor` to line it up with ComboboxChips.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComboboxPrimitive.Empty.Props"
+      ],
+      "family": "combobox",
+      "name": "ComboboxEmpty",
+      "props": [
+        {
+          "description": "",
+          "name": "className",
+          "optional": true,
+          "type": "string"
+        }
+      ],
+      "purpose": "What the popup says while no item matches, such as \"No matches\".",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComboboxPrimitive.Group.Props"
+      ],
+      "family": "combobox",
+      "name": "ComboboxGroup",
+      "props": [],
+      "purpose": "Items under one ComboboxLabel.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComboboxPrimitive.Input.Props"
+      ],
+      "family": "combobox",
+      "name": "ComboboxInput",
+      "props": [
+        {
+          "description": "",
+          "name": "className",
+          "optional": true,
+          "type": "string"
+        },
+        {
+          "description": "",
+          "name": "showTrigger",
+          "optional": true,
+          "type": "boolean"
+        },
+        {
+          "description": "",
+          "name": "showClear",
+          "optional": true,
+          "type": "boolean"
+        }
+      ],
+      "purpose": "The combobox's input inside an input group, with the button that opens the list (`showTrigger`, on by default) and the one that clears it (`showClear`). Name it with a `Label` whose `htmlFor` is its `id`, or `aria-label`.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComboboxPrimitive.Item.Props"
+      ],
+      "family": "combobox",
+      "name": "ComboboxItem",
+      "props": [
+        {
+          "description": "",
+          "name": "className",
+          "optional": true,
+          "type": "string"
+        }
+      ],
+      "purpose": "One item, highlighted as the arrow keys reach it, with a check beside it while it is chosen.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComboboxPrimitive.GroupLabel.Props"
+      ],
+      "family": "combobox",
+      "name": "ComboboxLabel",
+      "props": [
+        {
+          "description": "",
+          "name": "className",
+          "optional": true,
+          "type": "string"
+        }
+      ],
+      "purpose": "A heading for a ComboboxGroup's items.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComboboxPrimitive.List.Props"
+      ],
+      "family": "combobox",
+      "name": "ComboboxList",
+      "props": [
+        {
+          "description": "",
+          "name": "className",
+          "optional": true,
+          "type": "string"
+        }
+      ],
+      "purpose": "The list of matching items, which scrolls past 63 steps of the spacing scale.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComboboxPrimitive.Separator.Props"
+      ],
+      "family": "combobox",
+      "name": "ComboboxSeparator",
+      "props": [
+        {
+          "description": "",
+          "name": "className",
+          "optional": true,
+          "type": "string"
+        }
+      ],
+      "purpose": "A line between groups of items.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComboboxPrimitive.Trigger.Props"
+      ],
+      "family": "combobox",
+      "name": "ComboboxTrigger",
+      "props": [
+        {
+          "description": "",
+          "name": "className",
+          "optional": true,
+          "type": "string"
+        }
+      ],
+      "purpose": "The button that opens the list, with a chevron after its content. Inside an input group it draws no background while pressed.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComboboxPrimitive.Value.Props"
+      ],
+      "family": "combobox",
+      "name": "ComboboxValue",
+      "props": [],
+      "purpose": "The chosen value as text, or a render function of the chosen items.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComboboxPrimitive.Chip.Props"
+      ],
+      "family": "combobox",
+      "name": "ComboboxChip",
+      "props": [
+        {
+          "description": "",
+          "name": "className",
+          "optional": true,
+          "type": "string"
+        },
+        {
+          "description": "",
+          "name": "showRemove",
+          "optional": true,
+          "type": "boolean"
+        }
+      ],
+      "purpose": "One chosen item as a chip, with a button that removes it (`showRemove`, on by default), named \"Remove\" and the chip's text when the chip is text.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComboboxPrimitive.Chips.Props"
+      ],
+      "family": "combobox",
+      "name": "ComboboxChips",
+      "props": [
+        {
+          "description": "",
+          "name": "className",
+          "optional": true,
+          "type": "string"
+        },
+        {
+          "description": "The ref `useComboboxAnchor` returns, which lines the popup up with the chips.",
+          "name": "ref",
+          "optional": true,
+          "type": "Ref<HTMLDivElement>"
+        }
+      ],
+      "purpose": "A multiple combobox's chosen items as chips, followed by its ComboboxChipsInput, in Input's outline.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComboboxPrimitive.Input.Props"
+      ],
+      "family": "combobox",
+      "name": "ComboboxChipsInput",
+      "props": [
+        {
+          "description": "",
+          "name": "className",
+          "optional": true,
+          "type": "string"
+        }
+      ],
+      "purpose": "The input after a multiple combobox's chips.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<\"div\">"
+      ],
+      "family": "field",
+      "name": "Field",
+      "props": [],
+      "purpose": "One field: a label, its control, and the field's description and error. Mark it `data-invalid` while its value is invalid.",
+      "variants": {
+        "orientation": {
+          "default": "vertical",
+          "options": [
+            "vertical",
+            "horizontal",
+            "responsive"
+          ]
+        }
+      },
+      "example": "import { Field, FieldDescription, FieldGroup, FieldLabel, FieldLegend, FieldSet, Input } from \"@basis/ui\";\n\n<FieldSet>\n  <FieldLegend>Ticket</FieldLegend>\n  <FieldGroup>\n    <Field>\n      <FieldLabel htmlFor=\"cusip\">CUSIP</FieldLabel>\n      <Input id=\"cusip\" aria-describedby=\"cusip-help\" />\n      <FieldDescription id=\"cusip-help\">Nine characters, check digit last.</FieldDescription>\n    </Field>\n  </FieldGroup>\n</FieldSet>;\n"
+    },
+    {
+      "extends": [
+        "ComponentProps<\"div\">"
+      ],
+      "family": "field",
+      "name": "FieldContent",
+      "props": [],
+      "purpose": "A horizontal field's label and description, stacked beside its control.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<\"p\">"
+      ],
+      "family": "field",
+      "name": "FieldDescription",
+      "props": [],
+      "purpose": "A field's or fieldset's help text, in the muted colour.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<\"div\">"
+      ],
+      "family": "field",
+      "name": "FieldError",
+      "props": [
+        {
+          "description": "",
+          "name": "errors",
+          "optional": true,
+          "type": "FieldErrors | undefined"
+        }
+      ],
+      "purpose": "The field's errors in words, in the destructive colour, announced as they appear. Pass TanStack Form's `field.state.meta.errors` as `errors`, or the field's entry from `fieldErrors`; it shows one error as a line and several as a list, each message once, and nothing while there is no error. Its own `children` replace them.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<\"div\">"
+      ],
+      "family": "field",
+      "name": "FieldGroup",
+      "props": [],
+      "purpose": "Fields stacked with the form's spacing. A `responsive` field lays its label beside its control once the group is wide enough.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<\"label\">"
+      ],
+      "family": "field",
+      "name": "FieldLabel",
+      "props": [],
+      "purpose": "A field's `<label>`. Wrapping a whole `Field`, it becomes a choice card, tinted while its control is checked.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<\"legend\">"
+      ],
+      "family": "field",
+      "name": "FieldLegend",
+      "props": [],
+      "purpose": "A fieldset's `<legend>`. `variant=\"label\"` sizes it as a label, for a set of checkboxes or radios.",
+      "variants": {
+        "variant": {
+          "default": "legend",
+          "options": [
+            "legend",
+            "label"
+          ]
+        }
+      }
+    },
+    {
+      "extends": [
+        "ComponentProps<\"div\">"
+      ],
+      "family": "field",
+      "name": "FieldSeparator",
+      "props": [
+        {
+          "description": "",
+          "name": "children",
+          "optional": true,
+          "type": "ReactNode"
+        }
+      ],
+      "purpose": "A line between groups of fields, with optional text on it, such as \"or\".",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<\"fieldset\">"
+      ],
+      "family": "field",
+      "name": "FieldSet",
+      "props": [],
+      "purpose": "A `<fieldset>`: a set of fields under one `FieldLegend`, such as a trade's settlement details.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<\"div\">"
+      ],
+      "family": "field",
+      "name": "FieldTitle",
+      "props": [],
+      "purpose": "A title in a field's content that is not a `<label>`, such as a choice card's heading.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<\"input\">"
+      ],
+      "family": "input",
+      "name": "Input",
+      "props": [],
+      "purpose": "A text input. With `aria-invalid` its outline turns the destructive colour; a `FieldError` beside it says why.",
+      "variants": {},
+      "example": "import { Field, FieldLabel, Input } from \"@basis/ui\";\n\n<Field>\n  <FieldLabel htmlFor=\"book\">Book</FieldLabel>\n  <Input id=\"book\" placeholder=\"Rates\" />\n</Field>;\n"
+    },
+    {
+      "extends": [
+        "ComponentProps<\"div\">"
+      ],
+      "family": "input-group",
+      "name": "InputGroup",
+      "props": [],
+      "purpose": "An input's outline holding the input and its addons. Name the input itself, with a `<label>` or `aria-label`.",
+      "variants": {},
+      "example": "import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from \"@basis/ui\";\n\n<InputGroup>\n  <InputGroupInput aria-label=\"Notional\" placeholder=\"0\" />\n  <InputGroupAddon align=\"inline-end\">\n    <InputGroupText>USD</InputGroupText>\n  </InputGroupAddon>\n</InputGroup>;\n"
+    },
+    {
+      "extends": [
+        "ComponentProps<\"div\">"
+      ],
+      "family": "input-group",
+      "name": "InputGroupAddon",
+      "props": [],
+      "purpose": "Text, an icon or a button inside the group, before or after the input or on a line above or below it.",
+      "variants": {
+        "align": {
+          "default": "inline-start",
+          "options": [
+            "inline-start",
+            "inline-end",
+            "block-start",
+            "block-end"
+          ]
+        }
+      }
+    },
+    {
+      "extends": [
+        "Omit<ButtonPrimitive.Props, \"type\" | \"className\">",
+        "Pick<VariantProps<typeof buttonVariants>, \"variant\">"
+      ],
+      "family": "input-group",
+      "name": "InputGroupButton",
+      "props": [
+        {
+          "description": "",
+          "name": "className",
+          "optional": true,
+          "type": "string"
+        },
+        {
+          "description": "",
+          "name": "type",
+          "optional": true,
+          "type": "ComponentProps<\"button\">[\"type\"]"
+        }
+      ],
+      "purpose": "A button inside the group, such as a search or copy button, in Button's variants at the group's sizes. It is `type=\"button\"` unless told otherwise, so it never submits the form by accident.",
+      "variants": {
+        "size": {
+          "default": "xs",
+          "options": [
+            "xs",
+            "sm",
+            "icon-xs",
+            "icon-sm"
+          ]
+        }
+      }
+    },
+    {
+      "extends": [
+        "ComponentProps<\"input\">"
+      ],
+      "family": "input-group",
+      "name": "InputGroupInput",
+      "props": [],
+      "purpose": "The group's input: an Input without its own outline.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<\"span\">"
+      ],
+      "family": "input-group",
+      "name": "InputGroupText",
+      "props": [],
+      "purpose": "Text inside the group, such as a unit or a currency, in the muted colour.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<\"textarea\">"
+      ],
+      "family": "input-group",
+      "name": "InputGroupTextarea",
+      "props": [],
+      "purpose": "The group's textarea: a Textarea without its own outline, with addons above or below it.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<\"label\">"
+      ],
+      "family": "label",
+      "name": "Label",
+      "props": [],
+      "purpose": "A label. Point `htmlFor` at the control's `id`, or wrap the control in it.",
+      "variants": {},
+      "example": "import { Input, Label } from \"@basis/ui\";\n\n<>\n  <Label htmlFor=\"desk\">Desk</Label>\n  <Input id=\"desk\" />\n</>;\n"
+    },
+    {
+      "extends": [
+        "Omit<ComponentProps<\"select\">, \"size\">"
+      ],
+      "family": "native-select",
+      "name": "NativeSelect",
+      "props": [],
+      "purpose": "A native `<select>`. `className` places its wrapper; name it with a `Label` whose `htmlFor` is its `id`.",
+      "variants": {
+        "size": {
+          "default": "default",
+          "options": [
+            "default",
+            "sm"
+          ]
+        }
+      },
+      "example": "import { NativeSelect, NativeSelectOption } from \"@basis/ui\";\n\n<NativeSelect aria-label=\"Currency\" defaultValue=\"USD\">\n  <NativeSelectOption value=\"USD\">USD</NativeSelectOption>\n  <NativeSelectOption value=\"EUR\">EUR</NativeSelectOption>\n</NativeSelect>;\n"
+    },
+    {
+      "extends": [
+        "ComponentProps<\"optgroup\">"
+      ],
+      "family": "native-select",
+      "name": "NativeSelectOptGroup",
+      "props": [],
+      "purpose": "An `<optgroup>` of options under a label.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<\"option\">"
+      ],
+      "family": "native-select",
+      "name": "NativeSelectOption",
+      "props": [],
+      "purpose": "One `<option>`.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "RadioGroupPrimitive.Props"
+      ],
+      "family": "radio-group",
+      "name": "RadioGroup",
+      "props": [
+        {
+          "description": "",
+          "name": "className",
+          "optional": true,
+          "type": "string"
+        }
+      ],
+      "purpose": "A set of radio items, one of which is chosen. Name it with `aria-labelledby` pointing at its legend or label.",
+      "variants": {},
+      "example": "import { Field, FieldLabel, RadioGroup, RadioGroupItem } from \"@basis/ui\";\n\n<RadioGroup defaultValue=\"buy\" aria-label=\"Side\">\n  <Field orientation=\"horizontal\">\n    <RadioGroupItem id=\"side-buy\" value=\"buy\" />\n    <FieldLabel htmlFor=\"side-buy\">Buy</FieldLabel>\n  </Field>\n  <Field orientation=\"horizontal\">\n    <RadioGroupItem id=\"side-sell\" value=\"sell\" />\n    <FieldLabel htmlFor=\"side-sell\">Sell</FieldLabel>\n  </Field>\n</RadioGroup>;\n"
+    },
+    {
+      "extends": [
+        "RadioPrimitive.Root.Props"
+      ],
+      "family": "radio-group",
+      "name": "RadioGroupItem",
+      "props": [
+        {
+          "description": "",
+          "name": "className",
+          "optional": true,
+          "type": "string"
+        }
+      ],
+      "purpose": "One choice in a RadioGroup, named by a `<label>` around it or a `Label` whose `htmlFor` is its `id`.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "SelectPrimitive.Root.Props"
+      ],
+      "family": "select",
+      "name": "Select",
+      "props": [],
+      "purpose": "A select: its trigger and its content, which holds the items. Give it `items` to show an item's label as the value, and `value` with `onValueChange`, or `defaultValue`.",
+      "variants": {},
+      "example": "import { Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from \"@basis/ui\";\n\nconst tenors = [\n  { label: \"2Y\", value: \"2y\" },\n  { label: \"5Y\", value: \"5y\" },\n  { label: \"10Y\", value: \"10y\" },\n];\n\n<>\n  <Label htmlFor=\"tenor\">Tenor</Label>\n  <Select items={tenors} defaultValue=\"5y\">\n    <SelectTrigger id=\"tenor\">\n      <SelectValue />\n    </SelectTrigger>\n    <SelectContent>\n      {tenors.map((tenor) => (\n        <SelectItem key={tenor.value} value={tenor.value}>\n          {tenor.label}\n        </SelectItem>\n      ))}\n    </SelectContent>\n  </Select>\n</>;\n"
+    },
+    {
+      "extends": [
+        "SelectPrimitive.Popup.Props",
+        "Pick< SelectPrimitive.Positioner.Props, \"align\" | \"alignOffset\" | \"side\" | \"sideOffset\" | \"alignItemWithTrigger\" >"
+      ],
+      "family": "select",
+      "name": "SelectContent",
+      "props": [
+        {
+          "description": "",
+          "name": "className",
+          "optional": true,
+          "type": "string"
+        }
+      ],
+      "purpose": "The list that opens under the trigger, or over it with the chosen item aligned to it, the default.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "SelectPrimitive.Group.Props"
+      ],
+      "family": "select",
+      "name": "SelectGroup",
+      "props": [
+        {
+          "description": "",
+          "name": "className",
+          "optional": true,
+          "type": "string"
+        }
+      ],
+      "purpose": "Items under one SelectLabel.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "SelectPrimitive.Item.Props"
+      ],
+      "family": "select",
+      "name": "SelectItem",
+      "props": [
+        {
+          "description": "",
+          "name": "className",
+          "optional": true,
+          "type": "string"
+        }
+      ],
+      "purpose": "One option, with a check beside it while it is chosen.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "SelectPrimitive.GroupLabel.Props"
+      ],
+      "family": "select",
+      "name": "SelectLabel",
+      "props": [
+        {
+          "description": "",
+          "name": "className",
+          "optional": true,
+          "type": "string"
+        }
+      ],
+      "purpose": "A heading for a SelectGroup's items.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "SelectPrimitive.ScrollDownArrow.Props"
+      ],
+      "family": "select",
+      "name": "SelectScrollDownButton",
+      "props": [
+        {
+          "description": "",
+          "name": "className",
+          "optional": true,
+          "type": "string"
+        }
+      ],
+      "purpose": "The arrow at the bottom of a list too long for the screen, which scrolls it down while hovered.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "SelectPrimitive.ScrollUpArrow.Props"
+      ],
+      "family": "select",
+      "name": "SelectScrollUpButton",
+      "props": [
+        {
+          "description": "",
+          "name": "className",
+          "optional": true,
+          "type": "string"
+        }
+      ],
+      "purpose": "The arrow at the top of a list too long for the screen, which scrolls it up while hovered.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "SelectPrimitive.Separator.Props"
+      ],
+      "family": "select",
+      "name": "SelectSeparator",
+      "props": [
+        {
+          "description": "",
+          "name": "className",
+          "optional": true,
+          "type": "string"
+        }
+      ],
+      "purpose": "A line between groups of items.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "SelectPrimitive.Trigger.Props"
+      ],
+      "family": "select",
+      "name": "SelectTrigger",
+      "props": [
+        {
+          "description": "",
+          "name": "className",
+          "optional": true,
+          "type": "string"
+        }
+      ],
+      "purpose": "The button that opens the select, holding its SelectValue and a chevron. Name it with a `Label` whose `htmlFor` is its `id`, or `aria-label`.",
+      "variants": {
+        "size": {
+          "default": "default",
+          "options": [
+            "default",
+            "sm"
+          ]
+        }
+      }
+    },
+    {
+      "extends": [
+        "SelectPrimitive.Value.Props"
+      ],
+      "family": "select",
+      "name": "SelectValue",
+      "props": [
+        {
+          "description": "",
+          "name": "className",
+          "optional": true,
+          "type": "string"
+        }
+      ],
+      "purpose": "The chosen item's label in the trigger, or its `placeholder` while nothing is chosen.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "SliderPrimitive.Root.Props"
+      ],
+      "family": "slider",
+      "name": "Slider",
+      "props": [
+        {
+          "description": "",
+          "name": "className",
+          "optional": true,
+          "type": "string"
+        }
+      ],
+      "purpose": "A slider. Give it `value` and `onValueChange`, or `defaultValue`; an array of two values draws a range. Name it with `aria-label`, which names each thumb.",
+      "variants": {},
+      "example": "import { Slider } from \"@basis/ui\";\n\n<Slider defaultValue={25} aria-label=\"Hedge ratio\" />;\n"
+    },
+    {
+      "extends": [
+        "SwitchPrimitive.Root.Props"
+      ],
+      "family": "switch",
+      "name": "Switch",
+      "props": [
+        {
+          "description": "",
+          "name": "className",
+          "optional": true,
+          "type": "string"
+        },
+        {
+          "description": "",
+          "name": "size",
+          "optional": true,
+          "type": "\"sm\" | \"default\""
+        }
+      ],
+      "purpose": "A switch that turns a setting on or off at once. Name it with a `<label>` around it or a `Label` whose `htmlFor` is its `id`. `size=\"sm\"` draws a smaller track.",
+      "variants": {},
+      "example": "import { Field, FieldLabel, Switch } from \"@basis/ui\";\n\n<Field orientation=\"horizontal\">\n  <Switch id=\"live-prices\" defaultChecked />\n  <FieldLabel htmlFor=\"live-prices\">Live prices</FieldLabel>\n</Field>;\n"
+    },
+    {
+      "extends": [
+        "ComponentProps<\"textarea\">"
+      ],
+      "family": "textarea",
+      "name": "Textarea",
+      "props": [],
+      "purpose": "A multi-line text input, at least 16 steps of the spacing scale tall, growing with its content.",
+      "variants": {},
+      "example": "import { Field, FieldLabel, Textarea } from \"@basis/ui\";\n\n<Field>\n  <FieldLabel htmlFor=\"note\">Note</FieldLabel>\n  <Textarea id=\"note\" placeholder=\"Why the trade was amended\" />\n</Field>;\n"
+    },
+    {
+      "extends": [
+        "TogglePrimitive.Props"
+      ],
+      "family": "toggle",
+      "name": "Toggle",
+      "props": [
+        {
+          "description": "",
+          "name": "className",
+          "optional": true,
+          "type": "string"
+        }
+      ],
+      "purpose": "A toggle button, with `aria-pressed` while it is on. An icon-only toggle takes an `aria-label`.",
+      "variants": {
+        "variant": {
+          "default": "default",
+          "options": [
+            "default",
+            "outline"
+          ]
+        },
+        "size": {
+          "default": "default",
+          "options": [
+            "default",
+            "sm",
+            "lg"
+          ]
+        }
+      },
+      "example": "import { Toggle } from \"@basis/ui\";\n\n<Toggle variant=\"outline\" aria-label=\"Show matured bonds\">\n  Matured\n</Toggle>;\n"
+    },
+    {
+      "extends": [
+        "ToggleGroupPrimitive.Props"
+      ],
+      "family": "toggle-group",
+      "name": "ToggleGroup",
+      "props": [
+        {
+          "description": "",
+          "name": "className",
+          "optional": true,
+          "type": "string"
+        },
+        {
+          "description": "",
+          "name": "spacing",
+          "optional": true,
+          "type": "number"
+        },
+        {
+          "description": "",
+          "name": "orientation",
+          "optional": true,
+          "type": "Orientation"
+        }
+      ],
+      "purpose": "A group of toggles in one look and size. `spacing` is the gap between them in steps of the spacing scale; at 0 they join into one control. Name the group with `aria-label`.",
+      "variants": {
+        "variant": {
+          "default": "default",
+          "options": [
+            "default",
+            "outline"
+          ]
+        },
+        "size": {
+          "default": "default",
+          "options": [
+            "default",
+            "sm",
+            "lg"
+          ]
+        }
+      },
+      "example": "import { ToggleGroup, ToggleGroupItem } from \"@basis/ui\";\n\n<ToggleGroup variant=\"outline\" defaultValue={[\"1m\"]} aria-label=\"Range\">\n  <ToggleGroupItem value=\"1m\">1M</ToggleGroupItem>\n  <ToggleGroupItem value=\"3m\">3M</ToggleGroupItem>\n  <ToggleGroupItem value=\"1y\">1Y</ToggleGroupItem>\n</ToggleGroup>;\n"
+    },
+    {
+      "extends": [
+        "TogglePrimitive.Props"
+      ],
+      "family": "toggle-group",
+      "name": "ToggleGroupItem",
+      "props": [
+        {
+          "description": "",
+          "name": "className",
+          "optional": true,
+          "type": "string"
+        }
+      ],
+      "purpose": "One toggle in a ToggleGroup, in the group's variant and size when the group sets them.",
+      "variants": {
+        "variant": {
+          "default": "default",
+          "options": [
+            "default",
+            "outline"
+          ]
+        },
+        "size": {
+          "default": "default",
+          "options": [
+            "default",
+            "sm",
+            "lg"
+          ]
+        }
+      }
+    },
+    {
+      "extends": [
+        "AlertDialogPrimitive.Root.Props"
+      ],
+      "family": "alert-dialog",
+      "name": "AlertDialog",
+      "props": [],
+      "purpose": "An alert dialog: a dialog that asks the user to confirm or cancel an action. Unlike Dialog, a click outside does not close it; Escape and its cancel button do, and focus returns to the trigger.",
+      "variants": {},
+      "example": "import {\n  AlertDialog,\n  AlertDialogAction,\n  AlertDialogCancel,\n  AlertDialogContent,\n  AlertDialogDescription,\n  AlertDialogFooter,\n  AlertDialogHeader,\n  AlertDialogTitle,\n  AlertDialogTrigger,\n  Button,\n} from \"@basis/ui\";\n\n<AlertDialog>\n  <AlertDialogTrigger render={<Button variant=\"destructive\" />}>Cancel order</AlertDialogTrigger>\n  <AlertDialogContent>\n    <AlertDialogHeader>\n      <AlertDialogTitle>Cancel this order?</AlertDialogTitle>\n      <AlertDialogDescription>The order leaves the book and cannot be restored.</AlertDialogDescription>\n    </AlertDialogHeader>\n    <AlertDialogFooter>\n      <AlertDialogCancel>Keep it</AlertDialogCancel>\n      <AlertDialogAction>Cancel order</AlertDialogAction>\n    </AlertDialogFooter>\n  </AlertDialogContent>\n</AlertDialog>;\n"
+    },
+    {
+      "extends": [
+        "ButtonPrimitive.Props"
+      ],
+      "family": "alert-dialog",
+      "name": "AlertDialogAction",
+      "props": [],
+      "purpose": "The action the dialog confirms: a button drawn as a Button, which does not close the dialog by itself, so its handler closes it once the action has run.",
+      "variants": {
+        "variant": {
+          "default": "default",
+          "options": [
+            "default",
+            "outline",
+            "secondary",
+            "ghost",
+            "destructive",
+            "link"
+          ]
+        },
+        "size": {
+          "default": "default",
+          "options": [
+            "default",
+            "xs",
+            "sm",
+            "lg",
+            "icon",
+            "icon-xs",
+            "icon-sm",
+            "icon-lg"
+          ]
+        }
+      }
+    },
+    {
+      "extends": [
+        "AlertDialogPrimitive.Close.Props"
+      ],
+      "family": "alert-dialog",
+      "name": "AlertDialogCancel",
+      "props": [],
+      "purpose": "The button that closes the dialog without acting, drawn as an outline Button unless `variant` says otherwise.",
+      "variants": {
+        "variant": {
+          "default": "default",
+          "options": [
+            "default",
+            "outline",
+            "secondary",
+            "ghost",
+            "destructive",
+            "link"
+          ]
+        },
+        "size": {
+          "default": "default",
+          "options": [
+            "default",
+            "xs",
+            "sm",
+            "lg",
+            "icon",
+            "icon-xs",
+            "icon-sm",
+            "icon-lg"
+          ]
+        }
+      }
+    },
+    {
+      "extends": [
+        "AlertDialogPrimitive.Popup.Props"
+      ],
+      "family": "alert-dialog",
+      "name": "AlertDialogContent",
+      "props": [
+        {
+          "description": "",
+          "name": "size",
+          "optional": true,
+          "type": "\"default\" | \"sm\""
+        }
+      ],
+      "purpose": "The alert dialog's window, in a portal over the veil. `size=\"sm\"` makes it narrow, with its text centred and its two actions side by side.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "AlertDialogPrimitive.Description.Props"
+      ],
+      "family": "alert-dialog",
+      "name": "AlertDialogDescription",
+      "props": [],
+      "purpose": "What the action does and what it cannot undo, which describes the dialog for assistive technology.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<\"div\">"
+      ],
+      "family": "alert-dialog",
+      "name": "AlertDialogFooter",
+      "props": [],
+      "purpose": "The actions, on a muted band across the dialog's foot: in a row at the end, or two equal columns when small.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<\"div\">"
+      ],
+      "family": "alert-dialog",
+      "name": "AlertDialogHeader",
+      "props": [],
+      "purpose": "The media, title and description: centred, and at the start at the default size on a wide screen.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<\"div\">"
+      ],
+      "family": "alert-dialog",
+      "name": "AlertDialogMedia",
+      "props": [],
+      "purpose": "An icon above the title, on a tile; it sizes the icon inside it. The tile is `secondary`, where shadcn's is `muted`, which in this theme's dark mode is the popover's own colour.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "AlertDialogPrimitive.Backdrop.Props"
+      ],
+      "family": "alert-dialog",
+      "name": "AlertDialogOverlay",
+      "props": [],
+      "purpose": "The veil over the page behind an open alert dialog.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "AlertDialogPrimitive.Portal.Props"
+      ],
+      "family": "alert-dialog",
+      "name": "AlertDialogPortal",
+      "props": [],
+      "purpose": "Renders the alert dialog's popup into the page's body, outside the trigger's layout. `AlertDialogContent` includes one.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "AlertDialogPrimitive.Title.Props"
+      ],
+      "family": "alert-dialog",
+      "name": "AlertDialogTitle",
+      "props": [],
+      "purpose": "The alert dialog's title, which names it for assistive technology.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "AlertDialogPrimitive.Trigger.Props"
+      ],
+      "family": "alert-dialog",
+      "name": "AlertDialogTrigger",
+      "props": [],
+      "purpose": "The control that opens the alert dialog; `render={<Button variant=\"destructive\" />}` makes it a button.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<\"div\">"
+      ],
+      "family": "command",
+      "name": "Command",
+      "props": [
+        {
+          "description": "",
+          "name": "label",
+          "optional": true,
+          "type": "string"
+        },
+        {
+          "description": "",
+          "name": "shouldFilter",
+          "optional": true,
+          "type": "boolean"
+        },
+        {
+          "description": "Whether the arrow keys wrap from the last item through the input to the first: true by default, as in Base UI, where cmdk's is false.",
+          "name": "loop",
+          "optional": true,
+          "type": "boolean"
+        }
+      ],
+      "purpose": "A command menu: a CommandInput over a CommandList of CommandItems. The list narrows as the user types, the arrow keys move the highlight, and Enter or a click runs the highlighted item's `onSelect`. `label` names the menu for assistive technology, and `shouldFilter={false}` shows every item, for a list the app filters itself.",
+      "variants": {},
+      "example": "import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from \"@basis/ui\";\n\n<Command label=\"Go to\">\n  <CommandInput placeholder=\"Search pages\" />\n  <CommandList>\n    <CommandEmpty>No page matches.</CommandEmpty>\n    <CommandGroup heading=\"Pages\">\n      <CommandItem onSelect={() => undefined}>Positions</CommandItem>\n      <CommandItem onSelect={() => undefined}>Trades</CommandItem>\n    </CommandGroup>\n  </CommandList>\n</Command>;\n"
+    },
+    {
+      "extends": [
+        "ComponentProps<\"output\">"
+      ],
+      "family": "command",
+      "name": "CommandEmpty",
+      "props": [],
+      "purpose": "What the list shows when nothing matches the search, which assistive technology announces.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "AutocompletePrimitive.Group.Props"
+      ],
+      "family": "command",
+      "name": "CommandGroup",
+      "props": [
+        {
+          "description": "",
+          "name": "heading",
+          "optional": true,
+          "type": "ReactNode"
+        }
+      ],
+      "purpose": "Items under a `heading`, hidden while none of them matches the search.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "Omit<AutocompletePrimitive.Input.Props, \"defaultValue\" | \"value\">"
+      ],
+      "family": "command",
+      "name": "CommandInput",
+      "props": [],
+      "purpose": "The search box: a combobox that owns the list, in an InputGroup with a search icon. It takes the Command's `label` as its name unless given an `aria-label`; a placeholder says what to type.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "AutocompletePrimitive.List.Props"
+      ],
+      "family": "command",
+      "name": "CommandList",
+      "props": [],
+      "purpose": "The list of items and groups, which scrolls past `max-h-72`. CommandEmpty may sit inside it.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "AutocompletePrimitive.Separator.Props"
+      ],
+      "family": "command",
+      "name": "CommandSeparator",
+      "props": [
+        {
+          "description": "",
+          "name": "alwaysRender",
+          "optional": true,
+          "type": "boolean"
+        }
+      ],
+      "purpose": "A line between groups, hidden while the user searches unless `alwaysRender` is set.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "Omit<DialogPrimitive.Root.Props, \"children\">"
+      ],
+      "family": "command",
+      "name": "CommandDialog",
+      "props": [
+        {
+          "description": "",
+          "name": "title",
+          "optional": true,
+          "type": "string"
+        },
+        {
+          "description": "",
+          "name": "description",
+          "optional": true,
+          "type": "string"
+        },
+        {
+          "description": "",
+          "name": "className",
+          "optional": true,
+          "type": "string"
+        },
+        {
+          "description": "Adds a close button for assistive technology, which is hidden, since Escape closes the palette.",
+          "name": "showCloseButton",
+          "optional": true,
+          "type": "boolean"
+        },
+        {
+          "description": "",
+          "name": "children",
+          "optional": false,
+          "type": "ReactNode"
+        }
+      ],
+      "purpose": "The command palette: put a Command inside it. Escape and a click outside close it, and focus returns to the trigger. `title` and `description` name and describe it for assistive technology, and are not shown; `className` may set its width.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "Omit<AutocompletePrimitive.Item.Props, \"onSelect\" | \"value\">"
+      ],
+      "family": "command",
+      "name": "CommandItem",
+      "props": [
+        {
+          "description": "",
+          "name": "value",
+          "optional": true,
+          "type": "string"
+        },
+        {
+          "description": "More words the item matches, such as `[\"preferences\"]` for Settings.",
+          "name": "keywords",
+          "optional": true,
+          "type": "readonly string[]"
+        },
+        {
+          "description": "Whether the item shows whatever the search.",
+          "name": "forceMount",
+          "optional": true,
+          "type": "boolean"
+        },
+        {
+          "description": "",
+          "name": "onSelect",
+          "optional": true,
+          "type": "(value: string) => void"
+        }
+      ],
+      "purpose": "A command. It shows while its `value`, or else its text, or one of its `keywords` matches the search, and always with `forceMount`; Enter or a click runs `onSelect` with its value.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<\"span\">"
+      ],
+      "family": "command",
+      "name": "CommandShortcut",
+      "props": [],
+      "purpose": "An item's keyboard shortcut, at its end. It only shows the shortcut; the app binds the keys.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ContextMenuPrimitive.Root.Props"
+      ],
+      "family": "context-menu",
+      "name": "ContextMenu",
+      "props": [],
+      "purpose": "A context menu: actions on what is under the pointer, opened by a right click or a long press on its trigger, or by the keyboard's context-menu key or Shift+F10. Arrow keys move through its items, Enter or a click runs one, and Escape closes the menu.",
+      "variants": {},
+      "example": "import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from \"@basis/ui\";\n\n<ContextMenu>\n  <ContextMenuTrigger>Right-click a position</ContextMenuTrigger>\n  <ContextMenuContent>\n    <ContextMenuItem onClick={() => undefined}>Allocate</ContextMenuItem>\n    <ContextMenuItem onClick={() => undefined}>Copy CUSIP</ContextMenuItem>\n  </ContextMenuContent>\n</ContextMenu>;\n"
+    },
+    {
+      "extends": [
+        "ContextMenuPrimitive.CheckboxItem.Props"
+      ],
+      "family": "context-menu",
+      "name": "ContextMenuCheckboxItem",
+      "props": [
+        {
+          "description": "",
+          "name": "inset",
+          "optional": true,
+          "type": "boolean"
+        }
+      ],
+      "purpose": "An option that is on or off, with a check at its end when on.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ContextMenuPrimitive.Popup.Props",
+        "Pick< ContextMenuPrimitive.Positioner.Props, \"align\" | \"alignOffset\" | \"side\" | \"sideOffset\" >"
+      ],
+      "family": "context-menu",
+      "name": "ContextMenuContent",
+      "props": [],
+      "purpose": "The menu's popup, in a portal, at the pointer.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ContextMenuPrimitive.Group.Props"
+      ],
+      "family": "context-menu",
+      "name": "ContextMenuGroup",
+      "props": [],
+      "purpose": "Items that belong together, named by a ContextMenuLabel inside it.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ContextMenuPrimitive.Item.Props"
+      ],
+      "family": "context-menu",
+      "name": "ContextMenuItem",
+      "props": [
+        {
+          "description": "",
+          "name": "inset",
+          "optional": true,
+          "type": "boolean"
+        },
+        {
+          "description": "",
+          "name": "variant",
+          "optional": true,
+          "type": "\"default\" | \"destructive\""
+        }
+      ],
+      "purpose": "An action. `variant=\"destructive\"` marks one that deletes or cannot be undone; `inset` lines it up with items that have an icon.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ContextMenuPrimitive.GroupLabel.Props"
+      ],
+      "family": "context-menu",
+      "name": "ContextMenuLabel",
+      "props": [
+        {
+          "description": "",
+          "name": "inset",
+          "optional": true,
+          "type": "boolean"
+        }
+      ],
+      "purpose": "A group's heading, inside its ContextMenuGroup. `inset` lines it up with items that have an icon.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ContextMenuPrimitive.Portal.Props"
+      ],
+      "family": "context-menu",
+      "name": "ContextMenuPortal",
+      "props": [],
+      "purpose": "Renders the context menu's popup into the page's body. `ContextMenuContent` includes one.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ContextMenuPrimitive.RadioGroup.Props"
+      ],
+      "family": "context-menu",
+      "name": "ContextMenuRadioGroup",
+      "props": [],
+      "purpose": "Options of which one is chosen, each a ContextMenuRadioItem.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ContextMenuPrimitive.RadioItem.Props"
+      ],
+      "family": "context-menu",
+      "name": "ContextMenuRadioItem",
+      "props": [
+        {
+          "description": "",
+          "name": "inset",
+          "optional": true,
+          "type": "boolean"
+        }
+      ],
+      "purpose": "One option of a ContextMenuRadioGroup, with a check at its end when chosen.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ContextMenuPrimitive.Separator.Props"
+      ],
+      "family": "context-menu",
+      "name": "ContextMenuSeparator",
+      "props": [],
+      "purpose": "A line between groups of a context menu's items.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<\"span\">"
+      ],
+      "family": "context-menu",
+      "name": "ContextMenuShortcut",
+      "props": [],
+      "purpose": "An item's keyboard shortcut, at its end. It only shows the shortcut; the app binds the keys.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ContextMenuPrimitive.SubmenuRoot.Props"
+      ],
+      "family": "context-menu",
+      "name": "ContextMenuSub",
+      "props": [],
+      "purpose": "Holds a submenu: a ContextMenuSubTrigger and its ContextMenuSubContent.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<typeof ContextMenuContent>"
+      ],
+      "family": "context-menu",
+      "name": "ContextMenuSubContent",
+      "props": [],
+      "purpose": "The submenu's popup, beside its trigger.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ContextMenuPrimitive.SubmenuTrigger.Props"
+      ],
+      "family": "context-menu",
+      "name": "ContextMenuSubTrigger",
+      "props": [
+        {
+          "description": "",
+          "name": "inset",
+          "optional": true,
+          "type": "boolean"
+        }
+      ],
+      "purpose": "The item that opens a submenu, on hover, a click, Enter or the right arrow key.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ContextMenuPrimitive.Trigger.Props"
+      ],
+      "family": "context-menu",
+      "name": "ContextMenuTrigger",
+      "props": [],
+      "purpose": "The area a right click opens the menu on.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "DialogPrimitive.Root.Props"
+      ],
+      "family": "dialog",
+      "name": "Dialog",
+      "props": [],
+      "purpose": "A dialog: a window over the page that holds the user until it closes. Escape, a click outside and its close button close it, and focus returns to the trigger.",
+      "variants": {},
+      "example": "import {\n  Button,\n  Dialog,\n  DialogClose,\n  DialogContent,\n  DialogDescription,\n  DialogFooter,\n  DialogHeader,\n  DialogTitle,\n  DialogTrigger,\n} from \"@basis/ui\";\n\n<Dialog>\n  <DialogTrigger render={<Button variant=\"outline\" />}>Edit position</DialogTrigger>\n  <DialogContent>\n    <DialogHeader>\n      <DialogTitle>Edit position</DialogTitle>\n      <DialogDescription>Change the book this position sits in.</DialogDescription>\n    </DialogHeader>\n    <DialogFooter>\n      <DialogClose render={<Button variant=\"outline\" />}>Close</DialogClose>\n    </DialogFooter>\n  </DialogContent>\n</Dialog>;\n"
+    },
+    {
+      "extends": [
+        "DialogPrimitive.Close.Props"
+      ],
+      "family": "dialog",
+      "name": "DialogClose",
+      "props": [],
+      "purpose": "A control that closes the dialog; `render={<Button variant=\"outline\" />}` makes it a button.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "DialogPrimitive.Popup.Props"
+      ],
+      "family": "dialog",
+      "name": "DialogContent",
+      "props": [
+        {
+          "description": "",
+          "name": "showCloseButton",
+          "optional": true,
+          "type": "boolean"
+        }
+      ],
+      "purpose": "The dialog's window, in a portal over the veil, with a close button in its corner unless `showCloseButton` is false. `className` may set its width, such as `sm:max-w-lg`.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "DialogPrimitive.Description.Props"
+      ],
+      "family": "dialog",
+      "name": "DialogDescription",
+      "props": [],
+      "purpose": "A line under the title, which describes the dialog for assistive technology.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<\"div\">"
+      ],
+      "family": "dialog",
+      "name": "DialogFooter",
+      "props": [
+        {
+          "description": "",
+          "name": "showCloseButton",
+          "optional": true,
+          "type": "boolean"
+        }
+      ],
+      "purpose": "The dialog's actions, on a muted band across its foot: stacked with the first last on a narrow screen, in a row at the end otherwise. `showCloseButton` adds a Close button.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<\"div\">"
+      ],
+      "family": "dialog",
+      "name": "DialogHeader",
+      "props": [],
+      "purpose": "The dialog's title and description, stacked at its top.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "DialogPrimitive.Backdrop.Props"
+      ],
+      "family": "dialog",
+      "name": "DialogOverlay",
+      "props": [],
+      "purpose": "The veil over the page behind an open dialog.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "DialogPrimitive.Portal.Props"
+      ],
+      "family": "dialog",
+      "name": "DialogPortal",
+      "props": [],
+      "purpose": "Renders the dialog's popup into the page's body. `DialogContent` includes one.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "DialogPrimitive.Title.Props"
+      ],
+      "family": "dialog",
+      "name": "DialogTitle",
+      "props": [],
+      "purpose": "The dialog's title, which names it for assistive technology.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "DialogPrimitive.Trigger.Props"
+      ],
+      "family": "dialog",
+      "name": "DialogTrigger",
+      "props": [],
+      "purpose": "The control that opens the dialog; `render={<Button />}` makes it a button.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "Omit< DrawerPrimitive.Root.Props, \"defaultSnapPoint\" | \"onSnapPointChange\" | \"snapPoint\" | \"snapPoints\" | \"snapToSequentialPoints\" >"
+      ],
+      "family": "drawer",
+      "name": "Drawer",
+      "props": [
+        {
+          "description": "Whether the panel shows a grip at its leading edge, which says it can be swiped.",
+          "name": "showSwipeHandle",
+          "optional": true,
+          "type": "boolean"
+        }
+      ],
+      "purpose": "A drawer: a panel that slides in from an edge and can be swiped away, `down` by default. It is a dialog: Escape, a click outside and a swipe in `swipeDirection` close it, and focus returns to the trigger.",
+      "variants": {},
+      "example": "import { Button, Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle, DrawerTrigger } from \"@basis/ui\";\n\n<Drawer>\n  <DrawerTrigger render={<Button variant=\"outline\" />}>Show filters</DrawerTrigger>\n  <DrawerContent>\n    <DrawerHeader>\n      <DrawerTitle>Filters</DrawerTitle>\n      <DrawerDescription>Narrow the positions shown.</DrawerDescription>\n    </DrawerHeader>\n  </DrawerContent>\n</Drawer>;\n"
+    },
+    {
+      "extends": [
+        "DrawerPrimitive.Close.Props"
+      ],
+      "family": "drawer",
+      "name": "DrawerClose",
+      "props": [],
+      "purpose": "A control that closes the drawer; `render={<Button variant=\"outline\" />}` makes it a button.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "DrawerPrimitive.Popup.Props"
+      ],
+      "family": "drawer",
+      "name": "DrawerContent",
+      "props": [],
+      "purpose": "The panel, in a portal over the veil when the drawer is modal, against the edge its swipe direction points to.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "DrawerPrimitive.Description.Props"
+      ],
+      "family": "drawer",
+      "name": "DrawerDescription",
+      "props": [],
+      "purpose": "The drawer's description, under its title, which screen readers announce with it.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<\"div\">"
+      ],
+      "family": "drawer",
+      "name": "DrawerFooter",
+      "props": [],
+      "purpose": "The drawer's actions, at its foot.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<\"div\">"
+      ],
+      "family": "drawer",
+      "name": "DrawerHeader",
+      "props": [],
+      "purpose": "The drawer's title and description, stacked at its top.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "DrawerPrimitive.Backdrop.Props"
+      ],
+      "family": "drawer",
+      "name": "DrawerOverlay",
+      "props": [],
+      "purpose": "The veil over the page behind a modal drawer.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "DrawerPrimitive.Portal.Props"
+      ],
+      "family": "drawer",
+      "name": "DrawerPortal",
+      "props": [],
+      "purpose": "Renders the drawer's popup into the page's body. `DrawerContent` includes one.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<\"div\">"
+      ],
+      "family": "drawer",
+      "name": "DrawerSwipeHandle",
+      "props": [],
+      "purpose": "The grip at the panel's leading edge. It is decoration: the panel itself takes the swipe.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "DrawerPrimitive.Title.Props"
+      ],
+      "family": "drawer",
+      "name": "DrawerTitle",
+      "props": [],
+      "purpose": "The drawer's title, which names it for assistive technology.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "DrawerPrimitive.Trigger.Props"
+      ],
+      "family": "drawer",
+      "name": "DrawerTrigger",
+      "props": [],
+      "purpose": "The control that opens the drawer; `render={<Button />}` makes it a button.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "MenuPrimitive.Root.Props"
+      ],
+      "family": "dropdown-menu",
+      "name": "DropdownMenu",
+      "props": [],
+      "purpose": "A dropdown menu: a list of actions or options behind a button. Arrow keys move through its items, typing jumps to one, Enter or a click runs it, and Escape closes the menu and returns focus to the trigger.",
+      "variants": {},
+      "example": "import { Button, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from \"@basis/ui\";\n\n<DropdownMenu>\n  <DropdownMenuTrigger render={<Button variant=\"outline\" />}>Export</DropdownMenuTrigger>\n  <DropdownMenuContent><DropdownMenuItem onClick={() => undefined}>As CSV</DropdownMenuItem></DropdownMenuContent>\n</DropdownMenu>;\n"
+    },
+    {
+      "extends": [
+        "MenuPrimitive.CheckboxItem.Props"
+      ],
+      "family": "dropdown-menu",
+      "name": "DropdownMenuCheckboxItem",
+      "props": [
+        {
+          "description": "",
+          "name": "inset",
+          "optional": true,
+          "type": "boolean"
+        }
+      ],
+      "purpose": "An option that is on or off, with a check at its end when on.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "MenuPrimitive.Popup.Props",
+        "Pick< MenuPrimitive.Positioner.Props, \"align\" | \"alignOffset\" | \"side\" | \"sideOffset\" >"
+      ],
+      "family": "dropdown-menu",
+      "name": "DropdownMenuContent",
+      "props": [],
+      "purpose": "The menu's popup, in a portal, on the trigger's `side` (`bottom` by default), at least as wide as the trigger.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "MenuPrimitive.Group.Props"
+      ],
+      "family": "dropdown-menu",
+      "name": "DropdownMenuGroup",
+      "props": [],
+      "purpose": "Items that belong together, named by a DropdownMenuLabel inside it.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "MenuPrimitive.Item.Props"
+      ],
+      "family": "dropdown-menu",
+      "name": "DropdownMenuItem",
+      "props": [
+        {
+          "description": "",
+          "name": "inset",
+          "optional": true,
+          "type": "boolean"
+        },
+        {
+          "description": "",
+          "name": "variant",
+          "optional": true,
+          "type": "\"default\" | \"destructive\""
+        }
+      ],
+      "purpose": "An action. `variant=\"destructive\"` marks one that deletes or cannot be undone; `inset` lines it up with items that have an icon.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "MenuPrimitive.GroupLabel.Props"
+      ],
+      "family": "dropdown-menu",
+      "name": "DropdownMenuLabel",
+      "props": [
+        {
+          "description": "",
+          "name": "inset",
+          "optional": true,
+          "type": "boolean"
+        }
+      ],
+      "purpose": "A group's heading, inside its DropdownMenuGroup. `inset` lines it up with items that have an icon.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "MenuPrimitive.Portal.Props"
+      ],
+      "family": "dropdown-menu",
+      "name": "DropdownMenuPortal",
+      "props": [],
+      "purpose": "Renders the dropdown menu's popup into the page's body. `DropdownMenuContent` includes one.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "MenuPrimitive.RadioGroup.Props"
+      ],
+      "family": "dropdown-menu",
+      "name": "DropdownMenuRadioGroup",
+      "props": [],
+      "purpose": "Options of which one is chosen, each a DropdownMenuRadioItem.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "MenuPrimitive.RadioItem.Props"
+      ],
+      "family": "dropdown-menu",
+      "name": "DropdownMenuRadioItem",
+      "props": [
+        {
+          "description": "",
+          "name": "inset",
+          "optional": true,
+          "type": "boolean"
+        }
+      ],
+      "purpose": "One option of a DropdownMenuRadioGroup, with a check at its end when chosen.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "MenuPrimitive.Separator.Props"
+      ],
+      "family": "dropdown-menu",
+      "name": "DropdownMenuSeparator",
+      "props": [],
+      "purpose": "A line between groups of a dropdown menu's items.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<\"span\">"
+      ],
+      "family": "dropdown-menu",
+      "name": "DropdownMenuShortcut",
+      "props": [],
+      "purpose": "An item's keyboard shortcut, at its end. It only shows the shortcut; the app binds the keys.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "MenuPrimitive.SubmenuRoot.Props"
+      ],
+      "family": "dropdown-menu",
+      "name": "DropdownMenuSub",
+      "props": [],
+      "purpose": "Holds a submenu: a DropdownMenuSubTrigger and its DropdownMenuSubContent.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<typeof DropdownMenuContent>"
+      ],
+      "family": "dropdown-menu",
+      "name": "DropdownMenuSubContent",
+      "props": [],
+      "purpose": "The submenu's popup, beside its trigger.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "MenuPrimitive.SubmenuTrigger.Props"
+      ],
+      "family": "dropdown-menu",
+      "name": "DropdownMenuSubTrigger",
+      "props": [
+        {
+          "description": "",
+          "name": "inset",
+          "optional": true,
+          "type": "boolean"
+        }
+      ],
+      "purpose": "The item that opens a submenu, on hover, a click, Enter or the right arrow key.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "MenuPrimitive.Trigger.Props"
+      ],
+      "family": "dropdown-menu",
+      "name": "DropdownMenuTrigger",
+      "props": [],
+      "purpose": "The button that opens the menu. Render it as a Button, as in `render={<Button variant=\"outline\" />}`.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "PreviewCardPrimitive.Root.Props"
+      ],
+      "family": "hover-card",
+      "name": "HoverCard",
+      "props": [],
+      "purpose": "A hover card: a preview of what a link leads to, shown while the pointer rests on the link or the link has keyboard focus. It is for sighted pointer users; what it shows must also be reachable by following the link.",
+      "variants": {},
+      "example": "import { HoverCard, HoverCardContent, HoverCardTrigger } from \"@basis/ui\";\n\n<HoverCard>\n  <HoverCardTrigger href=\"/bonds/US91282CRF04\">US91282CRF04</HoverCardTrigger>\n  <HoverCardContent>Treasury 4.125% 2036</HoverCardContent>\n</HoverCard>;\n"
+    },
+    {
+      "extends": [
+        "PreviewCardPrimitive.Popup.Props",
+        "Pick< PreviewCardPrimitive.Positioner.Props, \"align\" | \"alignOffset\" | \"side\" | \"sideOffset\" >"
+      ],
+      "family": "hover-card",
+      "name": "HoverCardContent",
+      "props": [],
+      "purpose": "The card, in a portal, on the trigger's `side` (`bottom` by default). `className` may set its width.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "PreviewCardPrimitive.Trigger.Props"
+      ],
+      "family": "hover-card",
+      "name": "HoverCardTrigger",
+      "props": [],
+      "purpose": "The link the card previews: an `<a>`, which takes `href`.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "MenubarPrimitive.Props"
+      ],
+      "family": "menubar",
+      "name": "Menubar",
+      "props": [],
+      "purpose": "A menubar: a row of menus, as at the top of a desktop application. The arrow keys move between its menus and through each one's items, and Escape closes the open menu and returns focus to its trigger.",
+      "variants": {},
+      "example": "import { Menubar, MenubarContent, MenubarItem, MenubarMenu, MenubarTrigger } from \"@basis/ui\";\n\n<Menubar>\n  <MenubarMenu>\n    <MenubarTrigger>File</MenubarTrigger>\n    <MenubarContent>\n      <MenubarItem onClick={() => undefined}>Export</MenubarItem>\n    </MenubarContent>\n  </MenubarMenu>\n</Menubar>;\n"
+    },
+    {
+      "extends": [
+        "MenuPrimitive.CheckboxItem.Props"
+      ],
+      "family": "menubar",
+      "name": "MenubarCheckboxItem",
+      "props": [
+        {
+          "description": "",
+          "name": "inset",
+          "optional": true,
+          "type": "boolean"
+        }
+      ],
+      "purpose": "An option that is on or off, with a check at its start when on.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<typeof DropdownMenuContent>"
+      ],
+      "family": "menubar",
+      "name": "MenubarContent",
+      "props": [],
+      "purpose": "The menu's popup, under its trigger.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<typeof DropdownMenuGroup>"
+      ],
+      "family": "menubar",
+      "name": "MenubarGroup",
+      "props": [],
+      "purpose": "A group of a menubar menu's items, which a `MenubarSeparator` sets apart from the next.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "MenuPrimitive.Item.Props"
+      ],
+      "family": "menubar",
+      "name": "MenubarItem",
+      "props": [
+        {
+          "description": "",
+          "name": "inset",
+          "optional": true,
+          "type": "boolean"
+        },
+        {
+          "description": "",
+          "name": "variant",
+          "optional": true,
+          "type": "\"default\" | \"destructive\""
+        }
+      ],
+      "purpose": "An action. `variant=\"destructive\"` marks one that deletes or cannot be undone; `inset` lines it up with items that have an icon.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "MenuPrimitive.GroupLabel.Props"
+      ],
+      "family": "menubar",
+      "name": "MenubarLabel",
+      "props": [
+        {
+          "description": "",
+          "name": "inset",
+          "optional": true,
+          "type": "boolean"
+        }
+      ],
+      "purpose": "A group's heading, inside its MenubarGroup. `inset` lines it up with items that have an icon.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<typeof DropdownMenu>"
+      ],
+      "family": "menubar",
+      "name": "MenubarMenu",
+      "props": [],
+      "purpose": "One of the bar's menus: a MenubarTrigger and its MenubarContent.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<typeof DropdownMenuPortal>"
+      ],
+      "family": "menubar",
+      "name": "MenubarPortal",
+      "props": [],
+      "purpose": "Renders a menubar menu's popup into the page's body. `MenubarContent` includes one.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<typeof DropdownMenuRadioGroup>"
+      ],
+      "family": "menubar",
+      "name": "MenubarRadioGroup",
+      "props": [],
+      "purpose": "Options of which one is chosen, each a MenubarRadioItem.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "MenuPrimitive.RadioItem.Props"
+      ],
+      "family": "menubar",
+      "name": "MenubarRadioItem",
+      "props": [
+        {
+          "description": "",
+          "name": "inset",
+          "optional": true,
+          "type": "boolean"
+        }
+      ],
+      "purpose": "One option of a MenubarRadioGroup, with a check at its start when chosen.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<typeof DropdownMenuSeparator>"
+      ],
+      "family": "menubar",
+      "name": "MenubarSeparator",
+      "props": [],
+      "purpose": "A line between groups of a menubar menu's items.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<typeof DropdownMenuShortcut>"
+      ],
+      "family": "menubar",
+      "name": "MenubarShortcut",
+      "props": [],
+      "purpose": "An item's keyboard shortcut, at its end. It only shows the shortcut; the app binds the keys.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<typeof DropdownMenuSub>"
+      ],
+      "family": "menubar",
+      "name": "MenubarSub",
+      "props": [],
+      "purpose": "Holds a submenu: a MenubarSubTrigger and its MenubarSubContent.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<typeof DropdownMenuSubContent>"
+      ],
+      "family": "menubar",
+      "name": "MenubarSubContent",
+      "props": [],
+      "purpose": "The submenu's popup, beside its trigger.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<typeof DropdownMenuSubTrigger>"
+      ],
+      "family": "menubar",
+      "name": "MenubarSubTrigger",
+      "props": [],
+      "purpose": "The item that opens a submenu, on hover, a click, Enter or the right arrow key.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "MenuPrimitive.Trigger.Props"
+      ],
+      "family": "menubar",
+      "name": "MenubarTrigger",
+      "props": [],
+      "purpose": "The menu's name in the bar, which opens it.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "PopoverPrimitive.Root.Props"
+      ],
+      "family": "popover",
+      "name": "Popover",
+      "props": [],
+      "purpose": "A popover: a panel anchored to its trigger, for a short form or details. Escape and a click outside close it, and focus moves into it and returns to the trigger.",
+      "variants": {},
+      "example": "import { Button, Popover, PopoverContent, PopoverHeader, PopoverTitle, PopoverTrigger } from \"@basis/ui\";\n\n<Popover>\n  <PopoverTrigger render={<Button variant=\"outline\" />}>Columns</PopoverTrigger>\n  <PopoverContent>\n    <PopoverHeader>\n      <PopoverTitle>Columns shown</PopoverTitle>\n    </PopoverHeader>\n  </PopoverContent>\n</Popover>;\n"
+    },
+    {
+      "extends": [
+        "PopoverPrimitive.Popup.Props",
+        "Pick< PopoverPrimitive.Positioner.Props, \"align\" | \"alignOffset\" | \"side\" | \"sideOffset\" >"
+      ],
+      "family": "popover",
+      "name": "PopoverContent",
+      "props": [],
+      "purpose": "The panel, in a portal, on the trigger's `side` (`bottom` by default) at `sideOffset` pixels from it. `className` may set its width, such as `w-80`.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "PopoverPrimitive.Description.Props"
+      ],
+      "family": "popover",
+      "name": "PopoverDescription",
+      "props": [],
+      "purpose": "The popover's description, under its title.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<\"div\">"
+      ],
+      "family": "popover",
+      "name": "PopoverHeader",
+      "props": [],
+      "purpose": "The popover's title and description, stacked at its top.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "PopoverPrimitive.Title.Props"
+      ],
+      "family": "popover",
+      "name": "PopoverTitle",
+      "props": [],
+      "purpose": "The popover's title, which names it for assistive technology.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "PopoverPrimitive.Trigger.Props"
+      ],
+      "family": "popover",
+      "name": "PopoverTrigger",
+      "props": [],
+      "purpose": "The control that opens the popover; `render={<Button variant=\"outline\" />}` makes it a button.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "SheetPrimitive.Root.Props"
+      ],
+      "family": "sheet",
+      "name": "Sheet",
+      "props": [],
+      "purpose": "A sheet: a panel over the page from one edge, for a form or details beside the current page. It is a dialog: Escape, a click outside and its close button close it, and focus returns to the trigger.",
+      "variants": {},
+      "example": "import { Button, Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from \"@basis/ui\";\n\n<Sheet>\n  <SheetTrigger render={<Button variant=\"outline\" />}>Trade details</SheetTrigger>\n  <SheetContent>\n    <SheetHeader>\n      <SheetTitle>Trade details</SheetTitle>\n      <SheetDescription>Bought 5,000 par at 99-16.</SheetDescription>\n    </SheetHeader>\n  </SheetContent>\n</Sheet>;\n"
+    },
+    {
+      "extends": [
+        "SheetPrimitive.Close.Props"
+      ],
+      "family": "sheet",
+      "name": "SheetClose",
+      "props": [],
+      "purpose": "A control that closes the sheet; `render={<Button variant=\"outline\" />}` makes it a button.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "SheetPrimitive.Popup.Props"
+      ],
+      "family": "sheet",
+      "name": "SheetContent",
+      "props": [
+        {
+          "description": "",
+          "name": "side",
+          "optional": true,
+          "type": "\"top\" | \"right\" | \"bottom\" | \"left\""
+        },
+        {
+          "description": "",
+          "name": "showCloseButton",
+          "optional": true,
+          "type": "boolean"
+        }
+      ],
+      "purpose": "The panel, in a portal over the veil, against the edge `side` names (`right` by default), with a close button in its corner unless `showCloseButton` is false.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "SheetPrimitive.Description.Props"
+      ],
+      "family": "sheet",
+      "name": "SheetDescription",
+      "props": [],
+      "purpose": "The sheet's description, under its title, which screen readers announce with it.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<\"div\">"
+      ],
+      "family": "sheet",
+      "name": "SheetFooter",
+      "props": [],
+      "purpose": "The sheet's actions, at its foot.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<\"div\">"
+      ],
+      "family": "sheet",
+      "name": "SheetHeader",
+      "props": [],
+      "purpose": "The sheet's title and description, stacked at its top.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "SheetPrimitive.Title.Props"
+      ],
+      "family": "sheet",
+      "name": "SheetTitle",
+      "props": [],
+      "purpose": "The sheet's title, which names it for assistive technology.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "SheetPrimitive.Trigger.Props"
+      ],
+      "family": "sheet",
+      "name": "SheetTrigger",
+      "props": [],
+      "purpose": "The control that opens the sheet; `render={<Button />}` makes it a button.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "TooltipPrimitive.Root.Props"
+      ],
+      "family": "tooltip",
+      "name": "Tooltip",
+      "props": [],
+      "purpose": "A tooltip: a short label for its trigger, shown while the pointer rests on it or it has keyboard focus. It names nothing for assistive technology, so an icon-only trigger still takes an `aria-label`.",
+      "variants": {},
+      "example": "import { Button, Tooltip, TooltipContent, TooltipTrigger } from \"@basis/ui\";\n\n<Tooltip>\n  <TooltipTrigger render={<Button variant=\"ghost\" size=\"sm\" />}>DV01</TooltipTrigger>\n  <TooltipContent>Dollar value of a basis point</TooltipContent>\n</Tooltip>;\n"
+    },
+    {
+      "extends": [
+        "TooltipPrimitive.Popup.Props",
+        "Pick< TooltipPrimitive.Positioner.Props, \"align\" | \"alignOffset\" | \"side\" | \"sideOffset\" >"
+      ],
+      "family": "tooltip",
+      "name": "TooltipContent",
+      "props": [],
+      "purpose": "The label, in a portal, on the trigger's `side` (`top` by default), with an arrow pointing at the trigger.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "TooltipPrimitive.Provider.Props"
+      ],
+      "family": "tooltip",
+      "name": "TooltipProvider",
+      "props": [],
+      "purpose": "Shares one delay among the tooltips inside it, so that after one opens its neighbours open at once. shadcn's default delay, 0, is kept.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "TooltipPrimitive.Trigger.Props"
+      ],
+      "family": "tooltip",
+      "name": "TooltipTrigger",
+      "props": [],
+      "purpose": "The element the tooltip describes; hovering or focusing it shows the tooltip.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "AccordionPrimitive.Root.Props"
+      ],
+      "family": "accordion",
+      "name": "Accordion",
+      "props": [],
+      "purpose": "A stack of sections, each opened by its trigger. One opens at a time unless `multiple` is set.",
+      "variants": {},
+      "example": "import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from \"@basis/ui\";\n\n<Accordion>\n  <AccordionItem value=\"terms\">\n    <AccordionTrigger>Terms</AccordionTrigger>\n    <AccordionContent>Semi-annual coupon, 30/360.</AccordionContent>\n  </AccordionItem>\n</Accordion>;\n"
+    },
+    {
+      "extends": [
+        "AccordionPrimitive.Panel.Props"
+      ],
+      "family": "accordion",
+      "name": "AccordionContent",
+      "props": [],
+      "purpose": "The section's content, a region named by its trigger, which fades in as it opens.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "AccordionPrimitive.Item.Props"
+      ],
+      "family": "accordion",
+      "name": "AccordionItem",
+      "props": [],
+      "purpose": "One section: a trigger and the content it shows, with a line between it and the next.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "AccordionPrimitive.Trigger.Props"
+      ],
+      "family": "accordion",
+      "name": "AccordionTrigger",
+      "props": [],
+      "purpose": "The section's heading: a button, named by its text, that Enter and Space open and close, with a chevron that points down when closed and up when open. Tab moves between the triggers: Base UI 1.9 dropped arrow-key focus between them, as the WAI-ARIA authoring practices did.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<\"div\">"
+      ],
+      "family": "aspect-ratio",
+      "name": "AspectRatio",
+      "props": [
+        {
+          "description": "Width over height, such as `16 / 9`.",
+          "name": "ratio",
+          "optional": false,
+          "type": "number"
+        }
+      ],
+      "purpose": "A box whose height follows its width at `ratio`. Its content, such as an image, fills it with `size-full`.",
+      "variants": {},
+      "example": "import { AspectRatio } from \"@basis/ui\";\n\n<AspectRatio ratio={16 / 9}>\n  <img src=\"/curve.png\" alt=\"Treasury curve\" />\n</AspectRatio>;\n"
+    },
+    {
+      "extends": [
+        "ComponentProps<\"nav\">"
+      ],
+      "family": "breadcrumb",
+      "name": "Breadcrumb",
+      "props": [],
+      "purpose": "The trail of links to the current page: a navigation landmark named \"breadcrumb\".",
+      "variants": {},
+      "example": "import {\n  Breadcrumb,\n  BreadcrumbItem,\n  BreadcrumbLink,\n  BreadcrumbList,\n  BreadcrumbPage,\n  BreadcrumbSeparator,\n} from \"@basis/ui\";\n\n<Breadcrumb>\n  <BreadcrumbList>\n    <BreadcrumbItem>\n      <BreadcrumbLink href=\"/bonds\">Bonds</BreadcrumbLink>\n    </BreadcrumbItem>\n    <BreadcrumbSeparator />\n    <BreadcrumbItem>\n      <BreadcrumbPage>US91282CRF04</BreadcrumbPage>\n    </BreadcrumbItem>\n  </BreadcrumbList>\n</Breadcrumb>;\n"
+    },
+    {
+      "extends": [
+        "ComponentProps<\"span\">"
+      ],
+      "family": "breadcrumb",
+      "name": "BreadcrumbEllipsis",
+      "props": [],
+      "purpose": "Stands for the items left out of a long trail, often as a menu's trigger.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<\"li\">"
+      ],
+      "family": "breadcrumb",
+      "name": "BreadcrumbItem",
+      "props": [],
+      "purpose": "One step of the trail: a `BreadcrumbLink`, or the `BreadcrumbPage` for the current page.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "useRender.ComponentProps<\"a\">"
+      ],
+      "family": "breadcrumb",
+      "name": "BreadcrumbLink",
+      "props": [],
+      "purpose": "A link to an earlier page: an `<a>`, or the router's link through `render`, as in `<BreadcrumbLink render={<Link to=\"/desks\" />}>Desks</BreadcrumbLink>`.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<\"ol\">"
+      ],
+      "family": "breadcrumb",
+      "name": "BreadcrumbList",
+      "props": [],
+      "purpose": "The ordered list of the trail's items and separators.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<\"span\">"
+      ],
+      "family": "breadcrumb",
+      "name": "BreadcrumbPage",
+      "props": [],
+      "purpose": "The current page, which is not a link: marked `aria-current=\"page\"`. shadcn also gives it `role=\"link\"` and `aria-disabled`, which announce a link that cannot be followed or focused; it is plain text here.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<\"li\">"
+      ],
+      "family": "breadcrumb",
+      "name": "BreadcrumbSeparator",
+      "props": [],
+      "purpose": "The mark between two items, a chevron unless it is given children. Assistive technology skips it.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<\"div\">"
+      ],
+      "family": "card",
+      "name": "Card",
+      "props": [
+        {
+          "description": "",
+          "name": "size",
+          "optional": true,
+          "type": "\"default\" | \"sm\""
+        }
+      ],
+      "purpose": "A card: a raised panel on the `card` surface. `size=\"sm\"` tightens its spacing.",
+      "variants": {},
+      "example": "import { Card, CardContent, CardDescription, CardHeader, CardTitle, Money } from \"@basis/ui\";\n\n<Card>\n  <CardHeader>\n    <CardTitle>Market value</CardTitle>\n    <CardDescription>At yesterday's close</CardDescription>\n  </CardHeader>\n  <CardContent>\n    <Money value={1_234_567.89} />\n  </CardContent>\n</Card>;\n"
+    },
+    {
+      "extends": [
+        "ComponentProps<\"div\">"
+      ],
+      "family": "card",
+      "name": "CardAction",
+      "props": [],
+      "purpose": "A control at the header's end, such as a menu button, beside the title and description.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<\"div\">"
+      ],
+      "family": "card",
+      "name": "CardContent",
+      "props": [],
+      "purpose": "The card's body.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<\"div\">"
+      ],
+      "family": "card",
+      "name": "CardDescription",
+      "props": [],
+      "purpose": "A line under the card's title saying what the card shows.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<\"div\">"
+      ],
+      "family": "card",
+      "name": "CardFooter",
+      "props": [],
+      "purpose": "The card's last row, for its actions or a note.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<\"div\">"
+      ],
+      "family": "card",
+      "name": "CardHeader",
+      "props": [],
+      "purpose": "The card's title, description and action. With an action, the action takes a column of its own at the end.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<\"div\">"
+      ],
+      "family": "card",
+      "name": "CardTitle",
+      "props": [],
+      "purpose": "The card's title.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "CollapsiblePrimitive.Root.Props"
+      ],
+      "family": "collapsible",
+      "name": "Collapsible",
+      "props": [],
+      "purpose": "A section that shows and hides its content. `open` and `onOpenChange` control it, or `defaultOpen` starts it.",
+      "variants": {},
+      "example": "import { Collapsible, CollapsibleContent, CollapsibleTrigger } from \"@basis/ui\";\n\n<Collapsible>\n  <CollapsibleTrigger>Show the cash flows</CollapsibleTrigger>\n  <CollapsibleContent>Coupons on 15 May and 15 November.</CollapsibleContent>\n</Collapsible>;\n"
+    },
+    {
+      "extends": [
+        "CollapsiblePrimitive.Panel.Props"
+      ],
+      "family": "collapsible",
+      "name": "CollapsibleContent",
+      "props": [],
+      "purpose": "What the collapsible shows when open and hides when closed.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "CollapsiblePrimitive.Trigger.Props"
+      ],
+      "family": "collapsible",
+      "name": "CollapsibleTrigger",
+      "props": [],
+      "purpose": "The button that opens and closes the content, with `aria-expanded` and `aria-controls` set. Enter and Space toggle it, as on any button.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "useRender.ComponentProps<\"div\">"
+      ],
+      "family": "item",
+      "name": "Item",
+      "props": [],
+      "purpose": "One item: a `<div>`, or the element `render` names, such as a link, with its variant and size as `data-variant` and `data-size`.",
+      "variants": {
+        "variant": {
+          "default": "default",
+          "options": [
+            "default",
+            "outline",
+            "muted"
+          ]
+        },
+        "size": {
+          "default": "default",
+          "options": [
+            "default",
+            "sm",
+            "xs"
+          ]
+        }
+      },
+      "example": "import { Button, Item, ItemActions, ItemContent, ItemDescription, ItemTitle } from \"@basis/ui\";\n\n<Item variant=\"outline\">\n  <ItemContent>\n    <ItemTitle>Rates book</ItemTitle>\n    <ItemDescription>42 positions</ItemDescription>\n  </ItemContent>\n  <ItemActions>\n    <Button size=\"sm\" variant=\"outline\">\n      Open\n    </Button>\n  </ItemActions>\n</Item>;\n"
+    },
+    {
+      "extends": [
+        "ComponentProps<\"div\">"
+      ],
+      "family": "item",
+      "name": "ItemActions",
+      "props": [],
+      "purpose": "The item's buttons, at its end.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<\"div\">"
+      ],
+      "family": "item",
+      "name": "ItemContent",
+      "props": [],
+      "purpose": "The item's title and description, which take the room the media and actions leave.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<\"p\">"
+      ],
+      "family": "item",
+      "name": "ItemDescription",
+      "props": [],
+      "purpose": "The item's description, cut at two lines.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<\"div\">"
+      ],
+      "family": "item",
+      "name": "ItemFooter",
+      "props": [],
+      "purpose": "A row across the item's full width, below its content.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<\"div\">"
+      ],
+      "family": "item",
+      "name": "ItemGroup",
+      "props": [],
+      "purpose": "A stack of items, with a gap that follows its items' size. shadcn gives it `role=\"list\"`, which requires children with the `listitem` role that an item, often a link, cannot take, so it is a plain group here.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<\"div\">"
+      ],
+      "family": "item",
+      "name": "ItemHeader",
+      "props": [],
+      "purpose": "A row across the item's full width, above its content.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<\"div\">"
+      ],
+      "family": "item",
+      "name": "ItemMedia",
+      "props": [],
+      "purpose": "The item's icon or image, at its start.",
+      "variants": {
+        "variant": {
+          "default": "default",
+          "options": [
+            "default",
+            "icon",
+            "image"
+          ]
+        }
+      }
+    },
+    {
+      "extends": [
+        "ComponentProps<typeof Separator>"
+      ],
+      "family": "item",
+      "name": "ItemSeparator",
+      "props": [],
+      "purpose": "A line between two items in a group.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<\"div\">"
+      ],
+      "family": "item",
+      "name": "ItemTitle",
+      "props": [],
+      "purpose": "The item's title, on one line.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "NavigationMenuPrimitive.Root.Props",
+        "Pick<NavigationMenuPrimitive.Positioner.Props, \"align\">"
+      ],
+      "family": "navigation-menu",
+      "name": "NavigationMenu",
+      "props": [],
+      "purpose": "A site's top-level navigation: a navigation landmark holding a NavigationMenuList. `align` places the popup against the list.",
+      "variants": {},
+      "example": "import {\n  NavigationMenu,\n  NavigationMenuContent,\n  NavigationMenuItem,\n  NavigationMenuLink,\n  NavigationMenuList,\n  NavigationMenuTrigger,\n} from \"@basis/ui\";\n\n<NavigationMenu>\n  <NavigationMenuList>\n    <NavigationMenuItem>\n      <NavigationMenuTrigger>Books</NavigationMenuTrigger>\n      <NavigationMenuContent>\n        <NavigationMenuLink href=\"/books/rates\">Rates</NavigationMenuLink>\n        <NavigationMenuLink href=\"/books/credit\">Credit</NavigationMenuLink>\n      </NavigationMenuContent>\n    </NavigationMenuItem>\n  </NavigationMenuList>\n</NavigationMenu>;\n"
+    },
+    {
+      "extends": [
+        "NavigationMenuPrimitive.Content.Props"
+      ],
+      "family": "navigation-menu",
+      "name": "NavigationMenuContent",
+      "props": [],
+      "purpose": "What a trigger opens, shown in the popup. It slides a step in from the side of the item opened.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "NavigationMenuPrimitive.Icon.Props"
+      ],
+      "family": "navigation-menu",
+      "name": "NavigationMenuIndicator",
+      "props": [],
+      "purpose": "A small arrow below the item whose menu is open.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "NavigationMenuPrimitive.Item.Props"
+      ],
+      "family": "navigation-menu",
+      "name": "NavigationMenuItem",
+      "props": [],
+      "purpose": "One top-level item: a trigger and its content, or a link.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "NavigationMenuPrimitive.Link.Props"
+      ],
+      "family": "navigation-menu",
+      "name": "NavigationMenuLink",
+      "props": [],
+      "purpose": "A link, in a menu's content or, with `variant=\"trigger\"`, in the top-level list beside the triggers. `active` marks the current page with `aria-current=\"page\"`, and `render` makes it the router's link component.",
+      "variants": {
+        "variant": {
+          "default": "default",
+          "options": [
+            "default",
+            "trigger"
+          ]
+        }
+      }
+    },
+    {
+      "extends": [
+        "NavigationMenuPrimitive.List.Props"
+      ],
+      "family": "navigation-menu",
+      "name": "NavigationMenuList",
+      "props": [],
+      "purpose": "The row of the navigation menu's items.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "NavigationMenuPrimitive.Positioner.Props"
+      ],
+      "family": "navigation-menu",
+      "name": "NavigationMenuPositioner",
+      "props": [],
+      "purpose": "Where the menus' popup opens: below the list, at its start by default. NavigationMenu renders one already.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "NavigationMenuPrimitive.Trigger.Props"
+      ],
+      "family": "navigation-menu",
+      "name": "NavigationMenuTrigger",
+      "props": [],
+      "purpose": "The button that opens its item's content, named by its text, with a chevron that turns over while it is open.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<\"nav\">"
+      ],
+      "family": "pagination",
+      "name": "Pagination",
+      "props": [],
+      "purpose": "The pages' links: a navigation landmark named \"pagination\".",
+      "variants": {},
+      "example": "import {\n  Pagination,\n  PaginationContent,\n  PaginationItem,\n  PaginationLink,\n  PaginationNext,\n  PaginationPrevious,\n} from \"@basis/ui\";\n\n<Pagination>\n  <PaginationContent>\n    <PaginationItem>\n      <PaginationPrevious href=\"?page=1\" />\n    </PaginationItem>\n    <PaginationItem>\n      <PaginationLink href=\"?page=2\" isActive>\n        2\n      </PaginationLink>\n    </PaginationItem>\n    <PaginationItem>\n      <PaginationNext href=\"?page=3\" />\n    </PaginationItem>\n  </PaginationContent>\n</Pagination>;\n"
+    },
+    {
+      "extends": [
+        "ComponentProps<\"ul\">"
+      ],
+      "family": "pagination",
+      "name": "PaginationContent",
+      "props": [],
+      "purpose": "The row of the pagination's items.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<\"span\">"
+      ],
+      "family": "pagination",
+      "name": "PaginationEllipsis",
+      "props": [],
+      "purpose": "Stands for the pages left out between two links. Assistive technology skips it.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<\"li\">"
+      ],
+      "family": "pagination",
+      "name": "PaginationItem",
+      "props": [],
+      "purpose": "One item of the pagination: a link, the previous or next link, or an ellipsis.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "useRender.ComponentProps<\"a\">"
+      ],
+      "family": "pagination",
+      "name": "PaginationLink",
+      "props": [
+        {
+          "description": "Whether the link is to the page shown, which it marks with `aria-current=\"page\"` and the outline look.",
+          "name": "isActive",
+          "optional": true,
+          "type": "boolean"
+        },
+        {
+          "description": "Button's size; `icon` by default, a square for a page number.",
+          "name": "size",
+          "optional": true,
+          "type": "VariantProps<typeof paginationLinkVariants>[\"size\"]"
+        }
+      ],
+      "purpose": "A link to one page, drawn as a ghost ButtonLink, or an outline one for the page shown.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "useRender.ComponentProps<\"a\">"
+      ],
+      "family": "pagination",
+      "name": "PaginationNext",
+      "props": [
+        {
+          "description": "Whether the link is to the page shown, which it marks with `aria-current=\"page\"` and the outline look.",
+          "name": "isActive",
+          "optional": true,
+          "type": "boolean"
+        },
+        {
+          "description": "Button's size; `icon` by default, a square for a page number.",
+          "name": "size",
+          "optional": true,
+          "type": "VariantProps<typeof paginationLinkVariants>[\"size\"]"
+        },
+        {
+          "description": "",
+          "name": "text",
+          "optional": true,
+          "type": "string"
+        }
+      ],
+      "purpose": "The link to the next page, named \"Go to next page\". Its text shows from the `sm` breakpoint up.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "useRender.ComponentProps<\"a\">"
+      ],
+      "family": "pagination",
+      "name": "PaginationPrevious",
+      "props": [
+        {
+          "description": "Whether the link is to the page shown, which it marks with `aria-current=\"page\"` and the outline look.",
+          "name": "isActive",
+          "optional": true,
+          "type": "boolean"
+        },
+        {
+          "description": "Button's size; `icon` by default, a square for a page number.",
+          "name": "size",
+          "optional": true,
+          "type": "VariantProps<typeof paginationLinkVariants>[\"size\"]"
+        },
+        {
+          "description": "",
+          "name": "text",
+          "optional": true,
+          "type": "string"
+        }
+      ],
+      "purpose": "The link to the previous page, named \"Go to previous page\". Its text shows from the `sm` breakpoint up.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "Omit<ComponentProps<\"div\">, \"ref\">"
+      ],
+      "family": "resizable",
+      "name": "ResizableHandle",
+      "props": [
+        {
+          "description": "Draws a grip on the line.",
+          "name": "withHandle",
+          "optional": true,
+          "type": "boolean | undefined"
+        },
+        {
+          "description": "Stops this handle from resizing its panels.",
+          "name": "disabled",
+          "optional": true,
+          "type": "boolean | undefined"
+        }
+      ],
+      "purpose": "The handle between two panels: a focusable separator, which an app names with `aria-label`, such as \"Resize the trade list\". Drag it, or focus it and use the arrow keys, Home and End.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "Omit<ComponentProps<\"div\">, \"ref\">"
+      ],
+      "family": "resizable",
+      "name": "ResizablePanel",
+      "props": [
+        {
+          "description": "Names the panel in a stored layout and in its handle's `aria-controls`; generated when left out.",
+          "name": "id",
+          "optional": true,
+          "type": "string | undefined"
+        },
+        {
+          "description": "Its starting size, in percent; without one it shares what the other panels leave.",
+          "name": "defaultSize",
+          "optional": true,
+          "type": "number | undefined"
+        },
+        {
+          "description": "The smallest it may be, in percent; 0 by default.",
+          "name": "minSize",
+          "optional": true,
+          "type": "number | undefined"
+        },
+        {
+          "description": "The largest it may be, in percent; 100 by default.",
+          "name": "maxSize",
+          "optional": true,
+          "type": "number | undefined"
+        }
+      ],
+      "purpose": "A panel of a ResizablePanelGroup, which must be one of the group's own children.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "Omit<ComponentProps<\"div\">, \"ref\">"
+      ],
+      "family": "resizable",
+      "name": "ResizablePanelGroup",
+      "props": [
+        {
+          "description": "`horizontal` puts the panels side by side, `vertical` stacks them.",
+          "name": "orientation",
+          "optional": true,
+          "type": "Orientation | undefined"
+        },
+        {
+          "description": "The sizes to start from, by panel `id`, such as a layout `onLayoutChanged` stored. Read once, on mount.",
+          "name": "defaultLayout",
+          "optional": true,
+          "type": "ResizableLayout | undefined"
+        },
+        {
+          "description": "Called with the new layout when a drag ends or a key moves a handle: the time to store it.",
+          "name": "onLayoutChanged",
+          "optional": true,
+          "type": "((layout: ResizableLayout) => void) | undefined"
+        },
+        {
+          "description": "Stops every handle in the group from resizing.",
+          "name": "disabled",
+          "optional": true,
+          "type": "boolean | undefined"
+        }
+      ],
+      "purpose": "A group of panels split by handles, filling its parent. Give each panel an `id` when its layout is stored.",
+      "variants": {},
+      "example": "import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from \"@basis/ui\";\n\n<ResizablePanelGroup orientation=\"horizontal\">\n  <ResizablePanel>Positions</ResizablePanel>\n  <ResizableHandle />\n  <ResizablePanel>Position details</ResizablePanel>\n</ResizablePanelGroup>;\n"
+    },
+    {
+      "extends": [
+        "ScrollAreaPrimitive.Root.Props"
+      ],
+      "family": "scroll-area",
+      "name": "ScrollArea",
+      "props": [],
+      "purpose": "A region that scrolls its content with a thin scrollbar of the theme's own, vertical by default. Give it a height, such as `h-72`, and it scrolls what overflows. Add a horizontal `ScrollBar` for content wider than it.",
+      "variants": {},
+      "example": "import { ScrollArea } from \"@basis/ui\";\n\n<ScrollArea className=\"h-48\">\n  <p>A long list of trades.</p>\n</ScrollArea>;\n"
+    },
+    {
+      "extends": [
+        "ScrollAreaPrimitive.Scrollbar.Props"
+      ],
+      "family": "scroll-area",
+      "name": "ScrollBar",
+      "props": [],
+      "purpose": "A scrollbar for a `ScrollArea`, vertical by default; `ScrollArea` already holds a vertical one.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "SeparatorPrimitive.Props"
+      ],
+      "family": "separator",
+      "name": "Separator",
+      "props": [],
+      "purpose": "A line between groups of content, horizontal by default. Screen readers announce it as a separator.",
+      "variants": {},
+      "example": "import { Separator } from \"@basis/ui\";\n\n<>\n  <p>Rates</p>\n  <Separator />\n  <p>Credit</p>\n</>;\n"
+    },
+    {
+      "extends": [
+        "ComponentProps<\"div\">"
+      ],
+      "family": "sidebar",
+      "name": "Sidebar",
+      "props": [
+        {
+          "description": "",
+          "name": "side",
+          "optional": true,
+          "type": "SidebarSide | undefined"
+        },
+        {
+          "description": "`sidebar` sits against the page's edge, `floating` is a raised panel, `inset` sets the page in a panel.",
+          "name": "variant",
+          "optional": true,
+          "type": "SidebarVariant | undefined"
+        },
+        {
+          "description": "`offcanvas` slides it away, `icon` folds it to its icons, `none` keeps it open.",
+          "name": "collapsible",
+          "optional": true,
+          "type": "SidebarCollapsible | undefined"
+        }
+      ],
+      "purpose": "The app's sidebar, for its navigation. It folds by `collapsible`, and is a sheet below the `md` breakpoint.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "useRender.ComponentProps<\"main\">"
+      ],
+      "family": "sidebar",
+      "name": "SidebarInset",
+      "props": [],
+      "purpose": "The page beside the sidebar, its `<main>`, or the element `render` names where the page already has one. With the inset variant it sits in a raised panel.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<\"div\">"
+      ],
+      "family": "sidebar",
+      "name": "SidebarProvider",
+      "props": [
+        {
+          "description": "Whether the sidebar starts open when the cookie holds no choice yet; `true` by default.",
+          "name": "defaultOpen",
+          "optional": true,
+          "type": "boolean | undefined"
+        },
+        {
+          "description": "Whether the sidebar is open, when the app controls it.",
+          "name": "open",
+          "optional": true,
+          "type": "boolean | undefined"
+        },
+        {
+          "description": "",
+          "name": "onOpenChange",
+          "optional": true,
+          "type": "((open: boolean) => void) | undefined"
+        }
+      ],
+      "purpose": "Holds the sidebar's state for the Sidebar, its trigger and `useSidebar`, and lays the sidebar and the page's SidebarInset out side by side. Ctrl+B or Cmd+B toggles the sidebar, and the `basis-ui-sidebar` cookie keeps the choice for a week.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<\"button\">"
+      ],
+      "family": "sidebar",
+      "name": "SidebarRail",
+      "props": [],
+      "purpose": "A thin strip along the sidebar's edge that toggles it when clicked, for the pointer. It is out of the tab order, and narrower than the 24 px target, as shadcn draws it: SidebarTrigger and the shortcut do the same, which is WCAG 2.2's exception for a target with an equivalent.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<typeof Button>"
+      ],
+      "family": "sidebar",
+      "name": "SidebarTrigger",
+      "props": [],
+      "purpose": "The button that opens and closes the sidebar, named \"Toggle Sidebar\".",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<\"div\">"
+      ],
+      "family": "sidebar",
+      "name": "SidebarContent",
+      "props": [],
+      "purpose": "The sidebar's scrolling middle, between its header and footer.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<\"div\">"
+      ],
+      "family": "sidebar",
+      "name": "SidebarFooter",
+      "props": [],
+      "purpose": "The sidebar's bottom row, under its content, for the user menu or settings.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<\"div\">"
+      ],
+      "family": "sidebar",
+      "name": "SidebarHeader",
+      "props": [],
+      "purpose": "The sidebar's top row, over its content, for the app's name.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<\"input\">"
+      ],
+      "family": "sidebar",
+      "name": "SidebarInput",
+      "props": [],
+      "purpose": "A search or filter field in the sidebar, with the Input's look on the page's background.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "SeparatorPrimitive.Props"
+      ],
+      "family": "sidebar",
+      "name": "SidebarSeparator",
+      "props": [],
+      "purpose": "A line between the sidebar's sections, in the sidebar's border colour.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<\"div\">"
+      ],
+      "family": "sidebar",
+      "name": "SidebarGroup",
+      "props": [],
+      "purpose": "A group of the sidebar's content, with an optional `SidebarGroupLabel`.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "useRender.ComponentProps<\"button\">"
+      ],
+      "family": "sidebar",
+      "name": "SidebarGroupAction",
+      "props": [],
+      "purpose": "A button beside the group's label, such as one that adds an item; name it with `aria-label` or `sr-only` text.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<\"div\">"
+      ],
+      "family": "sidebar",
+      "name": "SidebarGroupContent",
+      "props": [],
+      "purpose": "The body of a sidebar group, under its label.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "useRender.ComponentProps<\"div\">"
+      ],
+      "family": "sidebar",
+      "name": "SidebarGroupLabel",
+      "props": [],
+      "purpose": "The group's heading, hidden on the icon rail.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<\"ul\">"
+      ],
+      "family": "sidebar",
+      "name": "SidebarMenu",
+      "props": [],
+      "purpose": "A list of the sidebar's menu items.",
+      "variants": {},
+      "example": "import {\n  Sidebar,\n  SidebarContent,\n  SidebarGroup,\n  SidebarGroupContent,\n  SidebarGroupLabel,\n  SidebarInset,\n  SidebarMenu,\n  SidebarMenuButton,\n  SidebarMenuItem,\n  SidebarProvider,\n  SidebarTrigger,\n} from \"@basis/ui\";\n\n<SidebarProvider>\n  <Sidebar>\n    <SidebarContent>\n      <SidebarGroup>\n        <SidebarGroupLabel>Books</SidebarGroupLabel>\n        <SidebarGroupContent>\n          <SidebarMenu>\n            <SidebarMenuItem>\n              <SidebarMenuButton isActive render={<a href=\"/positions\" />}>\n                Positions\n              </SidebarMenuButton>\n            </SidebarMenuItem>\n          </SidebarMenu>\n        </SidebarGroupContent>\n      </SidebarGroup>\n    </SidebarContent>\n  </Sidebar>\n  <SidebarInset>\n    <SidebarTrigger />\n  </SidebarInset>\n</SidebarProvider>;\n"
+    },
+    {
+      "extends": [
+        "useRender.ComponentProps<\"button\">"
+      ],
+      "family": "sidebar",
+      "name": "SidebarMenuAction",
+      "props": [
+        {
+          "description": "Shows the action only while its item is hovered or focused, from the `md` breakpoint up.",
+          "name": "showOnHover",
+          "optional": true,
+          "type": "boolean | undefined"
+        }
+      ],
+      "purpose": "A button at the end of a menu item, such as one that opens the item's menu; name it with `aria-label`.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<\"div\">"
+      ],
+      "family": "sidebar",
+      "name": "SidebarMenuBadge",
+      "props": [],
+      "purpose": "A count or short label at the end of a menu item.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<\"li\">"
+      ],
+      "family": "sidebar",
+      "name": "SidebarMenuItem",
+      "props": [],
+      "purpose": "One item of a sidebar menu, holding a `SidebarMenuButton` and, optionally, a submenu.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<\"div\">"
+      ],
+      "family": "sidebar",
+      "name": "SidebarMenuSkeleton",
+      "props": [
+        {
+          "description": "Draws an icon's place before the text.",
+          "name": "showIcon",
+          "optional": true,
+          "type": "boolean | undefined"
+        }
+      ],
+      "purpose": "A menu item's place while the menu loads.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<\"ul\">"
+      ],
+      "family": "sidebar",
+      "name": "SidebarMenuSub",
+      "props": [],
+      "purpose": "A menu item's sub-menu, indented under it and hidden on the icon rail.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "useRender.ComponentProps<\"a\">"
+      ],
+      "family": "sidebar",
+      "name": "SidebarMenuSubButton",
+      "props": [
+        {
+          "description": "",
+          "name": "size",
+          "optional": true,
+          "type": "\"sm\" | \"md\" | undefined"
+        },
+        {
+          "description": "Marks the link as the current page's, with `data-active`.",
+          "name": "isActive",
+          "optional": true,
+          "type": "boolean | undefined"
+        }
+      ],
+      "purpose": "A sub-menu's link: an `<a>`, or the router's link through `render`.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<\"li\">"
+      ],
+      "family": "sidebar",
+      "name": "SidebarMenuSubItem",
+      "props": [],
+      "purpose": "One item of a sidebar submenu, holding a `SidebarMenuSubButton`.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "useRender.ComponentProps<\"button\">"
+      ],
+      "family": "sidebar",
+      "name": "SidebarMenuButton",
+      "props": [
+        {
+          "description": "Marks the button as the current page's, with `data-active`.",
+          "name": "isActive",
+          "optional": true,
+          "type": "boolean | undefined"
+        },
+        {
+          "description": "What names the button on the folded rail: its text, or TooltipContent's props.",
+          "name": "tooltip",
+          "optional": true,
+          "type": "string | ComponentProps<typeof TooltipContent> | undefined"
+        }
+      ],
+      "purpose": "A menu's button, or its link through `render`, as in `<SidebarMenuButton render={<Link to=\"/trades\" />}>`.",
+      "variants": {
+        "variant": {
+          "default": "default",
+          "options": [
+            "default",
+            "outline"
+          ]
+        },
+        "size": {
+          "default": "default",
+          "options": [
+            "default",
+            "sm",
+            "lg"
+          ]
+        }
+      }
+    },
+    {
+      "extends": [
+        "TabsPrimitive.Root.Props"
+      ],
+      "family": "tabs",
+      "name": "Tabs",
+      "props": [],
+      "purpose": "A set of panels shown one at a time, horizontal by default. `defaultValue` or `value` names the open tab.",
+      "variants": {},
+      "example": "import { Tabs, TabsContent, TabsList, TabsTrigger } from \"@basis/ui\";\n\n<Tabs defaultValue=\"positions\">\n  <TabsList>\n    <TabsTrigger value=\"positions\">Positions</TabsTrigger>\n    <TabsTrigger value=\"trades\">Trades</TabsTrigger>\n  </TabsList>\n  <TabsContent value=\"positions\">42 positions</TabsContent>\n  <TabsContent value=\"trades\">7 trades today</TabsContent>\n</Tabs>;\n"
+    },
+    {
+      "extends": [
+        "TabsPrimitive.Panel.Props"
+      ],
+      "family": "tabs",
+      "name": "TabsContent",
+      "props": [],
+      "purpose": "The panel a trigger opens, a tabpanel named by its trigger.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "TabsPrimitive.List.Props"
+      ],
+      "family": "tabs",
+      "name": "TabsList",
+      "props": [],
+      "purpose": "The row of triggers, a tablist. `variant=\"line\"` underlines the active trigger instead of raising it.",
+      "variants": {
+        "variant": {
+          "default": "default",
+          "options": [
+            "default",
+            "line"
+          ]
+        }
+      }
+    },
+    {
+      "extends": [
+        "TabsPrimitive.Tab.Props"
+      ],
+      "family": "tabs",
+      "name": "TabsTrigger",
+      "props": [],
+      "purpose": "A tab, named by its text, that opens the panel with the same `value`.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<\"div\">"
+      ],
+      "family": "alert",
+      "name": "Alert",
+      "props": [],
+      "purpose": "A callout: an optional icon first, then an AlertTitle, an AlertDescription and an AlertAction. A status variant pairs its colour with an icon, such as `CircleCheckIcon` for `success`.",
+      "variants": {
+        "variant": {
+          "default": "default",
+          "options": [
+            "default",
+            "success",
+            "warning",
+            "info",
+            "destructive"
+          ]
+        }
+      },
+      "example": "import { Alert, AlertDescription, AlertTitle } from \"@basis/ui\";\n\n<Alert variant=\"warning\">\n  <AlertTitle>Prices are stale</AlertTitle>\n  <AlertDescription>The last price arrived at 09:30.</AlertDescription>\n</Alert>;\n"
+    },
+    {
+      "extends": [
+        "ComponentProps<\"div\">"
+      ],
+      "family": "alert",
+      "name": "AlertAction",
+      "props": [],
+      "purpose": "A control in the alert's top right corner, such as a Button that dismisses it.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<\"div\">"
+      ],
+      "family": "alert",
+      "name": "AlertDescription",
+      "props": [],
+      "purpose": "The alert's text, under its title.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<\"div\">"
+      ],
+      "family": "alert",
+      "name": "AlertTitle",
+      "props": [],
+      "purpose": "The alert's title, which also names it.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "AvatarPrimitive.Root.Props"
+      ],
+      "family": "avatar",
+      "name": "Avatar",
+      "props": [
+        {
+          "description": "",
+          "name": "size",
+          "optional": true,
+          "type": "\"default\" | \"sm\" | \"lg\""
+        }
+      ],
+      "purpose": "A person's picture or initials in a circle: 32 px, or 24 px at `size=\"sm\"` and 40 px at `size=\"lg\"`.",
+      "variants": {},
+      "example": "import { Avatar, AvatarFallback, AvatarImage } from \"@basis/ui\";\n\n<Avatar>\n  <AvatarImage src=\"/people/dev-user.png\" alt=\"Dev User\" />\n  <AvatarFallback>DU</AvatarFallback>\n</Avatar>;\n"
+    },
+    {
+      "extends": [
+        "ComponentProps<\"span\">"
+      ],
+      "family": "avatar",
+      "name": "AvatarBadge",
+      "props": [],
+      "purpose": "A dot at the avatar's bottom right, such as a presence indicator; an icon inside it shows from the default size.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "AvatarPrimitive.Fallback.Props"
+      ],
+      "family": "avatar",
+      "name": "AvatarFallback",
+      "props": [],
+      "purpose": "What shows until the picture loads, or in its place: usually the person's initials.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<\"div\">"
+      ],
+      "family": "avatar",
+      "name": "AvatarGroup",
+      "props": [],
+      "purpose": "Avatars overlapping in a row, each ringed in the background colour.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<\"div\">"
+      ],
+      "family": "avatar",
+      "name": "AvatarGroupCount",
+      "props": [],
+      "purpose": "The count of avatars a group leaves out, such as \"+3\", at the size of the group's avatars.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "AvatarPrimitive.Image.Props"
+      ],
+      "family": "avatar",
+      "name": "AvatarImage",
+      "props": [],
+      "purpose": "The picture, shown once it has loaded. Its `alt` names the person.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "useRender.ComponentProps<\"span\">"
+      ],
+      "family": "badge",
+      "name": "Badge",
+      "props": [],
+      "purpose": "A badge: a `<span>`, or the element `render` names, with `data-slot=\"badge\"` and its variant as `data-variant`.",
+      "variants": {
+        "variant": {
+          "default": "default",
+          "options": [
+            "default",
+            "secondary",
+            "outline",
+            "ghost",
+            "link",
+            "success",
+            "warning",
+            "info",
+            "destructive"
+          ]
+        }
+      },
+      "example": "import { Badge } from \"@basis/ui\";\n\n<Badge variant=\"secondary\">Settled</Badge>;\n"
+    },
+    {
+      "extends": [
+        "ComponentProps<\"div\">"
+      ],
+      "family": "empty",
+      "name": "Empty",
+      "props": [],
+      "purpose": "An empty state, centred in the space it fills: EmptyHeader, then EmptyContent for what to do next. `outline` draws a dashed border round it.",
+      "variants": {
+        "variant": {
+          "default": "default",
+          "options": [
+            "default",
+            "outline"
+          ]
+        }
+      },
+      "example": "import { Button, Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from \"@basis/ui\";\n\n<Empty>\n  <EmptyHeader>\n    <EmptyTitle>No trades today</EmptyTitle>\n    <EmptyDescription>Trades booked today show here.</EmptyDescription>\n  </EmptyHeader>\n  <EmptyContent>\n    <Button variant=\"outline\">Book a trade</Button>\n  </EmptyContent>\n</Empty>;\n"
+    },
+    {
+      "extends": [
+        "ComponentProps<\"div\">"
+      ],
+      "family": "empty",
+      "name": "EmptyContent",
+      "props": [],
+      "purpose": "What the user can do next, such as a Button that clears the filters.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<\"div\">"
+      ],
+      "family": "empty",
+      "name": "EmptyDescription",
+      "props": [],
+      "purpose": "A line under the empty state's title saying why it is empty and what to do.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<\"div\">"
+      ],
+      "family": "empty",
+      "name": "EmptyHeader",
+      "props": [],
+      "purpose": "The media, title and description.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<\"div\">"
+      ],
+      "family": "empty",
+      "name": "EmptyMedia",
+      "props": [],
+      "purpose": "An illustration, or an icon on a tile with `variant=\"icon\"`.",
+      "variants": {
+        "variant": {
+          "default": "default",
+          "options": [
+            "default",
+            "icon"
+          ]
+        }
+      }
+    },
+    {
+      "extends": [
+        "ComponentProps<\"div\">"
+      ],
+      "family": "empty",
+      "name": "EmptyTitle",
+      "props": [],
+      "purpose": "The empty state's title.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<\"kbd\">"
+      ],
+      "family": "kbd",
+      "name": "Kbd",
+      "props": [],
+      "purpose": "A key, such as `Ctrl` or `K`, in a `<kbd>` element. An icon inside it is sized to the key.",
+      "variants": {},
+      "example": "import { Kbd, KbdGroup } from \"@basis/ui\";\n\n<KbdGroup>\n  <Kbd>Ctrl</Kbd>\n  <Kbd>K</Kbd>\n</KbdGroup>;\n"
+    },
+    {
+      "extends": [
+        "ComponentProps<\"kbd\">"
+      ],
+      "family": "kbd",
+      "name": "KbdGroup",
+      "props": [],
+      "purpose": "Keys pressed together, such as `Ctrl` `K`: a `<kbd>` holding a Kbd for each key, as HTML nests them.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ProgressPrimitive.Root.Props"
+      ],
+      "family": "progress",
+      "name": "Progress",
+      "props": [],
+      "purpose": "A progress bar: its children, such as a label and the value, above a full-width track. `value` is out of `max`, 100 by default, and `null` makes it indeterminate.",
+      "variants": {},
+      "example": "import { Progress, ProgressLabel, ProgressValue } from \"@basis/ui\";\n\n<Progress value={40}>\n  <ProgressLabel>Allocating</ProgressLabel>\n  <ProgressValue />\n</Progress>;\n"
+    },
+    {
+      "extends": [
+        "ProgressPrimitive.Indicator.Props"
+      ],
+      "family": "progress",
+      "name": "ProgressIndicator",
+      "props": [],
+      "purpose": "The filled part of the progress bar's track. `Progress` includes it.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ProgressPrimitive.Label.Props"
+      ],
+      "family": "progress",
+      "name": "ProgressLabel",
+      "props": [],
+      "purpose": "The bar's name, which labels the `progressbar`.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ProgressPrimitive.Track.Props"
+      ],
+      "family": "progress",
+      "name": "ProgressTrack",
+      "props": [],
+      "purpose": "The progress bar's track. `Progress` includes it.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ProgressPrimitive.Value.Props"
+      ],
+      "family": "progress",
+      "name": "ProgressValue",
+      "props": [],
+      "purpose": "The value as text, such as \"40%\", at the end of the label's line, in tabular figures.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<\"div\">"
+      ],
+      "family": "skeleton",
+      "name": "Skeleton",
+      "props": [],
+      "purpose": "A placeholder block. `className` gives it the size of what it stands for, such as `h-4 w-32`, or `size-8` with `variant=\"circle\"` for an avatar.",
+      "variants": {
+        "variant": {
+          "default": "default",
+          "options": [
+            "default",
+            "circle"
+          ]
+        }
+      },
+      "example": "import { Skeleton } from \"@basis/ui\";\n\n<Skeleton className=\"h-4 w-32\" />;\n"
+    },
+    {
+      "extends": [
+        "ComponentProps<\"output\">"
+      ],
+      "family": "spinner",
+      "name": "Spinner",
+      "props": [],
+      "purpose": "A loading indicator, 16 px square unless `className` sizes it, as with `size-6`. It is a status named \"Loading\"; give it an `aria-label` that says what is loading, such as \"Loading positions\", when the page shows more than one.",
+      "variants": {},
+      "example": "import { Spinner } from \"@basis/ui\";\n\n<Spinner />;\n"
+    },
+    {
+      "extends": [
+        "ComponentProps<\"table\">"
+      ],
+      "family": "table",
+      "name": "Table",
+      "props": [],
+      "purpose": "A table in a container that scrolls sideways when the table is wider than its place.",
+      "variants": {},
+      "example": "import { Money, Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from \"@basis/ui\";\n\n<Table>\n  <TableCaption>Largest positions</TableCaption>\n  <TableHeader>\n    <TableRow>\n      <TableHead>CUSIP</TableHead>\n      <TableHead>Market value</TableHead>\n    </TableRow>\n  </TableHeader>\n  <TableBody>\n    <TableRow>\n      <TableCell>91282CRF0</TableCell>\n      <TableCell>\n        <Money value={4_975_000} />\n      </TableCell>\n    </TableRow>\n  </TableBody>\n</Table>;\n"
+    },
+    {
+      "extends": [
+        "ComponentProps<\"tbody\">"
+      ],
+      "family": "table",
+      "name": "TableBody",
+      "props": [],
+      "purpose": "The table's rows.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<\"caption\">"
+      ],
+      "family": "table",
+      "name": "TableCaption",
+      "props": [],
+      "purpose": "The table's caption, which names it for screen readers.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<\"td\">"
+      ],
+      "family": "table",
+      "name": "TableCell",
+      "props": [],
+      "purpose": "A cell; `variant=\"numeric\"` for a number, so the column's digits line up.",
+      "variants": {
+        "variant": {
+          "default": "default",
+          "options": [
+            "default",
+            "numeric"
+          ]
+        }
+      }
+    },
+    {
+      "extends": [
+        "ComponentProps<\"tfoot\">"
+      ],
+      "family": "table",
+      "name": "TableFooter",
+      "props": [],
+      "purpose": "The totals row or rows, on a muted band below the body.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<\"th\">"
+      ],
+      "family": "table",
+      "name": "TableHead",
+      "props": [],
+      "purpose": "A column heading; `variant=\"numeric\"` for a column of numbers.",
+      "variants": {
+        "variant": {
+          "default": "default",
+          "options": [
+            "default",
+            "numeric"
+          ]
+        }
+      }
+    },
+    {
+      "extends": [
+        "ComponentProps<\"thead\">"
+      ],
+      "family": "table",
+      "name": "TableHeader",
+      "props": [],
+      "purpose": "The table's header row group, holding its `TableHead` cells.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<\"tr\">"
+      ],
+      "family": "table",
+      "name": "TableRow",
+      "props": [],
+      "purpose": "A row. `data-state=\"selected\"` marks it selected, in the theme's `selection` colour.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ToastPrimitive.Root.Props"
+      ],
+      "family": "toast",
+      "name": "Toast",
+      "props": [],
+      "purpose": "One toast, drawn in the look its `type` picks.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ToastPrimitive.Action.Props"
+      ],
+      "family": "toast",
+      "name": "ToastAction",
+      "props": [],
+      "purpose": "The toast's action, a small outline Button, shown when the toast has `actionProps`, as in `toast.add({ title: \"Order cancelled\", actionProps: { children: \"Undo\", onClick: restore } })`.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ToastPrimitive.Close.Props"
+      ],
+      "family": "toast",
+      "name": "ToastClose",
+      "props": [],
+      "purpose": "A ghost icon Button, named \"Close notification\", that closes the toast.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ToastPrimitive.Content.Props"
+      ],
+      "family": "toast",
+      "name": "ToastContent",
+      "props": [],
+      "purpose": "A toast's text and action, inside the toast.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ToastPrimitive.Description.Props"
+      ],
+      "family": "toast",
+      "name": "ToastDescription",
+      "props": [],
+      "purpose": "A toast's text, under its title.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ToastPrimitive.Portal.Props"
+      ],
+      "family": "toast",
+      "name": "ToastPortal",
+      "props": [],
+      "purpose": "Renders the toasts into the page's body. `Toaster` includes one.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ToastPrimitive.Provider.Props"
+      ],
+      "family": "toast",
+      "name": "ToastProvider",
+      "props": [],
+      "purpose": "The provider every toast part needs. `<Toaster />` includes one; use this to build a list of your own.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ToastPrimitive.Title.Props"
+      ],
+      "family": "toast",
+      "name": "ToastTitle",
+      "props": [],
+      "purpose": "The toast's title, which also names it. It shows the toast's `title` unless given children.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ToastPrimitive.Viewport.Props"
+      ],
+      "family": "toast",
+      "name": "ToastViewport",
+      "props": [],
+      "purpose": "Where the toasts appear: the bottom right corner, or across the bottom on a narrow screen.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ToastPrimitive.Provider.Props"
+      ],
+      "family": "toast",
+      "name": "Toaster",
+      "props": [],
+      "purpose": "The provider and the viewport, with every toast the manager raises: the app's `toast` unless `toastManager` names another. Render it once, around the app or beside it. `limit` (3 by default) caps how many show at once, and `timeout` (5000 ms) how long each stays.",
+      "variants": {},
+      "example": "import { Button, Toaster, toast } from \"@basis/ui\";\n\n<>\n  <Toaster />\n  <Button\n    onClick={() => {\n      toast.add({ description: \"Bought 5,000 par at 99-16.\", title: \"Trade booked\", type: \"success\" });\n    }}\n  >\n    Book\n  </Button>\n</>;\n"
+    },
+    {
+      "extends": [
+        "useRender.ComponentProps<\"h1\">"
+      ],
+      "family": "typography",
+      "name": "TypographyH1",
+      "props": [],
+      "purpose": "A page's title, in an `<h1>`.",
+      "variants": {},
+      "example": "import { TypographyH1, TypographyMuted, TypographyP } from \"@basis/ui\";\n\n<>\n  <TypographyH1>Rates book</TypographyH1>\n  <TypographyP>Positions as of yesterday's close.</TypographyP>\n  <TypographyMuted>Prices from the 16:00 snapshot.</TypographyMuted>\n</>;\n"
+    },
+    {
+      "extends": [
+        "useRender.ComponentProps<\"h2\">"
+      ],
+      "family": "typography",
+      "name": "TypographyH2",
+      "props": [],
+      "purpose": "A section's title, in an `<h2>`, ruled off beneath.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "useRender.ComponentProps<\"h3\">"
+      ],
+      "family": "typography",
+      "name": "TypographyH3",
+      "props": [],
+      "purpose": "A third-level heading, in the theme's type scale.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "useRender.ComponentProps<\"h4\">"
+      ],
+      "family": "typography",
+      "name": "TypographyH4",
+      "props": [],
+      "purpose": "A fourth-level heading, in the theme's type scale.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "useRender.ComponentProps<\"code\">"
+      ],
+      "family": "typography",
+      "name": "TypographyInlineCode",
+      "props": [],
+      "purpose": "Code within a sentence, such as an identifier or a command, in a `<code>`.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "useRender.ComponentProps<\"p\">"
+      ],
+      "family": "typography",
+      "name": "TypographyLead",
+      "props": [],
+      "purpose": "A larger, muted paragraph that introduces a page, under its title.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "useRender.ComponentProps<\"ul\">"
+      ],
+      "family": "typography",
+      "name": "TypographyList",
+      "props": [],
+      "purpose": "A bulleted list, in a `<ul>` of `<li>` items.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "useRender.ComponentProps<\"p\">"
+      ],
+      "family": "typography",
+      "name": "TypographyMuted",
+      "props": [],
+      "purpose": "Secondary text, such as a note under a figure or when its data was last current.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "useRender.ComponentProps<\"p\">"
+      ],
+      "family": "typography",
+      "name": "TypographyP",
+      "props": [],
+      "purpose": "Body text, in a `<p>`.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "Omit< ComponentProps<\"input\">, \"value\" | \"defaultValue\" | \"onChange\" | \"type\" | \"children\" >"
+      ],
+      "family": "amount-input",
+      "name": "AmountInput",
+      "props": [
+        {
+          "description": "The exact decimal string, `null` for an empty field, or the text while it reads as no number. Leave it out for an uncontrolled field.",
+          "name": "value",
+          "optional": true,
+          "type": "string | null | undefined"
+        },
+        {
+          "description": "",
+          "name": "defaultValue",
+          "optional": true,
+          "type": "string | null | undefined"
+        },
+        {
+          "description": "Called with the new value as the person types, once each time it changes.",
+          "name": "onValueChange",
+          "optional": true,
+          "type": "((value: string | null) => void) | undefined"
+        },
+        {
+          "description": "The suffixes the field accepts; `amountSuffixes` unless set.",
+          "name": "suffixes",
+          "optional": true,
+          "type": "Suffixes | undefined"
+        },
+        {
+          "description": "The form's errors for the field, such as TanStack Form's `field.state.meta.errors`, shown under the input.",
+          "name": "errors",
+          "optional": true,
+          "type": "FieldErrors | undefined"
+        }
+      ],
+      "purpose": "An amount or rate field. Label it with a FieldLabel's `htmlFor` and this `id`, and put it in a `Field`; it draws the line under the input that echoes the number and the error line.",
+      "variants": {},
+      "example": "import { AmountInput, Field, FieldLabel, parSuffixes } from \"@basis/ui\";\n\n<Field>\n  <FieldLabel htmlFor=\"par\">Par</FieldLabel>\n  <AmountInput id=\"par\" suffixes={parSuffixes} onValueChange={() => undefined} />\n</Field>;\n"
+    },
+    {
+      "extends": [
+        "Omit< ComponentProps<\"input\">, \"value\" | \"defaultValue\" | \"onChange\" | \"type\" | \"min\" | \"max\" | \"children\" >"
+      ],
+      "family": "as-of-date-picker",
+      "name": "AsOfDatePicker",
+      "props": [
+        {
+          "description": "The date, or `null` for none. Leave it out for an uncontrolled field.",
+          "name": "value",
+          "optional": true,
+          "type": "Temporal.PlainDate | null | undefined"
+        },
+        {
+          "description": "The date an uncontrolled field starts at: the last business day before `today` unless set.",
+          "name": "defaultValue",
+          "optional": true,
+          "type": "Temporal.PlainDate | null | undefined"
+        },
+        {
+          "description": "Called with the date when one is picked or typed, and with `null` when the field is cleared or what was typed cannot be taken.",
+          "name": "onValueChange",
+          "optional": true,
+          "type": "((value: Temporal.PlainDate | null) => void) | undefined"
+        },
+        {
+          "description": "The calendar whose business days the field takes; SIFMA's unless set.",
+          "name": "calendar",
+          "optional": true,
+          "type": "Calendar | undefined"
+        },
+        {
+          "description": "The earliest date the field takes; none unless set.",
+          "name": "min",
+          "optional": true,
+          "type": "Temporal.PlainDate | undefined"
+        },
+        {
+          "description": "The latest date the field takes: `today` unless set, and none when `null`.",
+          "name": "max",
+          "optional": true,
+          "type": "Temporal.PlainDate | null | undefined"
+        },
+        {
+          "description": "Today, which the default value and the latest date count from; today in New York unless set.",
+          "name": "today",
+          "optional": true,
+          "type": "Temporal.PlainDate | undefined"
+        },
+        {
+          "description": "The form's errors for the field, such as TanStack Form's `field.state.meta.errors`, shown under the input.",
+          "name": "errors",
+          "optional": true,
+          "type": "FieldErrors | undefined"
+        },
+        {
+          "description": "The name of the button that opens the grid, and of the grid's dialog; \"Choose a date\" unless set.",
+          "name": "pickerLabel",
+          "optional": true,
+          "type": "string | undefined"
+        }
+      ],
+      "purpose": "An as-of date field. Label it with a FieldLabel's `htmlFor` and this `id`, and put it in a `Field`.",
+      "variants": {},
+      "example": "import { AsOfDatePicker, Field, FieldLabel } from \"@basis/ui\";\n\n<Field>\n  <FieldLabel htmlFor=\"as-of\">As of</FieldLabel>\n  <AsOfDatePicker id=\"as-of\" defaultValue={Temporal.PlainDate.from(\"2026-11-06\")} />\n</Field>;\n"
+    },
+    {
+      "extends": [
+        "Omit<ComponentProps<\"button\">, \"value\" | \"defaultValue\" | \"onChange\" | \"children\" | \"type\">"
+      ],
+      "family": "date-range-picker",
+      "name": "DateRangePicker",
+      "props": [
+        {
+          "description": "The range, or `null` for none. Leave it out for an uncontrolled field.",
+          "name": "value",
+          "optional": true,
+          "type": "DateRange | null | undefined"
+        },
+        {
+          "description": "The range an uncontrolled field starts with; none unless set.",
+          "name": "defaultValue",
+          "optional": true,
+          "type": "DateRange | null | undefined"
+        },
+        {
+          "description": "Called with the range when a preset is chosen or a second day picked.",
+          "name": "onValueChange",
+          "optional": true,
+          "type": "((value: DateRange) => void) | undefined"
+        },
+        {
+          "description": "The calendar whose business days the field takes; SIFMA's unless set.",
+          "name": "calendar",
+          "optional": true,
+          "type": "Calendar | undefined"
+        },
+        {
+          "description": "The earliest date the field takes; none unless set.",
+          "name": "min",
+          "optional": true,
+          "type": "Temporal.PlainDate | undefined"
+        },
+        {
+          "description": "The latest date the field takes: `today` unless set, and none when `null`.",
+          "name": "max",
+          "optional": true,
+          "type": "Temporal.PlainDate | null | undefined"
+        },
+        {
+          "description": "Today, which the as-of date and the latest date count from; today in New York unless set.",
+          "name": "today",
+          "optional": true,
+          "type": "Temporal.PlainDate | undefined"
+        },
+        {
+          "description": "The date the presets run to: the last business day before `today` unless set.",
+          "name": "asOf",
+          "optional": true,
+          "type": "Temporal.PlainDate | undefined"
+        },
+        {
+          "description": "The presets offered, in order; all six unless set, and none when empty.",
+          "name": "presets",
+          "optional": true,
+          "type": "readonly DateRangePreset[] | undefined"
+        },
+        {
+          "description": "The button's text while there is no range; \"Pick a range\" unless set.",
+          "name": "placeholder",
+          "optional": true,
+          "type": "string | undefined"
+        },
+        {
+          "description": "The name of the popover's dialog; \"Choose a date range\" unless set.",
+          "name": "pickerLabel",
+          "optional": true,
+          "type": "string | undefined"
+        }
+      ],
+      "purpose": "A date range field. Name it with a FieldLabel's `htmlFor` and this `id`, or with `aria-label`.",
+      "variants": {
+        "size": {
+          "default": "default",
+          "options": [
+            "default",
+            "sm"
+          ]
+        }
+      },
+      "example": "import { DateRangePicker, Field, FieldLabel } from \"@basis/ui\";\n\n<Field>\n  <FieldLabel htmlFor=\"period\">Period</FieldLabel>\n  <DateRangePicker id=\"period\" onValueChange={() => undefined} />\n</Field>;\n"
+    },
+    {
+      "extends": [
+        "Omit<ComponentProps<\"time\">, \"children\" | \"dateTime\">"
+      ],
+      "family": "date-time",
+      "name": "DateTime",
+      "props": [
+        {
+          "description": "The IANA zone instants are shown in; New York unless set.",
+          "name": "zone",
+          "optional": true,
+          "type": "string | undefined"
+        },
+        {
+          "description": "The sub-second digits shown; whole seconds unless set.",
+          "name": "precision",
+          "optional": true,
+          "type": "TimePrecision | undefined"
+        },
+        {
+          "description": "",
+          "name": "show",
+          "optional": true,
+          "type": "DateTimePart | undefined"
+        },
+        {
+          "description": "",
+          "name": "value",
+          "optional": false,
+          "type": "DateTimeValue"
+        }
+      ],
+      "purpose": "A time: `2026-11-06 09:30:00` for the instant 14:30 UTC, in tabular figures. `show` picks the date or the time alone, and `precision` adds milliseconds or microseconds.",
+      "variants": {
+        "align": {
+          "default": "start",
+          "options": [
+            "start",
+            "end"
+          ]
+        }
+      },
+      "example": "import { DateTime } from \"@basis/ui\";\n\n<DateTime value=\"2026-11-06T14:30:00Z\" />; // 2026-11-06 09:30:00, in New York time\n"
+    },
+    {
+      "extends": [
+        "Omit<ComponentProps<\"span\">, \"children\">",
+        "Omit<NumberFormat, \"abbreviate\" | \"suffixes\">"
+      ],
+      "family": "num",
+      "name": "Bps",
+      "props": [
+        {
+          "description": "",
+          "name": "value",
+          "optional": false,
+          "type": "NumericValue"
+        },
+        {
+          "description": "Colour a gain `gain` and a loss `loss`, and write a plus sign before a gain.",
+          "name": "signed",
+          "optional": true,
+          "type": "boolean | undefined"
+        }
+      ],
+      "purpose": "A rate in basis points, by the formatter's defaults for the value in basis points: 0.0025 is `25 bp`.",
+      "variants": {
+        "align": {
+          "default": "start",
+          "options": [
+            "start",
+            "end"
+          ]
+        }
+      }
+    },
+    {
+      "extends": [
+        "Omit<ComponentProps<\"span\">, \"children\">"
+      ],
+      "family": "num",
+      "name": "Money",
+      "props": [
+        {
+          "description": "",
+          "name": "value",
+          "optional": false,
+          "type": "NumericValue"
+        },
+        {
+          "description": "Colour a gain `gain` and a loss `loss`, and write a plus sign before a gain.",
+          "name": "signed",
+          "optional": true,
+          "type": "boolean | undefined"
+        },
+        {
+          "description": "Digits after the point; each value type's default unless set.",
+          "name": "decimals",
+          "optional": true,
+          "type": "number | undefined"
+        },
+        {
+          "description": "Group thousands with commas; yes unless set.",
+          "name": "thousands",
+          "optional": true,
+          "type": "boolean | undefined"
+        },
+        {
+          "description": "Divide by a thousand, million or billion and show the suffix.",
+          "name": "abbreviate",
+          "optional": true,
+          "type": "Abbreviation | undefined"
+        },
+        {
+          "description": "`par` writes the abbreviation as bond markets write par amounts, `M`, `MM` and `BN`; `amount`'s `K`, `M` and `B` unless set.",
+          "name": "suffixes",
+          "optional": true,
+          "type": "SuffixStyle | undefined"
+        },
+        {
+          "description": "`-1,234.50` or `(1,234.50)`; `minus` unless set.",
+          "name": "negative",
+          "optional": true,
+          "type": "Negative | undefined"
+        },
+        {
+          "description": "The ISO 4217 code, which sets the symbol and the default decimals; USD unless set.",
+          "name": "currency",
+          "optional": true,
+          "type": "string | undefined"
+        }
+      ],
+      "purpose": "An amount of money, with its currency's symbol after the sign, at the currency's minor units unless abbreviated or told otherwise: `$1,234.50`, `-€12.00`, `$1.5M`, or with par suffixes `$1.5MM`.",
+      "variants": {
+        "align": {
+          "default": "start",
+          "options": [
+            "start",
+            "end"
+          ]
+        }
+      }
+    },
+    {
+      "extends": [
+        "Omit<ComponentProps<\"span\">, \"children\">"
+      ],
+      "family": "num",
+      "name": "Num",
+      "props": [
+        {
+          "description": "",
+          "name": "value",
+          "optional": false,
+          "type": "NumericValue"
+        },
+        {
+          "description": "Colour a gain `gain` and a loss `loss`, and write a plus sign before a gain.",
+          "name": "signed",
+          "optional": true,
+          "type": "boolean | undefined"
+        },
+        {
+          "description": "Digits after the point; each value type's default unless set.",
+          "name": "decimals",
+          "optional": true,
+          "type": "number | undefined"
+        },
+        {
+          "description": "Group thousands with commas; yes unless set.",
+          "name": "thousands",
+          "optional": true,
+          "type": "boolean | undefined"
+        },
+        {
+          "description": "Divide by a thousand, million or billion and show the suffix.",
+          "name": "abbreviate",
+          "optional": true,
+          "type": "Abbreviation | undefined"
+        },
+        {
+          "description": "`par` writes the abbreviation as bond markets write par amounts, `M`, `MM` and `BN`; `amount`'s `K`, `M` and `B` unless set.",
+          "name": "suffixes",
+          "optional": true,
+          "type": "SuffixStyle | undefined"
+        },
+        {
+          "description": "`-1,234.50` or `(1,234.50)`; `minus` unless set.",
+          "name": "negative",
+          "optional": true,
+          "type": "Negative | undefined"
+        }
+      ],
+      "purpose": "A number, by the formatter's defaults: a decimal at its own scale, an integer with none, a double with two.",
+      "variants": {
+        "align": {
+          "default": "start",
+          "options": [
+            "start",
+            "end"
+          ]
+        }
+      },
+      "example": "import { Bps, Money, Num, Pct, Price32 } from \"@basis/ui\";\n\n<Num value={1234.5} decimals={2} />; // 1,234.50\n<Num value={-1250.5} signed />; // -1,250.50, in the loss colour\n<Money value={2_500_000_000} abbreviate=\"B\" />; // $2.5B\n<Pct value={0.0525} />; // 5.25%: rates are fractions\n<Bps value={0.0025} />; // 25 bp\n<Price32 value={99.515625} />; // 99-16+\n"
+    },
+    {
+      "extends": [
+        "Omit<ComponentProps<\"span\">, \"children\">",
+        "Omit<NumberFormat, \"abbreviate\" | \"suffixes\">"
+      ],
+      "family": "num",
+      "name": "Pct",
+      "props": [
+        {
+          "description": "",
+          "name": "value",
+          "optional": false,
+          "type": "NumericValue"
+        },
+        {
+          "description": "Colour a gain `gain` and a loss `loss`, and write a plus sign before a gain.",
+          "name": "signed",
+          "optional": true,
+          "type": "boolean | undefined"
+        }
+      ],
+      "purpose": "A rate as a percentage, at two decimals unless told otherwise: 0.0525 is `5.25%`.",
+      "variants": {
+        "align": {
+          "default": "start",
+          "options": [
+            "start",
+            "end"
+          ]
+        }
+      }
+    },
+    {
+      "extends": [
+        "Omit<ComponentProps<\"span\">, \"children\">"
+      ],
+      "family": "num",
+      "name": "Price32",
+      "props": [
+        {
+          "description": "",
+          "name": "value",
+          "optional": false,
+          "type": "NumericValue"
+        },
+        {
+          "description": "Colour a gain `gain` and a loss `loss`, and write a plus sign before a gain.",
+          "name": "signed",
+          "optional": true,
+          "type": "boolean | undefined"
+        },
+        {
+          "description": "The finest step shown; eighths of a 32nd unless set.",
+          "name": "precision",
+          "optional": true,
+          "type": "ThirtySecondsPrecision | undefined"
+        },
+        {
+          "description": "How a price between steps rounds; half away from zero unless set.",
+          "name": "rounding",
+          "optional": true,
+          "type": "Rounding | undefined"
+        }
+      ],
+      "purpose": "A Treasury price in 32nds, as US cash markets quote it: 99.515625 is `99-16+`, and 99.5078125 is `99-162`.",
+      "variants": {
+        "align": {
+          "default": "start",
+          "options": [
+            "start",
+            "end"
+          ]
+        }
+      }
+    },
+    {
+      "extends": [],
+      "family": "data-table",
+      "name": "DataTable",
+      "props": [
+        {
+          "description": "The table's name, for assistive technology and the filter, and its CSV file's unless `exportName` is set.",
+          "name": "label",
+          "optional": false,
+          "type": "string"
+        },
+        {
+          "description": "",
+          "name": "columns",
+          "optional": false,
+          "type": "readonly DataTableColumn<TRow>[]"
+        },
+        {
+          "description": "The rows, or `undefined` while there are none yet, as a query's `data` is before it loads.",
+          "name": "data",
+          "optional": false,
+          "type": "readonly TRow[] | undefined"
+        },
+        {
+          "description": "A row's stable id, such as its CUSIP or trade id, which keeps it selected as the rows sort and change.",
+          "name": "getRowId",
+          "optional": false,
+          "type": "(row: TRow) => string"
+        },
+        {
+          "description": "A row's name, for its checkbox and its actions button; its first column's value unless set.",
+          "name": "rowLabel",
+          "optional": true,
+          "type": "((row: TRow) => string) | undefined"
+        },
+        {
+          "description": "A row's actions, listed in a menu at the row's end.",
+          "name": "rowActions",
+          "optional": true,
+          "type": "((row: TRow) => readonly DataTableRowAction[]) | undefined"
+        },
+        {
+          "description": "Adds a checkbox to each row and the heading, and the button that copies the selection; no unless set.",
+          "name": "selectable",
+          "optional": true,
+          "type": "boolean | undefined"
+        },
+        {
+          "description": "Called with the selected rows, in the data's order, each time the selection changes.",
+          "name": "onSelectionChange",
+          "optional": true,
+          "type": "((rows: readonly TRow[]) => void) | undefined"
+        },
+        {
+          "description": "Whether the toolbar has the text filter; yes unless set.",
+          "name": "filterable",
+          "optional": true,
+          "type": "boolean | undefined"
+        },
+        {
+          "description": "Whether the toolbar has the CSV export; yes unless set.",
+          "name": "exportable",
+          "optional": true,
+          "type": "boolean | undefined"
+        },
+        {
+          "description": "The CSV file's name, without `.csv`; the label unless set.",
+          "name": "exportName",
+          "optional": true,
+          "type": "string | undefined"
+        },
+        {
+          "description": "Rows a page, for a table that pages; every row on one page unless set.",
+          "name": "pageSize",
+          "optional": true,
+          "type": "number | undefined"
+        },
+        {
+          "description": "",
+          "name": "defaultSorting",
+          "optional": true,
+          "type": "readonly DataTableSort[] | undefined"
+        },
+        {
+          "description": "The most rows the table draws; 2,000 unless set. Past it the table shows an error in their place.",
+          "name": "rowCap",
+          "optional": true,
+          "type": "number | undefined"
+        },
+        {
+          "description": "Shows placeholder rows in place of the rows, as while a query is pending.",
+          "name": "loading",
+          "optional": true,
+          "type": "boolean | undefined"
+        },
+        {
+          "description": "An error to show over the table, such as a query's `error`, as `ErrorAlert` shows it.",
+          "name": "error",
+          "optional": true,
+          "type": "unknown"
+        },
+        {
+          "description": "Adds \"Try again\" to the error, such as a query's `refetch`.",
+          "name": "onRetry",
+          "optional": true,
+          "type": "(() => void) | undefined"
+        },
+        {
+          "description": "What the table says when it has no rows; \"No rows to show.\" unless set.",
+          "name": "empty",
+          "optional": true,
+          "type": "ReactNode"
+        },
+        {
+          "description": "Places the table, as with `mt-4`; its look is fixed.",
+          "name": "className",
+          "optional": true,
+          "type": "string | undefined"
+        }
+      ],
+      "purpose": "A table of a few hundred rows, or up to its row cap, whose cells may hold links and buttons.",
+      "variants": {},
+      "example": "import { DataTable } from \"@basis/ui\";\n\nconst rows = [{ cusip: \"91282CRF0\", id: \"p1\", par: 5_000_000 }];\n\nconst columns = [{ header: \"Par\", id: \"par\", value: (row: (typeof rows)[number]) => row.par, variant: \"numeric\" as const }];\n\n<DataTable label=\"Positions\" columns={columns} data={rows} getRowId={(row) => row.id} />;\n"
+    },
+    {
+      "extends": [],
+      "family": "entity-picker",
+      "name": "EntityPicker",
+      "props": [
+        {
+          "description": "Finds the items matching the typed text, which is trimmed and at least `minLength` long; pass `signal` on to the request, so a search a newer text replaced is aborted.",
+          "name": "search",
+          "optional": false,
+          "type": "EntitySearch<TItem>"
+        },
+        {
+          "description": "An item's stable id, which tells a result from a choice already made.",
+          "name": "itemKey",
+          "optional": false,
+          "type": "(item: TItem) => string"
+        },
+        {
+          "description": "An item as text: in the input once chosen, on its chip, and in the list unless `renderItem` is set.",
+          "name": "itemLabel",
+          "optional": false,
+          "type": "(item: TItem) => string"
+        },
+        {
+          "description": "What a result shows in the list, such as its name and its CUSIP.",
+          "name": "renderItem",
+          "optional": true,
+          "type": "((item: TItem) => ReactNode) | undefined"
+        },
+        {
+          "description": "Why a text cannot be searched, such as a malformed identifier, or `undefined` when it can. The picker shows the reason and does not search.",
+          "name": "validate",
+          "optional": true,
+          "type": "((text: string) => string | undefined) | undefined"
+        },
+        {
+          "description": "How long typing must stop before the picker searches; 250 ms unless set.",
+          "name": "debounceMs",
+          "optional": true,
+          "type": "number | undefined"
+        },
+        {
+          "description": "What the status line says before there is enough text to search; \"Type to search.\" unless set.",
+          "name": "hint",
+          "optional": true,
+          "type": "string | undefined"
+        },
+        {
+          "description": "The fewest characters it searches for; 1 unless set.",
+          "name": "minLength",
+          "optional": true,
+          "type": "number | undefined"
+        },
+        {
+          "description": "The search's key in the query cache, which the picker adds the text to, such as the generated client's `getSearchIssuersQueryKey()`; the picker's own unless set, so no two pickers share results.",
+          "name": "queryKey",
+          "optional": true,
+          "type": "QueryKey | undefined"
+        },
+        {
+          "description": "The input's id, which a `FieldLabel`'s `htmlFor` names.",
+          "name": "id",
+          "optional": true,
+          "type": "string | undefined"
+        },
+        {
+          "description": "",
+          "name": "placeholder",
+          "optional": true,
+          "type": "string | undefined"
+        },
+        {
+          "description": "",
+          "name": "disabled",
+          "optional": true,
+          "type": "boolean | undefined"
+        },
+        {
+          "description": "",
+          "name": "aria-label",
+          "optional": true,
+          "type": "string | undefined"
+        },
+        {
+          "description": "",
+          "name": "aria-describedby",
+          "optional": true,
+          "type": "string | undefined"
+        },
+        {
+          "description": "",
+          "name": "aria-invalid",
+          "optional": true,
+          "type": "boolean | undefined"
+        },
+        {
+          "description": "Places the picker, as with `w-80`; its look is fixed.",
+          "name": "className",
+          "optional": true,
+          "type": "string | undefined"
+        },
+        {
+          "description": "",
+          "name": "multiple",
+          "optional": true,
+          "type": "false | undefined"
+        },
+        {
+          "description": "",
+          "name": "value",
+          "optional": true,
+          "type": "TItem | null | undefined"
+        },
+        {
+          "description": "",
+          "name": "defaultValue",
+          "optional": true,
+          "type": "TItem | null | undefined"
+        },
+        {
+          "description": "",
+          "name": "onValueChange",
+          "optional": true,
+          "type": "((value: TItem | null) => void) | undefined"
+        }
+      ],
+      "purpose": "A combobox that searches as the user types. Label it with a `FieldLabel` whose `htmlFor` is its `id`, or with `aria-label`.",
+      "variants": {},
+      "example": "import { EntityPicker, Field, FieldLabel } from \"@basis/ui\";\n\ninterface Issuer {\n  readonly id: string;\n  readonly name: string;\n}\n\nconst issuers: readonly Issuer[] = [{ id: \"ust\", name: \"US Treasury\" }];\n\n<Field>\n  <FieldLabel htmlFor=\"issuer\">Issuer</FieldLabel>\n  <EntityPicker\n    id=\"issuer\"\n    search={async (text) =>\n      Promise.resolve(issuers.filter((issuer) => issuer.name.toLowerCase().includes(text.toLowerCase())))\n    }\n    itemKey={(issuer) => issuer.id}\n    itemLabel={(issuer) => issuer.name}\n    onValueChange={() => undefined}\n  />\n</Field>;\n"
+    },
+    {
+      "extends": [
+        "Omit<SingleEntityPickerProps<TItem>, \"search\" | \"validate\">",
+        "Omit<MultipleEntityPickerProps<TItem>, \"search\" | \"validate\">"
+      ],
+      "family": "security-picker",
+      "name": "SecurityPicker",
+      "props": [
+        {
+          "description": "Finds the securities the checked identifier names.",
+          "name": "search",
+          "optional": false,
+          "type": "SecuritySearch<TItem>"
+        },
+        {
+          "description": "The identifiers it takes; a CUSIP, an ISIN or a SEDOL unless set.",
+          "name": "kinds",
+          "optional": true,
+          "type": "readonly SecurityIdentifierKind[] | undefined"
+        }
+      ],
+      "purpose": "A picker that searches for securities by CUSIP, ISIN or SEDOL. It waits for as many characters as the shortest identifier it takes has, saying which it takes, then checks each text before searching.",
+      "variants": {},
+      "example": "import { Field, FieldLabel, SecurityPicker } from \"@basis/ui\";\n\ninterface Security {\n  readonly cusip: string;\n  readonly description: string;\n}\n\n<Field>\n  <FieldLabel htmlFor=\"security\">Security</FieldLabel>\n  <SecurityPicker\n    id=\"security\"\n    search={async () => Promise.resolve<readonly Security[]>([])}\n    itemKey={(security) => security.cusip}\n    itemLabel={(security) => security.description}\n  />\n</Field>;\n"
+    },
+    {
+      "extends": [],
+      "family": "file-import",
+      "name": "FileImport",
+      "props": [
+        {
+          "description": "What a row must be: an object whose keys are the file's columns. Its fields read text, as a CSV's cells are, such as `z.coerce.number()`, `amountSchema(parSuffixes)` or `z.enum([...])`; an empty cell is a missing value, which an optional field takes.",
+          "name": "schema",
+          "optional": false,
+          "type": "TSchema"
+        },
+        {
+          "description": "The header, or headers, a key's column goes by in a file, when not the key itself; the first heads the preview.",
+          "name": "headers",
+          "optional": true,
+          "type": "ImportHeaders<TSchema> | undefined"
+        },
+        {
+          "description": "Receives the valid rows, typed by the schema, when the user confirms. While a promise it returns is pending the button waits; if it rejects, its error shows and the preview stays.",
+          "name": "onImport",
+          "optional": false,
+          "type": "(rows: readonly z.output<TSchema>[]) => Promise<void> | void"
+        },
+        {
+          "description": "The largest file it reads, in bytes; 5 MB unless set.",
+          "name": "maxBytes",
+          "optional": true,
+          "type": "number | undefined"
+        },
+        {
+          "description": "The most rows a file may hold under its header; 10,000 unless set.",
+          "name": "maxRows",
+          "optional": true,
+          "type": "number | undefined"
+        },
+        {
+          "description": "The drop zone's title; \"Drop a CSV file here\" unless set.",
+          "name": "title",
+          "optional": true,
+          "type": "string | undefined"
+        }
+      ],
+      "purpose": "A CSV import, checked against `schema`, that hands the app the valid rows once the user confirms.",
+      "variants": {},
+      "example": "import { FileImport, amountSchema, parSuffixes } from \"@basis/ui\";\nimport { z } from \"zod\";\n\nconst positionRow = z.object({ cusip: z.string(), par: amountSchema(parSuffixes) });\n\n<FileImport\n  schema={positionRow}\n  headers={{ par: [\"Par\", \"Par amount\"] }}\n  onImport={async () => {\n    await Promise.resolve();\n  }}\n/>;\n"
+    },
+    {
+      "extends": [],
+      "family": "error-alert",
+      "name": "ErrorAlert",
+      "props": [
+        {
+          "description": "The error to show, such as a query's or a mutation's `error`; with `null` or `undefined` nothing renders.",
+          "name": "error",
+          "optional": false,
+          "type": "unknown"
+        },
+        {
+          "description": "Adds a \"Try again\" button that calls it, such as a query's `refetch`.",
+          "name": "onRetry",
+          "optional": true,
+          "type": "(() => void) | undefined"
+        },
+        {
+          "description": "Places the alert, as with `mb-4`; its look is fixed.",
+          "name": "className",
+          "optional": true,
+          "type": "string | undefined"
+        }
+      ],
+      "purpose": "A destructive Alert describing `error`, announced at once to a screen reader and named by its title.",
+      "variants": {},
+      "example": "import { ErrorAlert } from \"@basis/ui\";\n\n<ErrorAlert error={new Error(\"The positions could not be loaded.\")} onRetry={() => undefined} />;\n"
+    },
+    {
+      "extends": [],
+      "family": "basis-app",
+      "name": "BasisApp",
+      "props": [
+        {
+          "description": "The app's TanStack Router, made with `createRouter({ routeTree })`. Its routes render once the user is known. Unless it sets its own, BasisApp gives it an error component, a not-found component and an `onCatch` that reports to telemetry.",
+          "name": "router",
+          "optional": false,
+          "type": "AnyRouter"
+        },
+        {
+          "description": "The sign-in adapter: the firm's, `anonymousSignIn()` for an app with no sign-in, or `fakeSignIn()` in tests and development.",
+          "name": "signIn",
+          "optional": false,
+          "type": "SignIn"
+        },
+        {
+          "description": "Where errors, events and timings go; the console by default.",
+          "name": "telemetry",
+          "optional": true,
+          "type": "Telemetry"
+        },
+        {
+          "description": "The query client, for a test that reads its cache; one from `createQueryClient()` by default.",
+          "name": "queryClient",
+          "optional": true,
+          "type": "QueryClient"
+        }
+      ],
+      "purpose": "The app's providers: telemetry, the query client, the toasts, an error boundary round everything, the signed-in session, and the router. It also keeps the page in the user's mode and density as they change them, signs the user out when the API says their session has ended, and asks them to sign in when it says a request needs them to.",
+      "variants": {},
+      "example": "import { BasisApp, anonymousSignIn } from \"@basis/ui\";\nimport { createRootRoute, createRouter } from \"@tanstack/react-router\";\n\nconst router = createRouter({ routeTree: createRootRoute() });\n\n<BasisApp router={router} signIn={anonymousSignIn()} />;\n"
+    }
+  ],
+  "format": "basis-ui-catalogue/1",
+  "icons": [
+    "AlertCircleIcon",
+    "AlertTriangleIcon",
+    "ArrowDownIcon",
+    "ArrowDownWideNarrowIcon",
+    "ArrowLeftIcon",
+    "ArrowRightIcon",
+    "ArrowUpDownIcon",
+    "ArrowUpIcon",
+    "ArrowUpNarrowWideIcon",
+    "ArrowUpRightIcon",
+    "BarChart3Icon",
+    "CalendarIcon",
+    "CandlestickChartIcon",
+    "ChartCandlestickIcon",
+    "ChartColumnIcon",
+    "ChartLineIcon",
+    "ChartPieIcon",
+    "ChartScatterIcon",
+    "CheckCircle2Icon",
+    "CheckCircleIcon",
+    "CheckIcon",
+    "ChevronDownIcon",
+    "ChevronLeftIcon",
+    "ChevronRightIcon",
+    "ChevronUpIcon",
+    "ChevronsDownUpIcon",
+    "ChevronsLeftIcon",
+    "ChevronsRightIcon",
+    "ChevronsUpDownIcon",
+    "CircleAlertIcon",
+    "CircleCheckBigIcon",
+    "CircleCheckIcon",
+    "CircleExclamationPointIcon",
+    "CircleIcon",
+    "CircleXIcon",
+    "ClockIcon",
+    "Columns3Icon",
+    "CopyIcon",
+    "DownloadIcon",
+    "EditIcon",
+    "EllipsisIcon",
+    "EllipsisVerticalIcon",
+    "ExternalLinkIcon",
+    "EyeIcon",
+    "EyeOffIcon",
+    "FilterIcon",
+    "FunnelIcon",
+    "GaugeIcon",
+    "GripVerticalIcon",
+    "GroupIcon",
+    "InfoIcon",
+    "LayoutDashboardIcon",
+    "LineChartIcon",
+    "Loader2Icon",
+    "LoaderCircleIcon",
+    "LogOutIcon",
+    "MenuIcon",
+    "MinusIcon",
+    "MoreHorizontalIcon",
+    "MoreVerticalIcon",
+    "OctagonXIcon",
+    "PaletteIcon",
+    "PanelLeftIcon",
+    "PanelsLeftRightIcon",
+    "PenBoxIcon",
+    "PenSquareIcon",
+    "PencilIcon",
+    "PieChartIcon",
+    "PinIcon",
+    "PlusIcon",
+    "RefreshCwIcon",
+    "ScatterChartIcon",
+    "SearchIcon",
+    "SettingsIcon",
+    "SidebarIcon",
+    "SigmaIcon",
+    "SortAscIcon",
+    "SortDescIcon",
+    "SquarePenIcon",
+    "SunMoonIcon",
+    "TableIcon",
+    "Trash2Icon",
+    "TrashIcon",
+    "TrendingDownIcon",
+    "TrendingUpIcon",
+    "TriangleAlertIcon",
+    "TriangleExclamationPointIcon",
+    "UploadIcon",
+    "UserIcon",
+    "XCircleIcon",
+    "XIcon",
+    "XOctagonIcon"
+  ],
+  "package": "@basis/ui"
+}

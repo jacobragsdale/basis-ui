@@ -10,7 +10,31 @@ import type { VariantProps } from "#vendor/cva/cva.ts";
 
 import { tableCellVariants, tableHeadVariants } from "./table-variants.ts";
 
-/** A table in a container that scrolls sideways when the table is wider than its place. */
+/** A table in a container that scrolls sideways when the table is wider than its place.
+ *
+ * @example
+ * ```tsx
+ * import { Money, Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@basis/ui";
+ *
+ * <Table>
+ *   <TableCaption>Largest positions</TableCaption>
+ *   <TableHeader>
+ *     <TableRow>
+ *       <TableHead>CUSIP</TableHead>
+ *       <TableHead>Market value</TableHead>
+ *     </TableRow>
+ *   </TableHeader>
+ *   <TableBody>
+ *     <TableRow>
+ *       <TableCell>91282CRF0</TableCell>
+ *       <TableCell>
+ *         <Money value={4_975_000} />
+ *       </TableCell>
+ *     </TableRow>
+ *   </TableBody>
+ * </Table>;
+ * ```
+ */
 function Table({ className, ...props }: ComponentProps<"table">): ReactElement {
   return (
     <div data-slot="table-container" className="relative w-full overflow-x-auto">
@@ -23,10 +47,12 @@ function Table({ className, ...props }: ComponentProps<"table">): ReactElement {
   );
 }
 
+/** The table's header row group, holding its `TableHead` cells. */
 function TableHeader({ className, ...props }: ComponentProps<"thead">): ReactElement {
   return <thead data-slot="table-header" className={cn("[&_tr]:border-b", className)} {...props} />;
 }
 
+/** The table's rows. */
 function TableBody({ className, ...props }: ComponentProps<"tbody">): ReactElement {
   return (
     <tbody
@@ -94,6 +120,7 @@ function TableCell({
   );
 }
 
+/** The table's caption, which names it for screen readers. */
 function TableCaption({ className, ...props }: ComponentProps<"caption">): ReactElement {
   return (
     <caption

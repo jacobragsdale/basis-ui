@@ -245,7 +245,18 @@ function useAsOfField({
   };
 }
 
-/** An as-of date field. Label it with a FieldLabel's `htmlFor` and this `id`, and put it in a `Field`. */
+/** An as-of date field. Label it with a FieldLabel's `htmlFor` and this `id`, and put it in a `Field`.
+ *
+ * @example
+ * ```tsx
+ * import { AsOfDatePicker, Field, FieldLabel } from "@basis/ui";
+ *
+ * <Field>
+ *   <FieldLabel htmlFor="as-of">As of</FieldLabel>
+ *   <AsOfDatePicker id="as-of" defaultValue={Temporal.PlainDate.from("2026-11-06")} />
+ * </Field>;
+ * ```
+ */
 function AsOfDatePicker({
   className,
   errors,

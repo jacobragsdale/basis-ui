@@ -9,7 +9,17 @@ interface AspectRatioProps extends ComponentProps<"div"> {
   readonly ratio: number;
 }
 
-/** A box whose height follows its width at `ratio`. Its content, such as an image, fills it with `size-full`. */
+/** A box whose height follows its width at `ratio`. Its content, such as an image, fills it with `size-full`.
+ *
+ * @example
+ * ```tsx
+ * import { AspectRatio } from "@basis/ui";
+ *
+ * <AspectRatio ratio={16 / 9}>
+ *   <img src="/curve.png" alt="Treasury curve" />
+ * </AspectRatio>;
+ * ```
+ */
 function AspectRatio({ ratio, className, ...props }: AspectRatioProps): ReactElement {
   return (
     <div

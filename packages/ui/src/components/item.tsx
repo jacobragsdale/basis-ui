@@ -40,7 +40,25 @@ function ItemSeparator({ className, ...props }: ComponentProps<typeof Separator>
 }
 
 /** One item: a `<div>`, or the element `render` names, such as a link, with its variant and size as `data-variant`
- * and `data-size`. */
+ * and `data-size`.
+ *
+ * @example
+ * ```tsx
+ * import { Button, Item, ItemActions, ItemContent, ItemDescription, ItemTitle } from "@basis/ui";
+ *
+ * <Item variant="outline">
+ *   <ItemContent>
+ *     <ItemTitle>Rates book</ItemTitle>
+ *     <ItemDescription>42 positions</ItemDescription>
+ *   </ItemContent>
+ *   <ItemActions>
+ *     <Button size="sm" variant="outline">
+ *       Open
+ *     </Button>
+ *   </ItemActions>
+ * </Item>;
+ * ```
+ */
 function Item({
   className,
   variant = "default",

@@ -55,7 +55,32 @@ function NavigationMenuPositioner({
 }
 
 /** A site's top-level navigation: a navigation landmark holding a NavigationMenuList. `align` places the popup
- * against the list. */
+ * against the list.
+ *
+ * @example
+ * ```tsx
+ * import {
+ *   NavigationMenu,
+ *   NavigationMenuContent,
+ *   NavigationMenuItem,
+ *   NavigationMenuLink,
+ *   NavigationMenuList,
+ *   NavigationMenuTrigger,
+ * } from "@basis/ui";
+ *
+ * <NavigationMenu>
+ *   <NavigationMenuList>
+ *     <NavigationMenuItem>
+ *       <NavigationMenuTrigger>Books</NavigationMenuTrigger>
+ *       <NavigationMenuContent>
+ *         <NavigationMenuLink href="/books/rates">Rates</NavigationMenuLink>
+ *         <NavigationMenuLink href="/books/credit">Credit</NavigationMenuLink>
+ *       </NavigationMenuContent>
+ *     </NavigationMenuItem>
+ *   </NavigationMenuList>
+ * </NavigationMenu>;
+ * ```
+ */
 function NavigationMenu({
   align = "start",
   className,
@@ -78,6 +103,7 @@ function NavigationMenu({
   );
 }
 
+/** The row of the navigation menu's items. */
 function NavigationMenuList({
   className,
   ...props

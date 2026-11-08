@@ -23,6 +23,7 @@ function SidebarInput({ className, ...props }: ComponentProps<"input">): ReactEl
   );
 }
 
+/** The sidebar's top row, over its content, for the app's name. */
 function SidebarHeader({ className, ...props }: ComponentProps<"div">): ReactElement {
   return (
     <div
@@ -34,6 +35,7 @@ function SidebarHeader({ className, ...props }: ComponentProps<"div">): ReactEle
   );
 }
 
+/** The sidebar's bottom row, under its content, for the user menu or settings. */
 function SidebarFooter({ className, ...props }: ComponentProps<"div">): ReactElement {
   return (
     <div

@@ -13,7 +13,19 @@ import { useRender } from "@base-ui/react/use-render";
 import { cn } from "cn";
 import type { ReactElement } from "react";
 
-/** A page's title, in an `<h1>`. */
+/** A page's title, in an `<h1>`.
+ *
+ * @example
+ * ```tsx
+ * import { TypographyH1, TypographyMuted, TypographyP } from "@basis/ui";
+ *
+ * <>
+ *   <TypographyH1>Rates book</TypographyH1>
+ *   <TypographyP>Positions as of yesterday's close.</TypographyP>
+ *   <TypographyMuted>Prices from the 16:00 snapshot.</TypographyMuted>
+ * </>;
+ * ```
+ */
 function TypographyH1({
   className,
   render,
@@ -51,6 +63,7 @@ function TypographyH2({
   });
 }
 
+/** A third-level heading, in the theme's type scale. */
 function TypographyH3({
   className,
   render,
@@ -67,6 +80,7 @@ function TypographyH3({
   });
 }
 
+/** A fourth-level heading, in the theme's type scale. */
 function TypographyH4({
   className,
   render,

@@ -264,7 +264,19 @@ function DataTableView<TRow extends RowData>({
   );
 }
 
-/** A table of a few hundred rows, or up to its row cap, whose cells may hold links and buttons. */
+/** A table of a few hundred rows, or up to its row cap, whose cells may hold links and buttons.
+ *
+ * @example
+ * ```tsx
+ * import { DataTable } from "@basis/ui";
+ *
+ * const rows = [{ cusip: "91282CRF0", id: "p1", par: 5_000_000 }];
+ *
+ * const columns = [{ header: "Par", id: "par", value: (row: (typeof rows)[number]) => row.par, variant: "numeric" as const }];
+ *
+ * <DataTable label="Positions" columns={columns} data={rows} getRowId={(row) => row.id} />;
+ * ```
+ */
 function DataTable<TRow extends RowData>({
   data,
   rowCap = defaultRowCap,

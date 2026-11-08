@@ -26,11 +26,23 @@ const sideGap = 4;
 const submenuShift = -3;
 
 /** A dropdown menu: a list of actions or options behind a button. Arrow keys move through its items, typing jumps
- * to one, Enter or a click runs it, and Escape closes the menu and returns focus to the trigger. */
+ * to one, Enter or a click runs it, and Escape closes the menu and returns focus to the trigger.
+ *
+ * @example
+ * ```tsx
+ * import { Button, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@basis/ui";
+ *
+ * <DropdownMenu>
+ *   <DropdownMenuTrigger render={<Button variant="outline" />}>Export</DropdownMenuTrigger>
+ *   <DropdownMenuContent><DropdownMenuItem onClick={() => undefined}>As CSV</DropdownMenuItem></DropdownMenuContent>
+ * </DropdownMenu>;
+ * ```
+ */
 function DropdownMenu(props: MenuPrimitive.Root.Props): ReactElement {
   return <MenuPrimitive.Root data-slot="dropdown-menu" {...props} />;
 }
 
+/** Renders the dropdown menu's popup into the page's body. `DropdownMenuContent` includes one. */
 function DropdownMenuPortal(props: MenuPrimitive.Portal.Props): ReactElement {
   return <MenuPrimitive.Portal data-slot="dropdown-menu-portal" {...props} />;
 }
@@ -241,6 +253,7 @@ function DropdownMenuRadioItem({
   );
 }
 
+/** A line between groups of a dropdown menu's items. */
 function DropdownMenuSeparator({
   className,
   ...props

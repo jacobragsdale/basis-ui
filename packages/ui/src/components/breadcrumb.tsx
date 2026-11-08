@@ -11,11 +11,37 @@ import type { ComponentProps, ReactElement } from "react";
 import { ChevronRightIcon } from "#vendor/lucide/chevron-right.tsx";
 import { EllipsisIcon } from "#vendor/lucide/ellipsis.tsx";
 
-/** The trail of links to the current page: a navigation landmark named "breadcrumb". */
+/** The trail of links to the current page: a navigation landmark named "breadcrumb".
+ *
+ * @example
+ * ```tsx
+ * import {
+ *   Breadcrumb,
+ *   BreadcrumbItem,
+ *   BreadcrumbLink,
+ *   BreadcrumbList,
+ *   BreadcrumbPage,
+ *   BreadcrumbSeparator,
+ * } from "@basis/ui";
+ *
+ * <Breadcrumb>
+ *   <BreadcrumbList>
+ *     <BreadcrumbItem>
+ *       <BreadcrumbLink href="/bonds">Bonds</BreadcrumbLink>
+ *     </BreadcrumbItem>
+ *     <BreadcrumbSeparator />
+ *     <BreadcrumbItem>
+ *       <BreadcrumbPage>US91282CRF04</BreadcrumbPage>
+ *     </BreadcrumbItem>
+ *   </BreadcrumbList>
+ * </Breadcrumb>;
+ * ```
+ */
 function Breadcrumb({ className, ...props }: ComponentProps<"nav">): ReactElement {
   return <nav aria-label="breadcrumb" data-slot="breadcrumb" className={className} {...props} />;
 }
 
+/** The ordered list of the trail's items and separators. */
 function BreadcrumbList({ className, ...props }: ComponentProps<"ol">): ReactElement {
   return (
     <ol
@@ -29,6 +55,7 @@ function BreadcrumbList({ className, ...props }: ComponentProps<"ol">): ReactEle
   );
 }
 
+/** One step of the trail: a `BreadcrumbLink`, or the `BreadcrumbPage` for the current page. */
 function BreadcrumbItem({ className, ...props }: ComponentProps<"li">): ReactElement {
   return (
     <li

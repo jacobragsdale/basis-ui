@@ -40,7 +40,8 @@ interface BasisAppProps {
    * Unless it sets its own, BasisApp gives it an error component, a not-found component and an `onCatch` that
    * reports to telemetry. */
   readonly router: AnyRouter;
-  /** The sign-in adapter: the firm's, or `fakeSignIn()` in tests and development. */
+  /** The sign-in adapter: the firm's, `anonymousSignIn()` for an app with no sign-in, or `fakeSignIn()` in tests and
+   * development. */
   readonly signIn: SignIn;
   /** Where errors, events and timings go; the console by default. */
   readonly telemetry?: Telemetry;
@@ -179,7 +180,18 @@ function Routes({ router }: { readonly router: AnyRouter }): ReactElement {
 
 /** The app's providers: telemetry, the query client, the toasts, an error boundary round everything, the signed-in
  * session, and the router. It also keeps the page in the user's mode and density as they change them, signs the user
- * out when the API says their session has ended, and asks them to sign in when it says a request needs them to. */
+ * out when the API says their session has ended, and asks them to sign in when it says a request needs them to.
+ *
+ * @example
+ * ```tsx
+ * import { BasisApp, anonymousSignIn } from "@basis/ui";
+ * import { createRootRoute, createRouter } from "@tanstack/react-router";
+ *
+ * const router = createRouter({ routeTree: createRootRoute() });
+ *
+ * <BasisApp router={router} signIn={anonymousSignIn()} />;
+ * ```
+ */
 function BasisApp({
   router,
   signIn,
