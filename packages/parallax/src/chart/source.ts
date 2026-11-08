@@ -171,7 +171,8 @@ function shapeOf(given: Layout): string {
           chart.ohlc,
           chart.indicators,
           chart.volume,
-          chart.panes ?? [],
+          // A pane's columns and how it draws them; its title and direction change only the drawing.
+          (chart.panes ?? []).map((pane) => [pane.columns, pane.kind]),
           layout.group_by,
           layout.split_by,
           layout.measures,

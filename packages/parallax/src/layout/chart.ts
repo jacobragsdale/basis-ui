@@ -133,6 +133,7 @@ const paneSchema = z.strictObject({
   columns: z.array(name),
   kind: z.enum(["line", "bar"]).optional(),
   title: z.string().optional(),
+  reverse: z.boolean().optional(),
 });
 
 const chartSchema = z.strictObject({
@@ -171,6 +172,10 @@ const chartSchema = z.strictObject({
   session: z.strictObject({ opens: clock, closes: clock }).optional(),
   // Panes under a line or area chart's plot, each with columns of its own. Left out when unset, as in Rust.
   panes: z.array(paneSchema).optional(),
+  // Value axes turned upside down, for yields, and which colour a rise takes. Left out when unset, as in Rust.
+  reverse_y: z.boolean().optional(),
+  reverse_y_right: z.boolean().optional(),
+  rising: z.enum(["gain", "loss"]).optional(),
 });
 
 /** A chart of a layout. */

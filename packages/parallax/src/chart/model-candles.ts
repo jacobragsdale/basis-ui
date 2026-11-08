@@ -15,6 +15,7 @@ import {
   plotFor,
   valueScale,
   xAxisHeight,
+  upward,
 } from "./model-shared.ts";
 import { linearScale, pixel } from "./scale.ts";
 
@@ -124,7 +125,7 @@ function priceAxis(
   const scale = valueScale(input, values, { range, zero: false });
   const style = columnStyle(input, input.chart.ohlc?.close);
   const plot = plotFor(input, { left: axis("left", scale, { style }).ticks, right: null });
-  return { plot, y: onto(scale, [plot.y + plot.height, plot.y]) };
+  return { plot, y: onto(scale, upward(plot.y + plot.height, plot.y, input.chart.reverse_y)) };
 }
 
 /** The model of a candlestick or OHLC chart. */

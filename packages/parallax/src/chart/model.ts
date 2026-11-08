@@ -85,8 +85,19 @@ function reducedModel(input: ModelInput): ChartModel {
   return frame === null ? emptyModel(input, "Loading…") : frameModel(input, frame);
 }
 
+/** The input with the up and down colours swapped when a rise is a loss, as a rising yield is to a long position:
+ * candles, OHLC bars, volume, MACD's histogram, a pane's bars and a waterfall's steps then take them reversed. */
+function withRising(input: ModelInput): ModelInput {
+  if (input.chart.rising !== "loss") {
+    return input;
+  }
+  const { up, down } = input.colors;
+  return { ...input, colors: { ...input.colors, down: up, up: down } };
+}
+
 /** Builds the draw model for a chart's latest data. */
-function chartModel(input: ModelInput): ChartModel {
+function chartModel(given: ModelInput): ChartModel {
+  const input = withRising(given);
   if (input.width < smallest || input.height < smallest) {
     return emptyModel(input, "");
   }

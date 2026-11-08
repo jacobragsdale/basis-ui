@@ -438,5 +438,68 @@
     "top_n": null,
     "totals": [],
     "version": 2
+  },
+  {
+    "chart": {
+      "axis": "value",
+      "compare": false,
+      "donut": true,
+      "drawings": [],
+      "events": null,
+      "hidden": [],
+      "horizontal": false,
+      "indicators": [],
+      "kind": "line",
+      "labels": true,
+      "log_y": false,
+      "ohlc": null,
+      "panes": [
+        {
+          "columns": [
+            "change"
+          ],
+          "kind": "bar",
+          "reverse": true
+        }
+      ],
+      "range": null,
+      "reverse_y": true,
+      "reverse_y_right": true,
+      "rising": "loss",
+      "series": null,
+      "stacked": false,
+      "volume": null,
+      "x": "time",
+      "y": [
+        "yield"
+      ],
+      "y_right": [
+        "spread"
+      ]
+    },
+    "column_widths": {},
+    "columns": [],
+    "dataset": "yields",
+    "detail": false,
+    "expand_depth": 0,
+    "expanded": [],
+    "filters": [],
+    "formats": {},
+    "group_by": [],
+    "group_sort": {
+      "by": "key",
+      "descending": false
+    },
+    "having": [],
+    "measures": [],
+    "parameters": {},
+    "pinned": [],
+    "search": "",
+    "sort": [],
+    "split_by": [],
+    "titles": {},
+    "top_n": null,
+    "totals": [],
+    "version": 2
   }
 ]

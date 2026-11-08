@@ -18,6 +18,7 @@ import {
   seriesColor,
   valueScale,
   xAxisHeight,
+  upward,
 } from "./model-shared.ts";
 import { linearScale, pixel } from "./scale.ts";
 
@@ -134,6 +135,18 @@ function densityCell(
   return { color: rampColor(input.colors.ramp, share), hit: null, kind: "cell", rect: cell };
 }
 
+/** Where row `row` of a density's cells, `height` tall, starts: rows count up from the lowest values, from the plot's
+ * bottom, or from its top when the axis is reversed. */
+function rowTop(
+  input: ModelInput,
+  plot: Rect,
+  { row, height }: { readonly row: number; readonly height: number },
+): number {
+  return input.chart.reverse_y === true
+    ? plot.y + row * height
+    : plot.y + plot.height - (row + 1) * height;
+}
+
 /** A density's cells, each shaded by its count on a ramp that follows the counts' logarithm. */
 function densityCells(input: ModelInput, content: Content<"density">, plot: Rect): Mark[] {
   const most = mostOf(content.counts);
@@ -147,7 +160,7 @@ function densityCells(input: ModelInput, content: Content<"density">, plot: Rect
           height,
           width,
           x: plot.x + column * width,
-          y: plot.y + plot.height - (row + 1) * height,
+          y: rowTop(input, plot, { height, row }),
         };
         marks.push(densityCell(input, { cell, count: cellCount, most }));
       }
@@ -166,7 +179,10 @@ function densityModel(
   const scale = linearScale([content.yFrom, content.yTo], range);
   const style = columnStyle(input, input.chart.y[0]);
   const plot = plotFor(input, { left: axis("left", scale, { style }).ticks, right: null });
-  const y = linearScale([content.yFrom, content.yTo], [plot.y + plot.height, plot.y]);
+  const y = linearScale(
+    [content.yFrom, content.yTo],
+    upward(plot.y + plot.height, plot.y, input.chart.reverse_y),
+  );
   const x = linearScale([frame.xFrom, frame.xTo], [plot.x, plot.x + plot.width]);
   const marks = densityCells(input, content, plot);
   return {

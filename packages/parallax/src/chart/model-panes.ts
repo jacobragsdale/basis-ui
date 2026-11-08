@@ -190,7 +190,10 @@ function paneOf(
   }: { readonly source: PaneSource; readonly main: ChartModel; readonly x: Scale },
   { placed, index }: { readonly placed: PlacedPane; readonly index: number },
 ): Pane {
-  const { scale, ticks } = paneScale(placed.domain, placed.box, specStyle(input, placed.spec));
+  const { scale, ticks } = paneScale(placed.domain, placed.box, {
+    reversed: placed.spec.columns?.reverse === true,
+    style: specStyle(input, placed.spec),
+  });
   const { columns } = placed.spec;
   return {
     axis: { scale, side: "left", ticks },
@@ -271,7 +274,7 @@ function withPanes(
   }
   const placed = placePanes(input, source, { height, specs });
   const labels = placed.flatMap(
-    (pane) => paneScale(pane.domain, pane.box, specStyle(input, pane.spec)).ticks,
+    (pane) => paneScale(pane.domain, pane.box, { style: specStyle(input, pane.spec) }).ticks,
   );
   const main = build({
     ...input,

@@ -529,9 +529,21 @@ colours for one series and side by side in their series' colours for several,
 which the colours alone would not tell apart. A layout is refused that draws a
 column twice, puts panes under another kind, or combines them with compare
 mode, which would put the plot's series on percentage changes beside panes in
-their own values. Any value axis can be reversed, for yields, where up is bad
-for a long position, and a chart says whether a rise takes the gain colour or
-the loss colour, for its candles, volume, histogram and change bars alike.
+their own values.
+
+A value axis can be turned upside down, for yields, where up is bad for a
+long position: `reverse_y` turns the left axis of a line, area, scatter,
+candlestick or OHLC chart, `reverse_y_right` the right axis, and a pane's
+`reverse` its own; a layout that reverses an axis the chart does not have is
+refused. Only the axis's direction changes: its values, ticks and format are
+as before, the x axis is untouched, so zooming, panning and brushing select
+the same rows, and drawings stay at their prices, since everything that
+places a price on the plot or reads one back goes through the axis's scale. A
+density's cells count down from the top too. `rising: "loss"` gives a rise the
+down colour and a fall the up colour, for the candles, OHLC bars, volume,
+MACD's histogram, a pane's bars and a waterfall's steps alike; the chart swaps
+the two colours once, where its model starts, so every part that colours by
+direction follows.
 
 Drawings (trend lines, horizontal lines, Fibonacci retracements, rectangles
 and notes) are saved in the layout, anchored to data rather than to pixels:

@@ -43,6 +43,15 @@ const lineHeight = 16;
 
 const count = new Intl.NumberFormat("en-US");
 
+/** A value axis's pixels from its lowest value to its highest: bottom to top, or top to bottom when it is reversed. */
+function upward(
+  bottom: number,
+  top: number,
+  reversed: boolean | undefined,
+): readonly [number, number] {
+  return reversed === true ? [top, bottom] : [bottom, top];
+}
+
 /** The padding around the plot. */
 function padOf(input: ModelInput): number {
   return input.compact === true ? compactPad : pad;
@@ -251,6 +260,7 @@ export {
   seriesColor,
   seriesEntries,
   shown,
+  upward,
   valueScale,
   xAxisHeight,
 };

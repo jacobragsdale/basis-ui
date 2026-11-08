@@ -27,6 +27,8 @@ interface PaneLine {
 interface ColumnPane {
   readonly title: string;
   readonly bars: boolean;
+  /** Its value axis upside down. */
+  readonly reverse: boolean;
   readonly columns: readonly string[];
   readonly lines: readonly PaneLine[];
 }
@@ -85,6 +87,7 @@ function columnPanes(input: ModelInput, frame: ChartFrameData): readonly ColumnP
       bars: pane.kind === "bar",
       columns: pane.columns,
       lines: paneLines(input, { own, plotted }),
+      reverse: pane.reverse === true,
       title: title === "" ? pane.columns.join(", ") : title,
     };
   });

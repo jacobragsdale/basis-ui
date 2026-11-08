@@ -310,6 +310,12 @@ change in basis points below:
 />
 ```
 
+A yield reads better upside down, where a rise is a loss to a holder:
+`reverse_y` turns the left value axis of a line, area, scatter, candlestick or
+OHLC chart, `reverse_y_right` the right one, and a pane's `reverse` its own,
+and `rising: "loss"` gives a rise the down colour, for candles, OHLC bars,
+volume, MACD's histogram, a pane's bars and a waterfall's steps.
+
 A trading-time axis follows the NYSE's calendar and its 09:30 to 16:00 session
 unless the chart names another. `calendar: "sifma"` takes the bond market's:
 its closes, such as Columbus Day and Veterans Day, take no space, and its 2 p.m.

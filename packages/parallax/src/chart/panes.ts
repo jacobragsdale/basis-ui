@@ -99,13 +99,17 @@ function paneValues(pane: number, { lines, styles, candles, spec }: PaneLines): 
 function paneScale(
   domain: readonly [number, number],
   box: Rect,
-  style: AxisStyle = plain,
+  {
+    style = plain,
+    reversed = false,
+  }: { readonly style?: AxisStyle; readonly reversed?: boolean } = {},
 ): { readonly scale: Scale; readonly ticks: readonly ValueTick[] } {
-  const scale = linearScale(domain, [box.y + box.height, box.y]);
+  const [bottom, top] = [box.y + box.height, box.y];
+  const scale = linearScale(domain, reversed ? [top, bottom] : [bottom, top]);
   const count = Math.max(2, box.height / pixelsPerTick);
   const all = style.kind === "plain" ? valueTicks(scale, count) : styledTicks(scale, count, style);
   // A tick at the very top would be labelled into the axis above it.
-  const ticks = all.filter((tick) => tick.px >= box.y + topMargin);
+  const ticks = all.filter((tick) => tick.px >= top + topMargin);
   return { scale, ticks };
 }
 

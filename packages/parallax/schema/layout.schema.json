@@ -445,6 +445,18 @@
           "default": null,
           "description": "The x range zoomed to; absent shows everything."
         },
+        "reverse_y": {
+          "description": "Turns the left value axis upside down, for yields, where a rise is a\nloss to a long position.",
+          "type": "boolean"
+        },
+        "reverse_y_right": {
+          "description": "Turns the right value axis upside down.",
+          "type": "boolean"
+        },
+        "rising": {
+          "$ref": "#/$defs/RisingName",
+          "description": "Which colour a rise takes: candles, OHLC bars, volume, MACD's\nhistogram, a pane's bars and a waterfall's steps."
+        },
         "series": {
           "default": null,
           "description": "A column whose values split each plotted column into series.",
@@ -1230,6 +1242,10 @@
           "$ref": "#/$defs/PaneKindName",
           "description": "Lines or bars."
         },
+        "reverse": {
+          "description": "Turns its value axis upside down.",
+          "type": "boolean"
+        },
         "title": {
           "description": "Its title; its columns' names if empty.",
           "type": "string"
@@ -1378,6 +1394,21 @@
         {
           "const": "microseconds",
           "description": "Microseconds.",
+          "type": "string"
+        }
+      ]
+    },
+    "RisingName": {
+      "description": "Which colour a rise takes on a chart, in a layout.",
+      "oneOf": [
+        {
+          "const": "gain",
+          "description": "The gain colour, as a rising price is a gain to a long position.",
+          "type": "string"
+        },
+        {
+          "const": "loss",
+          "description": "The loss colour, as a rising yield is a loss to a long position.",
           "type": "string"
         }
       ]

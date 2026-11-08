@@ -16,6 +16,7 @@ import {
   seriesColor,
   valueScale,
   xAxisHeight,
+  upward,
 } from "./model-shared.ts";
 import { segmentsOf } from "./panes.ts";
 import { linearScale, pixel } from "./scale.ts";
@@ -71,12 +72,15 @@ function lineAxes(
             suffix: percent,
           }).ticks,
   });
-  const yRange: readonly [number, number] = [plot.y + plot.height, plot.y];
+  const [bottom, top] = [plot.y + plot.height, plot.y];
   return {
-    left: onto(leftScale, yRange),
+    left: onto(leftScale, upward(bottom, top, input.chart.reverse_y)),
     percent,
     plot,
-    right: rightScale === null ? null : onto(rightScale, yRange),
+    right:
+      rightScale === null
+        ? null
+        : onto(rightScale, upward(bottom, top, input.chart.reverse_y_right)),
   };
 }
 

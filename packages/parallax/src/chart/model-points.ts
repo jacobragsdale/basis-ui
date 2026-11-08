@@ -17,6 +17,7 @@ import {
   seriesColor,
   valueScale,
   xAxisHeight,
+  upward,
 } from "./model-shared.ts";
 import { segmentsOf } from "./panes.ts";
 import { linearScale, pixel } from "./scale.ts";
@@ -151,7 +152,7 @@ function dotScales(input: ModelInput, frame: ChartFrameData, content: Content): 
     largest,
     plot,
     x: linearScale([frame.xFrom, frame.xTo], [plot.x + across, plot.x + plot.width - across]),
-    y: onto(scale, [plot.y + plot.height - inset, plot.y + inset]),
+    y: onto(scale, upward(plot.y + plot.height - inset, plot.y + inset, input.chart.reverse_y)),
   };
 }
 

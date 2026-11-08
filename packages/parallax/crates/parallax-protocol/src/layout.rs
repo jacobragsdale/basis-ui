@@ -283,6 +283,23 @@ pub struct LayoutSession {
     pub closes: String,
 }
 
+/// Which colour a rise takes on a chart, in a layout.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum RisingName {
+    /// The gain colour, as a rising price is a gain to a long position.
+    #[default]
+    Gain,
+    /// The loss colour, as a rising yield is a loss to a long position.
+    Loss,
+}
+
+impl RisingName {
+    fn is_gain(&self) -> bool {
+        *self == Self::Gain
+    }
+}
+
 /// How a pane under a chart draws its columns, in a layout.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -317,6 +334,9 @@ pub struct LayoutPane {
     /// Its title; its columns' names if empty.
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub title: String,
+    /// Turns its value axis upside down.
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub reverse: bool,
 }
 
 /// The price columns of a candlestick or OHLC chart, in a layout.
@@ -620,6 +640,17 @@ pub struct LayoutChart {
     /// Panes under a line or area chart's plot, each with columns of its own.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub panes: Vec<LayoutPane>,
+    /// Turns the left value axis upside down, for yields, where a rise is a
+    /// loss to a long position.
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub reverse_y: bool,
+    /// Turns the right value axis upside down.
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub reverse_y_right: bool,
+    /// Which colour a rise takes: candles, OHLC bars, volume, MACD's
+    /// histogram, a pane's bars and a waterfall's steps.
+    #[serde(default, skip_serializing_if = "RisingName::is_gain")]
+    pub rising: RisingName,
     /// A scatter's numeric column whose magnitude sets each dot's area, such as
     /// DV01 or par.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -737,6 +768,37 @@ impl LayoutChart {
                 }
                 drawn.push(column);
             }
+        }
+        Ok(())
+    }
+
+    /// Refuses a reversed axis the chart does not have: the left axis of a
+    /// kind other than a line, area, scatter, candlestick or OHLC chart, or a
+    /// right axis with no columns on it.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error naming the x column and what to change.
+    pub fn check_reversed(&self) -> Result<(), LayoutError> {
+        let along_x = matches!(
+            self.kind,
+            ChartKindName::Line
+                | ChartKindName::Area
+                | ChartKindName::Scatter
+                | ChartKindName::Candlestick
+                | ChartKindName::Ohlc
+        );
+        if self.reverse_y && !along_x {
+            return Err(value_error(
+                &self.x,
+                "reverse_y turns the value axis of a line, area, scatter, candlestick or OHLC chart",
+            ));
+        }
+        if self.reverse_y_right && self.y_right.is_empty() {
+            return Err(value_error(
+                &self.x,
+                "reverse_y_right turns the right axis, which needs columns in y_right",
+            ));
         }
         Ok(())
     }
@@ -1220,6 +1282,11 @@ pub struct LayoutTopN {
     /// Show the rest as one Other row.
     #[serde(default = "yes")]
     pub other: bool,
+}
+
+#[allow(clippy::trivially_copy_pass_by_ref)]
+fn is_false(value: &bool) -> bool {
+    !*value
 }
 
 fn yes() -> bool {
@@ -1725,6 +1792,7 @@ impl Layout {
         let session = match &self.chart {
             Some(c) => {
                 c.check_panes()?;
+                c.check_reversed()?;
                 c.trading_session()?
             }
             None => None,
@@ -2262,6 +2330,12 @@ mod tests {
             "chart": {"kind": "line", "x": "time", "y": ["yield"], "axis": "trading",
                       "calendar": "sifma", "session": {"opens": "18:00", "closes": "17:00"}}
         }"#;
+        let reversed = r#"{
+            "dataset": "yields",
+            "chart": {"kind": "line", "x": "time", "y": ["yield"], "y_right": ["spread"], "reverse_y": true,
+                      "reverse_y_right": true, "rising": "loss",
+                      "panes": [{"columns": ["change"], "kind": "bar", "reverse": true}]}
+        }"#;
         let panes = r#"{
             "dataset": "curves",
             "filters": [{"column": "curve_date", "op": "in", "values": ["2026-11-30", "2026-11-23"]}],
@@ -2277,6 +2351,7 @@ mod tests {
             Layout::from_json(waterfall).unwrap(),
             Layout::from_json(sifma).unwrap(),
             Layout::from_json(panes).unwrap(),
+            Layout::from_json(reversed).unwrap(),
         ]
         .iter()
         .map(|l| serde_json::to_value(l).unwrap())
@@ -2308,6 +2383,10 @@ mod tests {
             "\"calendar\"",
             "\"session\"",
             "\"panes\"",
+            "\"reverse_y\"",
+            "\"reverse_y_right\"",
+            "\"rising\"",
+            "\"reverse\"",
         ] {
             assert!(!json.contains(field), "{field} in {json}");
         }
@@ -2425,5 +2504,28 @@ mod tests {
                 .to_string()
                 .contains("line or area")
         );
+    }
+
+    #[test]
+    fn reversed_axes_are_refused_where_the_chart_has_none() {
+        let chart = |json: &str| Layout::from_json(json).unwrap().chart.unwrap();
+        let yields = chart(
+            r#"{"chart": {"kind": "line", "x": "t", "y": ["yield"], "reverse_y": true, "rising": "loss"}}"#,
+        );
+        yields.check_reversed().unwrap();
+        assert_eq!(yields.rising, RisingName::Loss);
+        for (json, says) in [
+            (
+                r#"{"chart": {"kind": "bar", "reverse_y": true}}"#,
+                "line, area, scatter",
+            ),
+            (
+                r#"{"chart": {"kind": "line", "x": "t", "y": ["a"], "reverse_y_right": true}}"#,
+                "needs columns in y_right",
+            ),
+        ] {
+            let error = chart(json).check_reversed().unwrap_err().to_string();
+            assert!(error.contains(says), "{json}: {error}");
+        }
     }
 }

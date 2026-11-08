@@ -380,7 +380,8 @@ Those kinds came from equity charting, and a study of what the fixed-income syst
 - Waterfalls draw attribution and P&L explain, their steps the engine's running totals (step 2.8.5, built).
 - Panes under a chart take any columns, for curves on several dates with their change in basis points below (step
   2.8.6, built).
-- An axis can be reversed, for yields, and a chart says whether a rise takes the gain colour or the loss colour.
+- An axis can be reversed, for yields, and a chart says whether a rise takes the gain colour or the loss colour (step
+  2.8.7, built).
 
 Analytics stay in the API: curve fits, key-rate durations, scenario P&L and attribution arrive as columns, and
 parallax draws them. With those additions, parallax draws what the firm's dashboards need.

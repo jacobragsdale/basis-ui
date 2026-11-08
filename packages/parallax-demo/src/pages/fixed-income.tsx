@@ -101,9 +101,17 @@ function byPortfolio(selected: ChartSelection | null): LayoutInput {
 /** Yields arrive as fractions and read as percentages to a thousandth. */
 const yieldFormat = { decimals: 3, percent: true } as const;
 
-/** The 10-year yield on each day SIFMA recommends trading in October and November: its holidays take no space. */
+/** The 10-year yield on each day SIFMA recommends trading in October and November, its axis reversed so that up is a
+ * gain to a holder, as on a price chart: SIFMA's holidays take no space. */
 const tenYear: LayoutInput = {
-  chart: { axis: "trading", calendar: "sifma", kind: "line", x: "curve_date", y: ["yield"] },
+  chart: {
+    axis: "trading",
+    calendar: "sifma",
+    kind: "line",
+    reverse_y: true,
+    x: "curve_date",
+    y: ["yield"],
+  },
   dataset: "curves",
   filters: [
     { column: "tenor", op: "eq", value: "10Y" },
@@ -178,7 +186,7 @@ function TradingTime(): ReactNode {
       <ChartCard
         id="ten-year-sifma"
         layout={{ ...tenYear, dataset: "curves" }}
-        title="The 10-year yield on SIFMA's days: Columbus Day and Veterans Day take no space"
+        title="The 10-year yield on SIFMA's days, reversed so that up is a gain: Columbus Day and Veterans Day take no space"
       />
       <ChartCard
         id="thanksgiving-sessions"
