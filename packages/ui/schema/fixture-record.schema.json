@@ -1,0 +1,210 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:basis-ui:fixture-record:1",
+  "title": "A basis-ui fixture record",
+  "type": "object",
+  "properties": {
+    "format": {
+      "type": "string",
+      "const": "basis-ui-fixture/1"
+    },
+    "operation_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The operation's id in the API's document, such as bond, which basis takes from the handler's name."
+    },
+    "recorded_at": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+      "description": "When the API answered, or when a synthetic response was written, with its offset, such as 2026-11-06T14:30:00Z."
+    },
+    "request": {
+      "type": "object",
+      "properties": {
+        "method": {
+          "type": "string",
+          "enum": ["GET", "POST", "PUT", "PATCH", "DELETE"]
+        },
+        "path": {
+          "type": "string",
+          "pattern": "^\\/[^?#]*$",
+          "description": "The route's path as the request's URL holds it, percent-encoded, without the /api prefix the ingress removes, such as /bonds/US91282CRF04."
+        },
+        "query": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "minLength": 1
+          },
+          "additionalProperties": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/Text"
+            }
+          },
+          "description": "Each query key with its values, in the order the URL gives them, such as {\"security\": [\"A\", \"B\"]} for ?security=A&security=B. No key, or no query, means no query."
+        },
+        "body": {
+          "description": "The request's JSON body, if it has one. Fixture mode keeps it for reading, and does not match on it.",
+          "$ref": "#/$defs/JsonValue"
+        }
+      },
+      "required": ["method", "path"],
+      "additionalProperties": false,
+      "description": "The request, matched by its method, path and query. It keeps no headers, so never the bearer token."
+    },
+    "response": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 200,
+                  "maximum": 203
+                },
+                {
+                  "type": "integer",
+                  "minimum": 206,
+                  "maximum": 303
+                },
+                {
+                  "type": "integer",
+                  "minimum": 305,
+                  "maximum": 599
+                }
+              ]
+            },
+            "headers": {
+              "$ref": "#/$defs/Headers"
+            },
+            "media_type": {
+              "type": "string",
+              "pattern": "^application\\/(?:[a-z0-9!#$&^_.-]+\\+)?json$",
+              "description": "The JSON body's media type: application/json, or one ending +json, such as application/problem+json."
+            },
+            "body": {
+              "$ref": "#/$defs/JsonValue"
+            }
+          },
+          "required": ["status", "media_type", "body"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 200,
+                  "maximum": 203
+                },
+                {
+                  "type": "integer",
+                  "minimum": 206,
+                  "maximum": 303
+                },
+                {
+                  "type": "integer",
+                  "minimum": 305,
+                  "maximum": 599
+                }
+              ]
+            },
+            "headers": {
+              "$ref": "#/$defs/Headers"
+            },
+            "media_type": {
+              "type": "string",
+              "pattern": "^[a-z0-9!#$&^_.+-]+\\/[a-z0-9!#$&^_.+-]+$",
+              "description": "The body's media type, with no parameters, such as application/vnd.apache.arrow.stream."
+            },
+            "body_base64": {
+              "type": "string",
+              "format": "base64",
+              "contentEncoding": "base64",
+              "pattern": "^$|^(?:[0-9a-zA-Z+/]{4})*(?:(?:[0-9a-zA-Z+/]{2}==)|(?:[0-9a-zA-Z+/]{3}=))?$",
+              "description": "The body's bytes in base64, as RFC 4648 section 4 writes them, such as an Arrow IPC stream."
+            }
+          },
+          "required": ["status", "media_type", "body_base64"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "type": "integer",
+              "minimum": 200,
+              "maximum": 599
+            },
+            "headers": {
+              "$ref": "#/$defs/Headers"
+            }
+          },
+          "required": ["status"],
+          "additionalProperties": false
+        }
+      ],
+      "description": "The response: a JSON body as body, with its media_type; other bytes, such as an Arrow IPC stream, as body_base64, with theirs; or no body, and no media_type."
+    }
+  },
+  "required": ["format", "operation_id", "recorded_at", "request", "response"],
+  "additionalProperties": false,
+  "description": "One exchange with a basis API, which basis-ui's fixture mode answers a request with, in the format \"basis-ui-fixture/1\". basis records export writes these into a UI repo's .fixtures/, and a UI repo writes synthetic ones into fixtures/. A record never holds the bearer token.",
+  "$defs": {
+    "Text": {
+      "type": "string",
+      "pattern": "^(?![\\s\\S]*eyJ[A-Za-z0-9_-]*\\.eyJ[A-Za-z0-9_-]*\\.)",
+      "description": "Any text that holds no JWT."
+    },
+    "JsonValue": {
+      "description": "Any JSON value whose strings hold no JWT.",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Text"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/JsonValue"
+          }
+        },
+        {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          }
+        }
+      ]
+    },
+    "Headers": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "pattern": "^(?!(?:authorization|proxy-authorization|cookie|set-cookie|content-type|content-length|content-encoding|transfer-encoding|connection|keep-alive)$)[a-z0-9!#$%&'*+.^_`|~-]+$"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/Text"
+      },
+      "description": "The response's headers that matter to a UI, by their names in lower case, such as www-authenticate, x-request-id, vary, location and retry-after. Never a header that carries a credential, the content type, which is media_type, or the transport's own."
+    }
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "format": "basis-ui-fixture/1",
+  "operation_id": "bond",
+  "recorded_at": "2026-11-07T12:00:00Z",
+  "request": {
+    "method": "GET",
+    "path": "/bonds/US0000000000"
+  },
+  "response": {
+    "status": 404,
+    "media_type": "application/problem+json",
+    "body": {
+      "type": "unknown-bond",
+      "title": "No bond has that ISIN",
+      "status": 404,
+      "detail": "No bond has the ISIN US0000000000.",
+      "instance": "urn:uuid:019a5c3e-0000-7000-8000-000000000404"
+    }
+  }
+}

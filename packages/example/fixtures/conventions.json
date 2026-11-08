@@ -1,0 +1,27 @@
+{
+  "format": "basis-ui-fixture/1",
+  "operation_id": "conventions",
+  "recorded_at": "2026-11-07T12:00:00Z",
+  "request": {
+    "method": "GET",
+    "path": "/conventions"
+  },
+  "response": {
+    "status": 200,
+    "media_type": "application/json",
+    "body": [
+      {
+        "convention": "30/360",
+        "year_days": 360
+      },
+      {
+        "convention": "ACT/360",
+        "year_days": 360
+      },
+      {
+        "convention": "ACT/365F",
+        "year_days": 365
+      }
+    ]
+  }
+}

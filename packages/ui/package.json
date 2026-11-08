@@ -13,7 +13,8 @@
     "src/api/mutator.ts",
     "src/styles",
     "src/vendor/*/LICENSE",
-    "config"
+    "config",
+    "schema"
   ],
   "type": "module",
   "imports": {
@@ -27,6 +28,11 @@
     "./preset": "./src/preset/index.ts",
     "./orval": "./src/preset/orval.ts",
     "./mutator": "./src/api/mutator.ts",
+    "./fixtures": {
+      "types": "./dist/fixtures/index.d.mts",
+      "default": "./dist/fixtures/index.mjs"
+    },
+    "./fixture-record.schema.json": "./schema/fixture-record.schema.json",
     "./numbers": {
       "types": "./dist/numbers/index.d.mts",
       "default": "./dist/numbers/index.mjs"
@@ -63,6 +69,11 @@
         "default": "./dist/preset/orval.mjs"
       },
       "./mutator": "./src/api/mutator.ts",
+      "./fixtures": {
+        "types": "./dist/fixtures/index.d.mts",
+        "default": "./dist/fixtures/index.mjs"
+      },
+      "./fixture-record.schema.json": "./schema/fixture-record.schema.json",
       "./numbers": {
         "types": "./dist/numbers/index.d.mts",
         "default": "./dist/numbers/index.mjs"
@@ -87,6 +98,7 @@
   },
   "scripts": {
     "build": "vp pack",
+    "fixture-schema": "node scripts/write-fixture-schema.ts",
     "test": "vp test",
     "theme": "node scripts/build-theme.ts"
   },

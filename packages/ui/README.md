@@ -49,8 +49,9 @@ To set the app up:
    write at the end of `index.html`'s `<head>`, which applies the stored mode and density before the first paint. Its
    text is `headScript`, exported from `@basis/ui`; the app keeps no copy of it. In `vp test` it also has Vite
    pre-bundle what every module under `src/` imports before the tests start, so no dependency that only app code
-   imports is found mid-run, which would reload the test pages under the tests. `basisTest()` runs `vp test` in
-   headless Chromium through Playwright.
+   imports is found mid-run, which would reload the test pages under the tests. In `vp dev` it serves the app on a
+   port of its own and in fixture mode, as [Running the app in fixture mode](#running-the-app-in-fixture-mode) says.
+   `basisTest()` runs `vp test` in headless Chromium through Playwright.
 
 2. Install the Chromium that the preset's Playwright pins:
 
@@ -81,6 +82,9 @@ To set the app up:
    ```tsx
    import { Badge, Button, ButtonLink, Card, CardContent, ChevronDownIcon } from "@basis/ui";
    ```
+
+6. Name `.fixtures/` in the app's `.gitignore`. It holds the records `basis records export` writes for fixture mode,
+   which hold client data and are never committed.
 
 To confirm the setup, run `vp check`, `vp test` and `vp build`. The built `dist/index.html` holds the head script, in
 a `<script>` before `</head>`.
@@ -176,9 +180,10 @@ vp run client-pull https://positions.example/api/openapi.json      # from a depl
 vp run client-pull                                                 # regenerate from the openapi.json already here
 ```
 
-To run `vp dev` against a live API, such as `basis dev`'s on the desktop, set `BASIS_API_URL` to its address, as in
-`BASIS_API_URL=http://127.0.0.1:8000 vp dev`: the preset sends `/api` to it with the prefix removed, as the ingress
-does, and `fakeSignIn()`'s tokens sign the user in.
+`vp dev` runs the app in fixture mode, with no API, as [Running the app in fixture mode](#running-the-app-in-fixture-mode)
+says. To run it against a live API instead, such as `basis dev`'s on the desktop, set `BASIS_API_URL` to its address,
+as in `BASIS_API_URL=http://127.0.0.1:8000 vp dev`: the preset sends `/api` to it with the prefix removed, as the
+ingress does, `fakeSignIn()`'s tokens sign the user in, and fixture mode is off.
 
 `vp run client-check`, which `vp run check-full` runs first, fails when `src/api/generated` is not what `openapi.json`
 generates, one line for each file. Its fix is `vp run client-pull`. `check-full` then type-checks the whole app with
@@ -255,6 +260,130 @@ await render(<BasisApp router={router} signIn={fakeSignIn()} />);
 ```
 
 `packages/example`'s `src/test-support.tsx` and its tests do this in full.
+
+## Running the app in fixture mode
+
+`vp dev` runs the app with no API. MSW's service worker answers every request under `/api`, from three sources in this
+order:
+
+1. **Records** in `.fixtures/`: exchanges with a real API, which `basis records export` writes. They hold client data,
+   so the app's `.gitignore` names `.fixtures/`, and a record is never committed.
+2. **Fixtures** in `fixtures/`: synthetic responses the app writes and commits, in the same format as a record.
+3. **orval's generated handlers**, one for each operation, which answer with made-up data.
+
+The first record or fixture whose method, path and query match the request answers: the records first, then the
+fixtures, each folder's files in the order of their names, subfolders included. The request's body is not matched, so
+one fixture answers every `POST` to its path. A request that neither holds goes to orval's handlers, except a request for
+Arrow: orval's handlers make random bytes, not Arrow, so fixture mode answers it with a `501` problem of type
+`fixture-missing`, which says to add a fixture, as it does a request nothing answers.
+
+The app writes no code for it. In `vp dev`, the preset's plugin rewrites `index.html` so that a script starts the
+worker, with the fixtures it read and the handlers in `src/api/generated/client.msw.ts`, before the app's entry module
+runs. `vp build` and `vp test` leave the page alone, and `BASIS_API_URL` turns fixture mode off.
+
+`vp dev` serves each app on a port of its own, from 20000 to 29999, derived from the app's folder: the same port on
+every run, and another in another git worktree, so worktrees running at once never collide. If another program holds
+the port, Vite takes the next free one. `vp dev --port 5173`, or `server.port` in `vite.config.ts`, chooses one. It
+prints the address and what answers `/api`:
+
+```text
+  ➜  Local:   http://localhost:28765/
+  ➜  Fixture mode: /api is answered by 0 records in .fixtures/, then 5 fixtures in fixtures/, then orval's generated handlers. Set BASIS_API_URL to call a live API instead.
+```
+
+In the browser's console, each answer is a telemetry event, `fixture.answered`, written by `consoleTelemetry`, whose
+`source` is `record`, `fixture`, `generated` or `none`, and whose `file` names the record or fixture:
+
+```text
+[telemetry] event fixture-mode.started {fixtures: 5, generated: 7, records: 0}
+[telemetry] event fixture.answered {request: GET /bonds/US91282CRF04, source: fixture, status: 200, file: fixtures/bond-US91282CRF04.json}
+```
+
+Commit a fixture for each request a page makes. orval's made-up data rarely looks like the API's, and an enum's is not
+one of its values: orval 8.46 picks it from `Object.values` of the enum's Zod schema, so a generated response with an
+enum fails its schema, and the page says the response was not in the form it expects.
+
+### Writing a fixture
+
+A fixture is one JSON file holding one exchange. `packages/example/fixtures/` holds one for each route its pages use:
+
+```json
+{
+  "format": "basis-ui-fixture/1",
+  "operation_id": "bond",
+  "recorded_at": "2026-11-07T12:00:00Z",
+  "request": { "method": "GET", "path": "/bonds/US91282CRF04" },
+  "response": {
+    "status": 200,
+    "media_type": "application/json",
+    "body": {
+      "security_id": "US91282CRF04",
+      "coupon_rate": "0.04125",
+      "convention": "30/360",
+      "frequency": 2,
+      "issued": "2026-05-15",
+      "maturity": "2036-05-15"
+    }
+  }
+}
+```
+
+A problem is a fixture too: a `404` with `"media_type": "application/problem+json"` and the problem as its body. A
+dataset route's fixture holds an Arrow IPC stream, in base64, as `body_base64`, with `"media_type":
+"application/vnd.apache.arrow.stream"`: write the table with apache-arrow's `tableToIPC(table, "stream")`, or pyarrow's
+`ipc.new_stream`, with the column types basis's contract gives a dataset (`date32` for a date, `decimal128` for a
+decimal, and so on), and encode the bytes in base64. `packages/example/fixtures/bond-US91282CRF04-coupons.json` is one,
+and `src/fixture-mode-arrow.test.ts` reads it back.
+
+When `vp dev` starts, and whenever a file in `fixtures/` or `.fixtures/`, or `openapi.json`, changes, every file is
+checked and the page reloads. Each problem is one `ERROR` line in the terminal, ending with its fix, and the page shows
+them over itself until they are fixed:
+
+```text
+ERROR fixtures/bond.json: GET /api/bonds/US91282CRF04 is not operation bond, which is GET /bonds/{security}, and a path leaves out /api; correct it by the record format in @basis/ui's README, under Running the app in fixture mode, or delete it.
+```
+
+A file must be in the record format below, name an operation in `openapi.json`, have that operation's method and a
+path its template matches, and, when it has a body, a media type the operation declares for its status. A dataset
+route's success must be Arrow, since the generated client asks a dataset route only for Arrow.
+
+### The record format
+
+One file holds one exchange, as one JSON object:
+
+| Member                 | Holds                                                                                                                                                                 |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `format`               | `"basis-ui-fixture/1"`, the format and its version                                                                                                                    |
+| `operation_id`         | The operation's id in the API's document, such as `bond`                                                                                                              |
+| `recorded_at`          | When the API answered, or when a fixture was written, with its offset: `2026-11-06T14:30:00Z`                                                                         |
+| `request.method`       | `GET`, `POST`, `PUT`, `PATCH` or `DELETE`                                                                                                                             |
+| `request.path`         | The path as the request's URL holds it, percent-encoded, without `/api`: `/bonds/US91282CRF04`                                                                        |
+| `request.query`        | Optional. Each query key with its values in the URL's order: `{"security": ["A", "B"]}` for `?security=A&security=B`. None, or `{}`, is no query                      |
+| `request.body`         | Optional. The request's JSON body, kept for reading; fixture mode does not match on it                                                                                |
+| `response.status`      | 200 to 599                                                                                                                                                            |
+| `response.headers`     | Optional. The headers that matter to a UI, by lower-case name, such as `www-authenticate`, `x-request-id`, `vary`, `location` and `retry-after`                       |
+| `response.media_type`  | The body's media type, with no parameters; absent when there is no body                                                                                               |
+| `response.body`        | A JSON body, under a JSON media type such as `application/json` or `application/problem+json`                                                                         |
+| `response.body_base64` | Any other body, such as an Arrow IPC stream, in base64 (RFC 4648, section 4); a response has `body`, `body_base64` or neither, and 204, 205 and 304 never have a body |
+
+A record never holds the bearer token. A request keeps no headers; a response refuses `authorization`,
+`proxy-authorization`, `cookie` and `set-cookie`, as well as `content-type`, which is `media_type`, and the
+transport's `content-length`, `content-encoding`, `transfer-encoding`, `connection` and `keep-alive`; and no string
+anywhere in a record may hold a JWT. Every object refuses a member the table does not name.
+
+The format's JSON Schema ships as `@basis/ui/fixture-record.schema.json`, `schema/fixture-record.schema.json` in this
+package, and basis tests `basis records export` against it. `src/fixtures/record.ts` holds the format, as the Zod
+schema fixture mode parses with; after changing it, rewrite the JSON Schema with `vp run @basis/ui#fixture-schema` and
+commit both, since a test fails while they differ. A change that refuses a record the format accepted before is a new
+version, `basis-ui-fixture/2`.
+
+### Fixture mode in tests
+
+Tests never read `.fixtures/`, whose records differ from one desktop to the next. `@basis/ui/fixtures` exports what a
+test needs to run pages on the committed fixtures: `loadFixtureFiles(source, files)`, which parses files as fixture
+mode does, in the order of their names, with an `ERROR` line for each problem, and `fixtureHandlers({ records,
+fixtures, generated, telemetry })`, the handler that answers in fixture mode's order. `packages/example`'s
+`src/fixture-mode-support.ts` loads `fixtures/` with `import.meta.glob` and adds the handler to the tests' worker.
 
 ## Using the components
 

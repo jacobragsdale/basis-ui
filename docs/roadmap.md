@@ -115,9 +115,10 @@ Lane A. Steps 1.3 and 1.4 run at once, and so do 1.8 and 1.9.
    densities and the axe check. Then shadcn's components on Base UI, one family per agent at once (forms and inputs,
    overlays and menus, navigation and layout, feedback and display), each with its `no-restyle` contract and its gallery
    page. They set the patterns the library port follows. Needs 1.2.
-5. **1.5 Fixture mode.** Fixture mode serves orval's MSW handlers, the synthetic responses in `fixtures/`, and records
-   in `.fixtures/` in the format `basis records export` writes. `vp dev` starts the app on fixtures on a free port per
-   worktree. Needs 1.3.
+5. **1.5 Fixture mode.** Fixture mode answers from the records in `.fixtures/`, then the synthetic responses in
+   `fixtures/`, then orval's MSW handlers. Records and fixtures share basis-ui's record format, which `@basis/ui` ships
+   as a JSON Schema for basis's `basis records export` (its step 4.2) to write. `vp dev` starts the app on fixtures on
+   a free port per worktree. Needs 1.3.
 6. **1.6 Screenshots.** Add `vp run shot ROUTE`, writing a screenshot, the accessibility tree and the console errors.
    Visual baselines are made and compared in WSL only, per spike 0.4, and `vp run check-full` says so on Windows. Add
    the skill for driving an app with Playwright CLI. Needs 1.5 and spike 0.4.
@@ -127,6 +128,7 @@ Lane A. Steps 1.3 and 1.4 run at once, and so do 1.8 and 1.9.
    - the `AGENTS.md` block, and the skills with their `.claude/skills/` copy;
    - Vite+'s hooks installed from `prepare`, with a commit hook that runs `vp staged`, `vp check` and `vp test`, since
      Vite+ scaffolds only `vp staged`;
+   - a `.gitignore` that names `.fixtures/`, whose records hold client data;
    - the Dockerfile serving the built files, and `azure-pipelines.yml` with a `vp run check-full` stage ready for when
      CI exists;
    - the tasks `client-pull`, `review`, `sync`, `upgrade`, `doctor` and `docs`.

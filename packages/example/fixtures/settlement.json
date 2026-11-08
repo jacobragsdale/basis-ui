@@ -1,0 +1,26 @@
+{
+  "format": "basis-ui-fixture/1",
+  "operation_id": "record_settlement",
+  "recorded_at": "2026-11-07T12:00:00Z",
+  "request": {
+    "method": "POST",
+    "path": "/settlements",
+    "body": {
+      "security_id": "US91282CRF04",
+      "face": "1000000.00",
+      "settle": "2026-11-10"
+    }
+  },
+  "response": {
+    "status": 201,
+    "media_type": "application/json",
+    "body": {
+      "settlement_id": "019a5c3e-0000-7000-8000-0000000000aa",
+      "security_id": "US91282CRF04",
+      "face": "1000000.00",
+      "settle": "2026-11-10",
+      "accrued": "20052.08",
+      "recorded_at": "2026-11-07T12:00:00Z"
+    }
+  }
+}
