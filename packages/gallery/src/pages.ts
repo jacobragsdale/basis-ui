@@ -11,6 +11,7 @@ import { Icons } from "./pages/icons.tsx";
 import { NavigationAndLayout } from "./pages/navigation-and-layout.tsx";
 import { NumbersAndDates } from "./pages/numbers-and-dates.tsx";
 import { OverlaysAndMenus } from "./pages/overlays-and-menus.tsx";
+import { SmallChartsAndStates } from "./pages/small-charts-and-states.tsx";
 
 interface GalleryPage {
   /** The page's value in the `page` query parameter. */
@@ -26,6 +27,11 @@ const pages: readonly [GalleryPage, ...GalleryPage[]] = [
   { Content: FeedbackAndDisplay, id: "feedback-and-display", title: "Feedback and display" },
   { Content: NumbersAndDates, id: "numbers-and-dates", title: "Numbers and dates" },
   { Content: Data, id: "data", title: "Data" },
+  {
+    Content: SmallChartsAndStates,
+    id: "small-charts-and-states",
+    title: "Small charts and states",
+  },
   { Content: AppShell, id: "app-shell", title: "App shell" },
   { Content: Icons, id: "icons", title: "Icons" },
 ];

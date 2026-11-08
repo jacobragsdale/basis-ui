@@ -4969,6 +4969,148 @@
       "example": "import { FileImport, amountSchema, parSuffixes } from \"@basis/ui\";\nimport { z } from \"zod\";\n\nconst positionRow = z.object({ cusip: z.string(), par: amountSchema(parSuffixes) });\n\n<FileImport\n  schema={positionRow}\n  headers={{ par: [\"Par\", \"Par amount\"] }}\n  onImport={async () => {\n    await Promise.resolve();\n  }}\n/>;\n"
     },
     {
+      "extends": [
+        "Omit<ComponentProps<\"span\">, \"children\">"
+      ],
+      "family": "cell-bar",
+      "name": "CellBar",
+      "props": [
+        {
+          "description": "The value the bar stands for.",
+          "name": "value",
+          "optional": false,
+          "type": "number"
+        },
+        {
+          "description": "The largest magnitude in the column, which fills the bar's whole room.",
+          "name": "max",
+          "optional": false,
+          "type": "number"
+        },
+        {
+          "description": "Bars grow both ways from the middle, for a column that holds negative values.",
+          "name": "signed",
+          "optional": true,
+          "type": "boolean"
+        },
+        {
+          "description": "Which colour a rise takes in a signed column: gain for a gain, or loss, as a rising yield is to a holder.",
+          "name": "rising",
+          "optional": true,
+          "type": "\"gain\" | \"loss\""
+        },
+        {
+          "description": "The cell's text, over the bar, such as the value through `Num` or `Money`.",
+          "name": "children",
+          "optional": false,
+          "type": "ReactNode"
+        }
+      ],
+      "purpose": "A table cell's text over a bar of its value.",
+      "variants": {},
+      "example": "import { CellBar, Num } from \"@basis/ui\";\n\n// A loss of 2.5 million in a column whose largest magnitude is 10 million.\n<CellBar value={-2_500_000} max={10_000_000} signed>\n  <Num value={-2_500_000} />\n</CellBar>;\n"
+    },
+    {
+      "extends": [],
+      "family": "query-state",
+      "name": "QueryState",
+      "props": [
+        {
+          "description": "The query, such as a generated client's `usePositions()`.",
+          "name": "query",
+          "optional": false,
+          "type": "QueryLike<TData>"
+        },
+        {
+          "description": "Draws the data once it is there and not empty.",
+          "name": "children",
+          "optional": false,
+          "type": "(data: TData) => ReactNode"
+        },
+        {
+          "description": "Whether the data has nothing to show: by default, an empty array.",
+          "name": "isEmpty",
+          "optional": true,
+          "type": "((data: TData) => boolean) | undefined"
+        },
+        {
+          "description": "What the empty state says, such as \"No trades today\", and what may change that.",
+          "name": "emptyTitle",
+          "optional": true,
+          "type": "string | undefined"
+        },
+        {
+          "description": "",
+          "name": "emptyDescription",
+          "optional": true,
+          "type": "string | undefined"
+        },
+        {
+          "description": "What stands in while the data first loads; three lines of skeleton by default.",
+          "name": "loading",
+          "optional": true,
+          "type": "ReactNode"
+        },
+        {
+          "description": "How old the data may be before its time turns to the warning colour, such as `{ minutes: 15 }`; without it, the time is not shown.",
+          "name": "staleAfter",
+          "optional": true,
+          "type": "Temporal.DurationLike | undefined"
+        },
+        {
+          "description": "Places the states, as with `min-h-40`.",
+          "name": "className",
+          "optional": true,
+          "type": "string | undefined"
+        }
+      ],
+      "purpose": "A query's data, or what stands in for it: loading, failed, empty, and how old it is.",
+      "variants": {},
+      "example": "import { QueryState } from \"@basis/ui\";\n\n// A query result as useQuery gives it; here, two positions fetched a minute ago.\nconst positions = {\n  data: [{ cusip: \"912828C57\", par: 5_000_000 }, { cusip: \"037833100\", par: 2_000_000 }],\n  dataUpdatedAt: Date.now() - 60_000,\n  error: null,\n  isPending: false,\n  refetch: () => undefined,\n};\n\n<QueryState query={positions} emptyTitle=\"No positions\" staleAfter={{ minutes: 15 }}>\n  {(rows) => (\n    <ul>\n      {rows.map((row) => (\n        <li key={row.cusip}>{row.cusip}</li>\n      ))}\n    </ul>\n  )}\n</QueryState>;\n"
+    },
+    {
+      "extends": [
+        "Omit<ComponentProps<\"svg\">, \"children\" | \"values\">"
+      ],
+      "family": "sparkline",
+      "name": "Sparkline",
+      "props": [
+        {
+          "description": "The values in order, such as each day's close; null or NaN where one is missing.",
+          "name": "values",
+          "optional": false,
+          "type": "readonly SparkValue[]"
+        },
+        {
+          "description": "What the line shows, for a screen reader, such as \"NAV over the last 30 days, up 2.1%\".",
+          "name": "label",
+          "optional": false,
+          "type": "string"
+        },
+        {
+          "description": "Washes the area under the line.",
+          "name": "area",
+          "optional": true,
+          "type": "boolean"
+        },
+        {
+          "description": "Colours the line by its trend, first value to last: the gain colour for a rise, the loss colour for a fall.",
+          "name": "trend",
+          "optional": true,
+          "type": "boolean"
+        },
+        {
+          "description": "Which colour a rise takes with `trend`: the gain colour, or the loss colour, as a rising yield is to a holder.",
+          "name": "rising",
+          "optional": true,
+          "type": "\"gain\" | \"loss\""
+        }
+      ],
+      "purpose": "A small line of `values`, 96 by 24 pixels unless className sizes it, such as `h-8 w-full`.",
+      "variants": {},
+      "example": "import { Sparkline } from \"@basis/ui\";\n\n// A KPI's last ten days, a day missing, coloured by its trend.\n<Sparkline\n  label=\"NAV over ten days, up\"\n  values={[101.2, 101.5, 101.1, null, 102, 102.4, 102.1, 102.8, 103, 103.3]}\n  trend\n  area\n/>;\n"
+    },
+    {
       "extends": [],
       "family": "error-alert",
       "name": "ErrorAlert",

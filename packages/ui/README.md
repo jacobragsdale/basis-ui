@@ -884,6 +884,31 @@ const positionRow = z.object({
 - **Importing.** While `onImport`'s promise is pending the button waits; if it rejects, its error shows over the
   preview, which stays for another try.
 
+## Showing a query's states and small charts
+
+`QueryState` takes a query as `useQuery` returns it and shows whichever state it is in: a skeleton while it first
+loads, an `ErrorAlert` read from the API's problem details with a retry, an `Empty` when there is nothing to show, and
+otherwise its children with the data, under the time it was current, in the warning colour once older than
+`staleAfter`:
+
+```tsx
+<QueryState query={positions} emptyTitle="No positions" staleAfter={{ minutes: 15 }}>
+  {(rows) => <PositionsList rows={rows} />}
+</QueryState>
+```
+
+`Sparkline` draws a series too small for parallax, such as a KPI card's last 30 days, as an SVG line named by its
+`label`; `trend` colours it gain or loss by its first and last values, and `rising="loss"` turns that round for a
+yield. `CellBar` puts a bar of a value behind its text in a table cell, as a share of `max`, the column's largest
+magnitude, growing both ways from the middle when `signed`:
+
+```tsx
+<Sparkline label="NAV over 30 days, up 2.1%" values={nav} trend />
+<CellBar value={row.pnl} max={largestPnl} signed>
+  <Money value={row.pnl} />
+</CellBar>
+```
+
 ## Using the icons
 
 `@basis/ui` exports a set of lucide's icons under lucide-react's names with the `Icon` suffix: each icon's current

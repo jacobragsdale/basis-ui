@@ -586,6 +586,12 @@ export {
   type ValidationProblem,
 } from "./api/problem.ts";
 
+// Small charts and query states: what is too small to load parallax for, and every state of a query's data.
+export { CellBar, type CellBarProps } from "./components/cell-bar.tsx";
+export { QueryState, type QueryLike, type QueryStateProps } from "./components/query-state.tsx";
+export { Sparkline, type SparklineProps } from "./components/sparkline.tsx";
+export type { SparkValue } from "./components/sparkline-geometry.ts";
+
 // The app shell: its providers, the sign-in adapter and its fake, telemetry, and how errors are shown.
 export { ErrorAlert, type ErrorAlertProps } from "./components/error-alert.tsx";
 export { BasisApp, type BasisAppProps } from "./shell/basis-app.tsx";
