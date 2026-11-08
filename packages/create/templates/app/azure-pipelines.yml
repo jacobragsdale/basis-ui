@@ -1,3 +1,4 @@
+# This file is managed by basis-ui: `vp run sync` rewrites it from the installed @basis/ui, and `vp run check-full` fails when it differs.
 # Unverified: not yet run in Azure DevOps. The checks every change passes, then the build the image serves.
 trigger:
   branches:
@@ -19,7 +20,8 @@ stages:
           - script: |
               . "$HOME/.config/vite-plus/env"
               vp install --frozen-lockfile
-              vp exec playwright install --with-deps chromium
+              playwright=$(node -p "require(require('module').createRequire(require.resolve('@basis/ui/package.json')).resolve('playwright/package.json')).version")
+              vp dlx "playwright@$playwright" install --with-deps chromium
               vp run check-full
               vp build
             displayName: vp run check-full and vp build

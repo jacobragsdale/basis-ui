@@ -11,6 +11,7 @@ import { fileURLToPath } from "node:url";
 
 import { build, resolveConfig } from "vite-plus";
 import { describe, expect, test } from "vite-plus/test";
+import { z } from "zod";
 
 import { headScript } from "#index.ts";
 import { basisPlugins, basisPreset } from "#preset/index.ts";
@@ -95,14 +96,26 @@ describe(basisPreset, () => {
     return typeof task === "object" && !Array.isArray(task) ? task.command : task;
   }
 
-  test("vp run check-full checks the generated client, then type-checks the whole app, before the rest", () => {
-    expect(commandOf("check-full")).toStrictEqual([
+  test("vp run check-full checks the framework's files and the generated client, type-checks the whole app, then the rest", () => {
+    const [drift, ...steps] = z.array(z.string()).parse(commandOf("check-full"));
+    expect(drift).toMatch(/^node "[^"]+" sync --check$/u);
+    expect(steps.slice(0, -1)).toStrictEqual([
       "vp run client-check",
       "tsc --noEmit",
       "vp check",
       "vp test",
     ]);
+    expect(steps.at(-1)).toMatch(/^node "[^"]+" checked$/u);
   });
+
+  test.each(["docs", "doctor", "review", "sync", "upgrade"])(
+    "vp run %s runs the framework tasks' script",
+    (name) => {
+      const match = /^node "(?<script>[^"]+)" (?<task>\w+)$/u.exec(String(commandOf(name)));
+      expect(match?.groups?.["task"]).toBe(name);
+      expect(existsSync(match?.groups?.["script"] ?? "")).toBe(true);
+    },
+  );
 
   test("its type check fails on a type error in the generated client, which vp check lints around", async () => {
     const wrong = await typeCheckApp('export const quantity: number = "five";\n');

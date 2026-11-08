@@ -1,1 +1,4 @@
+# This file is managed by basis-ui: `vp run sync` rewrites it from the installed @basis/ui, and `vp run check-full` fails when it differs.
+# The commit hook: vp staged formats and lint-fixes the staged files, then vp check and vp test run. Never skip it
+# with --no-verify: fix what each ERROR line says, and commit again.
 vp staged && vp check && vp test

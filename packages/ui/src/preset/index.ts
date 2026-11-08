@@ -27,12 +27,6 @@ interface BasisPreset extends ViteUserConfig {
   readonly staged: Readonly<Record<string, string>>;
 }
 
-/** A task a later roadmap step builds. Until then it fails with one line that says so. */
-function notYet(task: string, step: string): Task {
-  const message = `ERROR vp run ${task} is not built yet: it arrives in basis-ui roadmap step ${step}; upgrade @basis/ui once that release is out.`;
-  return { cache: false, command: `node -e "console.error('${message}'); process.exit(1)"` };
-}
-
 /** The client tasks' script, beside this module: TypeScript in basis-ui's own workspace, JavaScript once built, since
  * Node runs no TypeScript from node_modules. */
 const clientScript = fileURLToPath(
@@ -43,6 +37,16 @@ const clientScript = fileURLToPath(
 const shotScript = fileURLToPath(
   new URL(import.meta.url.endsWith(".ts") ? "shot.ts" : "shot.mjs", import.meta.url),
 );
+
+/** The framework tasks' script, beside this module, as the client tasks' is: src/preset/tasks.ts says what each does. */
+const tasksScript = fileURLToPath(
+  new URL(import.meta.url.endsWith(".ts") ? "tasks.ts" : "tasks.mjs", import.meta.url),
+);
+
+/** A framework task, never cached, since each reads the repo, git or the machine as they are now. */
+function frameworkTask(name: string): Task {
+  return { cache: false, command: `node "${tasksScript}" ${name}` };
+}
 
 /** A client task: `pull` or `check`, as src/preset/client.ts describes them. Neither is cached, since `pull` reads a
  * repo or a network and `check` must compare the files as they are. */
@@ -84,18 +88,29 @@ function basisPreset(): BasisPreset {
     lint,
     run: {
       tasks: {
-        /* `tsc --noEmit` type-checks the whole app with the installed TypeScript, the generated client included, which
-         * `vp check` lints around. Screenshot comparison in WSL waits for the visual baselines. */
-        "check-full": { command: ["vp run client-check", "tsc --noEmit", "vp check", "vp test"] },
+        /* The framework's files first, then `tsc --noEmit`, which type-checks the whole app with the installed
+         * TypeScript, the generated client included, which `vp check` lints around; last, the record `vp run review`
+         * reads. Screenshot comparison in WSL waits for the visual baselines. */
+        "check-full": {
+          cache: false,
+          command: [
+            `node "${tasksScript}" sync --check`,
+            "vp run client-check",
+            "tsc --noEmit",
+            "vp check",
+            "vp test",
+            `node "${tasksScript}" checked`,
+          ],
+        },
         "client-check": clientTask("check"),
         "client-pull": clientTask("pull"),
-        docs: notYet("docs", "1.7"),
-        doctor: notYet("doctor", "1.7"),
-        review: notYet("review", "1.7"),
+        docs: frameworkTask("docs"),
+        doctor: frameworkTask("doctor"),
+        review: frameworkTask("review"),
         // Never cached: it pictures the app as it is now. src/preset/shot.ts says what it writes.
         shot: { cache: false, command: `node "${shotScript}"` },
-        sync: notYet("sync", "1.7"),
-        upgrade: notYet("upgrade", "1.7"),
+        sync: frameworkTask("sync"),
+        upgrade: frameworkTask("upgrade"),
       },
     },
     staged: { "*": "vp check --fix" },

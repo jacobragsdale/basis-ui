@@ -1,0 +1,57 @@
+## basis-ui
+
+This repo's `vite.config.ts` is `@basis/ui`'s preset, so it checks, builds and tests as every basis-ui app does, and
+`vp run docs` lists the docs of the installed version, `vp run docs PAGE` printing one. Every task's failure is one
+line that starts with `ERROR`, gives the reason and ends with the fix.
+
+### Checks
+
+```sh
+vp install              # once per clone: installs dependencies and the hooks in .vite-hooks/
+vp run check-full       # the framework files, the client against openapi.json, tsc, vp check, vp test
+vp test                 # the tests in headless Chromium; BASIS_TEST_DOM=node vp test runs them in a Node DOM
+vp build                # dist/, with FILE.br and FILE.gz beside each built file over 1 KB
+vp run doctor           # this machine's setup, and the fix for each problem
+```
+
+The commit hook runs `vp staged`, `vp check` and `vp test`, and the push hook `vp run check-full`. Never skip either
+with `--no-verify`: fix what each `ERROR` line says, and commit or push again.
+
+### The framework's files
+
+`vp run sync` writes the files every basis-ui app shares from the installed `@basis/ui`: the `Dockerfile`, `Caddyfile`
+and `.dockerignore`, `azure-pipelines.yml`, `.gitattributes`, the hooks in `.vite-hooks/`, `CLAUDE.md`, the skills in
+`.agents/skills/` and their copies in `.claude/skills/`, and this block of `AGENTS.md`. Each opens with a line saying
+basis-ui manages it, and `vp run check-full` fails when one differs, so never edit them: a change one needs belongs in
+`@basis/ui`. Write the repo's own notes in `AGENTS.md`, outside this block's markers. `vp run upgrade` moves
+`@basis/ui` and `@basis/parallax` to their latest release, or `vp run upgrade VERSION` to that one, then runs
+`vp run sync` and `vp run check-full`.
+
+### The API and fixture mode
+
+- `openapi.json` is the pinned copy of the API's document, and `src/api/generated/` the client generated from it,
+  which the app imports through `src/api/client.ts`. `vp run client-pull PATH TAG` copies the document from a clone of
+  the API repo at a tag, and `vp run client-pull URL` from a deployed API; both regenerate the client. Never edit
+  either by hand.
+- `vp dev` serves the app on a port of its own, derived from the folder, in fixture mode: no backend, `/api` answered
+  from the records in `.fixtures/`, then the synthetic responses in `fixtures/`, then the generated client's handlers.
+  `BASIS_API_URL=http://127.0.0.1:8000 vp dev` calls a live API instead, with `/api` removed from each path.
+- `vp run shot ROUTE`, such as `vp run shot /` or `vp run shot "/positions?book=rates" --dark`, pictures a route of
+  the running `vp dev` in headless Chromium and writes its screenshot, accessibility tree and console errors to
+  `.shots/`. The drive-the-app skill says how to click through the app with Playwright CLI.
+
+### Writing the app
+
+- A page is a route in `src/routes.ts`; its `staticData` title and icon put it in the sidebar, the breadcrumbs and the
+  command palette.
+- Numbers stay as the API sends them until they are displayed: never round, scale or format a value before the
+  component that shows it, which formats it with `@basis/ui`'s display formats.
+- Tests are written with `@basis/ui/testing`, so they run in Chromium and in a Node DOM. A test that needs a real
+  browser, such as one of layout or canvas, is named `*.browser.test.tsx`, and runs only in Chromium.
+- `.fixtures/` holds records exported from an API's run store, which hold client data: it is never committed.
+
+### Review
+
+`vp run review` prints a pull request's summary, to paste into it: the commit `vp run check-full` passed on, the
+versions, the API's operations the change adds, removes or changes, and the client's diff. `vp run review BRANCH`
+compares with the branch the pull request merges into, `origin/main` unless named.

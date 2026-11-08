@@ -1,0 +1,21 @@
+{
+  "format": "basis-ui-fixture/1",
+  "operation_id": "bond",
+  "recorded_at": "2026-11-07T12:00:00Z",
+  "request": {
+    "method": "GET",
+    "path": "/bonds/US91282CRF04"
+  },
+  "response": {
+    "status": 200,
+    "media_type": "application/json",
+    "body": {
+      "security_id": "US91282CRF04",
+      "coupon_rate": 0.04125,
+      "convention": "30/360",
+      "frequency": 2,
+      "issued": "2026-05-15",
+      "maturity": "2036-05-15"
+    }
+  }
+}

@@ -16,7 +16,8 @@
     "config",
     "schema",
     "catalogue.json",
-    "skills"
+    "skills",
+    "sync"
   ],
   "type": "module",
   "imports": {

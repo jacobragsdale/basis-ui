@@ -145,13 +145,23 @@ second consumer on 2026-11-07: 1.12 and 1.13 wait on basis's contract, and 1.14 
    Needs 1.6 and 1.10. Done when a generated UI repo passes `vp run check-full` in WSL, `vp dev` serves its fixture
    pages, and its image serves the build.
    The template is built and checked here, outside the workspace, against the packed tarballs: `vp run check-full`
-   passes, `vp dev` serves its page in fixture mode, and its Caddy image serves the build with br and gzip, the hashed
+   passes, `vp dev` serves its pages in fixture mode, and its Caddy image serves the build with br and gzip, the hashed
    assets immutable, every other path `no-cache`, a missing asset a 404 never cached, and index.html for the app's
-   routes. Not yet: `vp create @basis:app` needs the registry of 1.8; the managed-file headers and drift check; the
-   tasks `review`, `sync`, `upgrade`, `doctor` and `docs`, which still say they are not built; `check-full` in WSL; and
-   the pipeline, which has never run. Open for the maintainer's review: whether those tasks and the drift check belong
-   to 1.7 or a later step, and whether the template ships a sample `openapi.json`, without which fixture mode has
-   nothing to answer.
+   routes. The template ships a sample API, basis's example document with its generated client and fixtures, so the
+   shell's home page and two pages calling the API show data in fixture mode before an app has an API, and its
+   `AGENTS.md` says how to replace it with `vp run client-pull`. The tasks are built, each failure one `ERROR` line
+   ending with its fix: `vp run sync` writes the framework's files from the installed `@basis/ui`, each opening with
+   basis-ui's marker, and removes those an earlier version wrote; `vp run check-full` runs `vp run sync --check` first,
+   and ends by recording the commit it passed on; `vp run review` prints a pull request's summary for a checked commit;
+   `vp run doctor` checks git, the hooks, the installed versions, Playwright's Chromium and `BASIS_API_URL`; `vp run
+   docs` lists and prints the installed READMEs' sections; and `vp run upgrade` moves `@basis/ui` and `@basis/parallax`
+   to the feed's latest release, or a named one, then syncs and checks. Each ran in a generated repo outside the
+   workspace, upgrade against a throwaway local registry; the push hook, which runs `vp run check-full`, has never run
+   on a push. Not yet: `vp create @basis:app` needs the registry of 1.8; `check-full` in WSL and on Windows; screenshot
+   diffs in `review`, which wait for the visual baselines of 1.6; and the pipeline, which has never run. Open for the
+   maintainer's review: pnpm 12 holds back a version younger than its `minimumReleaseAge`, which `vp run upgrade`
+   passes by naming the exact version, and pnpm then lists it under `minimumReleaseAgeExclude` in the app's
+   `pnpm-workspace.yaml`; whether the firm's feed should be excluded for `@basis/*` instead.
 
 8. **1.8 Releases.** One tag releases every package, `@basis/create` included, at one version. **(work)** Publish to
    the internal npm feed through Azure DevOps. Needs 1.7. Done when `v0.1.0` installs from git here and from the
