@@ -1,0 +1,19 @@
+{
+  "name": "@basis/create",
+  "version": "0.0.0",
+  "description": "The UI repo template for apps on @basis/ui and @basis/parallax: vp create @basis:app.",
+  "license": "MIT",
+  "files": [
+    "templates"
+  ],
+  "type": "module",
+  "createConfig": {
+    "templates": [
+      {
+        "name": "app",
+        "description": "A basis-ui app: AppShell, the preset's checks and tasks, fixture mode, and an image that serves the build",
+        "path": "./templates/app"
+      }
+    ]
+  }
+}

@@ -1,0 +1,5 @@
+# orval brings TypeScript 6; the app keeps one TypeScript, its own (@basis/ui's README).
+overrides:
+  typescript: 7.0.2
+allowBuilds:
+  esbuild: false

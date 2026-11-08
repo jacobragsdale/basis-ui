@@ -62,6 +62,8 @@ export default defineConfig({
       ...parallax,
       ...parallaxGenerated,
       ...spikeCode,
+      // The app template is checked as a generated app, by its own config, once installed (roadmap 1.7).
+      "packages/create/templates/**",
     ],
     overrides: [
       ...(lint.overrides ?? []),
