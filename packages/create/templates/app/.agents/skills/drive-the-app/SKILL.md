@@ -13,8 +13,8 @@ mode on a port of its own, answering `/api` from `.fixtures/`, `fixtures/` and o
 ## One look at a route: `vp run shot`
 
 ```sh
-vp run shot /positions                   # light, comfortable, 1280 by 800
-vp run shot /positions --dark --compact  # the other mode and density
+vp run shot /positions                       # light, compact, 1280 by 800
+vp run shot /positions --dark --comfortable  # the other mode and density
 vp run shot /trades/42 --width 390 --wait 2000
 ```
 

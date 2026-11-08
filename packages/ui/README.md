@@ -921,7 +921,7 @@ const positionRow = z.object({
 `vp run shot ROUTE` pictures a route of the app in headless Chromium and writes three files to `.shots/`, named after
 the route: the page as `NAME.png`, its accessibility tree as `NAME.aria.yml`, and its console errors as
 `NAME.console.txt`. It uses the app's running `vp dev`, or starts one in fixture mode and stops it after. A page that
-logged errors fails the task, with the files still written. `--dark` and `--compact` take the other mode and density,
+logged errors fails the task, with the files still written. `--dark` and `--comfortable` take the other mode and density (the default is light and compact),
 `--width` and `--height` the viewport, and `--wait` the milliseconds to let the page settle after the network is
 quiet:
 

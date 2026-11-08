@@ -274,7 +274,7 @@ reads the package's theme.
    `prefers-reduced-motion`. Fonts are bundled, so screenshots match on every desktop: Inter for text and JetBrains Mono
    for code, until the firm's fonts replace them.
 
-The user chooses a mode (system, light or dark) and a density (comfortable, the default, or compact). Both live in a
+The user chooses a mode (system, light or dark) and a density (compact, the default by the maintainer's choice of 2026-11-07, or comfortable). Both live in a
 cookie on the parent domain the firm's apps share, so every app follows one choice, and a page left open changes when
 another app changes it. A script in the page's head applies them before the first paint, and sets `color-scheme` to
 match, so scrollbars and native controls follow. If the apps share no parent domain, each app keeps its own choice.
@@ -288,7 +288,7 @@ This repo's `vp check` runs the theme's checks, since no app can change the them
 - in the compact density, controls stay at least 24 pixels tall, WCAG 2.2's minimum target size;
 - the gallery's screenshots, in light and dark, comfortable and compact, match their baselines.
 
-Apps' routes are screenshotted in light and dark, at the comfortable density.
+Apps' routes are screenshotted in light and dark, at the compact density.
 
 ## Numbers
 

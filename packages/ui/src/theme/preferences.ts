@@ -22,7 +22,10 @@ interface PreferencesRoot {
   readonly dataset: DOMStringMap;
 }
 
-const defaultPreferences: Preferences = { density: "comfortable", mode: "system" };
+/** Compact is the default density, the maintainer's choice on 2026-11-07. The stylesheet's base is the comfortable
+ * spacing, which `data-density="compact"` shrinks, so a page shows the default once the head script or
+ * `followPreferences` has run; a component rendered without either, as in a test, is comfortable. */
+const defaultPreferences: Preferences = { density: "compact", mode: "system" };
 
 /** The cookie's name. Its value is the mode and the density joined by a dot, such as `dark.compact`. */
 const preferencesCookie = "basis-ui-preferences";
@@ -133,11 +136,11 @@ const headScript = `(() => {
     const root = document.documentElement;
     root.classList.toggle("dark", mode === "dark");
     root.style.colorScheme = mode;
-    if (match !== null && match[2] === "compact") {
+    if (match === null || match[2] !== "comfortable") {
       root.dataset.density = "compact";
     }
   } catch {
-    // Without cookies or matchMedia the page keeps the light, comfortable default.
+    // Without cookies or matchMedia the page keeps the stylesheet's light, comfortable base.
   }
 })();`;
 

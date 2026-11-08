@@ -75,9 +75,10 @@ describe("the cookie", () => {
     expect(parsePreferences("")).toEqual(defaultPreferences);
     expect(parsePreferences(`${preferencesCookie}=sepia.huge`)).toEqual(defaultPreferences);
     expect(parsePreferences(`${preferencesCookie}=dark`)).toEqual({
-      density: "comfortable",
+      density: "compact",
       mode: "dark",
     });
+    expect(defaultPreferences.density).toBe("compact");
   });
 
   test("names the shared parent domain only when the app gives one", () => {
@@ -114,6 +115,6 @@ describe("the head script agrees with applyPreferences", () => {
   test("and keeps the default when there is no cookie", () => {
     const actual = fakeRoot();
     runInNewContext(headScript, page("", actual, false));
-    expect(state(actual)).toEqual({ colorScheme: "light", dark: false, density: undefined });
+    expect(state(actual)).toEqual({ colorScheme: "light", dark: false, density: "compact" });
   });
 });

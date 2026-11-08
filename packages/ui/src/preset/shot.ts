@@ -1,6 +1,6 @@
 /* The shot task the preset gives every app, run by Node in the app's root:
  *
- *   vp run shot ROUTE [--dark] [--compact] [--width N] [--height N] [--wait MS]
+ *   vp run shot ROUTE [--dark] [--comfortable] [--width N] [--height N] [--wait MS]
  *
  * It opens ROUTE, such as / or /positions?book=rates, in headless Chromium against the app's `vp dev`, the one already
  * running on the app's own port or one it starts in fixture mode and stops after, and writes three files into
@@ -108,7 +108,7 @@ async function pageFor(browser: Browser, origin: string, options: ShotOptions): 
     colorScheme: options.dark ? "dark" : "light",
     viewport: { height: options.height, width: options.width },
   });
-  const preference = `${options.dark ? "dark" : "light"}.${options.compact ? "compact" : "comfortable"}`;
+  const preference = `${options.dark ? "dark" : "light"}.${options.density}`;
   await context.addCookies([{ name: "basis-ui-preferences", url: origin, value: preference }]);
   return context.newPage();
 }
@@ -151,7 +151,8 @@ async function picture(
 ): Promise<{ readonly files: readonly string[]; readonly errors: readonly string[] }> {
   const page = await pageFor(browser, origin, options);
   const errors = await open(page, `${origin}${options.route}`, options.wait);
-  const suffix = (options.dark ? "-dark" : "") + (options.compact ? "-compact" : "");
+  const suffix =
+    (options.dark ? "-dark" : "") + (options.density === "comfortable" ? "-comfortable" : "");
   const written = await write(
     page,
     path.join(root, shotsFolder, nameOf(options.route) + suffix),

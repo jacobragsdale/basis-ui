@@ -8,21 +8,25 @@ import { nameOf, optionsOf } from "#preset/shot-options.ts";
 describe("optionsOf", () => {
   test("reads a route and the options, defaulting the rest", () => {
     expect(optionsOf(["/positions?book=rates"])).toStrictEqual({
-      compact: false,
       dark: false,
+      density: "compact",
       height: 800,
       route: "/positions?book=rates",
       wait: 500,
       width: 1280,
     });
     expect(
-      optionsOf(["--dark", "/", "--width", "390", "--compact", "--wait", "2000"]),
+      optionsOf(["--dark", "/", "--width", "390", "--comfortable", "--wait", "2000"]),
     ).toMatchObject({
-      compact: true,
       dark: true,
+      density: "comfortable",
       wait: 2000,
       width: 390,
     });
+  });
+
+  test("takes --compact, the default density, for the scripts written when it was not", () => {
+    expect(optionsOf(["/", "--compact"])).toMatchObject({ density: "compact" });
   });
 
   test("refuses no route, a second route, a word that is neither, and a size that is no whole number", () => {

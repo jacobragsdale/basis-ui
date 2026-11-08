@@ -10,7 +10,7 @@ class TaskError extends Error {
 }
 
 const usage =
-  "run vp run shot ROUTE, such as vp run shot /positions, with --dark, --compact, --width N, --height N or --wait MS as needed";
+  "run vp run shot ROUTE, such as vp run shot /positions, with --dark, --comfortable, --width N, --height N or --wait MS as needed";
 
 /** How long after the network is quiet the page settles before its picture is taken, unless `--wait` says. */
 const settleMs = 500;
@@ -21,7 +21,8 @@ const defaultHeight = 800;
 interface ShotOptions {
   readonly route: string;
   readonly dark: boolean;
-  readonly compact: boolean;
+  /** Compact, the default, or comfortable with `--comfortable`; `--compact` is taken too, and changes nothing. */
+  readonly density: "compact" | "comfortable";
   readonly width: number;
   readonly height: number;
   readonly wait: number;
@@ -39,7 +40,7 @@ function count(name: string, value: string | undefined): number {
 }
 
 /** Flags that take no value, and options that take a whole number. */
-const flags = new Set(["--dark", "--compact"]);
+const flags = new Set(["--dark", "--comfortable", "--compact"]);
 const numbers = new Set(["--width", "--height", "--wait"]);
 
 /** The options `read` holds, with the defaults for the rest. */
@@ -47,7 +48,7 @@ function optionsFrom(read: Readonly<Record<string, string | number | boolean>>):
   const {
     route,
     dark = false,
-    compact = false,
+    comfortable = false,
     width = defaultWidth,
     height = defaultHeight,
     wait = settleMs,
@@ -56,8 +57,8 @@ function optionsFrom(read: Readonly<Record<string, string | number | boolean>>):
     throw new TaskError(`ERROR vp run shot needs a route: ${usage}.`);
   }
   return {
-    compact: compact === true,
     dark: dark === true,
+    density: comfortable === true ? "comfortable" : "compact",
     height: Number(height),
     route,
     wait: Number(wait),
