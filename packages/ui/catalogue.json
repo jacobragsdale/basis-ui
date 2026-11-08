@@ -4769,6 +4769,59 @@
     },
     {
       "extends": [],
+      "family": "filter-bar",
+      "name": "FilterBar",
+      "props": [
+        {
+          "description": "",
+          "name": "filters",
+          "optional": false,
+          "type": "readonly FilterField[]"
+        }
+      ],
+      "purpose": "The page's filters, each kept in a search parameter of the page's address, and a button that clears them. The page's route declares the parameters in its `validateSearch` and reads them with `useSearch()`.",
+      "variants": {},
+      "example": "import { FilterBar } from \"@basis/ui\";\n\n<FilterBar\n  filters={[\n    { label: \"Book\", name: \"book\", options: [\"Rates\", \"Credit\"] },\n    { label: \"Issuer\", name: \"issuer\" },\n  ]}\n/>;\n"
+    },
+    {
+      "extends": [],
+      "family": "saved-views",
+      "name": "SavedViews",
+      "props": [],
+      "purpose": "A menu of the page's saved views: each one applies its filters, a name and Save keep the current ones, and each saved view can be deleted. Views are kept in this browser, for this page's path.",
+      "variants": {},
+      "example": "import { FilterBar, SavedViews } from \"@basis/ui\";\n\n<>\n  <FilterBar filters={[{ label: \"Book\", name: \"book\", options: [\"Rates\", \"Credit\"] }]} />\n  <SavedViews />\n</>;\n"
+    },
+    {
+      "extends": [],
+      "family": "split-view",
+      "name": "SplitView",
+      "props": [
+        {
+          "description": "Names the split, so its divider's place is kept for it.",
+          "name": "id",
+          "optional": false,
+          "type": "string"
+        },
+        {
+          "description": "The list: the master side.",
+          "name": "children",
+          "optional": false,
+          "type": "ReactNode"
+        },
+        {
+          "description": "What the list selects, beside it; the list takes the whole width while it is `null`.",
+          "name": "detail",
+          "optional": false,
+          "type": "ReactNode"
+        }
+      ],
+      "purpose": "A list and its selection's detail, side by side, with a divider the user drags and that stays where they leave it.",
+      "variants": {},
+      "example": "import { SplitView } from \"@basis/ui\";\n\n<SplitView id=\"positions\" detail={<p>Position details</p>}>\n  <p>Positions</p>\n</SplitView>;\n"
+    },
+    {
+      "extends": [],
       "family": "data-table",
       "name": "DataTable",
       "props": [

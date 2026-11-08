@@ -566,6 +566,12 @@ and keeps the keyboard shortcuts, which a component declares with `useShortcut(k
 A route with path parameters, such as `/bonds/$security`, keeps its breadcrumb but stays out of the sidebar and the
 palette; `inNavigation: false` leaves any route out.
 
+A page keeps its filters in its address's search parameters, so a filtered view survives a reload and can be sent as
+a link: `FilterBar` writes them (a text box, or a choice when given `options`), the route declares them in
+`validateSearch` and reads them with `useSearch()`, and `SavedViews` stores the current ones under a name, in this
+browser, for the page. `SplitView` puts a list and its selection's detail side by side, the divider kept where the user
+leaves it. The example app's conventions page uses all three.
+
 ```tsx
 const rootRoute = createRootRoute({
   component: () => <AppShell appName="Positions" environment="qa" />,

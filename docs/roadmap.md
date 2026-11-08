@@ -160,8 +160,8 @@ second consumer on 2026-11-07: 1.12 and 1.13 wait on basis's contract, and 1.14 
       split panes and shortcuts;
     - query states, `Sparkline` and the in-cell bar.
 
-    Each has its gallery page. Needs 1.3, 1.4, and 2.1 for the formatter's fixtures. On 2026-11-08 the shell's parts were built
-    but for the filter bar, saved views and split panes: `AppShell`, with the sidebar, breadcrumbs and command palette
+    Each has its gallery page. Needs 1.3, 1.4, and 2.1 for the formatter's fixtures. On 2026-11-08 the shell's parts were built:
+    `FilterBar`, `SavedViews` and `SplitView`, and `AppShell`, with the sidebar, breadcrumbs and command palette
     built from routes' `staticData`, the environment banner, the user menu and the shortcut registry with its `?`
     list, used and tested by the example app; t1b built `Sparkline`, `CellBar` and `QueryState`.
 

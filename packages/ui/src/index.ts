@@ -379,6 +379,9 @@ export { useRouteEntries, type RouteEntry } from "./components/route-entries.ts"
 export { ShortcutProvider } from "./components/shortcuts.tsx";
 export { useShortcut, type Shortcut } from "./components/shortcuts-context.ts";
 export { UserMenu } from "./components/user-menu.tsx";
+export { FilterBar, type FilterField } from "./components/filter-bar.tsx";
+export { SavedViews } from "./components/saved-views.tsx";
+export { SplitView } from "./components/split-view.tsx";
 export {
   displayFormatMetadata,
   displayFormatSchema,

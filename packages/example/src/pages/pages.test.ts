@@ -2,7 +2,7 @@
  * and in a Node DOM on a machine with no browser (`BASIS_TEST_DOM=node vp test`). */
 
 import { fakeSignIn } from "@basis/ui";
-import { mockApi, renderApp, screen, userEvent, within } from "@basis/ui/testing";
+import { mockApi, renderApp, screen, userEvent, waitFor, within } from "@basis/ui/testing";
 import type { MockApi } from "@basis/ui/testing";
 import { http, HttpResponse } from "msw";
 import { afterAll, afterEach, describe, expect, test } from "vite-plus/test";
@@ -100,5 +100,47 @@ describe("the example's pages, with or without a browser", () => {
     expect(sent).toStrictEqual([
       { face: 1_000_000, security_id: "US91282CRF04", settle: "2026-11-10" },
     ]);
+  });
+});
+
+/** Saves the page's filters as a view named `name`, through the Views menu. */
+async function saveView(user: ReturnType<typeof userEvent.setup>, name: string): Promise<void> {
+  await user.click(screen.getByRole("button", { name: "Views" }));
+  await user.type(await screen.findByLabelText("View name"), name);
+  await user.click(screen.getByRole("button", { name: "Save" }));
+  await user.keyboard("{Escape}");
+}
+
+describe("the conventions page's filter bar, saved views and split view", () => {
+  afterEach(() => {
+    localStorage.clear();
+  });
+
+  test("the filter keeps the conventions whose names hold its text", async () => {
+    renderApp(routeTree, "/", { signIn: fakeSignIn() });
+    await screen.findByRole("button", { name: "30/360" });
+    await userEvent.setup().type(screen.getByLabelText("Convention"), "act");
+    expect(await screen.findByRole("button", { name: "ACT/365F" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "30/360" })).toBeNull();
+  });
+
+  test("a saved view brings its filters back", async () => {
+    renderApp(routeTree, "/", { signIn: fakeSignIn() });
+    const user = userEvent.setup();
+    await user.type(await screen.findByLabelText("Convention"), "act");
+    await saveView(user, "Actual");
+    await user.click(screen.getByRole("button", { name: "Clear filters" }));
+    expect(await screen.findByRole("button", { name: "30/360" })).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Views" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Actual" }));
+    await waitFor(() => {
+      expect(screen.queryByRole("button", { name: "30/360" })).toBeNull();
+    });
+  });
+
+  test("choosing a convention shows it beside the list", async () => {
+    renderApp(routeTree, "/", { signIn: fakeSignIn() });
+    await userEvent.setup().click(await screen.findByRole("button", { name: "ACT/365F" }));
+    expect(await screen.findByText("A year of 365 days.")).toBeTruthy();
   });
 });

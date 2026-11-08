@@ -4,6 +4,7 @@
 import { AppShell, CalendarIcon, PlusIcon } from "@basis/ui";
 import { createRootRoute, createRoute } from "@tanstack/react-router";
 import { createElement } from "react";
+import { z } from "zod";
 
 import { BondPage } from "./pages/bond.tsx";
 import { ConventionsPage } from "./pages/conventions.tsx";
@@ -21,6 +22,8 @@ const conventionsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
   staticData: { icon: CalendarIcon, title: "Day count conventions" },
+  // The filter bar's and the split view's state: the text a convention's name must hold, and the one selected.
+  validateSearch: z.object({ convention: z.string().optional(), selected: z.string().optional() }),
 });
 
 const bondRoute = createRoute({
