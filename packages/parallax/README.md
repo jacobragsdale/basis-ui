@@ -29,24 +29,27 @@ on at its own version.
    @import "@basis/parallax/styles.css";
    ```
 
-2. Start the engine's worker in a provider around the part of the app that
-   shows parallax. Vite bundles the worker and the engine beside it from the
-   `?worker` import:
+2. Start the engine in a provider around the part of the app that shows
+   parallax. The provider starts the package's own worker, which an app's
+   bundler finds beside the package's code and bundles with the engine, so an
+   app imports no worker itself; `basisPlugins()` keeps Vite's dependency
+   optimizer away from the package so that `vp dev` finds it too:
 
    ```tsx
    import { ParallaxProvider } from "@basis/parallax";
-   import ParallaxWorker from "@basis/parallax/worker?worker";
-
-   const startParallax = (): Worker => new ParallaxWorker();
 
    function App(): ReactNode {
      return (
-       <ParallaxProvider worker={startParallax} prewarm>
+       <ParallaxProvider prewarm>
          <Positions />
        </ParallaxProvider>
      );
    }
    ```
+
+   A test that runs the package's source, or a page that serves the worker
+   itself, passes `worker`: a function that starts one, or the URL that serves
+   `@basis/parallax/worker`.
 
    `prewarm` starts the worker at once, so the first rows show sooner; every
    page under the provider then downloads the engine, about 1 MB compressed.

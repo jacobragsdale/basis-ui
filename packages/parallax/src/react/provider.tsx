@@ -4,6 +4,7 @@ import { useEffect, useInsertionEffect, useMemo, useSyncExternalStore } from "re
 import type { ReactNode } from "react";
 
 import { ParallaxClient } from "#engine/client.ts";
+import { packagedWorker } from "#engine/packaged-worker.ts";
 import type { WorkerSource } from "#engine/client.ts";
 import { basisTheme } from "#theme/basis.ts";
 import type { ParallaxTheme } from "#theme/define.ts";
@@ -16,11 +17,12 @@ import { ParallaxClientContext, ParallaxThemeContext } from "./context.ts";
 
 interface ParallaxProviderProps {
   /**
-   * Where the engine's worker comes from: in a Vite app, `() => new ParallaxWorker()` with
-   * `import ParallaxWorker from "@basis/parallax/worker?worker"`, or the URL that serves that file. Define it outside
-   * the component, or let the React Compiler keep it: a different worker starts a new engine, without the data.
+   * Where the engine's worker comes from. Leave it out: the package starts its own worker, which an app's bundler finds
+   * beside the package's code. A test or a page that serves the worker itself passes a function that starts one, or
+   * the URL that serves `@basis/parallax/worker`. Define it outside the component, or let the React Compiler keep it: a
+   * different worker starts a new engine, without the data.
    */
-  readonly worker: WorkerSource;
+  readonly worker?: WorkerSource;
   /**
    * Starts the worker when the provider mounts, rather than when the first data loads, so that the first rows show
    * sooner. Every page under the provider then downloads the engine, about 1 MB compressed, whether or not it shows
@@ -51,7 +53,7 @@ function resolveScheme(scheme: Scheme | undefined, page: PageState): ResolvedSch
  * inside repaints when they change.
  */
 function ParallaxProvider({
-  worker,
+  worker = packagedWorker,
   prewarm = false,
   theme = basisTheme,
   scheme,

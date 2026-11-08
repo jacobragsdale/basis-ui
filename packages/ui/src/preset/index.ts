@@ -108,6 +108,16 @@ function testDependenciesPlugin(): Plugin {
   };
 }
 
+/** `@basis/parallax` starts its engine's worker from a URL beside its own code. Vite's dependency optimizer would
+ * bundle the package elsewhere, where that URL finds nothing in `vp dev`; left out of the optimizer, the package is
+ * served from where it is installed, and its worker beside it. A build bundles the worker either way. */
+function parallaxWorkerPlugin(): Plugin {
+  return {
+    config: () => ({ optimizeDeps: { exclude: ["@basis/parallax"] } }),
+    name: "basis:parallax-worker",
+  };
+}
+
 /** React with the React Compiler, which fails the build on any component it cannot optimize, Tailwind, the head
  * script that applies the stored mode and density before the first paint, written into the app's index.html, and, in
  * `vp dev` and `vp test` only, MSW's service worker at `/mockServiceWorker.js`, so tests serve the generated client's
@@ -139,6 +149,7 @@ function basisPlugins(): PluginOption[] {
         { ...msw({ mode: "worker-only" }), apply: "serve" },
         fixtureModePlugin({ liveApi: liveApi() }),
         testDependenciesPlugin(),
+        parallaxWorkerPlugin(),
       ];
     }) ?? []
   );

@@ -80,7 +80,7 @@ accent, background, text, font, sizes and lines, and copy the result with
    which follows `@basis/ui`'s mode by default:
 
    ```tsx
-   <ParallaxProvider worker={startParallax} theme={acme}>
+   <ParallaxProvider theme={acme}>
      <Positions />
    </ParallaxProvider>
    ```
