@@ -5,9 +5,10 @@ import { userEvent } from "vite-plus/test/browser";
 
 import { copyFrom, pressAt, renderGrid } from "./grid-helpers.tsx";
 
-/** The middle of the header, and of the first row, in the comfortable density: a 30 px row under a 36 px header. */
-const header = 18;
-const firstRow = 51;
+/** The middle of the header, and of the first row, in the compact density, the default: a 24 px row under a 30 px
+ * header. */
+const header = 15;
+const firstRow = 42;
 
 describe("Grid", () => {
   test("shows a flat view's rows and columns, and the status bar says where they come from", async () => {

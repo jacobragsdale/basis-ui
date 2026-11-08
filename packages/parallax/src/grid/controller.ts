@@ -1,7 +1,7 @@
 /* A grid's controller: everything the grid does between React's renders. It takes the view's frames as they arrive,
  * scrolls by asking the view's handle for rows, and draws the canvas, so a scroll at 60 frames a second renders
- * nothing in React. React gives it the layout, the dataset's columns and the tokens, and renders again only when what
- * it shows changes: the row count, the totals, the menu or the status bar's note. */
+ * nothing in React. React gives it the layout, the dataset's columns, the tokens and the rows chosen (row-checks.ts),
+ * and renders again only when what it shows changes: the row count, the totals, the menu or the status bar's note. */
 
 import type { ViewHandle } from "#engine/view.ts";
 import type { Viewport } from "#engine/view-types.ts";
@@ -20,8 +20,10 @@ import type { Metrics } from "./paint/metrics.ts";
 import { GridPainter } from "./paint/painter.ts";
 import type { DrawStats } from "./paint/stats.ts";
 import { Snapshots } from "./snapshot.ts";
+import { RowChecks } from "./row-checks.ts";
 import type { GridSnapshot } from "./snapshot.ts";
 import { GridSurface } from "./surface.ts";
+import type { RowSelectionInputs } from "./row-selection.ts";
 import type { GridInputs } from "./types.ts";
 import { missingWindow, windowFor } from "./window.ts";
 
@@ -36,6 +38,17 @@ class GridController {
   #handle: ViewHandle | null = null;
   #drawing = false;
   #focusSearch: (() => boolean) | null = null;
+  readonly #rows = new RowChecks({
+    handle: (): ViewHandle | null => this.#handle,
+    inputs: (): RowSelectionInputs | null => this.#inputs?.rowSelection ?? null,
+    model: this.#model,
+    say: (message: string): void => {
+      this.say(message);
+    },
+    update: (): void => {
+      this.#update();
+    },
+  });
 
   /** For `useSyncExternalStore`: calls `listener` when what React shows changes. */
   public readonly subscribe = (listener: () => void): (() => void) =>
@@ -82,6 +95,7 @@ class GridController {
     this.#inputs = inputs;
     this.#layoutJson = json;
     Object.assign(this.#model, changed ? { fields, layout, measureMenus } : { measureMenus });
+    this.#rows.take(inputs, changed);
     if (changed) {
       this.#fit();
     }
@@ -184,11 +198,15 @@ class GridController {
       redraw: () => {
         this.#redraw();
       },
+      ...this.#rows.hostPart,
       reveal: (cell) => surface()?.reveal(cell),
       say: (message) => {
         this.say(message);
       },
-      select: (selection) => surface()?.select(selection),
+      select: (selection) => {
+        surface()?.select(selection);
+        this.#rows.followFocus();
+      },
       toggleRow: (row) => {
         const toggle = toggleAt(model.frame, row);
         if (toggle !== null) {
@@ -254,6 +272,7 @@ class GridController {
       this.#request(metrics);
       this.#surface?.layoutElements(metrics, this.#inputs?.maxHeight ?? null);
     }
+    this.#rows.followFocus();
     this.#redraw();
     this.#publish(this.#opening(metrics));
   }

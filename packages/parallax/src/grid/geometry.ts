@@ -13,16 +13,23 @@ const defaultTreeWidth = 260;
 const minWidth = 40;
 /** Browsers cap element heights near 33 million pixels; the spacer stays well below. */
 const maxScrollPx = 15_000_000;
+/** The column index of the row selection's checkboxes, at the far left, before the group column's -1. */
+const selectColumn = -2;
+/** The checkbox column's width: room for a checkbox and the padding either side of it. */
+const selectColumnPx = 32;
 
-/** Positions of a view's columns in content coordinates, which start at the left edge of the group column. */
+/** Positions of a view's columns in content coordinates, which start at the grid's left edge: the row selection's
+ * checkboxes, then the group column, then the data columns. */
 interface ColumnGeometry {
   /** Data columns in the whole view. */
   readonly count: number;
-  /** Width of the pinned group column, or 0 for a flat view. */
+  /** Width of the row selection's checkbox column, at the left edge, or 0 when rows are not selected by checkbox. */
+  readonly selectPx: number;
+  /** Width of the pinned group column, after the checkboxes, or 0 for a flat view. */
   readonly treePx: number;
   /** How many data columns, the first ones, are pinned at the left beside the group column. */
   readonly pinned: number;
-  /** Where the scrolling columns start on screen: after the group column and the pinned columns. */
+  /** Where the scrolling columns start on screen: after the checkboxes, the group column and the pinned columns. */
   readonly frozenPx: number;
   /** Total width of the content. */
   readonly contentWidth: number;
@@ -38,16 +45,17 @@ interface ColumnGeometry {
 
 type Widths = Readonly<Record<string, number>>;
 
-/** A flat view's columns: their names in order, how many are pinned, the widths fitted to their values, and the
- * group column of a detail view before them, 0 wide for none. */
+/** A flat view's columns: their names in order, how many are pinned, the widths fitted to their values, the group
+ * column of a detail view before them, and the checkbox column before that, each 0 wide for none. */
 interface FlatColumns {
   readonly names: readonly string[];
   readonly pinned: number;
   readonly fitted: Widths;
   readonly treePx: number;
+  readonly selectPx: number;
 }
 
-const noColumns: FlatColumns = { fitted: {}, names: [], pinned: 0, treePx: 0 };
+const noColumns: FlatColumns = { fitted: {}, names: [], pinned: 0, selectPx: 0, treePx: 0 };
 
 /** A stored width, kept at or above the minimum so that every column can be found and grabbed. */
 function widthOr(widths: Widths, key: string, fallback: number): number {
@@ -87,20 +95,23 @@ function flatGeometry(
   widths: Widths,
   columns: Partial<FlatColumns> = noColumns,
 ): ColumnGeometry {
-  const { names = [], pinned = 0, fitted = {}, treePx = 0 } = columns;
+  const { names = [], pinned = 0, fitted = {}, treePx = 0, selectPx = 0 } = columns;
   const key = (column: number): string => names[column] ?? `#${String(column)}`;
   const own = Array.from({ length: count }, (_entry, column) =>
     widthOr(widths, key(column), fitted[key(column)] ?? defaultWidth),
   );
-  const sums = prefixSums(own).map((x) => x + treePx);
-  const total = sums.at(-1) ?? treePx;
+  // The data columns start after the checkboxes and the group column.
+  const lead = selectPx + treePx;
+  const sums = prefixSums(own).map((x) => x + lead);
+  const total = sums.at(-1) ?? lead;
   const frozen = Math.min(pinned, count);
   return {
     contentWidth: total,
     count,
-    frozenPx: sums[frozen] ?? treePx,
-    indexAt: (x) => (count === 0 ? 0 : search(sums, Math.max(x, treePx))),
+    frozenPx: sums[frozen] ?? lead,
+    indexAt: (x) => (count === 0 ? 0 : search(sums, Math.max(x, lead))),
     pinned: frozen,
+    selectPx,
     treePx,
     width: (column) => (sums[column + 1] ?? total) - (sums[column] ?? total),
     widthKey: key,
@@ -134,6 +145,8 @@ function groupedGeometry(count: number, measures: number, widths: Widths): Colum
     frozenPx: treePx,
     indexAt,
     pinned: 0,
+    // A pivot's rows are groups, which no checkbox selects.
+    selectPx: 0,
     treePx,
     width: (column) => (sums[(column % period) + 1] ?? 0) - (sums[column % period] ?? 0),
     widthKey: (column) => measureWidthKey(column % period),
@@ -177,9 +190,13 @@ function screenX(geometry: ColumnGeometry, column: number, scrollLeft: number): 
   return column < geometry.pinned ? geometry.x(column) : geometry.x(column) - scrollLeft;
 }
 
-/** The column at screen offset `x`: -1 for the group column, a data column, or null past the last one. */
+/** The column at screen offset `x`: `selectColumn` for the checkboxes, -1 for the group column, a data column, or
+ * null past the last one. */
 function columnAt(geometry: ColumnGeometry, x: number, scrollLeft: number): number | null {
-  if (geometry.treePx > 0 && x < geometry.treePx) {
+  if (geometry.selectPx > 0 && x < geometry.selectPx) {
+    return selectColumn;
+  }
+  if (geometry.treePx > 0 && x < geometry.selectPx + geometry.treePx) {
     return -1;
   }
   if (geometry.count === 0) {
@@ -206,6 +223,19 @@ function scrolledColumns(
   return Array.from({ length: Math.max(0, right - left + 1) }, (_entry, index) => left + index);
 }
 
+/** The data columns in view, and the key column when rows are chosen. Pinned columns show whatever the scroll, so the
+ * window always starts with them. */
+function windowColumns(
+  geometry: ColumnGeometry,
+  { scrollLeft, width }: { readonly scrollLeft: number; readonly width: number },
+  key: number | null,
+): { readonly columnCount: number; readonly firstColumn: number } {
+  const shown = geometry.pinned > 0 ? 0 : geometry.indexAt(geometry.frozenPx + scrollLeft);
+  const left = Math.min(shown, key ?? shown);
+  const right = Math.max(geometry.indexAt(scrollLeft + width), key ?? shown);
+  return { columnCount: right - left + 1, firstColumn: left };
+}
+
 export {
   columnAt,
   defaultTreeWidth,
@@ -216,5 +246,8 @@ export {
   rowGeometry,
   screenX,
   scrolledColumns,
+  selectColumn,
+  selectColumnPx,
+  windowColumns,
 };
 export type { ColumnGeometry, FlatColumns, RowGeometry };

@@ -8,7 +8,8 @@
  * Every change the user makes, a sort, a width, a filter, an expanded group, is a new layout, which the grid hands to
  * `onLayoutChange`. The text in each cell is the engine's, made by the formatter the Excel export uses. Numbers too
  * wide for their cell show `###`, as Excel does, rather than losing digits; the full text shows on hover. Copying puts
- * tab-separated text with every digit on the clipboard, which pastes into Excel as cells. */
+ * tab-separated text with every digit on the clipboard, which pastes into Excel as cells. Rows can be chosen, by
+ * checkbox or by focus, and the app hears their keys (row-selection.ts). */
 
 import { useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import type { ReactNode, Ref, RefObject } from "react";
@@ -32,12 +33,33 @@ import { StatusBar } from "./status-bar.tsx";
 import { allParts } from "./parts.ts";
 import type { ToolbarParts } from "./parts.ts";
 import { GridToolbar } from "./toolbar.tsx";
+import type { RowSelectionInputs } from "./row-selection.ts";
 import type { DrillRequest } from "./types.ts";
 import { useHandles } from "./use-grid-handles.ts";
 import type { GridHandle } from "./use-grid-handles.ts";
 import { useGridLayout } from "./use-grid-layout.ts";
 
-interface GridProps {
+/** Choosing rows: by checkbox, any number (`true`), or the focused cell's row alone (`"single"`), each named by its
+ * value in the `rowKey` column. */
+type GridRowSelection =
+  | {
+      readonly selectable?: false | undefined;
+      readonly rowKey?: undefined;
+      readonly selected?: undefined;
+      readonly onSelectionChange?: undefined;
+    }
+  | {
+      readonly selectable: true | "single";
+      /** The column whose value names a row, such as a trade id or a CUSIP: one of the view's columns, with a
+       * different value on every row. A row's key is the column's text as a copy writes it, every digit of a number. */
+      readonly rowKey: string;
+      /** The keys of the rows chosen, when the app holds them; without it, the grid keeps the choice itself. */
+      readonly selected?: readonly string[] | undefined;
+      /** Takes the keys of the rows chosen, in the order they were chosen, whenever the user changes them. */
+      readonly onSelectionChange?: ((keys: readonly string[]) => void) | undefined;
+    };
+
+interface GridBaseProps {
   /** The dataset to show, from `useDataset`. */
   readonly dataset: Dataset;
   /** The view: grouping, sorting, filters, formats and widths. The dataset is `dataset`'s. Left out, the grid shows
@@ -64,7 +86,22 @@ interface GridProps {
   readonly ref?: Ref<GridHandle> | undefined;
 }
 
+type GridProps = GridBaseProps & GridRowSelection;
+
 const defaultMaxHeight = 480;
+
+/** What the controller takes of the row selection props. */
+function rowSelectionOf(props: GridRowSelection): RowSelectionInputs | null {
+  if (props.selectable !== true && props.selectable !== "single") {
+    return null;
+  }
+  return {
+    key: props.rowKey,
+    mode: props.selectable === "single" ? "single" : "multiple",
+    onChange: props.onSelectionChange,
+    selected: props.selected,
+  };
+}
 
 /** The layout of a grid given none: every column, in the table's order. One value, so it never reads as a change. */
 const defaultLayout: LayoutInput = {};
@@ -130,6 +167,7 @@ function useGrid(props: GridProps): GridState {
       layout: view.layout,
       maxHeight: height === "auto" ? maxHeight : null,
       measureMenus,
+      rowSelection: rowSelectionOf(props),
     });
   });
   return { change, controller, fields, snapshot, view };
@@ -217,6 +255,7 @@ function Grid(props: GridProps): ReactNode {
         sourceAsOf={snapshot.sourceAsOf}
         status={view.table}
         message={snapshot.message}
+        selectedRows={snapshot.selectedRows}
       />
     </div>
   );

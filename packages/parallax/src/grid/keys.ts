@@ -1,5 +1,6 @@
 /* The keyboard on a grid: the arrow keys, Page Up and Down, Home and End move the focused cell, with Ctrl to the edge
- * and Shift extending the selection; Ctrl+A selects everything and Escape nothing; Enter or Space on a group opens or
+ * and Shift extending the selection; Ctrl+A selects everything and Escape nothing; Space checks the focused row when
+ * rows are chosen by checkbox, and with Shift every row from the last one checked; Enter or Space on a group opens or
  * closes it; Ctrl+F searches the grid rather than the page; and Alt+Down opens the focused cell's column menu, as a
  * spreadsheet's filter does. */
 
@@ -48,8 +49,8 @@ class KeyInput {
   #act(event: KeyboardEvent, extent: Extent): boolean {
     const start = { column: extent.tree ? -1 : 0, row: 0 };
     const selection = this.#host.model.interaction.selection ?? { anchor: start, focus: start };
-    if (event.key === "Escape") {
-      this.#host.select(null);
+    // Space checks a table row first; on a group's row, which has no checkbox, it opens or closes the group.
+    if (this.#escape(event) || this.#check(event, selection)) {
       return true;
     }
     if ((event.key === "Enter" || event.key === " ") && selection.focus.column === -1) {
@@ -57,6 +58,21 @@ class KeyInput {
       return true;
     }
     return this.#move(this.#navigate(event, selection, extent));
+  }
+
+  /** Escape selects nothing. Returns whether the key was Escape. */
+  #escape(event: KeyboardEvent): boolean {
+    if (event.key === "Escape") {
+      this.#host.select(null);
+    }
+    return event.key === "Escape";
+  }
+
+  /** Space checks the focused row, if rows are checked and the focus is on a table row: a group's row has no
+   * checkbox, and Space opens or closes it instead. Returns whether it checked one. */
+  #check(event: KeyboardEvent, selection: Selection): boolean {
+    const focused = this.#host.model.interaction.selection !== null;
+    return event.key === " " && focused && this.#host.checkRow(selection.focus.row, event.shiftKey);
   }
 
   /** Moves the selection where a navigation key leads, into view. Returns whether the key navigates. */

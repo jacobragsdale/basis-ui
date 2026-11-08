@@ -4,7 +4,7 @@ import type { TreeRows } from "#frame/tree.ts";
 import { highlightRanges } from "#grid/filters.ts";
 import type { Ranges } from "#grid/filters.ts";
 
-import { cellBackground, cellLines, unchanged } from "./cells.ts";
+import { cellBackground, cellLines, rowMark, unchanged } from "./cells.ts";
 import type { RowAt } from "./cells.ts";
 import { closedPath, drawIcon, openPath } from "./icons.ts";
 import { cellKey, groupText } from "./scene.ts";
@@ -35,7 +35,7 @@ function marker(pass: Pass, at: RowAt & { readonly left: number }, expanded: boo
 /** Draws a group cell's marker and label, keeping the label as its tooltip when it is cut. */
 function treeContent(pass: Pass, tree: TreeRows, at: RowAt & { readonly label: string }): void {
   const { context, theme, metrics, geometry } = pass;
-  const left = metrics.padding + tree.depth(at.local) * metrics.indent;
+  const left = geometry.selectPx + metrics.padding + tree.depth(at.local) * metrics.indent;
   marker(pass, { ...at, left }, tree.expanded(at.local));
   const ink = tree.kind(at.local) === "total" ? theme.totalForeground : theme.foreground;
   Object.assign(context, { fillStyle: ink });
@@ -47,7 +47,10 @@ function treeContent(pass: Pass, tree: TreeRows, at: RowAt & { readonly label: s
     text: at.label,
     y: at.y + metrics.rowPx / 2,
   };
-  const room = { width: geometry.treePx - start + metrics.padding, x: start - metrics.padding };
+  const room = {
+    width: geometry.selectPx + geometry.treePx - start + metrics.padding,
+    x: start - metrics.padding,
+  };
   if (clipText(pass.pen, { ...text, ...room })) {
     pass.notes.set(cellKey(at.row, -1), at.label);
   }
@@ -56,11 +59,14 @@ function treeContent(pass: Pass, tree: TreeRows, at: RowAt & { readonly label: s
 /** Draws a row's cell in the group column: its expand marker and label. Returns the cells drawn. */
 function treeCell(pass: Pass, tree: TreeRows, at: RowAt): number {
   const label = groupText(tree, at.local);
-  const drawn = { key: cellKey(at.row, -1), text: treeState(tree.expanded(at.local), label) };
+  const drawn = {
+    key: cellKey(at.row, -1),
+    text: treeState(tree.expanded(at.local), label) + rowMark(pass, at.row),
+  };
   if (unchanged(pass, at.row, drawn)) {
     return 0;
   }
-  const cell = { column: -1, width: pass.geometry.treePx, x: 0 };
+  const cell = { column: -1, width: pass.geometry.treePx, x: pass.geometry.selectPx };
   cellBackground(pass, at, cell);
   treeContent(pass, tree, { ...at, label });
   cellLines(pass, at, cell);

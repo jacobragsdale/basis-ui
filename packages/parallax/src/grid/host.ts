@@ -33,6 +33,11 @@ interface GridHost {
   readonly openMenu: (column: number) => void;
   /** Expands or collapses the group at view row `row`. */
   readonly toggleRow: (row: number) => void;
+  /** Checks or unchecks view row `row`, or with `range` checks every row from the last one checked; returns whether
+   * the row can be checked. */
+  readonly checkRow: (row: number, range: boolean) => boolean;
+  /** Checks every row the view shows, or clears the choice when there is one, as the header's checkbox does. */
+  readonly checkAll: () => void;
   /** Asks for the rows behind the cell at view row `row` and data column `column`. */
   readonly drill: (row: number, column: number) => void;
   /** The width that shows data column `column`'s header and values, -1 for the group column. */

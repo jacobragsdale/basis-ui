@@ -22,6 +22,8 @@ interface StatusBarProps {
   readonly status: TableStatus | null;
   /** A short note, such as the result of a copy. */
   readonly message: string;
+  /** How many rows are chosen, or null when the grid does not choose rows. */
+  readonly selectedRows: number | null;
 }
 
 /** The time now, told again every few seconds, so an age stays current. */
@@ -66,7 +68,14 @@ function About({
 }
 
 /** The grid's status bar. */
-function StatusBar({ dataset, viewRows, sourceAsOf, status, message }: StatusBarProps): ReactNode {
+function StatusBar({
+  dataset,
+  viewRows,
+  sourceAsOf,
+  status,
+  message,
+  selectedRows,
+}: StatusBarProps): ReactNode {
   const now = useNow();
   const rows = rowsText(viewRows);
   const asOf = asOfOf(sourceAsOf, status);
@@ -81,6 +90,11 @@ function StatusBar({ dataset, viewRows, sourceAsOf, status, message }: StatusBar
       <span data-slot="grid-status-rows" className="tabular-nums">
         {rows}
       </span>
+      {selectedRows === null || selectedRows === 0 ? null : (
+        <span data-slot="grid-status-selected" className="tabular-nums text-foreground">
+          {`${selectedRows.toLocaleString("en-US")} selected`}
+        </span>
+      )}
       {asOf === null ? null : (
         <span data-slot="grid-status-age" title={`Source read at ${asOf.time} New York time`}>
           as of {asOf.time} · {ageText(now - asOf.ms)}

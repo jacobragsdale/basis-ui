@@ -5,5 +5,6 @@ import { defineConfig } from "vite-plus";
 export default defineConfig({
   ...basisPreset(),
   plugins: basisPlugins(),
-  test: await basisTest(),
+  // Its measurements are the comfortable density's, which each test starts in; apps open compact.
+  test: { ...(await basisTest()), setupFiles: ["src/comfortable.setup.ts"] },
 });

@@ -1,5 +1,5 @@
 /* What screen readers hear of a grid, which they cannot read from its canvas: the focused cell, with its column's
- * title, and the size of a selection of more than one cell. */
+ * title and whether its row is chosen, the size of a selection of more than one cell, and how many rows are chosen. */
 
 import type { GridModel } from "./model.ts";
 import { groupText } from "./paint/scene.ts";
@@ -35,14 +35,17 @@ function describeCell(
   model: GridModel,
   { focus, id }: { readonly focus: CellRef; readonly id: string },
 ): ActiveCell {
-  const tree = model.geometry.treePx > 0;
+  const { geometry } = model;
+  // The checkboxes and the group column come before the data columns, each one column for a screen reader.
+  const before = (geometry.selectPx > 0 ? 1 : 0) + (geometry.treePx > 0 ? 1 : 0);
   const { selection } = model.interaction;
+  const chosen = model.choice.chosen(model.frame, focus.row) ? "Row selected. " : "";
   return {
-    columnIndex: focus.column + (tree ? 2 : 1),
+    columnIndex: focus.column + before + 1,
     id: `${id}-cell-${String(focus.row)}-${String(focus.column)}`,
     rowIndex: focus.row + 1,
     selected: selection !== null,
-    text: cellSpeech(model, focus),
+    text: chosen + cellSpeech(model, focus),
   };
 }
 
@@ -61,5 +64,13 @@ function describeRange(selection: Selection | null): string {
   return `${rowText} by ${String(columns)} ${columns === 1 ? "column" : "columns"} selected`;
 }
 
-export { describeCell, describeRange };
+/** How many rows are chosen, such as `3 rows selected`; empty for none, or when rows are not chosen. */
+function describeRows(count: number | null): string {
+  if (count === null || count === 0) {
+    return "";
+  }
+  return `${count.toLocaleString("en-US")} ${count === 1 ? "row" : "rows"} selected`;
+}
+
+export { describeCell, describeRange, describeRows };
 export type { ActiveCell };

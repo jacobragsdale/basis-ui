@@ -1,6 +1,6 @@
 /* What a grid knows at any moment, outside React: its layout and the dataset's columns, the latest frame, its tokens,
- * its size and scroll, the widths fitted to its values, and what follows from them: where its columns and rows sit,
- * which columns have a menu, and the rows and columns in view. */
+ * its size and scroll, the widths fitted to its values, the rows chosen, and what follows from them: where its columns
+ * and rows sit, which columns have a menu, and the rows and columns in view. */
 
 import type { Viewport } from "#engine/view-types.ts";
 import type { FrameData } from "#frame/frame.ts";
@@ -21,6 +21,8 @@ import {
   groupedGeometry,
   minWidth,
   rowGeometry,
+  selectColumnPx,
+  windowColumns,
 } from "./geometry.ts";
 import type { ColumnGeometry, RowGeometry } from "./geometry.ts";
 import type { Surface } from "./hit.ts";
@@ -28,6 +30,7 @@ import { chevronPath, funnelPath } from "./paint/icons.ts";
 import { metricsOf } from "./paint/metrics.ts";
 import type { Metrics } from "./paint/metrics.ts";
 import type { HeaderLook, Searched, SortMark } from "./paint/scene.ts";
+import { RowChoice } from "./row-selection.ts";
 import type { Extent } from "./selection.ts";
 import type { Interaction } from "./types.ts";
 
@@ -58,6 +61,7 @@ class GridModel {
   public liveWidth: LiveWidth | null = null;
   /** Whether a pivot's measure headers open a menu, which the pivot gives the grid. */
   public measureMenus = false;
+  public readonly choice = new RowChoice();
   public readonly interaction: Interaction = {
     drag: null,
     hoverHeader: null,
@@ -105,6 +109,7 @@ class GridModel {
       this.fitter.fitted,
       this.liveWidth,
       this.frame?.totalColumns ?? 0,
+      this.choice.select,
     ];
     const known = this.#geometry;
     if (known !== null && key.every((part, index) => part === known.key[index])) {
@@ -126,11 +131,11 @@ class GridModel {
     return { columns: geometry.count, rows: this.totalRows, tree: geometry.treePx > 0 };
   }
 
-  /** The rows and data columns in view. Before the first frame, when the column count is unknown, it covers the
-   * width at default widths. */
+  /** The rows and data columns in view, with the key column when rows are chosen, so the frame holds their keys.
+   * Before the first frame, when the column count is unknown, it covers the width at default widths. */
   public visible(metrics: Metrics): Viewport {
     const { geometry } = this;
-    const { scrollLeft, width, height } = this.area;
+    const { width, height } = this.area;
     const firstRow = this.rows(metrics).firstRow(this.area.scrollTop, height);
     const rowCount = Math.ceil(height / metrics.rowPx) + 1;
     if (geometry.count === 0) {
@@ -141,10 +146,8 @@ class GridModel {
         rowCount,
       };
     }
-    // Pinned columns show whatever the scroll, so the window always starts with them.
-    const left = geometry.pinned > 0 ? 0 : geometry.indexAt(geometry.frozenPx + scrollLeft);
-    const right = geometry.indexAt(scrollLeft + width);
-    return { columnCount: right - left + 1, firstColumn: left, firstRow, rowCount };
+    const columns = windowColumns(geometry, this.area, this.choice.select?.index ?? null);
+    return { ...columns, firstRow, rowCount };
   }
 
   /** The source column a data column's menu edits, or null where there is no menu: a pivot's columns are measures. */
@@ -283,7 +286,13 @@ class GridModel {
     // A detail view keeps its group column at the left, as a pivot does, before its own columns.
     const grouped = layout !== null && layout.detail && layout.group_by.length > 0;
     const treePx = grouped ? Math.max(minWidth, widths[treeWidthKey] ?? defaultTreeWidth) : 0;
-    return flatGeometry(count, widths, { fitted: this.fitter.fitted, names, pinned, treePx });
+    return flatGeometry(count, widths, {
+      fitted: this.fitter.fitted,
+      names,
+      pinned,
+      selectPx: this.choice.select?.mode === "multiple" ? selectColumnPx : 0,
+      treePx,
+    });
   }
 }
 

@@ -151,6 +151,14 @@ class GridSurface {
       metrics,
       rows: model.rows(metrics),
       searched: model.searched(frame === null ? "" : this.#searchOf(frame)),
+      rowSelection:
+        model.choice.select === null
+          ? null
+          : {
+              header: model.choice.header,
+              selectable: (row): boolean => model.choice.keyAt(model.frame, row) !== null,
+              selected: (row): boolean => model.choice.chosen(model.frame, row),
+            },
       selection: interaction.selection,
       sortMark: (column) => model.sortMark(column),
       theme,

@@ -8,9 +8,9 @@ import type { LayoutInput } from "#layout/layout.ts";
 
 import { pressAt, renderGrid } from "./grid-helpers.tsx";
 
-/** The middle of the first row, under the 36 px header of the comfortable density, and of the second. */
-const firstRow = 51;
-const secondRow = 81;
+/** The middle of the first row, under the 30 px header of the compact density, the default, and of the second. */
+const firstRow = 42;
+const secondRow = 66;
 /** Market value by fund, then desk: the funds' rows are closed, under the grand total. */
 const byFundAndDesk: LayoutInput = {
   group_by: ["fund", "desk"],

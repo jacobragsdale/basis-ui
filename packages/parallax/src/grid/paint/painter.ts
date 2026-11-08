@@ -40,8 +40,11 @@ function shapeOf(scene: Scene, at: Area): string {
           scene.hoverHeader,
           scene.menuColumn,
           scene.drag,
+          // The header's checkbox is drawn with the header, so a change to it draws everything again.
+          scene.rowSelection?.header ?? null,
         ];
-  return JSON.stringify([at, versions, geometry.treePx, geometry.contentWidth, decor]);
+  const columns = [geometry.selectPx, geometry.treePx, geometry.contentWidth];
+  return JSON.stringify([at, versions, columns, decor]);
 }
 
 /** Whether a row is in a range. */

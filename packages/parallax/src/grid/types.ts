@@ -4,6 +4,7 @@ import type { Layout, LayoutScalar } from "#layout/layout.ts";
 
 import type { SourceField } from "./fields.ts";
 import type { HeaderDrag } from "./paint/scene.ts";
+import type { RowSelectionInputs } from "./row-selection.ts";
 import type { Selection } from "./selection.ts";
 
 /** A request for the rows behind one group of a pivot, which a double click on its value makes. */
@@ -29,6 +30,8 @@ interface GridInputs {
   readonly measureMenus: boolean;
   /** The tallest a grid that sizes itself to its rows grows, or null for one that fills its container. */
   readonly maxHeight: number | null;
+  /** Row selection, when the app asks for it. */
+  readonly rowSelection: RowSelectionInputs | null;
 }
 
 /** An open header menu: its data column, and the source column it edits or, for a pivot, the measure. */

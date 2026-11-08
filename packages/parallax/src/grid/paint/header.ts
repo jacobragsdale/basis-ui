@@ -1,5 +1,5 @@
 /* The grid's header row: each column's title with its sort mark, and for a column with a menu, its funnel and pin; the
- * group column's title; and where a dragged header would drop. */
+ * group column's title; the row selection's checkbox; and where a dragged header would drop. */
 
 import { screenX } from "#grid/geometry.ts";
 
@@ -7,6 +7,7 @@ import { fillRect } from "./canvas.ts";
 import { columnsInView } from "./columns.ts";
 import { downPath, drawIcon, pinPath, upPath } from "./icons.ts";
 import type { HeaderLook, Pass, SortMark } from "./scene.ts";
+import { selectHeader } from "./select.ts";
 import { clipText } from "./text.ts";
 
 /** How strongly a funnel draws on a header the pointer isn't over, so that it is there to find but not loud. */
@@ -143,8 +144,9 @@ function treeHeader(pass: Pass): void {
   Object.assign(context, { fillStyle: theme.headerForeground });
   const title =
     layout === null || layout.group_by.length === 0 ? "Group" : layout.group_by.join(" › ");
-  headerText(pass, { mark: scene.sortMark(-1), title, width: geometry.treePx, x: 0 });
-  fillRect(context, theme.columnBorder, [geometry.treePx - 1, 0, 1, metrics.headerPx]);
+  const x = geometry.selectPx;
+  headerText(pass, { mark: scene.sortMark(-1), title, width: geometry.treePx, x });
+  fillRect(context, theme.columnBorder, [x + geometry.treePx - 1, 0, 1, metrics.headerPx]);
 }
 
 /** Draws where a dragged header would drop: a line in the accent before the column it would go before. */
@@ -167,6 +169,7 @@ function drawHeader(pass: Pass): void {
   const { context, theme, metrics, geometry, pen } = pass;
   fillRect(context, theme.headerBackground, [0, 0, pass.width, metrics.headerPx]);
   pen.widths.use(context, pass.fonts.header);
+  selectHeader(pass);
   if (geometry.treePx > 0) {
     treeHeader(pass);
   }

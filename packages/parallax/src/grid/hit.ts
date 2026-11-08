@@ -3,7 +3,7 @@
 
 import type { FrameData } from "#frame/frame.ts";
 
-import { columnAt, screenX } from "./geometry.ts";
+import { columnAt, screenX, selectColumn } from "./geometry.ts";
 import type { ColumnGeometry, RowGeometry } from "./geometry.ts";
 import type { Metrics } from "./paint/metrics.ts";
 
@@ -69,7 +69,8 @@ function rowAt(surface: Surface, y: number): number | null {
 
 /** The edge in the header at `x` in the group column, if `x` is on it. */
 function treeEdge(surface: Surface, x: number): number | null {
-  return surface.geometry.treePx - x <= edgePx ? -1 : null;
+  const { geometry } = surface;
+  return geometry.selectPx + geometry.treePx - x <= edgePx ? -1 : null;
 }
 
 /** What is at `x`, `y` on the canvas. */
@@ -77,7 +78,7 @@ function hitAt(surface: Surface, x: number, y: number): Hit {
   const header = y < surface.metrics.headerPx;
   const column = columnAt(surface.geometry, x, surface.scrollLeft);
   const hit = { column, edge: null, funnel: false, header, row: rowAt(surface, y) };
-  if (!header || column === null) {
+  if (!header || column === null || column === selectColumn) {
     return hit;
   }
   if (column === -1) {
@@ -87,9 +88,13 @@ function hitAt(surface: Surface, x: number, y: number): Hit {
   return part === "funnel" ? { ...hit, funnel: true } : { ...hit, edge: part };
 }
 
-/** Whether `x` falls on the expand marker of view row `row`'s group cell. */
+/** Whether `x` falls on the expand marker of view row `row`'s group cell, which starts `treeLeft` from the left. */
 function onMarker(
-  { frame, metrics }: { readonly frame: FrameData | null; readonly metrics: Metrics },
+  {
+    frame,
+    metrics,
+    treeLeft,
+  }: { readonly frame: FrameData | null; readonly metrics: Metrics; readonly treeLeft: number },
   row: number,
   x: number,
 ): boolean {
@@ -104,7 +109,7 @@ function onMarker(
   ) {
     return false;
   }
-  const left = metrics.padding + tree.depth(local) * metrics.indent;
+  const left = treeLeft + metrics.padding + tree.depth(local) * metrics.indent;
   return x >= left - markerSlop && x <= left + metrics.markerPx;
 }
 

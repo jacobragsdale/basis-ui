@@ -49,7 +49,7 @@ function columnsInView(pass: Pass, band: Band, paint: (column: number) => void):
   const pinned = Array.from({ length: geometry.pinned }, (_entry, index) => index);
   clipped(
     pass,
-    { ...band, left: geometry.treePx, right: geometry.frozenPx },
+    { ...band, left: geometry.selectPx + geometry.treePx, right: geometry.frozenPx },
     { columns: pinned, paint },
   );
   if (pass.scrollLeft > 0) {

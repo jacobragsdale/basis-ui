@@ -125,6 +125,10 @@ frame for rows already on screen redraws only the cells whose text changed.
 | `measureMenu`    | The menu a pivot's measure header opens, which the pivot gives the grid; without it, a measure's header has none                            |
 | `onFieldsChange` | Takes the dataset's columns when the view opens, as the pivot's field list reads them                                                       |
 | `ref`            | `drawStats()`, the drawing counters; `export(format)`, `xlsx` or `csv`; and `distinctValues(column, search, limit)`                         |
+| `selectable`     | `true` adds a checkbox column for choosing rows, any number of them; `"single"` makes the focused cell's row the one chosen               |
+| `rowKey`         | With `selectable`, the column whose value names a row, such as a trade id or a CUSIP: one of the view's columns, different on every row   |
+| `selected`       | The keys of the rows chosen, when the app holds them; without it, the grid keeps the choice itself                                         |
+| `onSelectionChange` | Takes the keys of the rows chosen, in the order they were chosen, whenever the user changes them                                        |
 
 The user sorts by clicking a header, Shift adding a sort; resizes a column by
 dragging its header's edge, or fits it with a double click there; moves a column
@@ -138,6 +142,27 @@ searches the grid, and Ctrl+C copies the selection as tab-separated text with
 every digit, which pastes into Excel as cells. Rows the grid does not hold are
 fetched first. Export writes an Excel workbook or a CSV file in the engine, of
 the load the screen shows.
+
+Rows are chosen by their key, the `rowKey` column's text as a copy writes it, every
+digit of a number, so a choice stays with its rows as they sort, filter, group and
+scroll, and the app can keep it in a URL or send it to its API:
+
+```tsx
+const [trades, setTrades] = useState<readonly string[]>([]);
+<Grid dataset={blotter} selectable rowKey="trade_id" onSelectionChange={setTrades} />;
+```
+
+A checkbox checks its row, Shift checks every row from the last one checked, and
+Space checks the focused row; the header's checkbox checks every row the view shows,
+or clears the choice when there is one. Chosen rows are tinted as a selection is,
+and the status bar and screen readers say how many there are. In a grouped grid the
+table's rows can be chosen, not the groups' rows, and the header's checkbox checks
+the rows of the groups that are open. A pivot's rows are groups, so it chooses none,
+and a view that hides the key column says so in its status bar rather than choosing
+rows it cannot name. Shift ranges and the header's checkbox fetch the keys of rows
+off screen, up to 1,000,000 at once. With `selectable="single"` there are no
+checkboxes: the row chosen is the focused cell's, so a click or an arrow key chooses
+another, as a master list beside its detail does.
 
 A canvas is invisible to screen readers, so the grid is a `grid` whose name is
 `label`, whose description says how many rows and columns it holds and how to

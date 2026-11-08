@@ -1,5 +1,6 @@
-/* A grid's cells: each one's background, highlight, selection, lines and text. A cell whose text has not changed
- * since it was last drawn, and whose row the selection and the pointer left alone, is not drawn again. */
+/* A grid's cells: each one's background, highlight, selection, lines and text. A chosen row is tinted as a selection
+ * is. A cell whose text has not changed since it was last drawn, and whose row the selection, the choice of rows and
+ * the pointer left alone, is not drawn again. */
 
 import { isNegativeText } from "#format.ts";
 import type { CellFlag } from "#frame/cell.ts";
@@ -82,6 +83,11 @@ function cellStyle(pass: Pass, data: FrameColumn, shown: Shown): Style {
   };
 }
 
+/** What a cell's drawn text is kept with, so that choosing its row or leaving it draws the cell again. */
+function rowMark(pass: Pass, row: number): string {
+  return pass.scene.rowSelection?.selected(row) === true ? "\u0001" : "";
+}
+
 /** Whether a cell can be left as it was drawn: the pass redraws only what changed, and its text is unchanged. */
 function unchanged(
   pass: Pass,
@@ -106,18 +112,28 @@ function ring(pass: Pass, at: RowAt, cell: CellAt): void {
   context.stroke();
 }
 
+/** Tints a cell whose row is chosen, or that is in the selected range, over its background. */
+function cellTint(pass: Pass, at: RowAt, cell: CellAt): void {
+  const { context, theme, metrics, range } = pass;
+  const rect = [cell.x, at.y, cell.width, metrics.rowPx] as const;
+  if (rowMark(pass, at.row) !== "") {
+    fillRect(context, theme.selectionBackground, rect);
+  }
+  if (range !== null && contains(range, { column: cell.column, row: at.row })) {
+    fillRect(context, theme.selectionBackground, rect);
+  }
+}
+
 /** Fills a cell's background, highlighting it if its row is under the pointer and marking it if it is selected. */
 function cellBackground(pass: Pass, at: RowAt, cell: CellAt): void {
-  const { context, theme, metrics, range, focus, hover } = pass;
+  const { context, theme, metrics, focus, hover } = pass;
   const rect = [cell.x, at.y, cell.width, metrics.rowPx] as const;
   const fill = hover?.row === at.row ? hover.color : at.stripe;
   if (fill !== theme.background && translucent(fill)) {
     fillRect(context, theme.background, rect);
   }
   fillRect(context, fill, rect);
-  if (range !== null && contains(range, { column: cell.column, row: at.row })) {
-    fillRect(context, theme.selectionBackground, rect);
-  }
+  cellTint(pass, at, cell);
   if (focus !== null && focus.row === at.row && focus.column === cell.column) {
     ring(pass, at, cell);
   }
@@ -169,7 +185,10 @@ function cellText(
 /** Draws data column `column`'s cell in a row, if its text or its row changed. Returns whether it drew it. */
 function dataCell(pass: Pass, at: RowAt, column: number): boolean {
   const data = at.frame.columns[column - at.frame.firstColumn];
-  const drawn = { key: cellKey(at.row, column), text: data?.text(at.local) ?? "" };
+  const drawn = {
+    key: cellKey(at.row, column),
+    text: (data?.text(at.local) ?? "") + rowMark(pass, at.row),
+  };
   if (data === undefined || unchanged(pass, at.row, drawn)) {
     return false;
   }
@@ -185,5 +204,5 @@ function dataCell(pass: Pass, at: RowAt, column: number): boolean {
   return true;
 }
 
-export { cellBackground, cellLines, dataCell, unchanged };
+export { cellBackground, cellLines, dataCell, rowMark, unchanged };
 export type { CellAt, RowAt };

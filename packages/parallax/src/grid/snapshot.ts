@@ -7,7 +7,7 @@ import type { Viewport } from "#engine/view-types.ts";
 import type { FrameData } from "#frame/frame.ts";
 
 import type { GridModel } from "./model.ts";
-import { describeCell, describeRange } from "./speech.ts";
+import { describeCell, describeRange, describeRows } from "./speech.ts";
 import type { ActiveCell } from "./speech.ts";
 import type { OpenMenu } from "./types.ts";
 
@@ -31,8 +31,10 @@ interface GridSnapshot {
   readonly overPanel: boolean;
   /** The focused cell as screen readers read it, or null without a selection. */
   readonly active: ActiveCell | null;
-  /** The selection's size, for screen readers, when it is more than one cell. */
+  /** The selection's size, for screen readers, when it is more than one cell, or else how many rows are chosen. */
   readonly announcement: string;
+  /** How many rows are chosen, or null when rows are not chosen. */
+  readonly selectedRows: number | null;
 }
 
 const first: GridSnapshot = {
@@ -43,6 +45,7 @@ const first: GridSnapshot = {
   message: "",
   opening: null,
   overPanel: false,
+  selectedRows: null,
   sourceAsOf: null,
   totalColumns: 0,
   totalRows: null,
@@ -99,17 +102,19 @@ class Snapshots {
     const { selection } = model.interaction;
     const spoken = frame === this.#frame ? this.#current.totalsText : totalsText(frame);
     this.#frame = frame;
+    const selectedRows = model.choice.select === null ? null : model.choice.keys.size;
     this.#replace({
       active:
         selection === null
           ? null
           : sameCell(this.#current.active, describeCell(model, { focus: selection.focus, id })),
-      announcement: describeRange(selection),
+      announcement: describeRange(selection) || describeRows(selectedRows),
       loadVersion: frame?.loadVersion ?? null,
       menu: model.interaction.menu,
       message: this.#current.message,
       opening: this.#current.opening ?? opening,
       overPanel: model.interaction.overPanel,
+      selectedRows,
       sourceAsOf: frame?.sourceAsOfMicros ?? null,
       totalColumns: model.geometry.count,
       totalRows: frame?.totalRows ?? null,

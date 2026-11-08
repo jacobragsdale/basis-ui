@@ -10,6 +10,7 @@ import { fillRect } from "./canvas.ts";
 import { dataCell } from "./cells.ts";
 import type { RowAt } from "./cells.ts";
 import { columnsInView } from "./columns.ts";
+import { selectCell } from "./select.ts";
 import type { Pass } from "./scene.ts";
 import { clipText } from "./text.ts";
 import { treeCell } from "./tree.ts";
@@ -33,7 +34,8 @@ function drawRow(pass: Pass, at: Omit<RowAt, "stripe">): number {
   if (strong) {
     pass.pen.widths.use(pass.context, pass.fonts.group);
   }
-  let cells = at.frame.tree === null ? 0 : treeCell(pass, at.frame.tree, placed);
+  let cells =
+    selectCell(pass, placed) + (at.frame.tree === null ? 0 : treeCell(pass, at.frame.tree, placed));
   columnsInView(pass, { height: pass.metrics.rowPx, top: at.y }, (column) => {
     cells += dataCell(pass, placed, column) ? 1 : 0;
   });
@@ -111,7 +113,7 @@ function totalLabel(pass: Pass, y: number): void {
       numeric: false,
       text: "Total",
       width: geometry.treePx,
-      x: 0,
+      x: geometry.selectPx,
       y: y + metrics.rowPx / 2,
     });
   }

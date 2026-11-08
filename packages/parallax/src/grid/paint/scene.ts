@@ -4,6 +4,7 @@
 import type { FrameData } from "#frame/frame.ts";
 import type { TreeRows } from "#frame/tree.ts";
 import type { ColumnGeometry, RowGeometry } from "#grid/geometry.ts";
+import type { HeaderCheck } from "#grid/row-selection.ts";
 import type { CellRange, CellRef, Selection } from "#grid/selection.ts";
 import type { Layout } from "#layout/layout.ts";
 import type { Theme } from "#theme/read.ts";
@@ -64,6 +65,13 @@ interface Scene {
   readonly look: (column: number) => HeaderLook | null;
   /** Column `column`'s sort mark, -1 for the group column, or null for a column not sorted. */
   readonly sortMark: (column: number) => SortMark | null;
+  /** The rows chosen, or null when rows are not selected: whether view row `row` is chosen, whether it can be, and
+   * what the header's checkbox shows. */
+  readonly rowSelection: {
+    readonly selected: (row: number) => boolean;
+    readonly selectable: (row: number) => boolean;
+    readonly header: HeaderCheck;
+  } | null;
 }
 
 /** What a pass draws over: the first row, the horizontal scroll and the size. */

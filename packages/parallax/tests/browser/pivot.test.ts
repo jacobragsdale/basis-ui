@@ -216,8 +216,8 @@ describe("Pivot's table", () => {
 
   test("a double click on a value opens the rows behind it, until the groups change", async () => {
     const { screen, grid } = await renderPivot();
-    // Atlas's row, the second.
-    await userEvent.dblClick(canvasOf(grid), { position: { x: 300, y: 81 } });
+    // Atlas's row, the second, in the compact density: 24 px rows under a 30 px header.
+    await userEvent.dblClick(canvasOf(grid), { position: { x: 300, y: 66 } });
     const rows = screen.getByRole("region", { name: "Rows behind Atlas" });
     await expect
       .element(rows.getByRole("grid", { name: "Rows behind Atlas" }))

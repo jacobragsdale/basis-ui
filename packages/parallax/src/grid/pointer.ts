@@ -1,9 +1,10 @@
 /* The pointer on a grid's canvas: a press selects a cell, a drag selects a range, a header click sorts, a header's
  * edge resizes its column and a double click on it fits the column, a header dragged elsewhere moves its column or,
- * dropped on the group panel, groups by it, and a cell cut short shows its full text after a moment. */
+ * dropped on the group panel, groups by it, a checkbox checks its row, or with Shift every row from the last one
+ * checked, the header's checkbox checks every row, and a cell cut short shows its full text after a moment. */
 
 import { sortedBy, withWidth } from "./changes.ts";
-import { minWidth } from "./geometry.ts";
+import { minWidth, selectColumn } from "./geometry.ts";
 import { HeaderDragger } from "./header-drag.ts";
 import type { Pressed } from "./header-drag.ts";
 import { onMarker } from "./hit.ts";
@@ -17,7 +18,7 @@ function cursorFor(hit: Hit): string {
   if (hit.edge !== null) {
     return "col-resize";
   }
-  return hit.header && hit.column !== null ? "pointer" : "default";
+  return (hit.header && hit.column !== null) || hit.column === selectColumn ? "pointer" : "default";
 }
 
 /** Handles the pointer on a grid's canvas. */
@@ -40,7 +41,9 @@ class PointerInput {
       return;
     }
     this.clearTooltip();
-    if (hit.header) {
+    if (hit.column === selectColumn) {
+      this.#check(hit, event);
+    } else if (hit.header) {
       this.#press(hit, event);
     } else if (hit.row !== null && hit.column !== null) {
       this.#selectFrom({ column: hit.column, row: hit.row }, event);
@@ -113,7 +116,12 @@ class PointerInput {
     if (hit.header && hit.edge !== null) {
       const { edge } = hit;
       host.change((layout) => withWidth(layout, host.model.widthKey(edge), host.fitWidth(edge)));
-    } else if (!hit.header && hit.row !== null && hit.column !== null) {
+    } else if (
+      !hit.header &&
+      hit.row !== null &&
+      hit.column !== null &&
+      hit.column !== selectColumn
+    ) {
       this.#doubleClickCell({ column: hit.column, row: hit.row }, event.offsetX);
     }
   };
@@ -131,6 +139,16 @@ class PointerInput {
 
   public clearTooltip(): void {
     this.#tooltips.clear();
+  }
+
+  /** A press on the checkbox column: the header's checks every row, a row's checks that row. */
+  #check(hit: Hit, event: PointerEvent): void {
+    this.#host.dom.parts.scroll.focus({ preventScroll: true });
+    if (hit.header) {
+      this.#host.checkAll();
+    } else if (hit.row !== null) {
+      this.#host.checkRow(hit.row, event.shiftKey);
+    }
   }
 
   #press(hit: Hit, event: PointerEvent): void {
@@ -170,8 +188,11 @@ class PointerInput {
     if (!this.#selecting || hit.row === null || hit.column === null) {
       return false;
     }
+    // A drag over the checkboxes selects to the first column, as a drag past the left edge does.
+    const first = this.#host.model.extent.tree ? -1 : 0;
+    const column = Math.max(hit.column, first);
     if (selection !== null) {
-      this.#host.select({ anchor: selection.anchor, focus: { column: hit.column, row: hit.row } });
+      this.#host.select({ anchor: selection.anchor, focus: { column, row: hit.row } });
     }
     return true;
   }
@@ -192,7 +213,8 @@ class PointerInput {
   /** Whether `x` falls on the expand marker of view row `row`'s group cell. */
   #onMarker(row: number, x: number): boolean {
     const metrics = this.#host.metrics();
-    return metrics !== null && onMarker({ frame: this.#host.model.frame, metrics }, row, x);
+    const { frame, geometry } = this.#host.model;
+    return metrics !== null && onMarker({ frame, metrics, treeLeft: geometry.selectPx }, row, x);
   }
 
   #commitWidth(): void {
