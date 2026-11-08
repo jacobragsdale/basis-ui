@@ -62,13 +62,16 @@ const partsOfAPoint: Readonly<Record<Precision, number>> = {
   quarters: 128,
   "thirty-seconds": 32,
 };
-/** Par amounts' suffixes for the compact ones an axis would write. */
-const parSuffixes: ReadonlyMap<string, string> = new Map([
-  ["K", "M"],
-  ["M", "MM"],
-  ["B", "BN"],
-  ["T", "TN"],
-]);
+/** A thousand, and par amounts' units, largest first, with the suffixes bond markets write them with. */
+const thousand = 1000;
+const million = thousand * thousand;
+const billion = million * thousand;
+const parUnits: readonly (readonly [number, string])[] = [
+  [billion * thousand, "TN"],
+  [billion, "BN"],
+  [million, "MM"],
+  [thousand, "M"],
+];
 
 /** The multiples of `step` across a domain. */
 function multiples([low, high]: readonly [number, number], step: number): number[] {
@@ -145,14 +148,28 @@ function percentTicks(scale: Scale, count: number): readonly ValueTick[] {
   return ticksAt(scale, multiples(scale.domain, step), (value) => formatter.float(value));
 }
 
-/** Round numbers, compact as the axis's own are past 10,000, with par amounts' suffixes. */
+/**
+ * Round numbers in one par unit for the whole axis, the largest its step is at least one of, as a desk writes them:
+ * steps of 200 million read 200MM, 400MM and so on to 1,000MM, not 0.2BN. Steps under a thousand keep the axis's own
+ * labels.
+ */
 function parTicks(scale: Scale, count: number): readonly ValueTick[] {
   const step = roundStep(scale.domain[1] - scale.domain[0], count);
   const values = multiples(scale.domain, step);
-  const labels = tickLabels(values, step).map((label) =>
-    label.replace(/[BKMT]$/u, (suffix) => parSuffixes.get(suffix) ?? suffix),
+  const unit = parUnits.find(([size]) => step >= size);
+  if (unit === undefined) {
+    const labels = tickLabels(values, step);
+    return ticksAt(scale, values, (_value, i) => labels[i] ?? "");
+  }
+  const [size, suffix] = unit;
+  const decimals = decimalsOf(step / size);
+  const written = new Intl.NumberFormat("en-US", {
+    maximumFractionDigits: decimals,
+    minimumFractionDigits: decimals,
+  });
+  return ticksAt(scale, values, (value) =>
+    value === 0 ? "0" : `${written.format(value / size)}${suffix}`,
   );
-  return ticksAt(scale, values, (_value, i) => labels[i] ?? "");
 }
 
 /** About `count` ticks across a linear scale, labelled in `style`; none for a plain axis, whose ticks are the scale's

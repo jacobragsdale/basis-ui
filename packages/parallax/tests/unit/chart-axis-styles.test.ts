@@ -84,6 +84,23 @@ describe("value axes in a column's style", () => {
       "30M",
       "40M",
     ]);
+    // Steps of 200 million read in millions to the end, as a desk writes them, not 0.2BN.
+    expect(labels([0, 1e9], 5, { abbreviate: "billions", suffixes: "par" })).toStrictEqual([
+      "0",
+      "200MM",
+      "400MM",
+      "600MM",
+      "800MM",
+      "1,000MM",
+    ]);
+    // A step of half a million reads in thousands.
+    expect(labels([0, 2e6], 4, { abbreviate: "millions", suffixes: "par" })).toStrictEqual([
+      "0",
+      "500M",
+      "1,000M",
+      "1,500M",
+      "2,000M",
+    ]);
   });
 
   test("reach a chart's value axes from the layout's formats, and a measure's own format first", () => {
