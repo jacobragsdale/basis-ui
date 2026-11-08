@@ -1,4 +1,4 @@
-/* One bond: its terms, as the API's warehouse holds them, and a link to record a settlement. */
+/* One bond: its terms, as the API's warehouse holds them, a link to record a settlement, and its coupon schedule. */
 
 import {
   ArrowLeftIcon,
@@ -20,6 +20,8 @@ import type { ReactElement } from "react";
 
 import { useBond } from "#api/client.ts";
 import type { Bond } from "#api/client.ts";
+
+import { CouponSchedule } from "./coupon-schedule.tsx";
 
 function BondTerms({ bond }: { readonly bond: Bond }): ReactElement {
   return (
@@ -73,6 +75,7 @@ function BondPage(): ReactElement {
       />
       {bond.isPending ? <Skeleton className="h-32 w-full" /> : null}
       {bond.data === undefined ? null : <BondTerms bond={bond.data.data} />}
+      {bond.data === undefined ? null : <CouponSchedule security={security} />}
     </>
   );
 }

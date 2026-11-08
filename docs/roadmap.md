@@ -186,7 +186,10 @@ second consumer on 2026-11-07: 1.12 and 1.13 wait on basis's contract, and 1.14 
     - parallax's grid, pivot and charts format a column by its metadata unless a layout sets a format.
 
     The example app shows a dataset whose columns format themselves. Needs 1.12, and basis's step 2.13 for real
-    metadata; until then the tests write it into their Arrow.
+    metadata; until then the tests write it into their Arrow. Built on 2026-11-08: parallax keeps Arrow field metadata
+    and resolves `basis.format` as each column's default format (`parallax-protocol`'s `display`); `@basis/ui` has
+    `DisplayFormat`, `readDisplayFormat` and `Formatted`, `DataTable` columns take `format`, and `client-pull` writes
+    `displayFormats` from `x-basis-format`; the example's bond page shows its coupon schedule by the Arrow's formats.
 
 14. **1.14 Tests without a browser.** Add a Vitest setup beside `basisTest()`'s Playwright one, for laptops with no
     Chromium, in a DOM implemented in Node. The DOM library is chosen by measuring the gallery's component tests in

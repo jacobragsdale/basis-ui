@@ -804,7 +804,7 @@ export const getCouponsUrl = (security: string,) => {
 }
 
 /**
- * The bond's coupons, from its first to its last, which is paid at maturity.
+ * The bond's coupons, from its first to its last, which is paid at maturity, as a table: a frame of them.
  * @summary Coupons
  */
 export const coupons = async (security: string, options?: Parameters<typeof apiFetch>[1]): Promise<couponsResponseSuccess> => {

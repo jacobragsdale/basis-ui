@@ -51,6 +51,14 @@ describe("the app on its committed fixtures, with no API", () => {
     await expect.element(screen.getByText("4.125%")).toBeVisible();
   });
 
+  test("shows the bond's coupons, each interest at the 4 decimals its Arrow field's display format declares", async () => {
+    fixtureMode();
+    const { screen } = await renderApp("/bonds/US91282CRF04");
+    const coupons = screen.getByRole("table", { name: "Coupons" });
+    await expect.element(coupons.getByRole("cell", { name: "2026-11-15" }).first()).toBeVisible();
+    await expect.element(coupons.getByText("2.0600").first()).toBeVisible();
+  });
+
   test("shows the problem fixtures/bond-US0000000000.json answers for an unknown bond", async () => {
     fixtureMode();
     const { screen } = await renderApp("/bonds/US0000000000");
@@ -71,7 +79,11 @@ describe("the app on its committed fixtures, with no API", () => {
     await expect.element(screen.getByText("Issued 2026-05-15, matures 2036-05-15")).toBeVisible();
     await expect
       .poll(() => answers.map(({ file }) => file))
-      .toStrictEqual(["fixtures/settlement.json", "fixtures/bond-US91282CRF04.json"]);
+      .toStrictEqual([
+        "fixtures/settlement.json",
+        "fixtures/bond-US91282CRF04.json",
+        "fixtures/bond-US91282CRF04-coupons.json",
+      ]);
   });
 });
 
@@ -85,7 +97,11 @@ describe("the order fixture mode answers in", () => {
     const { screen } = await renderApp("/");
     await expect.element(screen.getByRole("cell", { name: "366" })).toBeVisible();
     expect(screen.getByRole("row").elements()).toHaveLength(2);
-    expect(answers).toMatchObject([{ file: ".fixtures/conventions.json", source: "record" }]);
+    // Only this page's request: a bond page an earlier test opened may still be answering for its coupons.
+    const pageAnswers = answers.filter(({ request }) =>
+      String(request).startsWith("GET /conventions"),
+    );
+    expect(pageAnswers).toMatchObject([{ file: ".fixtures/conventions.json", source: "record" }]);
   });
 
   test("a committed fixture answers before orval's generated handlers", async () => {

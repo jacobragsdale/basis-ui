@@ -4620,6 +4620,30 @@
       }
     },
     {
+      "extends": [
+        "Pick< ComponentProps<typeof Num>, \"align\" | \"signed\" | \"className\" | \"id\" | \"title\" >"
+      ],
+      "family": "formatted",
+      "name": "Formatted",
+      "props": [
+        {
+          "description": "The number, a double as the API sends it.",
+          "name": "value",
+          "optional": false,
+          "type": "NumericValue"
+        },
+        {
+          "description": "The display format the API declares for it; without one, the number shows by `Num`'s defaults.",
+          "name": "format",
+          "optional": true,
+          "type": "DisplayFormat | undefined"
+        }
+      ],
+      "purpose": "A number shown by its API's display format, through `Num`, `Money`, `Pct`, `Bps` or `Price32` as its kind says.",
+      "variants": {},
+      "example": "import { Formatted } from \"@basis/ui\";\n\n<Formatted value={2.0625} format={{ decimals: 4, kind: \"price\" }} />; // 2.0625\n<Formatted value={0.0525} format={{ kind: \"pct\" }} />; // 5.25%\n<Formatted value={1250} format={{ currency: \"EUR\", kind: \"money\" }} />; // €1,250.00\n"
+    },
+    {
       "extends": [],
       "family": "data-table",
       "name": "DataTable",

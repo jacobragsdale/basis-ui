@@ -1599,13 +1599,21 @@ impl Layout {
                 other: t.other,
             }),
             expand_depth: self.expand_depth,
-            formats: self
-                .formats
+            // The API's format for each column it declares one for, then the
+            // layout's own, which wins.
+            formats: table
+                .schema()
+                .fields()
                 .iter()
-                .map(|(column, f)| {
+                .filter_map(|field| {
+                    crate::display::field_format(field)
+                        .map(|f| (field.name().clone(), f.to_engine()))
+                })
+                .map(Ok)
+                .chain(self.formats.iter().map(|(column, f)| {
                     column_type(table, column)?;
                     Ok((column.clone(), f.to_engine()))
-                })
+                }))
                 .collect::<Result<_, LayoutError>>()?,
             titles: self
                 .titles

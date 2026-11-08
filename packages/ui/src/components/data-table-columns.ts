@@ -7,6 +7,7 @@
 
 import type { ReactNode } from "react";
 
+import type { DisplayFormat } from "#format/display-format.ts";
 import type { Cell, Column } from "#utils/export.ts";
 import { compareValues, isMissing } from "#utils/sort.ts";
 
@@ -39,6 +40,9 @@ interface DataTableNumericColumn<TRow> extends DataTableColumnBase<TRow> {
   readonly variant: "numeric";
   /** The number, a double as the API sends it. */
   readonly value: (row: TRow) => NumericValue;
+  /** The display format the API declares for it, such as `displayFormats.CouponRow.interest` from the generated
+   * client, which the cell shows it by unless the column draws its own `cell`. */
+  readonly format?: DisplayFormat | undefined;
 }
 
 /** One of a DataTable's columns: `{ id, header, value }`, with `variant: "numeric"` for numbers. */

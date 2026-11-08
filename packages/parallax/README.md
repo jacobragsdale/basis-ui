@@ -55,6 +55,10 @@ on at its own version.
    page under the provider then downloads the engine, about 1 MB compressed.
    Unmounting the provider ends the worker and frees its memory.
 
+   Each column shows by the display format the API declares in its Arrow
+   field's metadata under `basis.format`, such as a price at 4 decimals or a
+   rate in basis points, unless a layout's `formats` sets its own.
+
 3. Load a dataset and open a view of it:
 
    ```tsx

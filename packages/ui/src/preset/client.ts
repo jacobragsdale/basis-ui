@@ -15,6 +15,7 @@ import path from "node:path";
 
 import { generate } from "orval";
 
+import { displayFormatsModule } from "./display-formats.ts";
 import { documentFile, generatedFolder, orvalOptions } from "./orval-options.ts";
 
 /** What a task failure throws: its message is the line, or lines, the task prints. */
@@ -138,11 +139,18 @@ async function repairMocks(output: string): Promise<void> {
   }
 }
 
+/** Writes `formats.ts`, each number property's display format from the document's `x-basis-format`. */
+async function writeDisplayFormats(root: string, output: string): Promise<void> {
+  const document: unknown = JSON.parse(await readFile(path.join(root, documentFile), "utf8"));
+  await writeFile(path.join(output, "formats.ts"), displayFormatsModule(document));
+}
+
 /** Writes the client that the app's openapi.json generates into `output`. */
 async function generateInto(root: string, output: string): Promise<void> {
   try {
     await generate(orvalOptions(root, output), root, { logLevel: "error", throwOnError: true });
     await repairMocks(output);
+    await writeDisplayFormats(root, output);
   } catch (error) {
     if (error instanceof Error && error.message.startsWith("ERROR ")) {
       throw new TaskError(error.message);

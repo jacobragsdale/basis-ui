@@ -17,6 +17,7 @@
     "@tanstack/react-form": "catalog:",
     "@tanstack/react-query": "catalog:",
     "@tanstack/react-router": "catalog:",
+    "apache-arrow": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
     "zod": "catalog:"
@@ -25,7 +26,6 @@
     "@faker-js/faker": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
-    "apache-arrow": "catalog:",
     "msw": "catalog:",
     "typescript": "catalog:",
     "vite-plus": "catalog:",

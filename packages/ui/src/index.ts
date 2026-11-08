@@ -368,6 +368,13 @@ export { defaultAsOfDate, type AsOfOptions } from "./components/date-picking.ts"
 export { DateTime } from "./components/date-time.tsx";
 export type { DateTimePart, DateTimeValue } from "./components/date-time-text.ts";
 export { Bps, Money, Num, Pct, Price32 } from "./components/num.tsx";
+export { Formatted } from "./components/formatted.tsx";
+export {
+  displayFormatMetadata,
+  displayFormatSchema,
+  readDisplayFormat,
+  type DisplayFormat,
+} from "./format/display-format.ts";
 export { numberText, type NumberFormat, type NumericValue } from "./components/num-text.ts";
 
 // Data: the firm's own components for small tables, searching for an entity, and importing a CSV file.

@@ -612,6 +612,27 @@ import { Bps, DateTime, Money, Num, Pct, Price32 } from "@basis/ui";
   wall-clock time shown as stored. It renders a `<time>` whose title gives the full instant with its offset and zone.
 - Text that is not ISO 8601 throws, as Temporal does: the response's schema should have refused it.
 
+### Display formats
+
+basis declares how each number shows: as `x-basis-format` on its property in the API's document, and in its Arrow
+field's metadata under `basis.format`, as `{ kind, decimals, currency, step }` with `kind` one of `number`, `money`,
+`pct`, `bps`, `price` and `price32`. A page shows a number by its format rather than choosing decimals:
+
+```tsx
+import { Formatted } from "@basis/ui";
+import { displayFormats } from "#api/client.ts";
+
+<Formatted value={row.interest} format={displayFormats.CouponRow.interest} />; // 2.0625, price at 4 decimals
+```
+
+- `vp run client-pull` writes `displayFormats` into `src/api/generated/formats.ts`, by schema and property; the app's
+  `src/api/client.ts` re-exports it.
+- `Formatted` shows the number through `Num`, `Money`, `Pct`, `Bps` or `Price32`, as the kind says, and through
+  `Num`'s defaults without a format.
+- A `DataTable` column with `variant: "numeric"` takes `format`, and its cells show by it.
+- For Arrow a page reads itself, `readDisplayFormat(field.metadata.get(displayFormatMetadata))` gives a column's
+  format. Parallax's grid, pivot and charts read it on their own, unless a layout sets the column's format.
+
 ## Taking amounts and dates
 
 `AmountInput`, `AsOfDatePicker` and `DateRangePicker` each go in a `Field` with a `FieldLabel` whose `htmlFor` is

@@ -5,6 +5,7 @@
 //! into an engine configuration against a table's schema. [`ipc`] encodes record
 //! batches as Arrow IPC streams for frames.
 
+pub mod display;
 pub mod ipc;
 pub mod layout;
 

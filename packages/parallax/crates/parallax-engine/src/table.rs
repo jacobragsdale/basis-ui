@@ -121,7 +121,11 @@ impl Table {
                     data_type: field.data_type().clone(),
                 }
             })?;
-            fields.push(Field::new(field.name(), ty.to_arrow(), true));
+            // The field's metadata stays, such as the display format an API declares.
+            fields.push(
+                Field::new(field.name(), ty.to_arrow(), true)
+                    .with_metadata(field.metadata().clone()),
+            );
             columns.push(Column::new(ty));
         }
         let key_column = match &options.primary_key {

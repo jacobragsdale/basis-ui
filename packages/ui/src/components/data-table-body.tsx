@@ -9,7 +9,7 @@ import type { DataTableColumn, DataTableRowAction } from "./data-table-columns.t
 import { RowActionsCell, SelectAllHead, SelectRowCell, SortableHead } from "./data-table-parts.tsx";
 import { isShiftEvent } from "./data-table-state.ts";
 import type { DataTableInstance } from "./data-table-state.ts";
-import { Num } from "./num.tsx";
+import { Formatted } from "./formatted.tsx";
 import { TableCell, TableHead, TableRow } from "./table.tsx";
 
 /** What the heading row and the rows share. */
@@ -22,13 +22,13 @@ interface RowsProps<TRow extends RowData> {
   readonly rowActions: ((row: TRow) => readonly DataTableRowAction[]) | undefined;
 }
 
-/** What a cell shows: the column's own drawing, a number by the formatter, or the value's text. */
+/** What a cell shows: the column's own drawing, a number by its column's display format, or the value's text. */
 function cellContent<TRow>(column: DataTableColumn<TRow>, row: TRow): ReactNode {
   if (column.cell !== undefined) {
     return column.cell(row);
   }
   if (column.variant === "numeric") {
-    return <Num value={column.value(row)} />;
+    return <Formatted value={column.value(row)} format={column.format} />;
   }
   return cellText(cellOf(column, row));
 }

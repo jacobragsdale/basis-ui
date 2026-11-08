@@ -10,7 +10,7 @@ export * from './accruedInterestParams.zod.ts';
 export * from './bond.zod.ts';
 export * from './bondYieldParams.zod.ts';
 export * from './convention.zod.ts';
-export * from './coupon.zod.ts';
+export * from './couponRow.zod.ts';
 export * from './dayCount.zod.ts';
 export * from './dirtyPrice.zod.ts';
 export * from './dirtyPriceParams.zod.ts';

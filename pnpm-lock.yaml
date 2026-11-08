@@ -345,6 +345,9 @@ importers:
       '@tanstack/react-router':
         specifier: 'catalog:'
         version: 1.170.46(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+      apache-arrow:
+        specifier: 'catalog:'
+        version: 21.2.0
       react:
         specifier: 'catalog:'
         version: 19.3.1
@@ -364,9 +367,6 @@ importers:
       '@types/react-dom':
         specifier: 'catalog:'
         version: 19.3.0(@types/react@19.3.0)
-      apache-arrow:
-        specifier: 'catalog:'
-        version: 21.2.0
       msw:
         specifier: 'catalog:'
         version: 3.0.4(@types/node@26.6.6)(@voidzero-dev/vite-plus-core@1.5.0(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1))(typescript@7.0.2)
