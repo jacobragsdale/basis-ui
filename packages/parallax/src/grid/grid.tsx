@@ -40,8 +40,9 @@ import { useGridLayout } from "./use-grid-layout.ts";
 interface GridProps {
   /** The dataset to show, from `useDataset`. */
   readonly dataset: Dataset;
-  /** The view: grouping, sorting, filters, formats and widths. The dataset is `dataset`'s. */
-  readonly layout: LayoutInput;
+  /** The view: grouping, sorting, filters, formats and widths. The dataset is `dataset`'s. Left out, the grid shows
+   * every column in the table's order, each by its API's display format. */
+  readonly layout?: LayoutInput | undefined;
   /** Takes every change the user makes. Without it, the grid keeps the changes itself until `layout` changes. */
   readonly onLayoutChange?: ((layout: Layout) => void) | undefined;
   /** The toolbar above the grid: true shows all of it, false hides it, and an object turns parts off, such as
@@ -64,6 +65,9 @@ interface GridProps {
 }
 
 const defaultMaxHeight = 480;
+
+/** The layout of a grid given none: every column, in the table's order. One value, so it never reads as a change. */
+const defaultLayout: LayoutInput = {};
 
 /** The toolbar's parts for a layout: a pivot's columns are its measures, and its grand total is a row of its own. */
 function partsOf(toolbar: GridProps["toolbar"], layout: Layout | null): ToolbarParts | null {
@@ -103,7 +107,7 @@ function useFields(
 /** Opens the grid's view on the controller, which takes its frames, and keeps the controller's inputs current. */
 function useGrid(props: GridProps): GridState {
   const { dataset, height = "fill", maxHeight = defaultMaxHeight, onFieldsChange } = props;
-  const [layout, change] = useGridLayout(props.layout, props.onLayoutChange);
+  const [layout, change] = useGridLayout(props.layout ?? defaultLayout, props.onLayoutChange);
   // oxlint-disable-next-line react/hook-use-state -- one controller for the grid's life, made once; nothing sets it.
   const [controller] = useState(() => new GridController());
   const snapshot = useSyncExternalStore(controller.subscribe, controller.getSnapshot);
