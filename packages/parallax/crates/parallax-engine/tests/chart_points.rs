@@ -7,6 +7,7 @@ use std::sync::Arc;
 
 use arrow_array::{ArrayRef, Float64Array, RecordBatch, StringArray};
 use arrow_schema::{DataType, Field, Schema};
+use parallax_engine::calendar::Market;
 use parallax_engine::chart::{
     ChartConfig, ChartData, ChartKind, ChartRequest, ChartView, Dot, MAX_POINTS, PointColumns,
     XAxis,
@@ -73,6 +74,8 @@ fn scatter() -> ChartConfig {
             tooltip: vec!["sector".into()],
             fit: Some("fit".into()),
         },
+        market: Market::default(),
+        session: None,
     }
 }
 
@@ -182,6 +185,8 @@ fn sizes_are_shares_of_the_largest_magnitude_in_the_whole_chart() {
         &t,
         ChartConfig {
             points: PointColumns::default(),
+            market: Market::default(),
+            session: None,
             ..scatter()
         },
     )

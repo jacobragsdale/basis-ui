@@ -98,6 +98,77 @@ function byPortfolio(selected: ChartSelection | null): LayoutInput {
   };
 }
 
+/** Yields arrive as fractions and read as percentages to a thousandth. */
+const yieldFormat = { decimals: 3, percent: true } as const;
+
+/** The 10-year yield on each day SIFMA recommends trading in October and November: its holidays take no space. */
+const tenYear: LayoutInput = {
+  chart: { axis: "trading", calendar: "sifma", kind: "line", x: "curve_date", y: ["yield"] },
+  dataset: "curves",
+  filters: [
+    { column: "tenor", op: "eq", value: "10Y" },
+    { column: "curve_date", op: "ge", value: "2026-10-01" },
+  ],
+  formats: { yield: yieldFormat },
+};
+
+/** 2-, 10- and 30-year yields through Thanksgiving week's electronic sessions, 6 p.m. the evening before to 5 p.m. */
+const thanksgiving: LayoutInput = {
+  chart: {
+    axis: "trading",
+    calendar: "sifma",
+    kind: "line",
+    series: "tenor",
+    session: { closes: "17:00", opens: "18:00" },
+    x: "time",
+    y: ["yield"],
+  },
+  dataset: "yields",
+  formats: { yield: yieldFormat },
+  orders: { tenor: "tenor" },
+};
+
+/** A chart in a card of its own. */
+function ChartCard({
+  id,
+  title,
+  layout,
+}: {
+  readonly id: string;
+  readonly title: string;
+  readonly layout: LayoutInput & { readonly dataset: "curves" | "yields" };
+}): ReactNode {
+  const dataset = useDemoDataset(layout.dataset);
+  return (
+    <Card size="sm" data-card={id} className="h-90">
+      <CardHeader>
+        <CardTitle>{title}</CardTitle>
+      </CardHeader>
+      <CardContent className="flex min-h-0 flex-1 flex-col">
+        <Chart className="min-h-0 flex-1" dataset={dataset} layout={layout} />
+      </CardContent>
+    </Card>
+  );
+}
+
+/** Treasury yields on the bond market's trading time. */
+function TradingTime(): ReactNode {
+  return (
+    <>
+      <ChartCard
+        id="ten-year-sifma"
+        layout={{ ...tenYear, dataset: "curves" }}
+        title="The 10-year yield on SIFMA's days: Columbus Day and Veterans Day take no space"
+      />
+      <ChartCard
+        id="thanksgiving-sessions"
+        layout={{ ...thanksgiving, dataset: "yields" }}
+        title="Yields through Thanksgiving week's sessions: no Thursday, and Friday closes at 2 p.m."
+      />
+    </>
+  );
+}
+
 /** The relative-value scatter and the bonds a click on it narrows. */
 function RichCheap(): ReactNode {
   const bonds = useDemoDataset("bonds");
@@ -169,6 +240,7 @@ function FixedIncomePage(): ReactNode {
     <Page page={pages.fixedIncome} scrolls>
       <RichCheap />
       <Explain />
+      <TradingTime />
     </Page>
   );
 }

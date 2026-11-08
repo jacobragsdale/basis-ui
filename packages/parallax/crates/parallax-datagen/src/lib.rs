@@ -5,8 +5,10 @@
 //! of a full run, and the output never depends on thread count or batch size.
 //!
 //! [`bonds::Bonds`] holds corporate bonds with spreads, durations and DV01s, for
-//! fixed-income charts, from issuers of its own, and [`attribution::Attribution`]
-//! bond portfolios' P&L explained by factor, for waterfalls.
+//! fixed-income charts, from issuers of its own, [`attribution::Attribution`]
+//! bond portfolios' P&L explained by factor, for waterfalls, [`treasuries::Curves`]
+//! the Treasury curve each day the bond market trades, and [`treasuries::Yields`]
+//! intraday Treasury yields through its electronic sessions.
 //!
 //! Three datasets share one [`universe::Universe`] per seed:
 //!
@@ -30,6 +32,7 @@ pub mod prices;
 pub mod rng;
 mod shared;
 pub mod trades;
+pub mod treasuries;
 pub mod universe;
 pub mod write;
 

@@ -50,6 +50,8 @@ jobs:
               - "packages/consumer/**"
               # The formatter's tests read the fixtures parallax's Rust formatter writes.
               - "packages/parallax/crates/parallax-engine/tests/fixtures/format.json"
+              # The dates tests check the SIFMA calendar against each year parallax's Rust calendar writes.
+              - "packages/parallax/crates/parallax-engine/tests/fixtures/sifma.json"
               - "package.json"
               - "pnpm-lock.yaml"
               - "pnpm-workspace.yaml"
@@ -60,6 +62,8 @@ jobs:
             parallax:
               - "packages/parallax/**"
               - "packages/parallax-demo/**"
+              # The Rust SIFMA calendar is tested against the schedules SIFMA published, which `@basis/ui` keeps.
+              - "packages/ui/tests/fixtures/calendars/sifma.json"
               - ".github/workflows/ci.yml"
 
   ui:

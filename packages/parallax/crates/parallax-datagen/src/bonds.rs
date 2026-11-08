@@ -139,7 +139,7 @@ const PAR_STEP: f64 = 250_000.0;
 const MAX_PAR: f64 = 25_000_000.0;
 /// The Treasury curve the bonds' yields are built on: Nelson-Siegel's level,
 /// slope and curvature as fractions, and its decay in years.
-const CURVE: (f64, f64, f64, f64) = (0.0465, -0.0085, 0.0060, 2.2);
+pub const CURVE: (f64, f64, f64, f64) = (0.0465, -0.0085, 0.0060, 2.2);
 /// The market's spread curve: basis points at zero duration, and how much more
 /// each step of `ln(1 + duration)` adds.
 const SPREAD_BASE: f64 = 55.0;

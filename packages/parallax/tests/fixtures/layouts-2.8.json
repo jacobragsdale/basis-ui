@@ -295,5 +295,59 @@
     "top_n": null,
     "totals": [],
     "version": 2
+  },
+  {
+    "chart": {
+      "axis": "trading",
+      "calendar": "sifma",
+      "compare": false,
+      "donut": true,
+      "drawings": [],
+      "events": null,
+      "hidden": [],
+      "horizontal": false,
+      "indicators": [],
+      "kind": "line",
+      "labels": true,
+      "log_y": false,
+      "ohlc": null,
+      "range": null,
+      "series": null,
+      "session": {
+        "closes": "17:00",
+        "opens": "18:00"
+      },
+      "stacked": false,
+      "volume": null,
+      "x": "time",
+      "y": [
+        "yield"
+      ],
+      "y_right": []
+    },
+    "column_widths": {},
+    "columns": [],
+    "dataset": "yields",
+    "detail": false,
+    "expand_depth": 0,
+    "expanded": [],
+    "filters": [],
+    "formats": {},
+    "group_by": [],
+    "group_sort": {
+      "by": "key",
+      "descending": false
+    },
+    "having": [],
+    "measures": [],
+    "parameters": {},
+    "pinned": [],
+    "search": "",
+    "sort": [],
+    "split_by": [],
+    "titles": {},
+    "top_n": null,
+    "totals": [],
+    "version": 2
   }
 ]

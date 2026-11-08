@@ -9,8 +9,9 @@ import type { Calendar } from "#dates/index.ts";
 /* The calendars against the schedules their publishers printed, transcribed into fixtures with each page's address
  * and the day it was fetched. A fixture lists a year's closes and early closes; "closed" or a closing time. Every day
  * a source lists must match the calendar, and in the years it covers in full, every weekday the calendar closes, or
- * closes early, must be listed. Where SIFMA's own sources disagree, `disputes` names the source the calendar follows
- * and why. */
+ * closes early, must be listed. Where SIFMA's own sources disagree, the fixture's `disputes` name the source the
+ * calendar follows and why, and its `unscheduled` days are closes a published holiday schedule may leave out.
+ * Parallax's Rust SIFMA calendar is tested against the same file (crates/parallax-engine/tests/sifma.rs). */
 
 const daySchema = z.object({
   close: z.string().nullable(),
@@ -30,11 +31,24 @@ const sourceSchema = z.object({
 
 type Source = z.infer<typeof sourceSchema>;
 
-function load(name: string): Source[] {
+const disputeSchema = z.object({
+  date: z.iso.date(),
+  follows: z.url(),
+  source: z.url(),
+  why: z.string(),
+});
+
+const fixtureSchema = z.object({
+  disputes: z.array(disputeSchema).default([]),
+  sources: z.array(sourceSchema),
+  unscheduled: z.array(z.iso.date()).default([]),
+});
+
+function load(name: string): z.infer<typeof fixtureSchema> {
   const text: unknown = JSON.parse(
     readFileSync(new URL(`fixtures/calendars/${name}`, import.meta.url), "utf8"),
   );
-  return z.object({ sources: z.array(sourceSchema) }).parse(text).sources;
+  return fixtureSchema.parse(text);
 }
 
 /** A day as the fixtures write it: "closed", "open", or the early close's time, such as "14:00". */
@@ -65,82 +79,12 @@ function irregularDays(calendar: Calendar, year: number): string[] {
   return days;
 }
 
-const sifmaSources = load("sifma.json");
-const nyseSources = load("nyse.json");
-
-const historyPdf =
-  "https://www.sifma.org/wp-content/uploads/2017/08/Misc-US-Historical-Holiday-Market-Recommendations-SIFMA.pdf";
-const usArchive = "https://www.sifma.org/resources/guides-playbooks/us-holiday-archive";
-const archived = (stamp: string, page: string): string =>
-  `https://web.archive.org/web/${stamp}/http://www.sifma.org/services/${page}/`;
-
-/** Entries where one SIFMA source disagrees with the calendar, and the SIFMA source the calendar follows instead. The
- * 2018 compilation of 1996 to 2019 gives some years' schedules as first issued, before SIFMA revised them. */
-const disputes: readonly { source: string; date: string; follows: string; why: string }[] = [
-  {
-    date: "2010-12-31",
-    follows: archived("20110823165211", "holiday-schedule-archive-2010"),
-    source: historyPdf,
-    why: "The 2010 archive page lists the early close before New Year's Day 2011, which fell on a Saturday.",
-  },
-  {
-    date: "2012-07-03",
-    follows: archived("20130519101204", "holiday-schedule-archive-2012"),
-    source: historyPdf,
-    why: "The 2012 archive page lists an early close before Independence Day.",
-  },
-  {
-    date: "2013-07-03",
-    follows: archived("20140404005123", "holiday-schedule-archive-2013"),
-    source: historyPdf,
-    why: "The 2013 archive page lists an early close before Independence Day.",
-  },
-  {
-    date: "2015-04-02",
-    follows: usArchive,
-    source: historyPdf,
-    why: "With the employment report due on Good Friday, SIFMA moved 2015's Good Friday to a noon close.",
-  },
-  {
-    date: "2015-04-03",
-    follows: usArchive,
-    source: historyPdf,
-    why: "With the employment report due on Good Friday, SIFMA moved 2015's Good Friday to a noon close.",
-  },
-  {
-    date: "2015-07-02",
-    follows: usArchive,
-    source: historyPdf,
-    why: "SIFMA's final 2015 schedule recommends no early close before Independence Day.",
-  },
-  {
-    date: "2015-02-16",
-    follows: historyPdf,
-    source: usArchive,
-    why: "The archive page leaves Presidents Day 2015 blank.",
-  },
-  {
-    date: "2016-02-15",
-    follows: historyPdf,
-    source: usArchive,
-    why: "The archive page leaves Presidents Day 2016 blank.",
-  },
-];
-
+const sifmaFixture = load("sifma.json");
+const sifmaSources = sifmaFixture.sources;
+const nyseSources = load("nyse.json").sources;
+const { disputes } = sifmaFixture;
 /** Unscheduled closes, which a published holiday schedule may leave out; each is listed by some source. */
-const sifmaUnscheduled = [
-  "2001-09-11",
-  "2001-09-12",
-  "2001-09-13",
-  "2001-09-14",
-  "2001-09-17",
-  "2004-06-11",
-  "2007-01-02",
-  "2012-10-29",
-  "2012-10-30",
-  "2018-12-05",
-  "2025-01-09",
-];
+const sifmaUnscheduled = sifmaFixture.unscheduled;
 /** The NYSE's unscheduled closes; parallax's Rust lists them, and the NYSE tests check them against its fixtures. */
 const nyseUnscheduled = new Set(nyse.exceptions.map((exception) => exception.date));
 

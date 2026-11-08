@@ -21,6 +21,9 @@ const talib = {
   smoothing: 3,
 } as const;
 
+/** A New York time a session opens or closes at, as HH:MM. */
+const clock = z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/u, "a session's times are HH:MM");
+
 /**
  * What a chart draws. Bar charts, heatmaps, pies and waterfalls draw the layout's grouped view; the engine reduces
  * the others.
@@ -154,6 +157,10 @@ const chartSchema = z.strictObject({
   fit: name.optional(),
   // How a tenor axis spaces tenors: the standard ones a step apart, or by length. Left out at its default, as in Rust.
   tenor_spacing: z.enum(["even", "length"]).optional(),
+  // A trading-time axis's market, and the session it keeps in New York time, the market's regular one if unset: one
+  // that closes before it opens trades overnight, for the day it closes on. Left out when unset, as in Rust.
+  calendar: z.enum(["nyse", "sifma"]).optional(),
+  session: z.strictObject({ opens: clock, closes: clock }).optional(),
 });
 
 /** A chart of a layout. */

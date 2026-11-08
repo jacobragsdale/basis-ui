@@ -18,6 +18,10 @@ const datasetKeys = {
   bonds: "cusip",
   /** Four bond portfolios' P&L explained by factor on each of October 2026's trading days, 968 rows. */
   attribution: null,
+  /** The Treasury curve, 11 tenors, on each day of 2026 to November that SIFMA recommends trading. */
+  curves: null,
+  /** 2-, 10- and 30-year Treasury yields every 5 minutes through Thanksgiving week's electronic sessions. */
+  yields: null,
 } as const satisfies Readonly<Record<string, string | null>>;
 
 /** A dataset the demo serves. */

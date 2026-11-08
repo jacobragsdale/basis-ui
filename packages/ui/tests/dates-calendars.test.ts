@@ -75,6 +75,47 @@ describe("the NYSE against parallax's Rust calendar", () => {
   });
 });
 
+// Written by parallax's Rust SIFMA calendar; see packages/parallax/crates/parallax-engine/tests/sifma.rs.
+const sifmaDay = z.tuple([isoDate, z.string()]);
+const sifmaYear = z.object({ days: z.array(sifmaDay), year: z.number() });
+const sifmaFixture = z.object({ exceptions: z.array(sifmaDay), years: z.array(sifmaYear) });
+const sifmaPath = new URL(
+  "../../parallax/crates/parallax-engine/tests/fixtures/sifma.json",
+  import.meta.url,
+);
+const sifmaText = readFileSync(sifmaPath, "utf8");
+const rustSifma = sifmaFixture.parse(JSON.parse(sifmaText));
+
+/** A year's weekdays that SIFMA closes or closes early, as "closed" or the early close's time. */
+function sifmaIrregular(year: number): [string, string][] {
+  const days: [string, string][] = [];
+  for (let day = date(`${String(year)}-01-01`); day.year === year; day = day.add({ days: 1 })) {
+    const seen = shown(sifma, day.toString());
+    if (day.dayOfWeek <= 5 && seen !== "open") {
+      days.push([day.toString(), seen]);
+    }
+  }
+  return days;
+}
+
+describe("SIFMA against parallax's Rust calendar", () => {
+  test("the exceptions are the same", () => {
+    expect(
+      sifma.exceptions.map((exception) => [
+        exception.date,
+        exception.kind === "early-close" ? exception.closes : exception.kind,
+      ]),
+    ).toStrictEqual(rustSifma.exceptions);
+  });
+
+  test.each(rustSifma.years.map((year) => [year.year, year.days] as const))(
+    "%i closes and closes early on the same weekdays",
+    (year, days) => {
+      expect(sifmaIrregular(year)).toStrictEqual(days);
+    },
+  );
+});
+
 describe("SIFMA's rules", () => {
   test.each([
     ["2022-01-01", "New Year's Day on a Saturday gives no day off", "2021-12-31", "14:00"],

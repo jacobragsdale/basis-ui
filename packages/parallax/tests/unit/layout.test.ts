@@ -103,3 +103,33 @@ describe("orders and the tenor axis, which roadmap step 2.8 adds", () => {
     expect(checkLayout({ chart: { kind: "line", tenor_spacing: "log" } }).ok).toBe(false);
   });
 });
+
+describe("a trading axis's calendar and session, which roadmap step 2.8 adds", () => {
+  test("take SIFMA's calendar and an overnight session", () => {
+    const session = { closes: "17:00", opens: "18:00" };
+    const { chart: yields } = parseLayout({
+      chart: { axis: "trading", calendar: "sifma", kind: "line", session, x: "time" },
+    });
+    expect([yields?.calendar, yields?.session]).toStrictEqual(["sifma", session]);
+  });
+
+  test("leave a layout that sets neither as it was", () => {
+    const { chart: prices } = parseLayout({ chart: { axis: "trading", kind: "line" } });
+    expect(
+      prices === null ? [] : ["calendar", "session"].filter((key) => key in prices),
+    ).toStrictEqual([]);
+  });
+
+  test("refuse a calendar it does not know, and times that are not HH:MM, as the Rust crate does", () => {
+    const wrong = [
+      { calendar: "lse" },
+      { session: { closes: "17:00", opens: "8:00" } },
+      { session: { closes: "24:00", opens: "08:00" } },
+      { session: { closes: "17:60", opens: "08:00" } },
+      { session: { opens: "08:00" } },
+    ];
+    for (const fields of wrong) {
+      expect(checkLayout({ chart: { axis: "trading", kind: "line", ...fields } }).ok).toBe(false);
+    }
+  });
+});

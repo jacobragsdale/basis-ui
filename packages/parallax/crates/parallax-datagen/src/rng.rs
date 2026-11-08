@@ -58,6 +58,10 @@ pub enum Stream {
     Attribution = 11,
     /// The market's moves on a day, keyed by day.
     AttributionMarket = 12,
+    /// Treasury curves' daily moves, keyed by date.
+    Curves = 13,
+    /// Treasury yields' intraday moves, keyed by quote.
+    Yields = 14,
 }
 
 /// xoshiro256** 1.0.

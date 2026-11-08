@@ -19,6 +19,17 @@ pub enum OptionsError {
         /// Last date of the range.
         end: Date,
     },
+    /// The date range contains no day the bond market trades.
+    #[error("the bond market trades on no day from {start} to {end}, by SIFMA's calendar")]
+    NoBondMarketDays {
+        /// First date of the range.
+        start: Date,
+        /// Last date of the range.
+        end: Date,
+    },
+    /// Quotes would come further apart than an hour, or not at all.
+    #[error("quotes come every 1 to 60 minutes, not {0}")]
+    QuoteMinutes(u32),
     /// The universe has fewer equities than prices were asked for.
     #[error(
         "asked for prices of {wanted} equities, but {securities} securities include only {available}"

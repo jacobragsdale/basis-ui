@@ -6,6 +6,7 @@ use std::sync::Arc;
 
 use arrow_array::{ArrayRef, Float64Array, RecordBatch, StringArray};
 use arrow_schema::{Field, Schema};
+use parallax_engine::calendar::Market;
 use parallax_engine::chart::{
     ChartConfig, ChartData, ChartKind, ChartRequest, ChartView, MAX_EVENTS, OhlcColumns, Point,
     PointColumns, XAxis, percent_change,
@@ -64,6 +65,8 @@ fn line(compare: bool) -> ChartConfig {
         events: Some("event".into()),
         points: PointColumns::default(),
         orders: std::collections::BTreeMap::new(),
+        market: Market::default(),
+        session: None,
     }
 }
 
@@ -226,6 +229,8 @@ fn measuring_takes_the_nearest_priced_rows_and_counts_the_bars_between() {
             events: None,
             points: PointColumns::default(),
             orders: std::collections::BTreeMap::new(),
+            market: Market::default(),
+            session: None,
             ..line(false)
         },
     )

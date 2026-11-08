@@ -18,9 +18,11 @@ const sources: Readonly<Record<DemoDataset, DatasetSource>> = {
   blotter: async () => datasetBytes("blotter"),
   bonds: async () => datasetBytes("bonds"),
   book: async () => datasetBytes("book"),
+  curves: async () => datasetBytes("curves"),
   positions: async () => datasetBytes("positions"),
   prices: async () => datasetBytes("prices"),
   trades: async () => datasetBytes("trades"),
+  yields: async () => datasetBytes("yields"),
 };
 
 /** One dataset, loading once it is wanted. */
@@ -30,19 +32,29 @@ function useDemoDatasetLoad(name: DemoDataset, names: ReadonlySet<DemoDataset>):
   });
 }
 
+/** The fixed-income page's datasets, loading once they are wanted. */
+function useFixedIncomeLoads(
+  names: ReadonlySet<DemoDataset>,
+): Pick<Datasets, "attribution" | "bonds" | "curves" | "yields"> {
+  const attribution = useDemoDatasetLoad("attribution", names);
+  const bonds = useDemoDatasetLoad("bonds", names);
+  const curves = useDemoDatasetLoad("curves", names);
+  const yields = useDemoDatasetLoad("yields", names);
+  return { attribution, bonds, curves, yields };
+}
+
 /** Loads every dataset a page has asked for into the engine of the `ParallaxProvider` around it. */
 function DemoDatasets({ children }: { readonly children: ReactNode }): ReactNode {
   const names = useSyncExternalStore(wanted.subscribe, wanted.getSnapshot);
-  const attribution = useDemoDatasetLoad("attribution", names);
+  const { attribution, bonds, curves, yields } = useFixedIncomeLoads(names);
   const blotter = useDemoDatasetLoad("blotter", names);
-  const bonds = useDemoDatasetLoad("bonds", names);
   const book = useDemoDatasetLoad("book", names);
   const positions = useDemoDatasetLoad("positions", names);
   const prices = useDemoDatasetLoad("prices", names);
   const trades = useDemoDatasetLoad("trades", names);
   const datasets: Datasets = useMemo(
-    () => ({ attribution, blotter, bonds, book, positions, prices, trades }),
-    [attribution, blotter, bonds, book, positions, prices, trades],
+    () => ({ attribution, blotter, bonds, book, curves, positions, prices, trades, yields }),
+    [attribution, blotter, bonds, book, curves, positions, prices, trades, yields],
   );
   return <DatasetsContext value={datasets}>{children}</DatasetsContext>;
 }

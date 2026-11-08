@@ -9,6 +9,7 @@ use arrow_schema::{DataType, Field, Schema};
 use parallax_datagen::Dataset;
 use parallax_datagen::calendar::{from_epoch_days, trading_days};
 use parallax_datagen::prices::{Prices, PricesOptions};
+use parallax_engine::calendar::Market;
 use parallax_engine::chart::{
     Candle, ChartConfig, ChartData, ChartKind, ChartRequest, ChartView, Interval, OhlcColumns,
     Point, PointColumns, XAxis,
@@ -48,6 +49,8 @@ fn line(axis: XAxis) -> ChartConfig {
         events: None,
         points: PointColumns::default(),
         orders: std::collections::BTreeMap::new(),
+        market: Market::default(),
+        session: None,
     }
 }
 
@@ -256,6 +259,8 @@ fn weekly_candles_match_the_daily_prices() {
         events: None,
         points: PointColumns::default(),
         orders: std::collections::BTreeMap::new(),
+        market: Market::default(),
+        session: None,
     };
     let view = ChartView::new(&t, config).unwrap();
     let (from, to) = view.x_extent().unwrap();
@@ -565,6 +570,8 @@ fn candlestick(x: &str, filters: Vec<Filter>, axis: XAxis) -> ChartConfig {
         events: None,
         points: PointColumns::default(),
         orders: std::collections::BTreeMap::new(),
+        market: Market::default(),
+        session: None,
     }
 }
 

@@ -33,7 +33,7 @@ use std::ops::Range;
 use jiff::civil::{Date, DateTime};
 use jiff::tz::TimeZone;
 
-use crate::calendar::{TradingCalendar, epoch_days, from_epoch_days};
+use crate::calendar::{Market, Session, TradingCalendar, epoch_days, from_epoch_days};
 use crate::column::Column;
 use crate::error::ConfigError;
 use crate::exact::ExactSum;
@@ -67,8 +67,8 @@ pub enum XAxis {
     /// By value: an instant, a date or a number.
     #[default]
     Value,
-    /// By trading time on the NYSE calendar: closed days and the hours outside
-    /// the session take no space.
+    /// By trading time on the chart's market's calendar, NYSE's unless it names
+    /// another: closed days and the hours outside the session take no space.
     Trading,
     /// By tenor: text such as `3M` and `10Y`, or a number of years.
     Tenor(TenorSpacing),
@@ -193,6 +193,10 @@ pub struct ChartConfig {
     pub points: PointColumns,
     /// Orders of text columns, which the series follow.
     pub orders: BTreeMap<String, Order>,
+    /// The market a trading-time axis follows.
+    pub market: Market,
+    /// A trading-time axis's session, the market's regular session if `None`.
+    pub session: Option<Session>,
 }
 
 impl ChartConfig {
@@ -486,7 +490,9 @@ enum Placement {
 }
 
 impl Placement {
-    fn new(ty: &ColumnType, axis: XAxis, column: &str) -> Result<Self, ConfigError> {
+    fn new(ty: &ColumnType, config: &ChartConfig) -> Result<Self, ConfigError> {
+        let (axis, column) = (config.axis, config.x.as_str());
+        let calendar = || TradingCalendar::new(config.market, config.session);
         let wrong = || ConfigError::ChartColumn {
             role: match axis {
                 XAxis::Value => "x axis".into(),
@@ -503,10 +509,8 @@ impl Placement {
             },
             (ColumnType::Date32, XAxis::Value) => Self::Date,
             (ColumnType::Timestamp { .. }, XAxis::Value) => Self::Instant,
-            (ColumnType::Date32, XAxis::Trading) => Self::TradingDate(TradingCalendar::nyse()),
-            (ColumnType::Timestamp { .. }, XAxis::Trading) => {
-                Self::TradingInstant(TradingCalendar::nyse())
-            }
+            (ColumnType::Date32, XAxis::Trading) => Self::TradingDate(calendar()),
+            (ColumnType::Timestamp { .. }, XAxis::Trading) => Self::TradingInstant(calendar()),
             (ColumnType::Utf8, XAxis::Tenor(spacing)) => Self::Tenor {
                 spacing,
                 scale: None,
@@ -845,7 +849,7 @@ impl ChartView {
             .map(|f| CompiledFilter::compile(table, f))
             .collect::<Result<Vec<_>, _>>()?;
         let x = index(&config.x)?;
-        let placement = Placement::new(table.column(x).column_type(), config.axis, &config.x)?;
+        let placement = Placement::new(table.column(x).column_type(), &config)?;
         let y = config
             .y
             .iter()
@@ -1114,11 +1118,11 @@ impl ChartView {
             return vec![0];
         }
         let x = table.column(self.x);
-        let zone = TimeZone::get(crate::format::DEFAULT_ZONE).unwrap_or(TimeZone::UTC);
+        let cut = Cut::of(&self.placement);
         let mut starts = Vec::new();
         let mut previous = None;
         for (i, &r) in rows.iter().enumerate() {
-            let day = bucket_start(x.key(ordered.slots[r]), Interval::Day, &zone);
+            let day = bucket_start(x.key(ordered.slots[r]), Interval::Day, &cut);
             if i == 0 || day != previous {
                 starts.push(i);
                 previous = day;
@@ -1530,8 +1534,8 @@ impl ChartView {
             };
         };
         let x = table.column(self.x);
-        let zone = TimeZone::get(crate::format::DEFAULT_ZONE).unwrap_or(TimeZone::UTC);
-        let bucket_of = |r: usize| bucket_start(x.key(rows.slots[r]), interval, &zone);
+        let cut = Cut::of(&self.placement);
+        let bucket_of = |r: usize| bucket_start(x.key(rows.slots[r]), interval, &cut);
         // Buckets crossing either edge of the range keep all their rows, so an
         // edge candle shows its whole bucket however the chart is panned.
         let within = rows.within(from, to);
@@ -1574,9 +1578,9 @@ impl ChartView {
                 }
                 let span = Bucket {
                     start: bucket,
-                    end: advance(bucket, interval, instants, &zone),
-                    from: self.bucket_position(bucket, interval, instants, &zone, false),
-                    to: self.bucket_position(bucket, interval, instants, &zone, true),
+                    end: advance(bucket, interval, instants, &cut),
+                    from: self.bucket_position(bucket, interval, instants, &cut, false),
+                    to: self.bucket_position(bucket, interval, instants, &cut, true),
                 };
                 let empty = Candle {
                     open: None,
@@ -1690,11 +1694,11 @@ impl ChartView {
         start: i64,
         interval: Interval,
         instants: bool,
-        zone: &TimeZone,
+        cut: &Cut,
         next: bool,
     ) -> f64 {
         let start = if next {
-            advance(start, interval, instants, zone)
+            advance(start, interval, instants, cut)
         } else {
             start
         };
@@ -1876,9 +1880,59 @@ fn m4(
     out
 }
 
+/// Where buckets of a day or longer are cut: at midnight in a zone, or, on a
+/// trading-time axis whose session opens the evening before, at that session's
+/// open, so a day's bucket is the session that trades for it.
+#[derive(Clone, Debug)]
+struct Cut {
+    zone: TimeZone,
+    /// How far before midnight a day's bucket starts, in microseconds of the
+    /// clock.
+    evening: i64,
+}
+
+impl Cut {
+    /// Cuts at midnight in New York, or at an evening session's open on a
+    /// trading-time axis of instants.
+    fn of(placement: &Placement) -> Self {
+        let zone = TimeZone::get(crate::format::DEFAULT_ZONE).unwrap_or(TimeZone::UTC);
+        let evening = match placement {
+            Placement::TradingInstant(c) => c.evening_micros(),
+            _ => 0,
+        };
+        Self { zone, evening }
+    }
+
+    /// Cuts at midnight in `zone`.
+    fn midnight(zone: TimeZone) -> Self {
+        Self { zone, evening: 0 }
+    }
+
+    /// The date a local time's bucket of a day or longer belongs to.
+    fn date_of(&self, local: DateTime) -> Option<Date> {
+        Some(
+            local
+                .checked_add(jiff::Span::new().microseconds(self.evening))
+                .ok()?
+                .date(),
+        )
+    }
+
+    /// The instant a bucket of a day or longer that starts on `day` starts.
+    fn start_of(&self, day: Date) -> Option<i64> {
+        DateTime::from(day)
+            .checked_sub(jiff::Span::new().microseconds(self.evening))
+            .ok()?
+            .to_zoned(self.zone.clone())
+            .ok()
+            .map(|z| z.timestamp().as_microsecond())
+    }
+}
+
 /// The start of the bucket holding an x key: microseconds for instants, days for
-/// dates, cut in `zone`.
-fn bucket_start(key: Key, interval: Interval, zone: &TimeZone) -> Option<i64> {
+/// dates, cut as `cut` says.
+fn bucket_start(key: Key, interval: Interval, cut: &Cut) -> Option<i64> {
+    let zone = &cut.zone;
     match key {
         Key::Date(d) => Some(i64::from(epoch_days(truncate_date(
             from_epoch_days(d),
@@ -1897,13 +1951,7 @@ fn bucket_start(key: Key, interval: Interval, zone: &TimeZone) -> Option<i64> {
                     let local = t + offset;
                     Some(local - local.rem_euclid(step) - offset)
                 }
-                other => Some(
-                    DateTime::from(truncate_date(zoned.date(), other))
-                        .to_zoned(zone.clone())
-                        .ok()?
-                        .timestamp()
-                        .as_microsecond(),
-                ),
+                other => cut.start_of(truncate_date(cut.date_of(zoned.datetime())?, other)),
             }
         }
         _ => None,
@@ -1930,7 +1978,7 @@ fn truncate_date(day: Date, interval: Interval) -> Date {
 }
 
 /// The start of the bucket after the one starting at `start`.
-fn advance(start: i64, interval: Interval, instants: bool, zone: &TimeZone) -> i64 {
+fn advance(start: i64, interval: Interval, instants: bool, cut: &Cut) -> i64 {
     let span = match interval {
         Interval::Minutes(m) => jiff::Span::new().minutes(i64::from(m)),
         Interval::Day => jiff::Span::new().days(1),
@@ -1940,11 +1988,21 @@ fn advance(start: i64, interval: Interval, instants: bool, zone: &TimeZone) -> i
         Interval::Year => jiff::Span::new().years(1),
         Interval::Years(n) => jiff::Span::new().years(i64::from(n)),
     };
-    if instants {
+    if instants && matches!(interval, Interval::Minutes(_)) {
         jiff::Timestamp::from_microsecond(start)
             .ok()
-            .and_then(|t| t.to_zoned(zone.clone()).checked_add(span).ok())
+            .and_then(|t| t.to_zoned(cut.zone.clone()).checked_add(span).ok())
             .map_or(start, |z| z.timestamp().as_microsecond())
+    } else if instants {
+        // A day or longer moves by the date the bucket belongs to, so months
+        // keep their ends and an evening session's buckets keep its open.
+        jiff::Timestamp::from_microsecond(start)
+            .ok()
+            .map(|t| t.to_zoned(cut.zone.clone()).datetime())
+            .and_then(|local| cut.date_of(local))
+            .and_then(|day| day.checked_add(span).ok())
+            .and_then(|day| cut.start_of(day))
+            .unwrap_or(start)
     } else {
         let day = from_epoch_days(i32::try_from(start).unwrap_or(0));
         day.checked_add(span)
@@ -2021,6 +2079,45 @@ fn number_labels(values: &[f64], step: f64) -> Vec<String> {
         .collect()
 }
 
+/// A day's label at a step of a day or more.
+fn day_label(day: Date, step: Interval) -> String {
+    match step {
+        Interval::Minutes(_) | Interval::Day | Interval::Week => day.strftime("%b %-d").to_string(),
+        Interval::Month | Interval::Quarter => day.strftime("%b %Y").to_string(),
+        Interval::Year | Interval::Years(_) => day.strftime("%Y").to_string(),
+    }
+}
+
+/// Ticks on a trading-time axis of instants at a step of a day or more: at the
+/// opens of the trading days that start each step, each labelled with the day it
+/// trades for, so the open of a session that opens the evening before is labelled
+/// with the next day.
+fn session_ticks(calendar: &TradingCalendar, from: f64, to: f64, step: Interval) -> Vec<Tick> {
+    let first = calendar.trading_date(calendar.instant_at(from));
+    let last = i64::from(calendar.trading_date(calendar.instant_at(to)));
+    let mut ticks: Vec<Tick> = Vec::new();
+    let mut at = i64::from(epoch_days(truncate_date(from_epoch_days(first), step)));
+    let mut guard = 0;
+    while at <= last && guard < 1_000 {
+        guard += 1;
+        let day = i32::try_from(at).unwrap_or(0);
+        let x = calendar.session_position(day);
+        if x >= from && x <= to && ticks.last().is_none_or(|t| t.x < x) {
+            let trades = calendar.day_at(calendar.day_index(day));
+            ticks.push(Tick {
+                x,
+                label: day_label(from_epoch_days(trades), step),
+            });
+        }
+        let next = advance(at, step, false, &Cut::midnight(TimeZone::UTC));
+        if next <= at {
+            break;
+        }
+        at = next;
+    }
+    ticks
+}
+
 /// Ticks on a date or instant axis at a calendar step, labelled in New York.
 fn time_ticks(placement: &Placement, from: f64, to: f64, wanted: f64) -> Vec<Tick> {
     let zone = TimeZone::get(crate::format::DEFAULT_ZONE).unwrap_or(TimeZone::UTC);
@@ -2083,6 +2180,11 @@ fn time_ticks(placement: &Placement, from: f64, to: f64, wanted: f64) -> Vec<Tic
         .filter(|i| instants || !matches!(i, Interval::Minutes(_)))
         .find(|&i| (to - from) / length(i) <= wanted)
         .unwrap_or(Interval::Years(100));
+    if let (Some(c), true) = (calendar, instants)
+        && !matches!(step, Interval::Minutes(_))
+    {
+        return session_ticks(c, from, to, step);
+    }
     let label = |value: i64| -> String {
         if instants {
             let Ok(t) = jiff::Timestamp::from_microsecond(value) else {
@@ -2091,19 +2193,10 @@ fn time_ticks(placement: &Placement, from: f64, to: f64, wanted: f64) -> Vec<Tic
             let local = t.to_zoned(zone.clone());
             match step {
                 Interval::Minutes(_) => local.strftime("%H:%M").to_string(),
-                Interval::Day | Interval::Week => local.strftime("%b %-d").to_string(),
-                Interval::Month | Interval::Quarter => local.strftime("%b %Y").to_string(),
-                Interval::Year | Interval::Years(_) => local.strftime("%Y").to_string(),
+                _ => day_label(local.date(), step),
             }
         } else {
-            let day = from_epoch_days(i32::try_from(value).unwrap_or(0));
-            match step {
-                Interval::Minutes(_) | Interval::Day | Interval::Week => {
-                    day.strftime("%b %-d").to_string()
-                }
-                Interval::Month | Interval::Quarter => day.strftime("%b %Y").to_string(),
-                Interval::Year | Interval::Years(_) => day.strftime("%Y").to_string(),
-            }
+            day_label(from_epoch_days(i32::try_from(value).unwrap_or(0)), step)
         }
     };
     let key = |value: i64| {
@@ -2115,7 +2208,8 @@ fn time_ticks(placement: &Placement, from: f64, to: f64, wanted: f64) -> Vec<Tic
     };
     let (start, end) = (value_at(from), value_at(to));
     let mut ticks = Vec::new();
-    let Some(mut at) = bucket_start(key(start), step, &zone) else {
+    let cut = Cut::midnight(zone.clone());
+    let Some(mut at) = bucket_start(key(start), step, &cut) else {
         return ticks;
     };
     let mut guard = 0;
@@ -2134,7 +2228,7 @@ fn time_ticks(placement: &Placement, from: f64, to: f64, wanted: f64) -> Vec<Tic
                 label: label(shown),
             });
         }
-        let next = advance(at, step, instants, &zone);
+        let next = advance(at, step, instants, &cut);
         if next <= at {
             break;
         }

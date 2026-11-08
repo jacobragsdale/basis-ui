@@ -2,11 +2,13 @@
 //!
 //! The rules cover full-day closures from 2000 onward: the regular holidays with
 //! NYSE's weekend observance, plus the unscheduled closures listed in
-//! [`SPECIAL_CLOSURES`]. Early closes are not modelled.
+//! [`SPECIAL_CLOSURES`]. NYSE's early closes are not modelled.
 //!
 //! [`TradingCalendar`] places dates and instants on a trading-time axis, where
-//! closed days and the hours outside the regular session take no space, so a
-//! chart of trading days draws them evenly.
+//! closed days and the hours outside the session take no space, so a chart of
+//! trading days draws them evenly. It follows NYSE's calendar, or SIFMA's for the
+//! bond market ([`crate::sifma`]), whose early closes shorten their days, and a
+//! session that may open the evening before its trading day.
 
 use std::sync::OnceLock;
 
@@ -193,34 +195,179 @@ fn weekdays_before(days: i32) -> i64 {
     5 * weeks + rest.min(5) - 3
 }
 
-/// A market's trading days and regular session, for placing dates and instants
-/// on a trading-time axis.
+/// The market whose calendar a trading-time axis follows.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Market {
+    /// The New York Stock Exchange: its holidays from 2000 and its special
+    /// closures. Its early closes are not modelled.
+    #[default]
+    Nyse,
+    /// SIFMA's recommendations for the US bond market, from 1996: its closes,
+    /// which add Columbus Day and Veterans Day, and its early closes, which
+    /// shorten their days.
+    Sifma,
+}
+
+impl Market {
+    /// The market's regular session in New York time: NYSE's 09:30 to 16:00, and
+    /// for SIFMA, which recommends closes rather than hours, the 8 a.m. to 5 p.m.
+    /// `@basis/ui/dates` gives its calendar.
+    #[must_use]
+    pub const fn regular_session(self) -> Session {
+        match self {
+            Self::Nyse => Session {
+                opens: time(9, 30, 0, 0),
+                closes: time(16, 0, 0, 0),
+            },
+            Self::Sifma => Session {
+                opens: time(8, 0, 0, 0),
+                closes: time(17, 0, 0, 0),
+            },
+        }
+    }
+}
+
+/// A trading day's session in New York time. A session that opens later in the
+/// day than it closes, such as electronic Treasury trading's 18:00 to 17:00,
+/// opens the evening before the trading day.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Session {
+    /// When it opens.
+    pub opens: Time,
+    /// When it closes.
+    pub closes: Time,
+}
+
+impl Session {
+    /// Whether it opens the evening before its trading day.
+    #[must_use]
+    pub fn overnight(self) -> bool {
+        self.closes <= self.opens
+    }
+
+    /// Its length in microseconds of the clock: a day less the hours it is shut.
+    #[must_use]
+    pub fn micros(self) -> i64 {
+        let shut = i64::try_from(self.opens.duration_until(self.closes).as_micros()).unwrap_or(0);
+        if self.overnight() {
+            DAY_MICROS + shut
+        } else {
+            shut
+        }
+    }
+}
+
+const DAY_MICROS: i64 = 86_400_000_000;
+
+/// A market's irregular weekdays, as days since the epoch: the full closes, and
+/// each early close with its New York time.
+type IrregularDays = (Vec<i32>, Vec<(i32, Time)>);
+
+/// SIFMA's closes and early closes on weekdays.
+fn sifma_days() -> &'static IrregularDays {
+    static DAYS: OnceLock<IrregularDays> = OnceLock::new();
+    DAYS.get_or_init(|| {
+        let mut closed = Vec::new();
+        let mut early = Vec::new();
+        for year in crate::sifma::FIRST_YEAR..=*CLOSURE_YEARS.end() {
+            for (day, irregular) in crate::sifma::year(year) {
+                match irregular {
+                    crate::sifma::Irregular::Closed => closed.push(epoch_days(day)),
+                    crate::sifma::Irregular::ClosesAt(at) => early.push((epoch_days(day), at)),
+                }
+            }
+        }
+        (closed, early)
+    })
+}
+
+/// A market's trading days and a session, for placing dates and instants on a
+/// trading-time axis: closed days and the hours outside the session take no
+/// space, and an early close shortens its day.
 #[derive(Clone, Debug)]
 pub struct TradingCalendar {
     zone: TimeZone,
-    open: Time,
-    close: Time,
+    session: Session,
+    /// Full closures on weekdays, as days since the epoch, sorted.
+    closures: &'static [i32],
+    /// Days the session ends early, as days since the epoch, sorted, and the
+    /// microseconds each loses.
+    short: Vec<(i32, i64)>,
+    /// The microseconds lost before each short day: `lost[k]` is the sum of the
+    /// first `k` days' losses.
+    lost: Vec<i64>,
 }
 
 impl TradingCalendar {
     /// NYSE: weekdays except its closures, 09:30 to 16:00 New York time.
+    #[must_use]
+    pub fn nyse() -> Self {
+        Self::new(Market::Nyse, None)
+    }
+
+    /// A market's calendar with `session`, its regular session by default.
     ///
     /// # Panics
     ///
     /// Panics if the bundled time-zone database lacks New York, which it does not.
     #[must_use]
-    pub fn nyse() -> Self {
+    pub fn new(market: Market, session: Option<Session>) -> Self {
+        let session = session.unwrap_or_else(|| market.regular_session());
+        let (closures, early): (&'static [i32], &[(i32, Time)]) = match market {
+            Market::Nyse => (weekday_closures(), &[]),
+            Market::Sifma => {
+                let (closed, early) = sifma_days();
+                (closed.as_slice(), early.as_slice())
+            }
+        };
+        // An early close cuts the session short only where it closes before the
+        // session would.
+        let short: Vec<(i32, i64)> = early
+            .iter()
+            .filter_map(|&(day, at)| {
+                let cut = if session.overnight() || at < session.closes {
+                    at.duration_until(session.closes).as_micros()
+                } else {
+                    0
+                };
+                let lost = i64::try_from(cut).unwrap_or(0).clamp(0, session.micros());
+                (lost > 0).then_some((day, lost))
+            })
+            .collect();
+        let mut lost = Vec::with_capacity(short.len() + 1);
+        lost.push(0);
+        for &(_, l) in &short {
+            lost.push(lost.last().copied().unwrap_or(0) + l);
+        }
         Self {
             zone: TimeZone::get("America/New_York").expect("bundled zone"),
-            open: time(9, 30, 0, 0),
-            close: time(16, 0, 0, 0),
+            session,
+            closures,
+            short,
+            lost,
         }
     }
 
-    /// The length of the regular session in microseconds.
+    /// How far a session that opens the evening before opens ahead of
+    /// midnight, in microseconds of the clock, and 0 for one that opens on its
+    /// trading day: an instant's New York time this much later falls on the
+    /// date it trades for.
+    #[must_use]
+    pub fn evening_micros(&self) -> i64 {
+        if self.session.overnight() {
+            let midnight = time(0, 0, 0, 0);
+            DAY_MICROS
+                - i64::try_from(midnight.duration_until(self.session.opens).as_micros())
+                    .unwrap_or(0)
+        } else {
+            0
+        }
+    }
+
+    /// The length of a full session in microseconds.
     #[must_use]
     pub fn session_micros(&self) -> i64 {
-        i64::try_from(self.open.duration_until(self.close).as_micros()).unwrap_or(0)
+        self.session.micros()
     }
 
     /// Trading days from the epoch to `days`, not counting `days`: consecutive
@@ -228,9 +375,8 @@ impl TradingCalendar {
     /// trading day.
     #[must_use]
     pub fn day_index(&self, days: i32) -> i64 {
-        let closures = weekday_closures();
         // Every closure the calendar knows comes after the epoch.
-        let closed = closures.partition_point(|&c| c < days) as i64;
+        let closed = self.closures.partition_point(|&c| c < days) as i64;
         weekdays_before(days) - closed
     }
 
@@ -244,16 +390,40 @@ impl TradingCalendar {
     #[must_use]
     pub fn day_at(&self, index: i64) -> i32 {
         // The trading day is the last day whose number is at most `index`.
-        let (mut low, mut high) = (-1_000_000i32, 1_000_000i32);
-        while low < high {
-            let mid = low + (high - low + 1) / 2;
-            if self.day_index(mid) <= index {
-                low = mid;
-            } else {
-                high = mid - 1;
-            }
-        }
-        low
+        last_day(|day| self.day_index(day) <= index)
+    }
+
+    /// The microseconds day `days`'s session runs: a full session, less what an
+    /// early close cuts.
+    fn length(&self, days: i32) -> i64 {
+        let cut = self
+            .short
+            .binary_search_by_key(&days, |s| s.0)
+            .map_or(0, |k| self.short[k].1);
+        self.session_micros() - cut
+    }
+
+    /// Where day `days`'s session starts on the axis: a full session for every
+    /// trading day before it, less what early closes cut.
+    fn start(&self, days: i32) -> i64 {
+        let before = self.short.partition_point(|s| s.0 < days);
+        self.day_index(days) * self.session_micros() - self.lost[before]
+    }
+
+    /// The instant day `days`'s session opens: that day, or the evening before
+    /// for a session that opens the evening before.
+    fn opens(&self, days: i32) -> i64 {
+        let day = if self.session.overnight() {
+            days - 1
+        } else {
+            days
+        };
+        from_epoch_days(day)
+            .to_datetime(self.session.opens)
+            .to_zoned(self.zone.clone())
+            .expect("a session opens in its zone")
+            .timestamp()
+            .as_microsecond()
     }
 
     /// An instant's place in trading time, in microseconds of open market since
@@ -265,14 +435,10 @@ impl TradingCalendar {
     /// Panics only for instants outside jiff's range, which a table cannot hold.
     #[must_use]
     pub fn instant_position(&self, micros: i64) -> f64 {
-        let instant = Timestamp::from_microsecond(micros).expect("instant in range");
-        let local = instant.to_zoned(self.zone.clone()).datetime();
-        let day = epoch_days(local.date());
-        let session = self.session_micros();
-        let start = self.day_index(day) * session;
+        let day = self.trading_date(micros);
+        let start = self.start(day);
         let offset = if self.is_open(day) {
-            let since_open = self.open.duration_until(local.time()).as_micros();
-            i64::try_from(since_open).unwrap_or(0).clamp(0, session)
+            (micros - self.opens(day)).clamp(0, self.length(day))
         } else {
             0
         };
@@ -280,22 +446,47 @@ impl TradingCalendar {
     }
 
     /// The instant at a place in trading time, in microseconds since the epoch.
+    #[must_use]
+    pub fn instant_at(&self, position: f64) -> i64 {
+        let at = position.round() as i64;
+        // The trading day is the last whose session starts at or before `at`.
+        let day = last_day(|day| self.start(day) <= at);
+        self.opens(day) + (at - self.start(day))
+    }
+
+    /// The day an instant trades for, in days since the epoch: its New York date,
+    /// or the next for the evening of a session that opens the evening before.
     ///
     /// # Panics
     ///
-    /// Panics only for places outside jiff's range.
+    /// Panics only for instants outside jiff's range, which a table cannot hold.
     #[must_use]
-    pub fn instant_at(&self, position: f64) -> i64 {
-        let session = self.session_micros();
-        let at = position.round() as i64;
-        let index = at.div_euclid(session);
-        let offset = at.rem_euclid(session);
-        let day = from_epoch_days(self.day_at(index));
-        let open = day
-            .to_datetime(self.open)
-            .to_zoned(self.zone.clone())
-            .expect("session open exists in its zone");
-        open.timestamp().as_microsecond() + offset
+    pub fn trading_date(&self, micros: i64) -> i32 {
+        let instant = Timestamp::from_microsecond(micros).expect("instant in range");
+        let local = instant.to_zoned(self.zone.clone()).datetime();
+        let day = epoch_days(local.date());
+        if self.session.overnight() && local.time() >= self.session.opens {
+            day + 1
+        } else {
+            day
+        }
+    }
+
+    /// Where day `days`'s session opens in trading time, in microseconds of open
+    /// market since the epoch; a closed day's is where the next session opens.
+    #[must_use]
+    pub fn session_position(&self, days: i32) -> f64 {
+        self.start(days) as f64
+    }
+
+    /// The instants day `days`'s session opens and closes, an early close's
+    /// shortened, in microseconds since the epoch, or `None` when it is closed.
+    #[must_use]
+    pub fn session_of(&self, days: i32) -> Option<(i64, i64)> {
+        self.is_open(days).then(|| {
+            let opens = self.opens(days);
+            (opens, opens + self.length(days))
+        })
     }
 
     /// A date's place in trading time, in trading days since the epoch.
@@ -303,6 +494,21 @@ impl TradingCalendar {
     pub fn date_position(&self, days: i32) -> f64 {
         self.day_index(days) as f64
     }
+}
+
+/// The last day, of jiff's range in days since the epoch, for which `holds` holds,
+/// given that it holds for every day up to some day and for none after.
+fn last_day(holds: impl Fn(i32) -> bool) -> i32 {
+    let (mut low, mut high) = (-1_000_000i32, 1_000_000i32);
+    while low < high {
+        let mid = low + (high - low + 1) / 2;
+        if holds(mid) {
+            low = mid;
+        } else {
+            high = mid - 1;
+        }
+    }
+    low
 }
 
 #[cfg(test)]

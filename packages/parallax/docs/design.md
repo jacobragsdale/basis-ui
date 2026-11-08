@@ -464,21 +464,36 @@ edge lands in the bin that edge's label opens. Every reduced value carries the
 row it came from, so tooltips show the exact value, formatted by the engine like
 any cell.
 
-A chart's x axis is either its values or trading time on the NYSE calendar,
-where closed days and the hours outside the 09:30 to 16:00 session take no
+A chart's x axis is its values, tenors, or trading time, by default on the
+NYSE calendar, where closed days and the hours outside the 09:30 to 16:00 session take no
 space, so trading days sit one apart and Friday's close meets Monday's open.
 The calendar's closures hold from 2000; before that, only weekends close. The
 engine places the axis's ticks and writes their labels, because only it can
 map trading time back to dates; a tick that falls on a closed moment moves to
 where the market next opens and takes that moment's label.
 
-Step 2.8 gives the trading axis a calendar and a session. SIFMA's calendar,
-the US bond market's, closes on Columbus Day and Veterans Day as well, and its
-2 p.m. early closes shorten their days, so closed time still takes no space; a
-session that opens later in the day than it closes, as electronic Treasury
-trading does, opens the evening before. The SIFMA calendar is tested against
-the schedules SIFMA published, the same fixtures `@basis/ui/dates` is tested
-against.
+Step 2.8.4 gave the trading axis a calendar and a session: `calendar:
+"sifma"` and `session: {opens, closes}` in New York time, each left out of a
+layout at its default, the NYSE and the calendar's regular session. SIFMA's
+calendar, the US bond market's, closes on Columbus Day and Veterans Day as well
+as the NYSE's holidays, and its regular session runs 08:00 to 17:00. An early
+close shortens its day, so closed time still takes no space: a day's session
+starts where the trading days before it end, less what their early closes cut.
+A session that closes before it opens, as electronic Treasury trading's 18:00
+to 17:00 does, opens the evening before and trades for the next day, so the
+evening before a holiday belongs to no session. On such an axis a tick of a day
+or more sits at a session's open and is labelled with the day it trades for,
+not the evening it opens on, and candles of a day or longer, and VWAP's daily
+sessions, are cut at that open rather than at midnight, so a day's candle is
+the session that trades for it.
+
+The engine's SIFMA calendar is a port of `@basis/ui/dates`' rules and dated
+exceptions. It is tested against the schedules SIFMA published, the same
+fixture file `@basis/ui/dates` is tested against, which also lists where
+SIFMA's own sources disagree. The Rust writes each year's closes and early
+closes from 1996 to 2050 to `tests/fixtures/sifma.json`, and `@basis/ui`'s
+tests check their calendar against it, so the two can't drift apart past the
+published years. NYSE early closes are not modelled; the NYSE axis is as it was.
 
 A tenor axis, `axis: "tenor"`, places curves and bonds by tenor: an x column
 of tenors written as text, such as `3M` and `10Y`, or of years. By default the

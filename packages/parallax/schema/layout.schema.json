@@ -95,6 +95,21 @@
         }
       ]
     },
+    "CalendarName": {
+      "description": "The market calendar a trading-time axis follows, in a layout.",
+      "oneOf": [
+        {
+          "const": "nyse",
+          "description": "The New York Stock Exchange's, 09:30 to 16:00 by default.",
+          "type": "string"
+        },
+        {
+          "const": "sifma",
+          "description": "SIFMA's recommendations for the US bond market, which close on Columbus\nDay and Veterans Day as well and close early at 2 p.m. before some\nholidays, 08:00 to 17:00 by default.",
+          "type": "string"
+        }
+      ]
+    },
     "ChartKindName": {
       "description": "What a chart draws, in a layout.",
       "oneOf": [
@@ -313,6 +328,17 @@
           "default": "value",
           "description": "How x values are placed."
         },
+        "calendar": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CalendarName"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The market calendar a trading-time axis follows; NYSE's if absent."
+        },
         "compare": {
           "default": false,
           "description": "Each series as its percentage change from its first value in the range\nshown, on a line or area chart.",
@@ -419,6 +445,17 @@
             "string",
             "null"
           ]
+        },
+        "session": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/LayoutSession"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A trading-time axis's session; the calendar's regular session if absent."
         },
         "size": {
           "description": "A scatter's numeric column whose magnitude sets each dot's area, such as\nDV01 or par.",
@@ -1192,6 +1229,25 @@
       ],
       "type": "object"
     },
+    "LayoutSession": {
+      "additionalProperties": false,
+      "description": "A trading day's session in New York time, in a layout: `HH:MM` times. A\nsession that opens later in the day than it closes opens the evening before\nits trading day.",
+      "properties": {
+        "closes": {
+          "description": "When it closes, such as `17:00`.",
+          "type": "string"
+        },
+        "opens": {
+          "description": "When it opens, such as `08:00`, or `18:00` the evening before.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "opens",
+        "closes"
+      ],
+      "type": "object"
+    },
     "LayoutSort": {
       "additionalProperties": false,
       "description": "A sort in a layout.",
@@ -1379,7 +1435,7 @@
         },
         {
           "const": "trading",
-          "description": "By trading time on the NYSE calendar.",
+          "description": "By trading time on the chart's `calendar`, NYSE's unless it says\notherwise, in its `session`.",
           "type": "string"
         },
         {

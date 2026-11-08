@@ -11,6 +11,7 @@
 use std::collections::BTreeMap;
 
 use parallax_engine::aggregate::{Aggregate, Measure, ShowAs};
+use parallax_engine::calendar::{Market, Session};
 use parallax_engine::chart::{
     ChartConfig, ChartKind, OhlcColumns, PointColumns, TenorSpacing, XAxis,
 };
@@ -231,7 +232,8 @@ pub enum XAxisName {
     /// By value.
     #[default]
     Value,
-    /// By trading time on the NYSE calendar.
+    /// By trading time on the chart's `calendar`, NYSE's unless it says
+    /// otherwise, in its `session`.
     Trading,
     /// By tenor, labelled `3M` to `30Y`: the x column holds tenors as text,
     /// such as `3M` and `10Y`, or as years.
@@ -255,6 +257,30 @@ impl TenorSpacingName {
     fn is_even(&self) -> bool {
         *self == Self::Even
     }
+}
+
+/// The market calendar a trading-time axis follows, in a layout.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum CalendarName {
+    /// The New York Stock Exchange's, 09:30 to 16:00 by default.
+    Nyse,
+    /// SIFMA's recommendations for the US bond market, which close on Columbus
+    /// Day and Veterans Day as well and close early at 2 p.m. before some
+    /// holidays, 08:00 to 17:00 by default.
+    Sifma,
+}
+
+/// A trading day's session in New York time, in a layout: `HH:MM` times. A
+/// session that opens later in the day than it closes opens the evening before
+/// its trading day.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct LayoutSession {
+    /// When it opens, such as `08:00`, or `18:00` the evening before.
+    pub opens: String,
+    /// When it closes, such as `17:00`.
+    pub closes: String,
 }
 
 /// The price columns of a candlestick or OHLC chart, in a layout.
@@ -549,6 +575,12 @@ pub struct LayoutChart {
     /// where they fit.
     #[serde(default = "yes")]
     pub labels: bool,
+    /// The market calendar a trading-time axis follows; NYSE's if absent.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub calendar: Option<CalendarName>,
+    /// A trading-time axis's session; the calendar's regular session if absent.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub session: Option<LayoutSession>,
     /// A scatter's numeric column whose magnitude sets each dot's area, such as
     /// DV01 or par.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -610,7 +642,55 @@ impl LayoutChart {
                 fit: self.fit.clone(),
             },
             orders: orders.clone(),
+            market: match self.calendar {
+                Some(CalendarName::Sifma) => Market::Sifma,
+                Some(CalendarName::Nyse) | None => Market::Nyse,
+            },
+            session: None,
         })
+    }
+
+    /// The session a trading-time axis keeps, read from its `HH:MM` times.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for a time that does not read as `HH:MM`, a session of
+    /// no length, or a calendar or session on a chart that is not on a
+    /// trading-time axis.
+    pub fn trading_session(&self) -> Result<Option<Session>, LayoutError> {
+        if self.axis != XAxisName::Trading && (self.calendar.is_some() || self.session.is_some()) {
+            return Err(value_error(
+                &self.x,
+                "a calendar and a session place a trading-time axis: set axis to trading",
+            ));
+        }
+        let Some(session) = &self.session else {
+            return Ok(None);
+        };
+        let read = |text: &str| -> Result<jiff::civil::Time, LayoutError> {
+            let (hour, minute) = text
+                .split_once(':')
+                .filter(|(h, m)| {
+                    h.len() == 2
+                        && m.len() == 2
+                        && h.bytes().chain(m.bytes()).all(|b| b.is_ascii_digit())
+                })
+                .and_then(|(h, m)| Some((h.parse::<i8>().ok()?, m.parse::<i8>().ok()?)))
+                .ok_or_else(|| {
+                    value_error(
+                        &self.x,
+                        format!("the session's {text:?} is not an HH:MM time"),
+                    )
+                })?;
+            jiff::civil::Time::new(hour, minute, 0, 0).map_err(|_| {
+                value_error(
+                    &self.x,
+                    format!("the session's {text:?} is not a time of day"),
+                )
+            })
+        };
+        let (opens, closes) = (read(&session.opens)?, read(&session.closes)?);
+        Ok(Some(Session { opens, closes }))
     }
 }
 
@@ -1543,10 +1623,15 @@ impl Layout {
                 .map(|(column, order)| (column.clone(), order.to_engine()))
                 .collect(),
         };
+        let session = match &self.chart {
+            Some(c) => c.trading_session()?,
+            None => None,
+        };
         let chart = self
             .chart
             .as_ref()
-            .and_then(|c| c.to_engine(&config.filters, &config.orders));
+            .and_then(|c| c.to_engine(&config.filters, &config.orders))
+            .map(|c| ChartConfig { session, ..c });
         let anchors = match &self.chart {
             Some(c) if !c.drawings.is_empty() => drawing_anchors(table, c)?,
             _ => Vec::new(),
@@ -2070,12 +2155,18 @@ mod tests {
             "orders": {"factor": {"values": ["Carry", "Roll-down", "Curve 2Y"]}},
             "chart": {"kind": "waterfall"}
         }"#;
+        let sifma = r#"{
+            "dataset": "yields",
+            "chart": {"kind": "line", "x": "time", "y": ["yield"], "axis": "trading",
+                      "calendar": "sifma", "session": {"opens": "18:00", "closes": "17:00"}}
+        }"#;
         [
             Layout::from_json(points).unwrap(),
             Layout::from_json(orders).unwrap(),
             Layout::from_json(tenor).unwrap(),
             Layout::from_json(formats).unwrap(),
             Layout::from_json(waterfall).unwrap(),
+            Layout::from_json(sifma).unwrap(),
         ]
         .iter()
         .map(|l| serde_json::to_value(l).unwrap())
@@ -2099,7 +2190,14 @@ mod tests {
         let json = Layout::from_json(r#"{"chart": {"kind": "scatter", "x": "a", "y": ["b"]}}"#)
             .unwrap()
             .to_json();
-        for field in ["\"size\"", "\"id\"", "\"tooltip\"", "\"fit\""] {
+        for field in [
+            "\"size\"",
+            "\"id\"",
+            "\"tooltip\"",
+            "\"fit\"",
+            "\"calendar\"",
+            "\"session\"",
+        ] {
             assert!(!json.contains(field), "{field} in {json}");
         }
         let json = Layout::from_json(r#"{"chart": {"kind": "line", "x": "a", "y": ["b"]}}"#)
@@ -2138,6 +2236,36 @@ mod tests {
                 Layout::from_json(&format!(r#"{{"orders": {{"a": {wrong}}}}}"#)).is_err(),
                 "{wrong}"
             );
+        }
+    }
+
+    #[test]
+    fn a_session_reads_as_hh_mm_on_a_trading_axis_only() {
+        let chart = |extra: &str| {
+            Layout::from_json(&format!(
+                r#"{{"chart": {{"kind": "line", "x": "t", "y": ["y"], {extra}}}}}"#
+            ))
+            .unwrap()
+            .chart
+            .unwrap()
+        };
+        let session = chart(
+            r#""axis": "trading", "calendar": "sifma", "session": {"opens": "18:00", "closes": "17:30"}"#,
+        )
+        .trading_session()
+        .unwrap()
+        .unwrap();
+        assert!(session.overnight());
+        assert_eq!(session.micros(), 23 * 3_600_000_000 + 1_800_000_000);
+        for wrong in [
+            r#""axis": "trading", "session": {"opens": "8:00", "closes": "17:00"}"#,
+            r#""axis": "trading", "session": {"opens": "25:00", "closes": "17:00"}"#,
+            r#""axis": "trading", "session": {"opens": "08:00", "closes": "5pm"}"#,
+            r#""axis": "trading", "session": {"opens": "+8:00", "closes": "17:00"}"#,
+            r#""axis": "trading", "session": {"opens": "08:00", "closes": "17:60"}"#,
+            r#""calendar": "sifma""#,
+        ] {
+            assert!(chart(wrong).trading_session().is_err(), "{wrong}");
         }
     }
 }

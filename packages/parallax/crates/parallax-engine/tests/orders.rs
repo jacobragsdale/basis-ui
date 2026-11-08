@@ -12,6 +12,7 @@ use arrow_array::types::{Int32Type, Int64Type};
 use arrow_array::{Array, ArrayRef, Float64Array, Int64Array, RecordBatch, StringArray};
 use arrow_schema::{DataType, Field, Schema};
 use common::{Picker, duck, query};
+use parallax_engine::calendar::Market;
 use parallax_engine::chart::{
     ChartConfig, ChartData, ChartKind, ChartRequest, ChartView, PointColumns, TenorSpacing, XAxis,
     tenor_position,
@@ -499,6 +500,8 @@ fn curve(spacing: TenorSpacing) -> ChartConfig {
         events: None,
         orders: orders(&[("rating", Order::Rating)]),
         points: PointColumns::default(),
+        market: Market::default(),
+        session: None,
     }
 }
 

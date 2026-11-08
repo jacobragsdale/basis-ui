@@ -10,6 +10,7 @@ use parallax_datagen::bonds::{Bonds, BondsOptions};
 use parallax_datagen::positions::{Positions, PositionsOptions};
 use parallax_datagen::prices::{Prices, PricesOptions};
 use parallax_datagen::trades::{Trades, TradesOptions};
+use parallax_datagen::treasuries::{Curves, CurvesOptions, Yields, YieldsOptions};
 use parallax_datagen::{Dataset, IpcFormat, write_ipc};
 
 #[derive(Parser)]
@@ -104,6 +105,34 @@ enum Command {
         #[arg(long, default_value = "2026-10-30")]
         end: Date,
     },
+    /// The Treasury curve each day the bond market trades, by SIFMA's calendar.
+    /// It has no securities and no hostile values.
+    Curves {
+        #[command(flatten)]
+        common: Common,
+        /// First date.
+        #[arg(long, default_value = "2026-01-02")]
+        start: Date,
+        /// Last date.
+        #[arg(long, default_value = "2026-11-30")]
+        end: Date,
+    },
+    /// Intraday 2-, 10- and 30-year Treasury yields through the electronic
+    /// sessions of the bond market's trading days, 6 p.m. the evening before to
+    /// 5 p.m. or an early close. It has no securities and no hostile values.
+    Yields {
+        #[command(flatten)]
+        common: Common,
+        /// The first trading day whose session is quoted.
+        #[arg(long, default_value = "2026-11-23")]
+        start: Date,
+        /// The last.
+        #[arg(long, default_value = "2026-12-01")]
+        end: Date,
+        /// Minutes between quotes.
+        #[arg(long, default_value_t = 5)]
+        minutes: u32,
+    },
     /// Daily price bars for the most-held equities.
     Prices {
         #[command(flatten)]
@@ -182,6 +211,30 @@ fn main() -> anyhow::Result<()> {
                 })?),
                 common,
             )
+        }
+        Command::Curves { common, start, end } => {
+            anyhow::ensure!(!common.hostile, "curves has no hostile values");
+            let options = CurvesOptions {
+                seed: common.seed,
+                start,
+                end,
+            };
+            (Box::new(Curves::new(&options)?), common)
+        }
+        Command::Yields {
+            common,
+            start,
+            end,
+            minutes,
+        } => {
+            anyhow::ensure!(!common.hostile, "yields has no hostile values");
+            let options = YieldsOptions {
+                seed: common.seed,
+                start,
+                end,
+                minutes,
+            };
+            (Box::new(Yields::new(&options)?), common)
         }
         Command::Prices {
             common,

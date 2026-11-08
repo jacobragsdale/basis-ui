@@ -281,6 +281,30 @@ axis for curves:
 A tenor axis puts the standard tenors one step apart, 1M, 3M, 6M, 1Y and so on
 to 30Y, and labels them; `tenor_spacing: "length"` spaces them by years.
 
+A trading-time axis follows the NYSE's calendar and its 09:30 to 16:00 session
+unless the chart names another. `calendar: "sifma"` takes the bond market's:
+its closes, such as Columbus Day and Veterans Day, take no space, and its 2 p.m.
+early closes shorten their days. A `session` in New York time replaces the
+calendar's 08:00 to 17:00, and one that closes before it opens, as electronic
+Treasury trading's does, opens the evening before for the next day:
+
+```tsx
+<Chart
+  dataset={yields}
+  layout={{
+    chart: {
+      kind: "line",
+      x: "time",
+      y: ["yield"],
+      series: "tenor",
+      axis: "trading",
+      calendar: "sifma",
+      session: { opens: "18:00", closes: "17:00" },
+    },
+  }}
+/>
+```
+
 A waterfall draws attribution and P&L explain from the layout's grouped view:
 each group's step floats from the running total before it to its own, rising
 steps in the up colour and falling ones in the down colour, and a total bar
