@@ -143,19 +143,15 @@ describe.each(groups.map((group) => [JSON.stringify(group.format), group] as con
   },
 );
 
-/** A number case's value as the number components take it, or undefined for a decimal of a negative scale, which a
- * Decimal cannot hold. */
+/** A number case's value as the number components take it: a double. Decimal and integer cases go through the
+ * formatter's own paths, which parallax takes for Arrow's Decimal128 and integer columns, and no component takes them. */
 function componentValue(item: Case): NumericValue | undefined {
   switch (item.kind) {
     case "float": {
       return floatOf(item.value);
     }
-    case "decimal": {
-      return item.scale < 0 ? undefined : { scale: item.scale, unscaled: BigInt(item.unscaled) };
-    }
-    case "integer": {
-      return BigInt(item.value);
-    }
+    case "decimal":
+    case "integer":
     case "date":
     case "timestamp": {
       return undefined;

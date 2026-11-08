@@ -14,9 +14,8 @@
  * Instants are shown in a display zone, America/New_York unless the format names another. Sub-second digits beyond
  * the shown precision are cut, never rounded, so a time is never shown later than it happened. */
 
-import { Decimal as ExactDecimal } from "#numbers/decimal.ts";
-import { formatThirtySeconds } from "#numbers/thirty-seconds.ts";
-import type { ThirtySecondsPrecision } from "#numbers/thirty-seconds.ts";
+import { exactThirtySeconds, formatThirtySeconds } from "#numbers/thirty-seconds.ts";
+import type { ExactPrice, ThirtySecondsPrecision } from "#numbers/thirty-seconds.ts";
 
 import { fifteenDigits, groupThousands, roundHalfAway } from "./digits.ts";
 import { bpSuffix, bpsPower, maxDecimals, settingsOf, undefinedText } from "./settings.ts";
@@ -41,13 +40,8 @@ interface Formatter {
   readonly boolean: (value: boolean) => string;
 }
 
-/** The decimals a double price is read at before it is rounded to 32nds, as Price32 reads one. */
-const priceDecimals = 8;
-
 /** The decimals each kind of value shows when the format sets none. */
 const naturalDecimals = { abbreviated: 1, float: 2, integer: 0, percent: 2 } as const;
-/** A decimal of a negative scale holds whole tens, hundreds and so on. */
-const tenBig = 10n;
 
 const precisionDigits: Readonly<Record<TimePrecision, number>> = {
   microseconds: 6,
@@ -93,10 +87,14 @@ function numberText(settings: Settings, value: Decimal, places: number): string 
 /** A price in 32nds, as `Price32` writes it, with parentheses for a negative if the format asks. */
 function priceText(
   settings: Settings,
-  price: ExactDecimal,
+  price: ExactPrice | number,
   precision: ThirtySecondsPrecision,
 ): string {
-  const text = formatThirtySeconds(price, { precision, rounding: "half-away-from-zero" });
+  const format = { precision, rounding: "half-away-from-zero" } as const;
+  const text =
+    typeof price === "number"
+      ? formatThirtySeconds(price, format)
+      : exactThirtySeconds(price, format);
   return text.startsWith("-") ? signed(settings, true, text.slice(1)) : text;
 }
 
@@ -108,11 +106,7 @@ function floatText(settings: Settings, value: number): string {
   if (settings.thirtySeconds !== undefined) {
     // A price has no infinity, as Price32 says.
     return Number.isFinite(value)
-      ? priceText(
-          settings,
-          ExactDecimal.fromNumber(value, priceDecimals, "half-away-from-zero"),
-          settings.thirtySeconds,
-        )
+      ? priceText(settings, value, settings.thirtySeconds)
       : undefinedText;
   }
   if (!Number.isFinite(value)) {
@@ -128,11 +122,7 @@ function floatText(settings: Settings, value: number): string {
 
 function decimalText(settings: Settings, unscaled: bigint, scale: number): string {
   if (settings.thirtySeconds !== undefined) {
-    const price =
-      scale < 0
-        ? ExactDecimal.from(unscaled * tenBig ** BigInt(-scale))
-        : ExactDecimal.from(unscaled, scale);
-    return priceText(settings, price, settings.thirtySeconds);
+    return priceText(settings, { scale, unscaled }, settings.thirtySeconds);
   }
   // Basis points move the point four places, and take the decimals the moved value has, as Bps does.
   const shift = settings.bps ? bpsPower : 0;
@@ -152,7 +142,7 @@ function integerText(settings: Settings, value: bigint | number): string {
   }
   const big = BigInt(value);
   if (settings.thirtySeconds !== undefined) {
-    return priceText(settings, ExactDecimal.from(big), settings.thirtySeconds);
+    return priceText(settings, { scale: 0, unscaled: big }, settings.thirtySeconds);
   }
   const isNegative = big < 0;
   return numberText(

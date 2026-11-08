@@ -1,6 +1,5 @@
 import { describe, expect, expectTypeOf, test } from "vite-plus/test";
 
-import { Decimal } from "#numbers/index.ts";
 import { sortBy } from "#utils/index.ts";
 import type { SortKey } from "#utils/index.ts";
 
@@ -8,7 +7,7 @@ interface Row {
   readonly name: string;
   readonly sector: string | null;
   readonly yield: number | undefined;
-  readonly price: Decimal;
+  readonly price: number;
   readonly settles: Temporal.PlainDate;
   readonly tags: readonly string[];
 }
@@ -20,7 +19,7 @@ function row(
 ): Row {
   return {
     name,
-    price: Decimal.from(price),
+    price: Number(price),
     sector,
     settles: Temporal.PlainDate.from("2026-11-09"),
     tags: [],
@@ -76,7 +75,7 @@ describe("sortBy", () => {
     expect(names(sortBy(rows, [(item): Temporal.PlainDate => item.settles]))).toEqual(names(rows));
   });
 
-  test("compares Decimals by value", () => {
+  test("compares numbers by value", () => {
     expect(names(sortBy(rows, [{ by: "price", order: "desc" }]))).toEqual([
       "Bond 2",
       "Bond 4",

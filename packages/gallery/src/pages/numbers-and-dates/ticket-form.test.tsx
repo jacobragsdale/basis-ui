@@ -7,7 +7,7 @@ import { render } from "vitest-browser-react";
 import { TicketFormSection } from "./ticket-form.tsx";
 
 describe("a ticket on TanStack Form", () => {
-  test("sends exact decimal strings and the as-of date, which starts at the last business day", async () => {
+  test("sends numbers and the as-of date, which starts at the last business day", async () => {
     const screen = await render(<TicketFormSection />);
     await expect.element(screen.getByRole("textbox", { name: "As of" })).toHaveValue("2026-11-10");
     await userEvent.fill(screen.getByRole("textbox", { name: "Par" }), "5M");

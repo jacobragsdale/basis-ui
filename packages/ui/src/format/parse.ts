@@ -1,5 +1,6 @@
-/* Reads what a person types into a number field, such as `1.5mm`, `250k`, `(1,234.50)` or `25bp`, into an exact
- * decimal string, never a double, so a price or a par amount reaches the API with every digit it was given.
+/* Reads what a person types into a number field, such as `1.5mm`, `250k`, `(1,234.50)` or `25bp`. The text is read
+ * exactly, the suffix moving the decimal point in the digits themselves, and only then converted to a double, so
+ * `1.1mm` is the double nearest 1,100,000 rather than 1.1 × 1,000,000 rounded twice.
  *
  * Suffixes are declared per field rather than guessed. In bond and muni markets `M` means thousands, so `5M` par is
  * $5,000, while elsewhere `m` means millions; a field states which it means, and the input shows the full number back
@@ -13,7 +14,7 @@ type Reading<TValue> =
   | { readonly ok: true; readonly value: TValue }
   | { readonly ok: false; readonly reason: string };
 
-type ParseResult = Reading<string>;
+type ParseResult = Reading<number>;
 
 const thousands = 3;
 const millions = 6;
@@ -136,9 +137,9 @@ function decimalText(negative: boolean, digits: string, scale: number): string {
   return negative && !isZero ? `-${text}` : text;
 }
 
-/** Reads `text` into an exact decimal string such as `1500000` or `-0.0025`, or says why it cannot. Thousands
- * separators must group correctly, parentheses mean a negative, and a suffix must be one the field accepts. */
-function parseAmount(text: string, suffixes: Suffixes = amountSuffixes): ParseResult {
+/** Reads `text` into exact decimal text such as `1500000` or `-0.0025`, or says why it cannot. Thousands separators
+ * must group correctly, parentheses mean a negative, and a suffix must be one the field accepts. */
+function parseAmountText(text: string, suffixes: Suffixes = amountSuffixes): Reading<string> {
   const parts = partsOf(text);
   if (!parts.ok) {
     return parts;
@@ -158,5 +159,12 @@ function parseAmount(text: string, suffixes: Suffixes = amountSuffixes): ParseRe
   };
 }
 
-export { amountSuffixes, parSuffixes, parseAmount, rateSuffixes };
+/** Reads `text` into the number it means, such as 1500000 for `1.5mm` or 0.0025 for `25bp`, or says why it cannot:
+ * the text is read exactly, then converted to the nearest double. */
+function parseAmount(text: string, suffixes: Suffixes = amountSuffixes): ParseResult {
+  const reading = parseAmountText(text, suffixes);
+  return reading.ok ? { ok: true, value: Number(reading.value) } : reading;
+}
+
+export { amountSuffixes, parSuffixes, parseAmount, parseAmountText, rateSuffixes };
 export type { ParseResult, Suffixes };

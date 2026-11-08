@@ -9,9 +9,9 @@ import * as zod from 'zod';
 export const Yield = zod.object({
   "security_id": zod.string(),
   "settle": zod.iso.date(),
-  "clean": zod.string(),
-  "dirty": zod.string(),
-  "annual_yield": zod.string()
+  "clean": zod.number(),
+  "dirty": zod.number(),
+  "annual_yield": zod.number()
 });
 
 export type Yield = zod.input<typeof Yield>;

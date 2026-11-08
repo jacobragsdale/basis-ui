@@ -1,14 +1,11 @@
 // A multi-key sort, as lodash's `sortBy` and `orderBy` in one: each key sorts ascending or descending, missing
 // values go last whichever way, and strings compare as people read them, so "Bond 2" comes before "Bond 10".
 
-import { Decimal } from "#numbers/decimal.ts";
-
 /** What a sort key may give. Values of different kinds sort by kind, in this order. */
 type SortValue =
   | boolean
   | number
   | bigint
-  | Decimal
   | string
   | Date
   | Temporal.Instant
@@ -59,10 +56,6 @@ const numbers: Kind<number | bigint> = {
   compare: numeric,
   is: (value): value is number | bigint => typeof value === "number" || typeof value === "bigint",
 };
-const decimals: Kind<Decimal> = {
-  compare: (left, right) => left.compare(right),
-  is: (value): value is Decimal => value instanceof Decimal,
-};
 const strings: Kind<string> = {
   compare: (left, right) => collator.compare(left, right),
   is: (value): value is string => typeof value === "string",
@@ -97,7 +90,6 @@ const yearMonths: Kind<Temporal.PlainYearMonth> = {
 const kinds: readonly { readonly is: (value: unknown) => boolean }[] = [
   booleans,
   numbers,
-  decimals,
   strings,
   dates,
   instants,
@@ -125,7 +117,6 @@ function comparePresent(left: unknown, right: unknown): number {
   return (
     compareAs(left, right, booleans) ??
     compareAs(left, right, numbers) ??
-    compareAs(left, right, decimals) ??
     compareAs(left, right, strings) ??
     compareAs(left, right, dates) ??
     compareAs(left, right, instants) ??
@@ -173,7 +164,7 @@ function valueOf<TItem>(item: TItem, by: SortBy<TItem>): unknown {
  *   sortBy(bonds, ["sector", { by: "yield", order: "desc" }, (bond) => bond.issuer.name])
  *
  * Missing values (null, undefined, NaN and invalid Dates) go last in either order. Strings compare through
- * `Intl.Collator` with numeric ordering; Decimals, Dates and Temporal values compare by value. */
+ * `Intl.Collator` with numeric ordering; Dates and Temporal values compare by value. */
 function sortBy<TItem>(
   items: readonly TItem[],
   criteria: readonly SortCriterion<TItem>[],

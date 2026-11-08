@@ -1,20 +1,11 @@
-/* `@basis/ui/numbers`: display arithmetic, so that no app adds a decimal library. `Decimal` is exact fixed-point
- * arithmetic for the decimal strings APIs send, and feeds the formatter as `formatter.decimal(d.unscaled, d.scale)`;
- * `sumPrecise` adds doubles exactly; and the rest are the rates, Treasury prices and derived values a dashboard shows.
- * Anything with a market convention, such as accrued interest, day counts, yields or risk, is the API's to compute. */
+/* `@basis/ui/numbers`: display arithmetic on the doubles APIs send, so that no app adds a decimal library or rounds by
+ * hand. `sumPrecise` adds doubles exactly; the rest are tick rounding, Treasury prices in 32nds and the values a
+ * dashboard derives. Every number is a double and every rate a fraction; the number components round once, for
+ * display. Anything with a market convention, such as accrued interest, day counts, yields or risk, is the API's. */
 
-export { Decimal, type RoundTo } from "./decimal.ts";
 export { defaultRounding, type Rounding } from "./rounding.ts";
 export { sumPrecise } from "./sum.ts";
-export {
-  bpsToFraction,
-  bpsToPercent,
-  fractionToBps,
-  fractionToPercent,
-  percentToBps,
-  percentToFraction,
-  roundToTick,
-} from "./rates.ts";
+export { roundToTick } from "./rates.ts";
 export {
   formatThirtySeconds,
   parseThirtySeconds,

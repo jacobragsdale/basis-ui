@@ -7,7 +7,7 @@
     "path": "/settlements",
     "body": {
       "security_id": "US91282CRF04",
-      "face": "1000000.00",
+      "face": 1000000,
       "settle": "2026-11-10"
     }
   },
@@ -17,9 +17,9 @@
     "body": {
       "settlement_id": "019a5c3e-0000-7000-8000-0000000000aa",
       "security_id": "US91282CRF04",
-      "face": "1000000.00",
+      "face": 1000000,
       "settle": "2026-11-10",
-      "accrued": "20052.08",
+      "accrued": 20052.08,
       "recorded_at": "2026-11-07T12:00:00Z"
     }
   }

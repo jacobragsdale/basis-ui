@@ -1,4 +1,4 @@
-// How `Decimal` rounds: the six modes, and integer division rounded by one of them.
+// The six rounding modes, and integer division rounded by one of them, for exact arithmetic on unscaled integers.
 
 /** How a value that falls between two representable results is rounded.
  *

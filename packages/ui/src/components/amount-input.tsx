@@ -1,26 +1,26 @@
 /* AmountInput: a field for amounts and rates, such as `1.5mm`, `250k`, `(1,234.50)` or `25bp`, that reads what is typed
- * through `parseAmount` into an exact decimal string, never a double, and shows the full number it read below the
- * input, so the person sees what the field took: `5M` par is 5,000 in bond markets.
+ * through `parseAmount`, exactly and then as a number, and shows the full number it read below the input, so the
+ * person sees what the field took: `5M` par is 5,000 in bond markets.
  *
  * The field declares its suffixes: `amountSuffixes` by default, where `m` is millions; `parSuffixes`, where `M` is
- * thousands; or `rateSuffixes`, where `bp` is a ten-thousandth. Base UI's Number Field holds a double, which would
- * lose the exact decimal, so this is Base UI's input in an InputGroup.
+ * thousands; or `rateSuffixes`, where `bp` is a ten-thousandth, so `25bp` is 0.0025. Base UI's Number Field reads no
+ * suffixes, so this is Base UI's input in an InputGroup.
  *
- * Its value is the exact decimal string the text reads as, such as `1500000` for `1.5mm`, or `null` while the field is
- * empty. While the text reads as no number its value is the text itself, so no form takes it for a number, and the
- * parser's reason is the field's error: AmountInput shows it once the field has been left, and `amountSchema` gives a
- * form's check the same reason. AmountInput draws the field's error line, so a form passes it the field's errors
- * rather than drawing a FieldError of its own; while the text reads as no number, the reason replaces them. */
+ * Its value is the number the text reads as, such as 1500000 for `1.5mm`, or `null` while the field is empty. While
+ * the text reads as no number its value is the text itself, so no form takes it for a number, and the parser's reason
+ * is the field's error: AmountInput shows it once the field has been left, and `amountSchema` gives a form's check the
+ * same reason. AmountInput draws the field's error line, so a form passes it the field's errors rather than drawing a
+ * FieldError of its own; while the text reads as no number, the reason replaces them. */
 
 import { useId, useState } from "react";
 import type { ComponentProps, FocusEvent, ReactElement } from "react";
 
-import { amountSuffixes, parseAmount } from "#format/parse.ts";
+import { amountSuffixes, parseAmount, parseAmountText } from "#format/parse.ts";
 import type { Suffixes } from "#format/parse.ts";
 import { idList, useControlled } from "./field-state.ts";
 import { FieldError } from "./field.tsx";
 import { InputGroup, InputGroupInput } from "./input-group.tsx";
-import { numText } from "./num-text.ts";
+import { exactText } from "./num-text.ts";
 
 type FieldErrors = NonNullable<ComponentProps<typeof FieldError>["errors"]>;
 
@@ -28,20 +28,20 @@ interface AmountInputProps extends Omit<
   ComponentProps<"input">,
   "value" | "defaultValue" | "onChange" | "type" | "children"
 > {
-  /** The exact decimal string, `null` for an empty field, or the text while it reads as no number. Leave it out for
+  /** The number, `null` for an empty field, or the text while it reads as no number. Leave it out for
    * an uncontrolled field. */
-  readonly value?: string | null | undefined;
-  readonly defaultValue?: string | null | undefined;
+  readonly value?: number | string | null | undefined;
+  readonly defaultValue?: number | string | null | undefined;
   /** Called with the new value as the person types, once each time it changes. */
-  readonly onValueChange?: ((value: string | null) => void) | undefined;
+  readonly onValueChange?: ((value: number | string | null) => void) | undefined;
   /** The suffixes the field accepts; `amountSuffixes` unless set. */
   readonly suffixes?: Suffixes | undefined;
   /** The form's errors for the field, such as TanStack Form's `field.state.meta.errors`, shown under the input. */
   readonly errors?: FieldErrors | undefined;
 }
 
-/** The value a text gives: `null` for none, the exact decimal it reads as, or the text itself. */
-function valueOf(text: string, suffixes: Suffixes): string | null {
+/** The value a text gives: `null` for none, the number it reads as, or the text itself. */
+function valueOf(text: string, suffixes: Suffixes): number | string | null {
   if (text.trim() === "") {
     return null;
   }
@@ -54,8 +54,8 @@ function echoOf(text: string, suffixes: Suffixes): string | undefined {
   if (text.trim() === "") {
     return undefined;
   }
-  const reading = parseAmount(text, suffixes);
-  return reading.ok ? `= ${numText(reading.value).text}` : undefined;
+  const reading = parseAmountText(text, suffixes);
+  return reading.ok ? `= ${exactText(reading.value)}` : undefined;
 }
 
 /** Why the text reads as no number, or `undefined` when it reads or is empty. */
@@ -95,7 +95,8 @@ function useAmountText({
   });
   const [typed, setTyped] = useState<string | null>(null);
   const [left, setLeft] = useState(false);
-  const text = typed !== null && valueOf(typed, suffixes) === current ? typed : (current ?? "");
+  const shown = current === null ? "" : String(current);
+  const text = typed !== null && valueOf(typed, suffixes) === current ? typed : shown;
   return {
     echo: echoOf(text, suffixes),
     leave: () => {

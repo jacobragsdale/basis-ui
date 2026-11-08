@@ -1,7 +1,5 @@
-// Structural equality for the values a UI holds: plain objects, arrays, Maps, Sets, Dates, Decimals and Temporal
+// Structural equality for the values a UI holds: plain objects, arrays, Maps, Sets, Dates and Temporal
 // values. Any other object, such as a class instance, is equal only to itself.
-
-import { Decimal } from "#numbers/decimal.ts";
 
 /** A kind of object, and when two of it are equal. */
 interface Kind<TValue> {
@@ -30,10 +28,6 @@ function sameValueZero(left: unknown, right: unknown): boolean {
 const dates: Kind<Date> = {
   equals: (left, right) => sameValueZero(left.getTime(), right.getTime()),
   is: (value): value is Date => value instanceof Date,
-};
-const decimals: Kind<Decimal> = {
-  equals: (left, right) => left.equals(right),
-  is: (value): value is Decimal => value instanceof Decimal,
 };
 /** Durations are equal field by field, so `PT1H` and `PT60M` differ, as their fields do. */
 const durations: Kind<Temporal.Duration> = {
@@ -113,7 +107,6 @@ class Comparison {
     }
     return (
       equalAs(left, right, dates) ??
-      equalAs(left, right, decimals) ??
       equalAs(left, right, durations) ??
       equalAs(left, right, instants) ??
       equalAs(left, right, zonedTimes) ??
@@ -167,7 +160,7 @@ class Comparison {
 }
 
 /** Whether two values are deeply equal. Primitives compare as `===` does, except that NaN equals NaN. Arrays, Maps,
- * Sets and plain objects compare by their contents, Dates by their time, Decimals by value (`1.5` equals `1.50`), and
+ * Sets and plain objects compare by their contents, Dates by their time, and
  * Temporal values by their own `equals`, or field by field for Durations. Two objects of different prototypes are
  * never equal, any other object is equal only to itself, and symbol keys are not compared. Cycles are followed once. */
 function deepEqual(left: unknown, right: unknown): boolean {

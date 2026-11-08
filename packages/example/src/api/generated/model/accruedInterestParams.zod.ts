@@ -7,12 +7,15 @@
 import * as zod from 'zod';
 import { Convention } from './convention.zod.ts';
 
-export const accruedInterestParamsFaceRegExp = new RegExp('^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$');
-export const accruedInterestParamsRateRegExp = new RegExp('^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$');
+export const accruedInterestParamsFaceExclusiveMin = 0;
+
+export const accruedInterestParamsRateMin = 0;
+export const accruedInterestParamsRateExclusiveMax = 1;
+
 
 export const AccruedInterestParams = zod.object({
-  "face": zod.string().regex(accruedInterestParamsFaceRegExp),
-  "rate": zod.string().regex(accruedInterestParamsRateRegExp),
+  "face": zod.number().gt(accruedInterestParamsFaceExclusiveMin),
+  "rate": zod.number().min(accruedInterestParamsRateMin).lt(accruedInterestParamsRateExclusiveMax),
   "start": zod.iso.date(),
   "end": zod.iso.date(),
   "convention": Convention

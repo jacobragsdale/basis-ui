@@ -15,7 +15,7 @@ const conventions: DayCount[] = [{ convention: "ACT/365F", year_days: 365 }];
 
 const bond: Bond = {
   convention: "30/360",
-  coupon_rate: "0.04125",
+  coupon_rate: 0.04125,
   frequency: 2,
   issued: "2026-05-15",
   maturity: "2036-05-15",
@@ -66,8 +66,8 @@ function countedSignIn(adapter: SignIn = fakeSignIn()): {
 }
 
 const recorded: Settlement = {
-  accrued: "20510.87",
-  face: "1000000.00",
+  accrued: 20_510.87,
+  face: 1_000_000,
   recorded_at: "2026-11-07T15:30:00Z",
   security_id: "US91282CRF04",
   settle: "2026-11-10",
@@ -77,7 +77,7 @@ const recorded: Settlement = {
 /** Fills the settlement form and sends it. */
 async function recordSettlement(screen: RenderResult): Promise<void> {
   await screen.getByLabelText("ISIN").fill(recorded.security_id);
-  await screen.getByLabelText("Face amount").fill(recorded.face);
+  await screen.getByLabelText("Face amount").fill(String(recorded.face));
   await screen.getByLabelText("Settlement date").fill(recorded.settle);
   await screen.getByRole("button", { name: "Record settlement" }).click();
 }

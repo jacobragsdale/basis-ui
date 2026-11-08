@@ -1,13 +1,12 @@
 import { afterEach, describe, expect, test, vi } from "vite-plus/test";
 
-import { Decimal } from "#numbers/index.ts";
 import { downloadBlob, toCsv, toTsv } from "#utils/index.ts";
 import type { Column } from "#utils/index.ts";
 
 interface Position {
   readonly issuer: string;
   readonly par: bigint;
-  readonly price: Decimal;
+  readonly price: number;
   readonly change: number;
   readonly callable: boolean;
   readonly note: string | null;
@@ -29,7 +28,7 @@ const positions: readonly Position[] = [
     issuer: "Example Water Authority",
     note: null,
     par: 5_000_000n,
-    price: Decimal.from("99.515625"),
+    price: 99.515625,
   },
   {
     callable: false,
@@ -37,7 +36,7 @@ const positions: readonly Position[] = [
     issuer: 'Placeholder "Co", Inc.',
     note: "line one\nline two",
     par: 250_000n,
-    price: Decimal.from("-1.50"),
+    price: -1.5,
   },
 ];
 
@@ -47,7 +46,7 @@ describe("toCsv", () => {
       [
         "Issuer,Par,Price,Change,Callable,Note",
         "Example Water Authority,5000000,99.515625,-0.25,TRUE,",
-        '"Placeholder ""Co"", Inc.",250000,-1.50,,FALSE,"line one\nline two"',
+        '"Placeholder ""Co"", Inc.",250000,-1.5,,FALSE,"line one\nline two"',
         "",
       ].join("\r\n"),
     );

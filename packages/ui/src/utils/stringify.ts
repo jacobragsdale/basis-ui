@@ -1,7 +1,7 @@
 // JSON with object keys sorted, so that equal data writes equal text: for cache keys, saved views and comparing
 // what a form holds with what it loaded.
 
-/** A value with a `toJSON` method, as Dates, Temporal values and Decimals have, called as JSON calls it. */
+/** A value with a `toJSON` method, as Dates and Temporal values have, called as JSON calls it. */
 interface Jsonable {
   readonly toJSON: (key: string) => unknown;
 }
@@ -25,7 +25,7 @@ class Writer {
       typeof raw === "object" && raw !== null && isJsonable(raw) ? raw.toJSON(key) : raw;
     if (typeof value === "bigint") {
       throw new TypeError(
-        `${value.toString()}n has no JSON form: write it as a string, or as a Decimal.`,
+        `${value.toString()}n has no JSON form: write it as a number or a string.`,
       );
     }
     if (typeof value !== "object" || value === null) {

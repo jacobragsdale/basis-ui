@@ -1,7 +1,6 @@
 import "#styles.css";
 
 import { Bps, DateTime, Money, Num, Pct, Price32 } from "@basis/ui";
-import { Decimal } from "@basis/ui/numbers";
 import type { ReactElement } from "react";
 import { describe, expect, test } from "vite-plus/test";
 import { render } from "vitest-browser-react";
@@ -16,37 +15,44 @@ async function shownText(element: ReactElement): Promise<string> {
 
 describe("the display components' text", () => {
   test.each([
-    { element: <Num value="1234.50" />, name: "Num, decimal text", text: "1,234.50" },
+    { element: <Num value={1234.5} />, name: "Num, a double at two decimals", text: "1,234.50" },
     { element: <Num value={-1234.5} />, name: "Num, a negative double", text: "-1,234.50" },
-    { element: <Num value={1_234_567n} />, name: "Num, a bigint", text: "1,234,567" },
     {
-      element: <Num value={Decimal.from("-0.250")} />,
-      name: "Num, a Decimal from @basis/ui/numbers",
-      text: "-0.250",
+      element: <Num value={1_234_567} decimals={0} />,
+      name: "Num, at no decimals",
+      text: "1,234,567",
     },
-    { element: <Num value="1500000" abbreviate="M" />, name: "Num, abbreviated", text: "1.5M" },
     {
-      element: <Num value="-12.5" negative="parentheses" />,
+      element: <Num value={2.675} decimals={2} />,
+      name: "Num, 15 significant digits then rounded half away from zero",
+      text: "2.68",
+    },
+    { element: <Num value={1_500_000} abbreviate="M" />, name: "Num, abbreviated", text: "1.5M" },
+    {
+      element: <Num value={-12.5} negative="parentheses" />,
       name: "Num, in parentheses",
-      text: "(12.5)",
+      text: "(12.50)",
     },
     { element: <Num value={null} />, name: "Num, null", text: "" },
-    { element: <Money value="1234.5" />, name: "Money", text: "$1,234.50" },
-    { element: <Money value="-1234.5" />, name: "Money, negative", text: "-$1,234.50" },
-    { element: <Money value="1234.5" currency="EUR" />, name: "Money in euros", text: "€1,234.50" },
+    { element: <Money value={1234.5} />, name: "Money", text: "$1,234.50" },
+    { element: <Money value={-1234.5} />, name: "Money, negative", text: "-$1,234.50" },
+    { element: <Money value={1234.5} currency="EUR" />, name: "Money in euros", text: "€1,234.50" },
     { element: <Money value={undefined} />, name: "Money, undefined", text: "" },
-    { element: <Pct value="0.0525" />, name: "Pct", text: "5.25%" },
+
     { element: <Pct value={-0.0012} />, name: "Pct, negative", text: "-0.12%" },
     { element: <Pct value={0.0525} />, name: "Pct, a double", text: "5.25%" },
-    { element: <Bps value="0.0025" />, name: "Bps", text: "25\u00A0bp" },
-    { element: <Bps value="-0.00125" />, name: "Bps, negative", text: "-12.5\u00A0bp" },
-    { element: <Bps value={0.0125} />, name: "Bps, a double", text: "125.00\u00A0bp" },
-    { element: <Price32 value="99.515625" />, name: "Price32, a half", text: "99-16+" },
-    { element: <Price32 value="99.5078125" />, name: "Price32, an eighth", text: "99-162" },
-    { element: <Price32 value={101.25} />, name: "Price32, a double", text: "101-08" },
-    { element: <Price32 value="-0.140625" />, name: "Price32, negative", text: "-0-04+" },
+    { element: <Bps value={0.0025} />, name: "Bps", text: "25.00\u00A0bp" },
     {
-      element: <Price32 value="99.515625" precision="thirty-seconds" />,
+      element: <Bps value={-0.00125} decimals={1} />,
+      name: "Bps, negative at a decimal",
+      text: "-12.5\u00A0bp",
+    },
+    { element: <Price32 value={99.515625} />, name: "Price32, a half", text: "99-16+" },
+    { element: <Price32 value={99.5078125} />, name: "Price32, an eighth", text: "99-162" },
+    { element: <Price32 value={101.25} />, name: "Price32, a double", text: "101-08" },
+    { element: <Price32 value={-0.140625} />, name: "Price32, negative", text: "-0-04+" },
+    {
+      element: <Price32 value={99.515625} precision="thirty-seconds" />,
       name: "Price32 in whole 32nds",
       text: "99-17",
     },
@@ -74,18 +80,18 @@ describe("the display components' text", () => {
 
 describe("signed values", () => {
   test.each([
-    { element: <Num value="1250.5" signed />, name: "Num gain", text: "+1,250.5" },
-    { element: <Money value="-1234.5" signed />, name: "Money loss", text: "-$1,234.50" },
+    { element: <Num value={1250.5} signed />, name: "Num gain", text: "+1,250.50" },
+    { element: <Money value={-1234.5} signed />, name: "Money loss", text: "-$1,234.50" },
     { element: <Pct value={0.0003} signed />, name: "Pct gain", text: "+0.03%" },
-    { element: <Bps value="-0.0003" signed />, name: "Bps loss", text: "-3\u00A0bp" },
-    { element: <Price32 value="0.140625" signed />, name: "Price32 gain", text: "+0-04+" },
+    { element: <Bps value={-0.0003} decimals={0} signed />, name: "Bps loss", text: "-3\u00A0bp" },
+    { element: <Price32 value={0.140625} signed />, name: "Price32 gain", text: "+0-04+" },
     {
-      element: <Num value="-12" negative="parentheses" signed />,
+      element: <Num value={-12} decimals={0} negative="parentheses" signed />,
       name: "a loss in parentheses",
       text: "(12)",
     },
     {
-      element: <Num value="0.001" decimals={2} signed />,
+      element: <Num value={0.001} decimals={2} signed />,
       name: "a zero once rounded",
       text: "0.00",
     },
@@ -96,9 +102,9 @@ describe("signed values", () => {
   test("a gain is drawn in the gain colour, a loss in the loss colour, and zero in neither", async () => {
     const screen = await render(
       <>
-        <Num value="1" signed data-testid="gain" />
-        <Num value="-1" signed data-testid="loss" />
-        <Num value="0" signed data-testid="zero" />
+        <Num value={1} signed data-testid="gain" />
+        <Num value={-1} signed data-testid="loss" />
+        <Num value={0} signed data-testid="zero" />
       </>,
     );
     const colourOf = (id: string): string =>
@@ -113,7 +119,7 @@ describe("signed values", () => {
   test("in the dark mode a gain takes the dark mode's own gain colour", async () => {
     const light = computedColour("var(--gain)");
     await inMode("dark", async () => {
-      const screen = await render(<Num value="1" signed data-testid="gain" />);
+      const screen = await render(<Num value={1} signed data-testid="gain" />);
       const dark = computedColour("var(--gain)");
       expect(getComputedStyle(screen.getByTestId("gain").element()).color).toBe(dark);
       expect(dark).not.toBe(light);
@@ -121,8 +127,8 @@ describe("signed values", () => {
   });
 
   test("an unsigned value takes no colour and no plus sign", async () => {
-    const screen = await render(<Num value="1" data-testid="plain" />);
-    await expect.element(screen.getByTestId("plain")).toHaveTextContent("1");
+    const screen = await render(<Num value={1} data-testid="plain" />);
+    await expect.element(screen.getByTestId("plain")).toHaveTextContent("1.00");
     await expect.element(screen.getByTestId("plain")).not.toHaveAttribute("data-direction");
   });
 });
@@ -131,7 +137,7 @@ describe("figures", () => {
   test("are tabular, so digits line up by place", async () => {
     const screen = await render(
       <>
-        <Money value="1" data-testid="money" />
+        <Money value={1} data-testid="money" />
         <DateTime value="2026-11-06" data-testid="time" />
       </>,
     );
@@ -145,8 +151,8 @@ describe("figures", () => {
   test("align to the right when asked, and to the start otherwise", async () => {
     const screen = await render(
       <div className="w-64">
-        <Pct value="0.05" align="end" data-testid="end" />
-        <Pct value="0.05" data-testid="start" />
+        <Pct value={0.05} align="end" data-testid="end" />
+        <Pct value={0.05} data-testid="start" />
       </div>,
     );
     const end = getComputedStyle(screen.getByTestId("end").element());

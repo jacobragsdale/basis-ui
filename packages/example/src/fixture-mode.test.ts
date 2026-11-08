@@ -9,12 +9,12 @@ import { fixtureMode, json, record } from "#fixture-mode-support.ts";
 import { renderApp } from "#test-support.tsx";
 
 /** A price of the bond in the record of its dirty price, with `accrued` as the interest it says. */
-function priced(accrued: string): Readonly<Record<string, unknown>> {
+function priced(accrued: number): Readonly<Record<string, unknown>> {
   return json({
     accrued,
-    clean: "990000.00",
-    dirty: "1010052.08",
-    face: "1000000.00",
+    clean: 990_000,
+    dirty: 1_010_052.08,
+    face: 1_000_000,
     security_id: "US91282CRF04",
     settle: "2026-11-10",
   });
@@ -101,7 +101,7 @@ describe("the order fixture mode answers in", () => {
 
   test("orval's generated handlers answer what no fixture holds", async () => {
     const answers = fixtureMode();
-    const { data } = await dirtyPrice("US91282CRF04", { face: "1000000.00", settle: "2026-11-10" });
+    const { data } = await dirtyPrice("US91282CRF04", { face: 1_000_000, settle: "2026-11-10" });
     expect(Object.keys(data).toSorted()).toStrictEqual([
       "accrued",
       "clean",
@@ -112,7 +112,7 @@ describe("the order fixture mode answers in", () => {
     ]);
     expect(answers).toStrictEqual([
       {
-        request: "GET /bonds/US91282CRF04/dirty-price?face=1000000.00&settle=2026-11-10",
+        request: "GET /bonds/US91282CRF04/dirty-price?face=1000000&settle=2026-11-10",
         source: "generated",
         status: 200,
       },
@@ -122,15 +122,15 @@ describe("the order fixture mode answers in", () => {
   test("the first record in file order whose method, path and query match answers; another query is another request", async () => {
     const asked = {
       path: "/bonds/US91282CRF04/dirty-price",
-      query: { face: ["1000000.00"], settle: ["2026-11-10"] },
+      query: { face: ["1000000"], settle: ["2026-11-10"] },
     };
     const answers = fixtureMode({
-      ".fixtures/b.json": record("dirty_price", asked, priced("2.00")),
-      ".fixtures/a.json": record("dirty_price", asked, priced("1.00")),
+      ".fixtures/b.json": record("dirty_price", asked, priced(2)),
+      ".fixtures/a.json": record("dirty_price", asked, priced(1)),
     });
-    const first = await dirtyPrice("US91282CRF04", { face: "1000000.00", settle: "2026-11-10" });
-    expect(first.data.accrued).toBe("1.00");
-    await dirtyPrice("US91282CRF04", { face: "1000000.00", settle: "2026-11-11" });
+    const first = await dirtyPrice("US91282CRF04", { face: 1_000_000, settle: "2026-11-10" });
+    expect(first.data.accrued).toBe(1);
+    await dirtyPrice("US91282CRF04", { face: 1_000_000, settle: "2026-11-11" });
     expect(answers.map(({ source, file }) => `${String(source)} ${String(file)}`)).toStrictEqual([
       "record .fixtures/a.json",
       "generated undefined",

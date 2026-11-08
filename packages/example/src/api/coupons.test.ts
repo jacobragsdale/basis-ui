@@ -1,12 +1,13 @@
 /* A dataset route through the generated client: `coupons` asks basis for Arrow, and hands the caller the IPC stream as
  * it came, which parallax's grid reads. The stream here is built as basis's contract says it answers one (its
  * docs/contract.md, Datasets as Arrow): a column for each field of the row's model, nullable only where the field may
- * be null, with dates as date32 and decimals as decimal128 at the precision and scale the field declares. */
+ * be null, with dates as date32, and every number a float64 that is nullable, since NaN and the infinities arrive as
+ * null. */
 
 import {
   DateDay,
-  Decimal,
   Field,
+  Float64,
   RecordBatch,
   Schema,
   Struct,
@@ -30,13 +31,13 @@ function days(...dates: readonly string[]): Int32Array {
 }
 
 /** Two coupons of a bond paying 4.5% twice a year, in Arrow, as basis answers `GET /bonds/{security}/coupons`: each
- * coupon's interest is 2.25 per 100 of face, a decimal128(12, 2) of 225 hundredths. */
+ * coupon's interest is 2.25 per 100 of face, a nullable float64. */
 function couponStream(): Uint8Array<ArrayBuffer> {
-  const interest = new Decimal(2, 12, 128);
+  const interest = new Float64();
   const fields = [
     new Field("starts", new DateDay(), false),
     new Field("pays", new DateDay(), false),
-    new Field("interest", interest, false),
+    new Field("interest", interest, true),
   ];
   const columns = [
     makeData({
@@ -52,7 +53,7 @@ function couponStream(): Uint8Array<ArrayBuffer> {
       type: new DateDay(),
     }),
     makeData({
-      data: new Uint32Array([225, 0, 0, 0, 225, 0, 0, 0]),
+      data: new Float64Array([2.25, 2.25]),
       length: 2,
       nullCount: 0,
       type: interest,
@@ -81,7 +82,7 @@ describe("a dataset route", () => {
     expect(table.schema.fields.map(({ name, type }) => `${name}: ${String(type)}`)).toStrictEqual([
       "starts: Date32<DAY>",
       "pays: Date32<DAY>",
-      "interest: Decimal[12e+2]",
+      "interest: Float64",
     ]);
     const lastPaid: unknown = table.getChild("pays")?.get(1);
     expect(lastPaid).toBe(Date.parse("2027-05-15"));

@@ -1,14 +1,12 @@
 import { describe, expect, test } from "vite-plus/test";
 
-import { Decimal, formatThirtySeconds, parseThirtySeconds } from "#numbers/index.ts";
+import { formatThirtySeconds, parseThirtySeconds } from "#numbers/index.ts";
 
 const eighthsPerPoint = 256;
 
-/** `whole + eighths / 256`, computed apart from the code under test. */
-function price(whole: number, eighths: number): Decimal {
-  const fraction = Decimal.from(BigInt(eighths));
-  const point = Decimal.from(BigInt(eighthsPerPoint));
-  return Decimal.from(BigInt(whole)).add(fraction.div(point, { scale: 8 }));
+/** `whole + eighths / 256`, which a double holds exactly, computed apart from the code under test. */
+function price(whole: number, eighths: number): number {
+  return whole + eighths / eighthsPerPoint;
 }
 
 /** How the convention writes `whole` and `eighths` 256ths: 32nds in two digits, then `+` for four eighths, or the
@@ -22,7 +20,7 @@ function quoted(whole: number, eighths: number): string {
 
 function parsed(text: string): string {
   const result = parseThirtySeconds(text);
-  return result.ok ? result.value.toString() : result.reason;
+  return result.ok ? String(result.value) : result.reason;
 }
 
 describe("published examples", () => {
@@ -38,7 +36,7 @@ describe("published examples", () => {
     ["100-00", "100"],
   ])("%s is %s", (text, value) => {
     expect(parsed(text)).toBe(value);
-    expect(formatThirtySeconds(Decimal.from(value))).toBe(text);
+    expect(formatThirtySeconds(Number(value))).toBe(text);
   });
 });
 
@@ -50,45 +48,31 @@ test("every 256th from 99 to 101 is written by the convention and reads back exa
   );
   expect(written).toEqual(expected);
   const readBack = expected.map((text) => parsed(text));
-  expect(readBack).toEqual(
-    steps.map((step) =>
-      price(99, step)
-        .toString()
-        .replace(/\.?0+$/u, ""),
-    ),
-  );
+  expect(readBack).toEqual(steps.map((step) => String(price(99, step))));
 });
 
 describe("formatting", () => {
   test("rounds to the precision's step", () => {
-    const value = Decimal.from("99.5078125");
+    const value = 99.5078125;
     expect(formatThirtySeconds(value, { precision: "quarters" })).toBe("99-162");
-    expect(formatThirtySeconds(Decimal.from("99.51171875"), { precision: "halves" })).toBe(
-      "99-16+",
-    );
-    expect(formatThirtySeconds(Decimal.from("99.51171875"), { precision: "thirty-seconds" })).toBe(
-      "99-16",
-    );
-    expect(formatThirtySeconds(Decimal.from("99.99"), { precision: "thirty-seconds" })).toBe(
-      "100-00",
-    );
+    expect(formatThirtySeconds(99.51171875, { precision: "halves" })).toBe("99-16+");
+    expect(formatThirtySeconds(99.51171875, { precision: "thirty-seconds" })).toBe("99-16");
+    expect(formatThirtySeconds(99.99, { precision: "thirty-seconds" })).toBe("100-00");
   });
 
   test("rounds a price between steps half away from zero unless told otherwise", () => {
     // 16.25/32 is a tie between 16 and 16.5 at halves.
-    expect(formatThirtySeconds(Decimal.from("99.5078125"), { precision: "halves" })).toBe("99-16+");
+    expect(formatThirtySeconds(99.5078125, { precision: "halves" })).toBe("99-16+");
     expect(
-      formatThirtySeconds(Decimal.from("99.5078125"), {
+      formatThirtySeconds(99.5078125, {
         precision: "halves",
         rounding: "half-even",
       }),
     ).toBe("99-16");
-    expect(formatThirtySeconds(Decimal.from("99.5"), { precision: "halves" })).toBe("99-16");
-    expect(formatThirtySeconds(Decimal.from("99.50390625"), { precision: "quarters" })).toBe(
-      "99-162",
-    );
+    expect(formatThirtySeconds(99.5, { precision: "halves" })).toBe("99-16");
+    expect(formatThirtySeconds(99.50390625, { precision: "quarters" })).toBe("99-162");
     expect(
-      formatThirtySeconds(Decimal.from("99.50390625"), {
+      formatThirtySeconds(99.50390625, {
         precision: "quarters",
         rounding: "floor",
       }),
@@ -96,9 +80,9 @@ describe("formatting", () => {
   });
 
   test("writes negative changes with a sign, and zero without one", () => {
-    expect(formatThirtySeconds(Decimal.from("-0.140625"))).toBe("-0-04+");
-    expect(formatThirtySeconds(Decimal.from("-1.25"))).toBe("-1-08");
-    expect(formatThirtySeconds(Decimal.from("-0.001"))).toBe("0-00");
+    expect(formatThirtySeconds(-0.140625)).toBe("-0-04+");
+    expect(formatThirtySeconds(-1.25)).toBe("-1-08");
+    expect(formatThirtySeconds(-0.001)).toBe("0-00");
   });
 });
 

@@ -1,8 +1,9 @@
 /* Recording a settlement: a form on TanStack Form, checked as it changes by the schema orval generates from the API's
- * document, and sent with the generated mutation. A 422 lands on the fields its errors name, through `fieldErrors`;
+ * document, its face amount read by AmountInput (`1mm` is 1,000,000), and sent with the generated mutation. A 422 lands on the fields its errors name, through `fieldErrors`;
  * any other failure shows above the button. A recorded settlement raises a toast and opens its bond. */
 
 import {
+  AmountInput,
   Button,
   ErrorAlert,
   Field,
@@ -12,6 +13,7 @@ import {
   FieldLabel,
   Input,
   TypographyH1,
+  amountSchema,
   fieldErrors,
   isApiError,
   toast,
@@ -20,38 +22,33 @@ import {
 import { useForm } from "@tanstack/react-form";
 import { useNavigate } from "@tanstack/react-router";
 import type { ComponentProps, ReactElement } from "react";
+import type { z } from "zod";
 
 import { SettlementRequest, useRecordSettlement } from "#api/client.ts";
 
 /** The status of a request the API refused, whose problem names each field at fault. */
 const unprocessableContent = 422;
 
-/** The form's fields, in order, each named as the request's body names it, so a pointer such as `#/face` finds it. */
-const settlementFields = [
-  {
-    description: "Twelve capital letters and digits, such as US91282CRF04.",
-    id: "settlement-security",
-    label: "ISIN",
-    name: "security_id",
-    type: "text",
-  },
-  {
-    description: "In the bond's currency, to the cent, such as 1000000.00.",
-    id: "settlement-face",
-    label: "Face amount",
-    name: "face",
-    type: "text",
-  },
-  {
-    description: "The day the trade settles.",
-    id: "settlement-settle",
-    label: "Settlement date",
-    name: "settle",
-    type: "date",
-  },
-] as const;
+/** The form's text fields, each named as the request's body names it, so a pointer such as `#/settle` finds it. */
+const security = {
+  description: "Twelve capital letters and digits, such as US91282CRF04.",
+  id: "settlement-security",
+  label: "ISIN",
+  name: "security_id",
+  type: "text",
+} as const;
+const settle = {
+  description: "The day the trade settles.",
+  id: "settlement-settle",
+  label: "Settlement date",
+  name: "settle",
+  type: "date",
+} as const;
 
-const fieldNames = new Set<string>(settlementFields.map(({ name }) => name));
+const fieldNames = new Set<string>(["security_id", "face", "settle"]);
+
+/** The request as the form holds it: the face amount is what AmountInput holds, a number once its text reads as one. */
+const settlementForm = SettlementRequest.extend({ face: amountSchema() });
 
 /** A 422's errors by the field of this form each names, or `undefined` when the fields cannot hold the failure: any
  * failure but a 422, a 422 that names no field, and one that names something this form has no field for. */
@@ -65,32 +62,34 @@ function errorsOnFields(error: unknown): Record<string, readonly string[]> | und
     : undefined;
 }
 
+/** A field's errors, as TanStack Form holds them: the schema's issues and the API's details. */
+type FieldErrors = NonNullable<ComponentProps<typeof FieldError>["errors"]>;
+
+/** What a field component reads of TanStack Form's field: its value, errors and touch, and its handlers. */
+interface FieldBinding<TValue> {
+  readonly state: {
+    readonly value: TValue;
+    readonly meta: { readonly errors: FieldErrors; readonly isTouched: boolean };
+  };
+  readonly handleChange: (value: TValue) => void;
+  readonly handleBlur: () => void;
+}
+
 interface TextFieldProps {
   readonly id: string;
   readonly label: string;
   readonly description: string;
   readonly type: "date" | "text";
-  readonly value: string;
-  /** The field's errors, as TanStack Form holds them: the schema's issues and the API's details. */
-  readonly errors: NonNullable<ComponentProps<typeof FieldError>["errors"]>;
-  readonly touched: boolean;
-  readonly onChange: (value: string) => void;
-  readonly onBlur: () => void;
+  readonly field: FieldBinding<string>;
 }
 
 /** One field of the form, invalid once it has been touched and has an error. */
-function TextField({
-  id,
-  label,
-  description,
-  type,
-  value,
-  errors,
-  touched,
-  onChange,
-  onBlur,
-}: TextFieldProps): ReactElement {
-  const invalid = touched && errors.length > 0;
+function TextField({ id, label, description, type, field }: TextFieldProps): ReactElement {
+  const { value, meta } = field.state;
+  const invalid = meta.isTouched && meta.errors.length > 0;
+  const { errors } = meta;
+  const onBlur = field.handleBlur;
+  const onChange = field.handleChange;
   return (
     <Field data-invalid={invalid}>
       <FieldLabel htmlFor={id}>{label}</FieldLabel>
@@ -111,7 +110,34 @@ function TextField({
   );
 }
 
-const emptySettlement: SettlementRequest = { face: "", security_id: "", settle: "" };
+/** The face amount, which AmountInput reads, so `1mm` is 1,000,000; it draws its own error line. */
+function FaceField({
+  field,
+}: {
+  readonly field: FieldBinding<number | string | null>;
+}): ReactElement {
+  const { value, meta } = field.state;
+  const invalid = meta.isTouched && meta.errors.length > 0;
+  return (
+    <Field data-invalid={invalid}>
+      <FieldLabel htmlFor="settlement-face">Face amount</FieldLabel>
+      <AmountInput
+        id="settlement-face"
+        value={value}
+        onValueChange={field.handleChange}
+        onBlur={field.handleBlur}
+        aria-invalid={invalid}
+        aria-describedby="settlement-face-description"
+        errors={invalid ? meta.errors : undefined}
+      />
+      <FieldDescription id="settlement-face-description">
+        In the bond&apos;s currency, such as 1mm or 1,000,000.
+      </FieldDescription>
+    </Field>
+  );
+}
+
+const emptySettlement: z.input<typeof settlementForm> = { face: null, security_id: "", settle: "" };
 
 /** What a submit leaves on the form: a 422's errors on the fields they name, or, for a failure the fields cannot
  * hold, a form error, which fails the submit while the ErrorAlert says what it was. */
@@ -179,9 +205,10 @@ function SettlementForm(): ReactElement {
   const form = useForm({
     defaultValues: emptySettlement,
     validators: {
-      onChange: SettlementRequest,
+      onChange: settlementForm,
       onSubmitAsync: async ({ value }) => {
-        const failure = await failureOf(async () => recording.mutateAsync({ data: value }));
+        const data = settlementForm.parse(value);
+        const failure = await failureOf(async () => recording.mutateAsync({ data }));
         return failure === null ? undefined : submitErrors(failure);
       },
     },
@@ -197,23 +224,13 @@ function SettlementForm(): ReactElement {
       }}
     >
       <FieldGroup>
-        {settlementFields.map((spec) => (
-          <form.Field key={spec.name} name={spec.name}>
-            {(field) => (
-              <TextField
-                id={spec.id}
-                label={spec.label}
-                description={spec.description}
-                type={spec.type}
-                value={field.state.value}
-                errors={field.state.meta.errors}
-                touched={field.state.meta.isTouched}
-                onChange={field.handleChange}
-                onBlur={field.handleBlur}
-              />
-            )}
-          </form.Field>
-        ))}
+        <form.Field name={security.name}>
+          {(field) => <TextField {...security} field={field} />}
+        </form.Field>
+        <form.Field name="face">{(field) => <FaceField field={field} />}</form.Field>
+        <form.Field name={settle.name}>
+          {(field) => <TextField {...settle} field={field} />}
+        </form.Field>
       </FieldGroup>
       <Submit error={recording.error} pending={recording.isPending} />
     </form>

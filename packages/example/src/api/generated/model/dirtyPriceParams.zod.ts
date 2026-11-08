@@ -6,10 +6,11 @@
  */
 import * as zod from 'zod';
 
-export const dirtyPriceParamsFaceRegExp = new RegExp('^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$');
+export const dirtyPriceParamsFaceExclusiveMin = 0;
+
 
 export const DirtyPriceParams = zod.object({
-  "face": zod.string().regex(dirtyPriceParamsFaceRegExp),
+  "face": zod.number().gt(dirtyPriceParamsFaceExclusiveMin),
   "settle": zod.iso.date()
 })
 

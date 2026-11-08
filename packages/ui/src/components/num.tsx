@@ -70,7 +70,7 @@ type NumProps = NumberProps & NumberFormat;
  * <Num value={-1250.5} signed />; // -1,250.50, in the loss colour
  * <Money value={2_500_000_000} abbreviate="B" />; // $2.5B
  * <Pct value={0.0525} />; // 5.25%: rates are fractions
- * <Bps value={0.0025} />; // 25 bp
+ * <Bps value={0.0025} />; // 25.00 bp; decimals={0} shows 25 bp
  * <Price32 value={99.515625} />; // 99-16+
  * ```
  */
@@ -148,7 +148,8 @@ function Pct({
 
 type BpsProps = NumberProps & Omit<NumberFormat, "abbreviate" | "suffixes">;
 
-/** A rate in basis points, by the formatter's defaults for the value in basis points: 0.0025 is `25 bp`. */
+/** A rate in basis points, from the fraction it arrives as: 0.0025 is `25.00 bp` at the formatter's two decimals for
+ * a double, and `25 bp` with `decimals={0}`. */
 function Bps({
   value,
   decimals,

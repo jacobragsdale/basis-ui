@@ -1,9 +1,8 @@
-// What a dashboard derives for display: the change between two values, as an amount and as a percentage, and the
-// shares of a total. A value with no answer, such as a change from zero, says so by name rather than with NaN.
+// What a dashboard derives for display: the change between two values, as an amount and as a fraction, and the shares
+// of a total. A value with no answer, such as a change from zero, says so by name rather than with NaN.
 
-import { Decimal } from "./decimal.ts";
-import type { RoundTo } from "./decimal.ts";
 import { checkedScale, powerOfTen } from "./decimal-text.ts";
+import { exactOf } from "./rates.ts";
 import { divideRounded } from "./rounding.ts";
 
 /** A derived value, or the reason there is none. */
@@ -12,28 +11,27 @@ type Derived<TValue, TReason extends string> =
   | { readonly defined: false; readonly reason: TReason };
 
 /** A change from zero has no percentage. */
-type PercentChange = Derived<Decimal, "zero-base">;
+type PercentChange = Derived<number, "zero-base">;
 
 /** A total of zero, which includes no values at all, has no shares. */
-type Shares = Derived<readonly Decimal[], "zero-total">;
+type Shares = Derived<readonly number[], "zero-total">;
 
 const zero = 0n;
 const one = 1n;
 
 /** `to - from`. */
-function delta(from: Decimal, to: Decimal): Decimal {
-  return to.sub(from);
+function delta(from: number, to: number): number {
+  return to - from;
 }
 
-/** The change from `from` to `to` as a fraction of `from`'s size, `(to - from) / |from|`, rounded as `options` says:
- * 0.05 for a rise from 100 to 105. Dividing by the size keeps the sign with the direction of the move, so a loss that
- * narrows from -100 to -50 is +0.5, where Excel's `(to - from) / from` gives -0.5. Format it with the formatter's
- * `percent` format. */
-function percentChange(from: Decimal, to: Decimal, options: RoundTo): PercentChange {
-  if (from.isZero()) {
+/** The change from `from` to `to` as a fraction of `from`'s size, `(to - from) / |from|`: 0.05 for a rise from 100 to
+ * 105. Dividing by the size keeps the sign with the direction of the move, so a loss that narrows from -100 to -50 is
+ * +0.5, where Excel's `(to - from) / from` gives -0.5. Show it with `Pct`. */
+function percentChange(from: number, to: number): PercentChange {
+  if (from === 0) {
     return { defined: false, reason: "zero-base" };
   }
-  return { defined: true, value: to.sub(from).div(from.abs(), options) };
+  return { defined: true, value: (to - from) / Math.abs(from) };
 }
 
 /** One value's share of the total, in units of the result's last digit, rounded down, and what rounding down left. */
@@ -65,13 +63,19 @@ function flooredShares(
   });
 }
 
-/** Each value's weight in the total, at `scale` digits, summing to exactly 1. Every weight is its exact share rounded
- * down or up by one unit in the last digit, and the units still short of 1 go to the largest remainders, the earlier
- * value first on a tie: the largest remainder method. Negative values, as in a long and short book, take negative
- * weights. */
-function shares(values: readonly Decimal[], { scale }: Pick<RoundTo, "scale">): Shares {
-  const common = Math.max(0, ...values.map((value) => value.scale));
-  const digits = values.map((value) => value.round(common).unscaled);
+/** Each value's exact digits, read at its shortest text, all at the largest scale among them. */
+function commonDigits(values: readonly number[]): bigint[] {
+  const exact = values.map((value) => exactOf(value));
+  const common = Math.max(0, ...exact.map((value) => value.scale));
+  return exact.map((value) => value.unscaled * powerOfTen(common - value.scale));
+}
+
+/** Each value's weight in the total, as a fraction to `scale` decimals, the weights summing to exactly 1 at that
+ * scale. Each value is read at its shortest digits; every weight is its exact share rounded down or up by one unit in
+ * the last digit, and the units still short of 1 go to the largest remainders, the earlier value first on a tie: the
+ * largest remainder method. Negative values, as in a long and short book, take negative weights. */
+function shares(values: readonly number[], { scale }: { readonly scale: number }): Shares {
+  const digits = commonDigits(values);
   const total = digits.reduce((sum, value) => sum + value, zero);
   if (total === zero) {
     return { defined: false, reason: "zero-total" };
@@ -84,10 +88,11 @@ function shares(values: readonly Decimal[], { scale }: Pick<RoundTo, "scale">): 
       .slice(0, Number(short))
       .map(({ index }) => index),
   );
+  const unit = Number(powerOfTen(scale));
   return {
     defined: true,
-    value: floored.map(({ index, units }) =>
-      Decimal.from(raised.has(index) ? units + one : units, scale),
+    value: floored.map(
+      ({ index, units }) => Number(raised.has(index) ? units + one : units) / unit,
     ),
   };
 }

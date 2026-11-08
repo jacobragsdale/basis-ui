@@ -84,9 +84,9 @@ describe("FileImport with a good file", () => {
       .toBeVisible();
     expect(received).toStrictEqual([
       [
-        { book: "Rates", cusip: "91282CRF0", par: "5000000", price: "99.515625" },
-        { book: "Agency", cusip: "91282CRT0", note: "Hedge", par: "250000", price: "100.5" },
-        { book: "Credit", cusip: "91282CRU7", par: "1500000", price: "100" },
+        { book: "Rates", cusip: "91282CRF0", par: 5_000_000, price: 99.515625 },
+        { book: "Agency", cusip: "91282CRT0", note: "Hedge", par: 250_000, price: 100.5 },
+        { book: "Credit", cusip: "91282CRU7", par: 1_500_000, price: 100 },
       ],
     ]);
   });

@@ -115,8 +115,8 @@ describe("DataTable copy and export", () => {
     expect(writeText.mock.calls[0]?.[0]).toBe(
       [
         "CUSIP\tSecurity\tBook\tPar\tPrice\tChange\tSettled\tNote\r\n",
-        "91282CRT0\tUST 4.750% 10/31/2031\tRates\t10000000.00\t99.96875\t-0.0625\tTRUE\tOn repo\r\n",
-        `91282CRF0\tUST 4.625% 08/15/2036\tRates\t5000000.00\t99.515625\t-0.25\tTRUE\t"'=HYPERLINK(""https://example.com"",""Allocation"")"\r\n`,
+        "91282CRT0\tUST 4.750% 10/31/2031\tRates\t10000000\t99.96875\t-0.0625\tTRUE\tOn repo\r\n",
+        `91282CRF0\tUST 4.625% 08/15/2036\tRates\t5000000\t99.515625\t-0.25\tTRUE\t"'=HYPERLINK(""https://example.com"",""Allocation"")"\r\n`,
       ].join(""),
     );
   });
@@ -144,10 +144,10 @@ describe("DataTable copy and export", () => {
     expect(text).toBe(
       [
         "CUSIP,Book,Par,Price,Change,Settled,Note\r\n",
-        "91282CRV5,Rates,25000000.00,100.40625,0.125,TRUE,\r\n",
-        "91282CRT0,Rates,10000000.00,99.96875,-0.0625,TRUE,On repo\r\n",
-        "91282CRU7,Rates,50000000.00,100.015625,0.03125,FALSE,\r\n",
-        `91282CRF0,Rates,5000000.00,99.515625,-0.25,TRUE,"'=HYPERLINK(""https://example.com"",""Allocation"")"\r\n`,
+        "91282CRV5,Rates,25000000,100.40625,0.125,TRUE,\r\n",
+        "91282CRT0,Rates,10000000,99.96875,-0.0625,TRUE,On repo\r\n",
+        "91282CRU7,Rates,50000000,100.015625,0.03125,FALSE,\r\n",
+        `91282CRF0,Rates,5000000,99.515625,-0.25,TRUE,"'=HYPERLINK(""https://example.com"",""Allocation"")"\r\n`,
       ].join(""),
     );
   });

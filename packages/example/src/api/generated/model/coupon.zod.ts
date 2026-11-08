@@ -9,7 +9,7 @@ import * as zod from 'zod';
 export const Coupon = zod.object({
   "starts": zod.iso.date(),
   "pays": zod.iso.date(),
-  "interest": zod.string()
+  "interest": zod.number()
 }).describe('One of a bond\'s coupons, a row of its schedule.');
 
 export type Coupon = zod.input<typeof Coupon>;

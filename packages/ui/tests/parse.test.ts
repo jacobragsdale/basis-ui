@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vite-plus/test";
 
+import { parseAmountText } from "#format/parse.ts";
 import { amountSuffixes, parSuffixes, parseAmount, rateSuffixes } from "#index.ts";
 
 describe("amounts", () => {
@@ -24,7 +25,7 @@ describe("amounts", () => {
     ["(0.00)", "0"],
     ["12345678901234567890.123456789", "12345678901234567890.123456789"],
   ])("%s reads as %s", (text, value) => {
-    expect(parseAmount(text)).toEqual({ ok: true, value });
+    expect(parseAmountText(text)).toEqual({ ok: true, value });
   });
 
   test.each([
@@ -42,10 +43,10 @@ describe("amounts", () => {
 });
 
 test("bond-market par reads m as thousands and mm as millions", () => {
-  expect(parseAmount("5M", parSuffixes)).toEqual({ ok: true, value: "5000" });
-  expect(parseAmount("5MM", parSuffixes)).toEqual({ ok: true, value: "5000000" });
+  expect(parseAmount("5M", parSuffixes)).toEqual({ ok: true, value: 5000 });
+  expect(parseAmount("5MM", parSuffixes)).toEqual({ ok: true, value: 5_000_000 });
   expect(parseAmount("5k", parSuffixes).ok).toBe(false);
-  expect(parseAmount("5M", amountSuffixes)).toEqual({ ok: true, value: "5000000" });
+  expect(parseAmount("5M", amountSuffixes)).toEqual({ ok: true, value: 5_000_000 });
 });
 
 test.each([
@@ -55,5 +56,15 @@ test.each([
   ["-12.5bp", "-0.00125"],
   ["0.0425", "0.0425"],
 ])("the rate %s reads as %s", (text, value) => {
-  expect(parseAmount(text, rateSuffixes)).toEqual({ ok: true, value });
+  expect(parseAmountText(text, rateSuffixes)).toEqual({ ok: true, value });
+  expect(parseAmount(text, rateSuffixes)).toEqual({ ok: true, value: Number(value) });
+});
+
+test("a number is read exactly, then converted once, so a suffix adds no rounding of its own", () => {
+  expect(parseAmount("1.1mm")).toEqual({ ok: true, value: 1_100_000 });
+  expect(parseAmount("0.07m")).toEqual({ ok: true, value: 70_000 });
+  expect(parseAmount("12345678901234567890.123456789")).toEqual({
+    ok: true,
+    value: 12_345_678_901_234_567_000,
+  });
 });

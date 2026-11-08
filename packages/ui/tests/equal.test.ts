@@ -1,6 +1,5 @@
 import { describe, expect, test } from "vite-plus/test";
 
-import { Decimal } from "#numbers/index.ts";
 import { deepEqual, stableStringify } from "#utils/index.ts";
 
 /** An object with no prototype, as `Object.create(null)` makes. */
@@ -25,7 +24,6 @@ describe("deepEqual", () => {
     [new Set([{ id: 1 }, { id: 2 }]), new Set([{ id: 2 }, { id: 1 }])],
     [new Date("2026-11-07T14:00:00Z"), new Date("2026-11-07T14:00:00Z")],
     [new Date(Number.NaN), new Date(Number.NaN)],
-    [Decimal.from("1.5"), Decimal.from("1.50")],
     [Temporal.PlainDate.from("2026-11-07"), Temporal.PlainDate.from("2026-11-07")],
     [
       Temporal.Instant.from("2026-11-07T14:00:00Z"),
@@ -51,7 +49,6 @@ describe("deepEqual", () => {
     [new Set([1, 2]), new Set([1, 3])],
     [new Set([{ id: 1 }, { id: 1 }]), new Set([{ id: 1 }, { id: 2 }])],
     [new Date(0), new Date(1)],
-    [Decimal.from("1.5"), Decimal.from("1.51")],
     [Temporal.Duration.from("PT1H"), Temporal.Duration.from("PT60M")],
     [
       Temporal.ZonedDateTime.from("2026-11-07T09:00[America/New_York]"),
@@ -92,12 +89,12 @@ describe("stableStringify", () => {
       day: Temporal.PlainDate.from("2026-11-07"),
       fn: (): number => 1,
       list: [undefined, Number.NaN, Number.POSITIVE_INFINITY, "x"],
-      price: Decimal.from("99.50"),
+      price: 99.5,
       text: 'quote " and \n newline',
       missing: undefined,
     };
     expect(stableStringify(value)).toBe(
-      String.raw`{"date":"2026-11-07T14:00:00.000Z","day":"2026-11-07","list":[null,null,null,"x"],"price":"99.50","text":"quote \" and \n newline"}`,
+      String.raw`{"date":"2026-11-07T14:00:00.000Z","day":"2026-11-07","list":[null,null,null,"x"],"price":99.5,"text":"quote \" and \n newline"}`,
     );
     // Its keys are already in order, so JSON.stringify writes the same text.
     expect(stableStringify(value)).toBe(JSON.stringify(value));
@@ -106,7 +103,7 @@ describe("stableStringify", () => {
   });
 
   test.each([
-    [10n, "10n has no JSON form: write it as a string, or as a Decimal."],
+    [10n, "10n has no JSON form: write it as a number or a string."],
     [new Map(), "A Map has no JSON form: convert it first, with Object.fromEntries or [...set]."],
     [
       { ids: new Set([1]) },

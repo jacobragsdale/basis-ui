@@ -577,18 +577,22 @@ focused one.
 ## Showing numbers and dates
 
 `Num`, `Money`, `Pct`, `Bps`, `Price32` and `DateTime` show a value through the formatter, by parallax's rules, so it
-reads the same in a card as in the grid. Pass `value` as the API sends it: decimal text, a `Decimal`, a double or a
-bigint, and for `DateTime` a Temporal value or ISO 8601 text. `null` shows the formatter's null text, which is empty.
+reads the same in a card as in the grid. Pass `value` as the API sends it, a number, and for `DateTime` a Temporal value
+or ISO 8601 text. `null` and NaN show the formatter's null text, which is empty. The formatter rounds once, for display:
+to 15 significant digits, half away from zero, then to the decimals shown, two for a double unless `decimals` says
+otherwise. Never round a number yourself: the lint refuses `toFixed`, `toPrecision`, `toLocaleString`, `Math.round`
+and `Intl.NumberFormat` in an app.
 
 ```tsx
 import { Bps, DateTime, Money, Num, Pct, Price32 } from "@basis/ui";
 
-<Num value="1234.50" />; // 1,234.50: decimal text keeps its scale
-<Money value="-1234.5" />; // -$1,234.50
-<Money value="2500000000" abbreviate="B" />; // $2.5B
-<Pct value="0.0525" />; // 5.25%
-<Bps value="0.0025" />; // 25 bp
-<Price32 value="99.515625" />; // 99-16+
+<Num value={1234.5} />; // 1,234.50
+<Num value={1_234_567} decimals={0} />; // 1,234,567
+<Money value={-1234.5} />; // -$1,234.50
+<Money value={2_500_000_000} abbreviate="B" />; // $2.5B
+<Pct value={0.0525} />; // 5.25%
+<Bps value={0.0025} decimals={0} />; // 25 bp
+<Price32 value={99.515625} />; // 99-16+
 <DateTime value="2026-11-06T14:30:00Z" />; // 2026-11-06 09:30:00, in New York time
 <Num value={pnl} signed />; // +1,250.50 in the gain colour, -1,250.50 in the loss colour
 ```
@@ -604,8 +608,7 @@ import { Bps, DateTime, Money, Num, Pct, Price32 } from "@basis/ui";
 - **`DateTime`** takes `zone`, `precision` (`seconds`, `milliseconds` or `microseconds`) and `show` (`date-time`,
   `date` or `time`). Text with an offset or `Z` is an instant, a bare date is a date, and a time without either is a
   wall-clock time shown as stored. It renders a `<time>` whose title gives the full instant with its offset and zone.
-- Text that is not a decimal, or not ISO 8601, throws, as `Decimal.from` and Temporal do: the response's schema should
-  have refused it.
+- Text that is not ISO 8601 throws, as Temporal does: the response's schema should have refused it.
 
 ## Taking amounts and dates
 
@@ -616,9 +619,10 @@ those errors.
 
 `AmountInput` reads what is typed through `parseAmount` with the suffixes it declares, `amountSuffixes` unless set,
 and shows the number it read under the input, such as `= 1,500,000`. Bond markets write `M` for thousands, so a par
-field declares `parSuffixes`, and a spread `rateSuffixes`. Its value is the exact decimal string, `null` while it is
-empty, and the text itself while that reads as no number, which `amountSchema` refuses with the parser's reason and
-otherwise turns into the decimal:
+field declares `parSuffixes`, and a spread `rateSuffixes`, where `25bp` is 0.0025. The text is read exactly, the suffix
+moving the decimal point, and only then converted to a number. Its value is that number, `null` while it is empty, and
+the text itself while that reads as no number, which `amountSchema` refuses with the parser's reason and otherwise
+turns into the number:
 
 ```tsx
 import { AmountInput, Field, FieldLabel, amountSchema, parSuffixes, rateSuffixes } from "@basis/ui";
@@ -714,8 +718,8 @@ const columns: readonly DataTableColumn<Position>[] = [
 />;
 ```
 
-- **Columns.** A column with `variant: "numeric"` takes a number as the API sends it, decimal text, a `Decimal`, a
-  double or a bigint, and aligns right in tabular figures, its heading too; it sorts by value and exports as a number.
+- **Columns.** A column with `variant: "numeric"` takes a number as the API sends it, and aligns right in tabular
+  figures, its heading too; it sorts by value and exports as a number.
   Any other column's value is text, a boolean or a number. `sortable`, `hideable` and `filterable` are on unless set
   to `false`.
 - **Sorting.** A heading sorts its column ascending, then descending, then not at all; Shift adds the column to the
@@ -840,19 +844,20 @@ An icon `@basis/ui` lacks is added to it, as [Adding an icon](#adding-an-icon) d
 
 ## Using the numbers and utils modules
 
-`@basis/ui/numbers` and `@basis/ui/utils` hold what an app would otherwise add a decimal library or lodash for. Import
-them by subpath:
+`@basis/ui/numbers` and `@basis/ui/utils` hold what an app would otherwise add a decimal library or lodash for. Every
+number an API sends is a double, and every rate a fraction. Import them by subpath:
 
 ```ts
-import { Decimal, formatThirtySeconds, percentChange } from "@basis/ui/numbers";
+import { formatThirtySeconds, percentChange, roundToTick, shares } from "@basis/ui/numbers";
 import { debounce, sortBy, toCsv } from "@basis/ui/utils";
 ```
 
-- Read the decimal strings an API sends with `Decimal.from`, and do the arithmetic on the `Decimal`, never on
-  `Number(text)`. Division and `round` take a scale and round half away from zero, Excel's rounding, unless told
-  otherwise; `Decimal.fromNumber` takes both explicitly. Show one through the formatter with
-  `formatter.decimal(value.unscaled, value.scale)`, and give a chart `value.toNumber()`.
-- `sumPrecise` adds doubles exactly, where adding them in turn would drift.
+- Show a number through the number components, which round it once; don't round it first.
+- `sumPrecise` adds doubles exactly, where adding them in turn would drift: a total on screen comes from it or from
+  parallax's exact sums.
+- `roundToTick` rounds a price or a rate to a tick exactly, reading each double at its shortest digits; `shares` gives
+  each value's weight in a total, summing to exactly 1 at the scale asked for; `percentChange` divides by the base's
+  size; `formatThirtySeconds` and `parseThirtySeconds` write and read Treasury prices in 32nds.
 - Anything with a market convention, such as accrued interest, day counts, yields or risk, is the API's to compute.
 - `utils` follows es-toolkit's signatures, and differs where the types would otherwise lie or lodash surprises:
   `keyBy`, `countBy` and `fromEntries` return `Partial` records, `zip` types the `undefined` it pads with, `throttle`
@@ -860,8 +865,8 @@ import { debounce, sortBy, toCsv } from "@basis/ui/utils";
 - `parseCsv` reads CSV as RFC 4180 writes it, strictly: a quoted field that never closes, or a stray double quote,
   is an error naming its line, rather than a guess that shifts every column after it.
 
-The tests check `Decimal` and `sumPrecise` against `tests/fixtures/numbers.json`, which
-`tests/fixtures/generate_numbers.py` writes with Python's `decimal` module. After changing the generator, rewrite the
+The tests check `sumPrecise` against `tests/fixtures/numbers.json`, which `tests/fixtures/generate_numbers.py` writes
+with exact rational sums in Python. After changing the generator, rewrite the
 fixtures from this package with `uv run tests/fixtures/generate_numbers.py` and commit both: the tests fail while the
 fixtures are older than the generator.
 

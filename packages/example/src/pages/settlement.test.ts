@@ -11,14 +11,14 @@ import {
 import { renderApp, worker } from "#test-support.tsx";
 
 const request: SettlementRequest = {
-  face: "1000000.00",
+  face: 1_000_000,
   security_id: "US91282CRF04",
   settle: "2026-11-10",
 };
 
 const settlement: Settlement = {
-  accrued: "20510.87",
-  face: "1000000.00",
+  accrued: 20_510.87,
+  face: 1_000_000,
   recorded_at: "2026-11-07T15:30:00Z",
   security_id: "US91282CRF04",
   settle: "2026-11-10",
@@ -27,7 +27,7 @@ const settlement: Settlement = {
 
 const bond: Bond = {
   convention: "30/360",
-  coupon_rate: "0.04125",
+  coupon_rate: 0.04125,
   frequency: 2,
   issued: "2026-05-15",
   maturity: "2036-05-15",
@@ -37,7 +37,7 @@ const bond: Bond = {
 /** Fills the form with `values` and sends it. */
 async function record(screen: RenderResult, values: SettlementRequest): Promise<void> {
   await screen.getByLabelText("ISIN").fill(values.security_id);
-  await screen.getByLabelText("Face amount").fill(values.face);
+  await screen.getByLabelText("Face amount").fill(String(values.face));
   await screen.getByLabelText("Settlement date").fill(values.settle);
   await screen.getByRole("button", { name: "Record settlement" }).click();
 }
@@ -74,7 +74,7 @@ describe("the settlement form", () => {
       }),
     );
     const { screen, reports } = await renderApp("/settlements/new");
-    await record(screen, { ...request, face: "0" });
+    await record(screen, { ...request, face: 0 });
     const face = screen.getByLabelText("Face amount");
     await expect.element(face).toHaveAttribute("aria-invalid", "true");
     await expect

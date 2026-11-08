@@ -13,7 +13,7 @@ export const Accrual = zod.object({
   "convention": Convention,
   "days": zod.int(),
   "year_days": zod.int(),
-  "interest": zod.string()
+  "interest": zod.number()
 });
 
 export type Accrual = zod.input<typeof Accrual>;

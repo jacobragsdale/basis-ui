@@ -4153,22 +4153,22 @@
       "name": "AmountInput",
       "props": [
         {
-          "description": "The exact decimal string, `null` for an empty field, or the text while it reads as no number. Leave it out for an uncontrolled field.",
+          "description": "The number, `null` for an empty field, or the text while it reads as no number. Leave it out for an uncontrolled field.",
           "name": "value",
           "optional": true,
-          "type": "string | null | undefined"
+          "type": "number | string | null | undefined"
         },
         {
           "description": "",
           "name": "defaultValue",
           "optional": true,
-          "type": "string | null | undefined"
+          "type": "number | string | null | undefined"
         },
         {
           "description": "Called with the new value as the person types, once each time it changes.",
           "name": "onValueChange",
           "optional": true,
-          "type": "((value: string | null) => void) | undefined"
+          "type": "((value: number | string | null) => void) | undefined"
         },
         {
           "description": "The suffixes the field accepts; `amountSuffixes` unless set.",
@@ -4404,7 +4404,7 @@
           "type": "boolean | undefined"
         }
       ],
-      "purpose": "A rate in basis points, by the formatter's defaults for the value in basis points: 0.0025 is `25 bp`.",
+      "purpose": "A rate in basis points, from the fraction it arrives as: 0.0025 is `25.00 bp` at the formatter's two decimals for a double, and `25 bp` with `decimals={0}`.",
       "variants": {
         "align": {
           "default": "start",
@@ -4542,7 +4542,7 @@
           ]
         }
       },
-      "example": "import { Bps, Money, Num, Pct, Price32 } from \"@basis/ui\";\n\n<Num value={1234.5} decimals={2} />; // 1,234.50\n<Num value={-1250.5} signed />; // -1,250.50, in the loss colour\n<Money value={2_500_000_000} abbreviate=\"B\" />; // $2.5B\n<Pct value={0.0525} />; // 5.25%: rates are fractions\n<Bps value={0.0025} />; // 25 bp\n<Price32 value={99.515625} />; // 99-16+\n"
+      "example": "import { Bps, Money, Num, Pct, Price32 } from \"@basis/ui\";\n\n<Num value={1234.5} decimals={2} />; // 1,234.50\n<Num value={-1250.5} signed />; // -1,250.50, in the loss colour\n<Money value={2_500_000_000} abbreviate=\"B\" />; // $2.5B\n<Pct value={0.0525} />; // 5.25%: rates are fractions\n<Bps value={0.0025} />; // 25.00 bp; decimals={0} shows 25 bp\n<Price32 value={99.515625} />; // 99-16+\n"
     },
     {
       "extends": [

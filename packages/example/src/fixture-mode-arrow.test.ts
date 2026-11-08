@@ -3,8 +3,8 @@
 
 import {
   DateDay,
-  Decimal,
   Field,
+  Float64,
   RecordBatch,
   Schema,
   Struct,
@@ -26,21 +26,21 @@ function days(...values: readonly string[]): Int32Array {
 }
 
 /** Two coupons of a bond paying 4.5% twice a year, as basis answers its coupons in Arrow: date32 dates and the
- * interest per 100 of face as a decimal128(12, 2), none nullable. */
+ * interest per 100 of face as a nullable float64. */
 function couponStream(): Uint8Array {
-  const interest = new Decimal(2, 12, 128);
+  const interest = new Float64();
   const fields = [
     new Field("starts", new DateDay(), false),
     new Field("pays", new DateDay(), false),
-    new Field("interest", interest, false),
+    new Field("interest", interest, true),
   ];
   const starts = days("2026-05-15", "2026-11-15");
   const pays = days("2026-11-15", "2027-05-15");
-  const hundredths = new Uint32Array([225, 0, 0, 0, 225, 0, 0, 0]);
+  const interest64 = new Float64Array([2.25, 2.25]);
   const columns = [
     makeData({ data: starts, length: 2, type: new DateDay() }),
     makeData({ data: pays, length: 2, type: new DateDay() }),
-    makeData({ data: hundredths, length: 2, type: interest }),
+    makeData({ data: interest64, length: 2, type: interest }),
   ];
   const rows = makeData({ children: columns, length: 2, type: new Struct(fields) });
   const batch = new RecordBatch(new Schema(fields), rows);
@@ -61,7 +61,7 @@ describe("Arrow in fixture mode", () => {
     expect(table.schema.fields.map(({ name, type }) => `${name}: ${String(type)}`)).toStrictEqual([
       "starts: Date32<DAY>",
       "pays: Date32<DAY>",
-      "interest: Decimal[12e+2]",
+      "interest: Float64",
     ]);
     expect(table.numRows).toBe(20);
     const firstPaid: unknown = table.getChild("pays")?.get(0);

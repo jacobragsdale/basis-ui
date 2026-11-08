@@ -6,7 +6,7 @@ import { renderApp, worker } from "#test-support.tsx";
 
 const bond: Bond = {
   convention: "30/360",
-  coupon_rate: "0.04125",
+  coupon_rate: 0.04125,
   frequency: 2,
   issued: "2026-05-15",
   maturity: "2036-05-15",

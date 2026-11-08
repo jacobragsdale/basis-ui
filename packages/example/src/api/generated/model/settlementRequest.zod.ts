@@ -7,12 +7,13 @@
 import * as zod from 'zod';
 
 export const settlementRequestSecurityIdRegExp = new RegExp('^[A-Z0-9]{12}$');
-export const settlementRequestFaceRegExp = new RegExp('^-?(?:0|[1-9][0-9]{0,15})(?:\\.[0-9]{1,2}0*)?$');
+export const settlementRequestFaceExclusiveMin = 0;
+
 
 
 export const SettlementRequest = zod.object({
   "security_id": zod.string().regex(settlementRequestSecurityIdRegExp),
-  "face": zod.string().regex(settlementRequestFaceRegExp),
+  "face": zod.number().gt(settlementRequestFaceExclusiveMin),
   "settle": zod.iso.date()
 });
 

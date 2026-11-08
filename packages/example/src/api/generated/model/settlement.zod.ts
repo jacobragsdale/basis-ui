@@ -9,9 +9,9 @@ import * as zod from 'zod';
 export const Settlement = zod.object({
   "settlement_id": zod.uuid(),
   "security_id": zod.string(),
-  "face": zod.string(),
+  "face": zod.number(),
   "settle": zod.iso.date(),
-  "accrued": zod.string(),
+  "accrued": zod.number(),
   "recorded_at": zod.iso.datetime({"offset":true})
 });
 

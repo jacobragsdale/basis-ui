@@ -174,7 +174,9 @@ second consumer on 2026-11-07: 1.12 and 1.13 wait on basis's contract, and 1.14 
     In a pull request of its own, as every preset change is, the preset rejects `toFixed`, `toPrecision`, `toLocaleString`, `Math.round` and `Intl.NumberFormat` in app code, each error naming the component to use, and for `Math.round` also `Math.floor` and `Math.trunc` for integers that are not shown. The
     example app's pinned `openapi.json`, fixtures and pages move to basis's float64 contract, along with the
     service-error problem types basis added since the pin. Needs basis's step 2.11 and 2.8.3. Done when no API value
-    in the example app is a string of digits and the lint's errors have tests.
+    in the example app is a string of digits and the lint's errors have tests. Built on 2026-11-08 but for the lint:
+    the components, DataTable, AmountInput and `amountSchema` take and give numbers, `Decimal` is deleted (32nds, tick
+    rounding and shares work on exact BigInt digits inside), and the example app runs on basis's float64 document.
 
 13. **1.13 Display formats.** Read the `basis.format` object the design describes:
     - one TypeScript type, shared by `@basis/ui` and parallax, read from an Arrow field's metadata and from

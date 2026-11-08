@@ -1,7 +1,7 @@
 /* A bond ticket on TanStack Form: an as-of date, a par amount in bond-market style and a spread. A Zod schema checks
  * the form as it changes, with `amountSchema` giving each amount's parse reason as its error; each field passes its
  * errors to its component, which draws the field's error line. On submit the schema's output is what an API would get:
- * exact decimal strings and a date. */
+ * numbers and a date. */
 
 import {
   AmountInput,
@@ -36,8 +36,8 @@ const ticketSchema = z.object({
 
 interface Ticket {
   readonly asOf: Temporal.PlainDate | null;
-  readonly par: string | null;
-  readonly spread: string | null;
+  readonly par: number | string | null;
+  readonly spread: number | string | null;
 }
 
 const blankTicket: Ticket = {
@@ -91,7 +91,7 @@ function AsOfField({
 }
 
 interface AmountFieldProps {
-  readonly field: BoundField<string | null>;
+  readonly field: BoundField<number | string | null>;
   readonly id: string;
   readonly label: string;
   readonly suffixes: Suffixes;
@@ -187,7 +187,7 @@ function TicketFormSection(): ReactElement {
   return (
     <Section
       title="A ticket on TanStack Form"
-      description="AsOfDatePicker and AmountInput with TanStack Form and a Zod schema: amountSchema gives a form each amount's parse reason, and the schema's output holds exact decimal strings."
+      description="AsOfDatePicker and AmountInput with TanStack Form and a Zod schema: amountSchema gives a form each amount's parse reason, and the schema's output holds numbers."
     >
       <TicketForm />
     </Section>

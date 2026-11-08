@@ -3,13 +3,11 @@
  * Fields are quoted as RFC 4180 says: a field holding the separator, a double quote, a carriage return or a line feed
  * is wrapped in double quotes, with its own double quotes doubled, and records end with CRLF. A text cell that starts
  * with `=`, `+`, `-`, `@`, a tab or a carriage return is prefixed with `'`, so a spreadsheet shows it as text rather
- * than running it as a formula (OWASP's CSV injection guidance). Numbers, bigints and Decimals are written as numbers
+ * than running it as a formula (OWASP's CSV injection guidance). Numbers and bigints are written as numbers
  * and never prefixed, since their digits cannot form a formula and a negative number must stay a number. */
 
-import { Decimal } from "#numbers/decimal.ts";
-
 /** What a cell may hold. Format dates and other values in the column's `value`. */
-type Cell = string | number | bigint | boolean | Decimal | null | undefined;
+type Cell = string | number | bigint | boolean | null | undefined;
 
 interface Column<TRow> {
   /** The header row's text. */
@@ -31,7 +29,7 @@ function cellText(cell: Cell): string {
     // NaN and the infinities have no value a spreadsheet reads; the cell is left empty.
     return Number.isFinite(cell) ? String(cell) : "";
   }
-  if (typeof cell === "bigint" || cell instanceof Decimal) {
+  if (typeof cell === "bigint") {
     return cell.toString();
   }
   return formulaStarts.has(cell.charAt(0)) ? `'${cell}` : cell;

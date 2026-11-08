@@ -40,17 +40,17 @@ const suffixSets: Readonly<Record<string, Suffixes>> = {
 
 describe("AmountInput", () => {
   test.each([
-    { echo: "= 1,500,000", set: "amounts", typed: "1.5mm", value: "1500000" },
-    { echo: "= 250,000", set: "amounts", typed: "250k", value: "250000" },
-    { echo: "= 0.0025", set: "rates", typed: "25bp", value: "0.0025" },
-    { echo: "= 0.0525", set: "rates", typed: "5.25%", value: "0.0525" },
-    { echo: "= 5,000", set: "par", typed: "5M", value: "5000" },
-    { echo: "= 1,500,000", set: "par", typed: "1.5mm", value: "1500000" },
-    { echo: "= -1,234.5", set: "amounts", typed: "(1,234.50)", value: "-1234.5" },
+    { echo: "= 1,500,000", set: "amounts", typed: "1.5mm", value: 1_500_000 },
+    { echo: "= 250,000", set: "amounts", typed: "250k", value: 250_000 },
+    { echo: "= 0.0025", set: "rates", typed: "25bp", value: 0.0025 },
+    { echo: "= 0.0525", set: "rates", typed: "5.25%", value: 0.0525 },
+    { echo: "= 5,000", set: "par", typed: "5M", value: 5000 },
+    { echo: "= 1,500,000", set: "par", typed: "1.5mm", value: 1_500_000 },
+    { echo: "= -1,234.5", set: "amounts", typed: "(1,234.50)", value: -1234.5 },
   ])(
     "$typed with the $set suffixes reads as $value and echoes $echo",
     async ({ echo, set, typed, value }) => {
-      const onValueChange = vi.fn<(next: string | null) => void>();
+      const onValueChange = vi.fn<(next: number | string | null) => void>();
       const screen = await render(
         <AmountField suffixes={suffixSets[set]} onValueChange={onValueChange} />,
       );
@@ -65,7 +65,7 @@ describe("AmountInput", () => {
   );
 
   test("a field left with text it cannot read says why, and holds the text, not a number", async () => {
-    const onValueChange = vi.fn<(next: string | null) => void>();
+    const onValueChange = vi.fn<(next: number | string | null) => void>();
     const screen = await render(
       <AmountField suffixes={amountSuffixes} onValueChange={onValueChange} />,
     );
@@ -113,9 +113,9 @@ describe("AmountInput", () => {
   });
 
   test("clearing the field gives null and no echo", async () => {
-    const onValueChange = vi.fn<(next: string | null) => void>();
+    const onValueChange = vi.fn<(next: number | string | null) => void>();
     const screen = await render(
-      <AmountField defaultValue="250000" onValueChange={onValueChange} />,
+      <AmountField defaultValue={250_000} onValueChange={onValueChange} />,
     );
     const input = screen.getByRole("textbox", { name: "Amount" });
     await expect.element(screen.getByRole("status")).toHaveTextContent("= 250,000");
@@ -125,10 +125,10 @@ describe("AmountInput", () => {
   });
 
   test("a value set from outside replaces what was typed", async () => {
-    const screen = await render(<AmountField value="1500000" />);
+    const screen = await render(<AmountField value={1_500_000} />);
     const input = screen.getByRole("textbox", { name: "Amount" });
     await expect.element(input).toHaveValue("1500000");
-    await screen.rerender(<AmountField value="2000" />);
+    await screen.rerender(<AmountField value={2000} />);
     await expect.element(input).toHaveValue("2000");
     await expect.element(screen.getByRole("status")).toHaveTextContent("= 2,000");
   });

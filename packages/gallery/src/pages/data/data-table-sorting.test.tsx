@@ -100,17 +100,17 @@ describe("DataTable sorting", () => {
   test("missing values sort last whichever way the column sorts", async () => {
     interface Quote {
       readonly id: string;
-      readonly spread: string | null;
+      readonly spread: number | null;
     }
     const columns: readonly DataTableColumn<Quote>[] = [
       { header: "Bond", id: "id", value: (row) => row.id },
       { header: "Spread", id: "spread", value: (row) => row.spread, variant: "numeric" },
     ];
     const quotes: readonly Quote[] = [
-      { id: "A", spread: "42.5" },
+      { id: "A", spread: 42.5 },
       { id: "B", spread: null },
-      { id: "C", spread: "-3" },
-      { id: "D", spread: "120" },
+      { id: "C", spread: -3 },
+      { id: "D", spread: 120 },
     ];
     const screen = await render(
       <DataTable label="Quotes" columns={columns} data={quotes} getRowId={(row) => row.id} />,

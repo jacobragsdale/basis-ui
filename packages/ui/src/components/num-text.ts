@@ -1,29 +1,18 @@
-/* The text the number components show, through the formatter, so a value reads as it does in parallax's grid. Each
- * value type APIs send takes the formatter's path for it: decimal strings and Decimals the exact decimal path, doubles
- * the 15-digit float path, and bigints the integer path. Basis points and prices in 32nds are the formatter's own
- * formats, so `Bps` and `Price32` read as the grid's columns in those formats do. A rate is a fraction, as the
- * formatter takes it: `Pct` shows 0.0525 as 5.25% and `Bps` 0.0025 as 25 bp. Currencies and the sign of a signed value
- * are added around the formatter's text, never by rounding a double.
- *
- * A Decimal is read by its shape, `unscaled` and `scale`, rather than with `instanceof`, because `@basis/ui/numbers`
- * and the package's root can load two copies of the class: the source and the build. */
+/* The text the number components show, through the formatter, so a value reads as it does in parallax's grid. Every
+ * number an API sends is a double, and the formatter rounds it once, for display: to 15 significant digits, half away
+ * from zero, then to the decimals shown. Basis points and prices in 32nds are the formatter's own formats, so `Bps` and
+ * `Price32` read as the grid's columns in those formats do. A rate is a fraction: `Pct` shows 0.0525 as 5.25% and
+ * `Bps` 0.0025 as 25 bp. Currencies and the sign of a signed value are added around the formatter's text. */
 
 import { createFormatter, nullText, undefinedText } from "#format/format.ts";
 import type { Abbreviation, Format, Formatter, Negative, SuffixStyle } from "#format/format.ts";
-import { Decimal } from "#numbers/decimal.ts";
+import { parseDecimal } from "#numbers/decimal-text.ts";
 import type { Rounding } from "#numbers/rounding.ts";
 import { formatThirtySeconds } from "#numbers/thirty-seconds.ts";
 import type { ThirtySecondsPrecision } from "#numbers/thirty-seconds.ts";
 
-/** An exact decimal, as `Decimal` holds one: `unscaled × 10^-scale`. */
-interface DecimalLike {
-  readonly unscaled: bigint;
-  readonly scale: number;
-}
-
-/** A number as APIs send it: decimal text such as `"-1234.50"`, a `Decimal`, a double, or an integer as a bigint.
- * `null` and `undefined` show the formatter's text for null. */
-type NumericValue = string | DecimalLike | number | bigint | null | undefined;
+/** A number as an API sends it: a double. `null` and `undefined`, and NaN, show the formatter's text for null. */
+type NumericValue = number | null | undefined;
 
 /** How a number is written, as the formatter's `Format` has it. */
 interface NumberFormat {
@@ -93,28 +82,9 @@ function numberFormatter(
   });
 }
 
-/** A decimal string or a Decimal as a Decimal of this module's copy of the class. Throws `SyntaxError` for text that is
- * not a decimal number, as `Decimal.from` does: a response's schema should have rejected it. */
-function decimalOf(value: string | DecimalLike): Decimal {
-  if (typeof value === "string") {
-    return Decimal.from(value);
-  }
-  return Decimal.from(value.unscaled, value.scale);
-}
-
-/** A present value's text through a formatter, on the path its type takes. */
-function formattedText(
-  value: string | DecimalLike | number | bigint,
-  formatter: Formatter,
-): string {
-  if (typeof value === "number") {
-    return formatter.float(value);
-  }
-  if (typeof value === "bigint") {
-    return formatter.integer(value);
-  }
-  const decimal = decimalOf(value);
-  return formatter.decimal(decimal.unscaled, decimal.scale);
+/** A present value's text through a formatter. */
+function formattedText(value: number, formatter: Formatter): string {
+  return formatter.float(value);
 }
 
 /** The way a formatted number points: a minus or parentheses is a loss, any other non-zero digit a gain. */
@@ -146,6 +116,13 @@ function numText(value: NumericValue, format: NumberFormat = {}): Shown {
   return shown(formattedText(value, numberFormatter(format)));
 }
 
+/** Exact decimal text, such as what AmountInput read, written by the formatter at its own scale: `1500000` is
+ * `1,500,000` and `0.0025` stays `0.0025`. */
+function exactText(text: string): string {
+  const { scale, unscaled } = parseDecimal(text);
+  return numberFormatter({}).decimal(unscaled, scale);
+}
+
 /** A rate as `Pct` shows it: a fraction multiplied by 100 with `%`, so 0.0525 is 5.25%. */
 function pctText(value: NumericValue, format: NumberFormat = {}): Shown {
   if (value === null || value === undefined) {
@@ -155,7 +132,7 @@ function pctText(value: NumericValue, format: NumberFormat = {}): Shown {
 }
 
 /** A rate as `Bps` shows it, through the formatter's basis points: 0.0025 is `25 bp`, and `(25 bp)` a negative in
- * parentheses. The point moves four places after the formatter reads the value, so a decimal keeps every digit. */
+ * parentheses. The point moves four places after the formatter reads the value at 15 digits. */
 function bpsText(value: NumericValue, format: NumberFormat = {}): Shown {
   if (value === null || value === undefined) {
     return noValue;
@@ -203,17 +180,6 @@ interface PriceFormat {
   readonly rounding?: Rounding | undefined;
 }
 
-/** A 256th of a point needs eight decimals, so a double price reads exactly at this scale. */
-const priceScale = 8;
-
-/** A price as a Decimal; a double is read at eight decimals, enough for any 256th of a point. */
-function priceOf(value: string | DecimalLike | number | bigint, rounding: Rounding): Decimal {
-  if (typeof value === "number") {
-    return Decimal.fromNumber(value, priceScale, rounding);
-  }
-  return typeof value === "bigint" ? Decimal.from(value) : decimalOf(value);
-}
-
 /** A Treasury price as `Price32` shows it: `99-16+`. A double that is not finite has no price, and shows the
  * formatter's text for an undefined result. Rounded half away from zero, as by default, it is the formatter's 32nds,
  * which the grid writes; another rounding is the price's own. */
@@ -226,11 +192,11 @@ function price32Text(value: NumericValue, format: PriceFormat = {}): Shown {
   if (rounding === "half-away-from-zero") {
     return shown(formattedText(value, numberFormatter({}, { thirtySeconds: precision })));
   }
-  if (typeof value === "number" && !Number.isFinite(value)) {
+  if (!Number.isFinite(value)) {
     return shown(undefinedText);
   }
-  return shown(formatThirtySeconds(priceOf(value, rounding), { precision, rounding }));
+  return shown(formatThirtySeconds(value, { precision, rounding }));
 }
 
-export { bpsText, moneyText, numText, pctText, price32Text, signedText };
-export type { DecimalLike, Direction, NumberFormat, NumericValue, PriceFormat, Shown };
+export { bpsText, exactText, moneyText, numText, pctText, price32Text, signedText };
+export type { Direction, NumberFormat, NumericValue, PriceFormat, Shown };

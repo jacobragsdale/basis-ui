@@ -57,7 +57,7 @@ function AmountInputSection(): ReactElement {
   return (
     <Section
       title="AmountInput"
-      description="A field for amounts and rates, which reads 1.5mm, 250k or 25bp into an exact decimal string by the suffixes it declares, and shows the full number back."
+      description="A field for amounts and rates, which reads 1.5mm, 250k or 25bp by the suffixes it declares, exactly and then as a number, and shows the full number back."
     >
       <FieldGroup className="max-w-sm">
         {examples.map((example) => (

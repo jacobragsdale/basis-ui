@@ -1,5 +1,6 @@
 /* The rules behind the number components and AmountInput: the text each number shows through the formatter, and the
- * schema that gives a form the parse reason. The gallery's browser tests render the components themselves. */
+ * schema that gives a form the parse reason. Every value is a double, as APIs send them. The gallery's browser tests
+ * render the components themselves. */
 
 import { describe, expect, test } from "vite-plus/test";
 
@@ -12,39 +13,29 @@ import {
   signedText,
 } from "#components/num-text.ts";
 import { amountSchema, parSuffixes, rateSuffixes } from "#index.ts";
-import { Decimal } from "#numbers/index.ts";
 
 describe("number text", () => {
   test.each([
-    ["decimal text keeps its scale", numText("1234.50"), "1,234.50"],
-    ["a negative decimal", numText("-1234.5"), "-1,234.5"],
     ["a double shows two decimals", numText(1234.5), "1,234.50"],
-    ["a bigint shows none", numText(1234n), "1,234"],
-    ["a Decimal", numText(Decimal.from("-0.25")), "-0.25"],
+    ["a negative", numText(-1234.5), "-1,234.50"],
+    ["set decimals", numText(1234.5, { decimals: 1 }), "1,234.5"],
+    ["15 significant digits, then the decimals shown", numText(2.675, { decimals: 2 }), "2.68"],
     ["null", numText(null), ""],
-    ["abbreviated", numText("1500000", { abbreviate: "M" }), "1.5M"],
-    ["in parentheses", numText("-12.5", { negative: "parentheses" }), "(12.5)"],
-    ["without commas", numText(1_234_567n, { thousands: false }), "1234567"],
+    ["abbreviated", numText(1_500_000, { abbreviate: "M" }), "1.5M"],
+    ["in parentheses", numText(-12.5, { negative: "parentheses" }), "(12.50)"],
+    ["without commas", numText(1_234_567, { decimals: 0, thousands: false }), "1234567"],
     ["NaN", numText(Number.NaN), "—"],
   ])("%s", (_name, shown, text) => {
     expect(shown.text).toBe(text);
   });
 
-  test("a Decimal of another copy of the class reads by its shape", () => {
-    expect(numText({ scale: 2, unscaled: -123_450n }).text).toBe("-1,234.50");
-  });
-
-  test("text that is not a decimal throws, as Decimal.from does", () => {
-    expect(() => numText("12abc")).toThrow(SyntaxError);
-  });
-
   test.each([
-    ["1.25", "gain"],
-    ["-1.25", "loss"],
-    ["0", "none"],
-    ["0.001", "none"],
-    ["-0.001", "none"],
-  ] as const)("%s points to %s once rounded", (value, direction) => {
+    [1.25, "gain"],
+    [-1.25, "loss"],
+    [0, "none"],
+    [0.001, "none"],
+    [-0.001, "none"],
+  ] as const)("%d points to %s once rounded", (value, direction) => {
     expect(numText(value, { decimals: 2 }).direction).toBe(direction);
   });
 
@@ -57,32 +48,34 @@ describe("number text", () => {
 
 describe("money text", () => {
   test.each([
-    { currency: "USD", format: {}, text: "$1,234.50", value: "1234.5" },
-    { currency: "USD", format: {}, text: "-$1,234.50", value: "-1234.5" },
-    { currency: "USD", format: { negative: "parentheses" }, text: "($1,234.50)", value: "-1234.5" },
-    { currency: "EUR", format: {}, text: "€1,234.50", value: "1234.5" },
-    { currency: "JPY", format: {}, text: "¥1,234", value: "1234" },
-    { currency: "CHF", format: {}, text: "CHF\u00A01,234.50", value: "1234.5" },
-    { currency: "USD", format: { abbreviate: "M" }, text: "$1.5M", value: "1500000" },
-    { currency: "USD", format: { decimals: 4 }, text: "$1,234.5678", value: "1234.5678" },
+    { currency: "USD", format: {}, text: "$1,234.50", value: 1234.5 },
+    { currency: "USD", format: {}, text: "-$1,234.50", value: -1234.5 },
+    { currency: "USD", format: { negative: "parentheses" }, text: "($1,234.50)", value: -1234.5 },
+    { currency: "EUR", format: {}, text: "€1,234.50", value: 1234.5 },
+    { currency: "JPY", format: {}, text: "¥1,234", value: 1234 },
+    { currency: "CHF", format: {}, text: "CHF 1,234.50", value: 1234.5 },
+    { currency: "USD", format: { abbreviate: "M" }, text: "$1.5M", value: 1_500_000 },
+    { currency: "USD", format: { decimals: 4 }, text: "$1,234.5678", value: 1234.5678 },
   ] as const)("$value $currency with $format is $text", ({ currency, format, text, value }) => {
     expect(moneyText(value, currency, format).text).toBe(text);
   });
 
   test("a code that is not a currency throws", () => {
-    expect(() => moneyText("1", "DOLLARS")).toThrow(RangeError);
+    expect(() => moneyText(1, "DOLLARS")).toThrow(RangeError);
   });
 });
 
 describe("rate text", () => {
   test.each([
-    ["a fraction as decimal text", pctText("0.0525"), "5.25%"],
-    ["a fraction as a double", pctText(0.0525), "5.25%"],
+    ["a fraction as a percentage", pctText(0.0525), "5.25%"],
     ["a negative fraction", pctText(-0.001), "-0.10%"],
-    ["a fraction in basis points", bpsText("0.0025"), "25 bp"],
-    ["a fraction's scale carries over", bpsText("0.00125"), "12.5 bp"],
-    ["a double in basis points", bpsText(0.0025), "25.00 bp"],
-    ["basis points in parentheses", bpsText("-0.0025", { negative: "parentheses" }), "(25 bp)"],
+    ["a fraction in basis points", bpsText(0.0025), "25.00\u00A0bp"],
+    ["basis points at set decimals", bpsText(0.00125, { decimals: 1 }), "12.5\u00A0bp"],
+    [
+      "basis points in parentheses",
+      bpsText(-0.0025, { decimals: 0, negative: "parentheses" }),
+      "(25\u00A0bp)",
+    ],
   ])("%s", (_name, shown, text) => {
     expect(shown.text).toBe(text);
   });
@@ -90,24 +83,32 @@ describe("rate text", () => {
 
 describe("Treasury price text", () => {
   test.each([
-    ["99.515625", {}, "99-16+"],
+    [99.515625, {}, "99-16+"],
     [99.5078125, {}, "99-162"],
-    ["-0.140625", {}, "-0-04+"],
-    ["99.515625", { precision: "thirty-seconds" }, "99-17"],
-    [100n, {}, "100-00"],
-  ] as const)("%s with %o is %s", (value, format, text) => {
+    [-0.140625, {}, "-0-04+"],
+    [99.515625, { precision: "thirty-seconds" }, "99-17"],
+    [99.515625, { precision: "thirty-seconds", rounding: "half-even" }, "99-16"],
+    [100, {}, "100-00"],
+  ] as const)("%d with %o is %s", (value, format, text) => {
     expect(price32Text(value, format).text).toBe(text);
   });
 
   test("a double that is not finite has no price", () => {
     expect(price32Text(Number.POSITIVE_INFINITY).text).toBe("—");
+    expect(price32Text(Number.NaN, { rounding: "floor" }).text).toBe("—");
   });
 });
 
 describe(amountSchema, () => {
-  test("accepts the decimal an AmountInput read", () => {
-    expect(amountSchema(parSuffixes).parse("5000")).toBe("5000");
-    expect(amountSchema(rateSuffixes).parse("0.0025")).toBe("0.0025");
+  test("accepts the number an AmountInput read", () => {
+    expect(amountSchema(parSuffixes).parse(5000)).toBe(5000);
+    expect(amountSchema(rateSuffixes).parse(0.0025)).toBe(0.0025);
+  });
+
+  test("reads text the way the input does, exactly and then as a number", () => {
+    expect(amountSchema(parSuffixes).parse("5M")).toBe(5000);
+    expect(amountSchema(rateSuffixes).parse("25bp")).toBe(0.0025);
+    expect(amountSchema().parse("1.1mm")).toBe(1_100_000);
   });
 
   test("gives the parser's reason for text that reads as no number", () => {

@@ -2,17 +2,15 @@
  * definitions, sorts and searches by it, and writes it into CSV and TSV.
  *
  * A column's `value` is the one source for the cell's sort, the text filter, the copy and the export; its `cell` only
- * draws it. A numeric column's value is a number as an API sends it: decimal text, a Decimal, a double or a bigint.
- * DataTable reads decimal text and a Decimal into its own Decimal, by its shape, since an app's `@basis/ui/numbers` can
- * be a second copy of the class, so it sorts by value and exports as a number that no spreadsheet reads as a formula. */
+ * draws it. A numeric column's value is a double, as an API sends it, so it sorts by value and exports as a number that
+ * no spreadsheet reads as a formula. */
 
 import type { ReactNode } from "react";
 
-import { Decimal } from "#numbers/decimal.ts";
 import type { Cell, Column } from "#utils/export.ts";
 import { compareValues, isMissing } from "#utils/sort.ts";
 
-import type { DecimalLike, NumericValue } from "./num-text.ts";
+import type { NumericValue } from "./num-text.ts";
 
 /** What every column declares. */
 interface DataTableColumnBase<TRow> {
@@ -39,7 +37,7 @@ interface DataTableTextColumn<TRow> extends DataTableColumnBase<TRow> {
 /** A column of numbers, aligned right in tabular figures, as Table's `variant="numeric"` cells are. */
 interface DataTableNumericColumn<TRow> extends DataTableColumnBase<TRow> {
   readonly variant: "numeric";
-  /** The number as the API sends it; decimal text must be a decimal, as `Decimal.from` reads it. */
+  /** The number, a double as the API sends it. */
   readonly value: (row: TRow) => NumericValue;
 }
 
@@ -65,32 +63,16 @@ interface DataTableSort {
 const defaultRowCap = 2000;
 
 /** A value as DataTable sorts, searches and exports it: missing values as `undefined`, which sort last either way. */
-type SortableCell = string | number | bigint | boolean | Decimal | undefined;
+type SortableCell = string | number | bigint | boolean | undefined;
 
-function isDecimalLike(value: unknown): value is DecimalLike {
-  return typeof value === "object" && value !== null && "unscaled" in value && "scale" in value;
-}
-
-/** A numeric column's value as this package's Decimal, number or bigint. */
+/** A numeric column's value; NaN and a missing value sort last. */
 function numericCell(value: NumericValue): SortableCell {
-  if (value === null || value === undefined) {
-    return undefined;
-  }
-  if (typeof value === "string") {
-    return Decimal.from(value);
-  }
-  if (isDecimalLike(value)) {
-    return Decimal.from(value.unscaled, value.scale);
-  }
-  return isMissing(value) ? undefined : value;
+  return value === null || value === undefined || isMissing(value) ? undefined : value;
 }
 
-/** A text column's value, with a Decimal from another copy of the class read as this package's. */
+/** A text column's value. */
 function textCell(value: Cell): SortableCell {
-  if (value === null || value === undefined || isMissing(value)) {
-    return undefined;
-  }
-  return isDecimalLike(value) ? Decimal.from(value.unscaled, value.scale) : value;
+  return value === null || value === undefined || isMissing(value) ? undefined : value;
 }
 
 /** The column's value for a row, ready to sort, search and export. */
@@ -108,10 +90,7 @@ function cellText(value: unknown): string {
   if (typeof value === "string") {
     return value;
   }
-  if (typeof value === "number" || typeof value === "bigint") {
-    return String(value);
-  }
-  return value instanceof Decimal ? value.toString() : "";
+  return typeof value === "number" || typeof value === "bigint" ? String(value) : "";
 }
 
 /** Whether a value's text holds what the filter asks for, ignoring case. */
@@ -120,7 +99,7 @@ function matchesFilter(value: unknown, filter: unknown): boolean {
   return cellText(value).toLocaleLowerCase("en-US").includes(wanted);
 }
 
-/** Two values in ascending order, by `sortBy`'s rules: numbers and Decimals by value, text as people read it. */
+/** Two values in ascending order, by `sortBy`'s rules: numbers by value, text as people read it. */
 function compareCells(left: unknown, right: unknown): number {
   return compareValues(left, right);
 }
