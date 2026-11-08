@@ -7,7 +7,8 @@ page](https://github.com/jacobragsdale/basis/blob/main/docs/design.md#what-a-ui-
 [docs/design.md](docs/design.md) holds the decisions and their reasons, and [docs/roadmap.md](docs/roadmap.md) the
 phases, their steps, and the lanes that run at the same time. The code is a pnpm workspace run by Vite+'s `vp`, with
 `@basis/ui` in `packages/ui`, its gallery in `packages/gallery`, an example app on the app shell and a generated client
-in `packages/example`, parallax, moved in with its history, in `packages/parallax`: its Rust crates and the
+in `packages/example`, an app configured by hand with exactly the README's lines, as ctzd writes its apps, in
+`packages/consumer`, parallax, moved in with its history, in `packages/parallax`: its Rust crates and the
 `@basis/parallax` package, and parallax's demo, a React app on both packages, in `packages/parallax-demo`.
 [packages/ui/README.md](packages/ui/README.md) says how an app uses `@basis/ui` and how a component is added, and
 [packages/parallax/README.md](packages/parallax/README.md) how it uses `@basis/parallax`.

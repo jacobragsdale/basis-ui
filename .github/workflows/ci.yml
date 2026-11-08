@@ -46,6 +46,8 @@ jobs:
               - "packages/gallery/**"
               # The client tasks' tests also generate a client from the example's copy of basis's sample document.
               - "packages/example/**"
+              # The app ctzd-style hand-written configuration is checked on.
+              - "packages/consumer/**"
               # The formatter's tests read the fixtures parallax's Rust formatter writes.
               - "packages/parallax/crates/parallax-engine/tests/fixtures/format.json"
               - "package.json"
@@ -81,6 +83,8 @@ jobs:
       - run: vp run @basis/example#client-check
       - run: vp run @basis/example#test
       - run: vp run @basis/example#build
+      # The consumer app is configured by hand with the README's lines, as ctzd writes its apps, and must build.
+      - run: vp run @basis/consumer#build
 
   # @basis/parallax: the protocol's generated code, the engine built for the browser, the package built around it, and
   # its tests, in Node and in Chromium, then the demo's tests and build on it. It depends on @basis/ui, so it runs when

@@ -1,0 +1,27 @@
+{
+  "name": "@basis/consumer",
+  "version": "0.0.0",
+  "private": true,
+  "description": "An app written by hand the way ctzd writes one: its vite.config.ts, tsconfig.json and src/styles.css are exactly the lines packages/ui/README.md shows, so a change that breaks hand-written configuration fails here.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "build": "vp build"
+  },
+  "dependencies": {
+    "@basis/ui": "workspace:*",
+    "@tanstack/react-query": "catalog:",
+    "@tanstack/react-router": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@faker-js/faker": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "msw": "catalog:",
+    "typescript": "catalog:",
+    "vite-plus": "catalog:"
+  }
+}

@@ -198,11 +198,13 @@ second consumer on 2026-11-07: 1.12 and 1.13 wait on basis's contract, and 1.14 
 
 16. **1.16 ctzd's surface.** Keep working what the design's [Consumers](design.md#consumers) section says ctzd uses:
     - a test app in this repo whose `vite.config.ts`, `tsconfig.json` and `styles.css` are exactly the lines
-      `packages/ui/README.md` shows, checked, tested and built in CI;
-    - an anonymous sign-in for `BasisApp`;
+      `packages/ui/README.md` shows, checked, tested and built in CI (built: `packages/consumer`, held to the README by
+      `@basis/ui`'s `readme-config` test);
+    - an anonymous sign-in for `BasisApp` (built: `anonymousSignIn()`);
     - a test for each error the preset adds, and for the React Compiler's bail-outs, that the message names its fix.
 
-    Needs 1.3.
+    Needs 1.3. Until 1.8 publishes the packages, ctzd installs them from tarballs that `~/dev/basis-ui-dist/pack.sh`
+    packs from `main` on the build host.
 
 ## Phase 2: parallax in the browser
 
