@@ -7,6 +7,7 @@ import { execFileSync } from "node:child_process";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 
 import { afterAll, describe, expect, test } from "vite-plus/test";
+import { z } from "zod";
 
 const consumer = new URL("../../consumer/", import.meta.url);
 const probeFolder = new URL(".lint-probe/", consumer);
@@ -25,17 +26,31 @@ export const format = new Intl.NumberFormat("en-US");
 export const whole = [Math.floor(price), Math.trunc(price)];
 `;
 
-/** `vp lint`'s report on the probe, run as the app runs it. */
+const spanSchema = z.object({ line: z.number() });
+const labelSchema = z.object({ span: spanSchema });
+const diagnosticSchema = z.object({
+  code: z.string(),
+  help: z.string().optional(),
+  labels: z.array(labelSchema),
+  message: z.string(),
+});
+const reportSchema = z.object({ diagnostics: z.array(diagnosticSchema) });
+
+/** The probe's line holding `text`, counted from 1. */
+function lineOf(text: string): number {
+  return probe.split("\n").findIndex((source) => source.includes(text)) + 1;
+}
+
+/** `vp lint`'s JSON report on the probe, run as the app runs it: JSON, so CI's annotations do not drop the help. */
 function lintReport(): string {
   rmSync(probeFolder, { force: true, recursive: true });
   mkdirSync(probeFolder, { recursive: true });
   writeFileSync(new URL("probe.ts", probeFolder), probe);
   const vp = new URL("node_modules/.bin/vp", consumer).pathname;
   try {
-    return execFileSync(vp, ["lint", ".lint-probe/probe.ts"], {
+    return execFileSync(vp, ["lint", "--format", "json", ".lint-probe/probe.ts"], {
       cwd: consumer,
       encoding: "utf8",
-      env: { ...process.env, NO_COLOR: "1" },
     });
   } catch (error) {
     return error instanceof Error && "stdout" in error ? String(error.stdout) : String(error);
@@ -43,14 +58,23 @@ function lintReport(): string {
 }
 
 const report = lintReport();
-const lines = report.split("\n");
-const findings = lines.filter((line) => line.includes("no-restricted-properties"));
+const reportJson: unknown = JSON.parse(report.slice(report.indexOf("{")));
+const { diagnostics } = reportSchema.parse(reportJson);
 
-/** The finding a rule reports at the line of the probe that holds `text`. */
+/** What a rule reports at the probe's line holding `text`: its message and its help, on one line. */
 function findingFor(rule: string, text: string): string | undefined {
-  const line = probe.split("\n").findIndex((source) => source.includes(text)) + 1;
-  return lines.find((entry) => entry.includes(rule) && entry.includes(`probe.ts:${String(line)}:`));
+  const line = lineOf(text);
+  const atLine = (diagnostic: z.infer<typeof diagnosticSchema>): boolean =>
+    diagnostic.labels.some(({ span }) => span.line === line);
+  const found = diagnostics.find(
+    (diagnostic) => diagnostic.code.includes(rule) && atLine(diagnostic),
+  );
+  return found === undefined ? undefined : `${found.message} ${found.help ?? ""}`;
 }
+
+const findings = diagnostics
+  .filter(({ code }) => code.includes("no-restricted-properties"))
+  .map(({ message, help }) => `${message} ${help ?? ""}`);
 
 afterAll(() => {
   rmSync(probeFolder, { force: true, recursive: true });

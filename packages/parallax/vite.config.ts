@@ -1,6 +1,8 @@
 import babel from "@rolldown/plugin-babel";
 import { basisPlugins, basisTest } from "@basis/ui/preset";
 import { reactCompilerPreset } from "@vitejs/plugin-react";
+import { fileURLToPath } from "node:url";
+
 import { defineConfig } from "vite-plus";
 
 // The Rust the engine is built from: the wasm task runs again only when one of these changes.
@@ -22,8 +24,17 @@ export default defineConfig({
     /* The worker's bundle loads the engine from beside itself, where wasm-bindgen's glue looks for it, so an app's
      * bundler finds it as an asset of the worker. */
     copy: [{ from: "wasm/parallax_wasm_bg.wasm", to: "dist" }],
-    // The React Compiler, as `@basis/ui` builds with it: a hook that breaks the rules of React fails the build.
     plugins: [
+      /* The built package starts the worker shipped beside it; its source, which the harnesses build, has none, and
+       * Vite would fail to bundle a worker URL that finds nothing. */
+      {
+        name: "parallax:packaged-worker",
+        resolveId: (source: string): string | null =>
+          source === "#engine/packaged-worker.ts"
+            ? fileURLToPath(new URL("src/engine/packaged-worker.build.ts", import.meta.url))
+            : null,
+      },
+      // The React Compiler, as `@basis/ui` builds with it: a hook that breaks the rules of React fails the build.
       babel({
         presets: [
           reactCompilerPreset({

@@ -4,6 +4,8 @@
  *
  * so every UI repo checks, builds and tests the same way, and an upgrade of `@basis/ui` changes all of them at once. */
 
+import { createRequire } from "node:module";
+import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { lazyPlugins } from "vite-plus";
@@ -109,12 +111,40 @@ function testDependenciesPlugin(): Plugin {
   };
 }
 
+/** What `@basis/parallax` imports from outside the workspace's own packages, which Vite pre-bundles for it. */
+const parallaxDependencies = [
+  "apache-arrow",
+  "@bufbuild/protobuf",
+  "@bufbuild/protobuf/codegenv2",
+  "cn",
+  "zod",
+];
+
+/** Whether the app at `root` has `@basis/parallax` installed. */
+function hasParallax(root: string): boolean {
+  try {
+    createRequire(path.join(root, "package.json")).resolve("@basis/parallax/package.json");
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /** `@basis/parallax` starts its engine's worker from a URL beside its own code. Vite's dependency optimizer would
  * bundle the package elsewhere, where that URL finds nothing in `vp dev`; left out of the optimizer, the package is
- * served from where it is installed, and its worker beside it. A build bundles the worker either way. */
+ * served from where it is installed, and its worker beside it. A build bundles the worker either way. Its own
+ * dependencies are pre-bundled through it, so Vite does not find them mid-run and reload the page, or the tests. */
 function parallaxWorkerPlugin(): Plugin {
   return {
-    config: () => ({ optimizeDeps: { exclude: ["@basis/parallax"] } }),
+    config: (config) =>
+      hasParallax(config.root ?? process.cwd())
+        ? {
+            optimizeDeps: {
+              exclude: ["@basis/parallax"],
+              include: parallaxDependencies.map((name) => `@basis/parallax > ${name}`),
+            },
+          }
+        : {},
     name: "basis:parallax-worker",
   };
 }

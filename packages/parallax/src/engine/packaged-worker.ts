@@ -1,11 +1,12 @@
-/* The engine's worker as the built package ships it: `worker.mjs`, beside the bundle that holds this module. An app's
- * bundler finds a worker written as `new Worker(new URL(..., import.meta.url))` and bundles it with its wasm, so an app
- * needs no `?worker` import of its own. `basisPlugins()` keeps Vite's dependency optimizer away from this package, so
- * that in `vp dev` the URL still resolves beside the package's own files. */
+/* The engine's worker, as ParallaxProvider starts it when given none. Run from its source, as this repo's harnesses and
+ * tests run it, the package has no built worker beside it, so it asks for one; the package's build replaces this module
+ * with packaged-worker.build.ts (vite.config.ts), which starts the worker shipped beside the bundle. */
 
-/** Starts the packaged engine's worker. The package's own tests, which run its source, pass a worker of their own. */
+/** Fails: the package's source has no built worker, so a page that runs it passes ParallaxProvider its own. */
 function packagedWorker(): Worker {
-  return new Worker(new URL("worker.mjs", import.meta.url), { name: "parallax", type: "module" });
+  throw new Error(
+    "ERROR @basis/parallax runs from its source here, which has no built worker beside it: pass ParallaxProvider a worker, as the harnesses do, or use the built package.",
+  );
 }
 
 export { packagedWorker };

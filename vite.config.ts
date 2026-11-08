@@ -30,6 +30,7 @@ const nodeCode = [
   "packages/*/tests/**",
   "packages/ui/src/preset/**",
   "packages/ui/src/catalogue/**",
+  "packages/*/vite.config.ts",
 ];
 
 export default defineConfig({
