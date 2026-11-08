@@ -223,6 +223,8 @@ async function basisTest({
       headless: true,
       instances: [{ browser: "chromium" }],
       provider: playwright(),
+      // A desktop, as the firm's users have, so the shell lays out as it does for them, its sidebar open.
+      viewport: { height: 720, width: 1280 },
     },
   };
 }

@@ -4645,6 +4645,130 @@
     },
     {
       "extends": [],
+      "family": "app-shell",
+      "name": "AppShell",
+      "props": [
+        {
+          "description": "The app's name, at the top of the sidebar.",
+          "name": "appName",
+          "optional": false,
+          "type": "string"
+        },
+        {
+          "description": "The environment the app runs in, which a banner names; none unless set.",
+          "name": "environment",
+          "optional": true,
+          "type": "\"dev\" | \"qa\" | \"prod\" | undefined"
+        },
+        {
+          "description": "Commands the palette offers beside the app's pages.",
+          "name": "commands",
+          "optional": true,
+          "type": "readonly PaletteCommand[] | undefined"
+        },
+        {
+          "description": "The page; the matched route's, through `<Outlet />`, unless set.",
+          "name": "children",
+          "optional": true,
+          "type": "ReactNode"
+        }
+      ],
+      "purpose": "The layout of an app's pages: the sidebar built from the routes, a header with the breadcrumbs, the environment banner, Ctrl+K's command palette and `?`'s list of shortcuts. Make it the root route's component.",
+      "variants": {},
+      "example": "import { AppShell } from \"@basis/ui\";\nimport { createRootRoute } from \"@tanstack/react-router\";\n\nexport const rootRoute = createRootRoute({\n  component: () => <AppShell appName=\"Positions\" environment=\"qa\" />,\n});\n"
+    },
+    {
+      "extends": [],
+      "family": "app-sidebar",
+      "name": "AppSidebar",
+      "props": [
+        {
+          "description": "",
+          "name": "appName",
+          "optional": false,
+          "type": "string"
+        }
+      ],
+      "purpose": "The sidebar of an app's pages, from the titles its routes set in `staticData`. `AppShell` holds one.",
+      "variants": {},
+      "example": "import { AppSidebar, SidebarInset, SidebarProvider } from \"@basis/ui\";\n\n<SidebarProvider>\n  <AppSidebar appName=\"Positions\" />\n  <SidebarInset>Page</SidebarInset>\n</SidebarProvider>;\n"
+    },
+    {
+      "extends": [],
+      "family": "command-palette",
+      "name": "CommandPalette",
+      "props": [
+        {
+          "description": "",
+          "name": "commands",
+          "optional": true,
+          "type": "readonly PaletteCommand[] | undefined"
+        }
+      ],
+      "purpose": "Opens with Ctrl+K and goes to any page of the app, or runs one of `commands`. `AppShell` holds one.",
+      "variants": {},
+      "example": "import { CommandPalette, ShortcutProvider } from \"@basis/ui\";\n\n<ShortcutProvider>\n  <CommandPalette commands={[{ id: \"refresh\", label: \"Refresh prices\", run: () => undefined }]} />\n</ShortcutProvider>;\n"
+    },
+    {
+      "extends": [
+        "Omit<ComponentProps<\"output\">, \"children\">"
+      ],
+      "family": "environment-banner",
+      "name": "EnvironmentBanner",
+      "props": [
+        {
+          "description": "The environment: `dev`, `qa` or `prod`.",
+          "name": "environment",
+          "optional": false,
+          "type": "keyof typeof environmentClasses"
+        },
+        {
+          "description": "What it says after the environment's name, such as the API it calls.",
+          "name": "detail",
+          "optional": true,
+          "type": "string | undefined"
+        }
+      ],
+      "purpose": "A thin bar across the top of the page naming the environment, in its own colour: development, QA or production.",
+      "variants": {},
+      "example": "import { EnvironmentBanner } from \"@basis/ui\";\n\n<EnvironmentBanner environment=\"qa\" detail=\"positions-api, QA cluster\" />;\n"
+    },
+    {
+      "extends": [],
+      "family": "route-breadcrumbs",
+      "name": "RouteBreadcrumbs",
+      "props": [],
+      "purpose": "The trail to the page shown, from the titles its routes set in `staticData`. `AppShell` puts it in the header.",
+      "variants": {},
+      "example": "import { RouteBreadcrumbs } from \"@basis/ui\";\n\n<RouteBreadcrumbs />;\n"
+    },
+    {
+      "extends": [],
+      "family": "shortcuts",
+      "name": "ShortcutProvider",
+      "props": [
+        {
+          "description": "",
+          "name": "children",
+          "optional": true,
+          "type": "ReactNode"
+        }
+      ],
+      "purpose": "Keeps the page's keyboard shortcuts: one listener answers them, and `?` opens a list of every one. `AppShell` holds one; an app without the shell wraps its routes in one to use `useShortcut`.",
+      "variants": {},
+      "example": "import { Button, ShortcutProvider, useShortcut } from \"@basis/ui\";\n\nfunction Refresh({ onRefresh }: { readonly onRefresh: () => void }) {\n  useShortcut(\"r\", \"Refresh the positions\", onRefresh);\n  return <Button onClick={onRefresh}>Refresh</Button>;\n}\n\n<ShortcutProvider>\n  <Refresh onRefresh={() => undefined} />\n</ShortcutProvider>;\n"
+    },
+    {
+      "extends": [],
+      "family": "user-menu",
+      "name": "UserMenu",
+      "props": [],
+      "purpose": "The signed-in user's menu: the mode (system, light or dark) and density (comfortable or compact) every app shows, and signing in or out. Inside `BasisApp`, which keeps the session; `AppShell` puts it in the sidebar's footer.",
+      "variants": {},
+      "example": "import { UserMenu } from \"@basis/ui\";\n\n<UserMenu />;\n"
+    },
+    {
+      "extends": [],
       "family": "data-table",
       "name": "DataTable",
       "props": [

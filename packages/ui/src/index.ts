@@ -369,6 +369,16 @@ export { DateTime } from "./components/date-time.tsx";
 export type { DateTimePart, DateTimeValue } from "./components/date-time-text.ts";
 export { Bps, Money, Num, Pct, Price32 } from "./components/num.tsx";
 export { Formatted } from "./components/formatted.tsx";
+// The shell's parts: the layout of an app's pages, built from its route tree.
+export { AppShell, type AppShellProps } from "./components/app-shell.tsx";
+export { AppSidebar } from "./components/app-sidebar.tsx";
+export { CommandPalette, type PaletteCommand } from "./components/command-palette.tsx";
+export { EnvironmentBanner } from "./components/environment-banner.tsx";
+export { RouteBreadcrumbs } from "./components/route-breadcrumbs.tsx";
+export { useRouteEntries, type RouteEntry } from "./components/route-entries.ts";
+export { ShortcutProvider } from "./components/shortcuts.tsx";
+export { useShortcut, type Shortcut } from "./components/shortcuts-context.ts";
+export { UserMenu } from "./components/user-menu.tsx";
 export {
   displayFormatMetadata,
   displayFormatSchema,

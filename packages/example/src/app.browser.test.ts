@@ -3,6 +3,7 @@
 
 import { fakeSignIn, problemSchema, validationProblemSchema } from "@basis/ui";
 import type { Problem, SignIn, ValidationProblem } from "@basis/ui";
+import type { RenderResult } from "vitest-browser-react";
 import { describe, expect, expectTypeOf, test } from "vite-plus/test";
 
 import type { DayCount, ProblemOutput, ValidationProblemOutput } from "#api/client.ts";
@@ -15,6 +16,12 @@ import { renderApp, worker } from "#test-support.tsx";
 
 const conventions: DayCount[] = [{ convention: "ACT/360", year_days: 360 }];
 
+/** Opens the user menu, shown under `name`, and chooses `item`. */
+async function fromUserMenu(screen: RenderResult, name: string, item: string): Promise<void> {
+  await screen.getByRole("button", { name }).click();
+  await screen.getByRole("menuitem", { name: item }).click();
+}
+
 describe("signing in and out", () => {
   test("shows the signed-in user, and after signing out asks the API anonymously", async () => {
     const authorizations: (string | null)[] = [];
@@ -26,7 +33,7 @@ describe("signing in and out", () => {
     );
     const { screen } = await renderApp("/");
     await expect.element(screen.getByText("Dev User")).toBeVisible();
-    await screen.getByRole("button", { name: "Sign out" }).click();
+    await fromUserMenu(screen, "Dev User", "Sign out");
     await expect.element(screen.getByText("Signed out")).toBeVisible();
     await expect.element(screen.getByRole("cell", { name: "ACT/360" })).toBeVisible();
     expect(authorizations).toHaveLength(2);
@@ -44,7 +51,7 @@ describe("signing in and out", () => {
     );
     const { screen } = await renderApp("/", fakeSignIn({ user: null }));
     await expect.element(screen.getByText("Signed out")).toBeVisible();
-    await screen.getByRole("banner").getByRole("button", { name: "Sign in" }).click();
+    await fromUserMenu(screen, "Signed out", "Sign in");
     await expect.element(screen.getByText("Dev User")).toBeVisible();
     await expect.poll(() => authorizations).toHaveLength(2);
     expect(authorizations[0]).toBeNull();

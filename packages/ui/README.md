@@ -558,6 +558,26 @@ Overlays animate with a short fade and scale, or a short slide for Sheet and Dra
 
 ## Laying out an app
 
+`AppShell` is the layout of an app's pages: make it the root route's component, and give each route a `title` (and an
+`icon`) in its `staticData`. It builds the sidebar of the app's pages (`AppSidebar`), the breadcrumbs
+(`RouteBreadcrumbs`) and Ctrl+K's command palette (`CommandPalette`) from those titles, names the environment in a
+banner (`EnvironmentBanner`), puts the user menu (`UserMenu`: mode, density, sign in and out) in the sidebar's footer,
+and keeps the keyboard shortcuts, which a component declares with `useShortcut(keys, description, run)` and `?` lists.
+A route with path parameters, such as `/bonds/$security`, keeps its breadcrumb but stays out of the sidebar and the
+palette; `inNavigation: false` leaves any route out.
+
+```tsx
+const rootRoute = createRootRoute({
+  component: () => <AppShell appName="Positions" environment="qa" />,
+});
+const positions = createRoute({
+  component: PositionsPage,
+  getParentRoute: () => rootRoute,
+  path: "/positions",
+  staticData: { icon: TableIcon, title: "Positions" },
+});
+```
+
 The navigation and layout components keep shadcn's names, props and parts. Where they differ, it is here:
 
 - **Sidebar.** `SidebarProvider` keeps whether the sidebar is open in the `basis-ui-sidebar` cookie for a week, and

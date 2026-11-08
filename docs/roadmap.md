@@ -157,7 +157,10 @@ second consumer on 2026-11-07: 1.12 and 1.13 wait on basis's contract, and 1.14 
       split panes and shortcuts;
     - query states, `Sparkline` and the in-cell bar.
 
-    Each has its gallery page. Needs 1.3, 1.4, and 2.1 for the formatter's fixtures.
+    Each has its gallery page. Needs 1.3, 1.4, and 2.1 for the formatter's fixtures. On 2026-11-08 the shell's parts were built
+    but for the filter bar, saved views and split panes: `AppShell`, with the sidebar, breadcrumbs and command palette
+    built from routes' `staticData`, the environment banner, the user menu and the shortcut registry with its `?`
+    list, used and tested by the example app; t1b built `Sparkline`, `CellBar` and `QueryState`.
 
 11. **1.11 Utilities.** Build the four modules the design's Utilities section lists, two agents at once: `dates`, with
     the SIFMA calendar first since the firm trades US fixed income, then the NYSE's and TARGET2's, alongside
