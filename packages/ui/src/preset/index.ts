@@ -14,6 +14,7 @@ import type { OxlintConfig } from "vite-plus/lint";
 
 import { withCompilerFixes } from "./compiler-fixes.ts";
 import { headScriptPlugin } from "./head-script.ts";
+import { precompressPlugin } from "./precompress.ts";
 import { lint } from "./lint.ts";
 
 type Task = NonNullable<NonNullable<ViteUserConfig["run"]>["tasks"]>[string];
@@ -183,6 +184,7 @@ function basisPlugins(): PluginOption[] {
         fixtureModePlugin({ liveApi: liveApi() }),
         testDependenciesPlugin(),
         parallaxWorkerPlugin(),
+        precompressPlugin(),
       ];
     }) ?? []
   );

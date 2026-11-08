@@ -438,6 +438,14 @@ image in. So visual baselines are made and compared only in WSL, with the Chromi
 `@basis/ui` bundles, and on Windows `vp run check-full` says it skipped the comparison and to run it in WSL. An agent on
 Windows still takes screenshots to look at.
 
+## Serving the build
+
+`vp build` writes a `.br` and a `.gz` beside every built file over 1 KB that compression helps, so whatever serves the
+UI, basis-api or the template's image, sends the precompressed file the browser accepts rather than the raw one,
+with `Cache-Control: immutable` for the hashed assets and `no-cache` for `index.html`. Brotli runs at quality 11, or 9
+for files over 1 MB, where 11 took 7 s on parallax's wasm for 13% less; the step adds tenths of a second to a build.
+The maintainer asked for it on 2026-11-08, finding the demos slow when served uncompressed.
+
 ## Gates without CI
 
 Every UI repo has Node, so basis-ui uses Vite+'s own hooks: `vp config`, run from the repo's `prepare` script, installs

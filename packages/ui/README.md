@@ -86,6 +86,12 @@ To set the app up:
 6. Name `.fixtures/` in the app's `.gitignore`. It holds the records `basis records export` writes for fixture mode,
    which hold client data and are never committed.
 
+`vp build` also writes `FILE.gz` and `FILE.br` beside each built file over 1 KB that compression helps (scripts,
+styles, HTML, JSON, SVG, wasm, Arrow), so the server sends the smaller one the browser accepts without compressing on
+each request: Brotli at quality 11, or 9 for a file over 1 MB, and gzip at 9. It adds about 0.1 s to the example's
+build and 0.3 s to parallax's demo's, whose 5 MB of wasm ships as 1.1 MB. A server should send `Cache-Control:
+public, max-age=31536000, immutable` for the hashed files in `assets/` and `no-cache` for `index.html`.
+
 To confirm the setup, run `vp check`, `vp test` and `vp build`. The built `dist/index.html` holds the head script, in
 a `<script>` before `</head>`.
 
