@@ -127,6 +127,14 @@ const drawingSchema = z.discriminatedUnion("kind", [
   z.strictObject({ kind: z.literal("note"), at: anchorSchema, text: z.string().max(maxNote) }),
 ]);
 
+/** A pane under a line or area chart's plot: its columns, as lines or bars, and a title. Its default kind and empty
+ * title are left out, as in Rust. */
+const paneSchema = z.strictObject({
+  columns: z.array(name),
+  kind: z.enum(["line", "bar"]).optional(),
+  title: z.string().optional(),
+});
+
 const chartSchema = z.strictObject({
   kind: z.enum(chartKinds),
   x: z.string().default(""),
@@ -161,6 +169,8 @@ const chartSchema = z.strictObject({
   // that closes before it opens trades overnight, for the day it closes on. Left out when unset, as in Rust.
   calendar: z.enum(["nyse", "sifma"]).optional(),
   session: z.strictObject({ opens: clock, closes: clock }).optional(),
+  // Panes under a line or area chart's plot, each with columns of its own. Left out when unset, as in Rust.
+  panes: z.array(paneSchema).optional(),
 });
 
 /** A chart of a layout. */

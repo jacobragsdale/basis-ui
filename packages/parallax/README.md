@@ -285,6 +285,31 @@ axis for curves:
 A tenor axis puts the standard tenors one step apart, 1M, 3M, 6M, 1Y and so on
 to 30Y, and labels them; `tenor_spacing: "length"` spaces them by years.
 
+A line or area chart's `panes` draw more columns under the plot, on its x axis,
+sharing its crosshair and zoom: each lists its `columns`, draws them as lines
+or `kind: "bar"`, and has a `title`. A pane's series take the colours of the
+plot's series of the same key, its axis reads in its first column's format, and
+a series with no values is left out, so curves on three dates read with their
+change in basis points below:
+
+```tsx
+<Chart
+  dataset={curves}
+  layout={{
+    filters: [{ column: "curve_date", op: "in", values: ["2026-10-30", "2026-11-23", "2026-11-30"] }],
+    formats: { yield: { percent: true, decimals: 3 }, change: { bps: true, decimals: 1 } },
+    chart: {
+      kind: "line",
+      x: "tenor",
+      y: ["yield"],
+      series: "curve_date",
+      axis: "tenor",
+      panes: [{ columns: ["change"], kind: "bar", title: "Change on the day" }],
+    },
+  }}
+/>
+```
+
 A trading-time axis follows the NYSE's calendar and its 09:30 to 16:00 session
 unless the chart names another. `calendar: "sifma"` takes the bond market's:
 its closes, such as Columbus Day and Veterans Day, take no space, and its 2 p.m.

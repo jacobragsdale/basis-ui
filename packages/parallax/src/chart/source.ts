@@ -171,6 +171,7 @@ function shapeOf(given: Layout): string {
           chart.ohlc,
           chart.indicators,
           chart.volume,
+          chart.panes ?? [],
           layout.group_by,
           layout.split_by,
           layout.measures,

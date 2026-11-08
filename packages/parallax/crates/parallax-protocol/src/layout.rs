@@ -283,6 +283,42 @@ pub struct LayoutSession {
     pub closes: String,
 }
 
+/// How a pane under a chart draws its columns, in a layout.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum PaneKindName {
+    /// A line through each series.
+    #[default]
+    Line,
+    /// A bar from zero at each point: in the up and down colours for one
+    /// series, side by side in the series' colours for several.
+    Bar,
+}
+
+impl PaneKindName {
+    fn is_line(&self) -> bool {
+        *self == Self::Line
+    }
+}
+
+/// A pane under a line or area chart's plot, in a layout: columns of its own on
+/// a value axis of its own, on the chart's x axis, sharing its crosshair and
+/// zoom, as an indicator's pane does, such as the change in basis points under
+/// curves.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct LayoutPane {
+    /// The numeric columns it draws, split into series as the plot's are; a
+    /// series with no values in the range shown is left out.
+    pub columns: Vec<String>,
+    /// Lines or bars.
+    #[serde(default, skip_serializing_if = "PaneKindName::is_line")]
+    pub kind: PaneKindName,
+    /// Its title; its columns' names if empty.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub title: String,
+}
+
 /// The price columns of a candlestick or OHLC chart, in a layout.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
@@ -581,6 +617,9 @@ pub struct LayoutChart {
     /// A trading-time axis's session; the calendar's regular session if absent.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub session: Option<LayoutSession>,
+    /// Panes under a line or area chart's plot, each with columns of its own.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub panes: Vec<LayoutPane>,
     /// A scatter's numeric column whose magnitude sets each dot's area, such as
     /// DV01 or par.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -614,7 +653,14 @@ impl LayoutChart {
         Some(ChartConfig {
             kind: self.kind.reduced()?,
             x: self.x.clone(),
-            y: self.y.iter().chain(&self.y_right).cloned().collect(),
+            // Panes' columns are reduced as the plot's are, after them.
+            y: self
+                .y
+                .iter()
+                .chain(&self.y_right)
+                .chain(self.panes.iter().flat_map(|p| &p.columns))
+                .cloned()
+                .collect(),
             series: self.series.clone(),
             ohlc: self.ohlc.as_ref().map(|o| OhlcColumns {
                 open: o.open.clone(),
@@ -648,6 +694,51 @@ impl LayoutChart {
             },
             session: None,
         })
+    }
+
+    /// Refuses panes the chart cannot draw: under a kind other than a line or
+    /// area chart, in compare mode, with no columns, or drawing a column the
+    /// plot or another pane draws.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error naming the column, or the x column for the chart as a
+    /// whole, and what to change.
+    pub fn check_panes(&self) -> Result<(), LayoutError> {
+        if self.panes.is_empty() {
+            return Ok(());
+        }
+        if !matches!(self.kind, ChartKindName::Line | ChartKindName::Area) {
+            return Err(value_error(
+                &self.x,
+                "panes go under a line or area chart's plot",
+            ));
+        }
+        if self.compare {
+            return Err(value_error(
+                &self.x,
+                "compare mode puts the plot's series on percentage changes, and panes keep their own values: use one or the other",
+            ));
+        }
+        let mut drawn: Vec<&String> = self.y.iter().chain(&self.y_right).collect();
+        for pane in &self.panes {
+            if pane.columns.is_empty() {
+                return Err(value_error(
+                    &self.x,
+                    "a pane needs at least one column to draw",
+                ));
+            }
+            for column in &pane.columns {
+                if drawn.contains(&column) {
+                    return Err(value_error(
+                        column,
+                        "a column is drawn once, in the plot or in one pane",
+                    ));
+                }
+                drawn.push(column);
+            }
+        }
+        Ok(())
     }
 
     /// The session a trading-time axis keeps, read from its `HH:MM` times.
@@ -1632,7 +1723,10 @@ impl Layout {
                 .collect(),
         };
         let session = match &self.chart {
-            Some(c) => c.trading_session()?,
+            Some(c) => {
+                c.check_panes()?;
+                c.trading_session()?
+            }
             None => None,
         };
         let chart = self
@@ -2168,6 +2262,13 @@ mod tests {
             "chart": {"kind": "line", "x": "time", "y": ["yield"], "axis": "trading",
                       "calendar": "sifma", "session": {"opens": "18:00", "closes": "17:00"}}
         }"#;
+        let panes = r#"{
+            "dataset": "curves",
+            "filters": [{"column": "curve_date", "op": "in", "values": ["2026-11-30", "2026-11-23"]}],
+            "formats": {"yield": {"percent": true, "decimals": 3}, "change": {"bps": true, "decimals": 1}},
+            "chart": {"kind": "line", "x": "tenor", "y": ["yield"], "series": "curve_date", "axis": "tenor",
+                      "panes": [{"columns": ["change"], "kind": "bar", "title": "Change"}]}
+        }"#;
         [
             Layout::from_json(points).unwrap(),
             Layout::from_json(orders).unwrap(),
@@ -2175,6 +2276,7 @@ mod tests {
             Layout::from_json(formats).unwrap(),
             Layout::from_json(waterfall).unwrap(),
             Layout::from_json(sifma).unwrap(),
+            Layout::from_json(panes).unwrap(),
         ]
         .iter()
         .map(|l| serde_json::to_value(l).unwrap())
@@ -2205,6 +2307,7 @@ mod tests {
             "\"fit\"",
             "\"calendar\"",
             "\"session\"",
+            "\"panes\"",
         ] {
             assert!(!json.contains(field), "{field} in {json}");
         }
@@ -2275,5 +2378,52 @@ mod tests {
         ] {
             assert!(chart(wrong).trading_session().is_err(), "{wrong}");
         }
+    }
+
+    #[test]
+    fn panes_add_their_columns_and_refuse_what_they_cannot_draw() {
+        let chart = |extra: &str| {
+            Layout::from_json(&format!(
+                r#"{{"chart": {{"kind": "line", "x": "tenor", "y": ["yield"], {extra}}}}}"#
+            ))
+            .unwrap()
+            .chart
+            .unwrap()
+        };
+        let curves = chart(
+            r#""panes": [{"columns": ["change"], "kind": "bar"}, {"columns": ["spread", "basis"]}]"#,
+        );
+        curves.check_panes().unwrap();
+        let engine = curves.to_engine(&[], &BTreeMap::new()).unwrap();
+        assert_eq!(engine.y, ["yield", "change", "spread", "basis"]);
+        assert_eq!(curves.panes[1].kind, PaneKindName::Line);
+        let refused = |extra: &str, says: &str| {
+            let error = chart(extra).check_panes().unwrap_err().to_string();
+            assert!(error.contains(says), "{extra}: {error}");
+        };
+        refused(
+            r#""panes": [{"columns": ["yield"]}]"#,
+            "a column is drawn once",
+        );
+        refused(
+            r#""panes": [{"columns": ["a"]}, {"columns": ["a"]}]"#,
+            "a column is drawn once",
+        );
+        refused(r#""panes": [{"columns": []}]"#, "at least one column");
+        refused(
+            r#""compare": true, "panes": [{"columns": ["a"]}]"#,
+            "use one or the other",
+        );
+        let bars =
+            Layout::from_json(r#"{"chart": {"kind": "bar", "panes": [{"columns": ["a"]}]}}"#)
+                .unwrap()
+                .chart
+                .unwrap();
+        assert!(
+            bars.check_panes()
+                .unwrap_err()
+                .to_string()
+                .contains("line or area")
+        );
     }
 }

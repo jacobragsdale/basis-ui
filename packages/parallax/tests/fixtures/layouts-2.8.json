@@ -349,5 +349,94 @@
     "top_n": null,
     "totals": [],
     "version": 2
+  },
+  {
+    "chart": {
+      "axis": "tenor",
+      "compare": false,
+      "donut": true,
+      "drawings": [],
+      "events": null,
+      "hidden": [],
+      "horizontal": false,
+      "indicators": [],
+      "kind": "line",
+      "labels": true,
+      "log_y": false,
+      "ohlc": null,
+      "panes": [
+        {
+          "columns": [
+            "change"
+          ],
+          "kind": "bar",
+          "title": "Change"
+        }
+      ],
+      "range": null,
+      "series": "curve_date",
+      "stacked": false,
+      "volume": null,
+      "x": "tenor",
+      "y": [
+        "yield"
+      ],
+      "y_right": []
+    },
+    "column_widths": {},
+    "columns": [],
+    "dataset": "curves",
+    "detail": false,
+    "expand_depth": 0,
+    "expanded": [],
+    "filters": [
+      {
+        "column": "curve_date",
+        "columns": [],
+        "op": "in",
+        "value": null,
+        "values": [
+          "2026-11-30",
+          "2026-11-23"
+        ]
+      }
+    ],
+    "formats": {
+      "change": {
+        "abbreviate": null,
+        "bps": true,
+        "decimals": 1,
+        "negative": "minus",
+        "percent": false,
+        "precision": "seconds",
+        "thousands": null,
+        "zone": null
+      },
+      "yield": {
+        "abbreviate": null,
+        "decimals": 3,
+        "negative": "minus",
+        "percent": true,
+        "precision": "seconds",
+        "thousands": null,
+        "zone": null
+      }
+    },
+    "group_by": [],
+    "group_sort": {
+      "by": "key",
+      "descending": false
+    },
+    "having": [],
+    "measures": [],
+    "parameters": {},
+    "pinned": [],
+    "search": "",
+    "sort": [],
+    "split_by": [],
+    "titles": {},
+    "top_n": null,
+    "totals": [],
+    "version": 2
   }
 ]

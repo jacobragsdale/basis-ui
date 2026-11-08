@@ -7,6 +7,7 @@ import { densityModel, histogramModel } from "./model-bins.ts";
 import { candleModel } from "./model-candles.ts";
 import { heatmapModel } from "./model-heatmap.ts";
 import { withPanes } from "./model-panes.ts";
+import { columnPanes, plottedSeries } from "./pane-series.ts";
 import { pointsModel } from "./model-points.ts";
 import { lineModel } from "./model-series.ts";
 import { emptyModel } from "./model-shared.ts";
@@ -36,13 +37,28 @@ function groupedModel(input: ModelInput): ChartModel {
     : barModel(input, input.categories);
 }
 
+/** The model of a line or area chart: the layout's panes draw their columns' series, and the plot the rest. */
+function seriesModel(
+  input: ModelInput,
+  frame: ChartFrameData,
+  content: Extract<ChartFrameData["content"], { kind: "series" }>,
+): ChartModel {
+  const series = plottedSeries(input.chart, content.series);
+  const source = {
+    candles: null,
+    columns: columnPanes(input, frame),
+    frame,
+    plotted: series.length,
+  };
+  return withPanes(input, source, (built) => lineModel(built, frame, { ...content, series }));
+}
+
 /** The model of a chart the engine reduced to `frame`. */
 function frameModel(input: ModelInput, frame: ChartFrameData): ChartModel {
   const { content } = frame;
   switch (content.kind) {
     case "series": {
-      const source = { candles: null, frame, plotted: content.series.length };
-      return withPanes(input, source, (built) => lineModel(built, frame, content));
+      return seriesModel(input, frame, content);
     }
     case "histogram": {
       return histogramModel(input, frame, content);
@@ -54,7 +70,7 @@ function frameModel(input: ModelInput, frame: ChartFrameData): ChartModel {
       return densityModel(input, frame, content);
     }
     case "candles": {
-      const source = { candles: content.candles, frame, plotted: 0 };
+      const source = { candles: content.candles, columns: [], frame, plotted: 0 };
       return withPanes(input, source, (built) => candleModel(built, frame, content));
     }
     default: {

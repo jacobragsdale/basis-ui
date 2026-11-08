@@ -143,7 +143,9 @@ impl Curves {
     }
 }
 
-/// The schema of [`Curves`]: yields as fractions.
+/// The schema of [`Curves`]: yields as fractions, and each point's change
+/// since the bond market's day before, as a fraction too, null on the first
+/// day.
 #[must_use]
 pub fn curves_schema() -> Schema {
     Schema::new(vec![
@@ -151,7 +153,16 @@ pub fn curves_schema() -> Schema {
         Field::new("tenor", DataType::Utf8, false),
         Field::new("years", DataType::Float64, false),
         Field::new("yield", DataType::Float64, false),
+        Field::new("change", DataType::Float64, true),
     ])
+}
+
+impl Curves {
+    /// Day `day`'s yield at tenor `tenor`, as the dataset writes it: to a
+    /// thousandth of a basis point.
+    fn yield_at(&self, day: usize, tenor: usize) -> f64 {
+        round(nelson_siegel(self.factors[day], TENORS[tenor].1), 5)
+    }
 }
 
 impl Dataset for Curves {
@@ -180,8 +191,13 @@ impl Dataset for Curves {
             Arc::new(Float64Array::from_iter_values(
                 at.iter().map(|&(_, t)| round(TENORS[t].1, 6)),
             )),
-            Arc::new(Float64Array::from_iter_values(at.iter().map(|&(d, t)| {
-                round(nelson_siegel(self.factors[d], TENORS[t].1), 5)
+            Arc::new(Float64Array::from_iter_values(
+                at.iter().map(|&(d, t)| self.yield_at(d, t)),
+            )),
+            // From the yields as written, so the columns agree.
+            Arc::new(Float64Array::from_iter(at.iter().map(|&(d, t)| {
+                d.checked_sub(1)
+                    .map(|before| round(self.yield_at(d, t) - self.yield_at(before, t), 5))
             }))),
         ];
         RecordBatch::try_new(self.schema(), columns).expect("columns match the schema")

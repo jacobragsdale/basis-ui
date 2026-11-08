@@ -1108,3 +1108,145 @@ mod waterfalls {
         assert!(error.contains("only sums and counts add up"), "{error}");
     }
 }
+
+mod panes {
+    use std::collections::HashMap;
+    use std::sync::{Arc, RwLock};
+
+    use arrow_array::Array;
+    use arrow_array::cast::AsArray;
+    use parallax_datagen::Dataset;
+    use parallax_datagen::treasuries::{Curves, CurvesOptions};
+    use parallax_engine::TableOptions;
+    use parallax_protocol::ipc::decode_batches;
+    use parallax_protocol::v1::{
+        ChartFrame, OpenView, SetChartWindow, client_message, server_message::Body,
+    };
+    use parallax_session::{MemoryCatalog, Session, TableState};
+
+    use super::send;
+
+    fn session() -> Session {
+        let curves = Curves::new(&CurvesOptions::default()).unwrap();
+        let batch = curves.batch(0..curves.num_rows());
+        let state = TableState::from_batches(
+            &batch.schema(),
+            std::slice::from_ref(&batch),
+            TableOptions::default(),
+            1,
+            1,
+        )
+        .unwrap();
+        let catalog = Arc::new(MemoryCatalog::new());
+        catalog.insert("curves", Arc::new(RwLock::new(state)));
+        Session::new(catalog)
+    }
+
+    fn open(session: &mut Session, layout: &str) -> Vec<Body> {
+        send(
+            session,
+            1,
+            client_message::Body::OpenView(OpenView {
+                view_id: 1,
+                dataset: "curves".into(),
+                parameters: HashMap::new(),
+                layout_json: layout.into(),
+            }),
+        )
+    }
+
+    const CURVES: &str = r#"{
+        "filters": [{"column": "curve_date", "op": "in", "values": ["2026-11-30", "2026-11-27", "2026-01-02"]}],
+        "formats": {"yield": {"percent": true, "decimals": 3}, "change": {"bps": true, "decimals": 1}},
+        "chart": {"kind": "line", "x": "tenor", "y": ["yield"], "series": "curve_date", "axis": "tenor",
+                  "panes": [{"columns": ["change"], "kind": "bar", "title": "Change"}]}
+    }"#;
+
+    #[test]
+    fn a_pane_s_columns_arrive_as_series_of_their_own_in_their_format() {
+        let mut session = session();
+        let replies = open(&mut session, CURVES);
+        assert!(
+            replies.iter().all(|r| !matches!(r, Body::Error(_))),
+            "{replies:?}"
+        );
+        let replies = send(
+            &mut session,
+            2,
+            client_message::Body::SetChartWindow(SetChartWindow {
+                view_id: 1,
+                width: 600,
+                height: 300,
+                ..SetChartWindow::default()
+            }),
+        );
+        let [Body::ChartFrame(ChartFrame { batch, series, .. })] = replies.as_slice() else {
+            panic!("{replies:?}")
+        };
+        // The plot's yields and the pane's changes, by date, none on the right.
+        let labels: Vec<(&str, &str, bool)> = series
+            .iter()
+            .map(|s| (s.label.as_str(), s.column.as_str(), s.right))
+            .collect();
+        for date in ["2026-01-02", "2026-11-27", "2026-11-30"] {
+            for column in ["yield", "change"] {
+                let label = format!("{column} {date}");
+                assert!(
+                    labels.contains(&(label.as_str(), column, false)),
+                    "{label} in {labels:?}"
+                );
+            }
+        }
+        let batch = decode_batches(batch).unwrap().remove(0);
+        let ids = batch
+            .column_by_name("series")
+            .unwrap()
+            .as_primitive::<arrow_array::types::UInt32Type>();
+        let texts = batch.column_by_name("y_text").unwrap().as_string::<i32>();
+        let ys = batch
+            .column_by_name("y")
+            .unwrap()
+            .as_primitive::<arrow_array::types::Float64Type>();
+        let of = |label: &str| series.iter().position(|s| s.label == label).unwrap() as u32;
+        // Each change reads in basis points, each yield as a percentage.
+        let change = of("change 2026-11-30");
+        let changes: Vec<&str> = (0..batch.num_rows())
+            .filter(|&r| ids.value(r) == change)
+            .map(|r| texts.value(r))
+            .collect();
+        assert_eq!(changes.len(), 11, "a change per tenor");
+        assert!(
+            changes.iter().all(|t| t.ends_with("\u{a0}bp")),
+            "{changes:?}"
+        );
+        let yields = of("yield 2026-11-30");
+        assert!(
+            (0..batch.num_rows())
+                .filter(|&r| ids.value(r) == yields)
+                .all(|r| texts.value(r).ends_with('%'))
+        );
+        // The first day has no day before it: its change series has no values.
+        let first = of("change 2026-01-02");
+        assert!(
+            (0..batch.num_rows())
+                .filter(|&r| ids.value(r) == first)
+                .all(|r| ys.value(r).is_nan() || texts.is_null(r))
+        );
+    }
+
+    #[test]
+    fn panes_the_chart_cannot_draw_are_refused() {
+        let mut session = session();
+        let replies = open(
+            &mut session,
+            r#"{"chart": {"kind": "line", "x": "tenor", "y": ["yield"], "axis": "tenor",
+                          "panes": [{"columns": ["yield"]}]}}"#,
+        );
+        assert!(
+            replies
+                .iter()
+                .any(|r| matches!(r, Body::Error(e) if e.message.contains("drawn once"))),
+            "{replies:?}"
+        );
+    }
+}

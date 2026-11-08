@@ -259,6 +259,8 @@ pub(crate) fn chart_frame(table: &Table, state: &ChartState) -> Result<ChartFram
     let x_text = texts_of(&config.x);
     let series_text = config.series.as_deref().map(texts_of);
     let left = state.layout.y.len();
+    // Past the right axis's columns come the panes', which neither axis draws.
+    let right_end = left + state.layout.y_right.len();
     let label = |column: &str, key: Option<&Scalar>| match (key, &series_text) {
         (Some(key), Some(series)) => format!("{column} {}", series.value(key)),
         _ => column.to_owned(),
@@ -329,7 +331,7 @@ pub(crate) fn chart_frame(table: &Table, state: &ChartState) -> Result<ChartFram
                 frame.series.push(ChartSeries {
                     label: label(column, s.key.as_ref()),
                     column: column.clone(),
-                    right: s.y >= left,
+                    right: (left..right_end).contains(&s.y),
                 });
                 for p in points {
                     ids.push(i as u32);

@@ -14,6 +14,8 @@ import type {
   Scale,
 } from "./model-types.ts";
 import { columnWidth, gutter, padOf, shown, xAxisHeight } from "./model-shared.ts";
+import { columnMarks, columnSpec, columnValues, specStyle } from "./pane-series.ts";
+import type { ColumnPane } from "./pane-series.ts";
 import { paneDomain, paneGap, paneHeight, paneScale, paneValues, segmentsOf } from "./panes.ts";
 import type { PaneSpec } from "./panes.ts";
 import { pixel } from "./scale.ts";
@@ -28,11 +30,13 @@ interface PlacedPane {
   readonly domain: readonly [number, number];
 }
 
-/** What a chart's panes are built from: its frame, its candles if it has them, and how many series it plots. */
+/** What a chart's panes are built from: its frame, its candles if it has them, how many series it plots, and the
+ * layout's own panes. */
 interface PaneSource {
   readonly frame: ChartFrameData;
   readonly candles: CandleData | null;
   readonly plotted: number;
+  readonly columns: readonly ColumnPane[];
 }
 
 function isShown(input: ModelInput, style: IndicatorStyle | undefined): boolean {
@@ -146,6 +150,36 @@ function paneLine(
     : [];
 }
 
+/** One pane's marks: a candle chart's volume, a layout pane's columns, and the indicator lines drawn in it. */
+function paneMarks(
+  input: ModelInput,
+  {
+    source,
+    main,
+    spec,
+    index,
+  }: {
+    readonly source: PaneSource;
+    readonly main: ChartModel;
+    readonly spec: PaneSpec;
+    readonly index: number;
+  },
+  axes: Axes,
+): Mark[] {
+  const { frame, candles } = source;
+  const marks: Mark[] = spec.volume && candles !== null ? volumeMarks(input, candles, axes) : [];
+  if (spec.columns !== undefined) {
+    marks.push(...columnMarks(input, spec.columns, axes));
+  }
+  for (const [i, line] of frame.indicators.entries()) {
+    const style = main.indicators[i];
+    if (style?.pane === index && shown(input, style)) {
+      marks.push(...paneLine(input, { line: { xs: line.x, ys: line.y }, style }, axes));
+    }
+  }
+  return marks;
+}
+
 /** One pane's axis, guides and marks. */
 function paneOf(
   input: ModelInput,
@@ -156,23 +190,20 @@ function paneOf(
   }: { readonly source: PaneSource; readonly main: ChartModel; readonly x: Scale },
   { placed, index }: { readonly placed: PlacedPane; readonly index: number },
 ): Pane {
-  const { frame, candles } = source;
-  const { scale, ticks } = paneScale(placed.domain, placed.box);
-  const axes = { x, y: scale };
-  const marks: Mark[] =
-    placed.spec.volume && candles !== null ? volumeMarks(input, candles, axes) : [];
-  for (const [i, line] of frame.indicators.entries()) {
-    const style = main.indicators[i];
-    if (style?.pane === index && shown(input, style)) {
-      marks.push(...paneLine(input, { line: { xs: line.x, ys: line.y }, style }, axes));
-    }
-  }
+  const { scale, ticks } = paneScale(placed.domain, placed.box, specStyle(input, placed.spec));
+  const { columns } = placed.spec;
   return {
     axis: { scale, side: "left", ticks },
     guides: placed.spec.guides.map((guide) => pixel(scale, guide)),
-    marks,
+    marks: paneMarks(input, { index, main, source, spec: placed.spec }, { x, y: scale }),
     plot: placed.box,
     title: placed.spec.title,
+    ...(columns === undefined
+      ? {}
+      : {
+          columns: columns.columns,
+          series: columns.lines.map((line) => ({ color: line.color, label: line.series.label })),
+        }),
   };
 }
 
@@ -191,12 +222,15 @@ function placePanes(
   const shownLines = source.frame.indicators.filter((_line, i) => isShown(input, styles[i]));
   const shownStyles = styles.filter((style) => isShown(input, style));
   return specs.map((spec, pane): PlacedPane => {
-    const values = paneValues(pane, {
-      candles: source.candles,
-      lines: shownLines,
-      spec,
-      styles: shownStyles,
-    });
+    const values =
+      spec.columns === undefined
+        ? paneValues(pane, {
+            candles: source.candles,
+            lines: shownLines,
+            spec,
+            styles: shownStyles,
+          })
+        : columnValues(spec.columns);
     return {
       box: { height, width: 0, x: 0, y: 0 },
       domain: paneDomain(spec, values, height),
@@ -230,13 +264,15 @@ function withPanes(
   source: PaneSource,
   build: (input: ModelInput) => ChartModel,
 ): ChartModel {
-  const specs = paneSpecs(input.chart);
+  const specs = [...paneSpecs(input.chart), ...source.columns.map((pane) => columnSpec(pane))];
   const height = paneHeight(specs.length, input.height - padOf(input) - xAxisHeight);
   if (height === 0) {
     return build(input);
   }
   const placed = placePanes(input, source, { height, specs });
-  const labels = placed.flatMap((pane) => paneScale(pane.domain, pane.box).ticks);
+  const labels = placed.flatMap(
+    (pane) => paneScale(pane.domain, pane.box, specStyle(input, pane.spec)).ticks,
+  );
   const main = build({
     ...input,
     height: input.height - specs.length * (height + paneGap),

@@ -5,6 +5,7 @@ import type { ChartFrameData, IndicatorLineData, SeriesData } from "#frame/chart
 
 import type { Range } from "./range.ts";
 import type { ChartModel, IndicatorStyle, Scale } from "./model-types.ts";
+import { seriesColors } from "./pane-series.ts";
 import { pixel } from "./scale.ts";
 
 /** A row of a tooltip: the value leads, the label follows, the series' colour keys it. */
@@ -123,9 +124,15 @@ function shownSeries(
   model: ChartModel,
   hidden: readonly string[],
 ): Shown[] {
+  const { colors, paned } = seriesColors(model);
   return series
-    .map((line, i): Shown => ({ color: model.legend[i]?.color ?? null, series: line }))
-    .filter(({ series: line }) => !hidden.includes(line.label) && line.x.length > 0);
+    .map((line): Shown => ({ color: colors.get(line.label) ?? null, series: line }))
+    .filter(
+      ({ series: line }) =>
+        !hidden.includes(line.label) &&
+        line.x.length > 0 &&
+        (!paned.has(line.column) || colors.has(line.label)),
+    );
 }
 
 /** The drawn point nearest `x` of any shown series, and its title. */

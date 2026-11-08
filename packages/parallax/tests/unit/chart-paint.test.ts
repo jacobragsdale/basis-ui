@@ -68,4 +68,26 @@ describe(paintChart, () => {
       steps.filter(([name, value]) => name === "strokeStyle=" && value === theme.gridline).length;
     expect([gridlines(pie.steps), gridlines(candles.steps)]).toStrictEqual([0, 1]);
   });
+
+  test("moves an x label at the plot's end in from the canvas's edge rather than leaving it out", () => {
+    const { ctx, steps } = recorder();
+    const model = modelOf(chartOf({ kind: "line" }), {
+      frame: frameOf({ kind: "series", series: [] }),
+    });
+    const ticks = [
+      { label: "1M", px: 2 },
+      { label: "10Y", px: 200 },
+      { label: "30Y", px: model.width - 1 },
+    ];
+    paintChart(ctx, { ...model, empty: null, xTicks: ticks }, { theme });
+    const written = steps.filter(
+      ([name, text]) => name === "fillText" && ticks.some((tick) => tick.label === text),
+    );
+    // At 6 px a character, the first and last are kept whole on the 400 px canvas, against its edges.
+    expect(written.map(([, text, x]) => [text, x])).toStrictEqual([
+      ["1M", 6],
+      ["10Y", 200],
+      ["30Y", model.width - 9],
+    ]);
+  });
 });

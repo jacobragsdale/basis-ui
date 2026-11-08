@@ -55,8 +55,9 @@ function turnedLabel(
 }
 
 /**
- * A level label on its lines, centred on its tick, unless it would touch the one before or leave the canvas; returns
- * where its right edge now is, or `lastRight` when it is skipped.
+ * A level label on its lines, centred on its tick, or moved in from the canvas's edge, as a tenor axis's 30Y at the
+ * plot's end is; skipped if it would touch the one before. Returns where its right edge now is, or `lastRight` when it
+ * is skipped.
  */
 function levelLabel(
   painting: Painting,
@@ -66,17 +67,14 @@ function levelLabel(
   const { ctx } = painting;
   const lines = tick.lines ?? [tick.label];
   const halfWidth = Math.max(...lines.map((line) => ctx.measureText(line).width)) / 2;
-  if (
-    tick.px - halfWidth < at.lastRight + labelGap ||
-    tick.px - halfWidth < 0 ||
-    tick.px + halfWidth > at.width
-  ) {
+  const centre = Math.max(halfWidth, Math.min(tick.px, at.width - halfWidth));
+  if (centre - halfWidth < at.lastRight + labelGap) {
     return at.lastRight;
   }
   for (const [i, line] of lines.entries()) {
-    ctx.fillText(line, tick.px, at.top + i * lineHeight);
+    ctx.fillText(line, centre, at.top + i * lineHeight);
   }
-  return tick.px + halfWidth;
+  return centre + halfWidth;
 }
 
 /**

@@ -173,6 +173,9 @@ interface Pane {
   readonly marks: readonly Mark[];
   /** Lines across the pane, in pixels, such as RSI's 30 and 70. */
   readonly guides: readonly number[];
+  /** A pane of the layout's own: the columns it draws, and the series drawn, by label, in their colours. */
+  readonly columns?: readonly string[];
+  readonly series?: readonly { readonly label: string; readonly color: string }[];
 }
 
 /** An event marker: where, and what its tooltip says. */

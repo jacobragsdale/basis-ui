@@ -3,7 +3,10 @@
 
 import type { CandleData, IndicatorLineData } from "#frame/chart-data.ts";
 
+import { plain, styledTicks } from "./axis-styles.ts";
+import type { AxisStyle } from "./axis-styles.ts";
 import type { IndicatorStyle, Rect, Scale, ValueTick } from "./model-types.ts";
+import type { ColumnPane } from "./pane-series.ts";
 import { linearScale, niceDomain, pixel, valueTicks } from "./scale.ts";
 
 /** A pane of its own for one indicator. */
@@ -15,6 +18,8 @@ interface PaneSpec {
   readonly guides: readonly number[];
   /** Whether the pane holds a candle chart's volume. */
   readonly volume: boolean;
+  /** A pane of the layout's own: the columns it draws. */
+  readonly columns?: ColumnPane;
 }
 
 /** The shortest pane worth drawing. */
@@ -90,16 +95,17 @@ function paneValues(pane: number, { lines, styles, candles, spec }: PaneLines): 
   return lines.flatMap((line, i) => (styles[i]?.pane === pane ? [...line.y] : []));
 }
 
-/** A pane's scale and ticks for its box. */
+/** A pane's scale and ticks for its box, labelled in `style`: a layout pane's first column's format. */
 function paneScale(
   domain: readonly [number, number],
   box: Rect,
+  style: AxisStyle = plain,
 ): { readonly scale: Scale; readonly ticks: readonly ValueTick[] } {
   const scale = linearScale(domain, [box.y + box.height, box.y]);
+  const count = Math.max(2, box.height / pixelsPerTick);
+  const all = style.kind === "plain" ? valueTicks(scale, count) : styledTicks(scale, count, style);
   // A tick at the very top would be labelled into the axis above it.
-  const ticks = valueTicks(scale, Math.max(2, box.height / pixelsPerTick)).filter(
-    (tick) => tick.px >= box.y + topMargin,
-  );
+  const ticks = all.filter((tick) => tick.px >= box.y + topMargin);
   return { scale, ticks };
 }
 

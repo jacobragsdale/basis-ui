@@ -515,12 +515,23 @@ shares a price's colour. The tooltip lists each indicator line's value at the
 crosshair: on a candle, at the last row of its bucket, the one its close comes
 from, and under that row's own date when it differs from the crosshair's.
 
-Step 2.8 generalises panes beyond indicators: a layout lists panes of its own
-columns, as lines or bars, on the same x axis, such as the change in basis
-points under curves for several dates. Any value axis can be reversed, for
-yields, where up is bad for a long position, and a chart says whether a rise
-takes the gain colour or the loss colour, for its candles, volume, histogram
-and change bars alike.
+A line or area chart's layout can list panes of its own: columns drawn under
+the plot as lines or bars, on its x axis, sharing its crosshair and zoom as the
+indicators' panes do, such as the change in basis points under curves for
+several dates. The engine reduces a pane's columns as it does the plot's and
+sends them as series of their own, so they cost nothing new; the chart takes
+them out of the plot and its legend, colours each as the plotted series of the
+same key, such as a curve's date, and hides it with that series, and leaves out
+a series with no values in the range shown, such as the change of a curve with
+no day before it. A pane's axis reads in its first column's format, so a change
+reads in basis points. Bars in a pane rise from zero, in the up and down
+colours for one series and side by side in their series' colours for several,
+which the colours alone would not tell apart. A layout is refused that draws a
+column twice, puts panes under another kind, or combines them with compare
+mode, which would put the plot's series on percentage changes beside panes in
+their own values. Any value axis can be reversed, for yields, where up is bad
+for a long position, and a chart says whether a rise takes the gain colour or
+the loss colour, for its candles, volume, histogram and change bars alike.
 
 Drawings (trend lines, horizontal lines, Fibonacci retracements, rectangles
 and notes) are saved in the layout, anchored to data rather than to pixels:

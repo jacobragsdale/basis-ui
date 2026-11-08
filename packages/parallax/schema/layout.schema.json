@@ -426,6 +426,13 @@
           "default": null,
           "description": "The price columns of candlestick and OHLC charts."
         },
+        "panes": {
+          "description": "Panes under a line or area chart's plot, each with columns of its own.",
+          "items": {
+            "$ref": "#/$defs/LayoutPane"
+          },
+          "type": "array"
+        },
         "range": {
           "anyOf": [
             {
@@ -1208,6 +1215,31 @@
         }
       ]
     },
+    "LayoutPane": {
+      "additionalProperties": false,
+      "description": "A pane under a line or area chart's plot, in a layout: columns of its own on\na value axis of its own, on the chart's x axis, sharing its crosshair and\nzoom, as an indicator's pane does, such as the change in basis points under\ncurves.",
+      "properties": {
+        "columns": {
+          "description": "The numeric columns it draws, split into series as the plot's are; a\nseries with no values in the range shown is left out.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "kind": {
+          "$ref": "#/$defs/PaneKindName",
+          "description": "Lines or bars."
+        },
+        "title": {
+          "description": "Its title; its columns' names if empty.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "columns"
+      ],
+      "type": "object"
+    },
     "LayoutRange": {
       "additionalProperties": false,
       "description": "An x range a chart was zoomed to, in axis positions.",
@@ -1311,6 +1343,21 @@
         {
           "const": "parentheses",
           "description": "`(1,234.50)`",
+          "type": "string"
+        }
+      ]
+    },
+    "PaneKindName": {
+      "description": "How a pane under a chart draws its columns, in a layout.",
+      "oneOf": [
+        {
+          "const": "line",
+          "description": "A line through each series.",
+          "type": "string"
+        },
+        {
+          "const": "bar",
+          "description": "A bar from zero at each point: in the up and down colours for one\nseries, side by side in the series' colours for several.",
           "type": "string"
         }
       ]

@@ -73,7 +73,7 @@ fn golden_rows_are_stable() {
     assert_eq!(hash(&yields.batch(0..yields.num_rows())), GOLDEN_YIELDS);
 }
 
-const GOLDEN_CURVES: u64 = 13_448_429_047_503_619_236;
+const GOLDEN_CURVES: u64 = 2_851_985_612_112_908_841;
 const GOLDEN_YIELDS: u64 = 15_600_632_331_999_159_432;
 
 #[test]
@@ -105,6 +105,29 @@ fn a_curve_is_drawn_each_day_the_bond_market_trades_and_no_other() {
     }
     for y in f64s(&batch, "yield") {
         assert!((0.02..0.08).contains(&y.unwrap()), "{y:?}");
+    }
+}
+
+#[test]
+fn each_point_s_change_is_its_yield_less_the_day_before_s() {
+    let dataset = curves();
+    let batch = dataset.batch(0..dataset.num_rows());
+    let yields: Vec<f64> = f64s(&batch, "yield")
+        .into_iter()
+        .map(Option::unwrap)
+        .collect();
+    let changes = f64s(&batch, "change");
+    let n = TENORS.len();
+    // The first day has no day before it.
+    assert!(changes[..n].iter().all(Option::is_none));
+    for i in n..yields.len() {
+        let change = changes[i].unwrap();
+        assert!(
+            (change - (yields[i] - yields[i - n])).abs() < 1e-12,
+            "row {i}"
+        );
+        // To a tenth of a basis point.
+        assert_eq!(change, (change * 1e5).round() / 1e5, "row {i}");
     }
 }
 

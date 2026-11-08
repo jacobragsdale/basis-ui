@@ -128,6 +128,21 @@ const thanksgiving: LayoutInput = {
   orders: { tenor: "tenor" },
 };
 
+/** The Treasury curve on three dates, each point's change from the day before in basis points in a pane below. */
+const curveChange: LayoutInput = {
+  chart: {
+    axis: "tenor",
+    kind: "line",
+    panes: [{ columns: ["change"], kind: "bar", title: "Change on the day" }],
+    series: "curve_date",
+    x: "tenor",
+    y: ["yield"],
+  },
+  dataset: "curves",
+  filters: [{ column: "curve_date", op: "in", values: ["2026-10-30", "2026-11-23", "2026-11-30"] }],
+  formats: { change: { bps: true, decimals: 1 }, yield: yieldFormat },
+};
+
 /** A chart in a card of its own. */
 function ChartCard({
   id,
@@ -140,7 +155,7 @@ function ChartCard({
 }): ReactNode {
   const dataset = useDemoDataset(layout.dataset);
   return (
-    <Card size="sm" data-card={id} className="h-90">
+    <Card size="sm" data-card={id} className="h-110">
       <CardHeader>
         <CardTitle>{title}</CardTitle>
       </CardHeader>
@@ -155,6 +170,11 @@ function ChartCard({
 function TradingTime(): ReactNode {
   return (
     <>
+      <ChartCard
+        id="curve-change"
+        layout={{ ...curveChange, dataset: "curves" }}
+        title="The Treasury curve on three dates, and each point's change on the day below"
+      />
       <ChartCard
         id="ten-year-sifma"
         layout={{ ...tenYear, dataset: "curves" }}
