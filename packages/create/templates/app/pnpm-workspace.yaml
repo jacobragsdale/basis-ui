@@ -1,5 +1,10 @@
+# This file is managed by basis-ui: `vp run sync` rewrites it from the installed @basis/ui, and `vp run check-full` fails when it differs.
 # orval brings TypeScript 6; the app keeps one TypeScript, its own (@basis/ui's README).
 overrides:
   typescript: 7.0.2
 allowBuilds:
   esbuild: false
+# pnpm installs a public package only once its release is a day old; basis-ui's own releases install the day they are
+# out, so vp run upgrade needs no exclusion per version.
+minimumReleaseAgeExclude:
+  - "@basis/*"

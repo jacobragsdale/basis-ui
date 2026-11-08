@@ -41,10 +41,10 @@ with `--no-verify`: fix what each `ERROR` line says, and commit or push again.
 ### The framework's files
 
 `vp run sync` writes the files every basis-ui app shares from the installed `@basis/ui`: the `Dockerfile`, `Caddyfile`
-and `.dockerignore`, `azure-pipelines.yml`, `.gitattributes`, the hooks in `.vite-hooks/`, `CLAUDE.md`, the skills in
-`.agents/skills/` and their copies in `.claude/skills/`, and this block of `AGENTS.md`. Each opens with a line saying
-basis-ui manages it, and `vp run check-full` fails when one differs, so never edit them: a change one needs belongs in
-`@basis/ui`. Write the repo's own notes in `AGENTS.md`, outside this block's markers. `vp run upgrade` moves
+and `.dockerignore`, `azure-pipelines.yml`, `.gitattributes`, `pnpm-workspace.yaml`, the hooks in `.vite-hooks/`,
+`CLAUDE.md`, the skills in `.agents/skills/` and their copies in `.claude/skills/`, and this block of `AGENTS.md`. Each
+opens with a line saying basis-ui manages it, and `vp run check-full` fails when one differs, so never edit them: a
+change one needs belongs in `@basis/ui`. Write the repo's own notes in `AGENTS.md`, outside this block's markers. `vp run upgrade` moves
 `@basis/ui` and `@basis/parallax` to their latest release, or `vp run upgrade VERSION` to that one, then runs
 `vp run sync` and `vp run check-full`.
 

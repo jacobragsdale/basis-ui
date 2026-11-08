@@ -38,6 +38,7 @@ const framework: readonly { readonly path: string; readonly source: string }[] =
   { path: ".dockerignore", source: "dockerignore" },
   { path: "azure-pipelines.yml", source: "azure-pipelines.yml" },
   { path: ".gitattributes", source: "gitattributes" },
+  { path: "pnpm-workspace.yaml", source: "pnpm-workspace.yaml" },
   { path: ".vite-hooks/pre-commit", source: "pre-commit" },
   { path: ".vite-hooks/pre-push", source: "pre-push" },
 ];

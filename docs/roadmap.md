@@ -158,10 +158,12 @@ second consumer on 2026-11-07: 1.12 and 1.13 wait on basis's contract, and 1.14 
    to the feed's latest release, or a named one, then syncs and checks. Each ran in a generated repo outside the
    workspace, upgrade against a throwaway local registry; the push hook, which runs `vp run check-full`, has never run
    on a push. Not yet: `vp create @basis:app` needs the registry of 1.8; `check-full` in WSL and on Windows; screenshot
-   diffs in `review`, which wait for the visual baselines of 1.6; and the pipeline, which has never run. Open for the
-   maintainer's review: pnpm 12 holds back a version younger than its `minimumReleaseAge`, which `vp run upgrade`
-   passes by naming the exact version, and pnpm then lists it under `minimumReleaseAgeExclude` in the app's
-   `pnpm-workspace.yaml`; whether the firm's feed should be excluded for `@basis/*` instead.
+   diffs in `review`, which wait for the visual baselines of 1.6; and the pipeline, which has never run. Decided by the
+   orchestrator on 2026-11-07, open for the maintainer's review: pnpm 12 installs a package only once its release is
+   `minimumReleaseAge` old, so the app's `pnpm-workspace.yaml` is a framework file whose `minimumReleaseAgeExclude`
+   names `@basis/*`, which `vp run sync` keeps in every repo: public packages keep the cooldown, and basis-ui's own
+   releases install the day they are out. Not yet checked against a registry: that pnpm then adds no exclusion per
+   version on `vp run upgrade`, which the drift check would report.
 
 8. **1.8 Releases.** One tag releases every package, `@basis/create` included, at one version. **(work)** Publish to
    the internal npm feed through Azure DevOps. Needs 1.7. Done when `v0.1.0` installs from git here and from the
