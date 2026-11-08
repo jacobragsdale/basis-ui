@@ -15,7 +15,8 @@
     "src/vendor/*/LICENSE",
     "config",
     "schema",
-    "catalogue.json"
+    "catalogue.json",
+    "skills"
   ],
   "type": "module",
   "imports": {

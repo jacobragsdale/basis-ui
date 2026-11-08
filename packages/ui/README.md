@@ -884,6 +884,23 @@ const positionRow = z.object({
 - **Importing.** While `onImport`'s promise is pending the button waits; if it rejects, its error shows over the
   preview, which stays for another try.
 
+## Seeing a page: `vp run shot`
+
+`vp run shot ROUTE` pictures a route of the app in headless Chromium and writes three files to `.shots/`, named after
+the route: the page as `NAME.png`, its accessibility tree as `NAME.aria.yml`, and its console errors as
+`NAME.console.txt`. It uses the app's running `vp dev`, or starts one in fixture mode and stops it after. A page that
+logged errors fails the task, with the files still written. `--dark` and `--compact` take the other mode and density,
+`--width` and `--height` the viewport, and `--wait` the milliseconds to let the page settle after the network is
+quiet:
+
+```sh
+vp run shot /positions --dark
+```
+
+It needs Playwright's Chromium, which `vp exec --filter @basis/ui playwright install chromium` installs. The skill in
+`skills/drive-the-app` says how an agent looks at its pages and clicks through them with Playwright CLI; the UI repo
+template copies it into each app.
+
 ## Showing a query's states and small charts
 
 `QueryState` takes a query as `useQuery` returns it and shows whichever state it is in: a skeleton while it first

@@ -4,6 +4,7 @@ target/
 test-results/
 playwright-report/
 .fixtures/
+.shots/
 .env
 .env.*
 !.env.example

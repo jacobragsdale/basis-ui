@@ -12,6 +12,7 @@ export default defineConfig({
       "src/preset/index.ts",
       "src/preset/orval.ts",
       "src/preset/client.ts",
+      "src/preset/shot.ts",
       "src/fixtures/index.ts",
       "src/numbers/index.ts",
       "src/utils/index.ts",

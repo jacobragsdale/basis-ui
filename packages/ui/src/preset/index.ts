@@ -39,6 +39,11 @@ const clientScript = fileURLToPath(
   new URL(import.meta.url.endsWith(".ts") ? "client.ts" : "client.mjs", import.meta.url),
 );
 
+/** The shot task's script, beside this module, as the client tasks' is. */
+const shotScript = fileURLToPath(
+  new URL(import.meta.url.endsWith(".ts") ? "shot.ts" : "shot.mjs", import.meta.url),
+);
+
 /** A client task: `pull` or `check`, as src/preset/client.ts describes them. Neither is cached, since `pull` reads a
  * repo or a network and `check` must compare the files as they are. */
 function clientTask(verb: "check" | "pull"): Task {
@@ -80,14 +85,15 @@ function basisPreset(): BasisPreset {
     run: {
       tasks: {
         /* `tsc --noEmit` type-checks the whole app with the installed TypeScript, the generated client included, which
-         * `vp check` lints around. Screenshot comparison in WSL joins these in step 1.6. */
+         * `vp check` lints around. Screenshot comparison in WSL waits for the visual baselines. */
         "check-full": { command: ["vp run client-check", "tsc --noEmit", "vp check", "vp test"] },
         "client-check": clientTask("check"),
         "client-pull": clientTask("pull"),
         docs: notYet("docs", "1.7"),
         doctor: notYet("doctor", "1.7"),
         review: notYet("review", "1.7"),
-        shot: notYet("shot", "1.6"),
+        // Never cached: it pictures the app as it is now. src/preset/shot.ts says what it writes.
+        shot: { cache: false, command: `node "${shotScript}"` },
         sync: notYet("sync", "1.7"),
         upgrade: notYet("upgrade", "1.7"),
       },
