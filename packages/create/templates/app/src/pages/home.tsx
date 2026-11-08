@@ -12,7 +12,7 @@ function HomePage(): ReactElement {
         <CardHeader>
           <CardTitle>Start here</CardTitle>
           <CardDescription>
-            Copy the API's document with vp run client-pull, then build the app's pages.
+            Copy the API document with vp run client-pull, then build the pages of the app.
           </CardDescription>
         </CardHeader>
         <CardContent>AGENTS.md says how this repo is checked, run and pictured.</CardContent>

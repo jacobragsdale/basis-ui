@@ -144,6 +144,14 @@ second consumer on 2026-11-07: 1.12 and 1.13 wait on basis's contract, and 1.14 
 
    Needs 1.6 and 1.10. Done when a generated UI repo passes `vp run check-full` in WSL, `vp dev` serves its fixture
    pages, and its image serves the build.
+   The template is built and checked here, outside the workspace, against the packed tarballs: `vp run check-full`
+   passes, `vp dev` serves its page in fixture mode, and its Caddy image serves the build with br and gzip, the hashed
+   assets immutable, every other path `no-cache`, a missing asset a 404 never cached, and index.html for the app's
+   routes. Not yet: `vp create @basis:app` needs the registry of 1.8; the managed-file headers and drift check; the
+   tasks `review`, `sync`, `upgrade`, `doctor` and `docs`, which still say they are not built; `check-full` in WSL; and
+   the pipeline, which has never run. Open for the maintainer's review: whether those tasks and the drift check belong
+   to 1.7 or a later step, and whether the template ships a sample `openapi.json`, without which fixture mode has
+   nothing to answer.
 
 8. **1.8 Releases.** One tag releases every package, `@basis/create` included, at one version. **(work)** Publish to
    the internal npm feed through Azure DevOps. Needs 1.7. Done when `v0.1.0` installs from git here and from the
