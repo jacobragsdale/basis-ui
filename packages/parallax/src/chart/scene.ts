@@ -7,7 +7,7 @@
 import type { ViewHandle } from "#engine/view.ts";
 import type { ChartFrameData } from "#frame/chart-data.ts";
 import type { FrameData } from "#frame/frame.ts";
-import type { Layout, LayoutFilter, LayoutScalar } from "#layout/layout.ts";
+import type { Layout, LayoutFilter, LayoutFormat, LayoutScalar } from "#layout/layout.ts";
 import type { ParallaxTokens } from "#react/use-theme.ts";
 
 import { DrawingEditor } from "./drawing-editor.ts";
@@ -159,6 +159,12 @@ class ChartScene {
     }
     this.zoom.adopt(before);
     this.editor.refresh();
+  }
+
+  /** The display formats the view's API declares, by column, which label the value axes unless the layout's own do. */
+  public setDeclared(formats: Readonly<Record<string, LayoutFormat>>): void {
+    this.#model.declared = formats;
+    this.#model.changed();
   }
 
   /** The open view, which zooming asks for windows of, and grouped frames are checked against. */

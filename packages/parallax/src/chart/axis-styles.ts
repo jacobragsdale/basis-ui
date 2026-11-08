@@ -3,8 +3,11 @@
  * `@basis/ui`'s formatter's, the TypeScript port of the engine's, so the axis reads as the column's cells and tooltips
  * do. Other formats keep the axis's round numbers, which label the axis, not data. */
 
-import { createFormatter } from "@basis/ui";
+import { createFormatter, displayFormatMetadata, readDisplayFormat } from "@basis/ui";
+import type { DisplayFormat } from "@basis/ui";
+import { tableFromIPC } from "apache-arrow";
 
+import { parseLayout } from "#layout/layout.ts";
 import type { Layout, LayoutFormat } from "#layout/layout.ts";
 
 import type { ModelInput, Scale, ValueTick } from "./model-types.ts";
@@ -39,13 +42,79 @@ function styleOf(format: LayoutFormat | null | undefined): AxisStyle {
   return format?.suffixes === "par" ? { kind: "par" } : plain;
 }
 
-/** The formats a chart's value axes are labelled in: by column, and the first measure's, its own or its column's. */
-function axisFormats(layout: Layout | null): Pick<ModelInput, "formats" | "measureFormat"> {
+/** A Treasury price's steps, as the API names them and as a layout does. */
+const precisions = {
+  "32nd": "thirty_seconds",
+  eighth: "eighths",
+  half: "halves",
+  quarter: "quarters",
+} as const;
+
+/** The style fields of an API's display format: a percentage, basis points, or 32nds to its step. */
+function declaredStyle(declared: DisplayFormat): Partial<LayoutFormat> {
+  switch (declared.kind) {
+    case "pct": {
+      return { percent: true };
+    }
+    case "bps": {
+      return { bps: true };
+    }
+    case "price32": {
+      return { thirty_seconds: precisions[declared.step ?? "32nd"] };
+    }
+    case "number":
+    case "money":
+    case "price": {
+      return {};
+    }
+    default: {
+      return declared satisfies never;
+    }
+  }
+}
+
+/** The layout format an API's display format reads as, as parallax-protocol's display module reads it, for the
+ * styles a value axis takes: a percentage, basis points or 32nds; other kinds give only their decimals. */
+function layoutFormatOf(declared: DisplayFormat): LayoutFormat | undefined {
+  const decimals = "decimals" in declared ? (declared.decimals ?? null) : null;
+  return parseLayout({ formats: { column: { decimals, ...declaredStyle(declared) } } }).formats[
+    "column"
+  ];
+}
+
+/**
+ * The display formats an API declares on its columns, under `basis.format` in the Arrow field metadata of the table a
+ * view opened on, as layout formats by column: what the engine formats the column's text by unless the layout says
+ * otherwise, which a value axis follows too.
+ */
+function declaredFormats(tableSchema: Uint8Array | null): Readonly<Record<string, LayoutFormat>> {
+  if (tableSchema === null || tableSchema.length === 0) {
+    return {};
+  }
+  const formats: Record<string, LayoutFormat> = {};
+  for (const field of tableFromIPC(tableSchema).schema.fields) {
+    const declared = readDisplayFormat(field.metadata.get(displayFormatMetadata));
+    const format = declared === undefined ? undefined : layoutFormatOf(declared);
+    if (format !== undefined) {
+      formats[field.name] = format;
+    }
+  }
+  return formats;
+}
+
+/**
+ * The formats a chart's value axes are labelled in: by column, the layout's own over those its API declares, and the
+ * first measure's, its own or its column's.
+ */
+function axisFormats(
+  layout: Layout | null,
+  declared: Readonly<Record<string, LayoutFormat>> = {},
+): Pick<ModelInput, "formats" | "measureFormat"> {
+  const formats = { ...declared, ...layout?.formats };
   const [measure] = layout?.measures ?? [];
   const column = measure?.column ?? null;
-  const measureFormat =
-    measure?.format ?? (column === null ? null : (layout?.formats[column] ?? null));
-  return { formats: layout?.formats ?? {}, measureFormat };
+  const measureFormat = measure?.format ?? (column === null ? null : (formats[column] ?? null));
+  return { formats, measureFormat };
 }
 
 const ten = 10;
@@ -197,5 +266,5 @@ function styledTicks(scale: Scale, count: number, style: AxisStyle): readonly Va
   }
 }
 
-export { axisFormats, plain, styleOf, styledTicks };
+export { axisFormats, declaredFormats, plain, styleOf, styledTicks };
 export type { AxisStyle };

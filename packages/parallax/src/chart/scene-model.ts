@@ -5,7 +5,7 @@ import type { ViewHandle } from "#engine/view.ts";
 import type { ChartFrameData } from "#frame/chart-data.ts";
 import type { FrameData } from "#frame/frame.ts";
 import type { LayoutChart, LayoutDrawing } from "#layout/chart.ts";
-import type { Layout } from "#layout/layout.ts";
+import type { Layout, LayoutFormat } from "#layout/layout.ts";
 import { chartColors } from "#theme/charts.ts";
 import type { ChartColors } from "#theme/charts.ts";
 import { defaultTheme, sameChartColors, sameTheme } from "#theme/read.ts";
@@ -45,6 +45,8 @@ class SceneModel {
   public theme: Theme = defaultTheme("light");
   public group: string | null = null;
   public sync: string | null | undefined = undefined;
+  /** The display formats the view's API declares, by column, which the layout's own override. */
+  public declared: Readonly<Record<string, LayoutFormat>> = {};
   #layout: Layout | null = null;
   #layoutJson = "";
   #shape: string | null = null;
@@ -290,7 +292,7 @@ class SceneModel {
       muted: this.theme.muted,
       selected: this.#selected,
       width: this.size.width,
-      ...axisFormats(this.#layout),
+      ...axisFormats(this.#layout, this.declared),
     };
   }
 }

@@ -11,6 +11,7 @@ import type { ParallaxThemeAttributes } from "#react/use-theme.ts";
 import { useView } from "#react/use-view.ts";
 import type { View } from "#react/use-view.ts";
 
+import { declaredFormats } from "./axis-styles.ts";
 import type { EditorState } from "./drawing-editor.ts";
 import { engineLayout } from "./engine-layout.ts";
 import type { CategoryData, LegendEntry } from "./model-types.ts";
@@ -170,6 +171,10 @@ function useSceneInputs(
   useEffect(() => {
     scene.setLayout(layout, sync);
   }, [scene, layout, sync]);
+  const schema = view.opened?.tableSchema ?? null;
+  useEffect(() => {
+    scene.setDeclared(declaredFormats(schema));
+  }, [scene, schema]);
   useEffect(() => {
     scene.setHandle(view.handle);
     scene.setGroups(view.frame, order);

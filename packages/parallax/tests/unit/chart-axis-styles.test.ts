@@ -1,6 +1,7 @@
+import { Field, Float64, Schema, Table, tableToIPC } from "apache-arrow";
 import { describe, expect, test } from "vite-plus/test";
 
-import { axisFormats, styleOf, styledTicks } from "#chart/axis-styles.ts";
+import { axisFormats, declaredFormats, plain, styleOf, styledTicks } from "#chart/axis-styles.ts";
 import { linearScale } from "#chart/scale.ts";
 import { parseLayout } from "#layout/layout.ts";
 
@@ -125,5 +126,50 @@ describe("value axes in a column's style", () => {
       { formats: formats ?? {} },
     );
     expect(compared.yAxes[0]?.ticks.every((tick) => tick.label.endsWith("%"))).toBe(true);
+  });
+});
+
+/** A table schema, as a view's opening says it, with `declared` display formats by column. */
+function schemaWith(declared: Readonly<Record<string, string>>): Uint8Array {
+  const fields = Object.entries(declared).map(
+    ([name, format]) => new Field(name, new Float64(), true, new Map([["basis.format", format]])),
+  );
+  const schema = new Schema([...fields, new Field("plain", new Float64())]);
+  return tableToIPC(new Table(schema), "stream");
+}
+
+describe(declaredFormats, () => {
+  const schema = schemaWith({
+    price: '{"kind":"price32","step":"half"}',
+    spread: '{"kind":"bps","decimals":1}',
+    term: '{"kind":"duration"}',
+    yield: '{"kind":"pct","decimals":3}',
+  });
+
+  test("reads each column's basis.format as the layout format the engine formats it by", () => {
+    const formats = declaredFormats(schema);
+    expect(Object.keys(formats).toSorted()).toStrictEqual(["price", "spread", "yield"]);
+    expect(styleOf(formats["spread"])).toStrictEqual({ kind: "bps" });
+    expect(formats["spread"]?.decimals).toBe(1);
+    expect(styleOf(formats["yield"])).toStrictEqual({ kind: "percent" });
+    expect(styleOf(formats["price"])).toStrictEqual({
+      kind: "thirty-seconds",
+      precision: "halves",
+    });
+    expect(declaredFormats(null)).toStrictEqual({});
+  });
+
+  test("label a value axis unless the layout sets the column's format itself", () => {
+    const layout = parseLayout({
+      formats: { yield: { decimals: 2 } },
+      measures: [{ aggregate: "sum", column: "spread" }],
+    });
+    const { formats, measureFormat } = axisFormats(layout, declaredFormats(schema));
+    expect(styleOf(formats?.["yield"])).toStrictEqual(plain);
+    expect(styleOf(formats?.["price"])).toStrictEqual({
+      kind: "thirty-seconds",
+      precision: "halves",
+    });
+    expect(styleOf(measureFormat)).toStrictEqual({ kind: "bps" });
   });
 });
