@@ -325,6 +325,16 @@ export type bondResponse422 = {
   status: 422
 }
 
+export type bondResponse502 = {
+  data: Problem
+  status: 502
+}
+
+export type bondResponse503 = {
+  data: Problem
+  status: 503
+}
+
 export type bondResponse504 = {
   data: Problem
   status: 504
@@ -333,7 +343,7 @@ export type bondResponse504 = {
 export type bondResponseSuccess = (bondResponse200) & {
   headers: Headers;
 };
-export type bondResponseError = (bondResponse404 | bondResponse422 | bondResponse504) & {
+export type bondResponseError = (bondResponse404 | bondResponse422 | bondResponse502 | bondResponse503 | bondResponse504) & {
   headers: Headers;
 };
 
@@ -459,6 +469,11 @@ export type dirtyPriceResponse502 = {
   status: 502
 }
 
+export type dirtyPriceResponse503 = {
+  data: Problem
+  status: 503
+}
+
 export type dirtyPriceResponse504 = {
   data: Problem
   status: 504
@@ -467,7 +482,7 @@ export type dirtyPriceResponse504 = {
 export type dirtyPriceResponseSuccess = (dirtyPriceResponse200) & {
   headers: Headers;
 };
-export type dirtyPriceResponseError = (dirtyPriceResponse404 | dirtyPriceResponse422 | dirtyPriceResponse502 | dirtyPriceResponse504) & {
+export type dirtyPriceResponseError = (dirtyPriceResponse404 | dirtyPriceResponse422 | dirtyPriceResponse502 | dirtyPriceResponse503 | dirtyPriceResponse504) & {
   headers: Headers;
 };
 
@@ -608,6 +623,11 @@ export type bondYieldResponse502 = {
   status: 502
 }
 
+export type bondYieldResponse503 = {
+  data: Problem
+  status: 503
+}
+
 export type bondYieldResponse504 = {
   data: Problem
   status: 504
@@ -616,7 +636,7 @@ export type bondYieldResponse504 = {
 export type bondYieldResponseSuccess = (bondYieldResponse200) & {
   headers: Headers;
 };
-export type bondYieldResponseError = (bondYieldResponse404 | bondYieldResponse422 | bondYieldResponse502 | bondYieldResponse504) & {
+export type bondYieldResponseError = (bondYieldResponse404 | bondYieldResponse422 | bondYieldResponse502 | bondYieldResponse503 | bondYieldResponse504) & {
   headers: Headers;
 };
 
@@ -753,6 +773,16 @@ export type couponsResponse422 = {
   status: 422
 }
 
+export type couponsResponse502 = {
+  data: Problem
+  status: 502
+}
+
+export type couponsResponse503 = {
+  data: Problem
+  status: 503
+}
+
 export type couponsResponse504 = {
   data: Problem
   status: 504
@@ -761,7 +791,7 @@ export type couponsResponse504 = {
 export type couponsResponseSuccess = (couponsResponse200) & {
   headers: Headers;
 };
-export type couponsResponseError = (couponsResponse404 | couponsResponse422 | couponsResponse504) & {
+export type couponsResponseError = (couponsResponse404 | couponsResponse422 | couponsResponse502 | couponsResponse503 | couponsResponse504) & {
   headers: Headers;
 };
 
@@ -901,6 +931,11 @@ export type recordSettlementResponse502 = {
   status: 502
 }
 
+export type recordSettlementResponse503 = {
+  data: Problem
+  status: 503
+}
+
 export type recordSettlementResponse504 = {
   data: Problem
   status: 504
@@ -909,7 +944,7 @@ export type recordSettlementResponse504 = {
 export type recordSettlementResponseSuccess = (recordSettlementResponse201) & {
   headers: Headers;
 };
-export type recordSettlementResponseError = (recordSettlementResponse404 | recordSettlementResponse422 | recordSettlementResponse502 | recordSettlementResponse504) & {
+export type recordSettlementResponseError = (recordSettlementResponse404 | recordSettlementResponse422 | recordSettlementResponse502 | recordSettlementResponse503 | recordSettlementResponse504) & {
   headers: Headers;
 };
 

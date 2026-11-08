@@ -62,6 +62,12 @@ export const getBondResponseMock404 = (overrideResponse: Partial<Extract<Problem
 export const getBondResponseMock422 = (overrideResponse: Partial<Extract<ValidationProblem, object>> = {}): ValidationProblem => ({type: faker.string.alpha({length: {min: 10, max: 20}}), title: faker.string.alpha({length: {min: 10, max: 20}}), status: faker.number.int(), detail: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), instance: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), data: faker.helpers.arrayElement([null,]), errors: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.helpers.arrayElement([{detail: faker.string.alpha({length: {min: 10, max: 20}}), pointer: faker.string.alpha({length: {min: 10, max: 20}})},{detail: faker.string.alpha({length: {min: 10, max: 20}}), parameter: faker.string.alpha({length: {min: 10, max: 20}})},]))), ...overrideResponse})
 
 
+export const getBondResponseMock502 = (overrideResponse: Partial<Extract<Problem, object>> = {}): Problem => ({type: faker.string.alpha({length: {min: 10, max: 20}}), title: faker.string.alpha({length: {min: 10, max: 20}}), status: faker.number.int(), detail: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), instance: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), data: faker.helpers.arrayElement([null,]), ...overrideResponse})
+
+
+export const getBondResponseMock503 = (overrideResponse: Partial<Extract<Problem, object>> = {}): Problem => ({type: faker.string.alpha({length: {min: 10, max: 20}}), title: faker.string.alpha({length: {min: 10, max: 20}}), status: faker.number.int(), detail: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), instance: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), data: faker.helpers.arrayElement([null,]), ...overrideResponse})
+
+
 export const getBondResponseMock504 = (overrideResponse: Partial<Extract<Problem, object>> = {}): Problem => ({type: faker.string.alpha({length: {min: 10, max: 20}}), title: faker.string.alpha({length: {min: 10, max: 20}}), status: faker.number.int(), detail: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), instance: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), data: faker.helpers.arrayElement([null,]), ...overrideResponse})
 
 export const getDirtyPriceResponseMock = (overrideResponse: Partial<Extract<DirtyPrice, object>> = {}): DirtyPrice => ({security_id: faker.string.alpha({length: {min: 10, max: 20}}), settle: faker.date.past().toISOString().slice(0, 10), face: faker.string.alpha({length: {min: 10, max: 20}}), clean: faker.string.alpha({length: {min: 10, max: 20}}), accrued: faker.string.alpha({length: {min: 10, max: 20}}), dirty: faker.string.alpha({length: {min: 10, max: 20}}), ...overrideResponse})
@@ -77,6 +83,9 @@ export const getDirtyPriceResponseMock422 = (overrideResponse: Partial<Extract<V
 
 
 export const getDirtyPriceResponseMock502 = (overrideResponse: Partial<Extract<Problem, object>> = {}): Problem => ({type: faker.string.alpha({length: {min: 10, max: 20}}), title: faker.string.alpha({length: {min: 10, max: 20}}), status: faker.number.int(), detail: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), instance: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), data: faker.helpers.arrayElement([null,]), ...overrideResponse})
+
+
+export const getDirtyPriceResponseMock503 = (overrideResponse: Partial<Extract<Problem, object>> = {}): Problem => ({type: faker.string.alpha({length: {min: 10, max: 20}}), title: faker.string.alpha({length: {min: 10, max: 20}}), status: faker.number.int(), detail: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), instance: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), data: faker.helpers.arrayElement([null,]), ...overrideResponse})
 
 
 export const getDirtyPriceResponseMock504 = (overrideResponse: Partial<Extract<Problem, object>> = {}): Problem => ({type: faker.string.alpha({length: {min: 10, max: 20}}), title: faker.string.alpha({length: {min: 10, max: 20}}), status: faker.number.int(), detail: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), instance: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), data: faker.helpers.arrayElement([null,]), ...overrideResponse})
@@ -96,6 +105,9 @@ export const getBondYieldResponseMock422 = (overrideResponse: Partial<Extract<Va
 export const getBondYieldResponseMock502 = (overrideResponse: Partial<Extract<Problem, object>> = {}): Problem => ({type: faker.string.alpha({length: {min: 10, max: 20}}), title: faker.string.alpha({length: {min: 10, max: 20}}), status: faker.number.int(), detail: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), instance: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), data: faker.helpers.arrayElement([null,]), ...overrideResponse})
 
 
+export const getBondYieldResponseMock503 = (overrideResponse: Partial<Extract<Problem, object>> = {}): Problem => ({type: faker.string.alpha({length: {min: 10, max: 20}}), title: faker.string.alpha({length: {min: 10, max: 20}}), status: faker.number.int(), detail: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), instance: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), data: faker.helpers.arrayElement([null,]), ...overrideResponse})
+
+
 export const getBondYieldResponseMock504 = (overrideResponse: Partial<Extract<Problem, object>> = {}): Problem => ({type: faker.string.alpha({length: {min: 10, max: 20}}), title: faker.string.alpha({length: {min: 10, max: 20}}), status: faker.number.int(), detail: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), instance: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), data: faker.helpers.arrayElement([null,]), ...overrideResponse})
 
 export const getCouponsResponseMock = (): Blob => (new Blob([new Uint8Array(faker.number.int({ min: 1, max: 64 }))]))
@@ -108,6 +120,12 @@ export const getCouponsResponseMock404 = (overrideResponse: Partial<Extract<Prob
 
 
 export const getCouponsResponseMock422 = (overrideResponse: Partial<Extract<ValidationProblem, object>> = {}): ValidationProblem => ({type: faker.string.alpha({length: {min: 10, max: 20}}), title: faker.string.alpha({length: {min: 10, max: 20}}), status: faker.number.int(), detail: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), instance: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), data: faker.helpers.arrayElement([null,]), errors: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.helpers.arrayElement([{detail: faker.string.alpha({length: {min: 10, max: 20}}), pointer: faker.string.alpha({length: {min: 10, max: 20}})},{detail: faker.string.alpha({length: {min: 10, max: 20}}), parameter: faker.string.alpha({length: {min: 10, max: 20}})},]))), ...overrideResponse})
+
+
+export const getCouponsResponseMock502 = (overrideResponse: Partial<Extract<Problem, object>> = {}): Problem => ({type: faker.string.alpha({length: {min: 10, max: 20}}), title: faker.string.alpha({length: {min: 10, max: 20}}), status: faker.number.int(), detail: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), instance: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), data: faker.helpers.arrayElement([null,]), ...overrideResponse})
+
+
+export const getCouponsResponseMock503 = (overrideResponse: Partial<Extract<Problem, object>> = {}): Problem => ({type: faker.string.alpha({length: {min: 10, max: 20}}), title: faker.string.alpha({length: {min: 10, max: 20}}), status: faker.number.int(), detail: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), instance: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), data: faker.helpers.arrayElement([null,]), ...overrideResponse})
 
 
 export const getCouponsResponseMock504 = (overrideResponse: Partial<Extract<Problem, object>> = {}): Problem => ({type: faker.string.alpha({length: {min: 10, max: 20}}), title: faker.string.alpha({length: {min: 10, max: 20}}), status: faker.number.int(), detail: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), instance: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), data: faker.helpers.arrayElement([null,]), ...overrideResponse})
@@ -125,6 +143,9 @@ export const getRecordSettlementResponseMock422 = (overrideResponse: Partial<Ext
 
 
 export const getRecordSettlementResponseMock502 = (overrideResponse: Partial<Extract<Problem, object>> = {}): Problem => ({type: faker.string.alpha({length: {min: 10, max: 20}}), title: faker.string.alpha({length: {min: 10, max: 20}}), status: faker.number.int(), detail: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), instance: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), data: faker.helpers.arrayElement([null,]), ...overrideResponse})
+
+
+export const getRecordSettlementResponseMock503 = (overrideResponse: Partial<Extract<Problem, object>> = {}): Problem => ({type: faker.string.alpha({length: {min: 10, max: 20}}), title: faker.string.alpha({length: {min: 10, max: 20}}), status: faker.number.int(), detail: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), instance: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), data: faker.helpers.arrayElement([null,]), ...overrideResponse})
 
 
 export const getRecordSettlementResponseMock504 = (overrideResponse: Partial<Extract<Problem, object>> = {}): Problem => ({type: faker.string.alpha({length: {min: 10, max: 20}}), title: faker.string.alpha({length: {min: 10, max: 20}}), status: faker.number.int(), detail: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), instance: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), data: faker.helpers.arrayElement([null,]), ...overrideResponse})
@@ -258,6 +279,32 @@ export const getBondMockHandler422 = (overrideResponse?: ValidationProblem | ((i
 }
 
 
+export const getBondMockHandler502 = (overrideResponse?: Problem | ((info: Parameters<HttpResponseResolver<{ security: string }>>[0]) => Promise<Problem> | Problem), options?: RequestHandlerOptions) => {
+  return http.get<{ security: string }>('*/bonds/:security', async (info: Parameters<HttpResponseResolver<{ security: string }>>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getBondResponseMock502(),
+      { status: 502, headers: { 'Content-Type': 'application/problem+json' }
+      })
+  }, options)
+}
+
+
+export const getBondMockHandler503 = (overrideResponse?: Problem | ((info: Parameters<HttpResponseResolver<{ security: string }>>[0]) => Promise<Problem> | Problem), options?: RequestHandlerOptions) => {
+  return http.get<{ security: string }>('*/bonds/:security', async (info: Parameters<HttpResponseResolver<{ security: string }>>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getBondResponseMock503(),
+      { status: 503, headers: { 'Content-Type': 'application/problem+json' }
+      })
+  }, options)
+}
+
+
 export const getBondMockHandler504 = (overrideResponse?: Problem | ((info: Parameters<HttpResponseResolver<{ security: string }>>[0]) => Promise<Problem> | Problem), options?: RequestHandlerOptions) => {
   return http.get<{ security: string }>('*/bonds/:security', async (info: Parameters<HttpResponseResolver<{ security: string }>>[0]) => {
 
@@ -330,6 +377,19 @@ export const getDirtyPriceMockHandler502 = (overrideResponse?: Problem | ((info:
     ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
     : getDirtyPriceResponseMock502(),
       { status: 502, headers: { 'Content-Type': 'application/problem+json' }
+      })
+  }, options)
+}
+
+
+export const getDirtyPriceMockHandler503 = (overrideResponse?: Problem | ((info: Parameters<HttpResponseResolver<{ security: string }>>[0]) => Promise<Problem> | Problem), options?: RequestHandlerOptions) => {
+  return http.get<{ security: string }>('*/bonds/:security/dirty-price', async (info: Parameters<HttpResponseResolver<{ security: string }>>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getDirtyPriceResponseMock503(),
+      { status: 503, headers: { 'Content-Type': 'application/problem+json' }
       })
   }, options)
 }
@@ -412,6 +472,19 @@ export const getBondYieldMockHandler502 = (overrideResponse?: Problem | ((info: 
 }
 
 
+export const getBondYieldMockHandler503 = (overrideResponse?: Problem | ((info: Parameters<HttpResponseResolver<{ security: string }>>[0]) => Promise<Problem> | Problem), options?: RequestHandlerOptions) => {
+  return http.get<{ security: string }>('*/bonds/:security/yield', async (info: Parameters<HttpResponseResolver<{ security: string }>>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getBondYieldResponseMock503(),
+      { status: 503, headers: { 'Content-Type': 'application/problem+json' }
+      })
+  }, options)
+}
+
+
 export const getBondYieldMockHandler504 = (overrideResponse?: Problem | ((info: Parameters<HttpResponseResolver<{ security: string }>>[0]) => Promise<Problem> | Problem), options?: RequestHandlerOptions) => {
   return http.get<{ security: string }>('*/bonds/:security/yield', async (info: Parameters<HttpResponseResolver<{ security: string }>>[0]) => {
 
@@ -473,6 +546,32 @@ export const getCouponsMockHandler422 = (overrideResponse?: ValidationProblem | 
     ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
     : getCouponsResponseMock422(),
       { status: 422, headers: { 'Content-Type': 'application/problem+json' }
+      })
+  }, options)
+}
+
+
+export const getCouponsMockHandler502 = (overrideResponse?: Problem | ((info: Parameters<HttpResponseResolver<{ security: string }>>[0]) => Promise<Problem> | Problem), options?: RequestHandlerOptions) => {
+  return http.get<{ security: string }>('*/bonds/:security/coupons', async (info: Parameters<HttpResponseResolver<{ security: string }>>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getCouponsResponseMock502(),
+      { status: 502, headers: { 'Content-Type': 'application/problem+json' }
+      })
+  }, options)
+}
+
+
+export const getCouponsMockHandler503 = (overrideResponse?: Problem | ((info: Parameters<HttpResponseResolver<{ security: string }>>[0]) => Promise<Problem> | Problem), options?: RequestHandlerOptions) => {
+  return http.get<{ security: string }>('*/bonds/:security/coupons', async (info: Parameters<HttpResponseResolver<{ security: string }>>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getCouponsResponseMock503(),
+      { status: 503, headers: { 'Content-Type': 'application/problem+json' }
       })
   }, options)
 }
@@ -550,6 +649,19 @@ export const getRecordSettlementMockHandler502 = (overrideResponse?: Problem | (
     ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
     : getRecordSettlementResponseMock502(),
       { status: 502, headers: { 'Content-Type': 'application/problem+json' }
+      })
+  }, options)
+}
+
+
+export const getRecordSettlementMockHandler503 = (overrideResponse?: Problem | ((info: Parameters<HttpResponseResolver<PathParams, SettlementRequest>>[0]) => Promise<Problem> | Problem), options?: RequestHandlerOptions) => {
+  return http.post<PathParams, SettlementRequest>('*/settlements', async (info: Parameters<HttpResponseResolver<PathParams, SettlementRequest>>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getRecordSettlementResponseMock503(),
+      { status: 503, headers: { 'Content-Type': 'application/problem+json' }
       })
   }, options)
 }
