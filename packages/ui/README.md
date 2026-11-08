@@ -304,9 +304,9 @@ In the browser's console, each answer is a telemetry event, `fixture.answered`, 
 [telemetry] event fixture.answered {request: GET /bonds/US91282CRF04, source: fixture, status: 200, file: fixtures/bond-US91282CRF04.json}
 ```
 
-Commit a fixture for each request a page makes. orval's made-up data rarely looks like the API's, and an enum's is not
-one of its values: orval 8.46 picks it from `Object.values` of the enum's Zod schema, so a generated response with an
-enum fails its schema, and the page says the response was not in the form it expects.
+Commit a fixture for each request a page makes. orval's made-up data passes the response's schema but rarely looks like
+the API's: names are random letters and amounts random numbers. (orval 8.46 picks an enum's value from `Object.values`
+of its Zod schema, which is no value of it; `vp run client-pull` rewrites those picks to the enum's `options`.)
 
 ### Writing a fixture
 

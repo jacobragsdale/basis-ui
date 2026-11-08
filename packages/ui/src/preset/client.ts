@@ -9,7 +9,7 @@
 
 import { execFileSync } from "node:child_process";
 import { existsSync, writeFileSync } from "node:fs";
-import { mkdtemp, readFile, readdir, rm } from "node:fs/promises";
+import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -119,10 +119,30 @@ function pinned(document: Record<string, unknown>, origin: string): Record<strin
   };
 }
 
+/** orval 8.46's MSW mocks pick an enum field's value with `Object.values(Convention)`, written for the plain object
+ * its TypeScript models declare. With Zod models, `Convention` is a Zod enum, whose own properties are no value of it,
+ * so every mock with an enum failed its own schema. A Zod 4 enum lists its values in `options`. */
+const zodEnumMock =
+  /faker\.helpers\.arrayElement\(Object\.values\((?<schema>[A-Za-z_$][\w$]*)\)\)/gu;
+
+/** Rewrites the generated mocks' enum picks to read the Zod enum's `options`, so a mock passes its own schema. */
+async function repairMocks(output: string): Promise<void> {
+  const file = path.join(output, "client.msw.ts");
+  if (!existsSync(file)) {
+    return;
+  }
+  const text = await readFile(file, "utf8");
+  const repaired = text.replaceAll(zodEnumMock, "faker.helpers.arrayElement($<schema>.options)");
+  if (repaired !== text) {
+    await writeFile(file, repaired);
+  }
+}
+
 /** Writes the client that the app's openapi.json generates into `output`. */
 async function generateInto(root: string, output: string): Promise<void> {
   try {
     await generate(orvalOptions(root, output), root, { logLevel: "error", throwOnError: true });
+    await repairMocks(output);
   } catch (error) {
     if (error instanceof Error && error.message.startsWith("ERROR ")) {
       throw new TaskError(error.message);
