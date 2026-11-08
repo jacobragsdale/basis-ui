@@ -31,7 +31,7 @@ function Page({ page, actions, scrolls = false, children }: PageProps): ReactNod
         data-slot="page-views"
         className={cn(
           "flex min-h-0 flex-1 flex-col gap-3 p-3",
-          scrolls ? "overflow-auto" : "overflow-hidden",
+          scrolls ? "overflow-auto *:shrink-0" : "overflow-hidden",
         )}
       >
         {children}
