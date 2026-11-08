@@ -88,6 +88,8 @@ jobs:
       # The example app proves the app shell: its client must match its openapi.json, and its tests run in Chromium.
       - run: vp run @basis/example#client-check
       - run: vp run @basis/example#test
+      # The same app on a machine with no browser: the tests written with @basis/ui/testing, in a Node DOM.
+      - run: vp run @basis/example#test-node
       - run: vp run @basis/example#build
       # The consumer app is configured by hand with the README's lines, as ctzd writes its apps, and must build.
       - run: vp run @basis/consumer#build

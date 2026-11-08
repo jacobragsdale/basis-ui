@@ -390,6 +390,39 @@ mode does, in the order of their names, with an `ERROR` line for each problem, a
 fixtures, generated, telemetry })`, the handler that answers in fixture mode's order. `packages/example`'s
 `src/fixture-mode-support.ts` loads `fixtures/` with `import.meta.glob` and adds the handler to the tests' worker.
 
+## Testing the app
+
+An app's tests run in headless Chromium (`vp test`), and on a machine with no browser in a Node DOM, happy-dom
+(`BASIS_TEST_DOM=node vp test`, or `test: await basisTest({ browser: false })`). Write them with `@basis/ui/testing`,
+which works in both: Testing Library's `render`, `screen`, `within`, `waitFor` and `userEvent`, `renderApp` for the app
+at an address, and `mockApi` for the API, which starts MSW's service worker in Chromium and its Node server otherwise.
+
+```ts
+import { mockApi, renderApp, screen } from "@basis/ui/testing";
+import { afterAll, afterEach, expect, test } from "vite-plus/test";
+
+import { getConventionsMockHandler } from "#api/mocks.ts";
+import { routeTree } from "#routes.ts";
+
+const api = await mockApi(getConventionsMockHandler([{ convention: "ACT/365F", year_days: 365 }]));
+afterEach(() => {
+  api.reset();
+});
+afterAll(async () => {
+  await api.close();
+});
+
+test("the conventions page lists each convention", async () => {
+  renderApp(routeTree, "/");
+  expect(await screen.findByRole("cell", { name: "ACT/365F" })).toBeTruthy();
+});
+```
+
+A test that needs a real browser, for layout, focus or pixels, goes in a file named `*.browser.test.tsx`, which may use
+Vitest's browser API (`vitest-browser-react`, `expect.element`) and which the Node run leaves out. The lint refuses that
+API in every other test, with the fix in its message. Under a Node DOM, parallax's charts and grids render their text
+alternative, not pixels.
+
 ## Using the components
 
 A component's look comes from its props, `variant` and `size`, never from `className`. `className` places a component:

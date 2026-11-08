@@ -17,6 +17,7 @@ export default defineConfig({
       "src/utils/index.ts",
       "src/dates/index.ts",
       "src/securities/index.ts",
+      "src/testing/index.ts",
     ],
     /* The React Compiler, as `basisPlugins()` applies it to an app: a component that breaks the rules of React fails
      * the package's build rather than shipping unoptimized. `vp pack` runs with NODE_ENV=development, which would

@@ -6,11 +6,13 @@
   "license": "MIT",
   "type": "module",
   "imports": {
+    "#fixtures/*": "./fixtures/*",
     "#*": "./src/*"
   },
   "scripts": {
     "build": "vp build",
-    "test": "vp test"
+    "test": "vp test",
+    "test-node": "BASIS_TEST_DOM=node vp test"
   },
   "dependencies": {
     "@basis/ui": "workspace:*",

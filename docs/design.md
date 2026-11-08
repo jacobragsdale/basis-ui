@@ -96,7 +96,8 @@ ctzd uses this surface, and a change to any of it needs a note to ctzd:
 It also needs four things built for it (roadmap steps 1.14 to 1.16):
 
 - a test setup that runs without a browser, beside `basisTest()`'s Playwright one, since citizen developers' laptops
-  have no Chromium;
+  have no Chromium: `basisTest({ browser: false })` in happy-dom, with tests written through `@basis/ui/testing` and
+  Vitest's browser API kept to `*.browser.test.tsx` files;
 - a machine-readable catalogue of the components, `@basis/ui/catalogue.json`, which a test keeps current, with each one's name, purpose, props, variants and
   one example, which ctzd turns into its agents' reference;
 - a check in this repo that configuration written by hand from the README keeps working;

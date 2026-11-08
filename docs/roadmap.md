@@ -195,7 +195,11 @@ second consumer on 2026-11-07: 1.12 and 1.13 wait on basis's contract, and 1.14 
     Chromium, in a DOM implemented in Node. The DOM library is chosen by measuring the gallery's component tests in
     it, and mirrored like the other large packages. `@basis/ui`'s components render and their interactions run there.
     Parallax's components need a canvas and a worker, so under it they render their text alternative and say that
-    their pixels need a browser. Done when the example app's tests pass in both setups. Needs 1.2.
+    their pixels need a browser. Done when the example app's tests pass in both setups. Needs 1.2. Built on 2026-11-08:
+    happy-dom (it and jsdom both passed Base UI's Dialog, Select, Combobox, Tabs and DataTable; happy-dom ran faster
+    with far fewer dependencies), `basisTest({ browser: false })` or `BASIS_TEST_DOM=node`, `@basis/ui/testing`
+    (Testing Library, `renderApp`, `mockApi`), and the lint rule that keeps Vitest's browser API in
+    `*.browser.test.tsx` files (t18's decision); the example's page tests pass in both runs, CI running the Node one.
 
 15. **1.15 Component catalogue.** `vp run @basis/ui#catalogue` writes a JSON catalogue of every exported component,
     from the source's types and doc comments: its name, what it is for, its props with their types and docs, its

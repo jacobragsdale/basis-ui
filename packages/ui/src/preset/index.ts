@@ -188,8 +188,26 @@ function basisPlugins(): PluginOption[] {
   );
 }
 
-/** Vitest in a real browser: headless Chromium through Playwright, as the screenshots and the desktops use. */
-async function basisTest(): Promise<NonNullable<ViteUserConfig["test"]>> {
+/** Tests that need a real browser, for layout, focus or pixels, and may use Vitest's browser API; every other test is
+ * written with `@basis/ui/testing`, which runs in both. */
+const browserOnlyTests = "**/*.browser.test.{ts,tsx}";
+
+interface BasisTestOptions {
+  /** Run in headless Chromium, as the screenshots and the desktops do: yes unless set, or unless the environment
+   * variable `BASIS_TEST_DOM` is `node`. Without a browser, tests run in a Node DOM (happy-dom), and the
+   * `*.browser.test.tsx` files, which need one, are left out. */
+  readonly browser?: boolean;
+}
+
+/** Vitest in a real browser, headless Chromium through Playwright, or, with `browser: false` or `BASIS_TEST_DOM=node`,
+ * in a Node DOM, for a machine with no Chromium. */
+async function basisTest({
+  browser = process.env["BASIS_TEST_DOM"] !== "node",
+}: BasisTestOptions = {}): Promise<NonNullable<ViteUserConfig["test"]>> {
+  if (!browser) {
+    const { configDefaults } = await import("vite-plus/test/config");
+    return { environment: "happy-dom", exclude: [...configDefaults.exclude, browserOnlyTests] };
+  }
   const { playwright } = await import("vite-plus/test/browser-playwright");
   return {
     browser: {
@@ -202,4 +220,4 @@ async function basisTest(): Promise<NonNullable<ViteUserConfig["test"]>> {
 }
 
 export { basisPlugins, basisPreset, basisTest };
-export type { BasisPreset };
+export type { BasisPreset, BasisTestOptions };

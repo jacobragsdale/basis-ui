@@ -50,6 +50,10 @@
       "types": "./dist/securities/index.d.mts",
       "default": "./dist/securities/index.mjs"
     },
+    "./testing": {
+      "types": "./dist/testing/index.d.mts",
+      "default": "./dist/testing/index.mjs"
+    },
     "./styles.css": "./src/styles/styles.css",
     "./theme.css": "./src/styles/theme.css",
     "./tsconfig.json": "./config/tsconfig.json",
@@ -92,6 +96,10 @@
         "types": "./dist/securities/index.d.mts",
         "default": "./dist/securities/index.mjs"
       },
+      "./testing": {
+        "types": "./dist/testing/index.d.mts",
+        "default": "./dist/testing/index.mjs"
+      },
       "./styles.css": "./src/styles/styles.css",
       "./theme.css": "./src/styles/theme.css",
       "./tsconfig.json": "./config/tsconfig.json",
@@ -115,10 +123,14 @@
     "@shadcn/lint": "catalog:",
     "@tailwindcss/vite": "catalog:",
     "@tanstack/react-table": "catalog:",
+    "@testing-library/dom": "catalog:",
+    "@testing-library/react": "catalog:",
+    "@testing-library/user-event": "catalog:",
     "@vitejs/plugin-react": "catalog:",
     "@vitest/browser-playwright": "catalog:",
     "babel-plugin-react-compiler": "catalog:",
     "cn": "catalog:",
+    "happy-dom": "catalog:",
     "msw": "catalog:",
     "orval": "catalog:",
     "playwright": "catalog:",

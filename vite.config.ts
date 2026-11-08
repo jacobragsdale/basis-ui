@@ -5,6 +5,16 @@ import { basisPreset } from "./packages/ui/src/preset/index.ts";
 // This repo checks its own code with the preset every app uses, so the packages meet the rules they ship.
 const preset = basisPreset();
 const { lint } = preset;
+/* The gallery's, parallax's and the demo's suites are basis-ui's own browser tests, of drawing, focus and layout, not an
+ * app's: they keep Vitest's browser API, as the preset allows a `*.browser.test.tsx` file to. */
+const browserTestRules = lint.overrides?.find(({ files }) =>
+  files.includes("**/*.browser.test.tsx"),
+)?.rules;
+const browserSuites = [
+  "packages/gallery/**/*.test.{ts,tsx}",
+  "packages/parallax/**/*.test.{ts,tsx}",
+  "packages/parallax-demo/**/*.test.{ts,tsx}",
+];
 
 /* Parallax's Rust keeps its own checks (cargo), so the root checks skip it, its configuration, and the docs written to
  * its width. The package `@basis/parallax` beside it, its TypeScript and React, is checked here as `@basis/ui` is. */
@@ -55,6 +65,9 @@ export default defineConfig({
     ],
     overrides: [
       ...(lint.overrides ?? []),
+      ...(browserTestRules === undefined
+        ? []
+        : [{ files: browserSuites, rules: browserTestRules }]),
       /* @basis/ui's components and parallax are the formatters the preset sends apps to, so they may round and format
        * numbers themselves. */
       {
