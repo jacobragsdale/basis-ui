@@ -45,7 +45,7 @@ To set the app up:
 
    `basisPreset()` brings the lint, format and staged-file configuration, with `@shadcn/lint`'s design-system rules,
    and the `vp run` tasks. `basisPlugins()` adds React with the React Compiler, which fails the build on a component
-   that breaks the rules of React, Tailwind, and the head script: an inline `<script>` that `vp dev` and `vp build`
+   that breaks the rules of React with an `ERROR` line naming the fix above the compiler's own text, Tailwind, and the head script: an inline `<script>` that `vp dev` and `vp build`
    write at the end of `index.html`'s `<head>`, which applies the stored mode and density before the first paint. Its
    text is `headScript`, exported from `@basis/ui`; the app keeps no copy of it. In `vp test` it also has Vite
    pre-bundle what every module under `src/` imports before the tests start, so no dependency that only app code

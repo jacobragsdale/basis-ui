@@ -209,7 +209,10 @@ second consumer on 2026-11-07: 1.12 and 1.13 wait on basis's contract, and 1.14 
       `packages/ui/README.md` shows, checked, tested and built in CI (built: `packages/consumer`, held to the README by
       `@basis/ui`'s `readme-config` test);
     - an anonymous sign-in for `BasisApp` (built: `anonymousSignIn()`);
-    - a test for each error the preset adds, and for the React Compiler's bail-outs, that the message names its fix.
+    - a test for each error the preset adds, and for the React Compiler's bail-outs, that the message names its fix
+      (built: `tests/preset-errors.test.ts` lints a probe in `packages/consumer`, and `basisPlugins()` wraps the
+      compiler so each bail-out opens with an `ERROR` line naming the fix, which `tests/compiler-fixes.test.ts` checks
+      in a real build).
 
     Needs 1.3. Until 1.8 publishes the packages, ctzd installs them from tarballs that `~/dev/basis-ui-dist/pack.sh`
     packs from `main` on the build host.

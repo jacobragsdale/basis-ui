@@ -10,6 +10,7 @@ import { lazyPlugins } from "vite-plus";
 import type { Plugin, PluginOption, ViteUserConfig } from "vite-plus";
 import type { OxlintConfig } from "vite-plus/lint";
 
+import { withCompilerFixes } from "./compiler-fixes.ts";
 import { headScriptPlugin } from "./head-script.ts";
 import { lint } from "./lint.ts";
 
@@ -143,7 +144,9 @@ function basisPlugins(): PluginOption[] {
       return [
         headScriptPlugin(),
         react(),
-        babel({ presets: [reactCompilerPreset({ panicThreshold: "all_errors" })] }),
+        withCompilerFixes(
+          await babel({ presets: [reactCompilerPreset({ panicThreshold: "all_errors" })] }),
+        ),
         tailwindcss(),
         // Worker-only: a test starts the worker itself, and fixture mode's script does in vp dev; no build carries it.
         { ...msw({ mode: "worker-only" }), apply: "serve" },
