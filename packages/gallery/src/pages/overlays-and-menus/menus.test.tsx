@@ -181,6 +181,18 @@ describe("Context Menu", () => {
     await expect.element(menu).not.toBeInTheDocument();
   });
 
+  test("a radio item chooses how the row is priced, and the menu stays open", async () => {
+    await userEvent.click(await renderContextMenu(), { button: "right" });
+    const clean = page.getByRole("menuitemradio", { name: "Clean" });
+    const dirty = page.getByRole("menuitemradio", { name: "Dirty" });
+    await expect.element(page.getByRole("group", { name: "Price as" })).toBeVisible();
+    await expect.element(clean).toBeChecked();
+    await userEvent.click(dirty);
+    await expect.element(dirty).toBeChecked();
+    await expect.element(clean).not.toBeChecked();
+    await expect.element(menu).toBeVisible();
+  });
+
   test("Shift+F10 on the focused trigger opens it, and Escape returns focus to the trigger", async () => {
     const row = await renderContextMenu();
     row.element().focus();

@@ -1,6 +1,6 @@
 import "#styles.css";
 
-import { Bps, DateTime, Money, Num, Pct, Price32 } from "@basis/ui";
+import { Bps, DateTime, Formatted, Money, Num, Pct, Price32 } from "@basis/ui";
 import type { ReactElement } from "react";
 import { describe, expect, test } from "vite-plus/test";
 import { render } from "vitest-browser-react";
@@ -15,6 +15,16 @@ async function shownText(element: ReactElement): Promise<string> {
 
 describe("the display components' text", () => {
   test.each([
+    {
+      element: <Formatted value={0.0525} format={{ kind: "pct" }} />,
+      name: "Formatted, a rate by its pct format",
+      text: "5.25%",
+    },
+    {
+      element: <Formatted value={0.0025} format={{ decimals: 0, kind: "bps" }} />,
+      name: "Formatted, a spread by its bps format",
+      text: "25\u00A0bp",
+    },
     { element: <Num value={1234.5} />, name: "Num, a double at two decimals", text: "1,234.50" },
     { element: <Num value={-1234.5} />, name: "Num, a negative double", text: "-1,234.50" },
     {

@@ -3,6 +3,7 @@
 
 import type { ReactElement } from "react";
 
+import { AppInShell } from "./pages/app-in-shell.tsx";
 import { AppShell } from "./pages/app-shell.tsx";
 import { Data } from "./pages/data.tsx";
 import { FeedbackAndDisplay } from "./pages/feedback-and-display.tsx";
@@ -33,6 +34,7 @@ const pages: readonly [GalleryPage, ...GalleryPage[]] = [
     title: "Small charts and states",
   },
   { Content: AppShell, id: "app-shell", title: "App shell" },
+  { Content: AppInShell, id: "app-in-shell", title: "An app in the shell" },
   { Content: Icons, id: "icons", title: "Icons" },
 ];
 

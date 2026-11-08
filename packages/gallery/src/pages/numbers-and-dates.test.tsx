@@ -15,6 +15,7 @@ const sections = [
   "Bps",
   "Price32",
   "DateTime",
+  "Formatted",
   "Signed and aligned",
   "AmountInput",
   "AsOfDatePicker",

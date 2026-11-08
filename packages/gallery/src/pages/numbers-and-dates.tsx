@@ -13,6 +13,7 @@ import {
 import {
   BpsSection,
   DateTimeSection,
+  FormattedSection,
   MoneySection,
   NumSection,
   PctSection,
@@ -30,6 +31,7 @@ function NumbersAndDates(): ReactElement {
       <BpsSection />
       <Price32Section />
       <DateTimeSection />
+      <FormattedSection />
       <SignedSection />
       <AmountInputSection />
       <AsOfDatePickerSection />

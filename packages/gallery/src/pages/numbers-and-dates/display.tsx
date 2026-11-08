@@ -4,6 +4,7 @@
 import {
   Bps,
   DateTime,
+  Formatted,
   Money,
   Num,
   Pct,
@@ -123,6 +124,27 @@ const signedExamples: readonly Example[] = [
   { sent: "Num 0.001, 2 decimals", shown: <Num value={0.001} decimals={2} signed /> },
 ];
 
+const formattedExamples: readonly Example[] = [
+  {
+    sent: '1250000, { kind: "money", currency: "EUR" }',
+    shown: <Formatted value={1_250_000} format={{ currency: "EUR", kind: "money" }} />,
+  },
+  { sent: '0.0525, { kind: "pct" }', shown: <Formatted value={0.0525} format={{ kind: "pct" }} /> },
+  {
+    sent: '0.0025, { kind: "bps", decimals: 0 }',
+    shown: <Formatted value={0.0025} format={{ decimals: 0, kind: "bps" }} />,
+  },
+  {
+    sent: '99.515625, { kind: "price32" }',
+    shown: <Formatted value={99.515625} format={{ kind: "price32" }} />,
+  },
+  {
+    sent: '2.0625, { kind: "price", decimals: 4 }',
+    shown: <Formatted value={2.0625} format={{ decimals: 4, kind: "price" }} />,
+  },
+  { sent: "1234.5, no format", shown: <Formatted value={1234.5} /> },
+];
+
 function NumSection(): ReactElement {
   return (
     <Section
@@ -189,6 +211,17 @@ function DateTimeSection(): ReactElement {
   );
 }
 
+function FormattedSection(): ReactElement {
+  return (
+    <Section
+      title="Formatted"
+      description="A number shown by the display format its API declares, through Num, Money, Pct, Bps or Price32 as the format's kind says, so a page names no decimals."
+    >
+      <Examples label="Formatted examples" examples={formattedExamples} />
+    </Section>
+  );
+}
+
 /** Signed values, then a column of figures aligned right outside a table. */
 function SignedSection(): ReactElement {
   return (
@@ -218,6 +251,7 @@ function SignedSection(): ReactElement {
 export {
   BpsSection,
   DateTimeSection,
+  FormattedSection,
   MoneySection,
   NumSection,
   PctSection,

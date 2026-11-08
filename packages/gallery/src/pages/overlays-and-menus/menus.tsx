@@ -10,6 +10,8 @@ import {
   ContextMenuGroup,
   ContextMenuItem,
   ContextMenuLabel,
+  ContextMenuRadioGroup,
+  ContextMenuRadioItem,
   ContextMenuSeparator,
   ContextMenuShortcut,
   ContextMenuSub,
@@ -143,6 +145,14 @@ function ContextMenuExample(): ReactElement {
         </ContextMenuGroup>
         <ContextMenuSeparator />
         <ContextMenuCheckboxItem defaultChecked>Show totals</ContextMenuCheckboxItem>
+        <ContextMenuSeparator />
+        <ContextMenuGroup>
+          <ContextMenuLabel>Price as</ContextMenuLabel>
+          <ContextMenuRadioGroup defaultValue="clean">
+            <ContextMenuRadioItem value="clean">Clean</ContextMenuRadioItem>
+            <ContextMenuRadioItem value="dirty">Dirty</ContextMenuRadioItem>
+          </ContextMenuRadioGroup>
+        </ContextMenuGroup>
         <ContextMenuSeparator />
         <ContextMenuItem variant="destructive">
           <TrashIcon />
