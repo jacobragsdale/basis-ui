@@ -32,6 +32,12 @@ function isDrawable(chart: LayoutChart | null): boolean {
   return chart !== null && drawableKinds.includes(chart.kind);
 }
 
+/** Whether a chart shows its drawing tools and lets the pointer edit drawings: one that takes drawings, unless its
+ * layout turns them off. */
+function hasDrawingTools(chart: LayoutChart | null): boolean {
+  return isDrawable(chart) && chart?.drawing_tools !== false;
+}
+
 /** The shape of the layout a view sent at each configuration version, read back from the view, the last one kept. */
 class FrameShapes {
   #json = "";
@@ -63,5 +69,5 @@ function fitsShape(
   return shape !== null && shapes.shapeAt(frame.handle, frame.configVersion) === shape;
 }
 
-export { FrameShapes, fitsShape, groupOf, isDrawable };
+export { FrameShapes, fitsShape, groupOf, hasDrawingTools, isDrawable };
 export type { PlotSize };

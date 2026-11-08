@@ -84,8 +84,10 @@ pub struct Layout {
     /// Columns of a flat or detail view kept at the left while the rest scroll,
     /// in order. They come first, whatever `columns` says.
     pub pinned: Vec<String>,
-    /// Header text by source column; a column without one shows its name. The
-    /// export's headers are the same.
+    /// Header text by source column, or by a measure's header, such as
+    /// `sum(par)` or `wmean(ytm by market_value)`; a column or measure without
+    /// one shows its name. The export's headers and a chart's legend are the
+    /// same.
     pub titles: BTreeMap<String, String>,
     /// The totals row of a flat or detail view: at most one total per column,
     /// each a measure of its column. A detail view's group rows show them too.
@@ -670,6 +672,11 @@ pub struct LayoutChart {
     /// How a tenor axis spaces tenors.
     #[serde(default, skip_serializing_if = "TenorSpacingName::is_even")]
     pub tenor_spacing: TenorSpacingName,
+    /// Shows the drawing tools above a chart that takes drawings. Off, a
+    /// small overview chart carries no toolbar, and the drawings the layout
+    /// holds are shown but not edited.
+    #[serde(default = "yes", skip_serializing_if = "is_true")]
+    pub drawing_tools: bool,
 }
 
 impl LayoutChart {
@@ -1289,6 +1296,11 @@ fn is_false(value: &bool) -> bool {
     !*value
 }
 
+#[allow(clippy::trivially_copy_pass_by_ref)]
+fn is_true(value: &bool) -> bool {
+    *value
+}
+
 fn yes() -> bool {
     true
 }
@@ -1329,6 +1341,19 @@ pub enum LayoutError {
     /// A total is incomplete.
     #[error("total {0}: {1}")]
     Total(usize, String),
+    /// A title names neither a column of the table nor a measure.
+    #[error(
+        "titles: {name} is neither a column nor a measure; the columns are {columns}{measures}"
+    )]
+    UnknownTitle {
+        /// The title's key.
+        name: String,
+        /// The table's columns, comma-separated.
+        columns: String,
+        /// The layout's measures by their headers, after "and the measures
+        /// are", or empty when it has none.
+        measures: String,
+    },
     /// A search has no column to search.
     #[error("the search for {0:?} has no text column to search")]
     Search(String),
@@ -1338,6 +1363,26 @@ pub enum LayoutError {
 #[must_use]
 pub fn schema() -> Value {
     serde_json::to_value(schemars::schema_for!(Layout)).expect("schemas serialize")
+}
+
+/// The error for a title naming neither a column nor a measure, listing both.
+fn unknown_title(table: &Table, measures: &[Measure], name: &str) -> LayoutError {
+    let columns: Vec<&str> = table
+        .schema()
+        .fields()
+        .iter()
+        .map(|f| f.name().as_str())
+        .collect();
+    let labels: Vec<String> = measures.iter().map(Measure::label).collect();
+    LayoutError::UnknownTitle {
+        name: name.to_owned(),
+        columns: columns.join(", "),
+        measures: if labels.is_empty() {
+            String::new()
+        } else {
+            format!(", and the measures are {}", labels.join(", "))
+        },
+    }
 }
 
 fn value_error(column: &str, reason: impl Into<String>) -> LayoutError {
@@ -1713,6 +1758,20 @@ impl Layout {
                 Ok((path, e.expanded))
             })
             .collect::<Result<Vec<_>, LayoutError>>()?;
+        // A title names a column, or a measure by its header, such as
+        // `sum(par)`, which a grouped view's header and a bar chart's legend
+        // then say instead.
+        let titles = self
+            .titles
+            .iter()
+            .map(|(name, title)| {
+                let measure = measures.iter().any(|m| m.label() == *name);
+                if !measure && table.column_index(name).is_none() {
+                    return Err(unknown_title(table, &measures, name));
+                }
+                Ok((name.clone(), title.clone()))
+            })
+            .collect::<Result<_, LayoutError>>()?;
         let config = ViewConfig {
             columns: self.shown_columns(table)?,
             group_by: self.group_by.clone(),
@@ -1773,14 +1832,7 @@ impl Layout {
                     Ok((column.clone(), f.to_engine()))
                 }))
                 .collect::<Result<_, LayoutError>>()?,
-            titles: self
-                .titles
-                .iter()
-                .map(|(column, title)| {
-                    column_type(table, column)?;
-                    Ok((column.clone(), title.clone()))
-                })
-                .collect::<Result<_, LayoutError>>()?,
+            titles,
             totals,
             detail: self.detail,
             orders: self
@@ -2336,6 +2388,12 @@ mod tests {
                       "reverse_y_right": true, "rising": "loss",
                       "panes": [{"columns": ["change"], "kind": "bar", "reverse": true}]}
         }"#;
+        let overview = r#"{
+            "dataset": "pnl",
+            "titles": {"cumulative_pnl": "Cumulative P&L"},
+            "chart": {"kind": "line", "x": "date", "y": ["cumulative_pnl"], "series": "portfolio",
+                      "drawing_tools": false}
+        }"#;
         let panes = r#"{
             "dataset": "curves",
             "filters": [{"column": "curve_date", "op": "in", "values": ["2026-11-30", "2026-11-23"]}],
@@ -2352,6 +2410,7 @@ mod tests {
             Layout::from_json(sifma).unwrap(),
             Layout::from_json(panes).unwrap(),
             Layout::from_json(reversed).unwrap(),
+            Layout::from_json(overview).unwrap(),
         ]
         .iter()
         .map(|l| serde_json::to_value(l).unwrap())
@@ -2366,6 +2425,21 @@ mod tests {
         check_generated("../../tests/fixtures/layouts.json", &fixtures);
         let additions = serde_json::to_string_pretty(&fixture_layouts_2_8()).unwrap() + "\n";
         check_generated("../../tests/fixtures/layouts-2.8.json", &additions);
+    }
+
+    #[test]
+    fn drawing_tools_are_on_unless_turned_off() {
+        let chart = |json: &str| Layout::from_json(json).unwrap().chart.unwrap();
+        assert!(chart(r#"{"chart": {"kind": "line", "x": "a", "y": ["b"]}}"#).drawing_tools);
+        let off = Layout::from_json(
+            r#"{"chart": {"kind": "line", "x": "a", "y": ["b"], "drawing_tools": false}}"#,
+        )
+        .unwrap();
+        assert!(!off.chart.as_ref().unwrap().drawing_tools);
+        // Off is written, and read back the same.
+        let json = off.to_json();
+        assert!(json.contains("\"drawing_tools\":false"), "{json}");
+        assert_eq!(Layout::from_json(&json).unwrap(), off);
     }
 
     #[test]
@@ -2387,6 +2461,7 @@ mod tests {
             "\"reverse_y_right\"",
             "\"rising\"",
             "\"reverse\"",
+            "\"drawing_tools\"",
         ] {
             assert!(!json.contains(field), "{field} in {json}");
         }

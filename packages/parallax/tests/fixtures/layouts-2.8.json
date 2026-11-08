@@ -501,5 +501,57 @@
     "top_n": null,
     "totals": [],
     "version": 2
+  },
+  {
+    "chart": {
+      "axis": "value",
+      "compare": false,
+      "donut": true,
+      "drawing_tools": false,
+      "drawings": [],
+      "events": null,
+      "hidden": [],
+      "horizontal": false,
+      "indicators": [],
+      "kind": "line",
+      "labels": true,
+      "log_y": false,
+      "ohlc": null,
+      "range": null,
+      "series": "portfolio",
+      "stacked": false,
+      "volume": null,
+      "x": "date",
+      "y": [
+        "cumulative_pnl"
+      ],
+      "y_right": []
+    },
+    "column_widths": {},
+    "columns": [],
+    "dataset": "pnl",
+    "detail": false,
+    "expand_depth": 0,
+    "expanded": [],
+    "filters": [],
+    "formats": {},
+    "group_by": [],
+    "group_sort": {
+      "by": "key",
+      "descending": false
+    },
+    "having": [],
+    "measures": [],
+    "parameters": {},
+    "pinned": [],
+    "search": "",
+    "sort": [],
+    "split_by": [],
+    "titles": {
+      "cumulative_pnl": "Cumulative P&L"
+    },
+    "top_n": null,
+    "totals": [],
+    "version": 2
   }
 ]

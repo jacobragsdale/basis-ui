@@ -73,6 +73,7 @@ function inputOf(chart: LayoutChart, data: Data): ModelInput {
 function seriesOf(label: string, values: readonly number[], right = false): SeriesData {
   return {
     column: "close",
+    key: "",
     label,
     right,
     x: Float64Array.from(values, (_value, i) => i),

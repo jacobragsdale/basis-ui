@@ -1183,19 +1183,22 @@ mod panes {
         let [Body::ChartFrame(ChartFrame { batch, series, .. })] = replies.as_slice() else {
             panic!("{replies:?}")
         };
-        // The plot's yields and the pane's changes, by date, none on the right.
-        let labels: Vec<(&str, &str, bool)> = series
+        // The plot's yields and the pane's changes, by date, none on the right:
+        // the plot draws one column, so its series are named by date alone.
+        let labels: Vec<(&str, &str, &str, bool)> = series
             .iter()
-            .map(|s| (s.label.as_str(), s.column.as_str(), s.right))
+            .map(|s| (s.label.as_str(), s.column.as_str(), s.key.as_str(), s.right))
             .collect();
         for date in ["2026-01-02", "2026-11-27", "2026-11-30"] {
-            for column in ["yield", "change"] {
-                let label = format!("{column} {date}");
-                assert!(
-                    labels.contains(&(label.as_str(), column, false)),
-                    "{label} in {labels:?}"
-                );
-            }
+            assert!(
+                labels.contains(&(date, "yield", date, false)),
+                "{date} in {labels:?}"
+            );
+            let change = format!("change {date}");
+            assert!(
+                labels.contains(&(change.as_str(), "change", date, false)),
+                "{change} in {labels:?}"
+            );
         }
         let batch = decode_batches(batch).unwrap().remove(0);
         let ids = batch
@@ -1219,7 +1222,7 @@ mod panes {
             changes.iter().all(|t| t.ends_with("\u{a0}bp")),
             "{changes:?}"
         );
-        let yields = of("yield 2026-11-30");
+        let yields = of("2026-11-30");
         assert!(
             (0..batch.num_rows())
                 .filter(|&r| ids.value(r) == yields)
@@ -1249,4 +1252,172 @@ mod panes {
             "{replies:?}"
         );
     }
+}
+
+/// Opens view 1 with `layout` and returns the chart frame's series labels and keys.
+fn labels_of(layout: &str) -> Vec<(String, String)> {
+    let (mut session, _) = session();
+    let opened = send(
+        &mut session,
+        1,
+        client_message::Body::OpenView(OpenView {
+            view_id: 1,
+            dataset: "positions".into(),
+            parameters: HashMap::new(),
+            layout_json: layout.into(),
+        }),
+    );
+    assert!(
+        matches!(opened.as_slice(), [Body::ViewOpened(_)]),
+        "{opened:?}"
+    );
+    let replies = send(
+        &mut session,
+        2,
+        client_message::Body::SetChartWindow(SetChartWindow {
+            view_id: 1,
+            width: 400,
+            height: 200,
+            ..SetChartWindow::default()
+        }),
+    );
+    let [Body::ChartFrame(frame)] = replies.as_slice() else {
+        panic!("{replies:?}")
+    };
+    frame
+        .series
+        .iter()
+        .map(|s| (s.label.clone(), s.key.clone()))
+        .collect()
+}
+
+#[test]
+fn one_plotted_column_names_its_series_by_value_alone() {
+    let labels =
+        labels_of(r#"{"chart":{"kind":"line","x":"beta","y":["delta"],"series":"long_short"}}"#);
+    assert_eq!(
+        labels,
+        [
+            ("Long".into(), "Long".into()),
+            ("Short".into(), "Short".into())
+        ]
+    );
+}
+
+#[test]
+fn several_columns_name_their_series_by_title_and_value() {
+    let labels = labels_of(
+        r#"{"chart":{"kind":"line","x":"beta","y":["delta"],"y_right":["volatility_30d"],
+                     "series":"long_short"},
+            "titles":{"delta":"Delta"}}"#,
+    );
+    assert_eq!(
+        labels,
+        [
+            ("Delta Long".into(), "Long".into()),
+            ("volatility_30d Long".into(), "Long".into()),
+            ("Delta Short".into(), "Short".into()),
+            ("volatility_30d Short".into(), "Short".into()),
+        ]
+    );
+}
+
+#[test]
+fn a_title_names_an_unsplit_series_and_follows_a_display_change() {
+    let (mut session, _) = session();
+    let layout = r#"{"chart":{"kind":"line","x":"beta","y":["delta"]}}"#;
+    send(
+        &mut session,
+        1,
+        client_message::Body::OpenView(OpenView {
+            view_id: 1,
+            dataset: "positions".into(),
+            parameters: HashMap::new(),
+            layout_json: layout.into(),
+        }),
+    );
+    send(
+        &mut session,
+        2,
+        client_message::Body::SetChartWindow(SetChartWindow {
+            view_id: 1,
+            width: 400,
+            height: 200,
+            ..SetChartWindow::default()
+        }),
+    );
+    // A title changes only the drawing, so the reduction stays and the label follows.
+    let replies = update(
+        &mut session,
+        3,
+        r#"{"chart":{"kind":"line","x":"beta","y":["delta"]},"titles":{"delta":"Delta"}}"#,
+    );
+    let [Body::ChartFrame(frame)] = replies.as_slice() else {
+        panic!("{replies:?}")
+    };
+    let labels: Vec<(&str, &str)> = frame
+        .series
+        .iter()
+        .map(|s| (s.label.as_str(), s.key.as_str()))
+        .collect();
+    assert_eq!(labels, [("Delta", "")]);
+}
+
+#[test]
+fn a_refused_view_answers_later_requests_with_its_reason() {
+    let (mut session, _) = session();
+    let refused = send(
+        &mut session,
+        1,
+        client_message::Body::OpenView(OpenView {
+            view_id: 3,
+            dataset: "positions".into(),
+            parameters: HashMap::new(),
+            layout_json: r#"{"titles":{"not_a_column":"X"}}"#.into(),
+        }),
+    );
+    let [Body::Error(first)] = refused.as_slice() else {
+        panic!("{refused:?}")
+    };
+    assert!(
+        first
+            .message
+            .contains("not_a_column is neither a column nor a measure"),
+        "{first:?}"
+    );
+    let later = send(
+        &mut session,
+        2,
+        client_message::Body::SetViewport(SetViewport {
+            view_id: 3,
+            first_row: 0,
+            row_count: 10,
+            first_column: 0,
+            column_count: 10,
+        }),
+    );
+    let [Body::Error(again)] = later.as_slice() else {
+        panic!("{later:?}")
+    };
+    assert_eq!(again.message, first.message);
+    // Closed, the view is forgotten.
+    send(
+        &mut session,
+        3,
+        client_message::Body::CloseView(parallax_protocol::v1::CloseView { view_id: 3 }),
+    );
+    let gone = send(
+        &mut session,
+        4,
+        client_message::Body::UpdateView(UpdateView {
+            view_id: 3,
+            layout_json: "{}".into(),
+            config_version: 1,
+            viewport: None,
+        }),
+    );
+    assert!(
+        matches!(gone.as_slice(), [Body::Error(e)] if e.message == "no view 3"),
+        "{gone:?}"
+    );
 }

@@ -116,7 +116,7 @@ frame for rows already on screen redraws only the cells whose text changed.
 | Prop             | What it is                                                                                                                                  |
 | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
 | `dataset`        | The dataset, from `useDataset`                                                                                                              |
-| `layout`         | The view: columns, sorts, filters, groups and pivots, formats, widths, pinned columns, titles and totals                                     |
+| `layout`         | The view: columns, sorts, filters, groups and pivots, formats, widths, pinned columns, titles and totals; a layout the engine refuses shows its reason in place of the grid |
 | `onLayoutChange` | Takes each layout the user makes                                                                                                            |
 | `toolbar`        | `true` (the default) shows the toolbar, `false` hides it, and an object turns parts off: `search`, `chips`, `columns`, `totals`, `export`, `group` and `expand` |
 | `height`         | `fill`, the default, takes the container's height; `auto` sizes the grid to its rows up to `maxHeight` pixels (480 by default)               |
@@ -173,6 +173,7 @@ function Exposure(): ReactNode {
 | Prop                  | What it is                                                                                         |
 | --------------------- | -------------------------------------------------------------------------------------------------- |
 | `dataset`, `layout`   | The dataset, from `useDataset`, and the pivot: its row and column groups, values, filters and more |
+| `layout.titles`       | Header text by column, or by a measure's header as the pivot shows it: `{ "sum(par)": "Par", "wmean(ytm by market_value)": "Yield" }`. A key that names neither fails the view with a reason that lists both |
 | `onLayoutChange`      | Takes each layout the user makes; without it, the pivot keeps its changes until `layout` changes   |
 | `toolbar`             | The table's toolbar, as `<Grid>` takes it                                                          |
 | `defaultSettingsOpen` | Whether the settings start open; they do by default, and the user hides and shows them             |
@@ -373,6 +374,23 @@ the layout `group_by` and `measures`, or give the chart `x` and `y`, which
 group by `x` and sum each `y`, split by `series`, as the small-data form does.
 One given neither says so in place of the plot.
 
+A layout's `titles` name columns in a chart's legend as in a grid's headers,
+and a series split from one plotted column is named by its value alone: a line
+of `cumulative_pnl` split by portfolio reads `Core Plus`, not
+`cumulative_pnl Core Plus`. A small overview chart that should carry no
+drawing tools turns them off with `drawing_tools: false`; they are on by
+default, the small-data form's included, and the layout's drawings still show:
+
+```tsx
+<Chart
+  dataset={pnl}
+  layout={{
+    titles: { cumulative_pnl: "Cumulative P&L" },
+    chart: { kind: "line", x: "date", y: ["cumulative_pnl"], series: "portfolio", drawing_tools: false },
+  }}
+/>
+```
+
 A small chart takes the rows the page already holds, and loads them as a table
 of its own, in their order:
 
@@ -382,7 +400,7 @@ of its own, in their order:
 
 | Prop                     | What it does                                                                                                                                                       |
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `dataset`, `layout`      | The data and the view of it; the layout's `chart` section says what to draw                                                                                       |
+| `dataset`, `layout`      | The data and the view of it; the layout's `chart` section says what to draw, its `titles` name columns in the legend, and `chart.drawing_tools: false` hides the drawing tools |
 | `rows`, `kind`, `x`, `y` | The small-data form: the rows, a value per column, and what to draw of them; `series` splits them, `settings` adds chart settings and `formats` formats the values |
 | `onLayoutChange`         | The layout the chart changed: a series hidden from the legend, a zoom, a drawing. Without it, the chart keeps its own changes until its `layout` changes           |
 | `onBrush`                | The filters a Shift-drag selects, for a linked view; null once Escape clears it                                                                                    |

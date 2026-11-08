@@ -403,6 +403,7 @@ fn build_view(
             view,
             layout: chart.clone(),
             formats: resolved.config.formats,
+            titles: resolved.config.titles,
             anchors: resolved.anchors,
             window: None,
         })));
@@ -466,6 +467,9 @@ impl OpenView {
 pub struct Session {
     catalog: Arc<dyn Catalog>,
     views: BTreeMap<u32, OpenView>,
+    /// Why each view the engine refused to open was refused, until it is
+    /// closed: a later request for it is answered with the reason.
+    refused: BTreeMap<u32, String>,
 }
 
 fn error(request_id: u64, view_id: u32, message: impl Into<String>) -> ServerMessage {
@@ -492,6 +496,7 @@ impl Session {
         Self {
             catalog,
             views: BTreeMap::new(),
+            refused: BTreeMap::new(),
         }
     }
 
@@ -550,11 +555,13 @@ impl Session {
                 }),
             )],
             client_message::Body::OpenView(open) => {
-                let parameters: BTreeMap<String, String> = open.parameters.into_iter().collect();
-                let layout = Layout::from_json(&open.layout_json).map_err(|e| e.to_string())?;
-                same_source(&layout, &open.dataset, &parameters)?;
-                let table = self.catalog.open(&open.dataset, &parameters)?;
-                self.open_view(id, open.view_id, table, &open.dataset, parameters, layout)?
+                let view_id = open.view_id;
+                let opened = self.open(id, open);
+                match &opened {
+                    Ok(_) => self.refused.remove(&view_id),
+                    Err(reason) => self.refused.insert(view_id, reason.clone()),
+                };
+                opened?
             }
             client_message::Body::UpdateView(update) => {
                 let open = self.view_mut(update.view_id)?;
@@ -600,6 +607,7 @@ impl Session {
                         // scales, formats or drawings: the reduction stays.
                         chart.layout = new.clone();
                         chart.formats = resolved.config.formats;
+                        chart.titles = resolved.config.titles;
                         chart.anchors = resolved.anchors;
                     } else {
                         // A chart rebuilds and keeps the window it was asked for.
@@ -690,6 +698,7 @@ impl Session {
             }
             client_message::Body::CloseView(c) => {
                 self.views.remove(&c.view_id);
+                self.refused.remove(&c.view_id);
                 Vec::new()
             }
             client_message::Body::DrillThrough(d) => {
@@ -744,10 +753,30 @@ impl Session {
         })
     }
 
+    /// Opens the view `open` asks for.
+    fn open(
+        &mut self,
+        id: u64,
+        open: parallax_protocol::v1::OpenView,
+    ) -> Result<Vec<ServerMessage>, String> {
+        let parameters: BTreeMap<String, String> = open.parameters.into_iter().collect();
+        let layout = Layout::from_json(&open.layout_json).map_err(|e| e.to_string())?;
+        same_source(&layout, &open.dataset, &parameters)?;
+        let table = self.catalog.open(&open.dataset, &parameters)?;
+        self.open_view(id, open.view_id, table, &open.dataset, parameters, layout)
+    }
+
+    /// Why there is no view `view_id`: the reason it was refused, if it was.
+    fn missing(&self, view_id: u32) -> String {
+        self.refused
+            .get(&view_id)
+            .cloned()
+            .unwrap_or_else(|| format!("no view {view_id}"))
+    }
+
     fn view_mut(&mut self, view_id: u32) -> Result<&mut OpenView, String> {
-        self.views
-            .get_mut(&view_id)
-            .ok_or_else(|| format!("no view {view_id}"))
+        let missing = self.missing(view_id);
+        self.views.get_mut(&view_id).ok_or(missing)
     }
 
     fn open_view(
@@ -844,7 +873,7 @@ impl Session {
         pushed: bool,
     ) -> Option<ServerMessage> {
         let Some(open) = self.views.get_mut(&view_id) else {
-            return Some(error(request_id, view_id, format!("no view {view_id}")));
+            return Some(error(request_id, view_id, self.missing(view_id)));
         };
         let table = Arc::clone(&open.table);
         let state = match read_table(&table) {
@@ -980,7 +1009,7 @@ impl Session {
         let open = self
             .views
             .get(&request.view_id)
-            .ok_or_else(|| format!("no view {}", request.view_id))?;
+            .ok_or_else(|| self.missing(request.view_id))?;
         let state = read_table(&open.table)?;
         // Other columns' filters apply, as in a spreadsheet's filter list, and so
         // does the view's search; the column's own filter does not, so its other

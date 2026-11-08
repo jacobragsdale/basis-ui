@@ -97,6 +97,7 @@ function model(chart: LayoutChart, data: ChartFrameData): ChartModel {
 function closes(label: string, values: readonly number[]): SeriesData {
   return {
     column: "close",
+    key: "",
     label,
     right: false,
     x: Float64Array.from(days),

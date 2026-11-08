@@ -349,6 +349,10 @@
           "description": "Draws a pie chart as a ring, with the total in its centre.",
           "type": "boolean"
         },
+        "drawing_tools": {
+          "description": "Shows the drawing tools above a chart that takes drawings. Off, a\nsmall overview chart carries no toolbar, and the drawings the layout\nholds are shown but not edited.",
+          "type": "boolean"
+        },
         "drawings": {
           "default": [],
           "description": "Lines, levels, rectangles and notes drawn over the price.",
@@ -1680,7 +1684,7 @@
         "type": "string"
       },
       "default": {},
-      "description": "Header text by source column; a column without one shows its name. The\nexport's headers are the same.",
+      "description": "Header text by source column, or by a measure's header, such as\n`sum(par)` or `wmean(ytm by market_value)`; a column or measure without\none shows its name. The export's headers and a chart's legend are the\nsame.",
       "type": "object"
     },
     "top_n": {

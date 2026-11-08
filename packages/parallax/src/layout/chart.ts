@@ -176,6 +176,9 @@ const chartSchema = z.strictObject({
   reverse_y: z.boolean().optional(),
   reverse_y_right: z.boolean().optional(),
   rising: z.enum(["gain", "loss"]).optional(),
+  // The drawing tools above a line, area, candlestick or OHLC chart; off, the layout's drawings show but are not
+  // edited. Left out when on, as in Rust.
+  drawing_tools: z.boolean().optional(),
 });
 
 /** A chart of a layout. */

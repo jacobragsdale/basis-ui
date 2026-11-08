@@ -24,6 +24,8 @@ pub(crate) struct ChartState {
     pub(crate) view: ChartView,
     pub(crate) layout: LayoutChart,
     pub(crate) formats: BTreeMap<String, Format>,
+    /// The layout's titles, which name columns in the legend.
+    pub(crate) titles: BTreeMap<String, String>,
     /// The distinct x values the layout's drawings are anchored to, as JSON and as
     /// values of the x column.
     pub(crate) anchors: Vec<(String, Scalar)>,
@@ -261,9 +263,30 @@ pub(crate) fn chart_frame(table: &Table, state: &ChartState) -> Result<ChartFram
     let left = state.layout.y.len();
     // Past the right axis's columns come the panes', which neither axis draws.
     let right_end = left + state.layout.y_right.len();
-    let label = |column: &str, key: Option<&Scalar>| match (key, &series_text) {
-        (Some(key), Some(series)) => format!("{column} {}", series.value(key)),
-        _ => column.to_owned(),
+    // The plot draws one column, so its series need only the series column's
+    // value to tell them apart.
+    let one_column = left + state.layout.y_right.len() == 1;
+    let title = |column: &str| {
+        state
+            .titles
+            .get(column)
+            .map_or(column, String::as_str)
+            .to_owned()
+    };
+    // A series of `column`: its legend label, its column's title, then the
+    // series column's value, or that value alone when `alone`.
+    let series_of = |column: &str, key: Option<&Scalar>, alone: bool| {
+        let value = key.zip(series_text.as_ref()).map(|(k, t)| t.value(k));
+        ChartSeries {
+            label: match &value {
+                Some(value) if alone => value.clone(),
+                Some(value) => format!("{} {value}", title(column)),
+                None => title(column),
+            },
+            column: column.to_owned(),
+            right: false,
+            key: value.unwrap_or_default(),
+        }
     };
     let mut frame = ChartFrame {
         x_from: x.0,
@@ -329,9 +352,8 @@ pub(crate) fn chart_frame(table: &Table, state: &ChartState) -> Result<ChartFram
                 let column = &config.y[s.y];
                 let y_text = &y_texts_by_column[s.y];
                 frame.series.push(ChartSeries {
-                    label: label(column, s.key.as_ref()),
-                    column: column.clone(),
                     right: (left..right_end).contains(&s.y),
+                    ..series_of(column, s.key.as_ref(), one_column && s.y < right_end)
                 });
                 for p in points {
                     ids.push(i as u32);
@@ -367,14 +389,7 @@ pub(crate) fn chart_frame(table: &Table, state: &ChartState) -> Result<ChartFram
             // column's values alone.
             let column = &config.y[0];
             for (key, _) in &series {
-                frame.series.push(ChartSeries {
-                    label: match (key, &series_text) {
-                        (Some(key), Some(texts)) => texts.value(key),
-                        _ => column.clone(),
-                    },
-                    column: column.clone(),
-                    right: false,
-                });
+                frame.series.push(series_of(column, key.as_ref(), true));
             }
             frame.batch = points_batch(
                 &series,
@@ -417,11 +432,8 @@ pub(crate) fn chart_frame(table: &Table, state: &ChartState) -> Result<ChartFram
             // series.
             let edge_texts: Vec<String> = edges.iter().map(|&e| x_text.double(e)).collect();
             for (i, (key, bins)) in counts.iter().enumerate() {
-                frame.series.push(ChartSeries {
-                    label: label(&config.x, key.as_ref()),
-                    column: config.x.clone(),
-                    right: false,
-                });
+                // A histogram counts one column, so a series is its value.
+                frame.series.push(series_of(&config.x, key.as_ref(), true));
                 for (bin, &n) in bins.iter().enumerate() {
                     ids.push(i as u32);
                     froms.push(edges[bin]);
@@ -526,11 +538,8 @@ pub(crate) fn chart_frame(table: &Table, state: &ChartState) -> Result<ChartFram
         let (mut ids, mut xs, mut ys, mut x_texts, mut y_texts) =
             (Vec::new(), Vec::new(), Vec::new(), Vec::new(), Vec::new());
         for (i, (key, points)) in fits.iter().enumerate() {
-            frame.fits.push(ChartSeries {
-                label: label(fit, key.as_ref()),
-                column: fit.to_owned(),
-                right: false,
-            });
+            // A fit's label names its column, so it reads apart from the dots.
+            frame.fits.push(series_of(fit, key.as_ref(), false));
             for p in points {
                 ids.push(i as u32);
                 xs.push(p.x);

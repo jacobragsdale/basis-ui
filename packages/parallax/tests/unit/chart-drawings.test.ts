@@ -52,6 +52,7 @@ describe(anchorPosition, () => {
         series: [
           {
             column: "y",
+            key: "",
             label: "y",
             right: false,
             x: Float64Array.from([7]),
@@ -199,6 +200,7 @@ describe(drawingFrom, () => {
 function closes(label: string, base: number): SeriesData {
   return {
     column: "close",
+    key: "",
     label,
     right: false,
     x: Float64Array.from(days),

@@ -79,11 +79,11 @@ class DrawingEditor {
     this.#changed();
   }
 
-  /** A press on the plot: true if it made, picked or grabbed a drawing, and so is not a pan or a brush. */
+  /** A press on the plot: true if it made, picked or grabbed a drawing (none with the tools off), so not a pan. */
   public down(at: Point): boolean {
     // Any press puts a measurement away.
     this.#measuring = null;
-    const taken = this.#press(at);
+    const taken = this.#host.editable() && this.#press(at);
     this.#changed();
     return taken;
   }

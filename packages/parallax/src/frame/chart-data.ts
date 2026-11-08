@@ -11,6 +11,8 @@ interface ChartTickData {
 interface SeriesData {
   readonly label: string;
   readonly column: string;
+  /** The series column's value, as the label writes it; "" for a series that is not split. */
+  readonly key: string;
   /** Drawn against the right y axis. */
   readonly right: boolean;
   readonly x: Float64Array;

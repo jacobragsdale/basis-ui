@@ -554,7 +554,15 @@ anchored x value on the axis and sends the positions with each frame, because
 only it can place a date on trading time, so a drawing stays with its data
 however the chart is zoomed, panned or its axis placed. Changing a drawing is a
 change of how the chart is drawn, so the reduction stays and only the
-positions are sent again.
+positions are sent again. `drawing_tools: false` takes the tools away, for a
+small overview chart: the layout's drawings still show, and the pointer pans
+over them rather than editing them.
+
+A series is named in the legend by its column's title, then the series
+column's value, as the engine writes it; when the plot draws one column, as a
+scatter and a histogram always do, by the value alone, which tells the series
+apart on its own. Each series also carries that value as its key, which a
+pane's series of the same value take their colour from.
 
 Compare mode puts every series of a line or area chart on its percentage
 change from its first value in the range shown, so instruments of different
@@ -741,7 +749,13 @@ every new field defaults to what version 1 meant.
 - A filter can name more `columns`, and passes when its condition holds in any
   of them.
 - `pinned` columns come first and stay at the left.
-- `titles` rename headers, in the grid and in the export alike.
+- `titles` rename headers, in the grid and in the export alike, and name
+  columns in a chart's legend. A title is keyed by a column, or by a measure's
+  header as the engine writes it, such as `sum(par)`, which renames that
+  measure in a pivot's headers and a bar chart's legend; a key that is neither
+  is refused, naming the columns and measures it could be. A view the engine
+  refuses keeps the reason, so every later request for it answers with that
+  reason rather than an unknown view.
 - `totals` fill a totals row, and a detail view's group rows.
 - `detail` groups a grid's rows rather than pivoting them.
 

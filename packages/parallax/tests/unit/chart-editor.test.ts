@@ -40,7 +40,7 @@ interface Editing {
   readonly replace: (drawings: readonly LayoutDrawing[]) => void;
 }
 
-function editor(start: readonly LayoutDrawing[] = []): Editing {
+function editor(start: readonly LayoutDrawing[] = [], editable = true): Editing {
   let drawings = start;
   const saved: (readonly LayoutDrawing[])[] = [];
   const asked: (readonly [number, number])[] = [];
@@ -50,6 +50,7 @@ function editor(start: readonly LayoutDrawing[] = []): Editing {
       changes.push(what);
     },
     drawings: (): readonly LayoutDrawing[] => drawings,
+    editable: (): boolean => editable,
     frame: (): ChartFrameData => frame,
     hidden: (): readonly string[] => [],
     measure,
@@ -189,6 +190,16 @@ describe("editing drawings", () => {
       [],
       false,
     ]);
+  });
+
+  test("with the drawing tools off, shows the layout's drawings but neither makes, selects nor deletes one", () => {
+    const { edit, saved } = editor([trend], false);
+    edit.pick("horizontal");
+    // A press with a tool in hand, or on the line, is a pan, not a drawing.
+    expect([edit.down(point(3, 104)), edit.up()]).toStrictEqual([false, false]);
+    expect([edit.down(point(3, 103)), edit.up()]).toStrictEqual([false, false]);
+    expect([edit.remove(), saved, edit.shown()]).toStrictEqual([false, [], [trend]]);
+    expect(edit.state.selected).toBeNull();
   });
 
   test("forgets a selection the layout no longer holds", () => {

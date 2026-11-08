@@ -11,7 +11,7 @@ import { ChartLegend, ChartStatus, ChartTools } from "./chart-chrome.tsx";
 import { ChartPlot } from "./chart-plot.tsx";
 import { describeChart } from "./describe.ts";
 import type { CategoryData } from "./model-types.ts";
-import { isDrawable } from "./scene-inputs.ts";
+import { hasDrawingTools } from "./scene-inputs.ts";
 import { groupsProblem } from "./source.ts";
 import type { ChartSelection } from "./scene.ts";
 import { useChart } from "./use-chart.ts";
@@ -61,11 +61,11 @@ function problemOf({ checked, layout, view }: ChartState): string | null {
   return groupsProblem(layout) ?? view.error;
 }
 
-/** The chart's head: its legend, and the drawing tools on charts that take drawings. */
+/** The chart's head: its legend, and the drawing tools on charts that take drawings and keep their tools on. */
 function ChartHead({ chart }: { readonly chart: ChartState }): ReactNode {
   const { scene, legend, editor, beside } = chart;
   const shown = legend.length > 0 && !chart.compact;
-  const drawable = isDrawable(chart.layout?.chart ?? null);
+  const drawable = hasDrawingTools(chart.layout?.chart ?? null);
   if (!shown && !drawable) {
     return null;
   }

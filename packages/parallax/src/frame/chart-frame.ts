@@ -41,6 +41,7 @@ function decodeSeries(frame: ChartFrame, columns: ChartColumns): readonly Series
     const [from, to] = spans[index] ?? [0, 0];
     return {
       column: series.column,
+      key: series.key,
       label: series.label,
       right: series.right,
       x: x.subarray(from, to),

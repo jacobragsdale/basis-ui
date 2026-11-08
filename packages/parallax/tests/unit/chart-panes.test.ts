@@ -11,9 +11,11 @@ import { marksOf, modelOf, seriesFrame, seriesOf } from "./chart-model-inputs.ts
 
 const colors = chartColors.light;
 
-/** A series of `column`, split by curve date, at tenors 0, 1, 2 and so on. */
+/** A series of `column`, split by curve date, at tenors 0, 1, 2 and so on, named as the engine names it: the plot
+ * draws one column, so its series by date alone, and a pane's by its column and date. */
 function curve(column: string, date: string, values: readonly number[]): SeriesData {
-  return { ...seriesOf(`${column} ${date}`, values), column };
+  const label = column === "yield" ? date : `${column} ${date}`;
+  return { ...seriesOf(label, values), column, key: date };
 }
 
 /** The engine's order: each date's yield, then its change. */
@@ -56,11 +58,7 @@ describe("panes of the layout's own", () => {
 
   test("take their columns' series from the plot, which keeps the rest and their legend", () => {
     const model = curves([{ columns: ["change"], kind: "bar", title: "Change" }]);
-    expect(model.legend.map((entry) => entry.label)).toStrictEqual([
-      "yield Nov 30",
-      "yield Nov 23",
-      "yield Jan 2",
-    ]);
+    expect(model.legend.map((entry) => entry.label)).toStrictEqual(["Nov 30", "Nov 23", "Jan 2"]);
     expect(marksOf(model.marks, "line")).toHaveLength(3);
     const [pane] = model.panes;
     expect(pane?.title).toBe("Change");
@@ -101,7 +99,7 @@ describe("panes of the layout's own", () => {
 
   test("draw one series' bars in the up and down colours, and hide a date's change with its curve", () => {
     const [pane] = curves([{ columns: ["change"], kind: "bar" }], {
-      hidden: ["yield Nov 23"],
+      hidden: ["Nov 23"],
     }).panes;
     expect(pane?.series?.map((series) => series.label)).toStrictEqual(["change Nov 30"]);
     const columns = marksOf(pane?.marks ?? [], "columns");
@@ -112,12 +110,12 @@ describe("panes of the layout's own", () => {
   });
 
   test("are read at the crosshair in their colours, and a hidden one is not", () => {
-    const model = curves([{ columns: ["change"], kind: "bar" }], { hidden: ["yield Nov 23"] });
-    const reading = readingOf({ frame, hidden: ["yield Nov 23"], hover: null, model, synced: 1 });
+    const model = curves([{ columns: ["change"], kind: "bar" }], { hidden: ["Nov 23"] });
+    const reading = readingOf({ frame, hidden: ["Nov 23"], hover: null, model, synced: 1 });
     expect(reading?.rows.map((row) => [row.label, row.color])).toStrictEqual([
-      ["yield Nov 30", colors.series[0]],
+      ["Nov 30", colors.series[0]],
       ["change Nov 30", colors.series[0]],
-      ["yield Jan 2", colors.series[2]],
+      ["Jan 2", colors.series[2]],
     ]);
   });
 });

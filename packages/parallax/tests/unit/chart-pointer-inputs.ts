@@ -79,6 +79,7 @@ function pointsOf(
 ): SeriesData {
   return {
     column: "close",
+    key: "",
     label,
     right: false,
     x: Float64Array.from(points, ([x]) => x),

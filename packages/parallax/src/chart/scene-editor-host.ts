@@ -8,6 +8,7 @@ import type { Layout } from "#layout/layout.ts";
 import type { DrawingHost } from "./drawing-editor.ts";
 import type { TextMeasurer } from "./measurer.ts";
 import type { ChartModel } from "./model-types.ts";
+import { hasDrawingTools } from "./scene-inputs.ts";
 import type { SceneModel } from "./scene-model.ts";
 
 /** The scene's parts the editor reads and changes. */
@@ -27,6 +28,7 @@ function editorHostOf(parts: EditorParts): DrawingHost {
   return {
     changed: parts.changed,
     drawings: () => model.chart?.drawings ?? [],
+    editable: () => hasDrawingTools(model.chart),
     frame: () => model.frame,
     hidden: () => model.chart?.hidden ?? [],
     measure: (text) => parts.measurer()?.measure(text, model.theme.font) ?? 0,

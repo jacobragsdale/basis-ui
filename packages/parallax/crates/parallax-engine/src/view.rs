@@ -136,8 +136,9 @@ pub struct ViewConfig {
     /// Display formats by source column. A measure without its own format takes its
     /// column's, except counts and variances.
     pub formats: BTreeMap<String, Format>,
-    /// Header text of a flat view's columns, by source column; a column without
-    /// one shows its name. Changing it recomputes nothing.
+    /// Header text of a flat view's columns, by source column, and of a grouped
+    /// view's measures, by their label, such as `sum(par)`; one without a title
+    /// shows its name. Changing it recomputes nothing.
     pub titles: BTreeMap<String, String>,
     /// Totals of a flat view's columns, over the rows that pass the filters: at
     /// most one per column, each a measure of its column shown as its value. They
@@ -2723,9 +2724,14 @@ impl Grouped {
                 .map(|v| self.shown(table, &ids_of(v), split, m))
                 .collect();
             let label = config.measures[m].label();
+            let header = title_of(config, &label);
             let (name, title, split_json) = match split {
-                ROW_TOTAL if self.split_columns.is_empty() => (label.clone(), label, None),
-                ROW_TOTAL => (format!("Total | {label}"), format!("Total | {label}"), None),
+                ROW_TOTAL if self.split_columns.is_empty() => (label, header, None),
+                ROW_TOTAL => (
+                    format!("Total | {label}"),
+                    format!("Total | {header}"),
+                    None,
+                ),
                 s => {
                     let scalars = self.split_scalars(table, s);
                     let mut name = String::new();
@@ -2747,7 +2753,7 @@ impl Grouped {
                         title.push_str(" | ");
                     }
                     name.push_str(&label);
-                    title.push_str(&label);
+                    title.push_str(&header);
                     (name, title, Some(format!("[{}]", json.join(","))))
                 }
             };

@@ -44,10 +44,9 @@ function plottedSeries(chart: LayoutChart, series: readonly SeriesData[]): reado
   return series.filter((line) => !paned.has(line.column));
 }
 
-/** A split series' key: its label without its column, as the engine names it "column key"; "" for an unsplit one. */
+/** A split series' key: the series column's value, as the engine writes it; "" for an unsplit one. */
 function keyOf(series: SeriesData): string {
-  const prefix = `${series.column} `;
-  return series.label.startsWith(prefix) ? series.label.slice(prefix.length) : "";
+  return series.key;
 }
 
 /** Whether a series has a value to draw. */

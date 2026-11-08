@@ -262,7 +262,7 @@ fn chart_frames_carry_reduced_data_and_exact_text() {
     let histogram = &charts[0];
     assert_eq!(histogram.view_id, 3);
     let labels: Vec<&str> = histogram.series.iter().map(|s| s.label.as_str()).collect();
-    assert_eq!(labels, ["beta Long", "beta Short"]);
+    assert_eq!(labels, ["Long", "Short"], "one column: by value alone");
     assert!(!histogram.ticks.is_empty());
     let batch = decode_batches(&histogram.batch).unwrap().remove(0);
     let role = |b: &arrow_array::RecordBatch, name: &str| {
@@ -306,7 +306,7 @@ fn chart_frames_carry_reduced_data_and_exact_text() {
 
 /// The WebAssembly test suite checks the same value, so both builds must answer
 /// byte for byte the same.
-pub const TRANSCRIPT_FINGERPRINT: u64 = 4_229_851_471_995_632_977;
+pub const TRANSCRIPT_FINGERPRINT: u64 = 6_907_957_008_114_493_598;
 
 #[test]
 fn transcript_fingerprint_is_stable() {
@@ -928,6 +928,67 @@ mod requests {
         // A view without totals sends none.
         ask(&mut s, 3, update(r#"{"columns":["fund"]}"#, 1, None));
         assert!(viewport_frame(&mut s, 4).totals.is_empty());
+    }
+
+    #[test]
+    fn titles_name_a_pivot_s_measures_by_their_headers() {
+        let mut s = session();
+        open(
+            &mut s,
+            r#"{"group_by":["fund"],"split_by":["long_short"],
+                "measures":[{"column":"market_value_usd","aggregate":"sum"},
+                            {"column":"beta","aggregate":"weighted_mean","weight":"market_value_usd"}],
+                "titles":{"sum(market_value_usd)":"Market value","wmean(beta by market_value_usd)":"Beta"}}"#,
+        );
+        let frame = viewport_frame(&mut s, 2);
+        let batch = &decode_batches(&frame.batch).unwrap()[0];
+        let schema = batch.schema();
+        let titles: Vec<&str> = schema
+            .fields()
+            .iter()
+            .filter(|f| f.metadata().get("parallax.role").map(String::as_str) == Some("value"))
+            .map(|f| f.metadata()["parallax.title"].as_str())
+            .collect();
+        assert_eq!(
+            titles,
+            [
+                "Long | Market value",
+                "Long | Beta",
+                "Short | Market value",
+                "Short | Beta",
+                "Total | Market value",
+                "Total | Beta",
+            ]
+        );
+        // The names stay the measures' own, which sorts and widths key on.
+        assert!(
+            schema
+                .field_with_name("Total | sum(market_value_usd)")
+                .is_ok()
+        );
+    }
+
+    #[test]
+    fn a_title_that_names_nothing_says_what_it_could_name() {
+        let mut s = session();
+        let answer = open(
+            &mut s,
+            r#"{"group_by":["fund"],"measures":[{"column":"beta","aggregate":"sum"}],
+                "titles":{"sum(par)":"Par"}}"#,
+        );
+        let Body::Error(e) = &answer[0].1 else {
+            panic!("{answer:?}")
+        };
+        assert!(
+            e.message
+                .contains("titles: sum(par) is neither a column nor a measure"),
+            "{e:?}"
+        );
+        assert!(e.message.contains("position_id, as_of_date, fund"), "{e:?}");
+        assert!(
+            e.message.ends_with("and the measures are sum(beta)"),
+            "{e:?}"
+        );
     }
 
     #[test]

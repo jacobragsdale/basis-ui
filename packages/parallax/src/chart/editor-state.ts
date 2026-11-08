@@ -23,6 +23,8 @@ interface DrawingHost {
   /** The layout's drawings; right after `save`, the saved ones. */
   readonly drawings: () => readonly LayoutDrawing[];
   readonly save: (drawings: readonly LayoutDrawing[]) => void;
+  /** Whether the pointer may make and edit drawings: false while the layout turns the drawing tools off. */
+  readonly editable: () => boolean;
   /** Measures a label's width in the chart font. */
   readonly measure: (text: string) => number;
   /** Series hidden from the plot, by their legend labels, which anchors never snap to. */

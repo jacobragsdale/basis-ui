@@ -365,10 +365,13 @@ message ChartTick {
 
 // A series of a line, area or histogram chart.
 message ChartSeries {
-  // The legend label: the plotted column, then the series column's value.
+  // The legend label: the plotted column's title, then the series column's value, or the value alone when the plot
+  // draws one column, as a scatter and a histogram always do.
   string label = 1;
   // The plotted column.
   string column = 2;
   // Drawn against the right y axis.
   bool right = 3;
+  // The series column's value, as the label writes it; empty for a series that is not split.
+  string key = 4;
 }

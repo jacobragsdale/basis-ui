@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vite-plus/test";
 import { z } from "zod";
 
+import { hasDrawingTools } from "#chart/scene-inputs.ts";
 import { checkLayout, layoutSchema, layoutVersion, parseLayout } from "#layout/layout.ts";
 
 import { layouts } from "./fixtures.ts";
@@ -131,5 +132,27 @@ describe("a trading axis's calendar and session, which roadmap step 2.8 adds", (
     for (const fields of wrong) {
       expect(checkLayout({ chart: { axis: "trading", kind: "line", ...fields } }).ok).toBe(false);
     }
+  });
+});
+
+/** Whether a chart of these settings shows its drawing tools. */
+function tools(settings: Record<string, unknown>): boolean {
+  return hasDrawingTools(parseLayout({ chart: settings }).chart);
+}
+
+describe("a chart's drawing tools", () => {
+  test("are on unless the layout turns them off, and only where a chart takes drawings", () => {
+    expect([
+      tools({ kind: "line", x: "date" }),
+      tools({ drawing_tools: true, kind: "candlestick", x: "date" }),
+      tools({ drawing_tools: false, kind: "area", x: "date" }),
+      tools({ kind: "bar" }),
+    ]).toStrictEqual([true, true, false, false]);
+  });
+
+  test("are left out of a layout that leaves them on, as in Rust", () => {
+    const { chart: line } = parseLayout({ chart: { kind: "line" } });
+    expect(line !== null && "drawing_tools" in line).toBe(false);
+    expect(checkLayout({ chart: { drawing_tools: "off", kind: "line" } }).ok).toBe(false);
   });
 });
