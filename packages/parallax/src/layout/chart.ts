@@ -21,7 +21,10 @@ const talib = {
   smoothing: 3,
 } as const;
 
-/** What a chart draws. Bar charts, heatmaps and pies draw the layout's grouped view; the engine reduces the others. */
+/**
+ * What a chart draws. Bar charts, heatmaps, pies and waterfalls draw the layout's grouped view; the engine reduces
+ * the others.
+ */
 const chartKinds = [
   "line",
   "area",
@@ -32,6 +35,7 @@ const chartKinds = [
   "candlestick",
   "ohlc",
   "pie",
+  "waterfall",
 ] as const;
 
 /** The technical-analysis indicators a chart computes. */
@@ -85,6 +89,14 @@ const indicatorSchema = z.discriminatedUnion("kind", [
   }),
   z.strictObject({ kind: z.literal("vwap") }),
   z.strictObject({ kind: z.literal("volume") }),
+]);
+
+/** Chart kinds that draw the layout's grouped view, rather than the engine's reduction to the plot's pixels. */
+const groupedKinds: ReadonlySet<(typeof chartKinds)[number]> = new Set([
+  "bar",
+  "heatmap",
+  "pie",
+  "waterfall",
 ]);
 
 /** Chart kinds drawn along an x axis over a price: they take drawings and share crosshairs. */
@@ -153,5 +165,13 @@ type LayoutDrawing = z.output<typeof drawingSchema>;
 /** A point a drawing is anchored to. */
 type LayoutAnchor = z.output<typeof anchorSchema>;
 
-export { chartKinds, chartSchema, drawableKinds, drawingKinds, indicatorKinds, maxNote };
+export {
+  chartKinds,
+  chartSchema,
+  drawableKinds,
+  drawingKinds,
+  groupedKinds,
+  indicatorKinds,
+  maxNote,
+};
 export type { LayoutAnchor, LayoutChart, LayoutDrawing, LayoutIndicator };

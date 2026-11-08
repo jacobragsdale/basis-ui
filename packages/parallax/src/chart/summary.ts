@@ -2,6 +2,7 @@
  * reads in place of the canvas, with the values the chart shows, as the engine wrote them. */
 
 import type { CandleData, ChartFrameData, PointSeries, SeriesData } from "#frame/chart-data.ts";
+import { groupedKinds } from "#layout/chart.ts";
 import type { LayoutChart } from "#layout/chart.ts";
 
 import { bucketTitle } from "./model-candles.ts";
@@ -23,7 +24,7 @@ interface SummaryInput {
 }
 
 function groupsKind(chart: LayoutChart): boolean {
-  return chart.kind === "bar" || chart.kind === "heatmap" || chart.kind === "pie";
+  return groupedKinds.has(chart.kind);
 }
 
 /** The sum of whole counts. */

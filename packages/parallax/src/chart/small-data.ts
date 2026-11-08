@@ -5,6 +5,7 @@
 import { Bool, DateDay, Float64, Table, Utf8, tableToIPC, vectorFromArray } from "apache-arrow";
 import type { Vector } from "apache-arrow";
 
+import { groupedKinds } from "#layout/chart.ts";
 import type { LayoutChart } from "#layout/chart.ts";
 import type { LayoutInput, LayoutScalar } from "#layout/layout.ts";
 
@@ -29,8 +30,9 @@ interface SmallChart {
 
 const isoDate = /^\d{4}-\d{2}-\d{2}$/u;
 
-/** The kinds that draw the layout's grouped view, whose x groups the rows. */
-const groupedKinds: ReadonlySet<LayoutChart["kind"]> = new Set(["bar", "heatmap", "pie"]);
+/** The kinds that draw the layout's grouped view, whose x groups the rows, and whose groups are put in the rows'
+ * order after the engine's: not a waterfall, whose running totals the engine sums in the rows' order itself. */
+const reorderedKinds: ReadonlySet<LayoutChart["kind"]> = new Set(["bar", "heatmap", "pie"]);
 
 /** The columns a small chart reads: its x, y and series, and a scatter's size, id, tooltip and fit columns. */
 function columnsOf(chart: SmallChart, settings: ChartSettings = {}): readonly string[] {
@@ -108,16 +110,32 @@ function smallBytes(
   return bytes;
 }
 
-/** The layout a small chart draws: grouped kinds sum each y by x, split by `series`; the others plot x against y. */
-function smallLayout(chart: SmallChart, options: ChartSettings = {}): LayoutInput {
+/** A waterfall's steps in the order its x text first appears in the rows, as an order the engine sums them in. */
+function rowsOrders(rows: readonly ChartRow[], x: string): LayoutInput["orders"] {
+  const values = [...new Set(rows.map((row) => row[x] ?? null))];
+  const texts = values.filter((value): value is string => typeof value === "string");
+  return texts.length === values.length ? { [x]: { values: texts } } : undefined;
+}
+
+/**
+ * The layout a small chart draws: grouped kinds sum each y by x, split by `series`, a waterfall's steps in the order
+ * the rows give its x text; the others plot x against y.
+ */
+function smallLayout(
+  chart: SmallChart,
+  options: ChartSettings = {},
+  rows: readonly ChartRow[] = [],
+): LayoutInput {
   const ys = typeof chart.y === "string" ? [chart.y] : [...chart.y];
   const split = chart.series === undefined ? [] : [chart.series];
   if (groupedKinds.has(chart.kind)) {
+    const orders = chart.kind === "waterfall" ? rowsOrders(rows, chart.x) : undefined;
     return {
       chart: { ...options, kind: chart.kind },
       group_by: [chart.x],
       measures: ys.map((column) => ({ aggregate: "sum", column })),
       split_by: split,
+      ...(orders === undefined ? {} : { orders }),
     };
   }
   return {
@@ -171,5 +189,5 @@ function rowOrder(rows: readonly ChartRow[], x: string): (data: CategoryData) =>
   };
 }
 
-export { groupedKinds, rowOrder, rowsToArrow, smallBytes, smallLayout };
+export { reorderedKinds, rowOrder, rowsToArrow, smallBytes, smallLayout };
 export type { ChartRow, ChartSettings, ChartValue, SmallChart };

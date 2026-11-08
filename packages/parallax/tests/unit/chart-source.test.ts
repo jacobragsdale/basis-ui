@@ -91,9 +91,10 @@ describe(withPieLimit, () => {
 });
 
 describe(drawsGroups, () => {
-  test("is true for bars, heatmaps and pies, which draw the grouped view, and false for what the engine reduces", () => {
-    const kinds = ["bar", "heatmap", "pie", "line", "candlestick", "scatter"] as const;
+  test("is true for bars, heatmaps, pies and waterfalls, which draw the grouped view, and false for what the engine reduces", () => {
+    const kinds = ["bar", "heatmap", "pie", "waterfall", "line", "candlestick", "scatter"] as const;
     expect(kinds.map((kind) => drawsGroups(parseLayout({ chart: { kind } })))).toStrictEqual([
+      true,
       true,
       true,
       true,
@@ -148,7 +149,7 @@ function measure(
 }
 
 describe(categoriesOf, () => {
-  test("reads the top-level groups, their keys, which is Other, and a series per measure with its total", () => {
+  test("reads the top-level groups, their keys, which is Other, and a series per measure with its total's text and value", () => {
     const frame = decodeFrame(
       frameMessage(
         [
@@ -162,7 +163,15 @@ describe(categoriesOf, () => {
       categories: ["Rates", "Credit", "Other"],
       keys: ["Rates", "Credit", "Other"],
       others: [false, false, true],
-      series: [{ label: "sum(mv)", texts: ["30", "20", "10"], total: "60", values: [30, 20, 10] }],
+      series: [
+        {
+          label: "sum(mv)",
+          texts: ["30", "20", "10"],
+          total: "60",
+          totalValue: 60,
+          values: [30, 20, 10],
+        },
+      ],
     });
   });
 

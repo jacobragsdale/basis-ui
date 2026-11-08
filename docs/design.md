@@ -375,7 +375,7 @@ Those kinds came from equity charting, and a study of what the fixed-income syst
 - The grid's formatter writes basis points, Treasury 32nds and par amounts' `M` and `MM`, so that a value reads the
   same in the grid as in `Bps` and `Price32` (step 2.8.3, built).
 - The trading axis takes SIFMA's calendar, its early closes, and sessions that open the evening before.
-- Waterfalls draw attribution and P&L explain.
+- Waterfalls draw attribution and P&L explain, their steps the engine's running totals (step 2.8.5, built).
 - Panes under a chart take any columns, for curves on several dates with their change in basis points below.
 - An axis can be reversed, for yields, and a chart says whether a rise takes the gain colour or the loss colour.
 

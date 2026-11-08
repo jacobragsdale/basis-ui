@@ -56,6 +56,7 @@ const showAs = [
   "percent_of_column_total",
   "percent_of_row_total",
   "percent_of_parent",
+  "running_total",
 ] as const;
 
 /** The filter operators. */

@@ -1,7 +1,8 @@
 /* The fixed-income page: the relative-value scatter over a book of bonds, each bond a dot, with the bonds a click on it
- * narrows. Roadmap step 2.8 adds its other views for the firm's desks here. */
+ * narrows, and October's P&L explained by factor as a waterfall, with the factor a click on it picks by portfolio.
+ * Roadmap step 2.8 adds its other views for the firm's desks here. */
 
-import { Chart, Grid } from "@basis/parallax";
+import { Chart, Grid, Pivot } from "@basis/parallax";
 import type { ChartSelection, LayoutInput } from "@basis/parallax";
 import { Card, CardContent, CardHeader, CardTitle } from "@basis/ui";
 import { useState } from "react";
@@ -13,24 +14,27 @@ import { pages } from "#shell/pages.ts";
 
 import { pickedFilter } from "./layouts.ts";
 
+/** Spreads arrive as fractions, the one unit rates have, and read in basis points to a tenth. */
+const inBps = { bps: true, decimals: 1 } as const;
+
 /** Each bond's spread against its duration, by sector, sized by DV01, over each sector's fitted curve. */
 const richCheap: LayoutInput = {
   chart: {
-    fit: "fitted_spread_bp",
+    fit: "fitted_spread",
     id: "cusip",
     kind: "scatter",
     series: "sector",
     size: "dv01_usd",
-    tooltip: ["issuer", "rating", "rich_cheap_bp"],
+    tooltip: ["issuer", "rating", "rich_cheap"],
     x: "duration",
-    y: ["spread_bp"],
+    y: ["spread"],
   },
   dataset: "bonds",
   formats: {
     dv01_usd: { decimals: 0 },
-    fitted_spread_bp: { decimals: 1 },
-    rich_cheap_bp: { decimals: 1 },
-    spread_bp: { decimals: 1 },
+    fitted_spread: inBps,
+    rich_cheap: inBps,
+    spread: inBps,
   },
 };
 
@@ -43,23 +47,64 @@ function bondsLayout(selected: ChartSelection | null): LayoutInput {
       "sector",
       "rating",
       "duration",
-      "spread_bp",
-      "fitted_spread_bp",
-      "rich_cheap_bp",
+      "spread",
+      "fitted_spread",
+      "rich_cheap",
       "dv01_usd",
     ],
     dataset: "bonds",
     filters: selected === null ? [] : [pickedFilter(selected)],
-    sort: [{ column: "rich_cheap_bp", descending: true }],
+    formats: { fitted_spread: inBps, rich_cheap: inBps, spread: inBps },
+    sort: [{ column: "rich_cheap", descending: true }],
   };
 }
 
-function FixedIncomePage(): ReactNode {
+/** The factors in the order an explain lists them: income, then rates, spreads, currency and the rest. */
+const factorOrder = [
+  "Carry",
+  "Roll-down",
+  "Curve 2Y",
+  "Curve 5Y",
+  "Curve 10Y",
+  "Curve 30Y",
+  "Spread IG",
+  "Spread HY",
+  "FX",
+  "Trading",
+  "Residual",
+];
+
+/** Dollars, in thousands. */
+const inThousands = { abbreviate: "thousands", decimals: 0 } as const;
+
+/** The book's P&L over the month, explained by factor: each factor a step from the running total, ending on the total. */
+const explain: LayoutInput = {
+  chart: { kind: "waterfall" },
+  dataset: "attribution",
+  formats: { pnl_usd: inThousands },
+  group_by: ["factor"],
+  measures: [{ aggregate: "sum", column: "pnl_usd" }],
+  orders: { factor: { values: factorOrder } },
+};
+
+/** The P&L by portfolio, of the factor clicked or of every factor. */
+function byPortfolio(selected: ChartSelection | null): LayoutInput {
+  return {
+    dataset: "attribution",
+    filters: selected === null ? [] : [pickedFilter(selected)],
+    formats: { pnl_usd: inThousands },
+    group_by: ["portfolio", "factor_group"],
+    measures: [{ aggregate: "sum", column: "pnl_usd" }],
+  };
+}
+
+/** The relative-value scatter and the bonds a click on it narrows. */
+function RichCheap(): ReactNode {
   const bonds = useDemoDataset("bonds");
   const [selected, setSelected] = useState<ChartSelection | null>(null);
   return (
-    <Page page={pages.fixedIncome}>
-      <Card size="sm" data-card="rich-cheap" className="min-h-0 flex-3">
+    <>
+      <Card size="sm" data-card="rich-cheap" className="h-120">
         <CardHeader>
           <CardTitle>
             Spread against duration, by sector, sized by DV01, over each sector&apos;s fitted curve
@@ -74,7 +119,7 @@ function FixedIncomePage(): ReactNode {
           />
         </CardContent>
       </Card>
-      <section data-linked="rich-cheap" className="flex min-h-0 flex-2 flex-col gap-1.5">
+      <section data-linked="rich-cheap" className="flex h-80 flex-col gap-1.5">
         <h2 className="text-sm font-semibold">
           {selected === null
             ? "Bonds, richest to their curve first, until one is clicked"
@@ -82,6 +127,48 @@ function FixedIncomePage(): ReactNode {
         </h2>
         <Grid dataset={bonds} layout={bondsLayout(selected)} toolbar={{ group: false }} />
       </section>
+    </>
+  );
+}
+
+/** October's P&L explain as a waterfall, and the factor a click on it picks, by portfolio. */
+function Explain(): ReactNode {
+  const attribution = useDemoDataset("attribution");
+  const [selected, setSelected] = useState<ChartSelection | null>(null);
+  return (
+    <div className="grid gap-3 xl:grid-cols-5">
+      <Card size="sm" data-card="pnl-explain" className="h-110 xl:col-span-3">
+        <CardHeader>
+          <CardTitle>
+            October&apos;s P&amp;L explained by factor, in thousands: click a factor
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="flex min-h-0 flex-1 flex-col">
+          <Chart
+            className="min-h-0 flex-1"
+            dataset={attribution}
+            layout={explain}
+            onSelect={setSelected}
+          />
+        </CardContent>
+      </Card>
+      <section data-linked="pnl-explain" className="flex h-110 flex-col gap-1.5 xl:col-span-2">
+        <h2 className="text-sm font-semibold">
+          {selected === null
+            ? "P&L by portfolio and factor group, until a factor is clicked"
+            : `${selected.label} by portfolio`}
+        </h2>
+        <Pivot dataset={attribution} defaultSettingsOpen={false} layout={byPortfolio(selected)} />
+      </section>
+    </div>
+  );
+}
+
+function FixedIncomePage(): ReactNode {
+  return (
+    <Page page={pages.fixedIncome} scrolls>
+      <RichCheap />
+      <Explain />
     </Page>
   );
 }

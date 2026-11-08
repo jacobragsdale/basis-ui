@@ -3,11 +3,11 @@
 
 import type { Layout } from "#layout/layout.ts";
 
-import { withPieLimit } from "./source.ts";
+import { withPieLimit, withWaterfallRun } from "./source.ts";
 
 /** The layout as the engine computes the chart from it; its JSON is `computedPart`'s. */
 function engineLayout(layout: Layout): Layout {
-  const limited = withPieLimit(layout) ?? layout;
+  const limited = withWaterfallRun(withPieLimit(layout) ?? layout);
   const chart =
     limited.chart === null
       ? null

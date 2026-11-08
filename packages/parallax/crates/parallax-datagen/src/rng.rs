@@ -54,6 +54,10 @@ pub enum Stream {
     BondIssuers = 9,
     /// Bonds, keyed by row.
     Bonds = 10,
+    /// A portfolio's own P&L on a day, keyed by day and portfolio.
+    Attribution = 11,
+    /// The market's moves on a day, keyed by day.
+    AttributionMarket = 12,
 }
 
 /// xoshiro256** 1.0.

@@ -192,6 +192,10 @@ pub enum ChartKindName {
     /// Slices of the layout's grouped view, one per group, sized by its first
     /// measure, as a ring when `donut` is set.
     Pie,
+    /// Steps of the layout's grouped view, one per group: each floats from the
+    /// running total of its first measure before it to the one after, and a
+    /// total bar ends them, as attribution and P&L explain are drawn.
+    Waterfall,
 }
 
 impl ChartKindName {
@@ -215,7 +219,7 @@ impl ChartKindName {
             Self::Histogram => ChartKind::Histogram,
             Self::Candlestick => ChartKind::Candlestick,
             Self::Ohlc => ChartKind::Ohlc,
-            Self::Bar | Self::Heatmap | Self::Pie => return None,
+            Self::Bar | Self::Heatmap | Self::Pie | Self::Waterfall => return None,
         })
     }
 }
@@ -480,8 +484,9 @@ impl LayoutDrawing {
     }
 }
 
-/// A chart, in a layout. Bar charts and heatmaps draw the layout's grouped view;
-/// the other kinds are reduced by the engine to the plot's pixels.
+/// A chart, in a layout. Bar charts, heatmaps, pies and waterfalls draw the
+/// layout's grouped view; the other kinds are reduced by the engine to the
+/// plot's pixels.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct LayoutChart {
@@ -834,6 +839,9 @@ pub enum ShowAsName {
     PercentOfRowTotal,
     /// Fraction of the parent row's value.
     PercentOfParent,
+    /// Excel's "Running Total In": the exact sum of the group's value and its
+    /// siblings' before it, in their order. Sums and counts only.
+    RunningTotal,
 }
 
 /// A measure in a layout.
@@ -903,6 +911,7 @@ impl LayoutMeasure {
                 ShowAsName::PercentOfColumnTotal => ShowAs::PercentOfColumnTotal,
                 ShowAsName::PercentOfRowTotal => ShowAs::PercentOfRowTotal,
                 ShowAsName::PercentOfParent => ShowAs::PercentOfParent,
+                ShowAsName::RunningTotal => ShowAs::RunningTotal,
             },
             format: self.format.as_ref().map(LayoutFormat::to_engine),
         })
@@ -2053,11 +2062,20 @@ mod tests {
                         "price": {"thirty_seconds": "halves", "negative": "parentheses"},
                         "par": {"abbreviate": "millions", "suffixes": "par"}}
         }"#;
+        let waterfall = r#"{
+            "dataset": "attribution",
+            "group_by": ["factor"],
+            "measures": [{"column": "pnl_usd", "aggregate": "sum"},
+                         {"column": "pnl_usd", "aggregate": "sum", "show_as": "running_total"}],
+            "orders": {"factor": {"values": ["Carry", "Roll-down", "Curve 2Y"]}},
+            "chart": {"kind": "waterfall"}
+        }"#;
         [
             Layout::from_json(points).unwrap(),
             Layout::from_json(orders).unwrap(),
             Layout::from_json(tenor).unwrap(),
             Layout::from_json(formats).unwrap(),
+            Layout::from_json(waterfall).unwrap(),
         ]
         .iter()
         .map(|l| serde_json::to_value(l).unwrap())

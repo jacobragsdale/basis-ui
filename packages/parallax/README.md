@@ -197,7 +197,7 @@ layout, so a pivot round-trips through a link with `encodeLayout` and
 `<Chart>` draws every chart of the firm's apps on a Canvas 2D surface: line,
 area, bar (across, stacked, or on two axes), scatter (a dot per row up to 5,000
 rows in the range shown, a density past that), heatmap,
-histogram, candlestick, OHLC, pie and donut, on a value, trading-time or tenor axis,
+histogram, candlestick, OHLC, pie, donut and waterfall, on a value, trading-time or tenor axis,
 with technical-analysis indicators and panes, drawings, a compare mode and
 events. Give it a dataset that `useDataset` loads and a layout whose `chart`
 section says what to draw:
@@ -276,6 +276,27 @@ axis for curves:
 A tenor axis puts the standard tenors one step apart, 1M, 3M, 6M, 1Y and so on
 to 30Y, and labels them; `tenor_spacing: "length"` spaces them by years.
 
+A waterfall draws attribution and P&L explain from the layout's grouped view:
+each group's step floats from the running total before it to its own, rising
+steps in the up colour and falling ones in the down colour, and a total bar
+ends them. The running totals are the engine's, from exact sums, so the last
+step ends on the total, and a click on a step selects its group. A measure's
+`show_as: "running_total"` gives a grid or pivot the same running totals,
+Excel's "Running Total In", for sums and counts:
+
+```tsx
+<Chart
+  dataset={attribution}
+  layout={{
+    group_by: ["factor"],
+    measures: [{ aggregate: "sum", column: "pnl_usd" }],
+    orders: { factor: { values: ["Carry", "Roll-down", "Curve 2Y", "Curve 10Y", "Spread IG"] } },
+    chart: { kind: "waterfall" },
+  }}
+  onSelect={(factor) => setFactor(factor)}
+/>
+```
+
 A layout's `formats` write a column's values in the grid, tooltips, labels and
 value axes alike, as `@basis/ui`'s number components do. A rate or spread is a
 fraction, as an API sends it, so `{ bps: true }` writes 0.0025 as `25 bp`,
@@ -296,7 +317,7 @@ of its own, in their order:
 | `rows`, `kind`, `x`, `y` | The small-data form: the rows, a value per column, and what to draw of them; `series` splits them, `settings` adds chart settings and `formats` formats the values |
 | `onLayoutChange`         | The layout the chart changed: a series hidden from the legend, a zoom, a drawing. Without it, the chart keeps its own changes until its `layout` changes           |
 | `onBrush`                | The filters a Shift-drag selects, for a linked view; null once Escape clears it                                                                                    |
-| `onSelect`               | The group of a bar or slice clicked, or a scatter's dot by its `id` column, for a linked view; null once the selection is cleared                                  |
+| `onSelect`               | The group of a bar, slice or waterfall step clicked, or a scatter's dot by its `id` column, for a linked view; null once the selection is cleared                  |
 | `sync`                   | The group whose crosshairs move together: charts of the same dataset, x column and axis by default; null keeps the crosshair to this chart                        |
 | `status`                 | The status line under the chart: what it draws, and when the source was read. On by default                                                                       |
 | `label`                  | The chart's name for a screen reader, in place of what it says it draws                                                                                            |
@@ -364,7 +385,8 @@ command-line tool at the version in `Cargo.lock`, as the package's build does.
    The data task writes the datasets with `parallax-datagen` as Arrow streams
    in `packages/parallax-demo/public/data`: 150,000 positions and 150,000
    trades, at the browser's row limit, daily prices for 50 tickers, the small
-   tables' 300 positions and 500 trades, and 600 bonds. The build copies them
+   tables' 300 positions and 500 trades, 600 bonds, and October's P&L
+   explained by factor for four bond portfolios. The build copies them
    into `dist/` beside the app, and builds `@basis/parallax` first.
 
 2. Serve `packages/parallax-demo/dist` as static files. Its addresses are

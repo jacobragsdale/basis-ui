@@ -85,6 +85,12 @@ impl Aggregate {
         )
     }
 
+    /// Returns `true` for aggregates whose groups' values add up to their
+    /// parent's: sums and counts, which alone take a running total.
+    pub(crate) fn adds(&self) -> bool {
+        matches!(self, Self::Sum | Self::Count | Self::CountAll)
+    }
+
     pub(crate) fn needs_numeric(&self) -> bool {
         matches!(
             self,
@@ -114,6 +120,18 @@ pub enum ShowAs {
     PercentOfRowTotal,
     /// The value as a fraction of the parent row's value in the same column.
     PercentOfParent,
+    /// Excel's "Running Total In": the exact sum of the group's value and those
+    /// of the siblings before it, in their order, in the same column. Only sums
+    /// and counts add, so only they take it.
+    RunningTotal,
+}
+
+impl ShowAs {
+    /// Whether the value shown is a share of another, written as a percentage.
+    #[must_use]
+    pub fn is_share(self) -> bool {
+        !matches!(self, Self::Value | Self::RunningTotal)
+    }
 }
 
 /// One measure of a grouped view.
@@ -198,6 +216,7 @@ impl Measure {
             ShowAs::PercentOfColumnTotal => format!("{base} % of column"),
             ShowAs::PercentOfRowTotal => format!("{base} % of row"),
             ShowAs::PercentOfParent => format!("{base} % of parent"),
+            ShowAs::RunningTotal => format!("{base} running total"),
         }
     }
 }

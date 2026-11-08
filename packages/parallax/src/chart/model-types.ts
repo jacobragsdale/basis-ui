@@ -3,9 +3,10 @@
 
 import type { ChartFrameData } from "#frame/chart-data.ts";
 import type { LayoutChart } from "#layout/chart.ts";
-import type { LayoutFormat, LayoutScalar } from "#layout/layout.ts";
+import type { LayoutFormat } from "#layout/layout.ts";
 import type { ChartColors } from "#theme/charts.ts";
 
+import type { CategoryData } from "./category-data.ts";
 import type { DotsMark } from "./model-dots.ts";
 
 /** A point in CSS pixels. */
@@ -229,25 +230,6 @@ interface ChartModel {
   readonly verticalGrid?: readonly number[];
 }
 
-/** One series of a bar chart, heatmap or pie, by group. */
-interface CategorySeries {
-  readonly label: string;
-  readonly values: readonly number[];
-  readonly texts: readonly string[];
-  /** The grand total's text, if the view has one. */
-  readonly total: string | null;
-}
-
-/** Data of a bar chart, heatmap or pie, taken from the layout's grouped view. */
-interface CategoryData {
-  readonly categories: readonly string[];
-  /** Each group's key, as exact JSON, which selecting it reports. */
-  readonly keys: readonly LayoutScalar[];
-  /** Which groups are the top-N's "Other", which stands for several and can't be selected. */
-  readonly others: readonly boolean[];
-  readonly series: readonly CategorySeries[];
-}
-
 /** What the model is built from. */
 interface ModelInput {
   readonly chart: LayoutChart;
@@ -277,8 +259,6 @@ export type {
   AxisTick,
   BandMark,
   CandleMark,
-  CategoryData,
-  CategorySeries,
   CellMark,
   ChartModel,
   ColumnsMark,
@@ -298,3 +278,4 @@ export type {
   ValueAxis,
   ValueTick,
 };
+export type { CategoryData, CategorySeries } from "./category-data.ts";

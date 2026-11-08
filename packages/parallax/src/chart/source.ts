@@ -1,8 +1,8 @@
 /* The data side of a chart, as pure functions of its layout and frames: which kinds draw the layout's grouped view and
  * which the engine reduces, the layout as the engine computes it, the parts of it whose change means other rows or
- * data of another shape, and a grouped frame's groups as a bar chart, heatmap or pie draws them.
+ * data of another shape, and a grouped frame's groups as a bar chart, heatmap, pie or waterfall draws them.
  *
- * Bar charts, heatmaps and pies draw the layout's grouped view, so they ask for its first rows like a pivot; the
+ * Bar charts, heatmaps, pies and waterfalls draw the layout's grouped view, so they ask for its first rows like a pivot; the
  * engine reduces the other kinds to the plot's pixels. Changing only how a chart is drawn, such as hidden series or
  * the scale, changes nothing the engine computes. */
 
@@ -11,6 +11,7 @@ import { pathValue } from "#format.ts";
 import type { CellValue } from "#frame/cell.ts";
 import type { FrameColumn } from "#frame/columns.ts";
 import type { FrameData } from "#frame/frame.ts";
+import { groupedKinds } from "#layout/chart.ts";
 import type { Layout } from "#layout/layout.ts";
 
 import type { CategoryData, CategorySeries } from "./model-types.ts";
@@ -39,7 +40,25 @@ const titleJoin = " | ";
 /** Whether a layout's chart draws its grouped view rather than a reduction. */
 function drawsGroups(layout: Layout): boolean {
   const kind = layout.chart?.kind;
-  return kind === "bar" || kind === "heatmap" || kind === "pie";
+  return kind !== undefined && groupedKinds.has(kind);
+}
+
+/**
+ * A layout as the engine computes a waterfall from it: its first measure's value, and the engine's running total of
+ * it among the groups in their order, from which each step floats. Its other measures are not drawn.
+ */
+function withWaterfallRun(layout: Layout): Layout {
+  const [first] = layout.measures;
+  if (layout.chart?.kind !== "waterfall" || first === undefined) {
+    return layout;
+  }
+  return {
+    ...layout,
+    measures: [
+      { ...first, show_as: "value" },
+      { ...first, show_as: "running_total" },
+    ],
+  };
 }
 
 /**
@@ -196,6 +215,7 @@ function categoriesOf(frame: FrameData): CategoryData {
       label: strip ? titlePart(column.title, false) : column.title,
       texts: rows.map((row) => column.text(row)),
       total: total === null ? null : column.text(total),
+      totalValue: total === null ? Number.NaN : toNumber(column.value(total)),
       values: rows.map((row) => toNumber(column.value(row))),
     })),
   };
@@ -210,4 +230,5 @@ export {
   rowsPart,
   shapeOf,
   withPieLimit,
+  withWaterfallRun,
 };

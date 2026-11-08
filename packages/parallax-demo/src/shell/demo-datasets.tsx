@@ -14,6 +14,7 @@ import type { Datasets } from "./datasets.ts";
 
 /** Each dataset's source: one function each, so a dataset never loads twice from the same request. */
 const sources: Readonly<Record<DemoDataset, DatasetSource>> = {
+  attribution: async () => datasetBytes("attribution"),
   blotter: async () => datasetBytes("blotter"),
   bonds: async () => datasetBytes("bonds"),
   book: async () => datasetBytes("book"),
@@ -32,6 +33,7 @@ function useDemoDatasetLoad(name: DemoDataset, names: ReadonlySet<DemoDataset>):
 /** Loads every dataset a page has asked for into the engine of the `ParallaxProvider` around it. */
 function DemoDatasets({ children }: { readonly children: ReactNode }): ReactNode {
   const names = useSyncExternalStore(wanted.subscribe, wanted.getSnapshot);
+  const attribution = useDemoDatasetLoad("attribution", names);
   const blotter = useDemoDatasetLoad("blotter", names);
   const bonds = useDemoDatasetLoad("bonds", names);
   const book = useDemoDatasetLoad("book", names);
@@ -39,8 +41,8 @@ function DemoDatasets({ children }: { readonly children: ReactNode }): ReactNode
   const prices = useDemoDatasetLoad("prices", names);
   const trades = useDemoDatasetLoad("trades", names);
   const datasets: Datasets = useMemo(
-    () => ({ blotter, bonds, book, positions, prices, trades }),
-    [blotter, bonds, book, positions, prices, trades],
+    () => ({ attribution, blotter, bonds, book, positions, prices, trades }),
+    [attribution, blotter, bonds, book, positions, prices, trades],
   );
   return <DatasetsContext value={datasets}>{children}</DatasetsContext>;
 }

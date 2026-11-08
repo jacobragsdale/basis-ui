@@ -122,7 +122,7 @@ const chartPages = {
   },
   fixedIncome: {
     about:
-      "600 generated bonds, as a desk reads them: each bond a dot of its spread against its duration, coloured by sector, sized by DV01, over each sector's fitted curve, which the API sends as a column. Click a bond to list it below.",
+      "600 generated bonds, as a desk reads them: each bond a dot of its spread against its duration, coloured by sector, sized by DV01, over each sector's fitted curve, which the API sends as a column; click a bond to list it below. Under them, four portfolios' P&L explained by factor as a waterfall, its steps the engine's running totals; click a factor to see it by portfolio.",
     group: "Charts",
     Icon: ChartScatterIcon,
     path: "/fixed-income",

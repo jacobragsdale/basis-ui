@@ -988,3 +988,123 @@ mod tools {
         assert!(!m.from_x.is_empty() && !m.to_x.is_empty());
     }
 }
+
+mod waterfalls {
+    use std::collections::HashMap;
+    use std::sync::{Arc, RwLock};
+
+    use arrow_array::cast::AsArray;
+    use arrow_array::{Array, RecordBatch};
+    use parallax_datagen::Dataset;
+    use parallax_datagen::attribution::{Attribution, AttributionOptions, FACTORS};
+    use parallax_engine::TableOptions;
+    use parallax_protocol::ipc::decode_batches;
+    use parallax_protocol::v1::{OpenView, SetViewport, client_message, server_message::Body};
+    use parallax_session::{MemoryCatalog, Session, TableState};
+
+    use super::send;
+
+    fn session() -> Session {
+        let attribution = Attribution::new(AttributionOptions::default()).unwrap();
+        let batch = attribution.batch(0..attribution.num_rows());
+        let state = TableState::from_batches(
+            &batch.schema(),
+            std::slice::from_ref(&batch),
+            TableOptions::default(),
+            1,
+            1,
+        )
+        .unwrap();
+        let catalog = Arc::new(MemoryCatalog::new());
+        catalog.insert("attribution", Arc::new(RwLock::new(state)));
+        Session::new(catalog)
+    }
+
+    /// The layout a waterfall's chart sends: the first measure's value and its
+    /// running total, factors in an explain's order.
+    fn layout(measure: &str) -> String {
+        let order: Vec<String> = FACTORS.iter().map(|f| format!("\"{}\"", f.0)).collect();
+        format!(
+            r#"{{"group_by": ["factor"],
+                "measures": [{{"column": "pnl_usd", "aggregate": "{measure}"}},
+                             {{"column": "pnl_usd", "aggregate": "{measure}", "show_as": "running_total"}}],
+                "orders": {{"factor": {{"values": [{}]}}}},
+                "chart": {{"kind": "waterfall"}}}}"#,
+            order.join(", ")
+        )
+    }
+
+    fn open(session: &mut Session, layout: &str) -> Vec<Body> {
+        send(
+            session,
+            1,
+            client_message::Body::OpenView(OpenView {
+                view_id: 1,
+                dataset: "attribution".into(),
+                parameters: HashMap::new(),
+                layout_json: layout.into(),
+            }),
+        )
+    }
+
+    fn rows(session: &mut Session) -> RecordBatch {
+        let replies = send(
+            session,
+            2,
+            client_message::Body::SetViewport(SetViewport {
+                view_id: 1,
+                first_row: 0,
+                row_count: 500,
+                first_column: 0,
+                column_count: 400,
+            }),
+        );
+        let [Body::Frame(frame)] = replies.as_slice() else {
+            panic!("{replies:?}")
+        };
+        decode_batches(&frame.batch).unwrap().remove(0)
+    }
+
+    fn texts(batch: &RecordBatch, name: &str) -> Vec<String> {
+        let column = batch.column_by_name(name).unwrap().as_string::<i32>();
+        (0..column.len())
+            .map(|i| column.value(i).to_owned())
+            .collect()
+    }
+
+    #[test]
+    fn a_waterfalls_steps_run_in_the_layouts_order_and_end_on_the_total() {
+        let mut session = session();
+        let replies = open(&mut session, &layout("sum"));
+        assert!(
+            replies.iter().all(|r| !matches!(r, Body::Error(_))),
+            "{replies:?}"
+        );
+        let batch = rows(&mut session);
+        let labels = texts(&batch, "__label");
+        let factors: Vec<&str> = FACTORS.iter().map(|f| f.0).collect();
+        assert_eq!(labels[0], "Total");
+        assert_eq!(labels[1..], factors[..]);
+        let runs = texts(&batch, "sum(pnl_usd) running total#text");
+        let sums = texts(&batch, "sum(pnl_usd)#text");
+        // The first step runs from zero, and the last ends on the total, digit
+        // for digit.
+        assert_eq!(runs[1], sums[1]);
+        assert_eq!(runs.last(), sums.first());
+        assert_eq!(runs.first(), sums.first());
+    }
+
+    #[test]
+    fn a_running_total_of_what_does_not_add_is_refused_with_the_reason() {
+        let mut session = session();
+        let replies = open(&mut session, &layout("mean"));
+        let error = replies
+            .iter()
+            .find_map(|r| match r {
+                Body::Error(e) => Some(e.message.clone()),
+                _ => None,
+            })
+            .expect("an error");
+        assert!(error.contains("only sums and counts add up"), "{error}");
+    }
+}

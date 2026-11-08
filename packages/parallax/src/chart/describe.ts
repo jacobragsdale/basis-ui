@@ -1,6 +1,7 @@
 /* A chart's accessible name: its kind and shape, what it plots, what it splits it by, and the dataset. A canvas is
  * invisible to screen readers, so every chart carries this text. */
 
+import { groupedKinds } from "#layout/chart.ts";
 import type { LayoutChart } from "#layout/chart.ts";
 import type { Layout } from "#layout/layout.ts";
 
@@ -14,6 +15,7 @@ const kindNames: Readonly<Record<LayoutChart["kind"], string>> = {
   candlestick: "Candlestick chart",
   ohlc: "OHLC chart",
   pie: "Pie chart",
+  waterfall: "Waterfall chart",
 };
 
 function kindName(chart: LayoutChart): string {
@@ -35,7 +37,7 @@ function describeChart(layout: Layout): string {
   if (chart === null) {
     return "Chart";
   }
-  const grouped = chart.kind === "bar" || chart.kind === "heatmap" || chart.kind === "pie";
+  const grouped = groupedKinds.has(chart.kind);
   const columns = [...chart.y, ...chart.y_right].join(", ");
   const plotted = columns === "" ? chart.x : columns;
   const of = grouped ? layout.group_by.join(", ") : plotted;

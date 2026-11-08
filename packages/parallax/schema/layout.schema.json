@@ -142,6 +142,11 @@
           "const": "pie",
           "description": "Slices of the layout's grouped view, one per group, sized by its first\nmeasure, as a ring when `donut` is set.",
           "type": "string"
+        },
+        {
+          "const": "waterfall",
+          "description": "Steps of the layout's grouped view, one per group: each floats from the\nrunning total of its first measure before it to the one after, and a\ntotal bar ends them, as attribution and P&L explain are drawn.",
+          "type": "string"
         }
       ]
     },
@@ -301,7 +306,7 @@
     },
     "LayoutChart": {
       "additionalProperties": false,
-      "description": "A chart, in a layout. Bar charts and heatmaps draw the layout's grouped view;\nthe other kinds are reduced by the engine to the plot's pixels.",
+      "description": "A chart, in a layout. Bar charts, heatmaps, pies and waterfalls draw the\nlayout's grouped view; the other kinds are reduced by the engine to the\nplot's pixels.",
       "properties": {
         "axis": {
           "$ref": "#/$defs/XAxisName",
@@ -1300,6 +1305,11 @@
         {
           "const": "percent_of_parent",
           "description": "Fraction of the parent row's value.",
+          "type": "string"
+        },
+        {
+          "const": "running_total",
+          "description": "Excel's \"Running Total In\": the exact sum of the group's value and its\nsiblings' before it, in their order. Sums and counts only.",
           "type": "string"
         }
       ]

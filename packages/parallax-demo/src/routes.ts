@@ -122,7 +122,7 @@ const fixedIncomeRoute = createRoute({
   component: FixedIncomePage,
   getParentRoute: () => rootRoute,
   loader: () => {
-    needDatasets("bonds");
+    needDatasets("bonds", "attribution");
   },
   path: pages.fixedIncome.path,
 });

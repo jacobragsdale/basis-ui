@@ -25,6 +25,7 @@ const labels: Readonly<Record<string, string>> = {
   percent_of_column_total: "% of column",
   percent_of_row_total: "% of row",
   percent_of_parent: "% of parent",
+  running_total: "Running total",
   eq: "=",
   ne: "≠",
   lt: "<",

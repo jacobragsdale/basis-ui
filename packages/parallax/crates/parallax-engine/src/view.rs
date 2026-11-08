@@ -367,6 +367,17 @@ impl Cell {
         }
     }
 
+    /// Merges only measure `m` of `other`, and its rows.
+    fn merge_measure(&mut self, other: &Self, m: usize) {
+        self.rows += other.rows;
+        self.states[m].merge(&other.states[m]);
+        if let (Some(a), Some(b)) = (&mut self.units[m], &other.units[m]) {
+            for (&k, &c) in b {
+                *a.entry(k).or_insert(0) += c;
+            }
+        }
+    }
+
     fn merge(&mut self, other: &Self) {
         self.rows += other.rows;
         for (a, b) in self.states.iter_mut().zip(&other.states) {
@@ -506,6 +517,15 @@ struct Bucket {
     sorted: bool,
 }
 
+/// What orders, filters and ranks each set of siblings: the parts of a view's
+/// configuration that decide which groups show and in what order.
+#[derive(Clone, Debug, Default)]
+struct Siblings {
+    sort: GroupSort,
+    having: Vec<Having>,
+    top_n: Option<TopN>,
+}
+
 #[derive(Clone, Debug)]
 struct Grouped {
     measures: Vec<CompiledMeasure>,
@@ -527,6 +547,12 @@ struct Grouped {
     /// Values of lazy measures above the leaves, by (node, split, measure). Cleared
     /// whenever the view changes.
     lazy_values: RefCell<FxHashMap<(u32, u32, usize), MeasureValue>>,
+    /// Running totals by (node, split, measure), worked out for a whole set of
+    /// siblings at once; a group of a top-N's "Other" holds the Other row's.
+    /// Cleared whenever the view changes.
+    running: RefCell<FxHashMap<(u32, u32, usize), MeasureValue>>,
+    /// How each set of siblings is ordered, filtered and ranked.
+    siblings: Siblings,
     scratch_inputs: Vec<Input>,
     scratch_keys: Vec<Key>,
     scratch_path: Vec<u32>,
@@ -637,7 +663,7 @@ fn measure_format(measure: &Measure, column: Option<&Format>) -> Format {
     if let Some(f) = &measure.format {
         return f.clone();
     }
-    if measure.show_as != ShowAs::Value {
+    if measure.show_as.is_share() {
         return Format {
             percent: true,
             ..Format::default()
@@ -684,6 +710,12 @@ fn compile_measure(table: &Table, m: &Measure) -> Result<CompiledMeasure, Config
         && !(0.0..=1.0).contains(&p)
     {
         return Err(ConfigError::Percentile(p.to_string()));
+    }
+    if m.show_as == ShowAs::RunningTotal && !m.aggregate.adds() {
+        return Err(ConfigError::RunningTotal {
+            measure: m.label(),
+            reason: "only sums and counts add up, so only they run".into(),
+        });
     }
     let weight = m
         .weight
@@ -791,7 +823,9 @@ fn total_measures(table: &Table, config: &ViewConfig) -> Result<Vec<CompiledMeas
             ));
         };
         if m.show_as != ShowAs::Value {
-            return Err(refuse("a total shows its value, not a share"));
+            return Err(refuse(
+                "a total shows its value, not a share or a running total",
+            ));
         }
         if !seen.insert(column.as_str()) {
             return Err(refuse("a column has at most one total"));
@@ -799,6 +833,44 @@ fn total_measures(table: &Table, config: &ViewConfig) -> Result<Vec<CompiledMeas
         measures.push(compile_measure(table, m)?);
     }
     Ok(measures)
+}
+
+/// Refuses ordering, filtering or ranking groups by a running total, which
+/// depends on their order and on which of them show.
+fn check_running(config: &ViewConfig) -> Result<(), ConfigError> {
+    let running = |i: usize| {
+        config
+            .measures
+            .get(i)
+            .filter(|m| m.show_as == ShowAs::RunningTotal)
+    };
+    let refuse = |m: &Measure, reason: &str| {
+        Err(ConfigError::RunningTotal {
+            measure: m.label(),
+            reason: reason.to_owned(),
+        })
+    };
+    if let GroupOrder::Measure(i) = config.group_sort.by
+        && let Some(m) = running(i)
+    {
+        return refuse(
+            m,
+            "groups cannot be sorted by it, since it follows their order",
+        );
+    }
+    if let Some(m) = config.having.iter().find_map(|h| running(h.measure)) {
+        return refuse(
+            m,
+            "groups cannot be filtered by it, since it depends on which of them show",
+        );
+    }
+    if let Some(m) = config.top_n.and_then(|t| running(t.measure)) {
+        return refuse(
+            m,
+            "groups cannot be ranked by it, since it depends on which of them show",
+        );
+    }
+    Ok(())
 }
 
 impl View {
@@ -846,6 +918,7 @@ impl View {
             if let Some(t) = &config.top_n {
                 check(t.measure)?;
             }
+            check_running(&config)?;
             let mut grouped = Grouped::new(
                 measures,
                 config
@@ -867,6 +940,11 @@ impl View {
                 }));
             }
             grouped.orders = Orders::compile(table, &config.orders)?;
+            grouped.siblings = Siblings {
+                sort: config.group_sort,
+                having: config.having.clone(),
+                top_n: config.top_n,
+            };
             Kind::Grouped(Box::new(grouped))
         } else {
             let sort = flat_sort(table, &config)?;
@@ -1924,6 +2002,8 @@ impl Grouped {
             columns: None,
             detail: None,
             lazy_values: RefCell::default(),
+            running: RefCell::default(),
+            siblings: Siblings::default(),
             scratch_inputs: Vec::new(),
             scratch_keys: Vec::new(),
             scratch_path: Vec::new(),
@@ -1969,6 +2049,7 @@ impl Grouped {
         self.visible = None;
         self.columns = None;
         self.lazy_values.get_mut().clear();
+        self.running.get_mut().clear();
         if let Some(detail) = &mut self.detail {
             detail.buckets = None;
         }
@@ -2252,6 +2333,10 @@ impl Grouped {
         let value = self.raw_value(table, ids, split, m);
         let base = match measure.show_as {
             ShowAs::Value => return to_cell(table, measure, value),
+            ShowAs::RunningTotal => {
+                let running = self.running_total(table, ids[0], split, m);
+                return to_cell(table, measure, running);
+            }
             ShowAs::PercentOfGrandTotal => self.raw_value(table, &[0], ROW_TOTAL, m),
             ShowAs::PercentOfColumnTotal => self.raw_value(table, &[0], split, m),
             ShowAs::PercentOfRowTotal => self.raw_value(table, ids, ROW_TOTAL, m),
@@ -2276,6 +2361,55 @@ impl Grouped {
                 (Some(_), _) => CellValue::Undefined,
                 _ => CellValue::Null,
             },
+        }
+    }
+
+    /// The running total of measure `m` at `id` in column `split`: the exact sum
+    /// of its value and those of the siblings before it, in their order, merged
+    /// from their cells, so a run that mixes units shows as mixed. A top-N's
+    /// "Other" row ends its siblings' run, and its groups each hold its total.
+    /// The grand total runs alone; a group that does not show has none.
+    fn running_total(&self, table: &Table, id: u32, split: u32, m: usize) -> MeasureValue {
+        let parent = self.node(id).parent;
+        if parent == NO_PARENT {
+            return self.raw_value(table, &[id], split, m);
+        }
+        if let Some(value) = self.running.borrow().get(&(id, split, m)) {
+            return value.clone();
+        }
+        let (children, rest) = self.children_in_order(table, parent);
+        let mut run = Cell::new(&self.measures, false);
+        let mut values = Vec::with_capacity(children.len() + rest.len());
+        let add = |run: &mut Cell, child: u32| {
+            if let Some(cell) = self.cell(child, split) {
+                run.merge_measure(cell, m);
+            }
+        };
+        for &child in &children {
+            add(&mut run, child);
+            values.push((child, self.run_value(table, &run, m)));
+        }
+        if !rest.is_empty() {
+            for &child in &rest {
+                add(&mut run, child);
+            }
+            let other = self.run_value(table, &run, m);
+            values.extend(rest.iter().map(|&child| (child, other.clone())));
+        }
+        let mut running = self.running.borrow_mut();
+        running.extend(values.into_iter().map(|(child, v)| ((child, split, m), v)));
+        running
+            .get(&(id, split, m))
+            .cloned()
+            .unwrap_or(MeasureValue::Null)
+    }
+
+    /// The value of measure `m` of a run of siblings' merged cells.
+    fn run_value(&self, table: &Table, run: &Cell, m: usize) -> MeasureValue {
+        if run.rows == 0 {
+            self.empty_value(m)
+        } else {
+            self.measure_value(table, run, None, m)
         }
     }
 
@@ -2314,18 +2448,16 @@ impl Grouped {
         (node.depth as usize) <= config.expand_depth
     }
 
-    fn children_in_order(
-        &self,
-        table: &Table,
-        id: u32,
-        config: &ViewConfig,
-    ) -> (Vec<u32>, Vec<u32>) {
+    /// The children of `id` that show, in their order, and those a top-N puts in
+    /// its "Other" row.
+    fn children_in_order(&self, table: &Table, id: u32) -> (Vec<u32>, Vec<u32>) {
+        let config = &self.siblings;
         let node = self.node(id);
         let level = node.depth as usize;
         let column = self.group_columns[level];
         let mut children: Vec<u32> = node.children.values().copied().collect();
         let mut keyed: Vec<(u32, Option<f64>)> = children.iter().map(|&c| (c, None)).collect();
-        if let GroupOrder::Measure(m) = config.group_sort.by {
+        if let GroupOrder::Measure(m) = config.sort.by {
             for entry in &mut keyed {
                 entry.1 = self.numeric(table, &[entry.0], m);
             }
@@ -2335,12 +2467,12 @@ impl Grouped {
                 .cmp(table, column, self.node(a).key, self.node(b).key)
         };
         keyed.sort_by(|a, b| {
-            let primary = match config.group_sort.by {
+            let primary = match config.sort.by {
                 GroupOrder::Key => {
                     let o = by_key(a.0, b.0);
                     match (self.node(a.0).key, self.node(b.0).key) {
                         (Key::Null, _) | (_, Key::Null) => o,
-                        _ if config.group_sort.descending => o.reverse(),
+                        _ if config.sort.descending => o.reverse(),
                         _ => o,
                     }
                 }
@@ -2348,7 +2480,7 @@ impl Grouped {
                     (None, None) => Ordering::Equal,
                     (None, _) => Ordering::Greater,
                     (_, None) => Ordering::Less,
-                    (Some(x), Some(y)) if config.group_sort.descending => y.total_cmp(&x),
+                    (Some(x), Some(y)) if config.sort.descending => y.total_cmp(&x),
                     (Some(x), Some(y)) => x.total_cmp(&y),
                 },
             };
@@ -2425,7 +2557,7 @@ impl Grouped {
                 if !shown {
                     return;
                 }
-                let (children, rest) = g.children_in_order(table, id, config);
+                let (children, rest) = g.children_in_order(table, id);
                 for c in children {
                     out.push(Visible::Node(c));
                     walk(g, table, config, c, out);
@@ -3038,7 +3170,7 @@ fn values_to_arrow(
     measure: &CompiledMeasure,
     values: &[CellValue],
 ) -> (ArrayRef, DataType) {
-    let percent = measure.show_as != ShowAs::Value;
+    let percent = measure.show_as.is_share();
     let floats = |values: &[CellValue]| -> ArrayRef {
         Arc::new(
             values

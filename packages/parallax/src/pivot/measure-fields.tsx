@@ -32,6 +32,14 @@ const negatives: readonly Choice[] = [
 
 const aggregateChoices = choices(aggregates);
 const showAsChoices = choices(showAs);
+/** The aggregates whose groups add up to their parent's, which alone take a running total. */
+const adding: ReadonlySet<LayoutMeasure["aggregate"]> = new Set(["sum", "count", "count_all"]);
+/** How a measure of `aggregate` can be shown: a running total only if it adds up. */
+function showAsFor(aggregate: LayoutMeasure["aggregate"]): readonly Choice[] {
+  return adding.has(aggregate)
+    ? showAsChoices
+    : showAsChoices.filter((choice) => choice.value !== "running_total");
+}
 /** A percentile is typed in hundredths. */
 const percentScale = 100;
 
@@ -68,6 +76,7 @@ function withAggregate(part: MeasurePart, value: string): Partial<LayoutMeasure>
     column: aggregate === "count_all" ? null : column,
     percentile: aggregate === "percentile" ? (current.percentile ?? defaultPercentile) : null,
     weight: aggregate === "weighted_mean" ? current.weight : null,
+    ...(current.show_as === "running_total" && !adding.has(aggregate) ? { show_as: "value" } : {}),
   };
 }
 
@@ -174,7 +183,7 @@ function ShowFields({ layout, index, current, onChange }: MeasurePart): ReactNod
     <>
       <SelectSetting
         label="Show as"
-        choices={showAsChoices}
+        choices={showAsFor(current.aggregate)}
         value={current.show_as}
         onPick={(value) => {
           const shown = showAs.find((entry) => entry === value);

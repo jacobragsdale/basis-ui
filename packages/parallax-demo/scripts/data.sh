@@ -2,8 +2,9 @@
 # Writes the demo's datasets with parallax-datagen, as Arrow IPC streams in public/data, which the build copies beside
 # the app and each page fetches as an app fetches its API's Arrow. They are the Angular demo's datasets, with the same
 # seed and options, so the same rows: 150,000 positions and 150,000 trades at the browser's row limit, daily prices for
-# 50 tickers, the small tables' 300 positions and 500 trades, and 600 bonds for the fixed-income page. Every file must
-# also be within the browser's byte limit, maxArrowBytes in @basis/parallax's src/engine/limits.ts.
+# 50 tickers, the small tables' 300 positions and 500 trades, and 600 bonds and October's P&L explained by factor for
+# the fixed-income page. Every file must also be within the browser's byte limit, maxArrowBytes in @basis/parallax's
+# src/engine/limits.ts.
 set -euo pipefail
 demo="$(cd "$(dirname "$0")/.." && pwd)"
 parallax="$(cd "$demo/../parallax" && pwd)"
@@ -33,3 +34,4 @@ generate prices prices --tickers 50
 generate book positions --rows 300
 generate blotter trades --rows 500
 generate bonds bonds --rows 600
+generate attribution attribution

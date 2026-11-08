@@ -10,8 +10,8 @@ use arrow_array::types::{Decimal128Type, Float64Type, Int64Type};
 use arrow_array::{Array, ArrayRef, Decimal128Array, Float64Array, RecordBatch, StringArray};
 use common::{Picker, positions};
 use parallax_engine::{
-    Aggregate, CellValue, Filter, FilterOp, GroupCell, Measure, Scalar, Table, TableOptions, View,
-    ViewConfig,
+    Aggregate, CellValue, Filter, FilterOp, GroupCell, Measure, Scalar, ShowAs, Table,
+    TableOptions, View, ViewConfig,
 };
 
 fn table_from(batch: &RecordBatch) -> Table {
@@ -191,6 +191,34 @@ fn configs() -> Vec<ViewConfig> {
                 Filter::new("sector", FilterOp::Gt(Scalar::Utf8("energy".into()))),
                 Filter::new("sector", FilterOp::EndsWith("R".into())).or_in(&["ticker"]),
             ],
+            ..ViewConfig::default()
+        },
+        // Running totals among siblings, sorted by another measure, with a
+        // top-N's Other ending each run, down a column pivot too.
+        ViewConfig {
+            group_by: vec!["sector".into(), "fund".into()],
+            split_by: vec!["long_short".into()],
+            measures: vec![
+                Measure::new(Aggregate::Sum, "market_value_usd"),
+                Measure::new(Aggregate::Sum, "market_value_usd").show_as(ShowAs::RunningTotal),
+                Measure::new(Aggregate::Sum, "beta").show_as(ShowAs::RunningTotal),
+                Measure::new(Aggregate::Count, "beta").show_as(ShowAs::RunningTotal),
+                Measure::count_all().show_as(ShowAs::RunningTotal),
+                Measure::new(Aggregate::Sum, "market_value_local")
+                    .with_unit_column("currency")
+                    .show_as(ShowAs::RunningTotal),
+            ],
+            group_sort: parallax_engine::view::GroupSort {
+                by: parallax_engine::view::GroupOrder::Measure(0),
+                descending: true,
+            },
+            top_n: Some(parallax_engine::view::TopN {
+                n: 4,
+                measure: 0,
+                largest: true,
+                other: true,
+            }),
+            expand_depth: 1,
             ..ViewConfig::default()
         },
         // Grids grouped with their rows, all shown or only the outer groups.

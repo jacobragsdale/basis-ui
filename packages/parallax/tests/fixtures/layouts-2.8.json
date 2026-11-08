@@ -218,5 +218,82 @@
     "top_n": null,
     "totals": [],
     "version": 2
+  },
+  {
+    "chart": {
+      "axis": "value",
+      "compare": false,
+      "donut": true,
+      "drawings": [],
+      "events": null,
+      "hidden": [],
+      "horizontal": false,
+      "indicators": [],
+      "kind": "waterfall",
+      "labels": true,
+      "log_y": false,
+      "ohlc": null,
+      "range": null,
+      "series": null,
+      "stacked": false,
+      "volume": null,
+      "x": "",
+      "y": [],
+      "y_right": []
+    },
+    "column_widths": {},
+    "columns": [],
+    "dataset": "attribution",
+    "detail": false,
+    "expand_depth": 0,
+    "expanded": [],
+    "filters": [],
+    "formats": {},
+    "group_by": [
+      "factor"
+    ],
+    "group_sort": {
+      "by": "key",
+      "descending": false
+    },
+    "having": [],
+    "measures": [
+      {
+        "aggregate": "sum",
+        "column": "pnl_usd",
+        "format": null,
+        "percentile": null,
+        "show_as": "value",
+        "unit_column": null,
+        "weight": null
+      },
+      {
+        "aggregate": "sum",
+        "column": "pnl_usd",
+        "format": null,
+        "percentile": null,
+        "show_as": "running_total",
+        "unit_column": null,
+        "weight": null
+      }
+    ],
+    "orders": {
+      "factor": {
+        "values": [
+          "Carry",
+          "Roll-down",
+          "Curve 2Y"
+        ]
+      }
+    },
+    "parameters": {},
+    "pinned": [],
+    "search": "",
+    "sort": [],
+    "split_by": [],
+    "titles": {},
+    "top_n": null,
+    "totals": [],
+    "version": 2
   }
 ]

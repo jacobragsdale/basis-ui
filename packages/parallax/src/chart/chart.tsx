@@ -8,7 +8,7 @@
  *   <Chart rows={rows} kind="bar" x="sector" y="exposure" />
  *
  * The engine, in its worker, reduces line, area, scatter, histogram, candlestick and OHLC charts to the plot's pixels;
- * bar charts, heatmaps and pies draw the layout's grouped view. The legend hides and shows series, drawings and their
+ * bar charts, heatmaps, pies and waterfalls draw the layout's grouped view. The legend hides and shows series, drawings and their
  * tools sit on charts along an x axis, the wheel zooms, a drag pans, Shift and drag brushes, a click selects a bar, a
  * slice or a scatter's dot, and crosshairs of the same dataset and x move together. The canvas carries a text
  * alternative: what the chart draws, and the values it shows. */
@@ -21,7 +21,7 @@ import { useDataset } from "#react/use-dataset.ts";
 
 import { ChartView } from "./chart-view.tsx";
 import type { ChartOptions, ChartViewProps } from "./chart-view.tsx";
-import { groupedKinds, rowOrder, smallBytes, smallLayout } from "./small-data.ts";
+import { reorderedKinds, rowOrder, smallBytes, smallLayout } from "./small-data.ts";
 import type { ChartRow, ChartSettings, SmallChart } from "./small-data.ts";
 
 /** `<Chart>` over a dataset that `useDataset` loads. */
@@ -48,7 +48,7 @@ function RowsChart(props: RowsChartProps): ReactNode {
   const id = useId().replaceAll(/[^\w-]/gu, "");
   const dataset = useDataset(`rows-${id}`, smallBytes(rows, small, settings));
   const layout = {
-    ...smallLayout(small, settings),
+    ...smallLayout(small, settings, rows),
     ...(formats === undefined ? {} : { formats }),
   };
   return (
@@ -56,7 +56,7 @@ function RowsChart(props: RowsChartProps): ReactNode {
       {...options}
       dataset={dataset}
       layout={layout}
-      order={groupedKinds.has(kind) ? rowOrder(rows, x) : null}
+      order={reorderedKinds.has(kind) ? rowOrder(rows, x) : null}
       source={name ?? "rows"}
     />
   );

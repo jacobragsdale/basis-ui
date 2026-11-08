@@ -172,6 +172,8 @@ Pivots support:
 - filters on raw values and on aggregates
 - top-N per level, with an "Other" row
 - percentage of parent, row, column or grand total
+- running totals among siblings in their order, Excel's "Running Total In",
+  from exact sums, for sums and counts
 - drill-through to the underlying rows
 - several measures at once
 
@@ -547,11 +549,21 @@ drawing them. Clicking a bar or slice selects its group: the chart emits
 for a host to filter a linked view by, dims the other groups, and clears it on
 a second click. "Other" stands for several groups and selects nothing.
 
-Step 2.8 adds waterfalls, for attribution and P&L explain, which draw the
-grouped view too: each group's bar floats from the running total before it to
-the one after, and a total bar ends them. The running totals are the engine's,
-a measure shown as a running total among its siblings, from exact sums, so the
-last bar ends exactly on the total, and every label is the engine's text.
+Waterfalls, for attribution and P&L explain, draw the grouped view too: each
+group's bar floats from the running total before it to its own, rising bars in
+the up colour and falling ones in the down colour, joined by connectors, and a
+total bar from zero ends them. The chart asks the engine for its first
+measure's value and the same measure shown as a running total, Excel's
+"Running Total In": among siblings in their order, the exact sum of a group's
+rows and those of the groups before it, merged from their cells, so the last
+step ends exactly on the total, a run that crosses units shows as mixed, and a
+top-N's "Other" ends the run. Only sums and counts add up, so only they take a
+running total, and groups cannot be sorted, filtered or ranked by one, since it
+follows their order and which of them show. Every label is the engine's text. A
+waterfall whose steps would miss its total, because an aggregate filter or a
+top-N without "Other" hides groups, says so rather than drawing a gap. A small
+waterfall's steps follow its rows' order, which it gives the engine as the x
+column's order, so the engine runs its totals in that order too.
 
 Charts label what they can without crowding. Category labels along the bottom
 stay level if each fits its share of the width, break onto two lines between

@@ -971,3 +971,212 @@ fn percent_of_total_and_top_n_with_other() {
         assert!(close(percent.value(i), sums.value(i) as f64 / grand, 1e-12));
     }
 }
+
+/// A text group key as a DuckDB literal, null as a typed null.
+fn text_literal(value: &Scalar) -> String {
+    match value {
+        Scalar::Utf8(t) => format!("'{}'", t.replace('\'', "''")),
+        Scalar::Null => "CAST(NULL AS VARCHAR)".into(),
+        other => panic!("not a text key: {other:?}"),
+    }
+}
+
+/// The running totals a random view of 1 or 2 levels shows, checked against
+/// DuckDB's window sums over its groups in the engine's order of siblings: an
+/// exact decimal sum, a count and a row count summed as integers, and a float
+/// sum, whose run's values DuckDB gathers and an exactly rounded sum adds.
+fn verify_running(
+    table: &Table,
+    conn: &Connection,
+    picker: &mut Picker,
+) -> Result<ViewConfig, Box<(ViewConfig, String)>> {
+    let levels = 1 + picker.below(2);
+    let group_by: Vec<String> = picker
+        .sample(GROUPS, levels)
+        .into_iter()
+        .map(String::from)
+        .collect();
+    let split_by = if picker.chance(40) {
+        vec![picker.pick(SPLITS).to_string()]
+    } else {
+        Vec::new()
+    };
+    let decimal = *picker.pick(DECIMALS);
+    let float = *picker.pick(FLOATS);
+    let running = ShowAs::RunningTotal;
+    let measures = vec![
+        Measure::new(Aggregate::Sum, decimal),
+        Measure::new(Aggregate::Sum, decimal).show_as(running),
+        Measure::new(Aggregate::Sum, float).show_as(running),
+        Measure::new(Aggregate::Count, float).show_as(running),
+        Measure::count_all().show_as(running),
+    ];
+    let group_sort = match picker.below(3) {
+        0 => GroupSort::default(),
+        1 => GroupSort {
+            by: GroupOrder::Key,
+            descending: true,
+        },
+        _ => GroupSort {
+            by: GroupOrder::Measure(0),
+            descending: picker.chance(50),
+        },
+    };
+    let filters = (0..picker.below(2))
+        .filter_map(|_| random_filter(table, picker))
+        .collect();
+    let config = ViewConfig {
+        group_by,
+        split_by,
+        measures,
+        filters,
+        group_sort,
+        ..ViewConfig::default()
+    };
+    let fail = |e: String| Err(Box::new((config.clone(), e)));
+    let mut view =
+        View::new(table, config.clone()).map_err(|e| Box::new((config.clone(), e.to_string())))?;
+    view.show_all(true);
+    let rows = view.num_rows(table);
+    let frame = view.window(table, 0..rows, 0..1).batch;
+    let depths = frame
+        .column_by_name("__depth")
+        .unwrap()
+        .as_primitive::<arrow_array::types::Int32Type>()
+        .clone();
+    let keys: Vec<_> = config
+        .group_by
+        .iter()
+        .map(|g| frame.column_by_name(g).unwrap().clone())
+        .collect();
+    let cells = view.cells(table);
+    let by_key: HashMap<String, &GroupCell> = cells
+        .iter()
+        .map(|c| (format!("{:?}", (&c.path, &c.split)), c))
+        .collect();
+    let filters = where_clause(table, &config.filters);
+    for level in 1..=levels {
+        let names: Vec<String> = config.group_by[..level].iter().map(|g| ident(g)).collect();
+        let order: Vec<String> = (0..rows)
+            .filter(|&row| depths.value(row) as usize == level)
+            .map(|row| {
+                let values: Vec<String> = keys[..level]
+                    .iter()
+                    .map(|k| text_literal(&scalar_at(k.as_ref(), row)))
+                    .collect();
+                format!("({row}, {})", values.join(", "))
+            })
+            .collect();
+        if order.is_empty() {
+            continue;
+        }
+        let splits: Vec<Option<&String>> = if config.split_by.is_empty() {
+            vec![None]
+        } else {
+            vec![None, Some(&config.split_by[0])]
+        };
+        for split in splits {
+            let mut grouping = names.clone();
+            grouping.extend(split.map(|s| ident(s)));
+            let mut partition: Vec<String> = names[..level - 1]
+                .iter()
+                .map(|n| format!("g.{n}"))
+                .collect();
+            partition.extend(split.map(|s| format!("g.{}", ident(s))));
+            let partition = if partition.is_empty() {
+                String::new()
+            } else {
+                format!("PARTITION BY {} ", partition.join(", "))
+            };
+            let (d, f) = (ident(decimal), ident(float));
+            let joins: Vec<String> = names
+                .iter()
+                .map(|n| format!("g.{n} IS NOT DISTINCT FROM o.{n}"))
+                .collect();
+            let sql = format!(
+                "WITH g AS (SELECT {grouping}, sum({d}) AS d, \
+                 coalesce(list({f}) FILTER (WHERE {f} IS NOT NULL), []::DOUBLE[]) AS l, \
+                 count({f}) AS c, count(*) AS n FROM t{filters} GROUP BY {grouping}), \
+                 o(pos, {names}) AS (VALUES {order}) \
+                 SELECT {selected}, sum(d) OVER w AS m1, flatten(list(l) OVER w) AS l2, \
+                 CAST(sum(c) OVER w AS BIGINT) AS m3, CAST(sum(n) OVER w AS BIGINT) AS m4 \
+                 FROM g JOIN o ON {joins} \
+                 WINDOW w AS ({partition}ORDER BY o.pos ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)",
+                grouping = grouping.join(", "),
+                names = names.join(", "),
+                order = order.join(", "),
+                selected = grouping
+                    .iter()
+                    .map(|n| format!("g.{n}"))
+                    .collect::<Vec<_>>()
+                    .join(", "),
+                joins = joins.join(" AND "),
+            );
+            let mut seen = 0;
+            for batch in &query(conn, &sql) {
+                for row in 0..batch.num_rows() {
+                    seen += 1;
+                    let path: Vec<Scalar> = (0..level)
+                        .map(|i| scalar_at(batch.column(i).as_ref(), row))
+                        .collect();
+                    let split_key =
+                        split.map(|_| vec![scalar_at(batch.column(level).as_ref(), row)]);
+                    let Some(cell) = by_key.get(&format!("{:?}", (&path, &split_key))) else {
+                        return fail(format!("no engine cell for {path:?} {split_key:?}\n{sql}"));
+                    };
+                    for m in 1..config.measures.len() {
+                        let measure = &config.measures[m];
+                        let theirs = batch
+                            .column_by_name(&format!("m{m}"))
+                            .or_else(|| batch.column_by_name(&format!("l{m}")))
+                            .unwrap();
+                        let list = batch.column_by_name(&format!("l{m}"));
+                        // The run is compared as the aggregate it adds up.
+                        let plain = Measure {
+                            show_as: ShowAs::Value,
+                            ..measure.clone()
+                        };
+                        if let Err(e) = check(
+                            table,
+                            &plain,
+                            &cell.values[m],
+                            theirs.as_ref(),
+                            list.map(|l| l.as_ref()),
+                            row,
+                        ) {
+                            return fail(format!("{e} at {path:?} {split_key:?}\n{sql}"));
+                        }
+                    }
+                }
+            }
+            let ours = cells
+                .iter()
+                .filter(|c| c.path.len() == level && c.split.is_some() == split.is_some())
+                .count();
+            if ours != seen {
+                return fail(format!("{ours} engine groups vs {seen} in DuckDB\n{sql}"));
+            }
+        }
+    }
+    Ok(config)
+}
+
+#[test]
+fn running_totals_match_duckdb_window_sums() {
+    for (seed, hostile) in [(21, false), (22, true)] {
+        let batch = positions(3_000, 200, hostile, seed);
+        let table = engine_table(&batch);
+        let conn = duck(&batch);
+        let mut picker = Picker::new(seed);
+        let failures: Vec<String> = (0..40)
+            .filter_map(|_| verify_running(&table, &conn, &mut picker).err())
+            .map(|failed| format!("{:?}\n{}", failed.0, failed.1))
+            .collect();
+        assert!(
+            failures.is_empty(),
+            "seed {seed}: {} configs failed:\n{}",
+            failures.len(),
+            failures[..failures.len().min(2)].join("\n\n")
+        );
+    }
+}

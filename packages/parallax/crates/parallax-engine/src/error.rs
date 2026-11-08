@@ -134,6 +134,14 @@ pub enum ConfigError {
         /// What is wrong.
         reason: String,
     },
+    /// A running total cannot be computed as asked.
+    #[error("running total of {measure}: {reason}")]
+    RunningTotal {
+        /// The measure's label.
+        measure: String,
+        /// What is wrong.
+        reason: String,
+    },
     /// A display format cannot be used.
     #[error("format of {column}: {reason}")]
     Format {

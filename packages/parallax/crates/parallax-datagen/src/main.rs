@@ -5,6 +5,7 @@ use std::time::Instant;
 
 use clap::{Args, Parser, Subcommand};
 use jiff::civil::Date;
+use parallax_datagen::attribution::{Attribution, AttributionOptions};
 use parallax_datagen::bonds::{Bonds, BondsOptions};
 use parallax_datagen::positions::{Positions, PositionsOptions};
 use parallax_datagen::prices::{Prices, PricesOptions};
@@ -90,6 +91,19 @@ enum Command {
         #[arg(long, default_value = "2026-10-30")]
         as_of: Date,
     },
+    /// Bond portfolios' P&L explained by factor, a row per portfolio, NYSE
+    /// trading day and factor. Its portfolios are its own, so --securities does
+    /// not apply, and it has no hostile values.
+    Attribution {
+        #[command(flatten)]
+        common: Common,
+        /// First date.
+        #[arg(long, default_value = "2026-10-01")]
+        start: Date,
+        /// Last date.
+        #[arg(long, default_value = "2026-10-30")]
+        end: Date,
+    },
     /// Daily price bars for the most-held equities.
     Prices {
         #[command(flatten)]
@@ -154,6 +168,17 @@ fn main() -> anyhow::Result<()> {
                     seed: common.seed,
                     rows,
                     as_of,
+                })?),
+                common,
+            )
+        }
+        Command::Attribution { common, start, end } => {
+            anyhow::ensure!(!common.hostile, "attribution has no hostile values");
+            (
+                Box::new(Attribution::new(AttributionOptions {
+                    seed: common.seed,
+                    start,
+                    end,
                 })?),
                 common,
             )

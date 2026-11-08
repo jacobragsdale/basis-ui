@@ -16,6 +16,8 @@ const datasetKeys = {
   blotter: "trade_id",
   /** 600 bonds, with their spreads and the fitted curve's. */
   bonds: "cusip",
+  /** Four bond portfolios' P&L explained by factor on each of October 2026's trading days, 968 rows. */
+  attribution: null,
 } as const satisfies Readonly<Record<string, string | null>>;
 
 /** A dataset the demo serves. */

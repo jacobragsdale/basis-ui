@@ -1,7 +1,6 @@
 /* The draw model of a chart: what to paint and where, worked out from the data without touching a canvas, so that
  * tests can check it. Line, area, scatter (as dots or a density), histogram, candlestick and OHLC charts draw the
- * engine's reduction; bar
- * charts, heatmaps and pies draw the layout's grouped view. */
+ * engine's reduction; bar charts, heatmaps, pies and waterfalls draw the layout's grouped view. */
 
 import { barModel } from "./model-bars.ts";
 import { densityModel, histogramModel } from "./model-bins.ts";
@@ -12,20 +11,25 @@ import { pointsModel } from "./model-points.ts";
 import { lineModel } from "./model-series.ts";
 import { emptyModel } from "./model-shared.ts";
 import type { ChartFrameData } from "#frame/chart-data.ts";
+import { groupedKinds } from "#layout/chart.ts";
 
 import type { ChartModel, ModelInput } from "./model-types.ts";
 import { pieModel } from "./model-pie.ts";
+import { waterfallModel } from "./model-waterfall.ts";
 
 /** The smallest plot worth drawing, each way, in pixels. */
 const smallest = 40;
 
-/** The model of a bar chart, heatmap or pie, which draws the layout's grouped view. */
+/** The model of a bar chart, heatmap, pie or waterfall, which draws the layout's grouped view. */
 function groupedModel(input: ModelInput): ChartModel {
   if (input.categories === null) {
     return emptyModel(input, "Loading…");
   }
   if (input.chart.kind === "heatmap") {
     return heatmapModel(input, input.categories);
+  }
+  if (input.chart.kind === "waterfall") {
+    return waterfallModel(input, input.categories);
   }
   return input.chart.kind === "pie"
     ? pieModel(input, input.categories)
@@ -71,9 +75,7 @@ function chartModel(input: ModelInput): ChartModel {
     return emptyModel(input, "");
   }
   const { kind } = input.chart;
-  return kind === "bar" || kind === "heatmap" || kind === "pie"
-    ? groupedModel(input)
-    : reducedModel(input);
+  return groupedKinds.has(kind) ? groupedModel(input) : reducedModel(input);
 }
 
 /** The bottom of the lowest plot or pane, where the x axis runs. */

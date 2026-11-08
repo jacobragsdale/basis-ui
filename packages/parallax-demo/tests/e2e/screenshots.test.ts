@@ -35,7 +35,7 @@ const shots: readonly Shot[] = [
   { charts: 14, name: "charts", path: "/charts", rows: [] },
   { charts: 1, name: "technical", path: "/technical", rows: [] },
   { charts: 5, name: "small-charts", path: "/small-charts", rows: [] },
-  { charts: 1, name: "fixed-income", path: "/fixed-income", rows: [600] },
+  { charts: 2, name: "fixed-income", path: "/fixed-income", rows: [600] },
 ];
 
 /** Compares the window with its screenshot, exactly: in the pinned image drawing is deterministic, and the default

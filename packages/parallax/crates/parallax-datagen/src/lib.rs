@@ -5,7 +5,8 @@
 //! of a full run, and the output never depends on thread count or batch size.
 //!
 //! [`bonds::Bonds`] holds corporate bonds with spreads, durations and DV01s, for
-//! fixed-income charts, from issuers of its own.
+//! fixed-income charts, from issuers of its own, and [`attribution::Attribution`]
+//! bond portfolios' P&L explained by factor, for waterfalls.
 //!
 //! Three datasets share one [`universe::Universe`] per seed:
 //!
@@ -19,6 +20,7 @@
 
 /// NYSE trading days, from the engine, which also places charts in trading time.
 pub use parallax_engine::calendar;
+pub mod attribution;
 pub mod bonds;
 pub mod decimal;
 pub mod dist;
