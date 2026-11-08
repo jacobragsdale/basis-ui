@@ -16,6 +16,7 @@ import { isApiError } from "#api/fetch.ts";
 import { toast } from "#components/toast-manager.ts";
 
 import type { Session } from "./session.ts";
+import { noSignInMessage } from "./sign-in.ts";
 import type { Telemetry } from "./telemetry.ts";
 
 /** A problem type that ends a session or asks for one. */
@@ -74,6 +75,26 @@ function raisePrompt(problem: SignInProblem, state: PromptState, signIn: () => v
   });
 }
 
+/** Says, once, that the API asked for a user the app cannot sign in, in an app under `anonymousSignIn`. */
+function raiseNoSignIn(state: PromptState, telemetry: Telemetry): void {
+  if (state.shown !== null) {
+    return;
+  }
+  state.shown = "sign-in-required";
+  telemetry.error(new Error(noSignInMessage), { source: "sign-in" });
+  toast.add({
+    description: "The data behind this page needs a signed-in user, and this app has no sign-in.",
+    id: promptId,
+    onRemove: () => {
+      state.shown = null;
+    },
+    priority: "high",
+    timeout: 0,
+    title: "This page can't load",
+    type: "error",
+  });
+}
+
 /** Signs `current` out, once however many requests the ended session fails. */
 async function endSession(current: Session, state: PromptState): Promise<void> {
   state.ending = true;
@@ -98,7 +119,9 @@ function signInAnswers(
   };
   return (failure) => {
     const problem = signInProblem(failure);
-    if (problem === "invalid-token") {
+    if (problem !== undefined && session()?.offersSignIn === false) {
+      raiseNoSignIn(state, telemetry);
+    } else if (problem === "invalid-token") {
       const current = session();
       if (current !== null && current.user !== null && !state.ending) {
         endSession(current, state).catch(report);

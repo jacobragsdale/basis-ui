@@ -131,12 +131,12 @@ createRoot(root).render(
 
 `BasisApp` takes:
 
-| Prop          | What it is                                                                                             |
-| ------------- | ------------------------------------------------------------------------------------------------------ |
-| `router`      | The app's TanStack Router. Its routes render once the user is known.                                   |
-| `signIn`      | The sign-in adapter: the firm's (roadmap step 1.9), or `fakeSignIn()` in tests and development.        |
-| `telemetry`   | Where errors, events and timings go; `consoleTelemetry` by default.                                    |
-| `queryClient` | The TanStack Query client, for a test that reads its cache; one from `createQueryClient()` by default. |
+| Prop          | What it is                                                                                                                                      |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `router`      | The app's TanStack Router. Its routes render once the user is known.                                                                            |
+| `signIn`      | The sign-in adapter: the firm's (roadmap step 1.9), `anonymousSignIn()` for an app with no sign-in, or `fakeSignIn()` in tests and development. |
+| `telemetry`   | Where errors, events and timings go; `consoleTelemetry` by default.                                                                             |
+| `queryClient` | The TanStack Query client, for a test that reads its cache; one from `createQueryClient()` by default.                                          |
 
 Inside it, in order: the telemetry, the query client, the toasts (`Toaster`), an error boundary round the whole app,
 the signed-in session, and the router. It keeps the page in the user's mode and density as they change them
@@ -168,6 +168,11 @@ signs in `user` at once (a placeholder user by default, `null` for an anonymous 
 placeholder user) and signs each token with the development key basis publishes, so a basis API on a developer's
 desktop, such as `basis dev`'s, accepts it when `issuer` and `audience` match its `BASIS_IDENTITY__ISSUER` and
 `BASIS_IDENTITY__AUDIENCE` (`basis-development` by default). Every other API refuses it.
+
+An app with no sign-in system, such as a ctzd dashboard, passes `anonymousSignIn()`: every user is anonymous, requests
+carry no token, and the adapter's `offersSignIn: false` tells the shell never to ask anyone to sign in. If an API answers
+`sign-in-required` or `invalid-token` anyway, the shell says the page can't load, with no sign-in button, and reports
+why through telemetry: the API's route must allow anonymous users.
 
 ## Calling the API
 

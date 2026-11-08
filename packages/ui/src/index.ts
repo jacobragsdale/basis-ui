@@ -587,6 +587,7 @@ export { createQueryClient } from "./shell/query-client.ts";
 export { useSession, type Session } from "./shell/session.ts";
 export { toastError } from "./shell/toast-error.tsx";
 export {
+  anonymousSignIn,
   fakeSignIn,
   fakeUser,
   type FakeSignInOptions,

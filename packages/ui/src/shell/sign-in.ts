@@ -24,6 +24,9 @@ interface SignIn {
   /** Ends the user's session. An adapter may leave the page for the sign-in system's; `BasisApp` then shows the app
    * as the anonymous user sees it. */
   readonly signOut: () => Promise<void>;
+  /** Whether the app offers a sign-in at all: yes unless set. An app with no sign-in system, such as a ctzd dashboard,
+   * uses `anonymousSignIn`, which sets it to `false`, and the shell then never asks the user to sign in. */
+  readonly offersSignIn?: boolean;
 }
 
 /** basis's development key, as basis publishes it (`basis.api.tokens.DEVELOPMENT_KEY`): an ES256 key whose private
@@ -134,5 +137,21 @@ function fakeSignIn({
   };
 }
 
-export { fakeSignIn, fakeUser };
+/** What `anonymousSignIn`'s `signIn` rejects with, and the shell says when an API asks for a user anyway. */
+const noSignInMessage =
+  "This app has no sign-in (anonymousSignIn), and the API asked for a signed-in user: let the API's route allow anonymous users, or give BasisApp the firm's sign-in adapter.";
+
+/** The sign-in adapter of an app with no sign-in system: every user is anonymous, requests carry no token, and the
+ * shell offers no sign-in. `<BasisApp signIn={anonymousSignIn()} />`. */
+function anonymousSignIn(): SignIn {
+  return {
+    currentUser: async () => Promise.resolve(null),
+    offersSignIn: false,
+    signIn: async () => Promise.reject(new Error(noSignInMessage)),
+    signOut: async () => Promise.resolve(),
+    token: async () => Promise.resolve(null),
+  };
+}
+
+export { anonymousSignIn, fakeSignIn, fakeUser, noSignInMessage };
 export type { FakeSignInOptions, SignIn, User };

@@ -95,6 +95,7 @@ function useSessionState(
             settle(null);
             await forgetResponses();
           },
+          offersSignIn: signIn.offersSignIn ?? true,
           user: state.user,
         }
       : null;

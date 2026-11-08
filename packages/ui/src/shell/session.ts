@@ -14,6 +14,8 @@ interface Session {
   /** Signs the user out through the sign-in adapter, then drops every cached response, which was theirs, and asks
    * again for what the page shows. */
   readonly signOut: () => Promise<void>;
+  /** Whether the app offers a sign-in: `false` under `anonymousSignIn`, so nothing should show a "Sign in" button. */
+  readonly offersSignIn: boolean;
 }
 
 const SessionContext = createContext<Session | null>(null);

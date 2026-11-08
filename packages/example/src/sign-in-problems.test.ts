@@ -1,7 +1,7 @@
 /* How the shell answers the problems basis's contract names for sign-in: `invalid-token` ends the session,
  * `sign-in-required` asks the user to sign in, and `keys-unavailable` is retried without signing anyone out. */
 
-import { fakeSignIn } from "@basis/ui";
+import { anonymousSignIn, fakeSignIn } from "@basis/ui";
 import type { SignIn } from "@basis/ui";
 import { http, HttpResponse } from "msw";
 import { describe, expect, test } from "vite-plus/test";
@@ -164,6 +164,33 @@ describe("a sign-in-required 401", () => {
     await expect.element(screen.getByText("Dev User")).toBeVisible();
     await expect.element(screen.getByText("Issued 2026-05-15, matures 2036-05-15")).toBeVisible();
     expect(calls).toStrictEqual({ signIns: 1, signOuts: 0 });
+  });
+});
+
+describe("an app with no sign-in", () => {
+  test("asks anonymously, with no token, and shows the page", async () => {
+    const authorizations: (string | null)[] = [];
+    worker.use(
+      http.get("*/bonds/:security", ({ request }) => {
+        authorizations.push(request.headers.get("authorization"));
+        return HttpResponse.json(bond);
+      }),
+    );
+    const { signIn, calls } = countedSignIn(anonymousSignIn());
+    const { screen } = await renderApp("/bonds/US91282CRF04", signIn);
+    await expect.element(screen.getByText("Issued 2026-05-15, matures 2036-05-15")).toBeVisible();
+    expect(authorizations.length).toBeGreaterThan(0);
+    expect(authorizations.every((authorization) => authorization === null)).toBe(true);
+    expect(calls).toStrictEqual({ signIns: 0, signOuts: 0 });
+  });
+
+  test("says a page can't load when the API asks for a user, and offers no sign-in", async () => {
+    worker.use(http.get("*/bonds/:security", () => signInRequired()));
+    const { signIn, calls } = countedSignIn(anonymousSignIn());
+    const { screen } = await renderApp("/bonds/US91282CRF04", signIn);
+    await expect.element(notification(screen, "This page can't load")).toBeVisible();
+    await expect.element(notification(screen, "Sign in")).not.toBeInTheDocument();
+    expect(calls).toStrictEqual({ signIns: 0, signOuts: 0 });
   });
 });
 

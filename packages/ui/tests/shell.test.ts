@@ -5,7 +5,7 @@
 import { describe, expect, test } from "vite-plus/test";
 import { z } from "zod";
 
-import { ApiError, describeError, fakeSignIn } from "#index.ts";
+import { anonymousSignIn, ApiError, describeError, fakeSignIn } from "#index.ts";
 import type { AnyProblem } from "#index.ts";
 import { shouldRetry, shouldRetryMutation } from "#shell/query-client.ts";
 import { signInProblem } from "#shell/sign-in-problems.ts";
@@ -96,6 +96,19 @@ describe(fakeSignIn, () => {
     await anonymous.signIn();
     const placeholder = await anonymous.currentUser();
     expect(placeholder?.id).toBe("dev-user");
+  });
+});
+
+describe(anonymousSignIn, () => {
+  test("has no user and no token, offers no sign-in, and its signIn says how to fix the app", async () => {
+    const adapter = anonymousSignIn();
+    expect(adapter.offersSignIn).toBe(false);
+    await expect(adapter.currentUser()).resolves.toBeNull();
+    await expect(adapter.token()).resolves.toBeNull();
+    await expect(adapter.signOut()).resolves.toBeUndefined();
+    await expect(adapter.signIn()).rejects.toThrow(
+      "let the API's route allow anonymous users, or give BasisApp the firm's sign-in adapter",
+    );
   });
 });
 
