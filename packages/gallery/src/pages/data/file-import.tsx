@@ -1,4 +1,4 @@
-/* FileImport on the data page: positions uploaded as CSV, mapped by their headers to a schema whose fields read text,
+/* FileImport on the data page: positions uploaded as CSV or an Excel workbook, mapped by their headers to a schema whose fields read text,
  * previewed with each refused cell's reason, and handed over, valid rows only, when the user confirms. */
 
 import { FileImport } from "@basis/ui";
@@ -15,7 +15,7 @@ function FileImportSection(): ReactElement {
   return (
     <Section
       title="FileImport"
-      description="A drop zone and a file button for CSV. The file is read in the browser, its columns mapped by their headers to the app's Zod schema, and its rows previewed with each refused cell marked and its reason; confirming hands the app the valid rows, typed. An Excel workbook is refused with how to save it as CSV."
+      description="A drop zone and a file button for CSV and Excel workbooks (.xlsx). The file is read in the browser, its columns mapped by their headers to the app's Zod schema, and its rows previewed with each refused cell marked and its reason; a workbook with several sheets of those columns offers a choice of sheet. Confirming hands the app the valid rows, typed. An older .xls is refused with how to save it as .xlsx."
     >
       <FileImport
         title="Drop a positions file here"

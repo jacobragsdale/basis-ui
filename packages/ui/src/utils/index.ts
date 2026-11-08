@@ -40,3 +40,12 @@ export {
 export { assertNever, invariant, isPresent } from "./guards.ts";
 export { downloadBlob, toCsv, toTsv, type Cell, type Column } from "./export.ts";
 export { parseCsv, type CsvReading, type CsvRecord } from "./parse-csv.ts";
+export {
+  readWorkbook,
+  type SheetReading,
+  type SheetRecord,
+  type Workbook,
+  type WorkbookOptions,
+  type WorkbookReading,
+  type WorkbookSheet,
+} from "./read-workbook.ts";

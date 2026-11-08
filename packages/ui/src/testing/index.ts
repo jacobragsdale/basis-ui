@@ -1,6 +1,6 @@
 /* `@basis/ui/testing`: what an app's tests are written with, so one test runs both in Chromium and in a Node DOM, on a
  * laptop with no browser (docs/design.md, Consumers). It is Testing Library's API, `renderApp` for the app at an
- * address, and `mockApi` for the API. A test that needs a real browser, for layout, focus or pixels, is named
+ * address, `mockApi` for the API, and `workbookFile` for an Excel workbook an import reads. A test that needs a real browser, for layout, focus or pixels, is named
  * `*.browser.test.tsx` and may use Vitest's browser API instead; the preset's lint keeps that API out of every other
  * test, and `basisTest({ browser: false })` runs every test but those. */
 
@@ -142,4 +142,5 @@ async function mockApi(...handlers: RequestHandler[]): Promise<MockApi> {
 export { act, cleanup, render, screen, waitFor, within } from "@testing-library/react";
 export { default as userEvent } from "@testing-library/user-event";
 export { mockApi, renderApp };
+export { workbookFile, type WorkbookCell, type WorkbookFileOptions } from "./workbook-file.ts";
 export type { AppReports, MockApi, RenderAppOptions, RenderedApp };

@@ -40,16 +40,24 @@ function check(text: string): ImportReading<z.output<typeof positionRow>> {
 }
 
 describe(fileRefusal, () => {
-  test("refuses a workbook, saying to save it as CSV", () => {
-    expect(fileRefusal({ name: "positions.xlsx", size: 100, type: "" }, megabyte)).toBe(
-      "positions.xlsx is a spreadsheet workbook, which this import does not read yet. Open it in Excel, choose File > Save As, save it as CSV UTF-8 (Comma delimited), and import that file.",
+  test("takes an Excel workbook, and refuses Excel's other formats, saying to save them as .xlsx", () => {
+    for (const name of ["positions.xlsx", "positions.XLSM", "template.xltx", "template.xltm"]) {
+      expect(fileRefusal({ name, size: 100, type: "" }, megabyte)).toBeUndefined();
+    }
+    expect(fileRefusal({ name: "old.XLS", size: 100, type: "" }, megabyte)).toBe(
+      "old.XLS is an Excel 97-2003 workbook (.xls), which this import does not read. Open it in Excel, choose File > Save As, save it as Excel Workbook (.xlsx), and import that file.",
     );
-    expect(fileRefusal({ name: "old.XLS", size: 100, type: "" }, megabyte)).toMatch(/workbook/u);
+    expect(fileRefusal({ name: "big.xlsb", size: 100, type: "" }, megabyte)).toMatch(
+      /^big\.xlsb is an Excel binary workbook \(\.xlsb\)/u,
+    );
+    expect(fileRefusal({ name: "calc.ods", size: 100, type: "" }, megabyte)).toMatch(
+      /^calc\.ods is an OpenDocument spreadsheet \(\.ods\)/u,
+    );
   });
 
-  test("refuses a file that is not CSV", () => {
+  test("refuses a file that is neither CSV nor a workbook", () => {
     expect(fileRefusal({ name: "notes.pdf", size: 100, type: "application/pdf" }, megabyte)).toBe(
-      "notes.pdf is not a CSV file. Import a file saved as CSV, ending in .csv.",
+      "notes.pdf is not a CSV file or an Excel workbook. Import a file saved as CSV (.csv) or as an Excel Workbook (.xlsx).",
     );
   });
 

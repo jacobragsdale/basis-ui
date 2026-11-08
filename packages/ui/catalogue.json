@@ -5052,7 +5052,7 @@
       "name": "FileImport",
       "props": [
         {
-          "description": "What a row must be: an object whose keys are the file's columns. Its fields read text, as a CSV's cells are, such as `z.coerce.number()`, `amountSchema(parSuffixes)` or `z.enum([...])`; an empty cell is a missing value, which an optional field takes.",
+          "description": "What a row must be: an object whose keys are the file's columns. Its fields read text, as a CSV's cells are and a workbook's are given (a number as Excel shows it, a date as ISO 8601, a boolean as TRUE or FALSE), such as `z.coerce.number()`, `amountSchema(parSuffixes)` or `z.enum([...])`; an empty cell is a missing value, which an optional field takes.",
           "name": "schema",
           "optional": false,
           "type": "TSchema"
@@ -5082,13 +5082,19 @@
           "type": "number | undefined"
         },
         {
-          "description": "The drop zone's title; \"Drop a CSV file here\" unless set.",
+          "description": "The drop zone's title; \"Drop a CSV or Excel file here\" unless set.",
           "name": "title",
+          "optional": true,
+          "type": "string | undefined"
+        },
+        {
+          "description": "The workbook's sheet to import, by name, ignoring case; unless set, the first visible sheet that holds the schema's columns, and the user may choose another that does. A CSV has no sheets.",
+          "name": "sheet",
           "optional": true,
           "type": "string | undefined"
         }
       ],
-      "purpose": "A CSV import, checked against `schema`, that hands the app the valid rows once the user confirms.",
+      "purpose": "A CSV or Excel import, checked against `schema`, that hands the app the valid rows once the user confirms.",
       "variants": {},
       "example": "import { FileImport, amountSchema, parSuffixes } from \"@basis/ui\";\nimport { z } from \"zod\";\n\nconst positionRow = z.object({ cusip: z.string(), par: amountSchema(parSuffixes) });\n\n<FileImport\n  schema={positionRow}\n  headers={{ par: [\"Par\", \"Par amount\"] }}\n  onImport={async () => {\n    await Promise.resolve();\n  }}\n/>;\n"
     },

@@ -1,6 +1,7 @@
 import "#styles.css";
 
 import { FileImport } from "@basis/ui";
+import { workbookFile } from "@basis/ui/testing";
 import type { ReactElement } from "react";
 import { describe, expect, test } from "vite-plus/test";
 import { page, userEvent } from "vite-plus/test/browser";
@@ -53,7 +54,7 @@ function PositionsImport({
 
 /** Chooses `file` through the drop zone's file input. */
 async function choose(file: File): Promise<void> {
-  await userEvent.upload(page.getByLabelText("CSV file"), file);
+  await userEvent.upload(page.getByLabelText("CSV or Excel file"), file);
 }
 
 describe("FileImport with a good file", () => {
@@ -62,7 +63,7 @@ describe("FileImport with a good file", () => {
     await expect
       .element(
         screen.getByText(
-          "CSV with a header row, up to 5 MB and 10,000 rows. Save an Excel workbook as CSV first.",
+          "A CSV file or an Excel workbook (.xlsx) with a header row, up to 5 MB and 10,000 rows.",
         ),
       )
       .toBeVisible();
@@ -183,19 +184,71 @@ describe("FileImport with a bad file", () => {
   });
 });
 
+/** A workbook of positions by month: a notes sheet, then a sheet for October and one for November, which has a title
+ * row above its header. */
+async function monthlyWorkbook(): Promise<File> {
+  const header = ["CUSIP", "Book", "Par amount", "Price"];
+  return workbookFile(
+    {
+      Notes: [["Positions by month"]],
+      October: [header, ["91282CRF0", "Rates", 5_000_000, 99.515625]],
+      November: [["As of 2026-11-07"], header, ["91282CRT0", "Agency", 250_000, 100.5]],
+    },
+    { name: "positions.xlsx" },
+  );
+}
+
+describe("FileImport with an Excel workbook", () => {
+  test("previews the first sheet with the columns, by Excel's row numbers, and switches to another", async () => {
+    const received: (readonly ImportedPosition[])[] = [];
+    const screen = await render(<PositionsImport received={received} />);
+    await choose(await monthlyWorkbook());
+    await expect
+      .element(
+        screen.getByText(
+          "positions.xlsx, sheet October: 1 row, 1 ready to import, 0 with problems.",
+        ),
+      )
+      .toBeVisible();
+    await expect.element(screen.getByRole("columnheader", { name: "Row" })).toBeVisible();
+    await userEvent.selectOptions(screen.getByLabelText("Sheet"), "November");
+    await expect
+      .element(
+        screen.getByText(
+          "positions.xlsx, sheet November: 1 row, 1 ready to import, 0 with problems.",
+        ),
+      )
+      .toBeVisible();
+    await expect.element(screen.getByRole("cell", { name: "3", exact: true })).toBeVisible();
+    await screen.getByRole("button", { name: "Import 1 row" }).click();
+    expect(received).toStrictEqual([
+      [{ book: "Agency", cusip: "91282CRT0", par: 250_000, price: 100.5 }],
+    ]);
+  });
+});
+
 describe("FileImport's refusals", () => {
-  test("refuses an Excel workbook, saying to save it as CSV", async () => {
+  test("refuses an Excel 97-2003 workbook, saying to save it as .xlsx", async () => {
     const screen = await render(<PositionsImport received={[]} />);
-    await choose(
-      new File(["PK"], "positions.xlsx", {
-        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      }),
-    );
+    await choose(new File(["ÐÏ"], "positions.xls", { type: "application/vnd.ms-excel" }));
     const alert = screen.getByRole("alert", { name: "The file was not imported" });
     await expect
       .element(
         alert.getByText(
-          "positions.xlsx is a spreadsheet workbook, which this import does not read yet. Open it in Excel, choose File > Save As, save it as CSV UTF-8 (Comma delimited), and import that file.",
+          "positions.xls is an Excel 97-2003 workbook (.xls), which this import does not read. Open it in Excel, choose File > Save As, save it as Excel Workbook (.xlsx), and import that file.",
+        ),
+      )
+      .toBeVisible();
+  });
+
+  test("refuses a damaged workbook, saying why", async () => {
+    const screen = await render(<PositionsImport received={[]} />);
+    await choose(new File(["PK"], "positions.xlsx"));
+    const alert = screen.getByRole("alert", { name: "The file was not imported" });
+    await expect
+      .element(
+        alert.getByText(
+          "positions.xlsx could not be read as an Excel workbook. It is damaged: its ZIP directory is missing or cut short. Open it in Excel, choose File > Save As, save it as Excel Workbook (.xlsx), and import that file.",
         ),
       )
       .toBeVisible();

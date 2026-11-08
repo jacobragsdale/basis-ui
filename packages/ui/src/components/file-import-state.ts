@@ -1,12 +1,12 @@
-/* FileImport's state: waiting for a file, with what became of the last one; reading one; or previewing one, while the
- * app imports its rows. The steps that wait on the file or on the app are async functions, which the component's
- * handlers start. */
+/* FileImport's state: waiting for a file, with what became of the last one; reading one; or previewing one, from the
+ * workbook's sheet the user chose, while the app imports its rows. The steps that wait on the file or on the app are
+ * async functions, which the component's handlers start. */
 
 import { useState } from "react";
 import type { z } from "zod";
 
 import { bytesPerMegabyte } from "./file-import-file.ts";
-import { readImport } from "./file-import-rows.ts";
+import { readImport } from "./file-import-read.ts";
 import type { ImportCheck, ImportHeaders, ImportSchema } from "./file-import-rows.ts";
 
 /** Where the import is. */
@@ -20,6 +20,8 @@ type ImportStage<TRow> =
   | {
       readonly stage: "previewing";
       readonly check: ImportCheck<TRow>;
+      /** The check of another of the workbook's sheets, which the user may choose. */
+      readonly checkOf: (sheet: string) => ImportCheck<TRow>;
       readonly importing: boolean;
       readonly error: unknown;
     };
@@ -29,6 +31,7 @@ interface FileImportOptions<TSchema extends ImportSchema> {
   readonly headers: ImportHeaders<TSchema> | undefined;
   readonly maxBytes: number;
   readonly maxRows: number;
+  readonly sheet: string | undefined;
   readonly onImport: (rows: readonly z.output<TSchema>[]) => Promise<void> | void;
 }
 
@@ -40,6 +43,8 @@ interface FileImportState<TRow> {
   readonly confirm: () => Promise<void>;
   /** Goes back to waiting for a file, saying why the last was refused, if it was. */
   readonly choose: (refused?: string) => void;
+  /** Previews another of the workbook's sheets. */
+  readonly chooseSheet: (sheet: string) => void;
 }
 
 const defaultMegabytes = 5;
@@ -62,7 +67,13 @@ async function stageAfterReading<TSchema extends ImportSchema>(
   try {
     const reading = await readImport(file, options);
     return reading.ok
-      ? { check: reading.check, error: undefined, importing: false, stage: "previewing" }
+      ? {
+          check: reading.check,
+          checkOf: reading.checkOf,
+          error: undefined,
+          importing: false,
+          stage: "previewing",
+        }
       : { refused: reading.reason, stage: "choosing" };
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
@@ -96,6 +107,11 @@ function useFileImport<TSchema extends ImportSchema>({
   return {
     choose: (refused) => {
       setStage({ refused, stage: "choosing" });
+    },
+    chooseSheet: (sheet) => {
+      if (stage.stage === "previewing" && !stage.importing) {
+        setStage({ ...stage, check: stage.checkOf(sheet), error: undefined });
+      }
     },
     confirm: async () => {
       if (stage.stage === "previewing") {

@@ -1,0 +1,11 @@
+{
+  "name": "xlsx-reader-spike",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "esbuild": "0.28.2",
+    "exceljs": "4.4.0",
+    "read-excel-file": "9.3.14",
+    "xlsx": "0.18.5"
+  }
+}

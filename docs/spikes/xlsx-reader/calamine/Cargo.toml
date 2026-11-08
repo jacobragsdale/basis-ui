@@ -1,0 +1,21 @@
+# Spike only: built to wasm with wasm-bindgen for the reader measurement in ../../xlsx-reader.md.
+[package]
+name = "workbook-wasm"
+version = "0.0.0"
+edition = "2024"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+calamine = "0.38.0"
+wasm-bindgen = "=0.2.130"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+
+[profile.release-s]
+inherits = "release"
+opt-level = "s"

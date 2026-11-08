@@ -401,7 +401,7 @@ fixtures, generated, telemetry })`, the handler that answers in fixture mode's o
 An app's tests run in headless Chromium (`vp test`), and on a machine with no browser in a Node DOM, happy-dom
 (`BASIS_TEST_DOM=node vp test`, or `test: await basisTest({ browser: false })`). Write them with `@basis/ui/testing`,
 which works in both: Testing Library's `render`, `screen`, `within`, `waitFor` and `userEvent`, `renderApp` for the app
-at an address, and `mockApi` for the API, which starts MSW's service worker in Chromium and its Node server otherwise.
+at an address, `workbookFile` for an Excel workbook to upload, and `mockApi` for the API, which starts MSW's service worker in Chromium and its Node server otherwise.
 
 ```ts
 import { mockApi, renderApp, screen } from "@basis/ui/testing";
@@ -867,10 +867,11 @@ searches only for a valid identifier, which its `search` receives with its kind;
 
 ### FileImport
 
-`FileImport` takes a CSV file through its drop zone or its file button, reads it in the browser with `parseCsv` from
-`@basis/ui/utils` (RFC 4180: quoted fields, doubled quotes, line breaks inside quotes, and a header row), maps its
-columns by their headers to the app's Zod schema, and previews every row with each refused cell marked and its reason
-in words. Confirming hands `onImport` only the valid rows, typed by the schema:
+`FileImport` takes a CSV file or an Excel workbook through its drop zone or its file button and reads it in the
+browser: a CSV with `parseCsv` from `@basis/ui/utils` (RFC 4180: quoted fields, doubled quotes, line breaks inside
+quotes, and a header row), a workbook (.xlsx, .xlsm, .xltx or .xltm) with `readWorkbook`. It maps the columns by their
+headers to the app's Zod schema, and previews every row with each refused cell marked and its reason in words.
+Confirming hands `onImport` only the valid rows, typed by the schema:
 
 ```tsx
 import { FileImport, amountSchema, parSuffixes } from "@basis/ui";
@@ -892,17 +893,28 @@ const positionRow = z.object({
 ```
 
 - **Headers.** A column matches a key by the key itself or a header `headers` gives it, ignoring case, spaces and
-  punctuation, so `Par Amount` and `par_amount` match `"Par amount"`. A column the schema lacks is ignored and named in
-  the preview; a column it needs and the file lacks refuses the file.
+  punctuation, so `Par Amount` and `par_amount` match `"Par amount"`. The header is the first row, or the first of the
+  first ten that holds every column the schema needs, so a report's title rows above it are left out. A column the
+  schema lacks is ignored and named in the preview; a column it needs and the file lacks refuses the file.
 - **Cells.** The schema reads text, as a CSV's cells are: `z.coerce.number()`, `amountSchema(...)`, `z.enum(...)`. An
   empty cell is a missing value, which an optional field takes and a required one refuses as empty.
+- **Workbooks.** A workbook's cells read as the text Excel shows, without its display format: a number to its 15
+  significant digits (a cell showing 5.00% reads 0.05), a date or time in ISO 8601 (`2026-11-09`,
+  `2026-11-09T09:30:00`, `09:30:00`), a boolean as `TRUE` or `FALSE`, and a formula as its saved result. A cell holding
+  an Excel error such as `#N/A`, or a formula Excel never calculated, refuses its row with the reason. The preview
+  numbers rows as Excel does. The sheet is the one `sheet` names, ignoring case, or else the first visible sheet that
+  holds the schema's columns; when several do, as a workbook with a tab a month does, the preview has a Sheet select.
 - **Limits.** The drop zone states them: 5 MB and 10,000 rows unless `maxBytes` and `maxRows` say otherwise. A file
-  over either, one that is not CSV, or one that is not valid CSV is refused with the reason and what to do.
-- **Excel.** An Excel workbook is refused with how to save it as CSV. Reading xlsx waits on the design's measurement of
-  a Rust reader against the JavaScript ones ([Rust and WebAssembly](../../docs/design.md#rust-and-webassembly)). The
-  text is read as UTF-8, as Excel's "CSV UTF-8" saves it, or as Windows-1252, as its plain "CSV" does.
+  over either, one that is neither CSV nor a workbook, or one that cannot be read is refused with the reason and what to
+  do.
+- **Other spreadsheets.** An .xls of Excel 97-2003, a binary .xlsb, an OpenDocument .ods and a workbook protected with
+  a password are refused with how to save them as an .xlsx ([why](../../docs/spikes/xlsx-reader.md)). A CSV's text is
+  read as UTF-8, as Excel's "CSV UTF-8" saves it, or as Windows-1252, as its plain "CSV" does.
 - **Importing.** While `onImport`'s promise is pending the button waits; if it rejects, its error shows over the
   preview, which stays for another try.
+- **Testing.** `workbookFile` from `@basis/ui/testing` writes a workbook for a test, as Excel lays one out, so no .xlsx
+  is committed: `await workbookFile({ Positions: [["CUSIP", "Par"], ["037833100", 1_000_000]] })` is a `File` to upload
+  to the input labelled "CSV or Excel file".
 
 ## Seeing a page: `vp run shot`
 
@@ -988,6 +1000,9 @@ import { debounce, sortBy, toCsv } from "@basis/ui/utils";
   never calls twice within its wait, and `sortBy` puts missing values last in either order.
 - `parseCsv` reads CSV as RFC 4180 writes it, strictly: a quoted field that never closes, or a stray double quote,
   is an error naming its line, rather than a guess that shifts every column after it.
+- `readWorkbook` reads an Excel workbook's sheets with no dependency, from the bytes of an .xlsx, .xlsm, .xltx or
+  .xltm, and gives a sheet's rows as text records with their row numbers, as `parseCsv` gives a CSV's. A workbook it
+  cannot read, such as an .xls under another name or one protected with a password, is refused with the reason.
 
 The tests check `sumPrecise` against `tests/fixtures/numbers.json`, which `tests/fixtures/generate_numbers.py` writes
 with exact rational sums in Python. After changing the generator, rewrite the

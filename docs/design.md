@@ -219,9 +219,10 @@ The firm's own components cover what shadcn does not:
   straight onto the form; the example app's settlement form does this.
 - **Data.** `DataTable`, on TanStack Table, is for small data whose cells hold links and buttons; past its row cap it
   fails with a message that points to parallax's grid. `EntityPicker` searches through the generated client, and
-  `SecurityPicker` sends only a valid CUSIP, ISIN or SEDOL. `FileImport` reads CSV, previews the rows, and checks them
-  against a schema before anything is sent; xlsx waits for the measured choice of a reader that the Rust and
-  WebAssembly section below describes, and until then a file in it is refused with a message to save it as CSV.
+  `SecurityPicker` sends only a valid CUSIP, ISIN or SEDOL. `FileImport` reads CSV and Excel workbooks (.xlsx), previews
+  the rows, and checks them against a schema before anything is sent; a workbook's cells read as the text Excel shows,
+  with dates in ISO 8601, and a workbook with several sheets of the schema's columns offers a choice of sheet. An .xls,
+  .xlsb or .ods is refused with how to save it as .xlsx ([the reader's spike](spikes/xlsx-reader.md)).
 - **The shell's parts.** A sidebar built from the route tree, breadcrumbs, a user menu holding the mode and density, a
   banner naming the environment, a command palette (Ctrl+K) filled from the routes, a filter bar whose state lives in
   the URL's search parameters, saved views, split panes for master and detail, and a shortcut registry with a `?`
@@ -403,8 +404,11 @@ and if a chart-only page proves too slow there, Recharts behind a cap on its poi
 
 Rust runs in the browser only where it wins, measured on a Citrix desktop's CPU or in memory, and always in a Web
 Worker, prebuilt inside a package, so no app compiles Rust. It already wins in parallax: the pivot engine with its exact
-sums, the chart reduction, and Excel export. Reading uploaded spreadsheets is the next candidate, if a Rust reader beats
-the JavaScript ones on the files the firm's users upload; if it does, it joins parallax's wasm module. Components,
+sums, the chart reduction, and Excel export. Reading uploaded spreadsheets was the next candidate, and lost: calamine
+in wasm read an .xlsx of 10,000 rows 79 ms faster than a TypeScript reader with no dependency, with the CPU held to a
+quarter, for 291 KB more to download and a module of its own, so `@basis/ui` reads .xlsx in TypeScript
+([spike](spikes/xlsx-reader.md)). calamine stays the reader for .xls, .xlsb and .ods if the firm's users need them.
+Components,
 forms, routing, small tables and JSON stay in TypeScript: the browser's `JSON.parse` is native, and copying data into
 wasm costs more than the parse saves.
 

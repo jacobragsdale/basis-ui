@@ -9,12 +9,14 @@ import type { DragEvent, ReactElement } from "react";
 import { UploadIcon } from "#vendor/lucide/upload.tsx";
 
 import { Button } from "./button.tsx";
+import { acceptedFiles } from "./file-import-file.ts";
 import { EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "./empty.tsx";
 import { emptyVariants as fileImportDropVariants } from "./empty-variants.ts";
 
 interface FileImportDropProps {
   readonly title: string;
-  /** The import's limits, in words, such as "CSV with a header row, up to 5 MB and 10,000 rows." */
+  /** The import's limits, in words, such as "A CSV file or an Excel workbook (.xlsx) with a header row, up to 5 MB
+   * and 10,000 rows." */
   readonly limits: string;
   readonly onFile: (file: File) => void;
   /** Called when more than one file is dropped at once. */
@@ -50,8 +52,8 @@ function FileChooser({
       <input
         ref={input}
         type="file"
-        accept=".csv,text/csv"
-        aria-label="CSV file"
+        accept={acceptedFiles}
+        aria-label="CSV or Excel file"
         tabIndex={-1}
         className="sr-only"
         onChange={(event) => {
