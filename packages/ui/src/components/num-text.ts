@@ -123,6 +123,12 @@ function exactText(text: string): string {
   return numberFormatter({}).decimal(unscaled, scale);
 }
 
+/** A number as text, for a string such as a toast's or an accessible name, by the same rule `Num` shows it with:
+ * `numberText(150000, { decimals: 0 })` is `150,000`. */
+function numberText(value: NumericValue, format: NumberFormat = {}): string {
+  return numText(value, format).text;
+}
+
 /** A rate as `Pct` shows it: a fraction multiplied by 100 with `%`, so 0.0525 is 5.25%. */
 function pctText(value: NumericValue, format: NumberFormat = {}): Shown {
   if (value === null || value === undefined) {
@@ -198,5 +204,5 @@ function price32Text(value: NumericValue, format: PriceFormat = {}): Shown {
   return shown(formatThirtySeconds(value, { precision, rounding }));
 }
 
-export { bpsText, exactText, moneyText, numText, pctText, price32Text, signedText };
+export { bpsText, exactText, moneyText, numberText, numText, pctText, price32Text, signedText };
 export type { Direction, NumberFormat, NumericValue, PriceFormat, Shown };

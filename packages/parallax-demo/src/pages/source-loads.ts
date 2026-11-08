@@ -2,6 +2,7 @@
  * the one its grid shows and the one loading, so that a file that does not load leaves the grid as it was. */
 
 import type { Dataset, DatasetSource } from "@basis/parallax";
+import { numberText } from "@basis/ui";
 
 import { sampleName, sampleOrders } from "#api/sample.ts";
 
@@ -21,8 +22,6 @@ interface Loaded {
   readonly load: Load;
   readonly dataset: Dataset;
 }
-
-const grouped = new Intl.NumberFormat("en-US");
 
 /** The page's first load: the sample, as the app's API would send it now. */
 function firstSlots(): Slots {
@@ -81,7 +80,7 @@ function noteOf(newest: Loaded | undefined): string {
     return "";
   }
   return dataset.status === "loaded"
-    ? `Loaded ${grouped.format(dataset.rows ?? 0)} rows from ${load.label}.`
+    ? `Loaded ${numberText(dataset.rows ?? 0, { decimals: 0 })} rows from ${load.label}.`
     : `Loading ${load.label}…`;
 }
 

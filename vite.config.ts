@@ -54,6 +54,17 @@ export default defineConfig({
     ],
     overrides: [
       ...(lint.overrides ?? []),
+      /* @basis/ui's components and parallax are the formatters the preset sends apps to, so they may round and format
+       * numbers themselves. */
+      {
+        files: [
+          "packages/ui/src/**",
+          "packages/parallax/src/**",
+          "packages/*/tests/**",
+          "packages/*/scripts/**",
+        ],
+        rules: { "eslint/no-restricted-properties": "off" },
+      },
       { files: nodeCode, rules: { "import/no-nodejs-modules": "off" } },
     ],
   },

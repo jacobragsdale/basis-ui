@@ -39,7 +39,7 @@ const bannedImports = [
   })),
   ...["decimal.js", "decimal.js-light", "big.js", "bignumber.js"].map((name) => ({
     message:
-      "Use Decimal from @basis/ui/numbers, which rounds as Excel does unless told otherwise.",
+      "Every number an API sends is a double: show it with Num, Money, Pct, Bps or Price32 from @basis/ui, and total it with sumPrecise from @basis/ui/numbers. docs/design.md#numbers.",
     name,
   })),
   {
@@ -53,6 +53,35 @@ const bannedImports = [
     name: "axios",
   },
 ];
+/* Display rounding, which only the number components and parallax do, once, by the formatter's rule
+ * (docs/design.md, Numbers). Each message names the component to use instead. */
+const showWithComponents =
+  "show it with Num, Money, Pct, Bps or Price32 from @basis/ui, or as text with numberText(value, { decimals }), which round once for display by the formatter's rule (docs/design.md#numbers)";
+const bannedRounding = [
+  {
+    message: `ERROR an app never rounds a number for display: ${showWithComponents}.`,
+    property: "toFixed",
+  },
+  {
+    message: `ERROR an app never rounds a number for display: ${showWithComponents}.`,
+    property: "toPrecision",
+  },
+  {
+    message: `ERROR an app never formats a number or a date itself: ${showWithComponents}, and a date or time with DateTime.`,
+    property: "toLocaleString",
+  },
+  {
+    message: `ERROR an app never formats a number itself: ${showWithComponents}.`,
+    object: "Intl",
+    property: "NumberFormat",
+  },
+  {
+    message: `ERROR an app never rounds a number for display: ${showWithComponents}; for an integer that is not shown, such as an index or a pixel count, use Math.floor or Math.trunc.`,
+    object: "Math",
+    property: "round",
+  },
+];
+
 const bannedPatterns = [
   {
     group: ["lodash/*", "lodash.*", "es-toolkit/*"],
@@ -118,6 +147,8 @@ const lint: OxlintConfig = {
          * expectations rather than needing `expect.hasAssertions()`. */
         "vitest/prefer-expect-assertions": "off",
         "vitest/require-test-timeout": "off",
+        // A test measures pixels and builds expected text; it shows nothing, so it may round.
+        "eslint/no-restricted-properties": "off",
       },
     },
     {
@@ -158,6 +189,8 @@ const lint: OxlintConfig = {
       "error",
       { paths: bannedImports, patterns: [...bannedPatterns, generatedImports] },
     ],
+    // Only the number components and parallax round, once, for display.
+    "eslint/no-restricted-properties": ["error", ...bannedRounding],
     // A ternary is often the clearest conditional render; `eslint/no-nested-ternary` still forbids nesting.
     "eslint/no-ternary": "off",
     // With `unicorn/no-typeof-undefined` and `eslint/no-void`, nothing could test for undefined.

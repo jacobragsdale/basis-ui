@@ -3,7 +3,7 @@
  * limits, and a load the engine cannot hold ends in a plain reason and a fresh engine. */
 
 import { Grid, maxArrowBytes, maxRows, useDataset } from "@basis/parallax";
-import { Input, Label } from "@basis/ui";
+import { Input, Label, numberText } from "@basis/ui";
 import { useState } from "react";
 import type { ReactNode } from "react";
 
@@ -14,7 +14,6 @@ import { trackGrid } from "#tools/grid-stats.ts";
 import { firstSlots, newestFirst, noteOf, shownOf, withFile } from "./source-loads.ts";
 import type { Slots } from "./source-loads.ts";
 
-const grouped = new Intl.NumberFormat("en-US");
 const bytesPerMegabyte = 1_000_000;
 /** The dataset name the empty slot waits under. */
 const empty = "unused";
@@ -51,8 +50,8 @@ function SourcePage(): ReactNode {
           />
         </div>
         <span className="text-muted-foreground">
-          At most {grouped.format(maxRows)} rows or{" "}
-          {grouped.format(maxArrowBytes / bytesPerMegabyte)} MB of Arrow
+          At most {numberText(maxRows, { decimals: 0 })} rows or{" "}
+          {numberText(maxArrowBytes / bytesPerMegabyte, { decimals: 0 })} MB of Arrow
         </span>
         <output data-testid="source-note" className="text-muted-foreground">
           {noteOf(loads[0])}

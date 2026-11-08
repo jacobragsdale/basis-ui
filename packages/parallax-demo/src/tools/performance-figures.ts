@@ -2,6 +2,7 @@
  * the tab's memory, as the lines it shows and the report it copies. */
 
 import type { DrawStats } from "@basis/parallax";
+import { numberText } from "@basis/ui";
 
 import type { GridStats } from "./grid-stats.ts";
 
@@ -108,7 +109,7 @@ function gridFigures(
 }
 
 function ms(value: number | null): string {
-  return value === null ? "n/a" : `${value.toFixed(1)} ms`;
+  return value === null ? "n/a" : `${numberText(value, { decimals: 1 })} ms`;
 }
 
 /** The median and 95th percentile of some times, and how many there were. */
@@ -172,7 +173,7 @@ function figureLines(figures: Figures, memory: Memory | null): Line[] {
     {
       key: "memory",
       term: "Memory",
-      value: memory === null ? "n/a" : `${(memory.bytes / megabyte).toFixed(0)} MB`,
+      value: memory === null ? "n/a" : `${numberText(memory.bytes / megabyte, { decimals: 0 })} MB`,
     },
     {
       key: "memory-scope",

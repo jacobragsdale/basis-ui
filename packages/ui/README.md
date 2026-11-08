@@ -580,8 +580,10 @@ focused one.
 reads the same in a card as in the grid. Pass `value` as the API sends it, a number, and for `DateTime` a Temporal value
 or ISO 8601 text. `null` and NaN show the formatter's null text, which is empty. The formatter rounds once, for display:
 to 15 significant digits, half away from zero, then to the decimals shown, two for a double unless `decimals` says
-otherwise. Never round a number yourself: the lint refuses `toFixed`, `toPrecision`, `toLocaleString`, `Math.round`
-and `Intl.NumberFormat` in an app.
+otherwise. For a number inside text, such as a toast's, `numberText(value, { decimals })` gives the same text. Never
+round a number yourself: the lint refuses `toFixed`, `toPrecision`, `toLocaleString`, `Math.round` and
+`Intl.NumberFormat` in an app, and each error names the component to use; an integer that is not shown, such as an
+index or a pixel count, takes `Math.floor` or `Math.trunc`.
 
 ```tsx
 import { Bps, DateTime, Money, Num, Pct, Price32 } from "@basis/ui";

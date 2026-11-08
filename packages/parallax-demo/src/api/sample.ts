@@ -38,7 +38,7 @@ function sampleOrders(now: number): ArrayBuffer {
     "parallax.load",
     JSON.stringify({
       nans_to_null: [["notional", blankedByTheApi]],
-      source_as_of_micros: Math.round(readAt),
+      source_as_of_micros: Math.trunc(readAt),
     }),
   );
   // A copy of its own, so the buffer holds the stream alone.

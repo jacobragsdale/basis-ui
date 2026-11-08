@@ -303,7 +303,8 @@ both follow it, so a value reads the same in the grid, a chart, a card and a for
 - **Totals.** A total on screen comes from parallax's exact sums or from `sumPrecise`, never from adding rounded
   doubles.
 - **One formatter.** The preset rejects display rounding in app code (`toFixed`, `toPrecision`, `toLocaleString`,
-  `Math.round` and `Intl.NumberFormat`), and each error names the component to use instead; code that needs an integer for anything but display uses `Math.floor` or `Math.trunc`. The components and parallax
+  `Math.round` and `Intl.NumberFormat`), and each error names the component to use instead, or `numberText` for a
+  number inside text such as a toast's; code that needs an integer for anything but display uses `Math.floor` or `Math.trunc`. The components and parallax
   are the only formatters.
 - **Display formats.** basis writes each number's display format, so a page never chooses decimals. A dataset column
   carries it in its Arrow field's metadata, under the key `basis.format` as a JSON string, and a property of the API's
