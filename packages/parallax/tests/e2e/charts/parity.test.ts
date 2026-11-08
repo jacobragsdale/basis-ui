@@ -24,10 +24,14 @@ test.skip(
  * outside their cells match; the comparison above says where the differing pixels lie.
  */
 const differences: Readonly<Record<string, string>> = {
+  "breakdown-largest-tickers":
+    "Its bars run across, and the value axis's last label, at the canvas's edge, is moved inside it rather than left out, as every x label at an edge is since roadmap step 2.8.6.",
   density:
     "Its cells take the sequential scale, which has 9 steps in @basis/parallax, as @basis/ui's has, where the Angular layer's had 7 (roadmap step 2.5), so a cell's count falls on another step.",
   heatmap:
     "Its cells take the sequential scale and the diverging scale's red arm, which have 9 and 5 steps in @basis/parallax, as @basis/ui's do, where the Angular layer's had 7 each (roadmap step 2.5).",
+  "horizontal-bars":
+    "Its bars run across, and the value axis's last label, at the canvas's edge, is moved inside it rather than left out, as every x label at an edge is since roadmap step 2.8.6.",
 };
 
 /** A page of charts: where it is, its sections, and each section's name among the Angular screenshots. */
