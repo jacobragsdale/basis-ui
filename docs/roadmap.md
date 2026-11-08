@@ -127,7 +127,10 @@ second consumer on 2026-11-07: 1.12 and 1.13 wait on basis's contract, and 1.14 
    a free port per worktree. Needs 1.3.
 6. **1.6 Screenshots.** Add `vp run shot ROUTE`, writing a screenshot, the accessibility tree and the console errors.
    Visual baselines are made and compared in WSL only, per spike 0.4, and `vp run check-full` says so on Windows. Add
-   the skill for driving an app with Playwright CLI. Needs 1.5 and spike 0.4.
+   the skill for driving an app with Playwright CLI. Needs 1.5 and spike 0.4. `vp run shot` and the skill are built;
+   the visual baselines wait for end-to-end tests to return. Open for the maintainer's review: the axe check that the
+   design has each shot run, failing on a violation, is not built, since it adds `axe-core` as a new dependency; it
+   comes back with the end-to-end tests and gates.
 7. **1.7 Template and tasks.** Add the UI repo template as an `@basis/create` package, which `vp create @basis:app`
    reads from a registry, per spike 0.1, with:
    - its managed-file headers and drift check;
