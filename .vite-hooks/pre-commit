@@ -1,1 +1,1 @@
-vp run @basis/ui#build && vp staged && vp check && vp run -r --concurrency-limit 1 test
+vp run @basis/ui#build && vp staged && vp check

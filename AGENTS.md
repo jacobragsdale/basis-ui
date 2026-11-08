@@ -38,7 +38,8 @@ vp run -r build         # every package's build
 
 `vp` is Vite+'s command: install it with `curl -fsSL https://vite.plus | bash`. The gallery's browser tests need the
 Chromium that the preset's Playwright pins: `vp exec --filter @basis/ui playwright install chromium`. The commit hook
-builds `@basis/ui`, then runs `vp staged`, `vp check` and the tests. CI runs `vp check` on every change, and each
+builds `@basis/ui`, then runs `vp staged` and `vp check`; it runs no tests while the MVP takes shape, so run the
+fast unit tests yourself. CI runs `vp check` on every change, and each
 package's tests and build when its paths change.
 
 `@basis/parallax`'s TypeScript is checked by the root checks, as `@basis/ui`'s is. Its build and tests first build the
