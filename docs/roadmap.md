@@ -42,6 +42,11 @@ flowchart TD
   u2 --> p5[2.5 React foundation]
   p3 --> p5 --> p6[2.6 component families] --> p7[2.7 demo and release]
   p6 --> p8[2.8 fixed income]
+  u3 --> u16[1.16 ctzd's surface]
+  u2 --> u14[1.14 tests without a browser]
+  u10 --> u15[1.15 component catalogue]
+  u10 --> u12[1.12 numbers as doubles] --> u13[1.13 display formats]
+  p8 --> u12
   l1 --> l2[3.2 pilot in QA, work]
   l2 --> c2[4.2 app ports, work]
   c1 --> c2
@@ -98,7 +103,8 @@ and the fallback for each no.
 
 ## Phase 1: @basis/ui
 
-Lane A. Steps 1.3 and 1.4 run at once, and so do 1.8 and 1.9.
+Lane A. Steps 1.3 and 1.4 run at once, and so do 1.8 and 1.9. Steps 1.12 to 1.16 come from ctzd becoming basis-ui's
+second consumer on 2026-11-07: 1.12 and 1.13 wait on basis's contract, and 1.14 to 1.16 run at once.
 
 1. **1.1 Workspace.** Set up `packages/ui` in a pnpm workspace, with GitHub Actions CI that runs only the jobs whose
    paths changed, and this repo's own hooks. Done when an empty package passes CI.
@@ -158,6 +164,45 @@ Lane A. Steps 1.3 and 1.4 run at once, and so do 1.8 and 1.9.
     `securities`; then `numbers` and `utils`. `Decimal` is checked against fixtures Python's `decimal` module writes,
     and each calendar against its published holidays. The imports they replace are added to the preset's
     `no-restricted-imports` in a pull request of its own. Needs 1.2.
+
+12. **1.12 Numbers as doubles.** Bring `@basis/ui` to the design's [Numbers](design.md#numbers) rule:
+    - `Num`, `Money`, `Pct`, `Bps`, `Price32` and `DataTable`'s number columns take a number, and the decimal-string
+      path for API values goes;
+    - `Decimal` and its tests against Python's `decimal` go, by the maintainer's choice on 2026-11-07, since no API value needs one;
+    - `AmountInput` and its schema return a number: the text is parsed exactly, by moving the decimal point by its suffix's power of ten, then converted.
+
+    In a pull request of its own, as every preset change is, the preset rejects `toFixed`, `toPrecision`, `toLocaleString`, `Math.round` and `Intl.NumberFormat` in app code, each error naming the component to use, and for `Math.round` also `Math.floor` and `Math.trunc` for integers that are not shown. The
+    example app's pinned `openapi.json`, fixtures and pages move to basis's float64 contract, along with the
+    service-error problem types basis added since the pin. Needs basis's step 2.11 and 2.8.3. Done when no API value
+    in the example app is a string of digits and the lint's errors have tests.
+
+13. **1.13 Display formats.** Read the `basis.format` object the design describes:
+    - one TypeScript type, shared by `@basis/ui` and parallax, read from an Arrow field's metadata and from
+      `x-basis-format` in the API's document;
+    - the number components and `DataTable` take it;
+    - parallax's grid, pivot and charts format a column by its metadata unless a layout sets a format.
+
+    The example app shows a dataset whose columns format themselves. Needs 1.12, and basis's step 2.13 for real
+    metadata; until then the tests write it into their Arrow.
+
+14. **1.14 Tests without a browser.** Add a Vitest setup beside `basisTest()`'s Playwright one, for laptops with no
+    Chromium, in a DOM implemented in Node. The DOM library is chosen by measuring the gallery's component tests in
+    it, and mirrored like the other large packages. `@basis/ui`'s components render and their interactions run there.
+    Parallax's components need a canvas and a worker, so under it they render their text alternative and say that
+    their pixels need a browser. Done when the example app's tests pass in both setups. Needs 1.2.
+
+15. **1.15 Component catalogue.** `vp run @basis/ui#build` writes a JSON catalogue of every exported component, from
+    the source's types and doc comments: its name, what it is for, its props with their types and docs, its variants,
+    and one example. The catalogue ships in the package, and a test fails when a component lacks a purpose or an
+    example, or when an example does not type-check. Needs 1.10.
+
+16. **1.16 ctzd's surface.** Keep working what the design's [Consumers](design.md#consumers) section says ctzd uses:
+    - a test app in this repo whose `vite.config.ts`, `tsconfig.json` and `styles.css` are exactly the lines
+      `packages/ui/README.md` shows, checked, tested and built in CI;
+    - an anonymous sign-in for `BasisApp`;
+    - a test for each error the preset adds, and for the React Compiler's bail-outs, that the message names its fix.
+
+    Needs 1.3.
 
 ## Phase 2: parallax in the browser
 
@@ -248,8 +293,8 @@ phase 1.
       `Price32` a Treasury price as `99-16+`, but the grid shows 0.0025 and 99.515625, which breaks the design's rule
       that a number reads the same in a card as in the grid. Bond markets write `M` for thousands, yet parallax writes
       `5.0M` for $5 million.
-      - Layout: `LayoutFormat` gains `bps`, the unit a rate arrives in (`"fraction"` or `"bp"`), written in basis
-        points with ` bp`; `thirty_seconds`, a price in 32nds to its finest step (`"thirty_seconds"`, `"halves"`,
+      - Layout: `LayoutFormat` gains `bps`, a rate written in basis points with ` bp` from the fraction it arrives as,
+        the only unit rates have (0.0025 is `25 bp`); `thirty_seconds`, a price in 32nds to its finest step (`"thirty_seconds"`, `"halves"`,
         `"quarters"` or `"eighths"`); and `suffixes: "par"`, which writes K/M/B abbreviations as `M`, `MM` and `BN`,
         the suffixes `AmountInput` reads in par style.
       - Code: the Rust formatter (`format.rs`) and its fixtures; `@basis/ui`'s TypeScript port (`format/format.ts`), with

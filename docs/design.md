@@ -78,6 +78,30 @@ version line is its own, apart from basis's: the two meet at the contract, not a
 | `AGENTS.md`, `CLAUDE.md`, `.agents/skills/`, `.claude/skills/` | The agent files, as basis writes them: `AGENTS.md` a short map, `CLAUDE.md` containing `@AGENTS.md`, and the skills copied for Claude Code |
 | `.vite-hooks/`, `.gitattributes`, `.gitignore`                 | Vite+'s commit and push hooks, LF line endings on Windows and in WSL alike, and the ignored files, `.fixtures/` among them                 |
 
+## Consumers
+
+Two kinds of repo build on basis-ui. A UI repo, as above, comes from the template and keeps its framework files in step
+with `vp run sync`. The second is [ctzd](https://github.com/jacobragsdale/ctzd), the firm's platform for citizen
+developers, whose only UI is a React app on `@basis/ui` and `@basis/parallax` with a basis API behind it, one repo and
+one container per app. ctzd writes every file in its apps itself and never runs `vp run sync`, its pages import the
+components directly, and its agents take no screenshots: they trust lint, types and other checks that read code.
+
+ctzd uses this surface, and a change to any of it needs a note to ctzd:
+
+- `basisPreset()` and `basisPlugins()`, the tsconfig and the styles entry, in a `vite.config.ts`, `tsconfig.json` and
+  `styles.css` that ctzd writes with exactly the lines `packages/ui/README.md` shows;
+- `BasisApp` with an anonymous sign-in, since ctzd's dashboards have no sign-in in their first version;
+- the components, and `@basis/parallax`.
+
+It also needs four things built for it (roadmap steps 1.14 to 1.16):
+
+- a test setup that runs without a browser, beside `basisTest()`'s Playwright one, since citizen developers' laptops
+  have no Chromium;
+- a machine-readable catalogue of the components, written at build, with each one's name, purpose, props, variants and
+  one example, which ctzd turns into its agents' reference;
+- a check in this repo that configuration written by hand from the README keeps working;
+- lint and compiler errors that name the fix in their message, since in a ctzd app nobody reads the code.
+
 ## The toolchain, at its strictest
 
 The UI is React 19.3 with the React Compiler 1.0. Its toolchain is Vite+, VoidZero's MIT-licensed `vp` command, which
@@ -178,11 +202,12 @@ and Questionnaire), Carousel, Input OTP, Direction, Calendar and Date Picker, wh
 The firm's own components cover what shadcn does not:
 
 - **Numbers and dates.** `Num`, `Money`, `Pct`, `Bps`, `Price32` and `DateTime` display values by parallax's rules
-  (Excel's display rules and the New York time zone), so a number reads the same in a card as in the grid. The
-  formatter is a TypeScript port of parallax's Rust formatter, tested against fixtures the Rust writes. `AmountInput`
-  reads `1.5m`, `250k` and `25bp` into exact decimal strings and shows the full number back. It is not built on Base
-  UI's Number Field, which holds a double and so cannot keep a par amount or a price exact. Each field declares the
-  suffixes it accepts, because in bond markets `M` means thousands, so `5M` par is $5,000. `AsOfDatePicker` knows
+  (Excel's display rules and the New York time zone), so a number reads the same in a card as in the grid. Each number
+  component takes a number, as [every API sends one](#numbers), and a column's display format, so a page never
+  chooses decimals. The formatter is a TypeScript port of parallax's Rust formatter, tested against fixtures the Rust
+  writes. `AmountInput` reads `1.5m`, `250k` and `25bp`, parses the text exactly, returns it as a number, and shows the
+  full number back. Each field declares the suffixes it accepts, because in bond markets `M` means thousands, so `5M`
+  par is $5,000. `AsOfDatePicker` knows
   business days on its declared calendar, SIFMA by default, and `DateRangePicker` offers month, quarter and year to
   date.
 - **Forms.** Fields bind to the Zod schemas orval generates, so a form checks what the API's document declares. Errors
@@ -263,6 +288,43 @@ This repo's `vp check` runs the theme's checks, since no app can change the them
 
 Apps' routes are screenshotted in light and dark, at the comfortable density.
 
+## Numbers
+
+Every number an API sends is a double: a JSON number or an Arrow `float64` column, never a decimal string. The
+maintainer set this rule for the whole firm on 2026-11-07, so it binds basis and ctzd as well, and basis's contract
+changes to match (basis's step 2.11). Python never rounds. The UI rounds once, at display, by parallax's rule: the value
+to 15 significant digits, half away from zero, then to the decimals shown. Parallax's formatter and its TypeScript port
+both follow it, so a value reads the same in the grid, a chart, a card and a form.
+
+- **One unit.** Rates and spreads are fractions: 0.0525 is 5.25% and 525 bp. `Pct`, `Bps` and the formatter take a
+  fraction and offer no unit for a value already in percent or basis points.
+- **Inputs.** `AmountInput` parses its text exactly, suffix included, then converts the result to a number, so `1.1m`
+  is the double nearest 1,100,000.
+- **Totals.** A total on screen comes from parallax's exact sums or from `sumPrecise`, never from adding rounded
+  doubles.
+- **One formatter.** The preset rejects display rounding in app code (`toFixed`, `toPrecision`, `toLocaleString`,
+  `Math.round` and `Intl.NumberFormat`), and each error names the component to use instead; code that needs an integer for anything but display uses `Math.floor` or `Math.trunc`. The components and parallax
+  are the only formatters.
+- **Display formats.** basis writes each number's display format, so a page never chooses decimals. A dataset column
+  carries it in its Arrow field's metadata, under the key `basis.format` as a JSON string, and a property of the API's
+  document as `x-basis-format` on its schema, the columns of Arrow responses included. Parallax's grid, pivot and
+  charts format a column by it unless a layout sets a format, and the number components take the same object.
+
+  | `kind`    | Fields                                                                  | Shows                 |
+  | --------- | ----------------------------------------------------------------------- | --------------------- |
+  | `number`  | `decimals`                                                              | `1,234.50`            |
+  | `money`   | `currency`, ISO 4217; `decimals`, the currency's minor units unless set | `$1,234.50`           |
+  | `pct`     | `decimals`                                                              | 0.0525 as `5.25%`     |
+  | `bps`     | `decimals`                                                              | 0.0525 as `525 bp`    |
+  | `price`   | `decimals`                                                              | `99.516`              |
+  | `price32` | `step`: `32nd` unless set, or `half`, `quarter` or `eighth`             | 99.515625 as `99-16+` |
+
+  `decimals` is an integer from 0 to 15. The UI ignores fields it does not know and treats an unknown kind as no
+  format, so basis can add to the object; basis refuses an unknown kind, a currency missing from its ISO 4217 list, or
+  decimals out of range when a route is declared (basis's step 2.13). The shape was agreed with basis on 2026-11-07.
+
+Parallax still reads `Decimal128` columns exactly, since it reads any Arrow, but no API sends them.
+
 ## Utilities
 
 `@basis/ui` carries the utilities apps need, in four modules, so that no app adds lodash, a date library or a decimal
@@ -271,15 +333,14 @@ yields, risk or returns over long series, is computed by the API, so the firm ha
 
 | Module                 | What it holds                                                                                                                                                                                                                                                                                                                                             |
 | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@basis/ui/numbers`    | `Decimal`, exact fixed-point arithmetic on `BigInt` with explicit rounding, for the decimal strings APIs send; `sumPrecise` for doubles; basis points, percent and tick rounding; Treasury prices in 32nds; percent change and shares of a total                                                                                                          |
+| `@basis/ui/numbers`    | `sumPrecise`, the exact sum of doubles; basis points, percent and tick rounding; Treasury prices in 32nds; percent change and shares of a total                                                                                                                                                                                                           |
 | `@basis/ui/dates`      | Business days on the SIFMA calendar, the default, since the firm trades US fixed income, then the NYSE's and TARGET2's for euro settlement, each its rules plus a dated list of exceptions, since markets close on unscheduled days; month, quarter and year to date; settlement dates; market status; tenors such as `3M` and `10Y`; how stale a time is |
 | `@basis/ui/securities` | CUSIP, ISIN and SEDOL checks, CUSIP to ISIN, and branded identifier types, so a ticker cannot pass where a CUSIP is due                                                                                                                                                                                                                                   |
 | `@basis/ui/utils`      | The collection helpers modern JavaScript lacks (`keyBy`, `partition`, `chunk`, `uniqBy`, a multi-key `sortBy` and others), `deepEqual` and `stableStringify`, `debounce` and `throttle`, type guards such as `assertNever`, and CSV and TSV writers that neutralize formula injection                                                                     |
 
 A date field names its calendar, SIFMA unless it says otherwise. Dates use Temporal, which the firm's Chrome has shipped
 since version 144, so no date library is needed; grouping uses `Object.groupBy`, cloning `structuredClone`, and set
-operations the Set methods. `Decimal` is tested against Python's `decimal` module and the calendars against the
-exchanges' published holidays. The preset's `no-restricted-imports` rejects `lodash`, `lodash-es`, `underscore`,
+operations the Set methods. `AmountInput` parses its text exactly, by moving the decimal point by its suffix's power of ten, before it converts the result to a number, and the calendars are tested against the exchanges' published holidays. The preset's `no-restricted-imports` rejects `lodash`, `lodash-es`, `underscore`,
 `es-toolkit`, `moment`, `date-fns`, `dayjs`, `decimal.js` and `big.js` in apps, and each error names the module or the
 native API to use instead.
 
@@ -401,7 +462,7 @@ repeat moves the limit to what a desktop's own browser meets, and restates paral
 views held on a server, for tables held in the browser. A load past the engine's memory traps the wasm, so the worker
 treats a trap as fatal: it fails every view with the reason and starts again. React components replace the 44 Angular
 files of its web layer; the canvas renderers, the formatter, the charts and the technical-analysis tools stay, as do the
-DuckDB comparisons that test the engine's numbers. App developers install one npm package with the wasm
+DuckDB comparisons that test the engine's numbers. Each column is formatted by the display format its Arrow field carries, as [Numbers](#numbers) describes. App developers install one npm package with the wasm
 built into it, and Rust stays inside this repo's build. Parallax keeps its Apache-2.0 license.
 
 ## Versions
@@ -415,29 +476,30 @@ managed by `vp env`.
 
 ## Decided against
 
-| Option                                                      | Why not                                                                                                                                                                                                                                                  |
-| ----------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Staying on Angular                                          | The maintainer's call. The measured evidence is thin either way: in DesignBench, Claude 3.7's Angular compiled less often than its React when writing a page from scratch (0.69 against 0.95), and almost as often when editing one (0.91 against 1.00). |
-| A UI inside basis, or a UI in an API's repo                 | Each repo has one toolchain, and each project one language.                                                                                                                                                                                              |
-| A command of basis-ui's own                                 | Vite+'s `vp` already runs checks, tests and tasks; the preset adds the rest as `vp run` tasks.                                                                                                                                                           |
-| typescript-eslint                                           | It does not support TypeScript 7, which ships no compiler API; its maintainers closed the request as not planned until TypeScript 7.1's API lands.                                                                                                       |
-| Oxlint JS plugins other than `@shadcn/lint` and Vite+'s own | Alpha. basis-ui uses the rules Vite+ ships, including the `vite-plus/oxlint-plugin` its template enables, plus the one plugin that checks the design system.                                                                                             |
-| Copying components into each app, shadcn's usual model      | The copies drift apart, and a fix reaches none of them. The package ships the components, and `no-restyle` keeps them alike.                                                                                                                             |
-| Recharts, and shadcn's Chart on it                          | Parallax draws every kind of chart needed, by the grid's number and time rules; a second chart library means a second look and a second formatter. It stays the fallback if spike 0.3 finds chart-only pages too slow.                                   |
-| React Hook Form                                             | It is on the React Compiler's list of incompatible libraries.                                                                                                                                                                                            |
-| Sonner                                                      | Base UI ships a toast, and shadcn added one for Base UI in July 2026.                                                                                                                                                                                    |
-| React Aria as a second component base                       | shadcn has supported it since July 2026, but one base keeps every component alike, and Base UI is shadcn's default.                                                                                                                                      |
-| Several themes, or a theme per app                          | The firm has one brand; light and dark are modes of it.                                                                                                                                                                                                  |
-| Blur and backdrop filters                                   | Citrix desktops draw on the CPU.                                                                                                                                                                                                                         |
-| Rust for components, forms or JSON                          | No win to measure: the page's DOM work stays in JavaScript either way, and `JSON.parse` is native.                                                                                                                                                       |
-| Prettier                                                    | Oxfmt ships with Vite+.                                                                                                                                                                                                                                  |
-| Bun                                                         | Vite+ already installs packages (`vp install`) and manages Node (`vp env`); `bun test` has no browser mode; Vitest under Bun has open worker failures.                                                                                                   |
-| MCP servers                                                 | Every agent reads MCP settings from a different file.                                                                                                                                                                                                    |
-| Rejecting unknown fields in API responses                   | A UI and its API deploy separately; a UI that rejected a new field would break on every additive change.                                                                                                                                                 |
-| Parallax's server                                           | The firm does not need million-row tables in the browser, and every app would have deployed one.                                                                                                                                                         |
-| Storybook visual tests, Argos, Lost Pixel                   | Storybook's visual tests send stories to Chromatic's cloud, Argos's maintainers do not support self-hosting, and Lost Pixel was archived in April 2026. Playwright compares screenshots locally.                                                         |
-| @hey-api/openapi-ts                                         | It lists `typescript` as a peer, and TypeScript 7 ships no compiler API. orval also depends on TypeScript 6 since 8.45, but runs with it overridden to 7 (spike 0.2); hey-api was not tried that way.                                                    |
-| Starting fixture mode from each app's entry module          | Every app would carry the same lines, and one without them would call nothing in `vp dev`; the preset starts it from `index.html`.                                                                                                                       |
+| Option                                                                | Why not                                                                                                                                                                                                                                                                            |
+| --------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Staying on Angular                                                    | The maintainer's call. The measured evidence is thin either way: in DesignBench, Claude 3.7's Angular compiled less often than its React when writing a page from scratch (0.69 against 0.95), and almost as often when editing one (0.91 against 1.00).                           |
+| A UI inside basis, or a UI in an API's repo                           | Each repo has one toolchain, and each project one language.                                                                                                                                                                                                                        |
+| A command of basis-ui's own                                           | Vite+'s `vp` already runs checks, tests and tasks; the preset adds the rest as `vp run` tasks.                                                                                                                                                                                     |
+| typescript-eslint                                                     | It does not support TypeScript 7, which ships no compiler API; its maintainers closed the request as not planned until TypeScript 7.1's API lands.                                                                                                                                 |
+| Oxlint JS plugins other than `@shadcn/lint` and Vite+'s own           | Alpha. basis-ui uses the rules Vite+ ships, including the `vite-plus/oxlint-plugin` its template enables, plus the one plugin that checks the design system.                                                                                                                       |
+| Copying components into each app, shadcn's usual model                | The copies drift apart, and a fix reaches none of them. The package ships the components, and `no-restyle` keeps them alike.                                                                                                                                                       |
+| Recharts, and shadcn's Chart on it                                    | Parallax draws every kind of chart needed, by the grid's number and time rules; a second chart library means a second look and a second formatter. It stays the fallback if spike 0.3 finds chart-only pages too slow.                                                             |
+| React Hook Form                                                       | It is on the React Compiler's list of incompatible libraries.                                                                                                                                                                                                                      |
+| Sonner                                                                | Base UI ships a toast, and shadcn added one for Base UI in July 2026.                                                                                                                                                                                                              |
+| React Aria as a second component base                                 | shadcn has supported it since July 2026, but one base keeps every component alike, and Base UI is shadcn's default.                                                                                                                                                                |
+| Several themes, or a theme per app                                    | The firm has one brand; light and dark are modes of it.                                                                                                                                                                                                                            |
+| Blur and backdrop filters                                             | Citrix desktops draw on the CPU.                                                                                                                                                                                                                                                   |
+| Rust for components, forms or JSON                                    | No win to measure: the page's DOM work stays in JavaScript either way, and `JSON.parse` is native.                                                                                                                                                                                 |
+| Prettier                                                              | Oxfmt ships with Vite+.                                                                                                                                                                                                                                                            |
+| Bun                                                                   | Vite+ already installs packages (`vp install`) and manages Node (`vp env`); `bun test` has no browser mode; Vitest under Bun has open worker failures.                                                                                                                             |
+| MCP servers                                                           | Every agent reads MCP settings from a different file.                                                                                                                                                                                                                              |
+| Rejecting unknown fields in API responses                             | A UI and its API deploy separately; a UI that rejected a new field would break on every additive change.                                                                                                                                                                           |
+| Parallax's server                                                     | The firm does not need million-row tables in the browser, and every app would have deployed one.                                                                                                                                                                                   |
+| Decimal strings for API numbers, and rates in percent or basis points | The maintainer's call on 2026-11-07, for the whole firm: one number type, a double that the UI rounds once at display by parallax's 15-digit rule, and one unit for rates, the fraction. Exact decimals stay inside parallax's sums, and `@basis/ui`'s `Decimal` class is deleted. |
+| Storybook visual tests, Argos, Lost Pixel                             | Storybook's visual tests send stories to Chromatic's cloud, Argos's maintainers do not support self-hosting, and Lost Pixel was archived in April 2026. Playwright compares screenshots locally.                                                                                   |
+| @hey-api/openapi-ts                                                   | It lists `typescript` as a peer, and TypeScript 7 ships no compiler API. orval also depends on TypeScript 6 since 8.45, but runs with it overridden to 7 (spike 0.2); hey-api was not tried that way.                                                                              |
+| Starting fixture mode from each app's entry module                    | Every app would carry the same lines, and one without them would call nothing in `vp dev`; the preset starts it from `index.html`.                                                                                                                                                 |
 
 ## Facts behind the decisions
 
