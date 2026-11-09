@@ -126,9 +126,10 @@ describe("column order and totals", () => {
     expect(withShown(layout, fields, { column: "fund", shown: false }).columns).toStrictEqual([
       "position_id",
     ]);
-    const summed = defaultTotals(parseLayout({ columns: ["fund", "price"] }), fields);
-    expect(summed.totals.map((total) => [total.column, total.aggregate])).toStrictEqual([
-      ["price", "sum"],
+    // No number is summed on its own: the totals row counts the rows, under the first column shown.
+    const counted = defaultTotals(parseLayout({ columns: ["fund", "price"] }), fields);
+    expect(counted.totals.map((total) => [total.column, total.aggregate])).toStrictEqual([
+      ["fund", "count"],
     ]);
     expect(
       defaultTotals(layout, fields).totals.map((total) => [total.column, total.aggregate]),

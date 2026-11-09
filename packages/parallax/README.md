@@ -118,7 +118,7 @@ frame for rows already on screen redraws only the cells whose text changed.
 | `dataset`        | The dataset, from `useDataset`                                                                                                              |
 | `layout`         | The view: columns, sorts, filters, groups and pivots, formats, widths, pinned columns, titles and totals; a layout the engine refuses shows its reason in place of the grid |
 | `onLayoutChange` | Takes each layout the user makes                                                                                                            |
-| `toolbar`        | `true` (the default) shows the toolbar, `false` hides it, and an object turns parts off: `search`, `chips`, `columns`, `totals`, `export`, `group` and `expand` |
+| `toolbar`        | `true` (the default) shows the toolbar, `false` hides it, and an object turns parts off: `search`, `chips`, `columns`, `totals`, `export`, `group`, `expand` and `maximize` |
 | `height`         | `fill`, the default, takes the container's height; `auto` sizes the grid to its rows up to `maxHeight` pixels (480 by default)               |
 | `onDrill`        | Takes a double click on a pivot's value: the group's path, the column's pivot values and a label, for the rows behind it                     |
 | `label`          | What screen readers call the grid; the dataset's name by default                                                                            |
@@ -164,6 +164,24 @@ off screen, up to 1,000,000 at once. With `selectable="single"` there are no
 checkboxes: the row chosen is the focused cell's, so a click or an arrow key chooses
 another, as a master list beside its detail does.
 
+While more than one cell is selected, the status bar reads the numbers among
+them as Excel's does: `Avg`, `Min`, `Max`, `Sum` and `Count`, the sum exact and
+each written in the format the selected columns share, a yield's in percent, a
+price's in 32nds. Rows the grid does not hold are fetched for a selection of up
+to 100,000 cells. A narrower grid keeps the sum and drops the extremes, the
+count and then the mean, which the reading's tooltip still lists. The toolbar's
+Totals adds a totals row that counts the rows, and sums nothing on its own,
+since most of a desk's numbers, its prices, yields, spreads and durations, do
+not add; a column's menu picks its total, a sum among them.
+
+Maximize, at the toolbar's end, or Alt+Enter, makes the grid fill the window
+over the dimmed page, as a dialog, and Escape, Restore or a click on the page
+around puts it back. The grid moves rather than opening again, so its rows,
+scroll position, selection and changes stay as they were, and a placeholder
+keeps its place in the page. Escape does one thing at a time: it clears a
+selection or a search before it restores the grid. A grid of `height` `auto`
+fills the window too.
+
 A canvas is invisible to screen readers, so the grid is a `grid` whose name is
 `label`, whose description says how many rows and columns it holds and how to
 move about it, and whose active descendant is the focused cell, read as its
@@ -206,8 +224,9 @@ function Exposure(): ReactNode {
 | `ref`                 | The table's `GridHandle`: `drawStats()`, `export(format)` and `distinctValues(column, search, limit)` |
 
 The settings list the dataset's fields, searchable, ticked when the pivot uses
-them: ticking puts a number in Values and anything else in Rows, and unticking
-takes a field out of every area. A field or a chip is dragged into Filters,
+them: ticking puts a number in Values, as its mean, and anything else in Rows,
+and unticking takes a field out of every area; a value's menu makes a mean a sum
+where the numbers add. A field or a chip is dragged into Filters,
 Columns, Rows or Values, or moved with its menu, so dragging is never needed;
 Alt+Up and Alt+Down move a chip a place, and a screen reader hears where it
 went. A row or column chip's menu moves it, filters by it or removes it; a
@@ -221,7 +240,9 @@ picked. The options set how many levels open and top-N.
 Double-clicking a value opens the rows behind it in a grid below the pivot,
 filtered to its group and pivot values, which its toolbar searches and
 exports; it closes when the pivot's groups or filters change. `drillLayout`
-gives that view for an app that shows the rows elsewhere. Every change is a
+gives that view for an app that shows the rows elsewhere. Maximize, in the
+table's toolbar, or Alt+Enter, makes the whole pivot fill the window, its
+settings and the rows behind a value with it. Every change is a
 layout, so a pivot round-trips through a link with `encodeLayout` and
 `decodeLayout`.
 
@@ -432,11 +453,12 @@ of its own, in their order:
 | `onSelect`               | The group of a bar, slice or waterfall step clicked, or a scatter's dot by its `id` column, for a linked view; null once the selection is cleared                  |
 | `sync`                   | The group whose crosshairs move together: charts of the same dataset, x column and axis by default; null keeps the crosshair to this chart                        |
 | `status`                 | The status line under the chart: what it draws, and when the source was read. On by default                                                                       |
+| `maximize`               | Maximize, and Alt+Enter, which make the chart fill the window until Escape or Restore: at the end of its legend row, or at its top right corner, shown on hover, where it has none. On by default |
 | `label`                  | The chart's name for a screen reader, in place of what it says it draws                                                                                            |
 
 The wheel and `+` and `-` zoom, a drag and the arrows pan, a double-click and
 `0` show everything, Delete removes the selected drawing, and Escape drops a
-drawing in progress, then the brush. The pointer, the wheel and the engine's
+drawing in progress, then the brush, then restores a maximized chart. The pointer, the wheel and the engine's
 frames redraw the canvas without a React render: the chart draws outside
 React, through its view's handle, and renders again only when its chrome
 changes. The plot carries the chart's text alternative: its name says what the

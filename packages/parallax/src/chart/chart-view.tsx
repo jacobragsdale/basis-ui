@@ -5,6 +5,8 @@ import { cn } from "cn";
 import type { ReactNode } from "react";
 
 import type { Layout, LayoutFilter, LayoutInput } from "#layout/layout.ts";
+import { MaximizeContext, useMaximize } from "#react/maximize.ts";
+import { MaximizeBefore, MaximizeButton } from "#react/maximize-parts.tsx";
 import type { Dataset } from "#react/use-dataset.ts";
 
 import { ChartLegend, ChartStatus, ChartTools } from "./chart-chrome.tsx";
@@ -34,6 +36,9 @@ interface ChartOptions {
   readonly status?: boolean;
   /** The chart's name for a screen reader; by default the chart says what it draws, of what and from where. */
   readonly label?: string;
+  /** Whether the chart has a Maximize button, and Alt+Enter, which make it fill the window until Escape or Restore.
+   * On by default. */
+  readonly maximize?: boolean;
   /** Placement classes, such as `flex-1` or `h-80`. */
   readonly className?: string;
 }
@@ -61,8 +66,15 @@ function problemOf({ checked, layout, view }: ChartState): string | null {
   return groupsProblem(layout) ?? view.error;
 }
 
-/** The chart's head: its legend, and the drawing tools on charts that take drawings and keep their tools on. */
-function ChartHead({ chart }: { readonly chart: ChartState }): ReactNode {
+/** The chart's head: its legend, and the drawing tools on charts that take drawings and keep their tools on. With
+ * Maximize in the corner it leaves room there: at its end in a row, at its top in a pie's column beside it. */
+function ChartHead({
+  chart,
+  maximize,
+}: {
+  readonly chart: ChartState;
+  readonly maximize: boolean;
+}): ReactNode {
   const { scene, legend, editor, beside } = chart;
   const shown = legend.length > 0 && !chart.compact;
   const drawable = hasDrawingTools(chart.layout?.chart ?? null);
@@ -75,6 +87,7 @@ function ChartHead({ chart }: { readonly chart: ChartState }): ReactNode {
       className={cn(
         "flex flex-wrap items-center gap-x-3 gap-y-1 px-2 pt-1.5",
         beside && "max-w-1/2 shrink-0 flex-col items-stretch overflow-auto py-1.5 pr-3",
+        maximize && (beside ? "pt-9" : "pr-9"),
       )}
     >
       {shown ? (
@@ -102,6 +115,19 @@ function ChartHead({ chart }: { readonly chart: ChartState }): ReactNode {
   );
 }
 
+/** Maximize, in the chart's top right corner: shown while the pointer is over the chart or the button has focus, so it
+ * hides no data until it is wanted, and always while the chart fills the window. */
+function CornerMaximize(): ReactNode {
+  return (
+    <div
+      data-slot="chart-maximize"
+      className="absolute top-1 right-1 z-20 opacity-0 transition-opacity group-hover/chart:opacity-100 group-data-maximized/chart:opacity-100 focus-within:opacity-100"
+    >
+      <MaximizeButton />
+    </div>
+  );
+}
+
 /** A chart of a view, drawn on a Canvas 2D surface. */
 function ChartView(props: ChartViewProps): ReactNode {
   const chart = useChart({ ...props, order: props.order ?? null });
@@ -112,32 +138,40 @@ function ChartView(props: ChartViewProps): ReactNode {
   const problem = problemOf(chart);
   const description =
     props.label ?? (layout === null ? "Chart" : describeChart({ ...layout, dataset: source }));
+  const maximizing = useMaximize(() => scene.parts.get("root"), description);
+  const maximize = props.maximize ?? true;
   return (
-    <div
-      {...chart.attributes}
-      ref={root}
-      data-slot="chart"
-      className={cn(
-        // It fills a parent of a set height, a block's as well as a flex column's, and is at least 120 px tall.
-        "flex h-full min-h-30 flex-col bg-card text-xs text-card-foreground",
-        props.className,
-      )}
-    >
-      <div className={cn("flex min-h-0 flex-1 flex-col", chart.beside && "flex-row-reverse")}>
-        {problem === null ? <ChartHead chart={chart} /> : null}
-        <ChartPlot
-          scene={scene}
-          editor={chart.editor}
-          description={description}
-          wordsId={chart.wordsId}
-          problem={problem}
-        />
+    <MaximizeContext value={maximizing.state}>
+      {maximize ? <MaximizeBefore maximizing={maximizing} /> : null}
+      <div
+        {...chart.attributes}
+        {...(maximize ? maximizing.props : {})}
+        ref={root}
+        data-slot="chart"
+        className={cn(
+          // It fills a parent of a set height, a block's as well as a flex column's, and is at least 120 px tall.
+          "group/chart relative flex h-full min-h-30 flex-col bg-card text-xs text-card-foreground",
+          "data-maximized:fixed data-maximized:inset-4 data-maximized:z-50 data-maximized:h-auto data-maximized:rounded-xl data-maximized:border data-maximized:p-2 data-maximized:shadow-md",
+          props.className,
+        )}
+      >
+        <div className={cn("flex min-h-0 flex-1 flex-col", chart.beside && "flex-row-reverse")}>
+          {problem === null ? <ChartHead chart={chart} maximize={maximize} /> : null}
+          <ChartPlot
+            scene={scene}
+            editor={chart.editor}
+            description={description}
+            wordsId={chart.wordsId}
+            problem={problem}
+          />
+        </div>
+        {(props.status ?? true) ? (
+          <ChartStatus dataset={source} summaryRef={summary} asOfRef={asOf} />
+        ) : null}
+        <p ref={words} id={chart.wordsId} className="sr-only" />
+        {maximize ? <CornerMaximize /> : null}
       </div>
-      {(props.status ?? true) ? (
-        <ChartStatus dataset={source} summaryRef={summary} asOfRef={asOf} />
-      ) : null}
-      <p ref={words} id={chart.wordsId} className="sr-only" />
-    </div>
+    </MaximizeContext>
   );
 }
 

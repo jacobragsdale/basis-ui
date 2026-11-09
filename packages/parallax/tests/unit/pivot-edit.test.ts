@@ -213,7 +213,7 @@ describe("drillLayout", () => {
 });
 
 describe("the field list", () => {
-  test("puts a field in an area: a group leaves the other axis, and a value is a new sum or count", () => {
+  test("puts a field in an area: a group leaves the other axis, and a value is a new mean or count", () => {
     expect(placeField(base, field("asset_class"), { area: "rows", at: 1 })).toMatchObject({
       expanded: [],
       group_by: ["fund", "asset_class", "strategy"],
@@ -225,7 +225,7 @@ describe("the field list", () => {
     ]);
     const valued = placeField(base, field("quantity"), { area: "values", at: 0 });
     expect(valued.measures.map((entry) => [entry.aggregate, entry.column])).toStrictEqual([
-      ["sum", "quantity"],
+      ["mean", "quantity"],
       ["sum", "market_value_usd"],
       ["sum", "daily_pnl_usd"],
       ["count_all", null],

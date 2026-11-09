@@ -1,11 +1,13 @@
 /* The grid's toolbar: a search box, a chip for each filter with Clear all, Expand all and Collapse all for a pivot's
- * groups, Columns and Totals, and Export. Each edit goes out as a new layout; the toolbar keeps no state of its own. */
+ * groups, Columns and Totals, Export, and Maximize. Each edit goes out as a new layout; the toolbar keeps no state of
+ * its own. */
 
 import { Button, ChevronsDownUpIcon, ChevronsUpDownIcon } from "@basis/ui";
 import type { ReactNode, Ref } from "react";
 
 import type { ExportFormat } from "#engine/messages.ts";
 import type { Layout } from "#layout/layout.ts";
+import { MaximizeButton } from "#react/maximize-parts.tsx";
 
 import { ColumnTools } from "./column-tools.tsx";
 import { searchColumns, withAllExpanded } from "./edit.ts";
@@ -106,6 +108,7 @@ function GridToolbar({
         onChange={onChange}
       />
       {parts.export ? <ExportButton onExport={onExport} /> : null}
+      {parts.maximize ? <MaximizeButton variant="outline" /> : null}
     </div>
   );
 }

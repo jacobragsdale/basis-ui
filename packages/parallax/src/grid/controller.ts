@@ -31,7 +31,7 @@ import { missingWindow, windowFor } from "./window.ts";
 class GridController {
   readonly #model = new GridModel();
   readonly #painter = new GridPainter();
-  readonly #snapshots = new Snapshots();
+  readonly #snapshots = new Snapshots(() => this.#handle);
   #inputs: GridInputs | null = null;
   #layoutJson: string | null = null;
   #surface: GridSurface | null = null;

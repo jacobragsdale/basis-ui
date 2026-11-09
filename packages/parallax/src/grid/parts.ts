@@ -13,6 +13,8 @@ interface ToolbarParts {
   readonly group: boolean;
   /** Expand all and Collapse all, for a pivot's groups; a grid's groups have them in the group panel. */
   readonly expand: boolean;
+  /** Maximize, which makes the grid, or the pivot it is in, fill the window until Escape or Restore. */
+  readonly maximize: boolean;
 }
 
 /** Every part shown. */
@@ -22,6 +24,7 @@ const allParts: ToolbarParts = {
   expand: true,
   export: true,
   group: true,
+  maximize: true,
   search: true,
   totals: true,
 };

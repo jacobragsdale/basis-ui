@@ -1,7 +1,8 @@
 /* `<Pivot>`: a pivot table with its settings beside it, as Excel's PivotTable and its field list. The settings edit
  * the same layout the grid shows, so `onLayoutChange` takes every change, whether the user moves a field, sorts,
  * resizes or opens a group. Double-clicking a value opens the rows behind it in a grid below, until the pivot's
- * groups or filters change. The table is `<Grid>`, drawn on its canvas; the settings are `@basis/ui`'s components. */
+ * groups or filters change. The table is `<Grid>`, drawn on its canvas; the settings are `@basis/ui`'s components.
+ * Maximize, in the table's toolbar, makes the whole pivot fill the window, settings and rows behind a value with it. */
 
 import { Button, PanelLeftIcon } from "@basis/ui";
 import { useId, useImperativeHandle, useRef, useState } from "react";
@@ -18,6 +19,8 @@ import { useGridLayout } from "#grid/use-grid-layout.ts";
 import type { ValueSource } from "#grid/value-picker.tsx";
 import { checkLayout } from "#layout/layout.ts";
 import type { Layout, LayoutInput } from "#layout/layout.ts";
+import { Maximizable } from "#react/maximize-parts.tsx";
+import type { MaximizeFrame } from "#react/maximize-parts.tsx";
 import type { Dataset } from "#react/use-dataset.ts";
 
 import { DrillRows } from "./drill-rows.tsx";
@@ -105,24 +108,50 @@ function Settings({ layout, fields, source, onChange, defaultOpen }: SettingsPro
   );
 }
 
-/** A pivot table and its settings. */
-function Pivot(props: PivotProps): ReactNode {
-  const { dataset, toolbar, label, ref, defaultSettingsOpen = true } = props;
+/** The rows behind the value double-clicked, below the table, until they are closed. */
+function Drilled({
+  dataset,
+  drill,
+  setDrill,
+}: Pick<ReturnType<typeof useDrill>, "drill" | "setDrill"> & {
+  readonly dataset: Dataset;
+}): ReactNode {
+  return drill === null ? null : (
+    <DrillRows
+      dataset={dataset}
+      drill={drill}
+      onChange={setDrill}
+      onClose={() => {
+        setDrill(null);
+      }}
+    />
+  );
+}
+
+/** The pivot inside its maximizing frame: `root` is its element, which `maximizing` makes fill the window. */
+type PivotFrameProps = PivotProps & MaximizeFrame;
+
+/** The pivot's element: its settings, its table, and the rows behind a value. */
+function PivotFrame(props: PivotFrameProps): ReactNode {
+  const { dataset, toolbar, label, ref, defaultSettingsOpen = true, root, maximizing } = props;
   const [shown, change] = useGridLayout(props.layout, props.onLayoutChange);
   const checked = checkLayout(shown);
+  const valid = checked.ok ? checked.layout : null;
   const [fields, setFields] = useState<readonly SourceField[]>([]);
-  const { drill, onChange, onDrill, setDrill } = useDrill(
-    checked.ok ? checked.layout : null,
-    change,
-  );
+  const { drill, onChange, onDrill, setDrill } = useDrill(valid, change);
   const grid = useRef<GridHandle>(null);
   useHandle(ref, grid);
   const source: ValueSource = async (column, search, limit) =>
     handleOf(grid).distinctValues(column, search, limit);
   return (
-    <div data-slot="pivot" className="flex h-full min-h-0 gap-3">
+    <div
+      {...maximizing.props}
+      ref={root}
+      data-slot="pivot"
+      className="flex h-full min-h-0 gap-3 data-maximized:fixed data-maximized:inset-4 data-maximized:z-50 data-maximized:h-auto data-maximized:rounded-xl data-maximized:border data-maximized:bg-background data-maximized:p-3 data-maximized:shadow-md"
+    >
       <Settings
-        layout={checked.ok ? checked.layout : null}
+        layout={valid}
         fields={fields}
         source={source}
         onChange={onChange}
@@ -142,18 +171,18 @@ function Pivot(props: PivotProps): ReactNode {
             measureMenu={HeaderMeasureMenu}
           />
         </div>
-        {drill === null ? null : (
-          <DrillRows
-            dataset={dataset}
-            drill={drill}
-            onChange={setDrill}
-            onClose={() => {
-              setDrill(null);
-            }}
-          />
-        )}
+        <Drilled dataset={dataset} drill={drill} setDrill={setDrill} />
       </div>
     </div>
+  );
+}
+
+/** A pivot table and its settings, which can fill the window together. */
+function Pivot(props: PivotProps): ReactNode {
+  return (
+    <Maximizable label={props.label ?? props.dataset.name}>
+      {({ root, maximizing }) => <PivotFrame {...props} root={root} maximizing={maximizing} />}
+    </Maximizable>
   );
 }
 

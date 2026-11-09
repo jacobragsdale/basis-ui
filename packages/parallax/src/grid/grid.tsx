@@ -16,6 +16,8 @@ import type { ReactNode, Ref, RefObject } from "react";
 
 import type { ExportFormat } from "#engine/messages.ts";
 import type { Layout, LayoutInput } from "#layout/layout.ts";
+import { Maximizable } from "#react/maximize-parts.tsx";
+import type { MaximizeFrame } from "#react/maximize-parts.tsx";
 import type { Dataset } from "#react/use-dataset.ts";
 import { useParallaxTheme } from "#react/use-theme.ts";
 import { useView } from "#react/use-view.ts";
@@ -33,8 +35,7 @@ import { StatusBar } from "./status-bar.tsx";
 import { allParts } from "./parts.ts";
 import type { ToolbarParts } from "./parts.ts";
 import { GridToolbar } from "./toolbar.tsx";
-import type { RowSelectionInputs } from "./row-selection.ts";
-import type { DrillRequest } from "./types.ts";
+import type { DrillRequest, GridInputs } from "./types.ts";
 import { useHandles } from "./use-grid-handles.ts";
 import type { GridHandle } from "./use-grid-handles.ts";
 import { useGridLayout } from "./use-grid-layout.ts";
@@ -91,7 +92,7 @@ type GridProps = GridBaseProps & GridRowSelection;
 const defaultMaxHeight = 480;
 
 /** What the controller takes of the row selection props. */
-function rowSelectionOf(props: GridRowSelection): RowSelectionInputs | null {
+function rowSelectionOf(props: GridRowSelection): GridInputs["rowSelection"] {
   if (props.selectable !== true && props.selectable !== "single") {
     return null;
   }
@@ -216,9 +217,12 @@ function Chrome({
   );
 }
 
-/** A data grid and pivot table on a canvas. */
-function Grid(props: GridProps): ReactNode {
-  const { dataset, ref, toolbar, height = "fill", label, measureMenu } = props;
+/** The grid inside its maximizing frame: `root` is its element, which `maximizing` makes fill the window. */
+type GridFrameProps = GridProps & MaximizeFrame;
+
+/** The grid's element, its chrome, its canvas and its status bar. */
+function GridFrame(props: GridFrameProps): ReactNode {
+  const { dataset, ref, toolbar, height = "fill", label, measureMenu, root, maximizing } = props;
   const state = useGrid(props);
   const { controller, snapshot, view, fields, change } = state;
   const search = useRef<HTMLInputElement>(null);
@@ -231,9 +235,11 @@ function Grid(props: GridProps): ReactNode {
   return (
     <div
       {...attributes}
+      {...maximizing.props}
+      ref={root}
       data-slot="grid"
       data-height={height}
-      className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border bg-card text-sm text-card-foreground data-[height=auto]:h-auto"
+      className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border bg-card text-sm text-card-foreground data-maximized:fixed data-maximized:inset-4 data-maximized:z-50 data-maximized:h-auto data-maximized:shadow-md data-[height=auto]:h-auto"
     >
       <Chrome state={state} toolbar={toolbar} onExport={onExport} refs={{ groupPanel, search }} />
       <GridBody
@@ -256,8 +262,25 @@ function Grid(props: GridProps): ReactNode {
         status={view.table}
         message={snapshot.message}
         selectedRows={snapshot.selectedRows}
+        reading={snapshot.reading}
       />
     </div>
+  );
+}
+
+/** A data grid and pivot table on a canvas, which can fill the window: a grid of `height` `auto` fills it too. */
+function Grid(props: GridProps): ReactNode {
+  return (
+    <Maximizable label={props.label ?? props.dataset.name}>
+      {({ root, maximizing }) => (
+        <GridFrame
+          {...props}
+          height={maximizing.state.maximized ? "fill" : props.height}
+          root={root}
+          maximizing={maximizing}
+        />
+      )}
+    </Maximizable>
   );
 }
 

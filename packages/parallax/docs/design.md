@@ -756,7 +756,11 @@ every new field defaults to what version 1 meant.
   is refused, naming the columns and measures it could be. A view the engine
   refuses keeps the reason, so every later request for it answers with that
   reason rather than an unknown view.
-- `totals` fill a totals row, and a detail view's group rows.
+- `totals` fill a totals row, and a detail view's group rows. The toolbar's
+  Totals switch adds a count of the rows, under the first column, and sums no
+  column on its own: most of a desk's numbers, its prices, yields, spreads and
+  durations, do not add, so a sum is picked in a column's menu where one is
+  meant.
 - `detail` groups a grid's rows rather than pivoting them.
 
 Frames carry the totals row beside the rows, computed for the same columns.
@@ -777,6 +781,12 @@ Up and Page Down, Home and End, with Ctrl to jump and Shift to extend; Ctrl+A
 selects everything. Ctrl+C copies the selection as tab-separated text with
 every digit, which pastes into Excel as cells. A selection larger than the rows
 on screen is fetched first, up to 1,000,000 cells, without moving the view.
+While more than one cell is selected, the status bar reads the numbers among
+them as a spreadsheet's does: their mean, smallest, largest, sum and count. The
+sum is exact, by `sumPrecise`, and the mean is that sum over the count; each is
+written in the format the selected columns share, or as plain numbers when they
+share none. Rows the screen lacks are fetched for a selection of up to 100,000
+cells, once it has rested 150 ms; a larger one has no reading.
 Hovering over a cell whose text was cut, a `###`, or a flagged cell shows the
 full text or what the flag means.
 
@@ -785,7 +795,9 @@ field list is, since that is the pivot its users already know. The dataset's
 fields are listed with a search, ticked when the pivot uses them, and dragged
 into the Filters, Columns, Rows and Values areas, or between them; a drop line
 shows where a field lands. Ticking a field puts it where Excel does, numbers on
-Values and anything else on Rows, and unticking takes it out of every area.
+Values and anything else on Rows, and unticking takes it out of every area. A
+number goes on Values as its mean, where Excel sums it, since most of a desk's
+numbers do not add; its menu makes it a sum.
 Dragging is never required: each field has a menu that adds it to any area, and
 each chip has a menu and a remove button. A field groups one way, so moving it
 to Columns takes it out of Rows. Removing or moving a value renumbers everything
@@ -825,6 +837,20 @@ Under every grid a status bar names the dataset and the rows shown, and says
 when the source was read and how long ago. It also flags NaN values the load
 turned blank, and a failed refresh with its time. An info button lists the load
 details.
+
+A grid, a pivot or a chart can fill the window, for a closer look at a view
+that a dashboard shows small. Maximize, at the end of the grid's toolbar or the
+chart's legend row, or at a chart's top right corner, shown on hover, where it
+has no legend row, or Alt+Enter, fixes the view's own element over the dimmed
+page, and Escape, Restore, Alt+Enter again or a click on the page around puts
+it back. The element itself moves, rather than a copy in a dialog, so the view
+stays open: its rows, scroll position, selection and unsaved layout stay as they
+were, and its canvas redraws once for the new size. A placeholder of its size
+keeps its place, so the page behind neither reflows nor scrolls, and the page
+around it is inert while it fills the window, as a dialog's is. A pivot's
+Maximize takes its settings and the rows behind a value with it. Escape does
+one thing at a time: a selection, a search, a drawing or a brush goes first, and
+only an Escape nothing took restores the view.
 
 ### Themes
 

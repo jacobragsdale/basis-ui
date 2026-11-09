@@ -1,6 +1,7 @@
 /* Two small tables side by side: a few hundred rows, the size most tables are, each loaded into the page and run by
- * the WebAssembly engine. Each sizes itself to its rows, keeps its ticker pinned at the left and totals its amounts at
- * the bottom. Every change should feel instant at this size, and the performance overlay times each one. */
+ * the WebAssembly engine. Each sizes itself to its rows, keeps its ticker pinned at the left and has a totals row: the
+ * book's market value and P&L, which add, and the blotter's count of trades. Every change should feel instant at this
+ * size, and the performance overlay times each one. */
 
 import { Grid } from "@basis/parallax";
 import type { LayoutInput } from "@basis/parallax";

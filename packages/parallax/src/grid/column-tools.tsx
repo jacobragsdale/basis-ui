@@ -48,7 +48,7 @@ function ColumnTools({ layout, fields, columns, totals, onChange }: ColumnToolsP
           variant="outline"
           size="sm"
           pressed={totalled}
-          title="A totals row under the rows; each column's total is in its menu"
+          title="A totals row that counts the rows; each column's total, such as a sum, is in its menu"
           aria-label="Totals"
           onPressedChange={() => {
             onChange(totalled ? { ...layout, totals: [] } : defaultTotals(layout, fields));

@@ -17,7 +17,8 @@ interface Drill {
   readonly source: string;
 }
 
-const drillTools: Partial<ToolbarParts> = { chips: false, group: false };
+// The pivot's own toolbar maximizes the pivot, these rows with it.
+const drillTools: Partial<ToolbarParts> = { chips: false, group: false, maximize: false };
 
 interface DrillRowsProps {
   readonly dataset: Dataset;

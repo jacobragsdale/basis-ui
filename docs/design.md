@@ -271,7 +271,10 @@ reads the package's theme.
    tabular figures. There are two shadows, both subtle. Citrix desktops draw on the CPU, so the theme removes the blur
    scale, which makes `blur-sm` and `backdrop-blur-md` unknown classes; the other filter utilities have no scale to
    remove and stay out of the components by review. Transitions are short and stop under
-   `prefers-reduced-motion`. Fonts are bundled, so screenshots match on every desktop: Inter for text and JetBrains Mono
+   `prefers-reduced-motion`: 100 ms for a popup's fade and scale, 150 ms for a panel that slides, such as the sidebar,
+   a Sheet or an Accordion's content. Motion never lays the page out frame by frame where a grid or chart would resize
+   with it: the sidebar's panel moves on its own while the space it holds changes at once, and canvases never animate.
+   The maintainer asked for this motion on 2026-11-08, where the sidebar had folded at once. Fonts are bundled, so screenshots match on every desktop: Inter for text and JetBrains Mono
    for code, until the firm's fonts replace them.
 
 The user chooses a mode (system, light or dark) and a density (compact, the default by the maintainer's choice of 2026-11-07, or comfortable). Both live in a
@@ -302,6 +305,10 @@ both follow it, so a value reads the same in the grid, a chart, a card and a for
   fraction and offer no unit for a value already in percent or basis points.
 - **Inputs.** `AmountInput` parses its text exactly, suffix included, then converts the result to a number, so `1.1m`
   is the double nearest 1,100,000.
+- **No sums by default.** Most of a desk's numbers, its prices, yields, spreads and durations, do not add, so nothing
+  sums a column on its own, by the maintainer's choice on 2026-11-08: a grid's totals row counts its rows until a
+  column's menu picks a sum, and a number put in a pivot's values starts as its mean. A sum is written into a layout
+  where it means something, such as a book's market value.
 - **Totals.** A total on screen comes from parallax's exact sums or from `sumPrecise`, never from adding rounded
   doubles.
 - **One formatter.** The preset rejects display rounding in app code (`toFixed`, `toPrecision`, `toLocaleString`,

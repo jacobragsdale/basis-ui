@@ -21,15 +21,13 @@ const positionsPivot: OwnView = {
 
 const allTrades: OwnView = { dataset: "trades" };
 
-/** The trades by gross amount, largest first, the id and ticker pinned, counted and their quantities totalled. */
+/** The trades by gross amount, largest first, the id and ticker pinned, and counted. Their quantities are of different
+ * tickers bought and sold, which do not add. */
 const largestTrades: OwnView = {
   dataset: "trades",
   pinned: ["trade_id", "ticker"],
   sort: [{ column: "gross_amount_local", descending: true }],
-  totals: [
-    { aggregate: "count", column: "trade_id" },
-    { aggregate: "sum", column: "quantity" },
-  ],
+  totals: [{ aggregate: "count", column: "trade_id" }],
 };
 
 /** The prices, newest first, then by ticker. */

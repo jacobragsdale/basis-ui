@@ -3,11 +3,14 @@
 
 import { keys } from "@basis/ui/utils";
 
+import type { ViewHandle } from "#engine/view.ts";
 import type { Viewport } from "#engine/view-types.ts";
 import type { FrameData } from "#frame/frame.ts";
 
 import type { GridModel } from "./model.ts";
 import { describeCell, describeRange, describeRows } from "./speech.ts";
+import { SelectionReading } from "./summary.ts";
+import type { Figure } from "./summary.ts";
 import type { ActiveCell } from "./speech.ts";
 import type { OpenMenu } from "./types.ts";
 
@@ -35,6 +38,8 @@ interface GridSnapshot {
   readonly announcement: string;
   /** How many rows are chosen, or null when rows are not chosen. */
   readonly selectedRows: number | null;
+  /** The status bar's reading of the numbers selected: their mean, extremes, sum and count; empty for none. */
+  readonly reading: readonly Figure[];
 }
 
 const first: GridSnapshot = {
@@ -45,6 +50,7 @@ const first: GridSnapshot = {
   message: "",
   opening: null,
   overPanel: false,
+  reading: [],
   selectedRows: null,
   sourceAsOf: null,
   totalColumns: 0,
@@ -74,12 +80,31 @@ function same(one: GridSnapshot, other: GridSnapshot): boolean {
   return keys(one).every((key) => one[key] === other[key]);
 }
 
+/** What a snapshot is published from: the model, the window the view would open with, and the id of its cells. */
+interface Published {
+  readonly model: GridModel;
+  readonly opening: Viewport | null;
+  readonly id: string;
+}
+
 /** A grid's snapshots, and who listens for them. */
 class Snapshots {
   readonly #listeners = new Set<() => void>();
   #current: GridSnapshot = first;
   /** The frame the totals' text was read from. */
   #frame: FrameData | null = null;
+  /** What the last snapshot was published from, which a reading's fetched rows publish again. */
+  #last: Published | null = null;
+  /** The status bar's reading of the selected numbers, from `handle`'s rows when the frame lacks them. */
+  readonly #reading: SelectionReading;
+
+  public constructor(handle: () => ViewHandle | null) {
+    this.#reading = new SelectionReading(handle, () => {
+      if (this.#last !== null) {
+        this.publish(this.#last.model, { ...this.#last, opening: null });
+      }
+    });
+  }
 
   public get current(): GridSnapshot {
     return this.#current;
@@ -98,6 +123,8 @@ class Snapshots {
     model: GridModel,
     { opening, id }: { readonly opening: Viewport | null; readonly id: string },
   ): void {
+    this.#last = { id, model, opening };
+    const reading = this.#reading.figures(model);
     const { frame } = model;
     const { selection } = model.interaction;
     const spoken = frame === this.#frame ? this.#current.totalsText : totalsText(frame);
@@ -114,6 +141,7 @@ class Snapshots {
       message: this.#current.message,
       opening: this.#current.opening ?? opening,
       overPanel: model.interaction.overPanel,
+      reading,
       selectedRows,
       sourceAsOf: frame?.sourceAsOfMicros ?? null,
       totalColumns: model.geometry.count,

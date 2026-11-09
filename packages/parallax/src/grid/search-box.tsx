@@ -24,6 +24,8 @@ interface SearchBoxProps {
 function SearchBox({ text, hint, onChange, inputRef }: SearchBoxProps): ReactNode {
   const clear = (event: KeyboardEvent<HTMLInputElement>): void => {
     if (event.key === "Escape" && text !== "") {
+      // The Escape is spent clearing the search, so a maximized grid stays maximized.
+      event.preventDefault();
       event.stopPropagation();
       onChange("");
     }

@@ -6,6 +6,7 @@
 import type { DrawingEditor } from "./drawing-editor.ts";
 import type { ChartModel, Point, Scale } from "./model-types.ts";
 import { keyed, keys, zoomIn, zoomOut } from "./pointer-keys.ts";
+import type { KeyAction } from "./pointer-keys.ts";
 import { panRange, zoomRange } from "./range.ts";
 import type { Range } from "./range.ts";
 import type { ChartZoom } from "./zoom.ts";
@@ -39,7 +40,8 @@ interface PointerScene {
   readonly brush: (range: Range | null) => void;
   /** The brush is let go: it snaps to what it selects, and says so. */
   readonly brushDone: () => void;
-  readonly clearBrush: () => void;
+  /** Drops the brush; returns whether there was one. */
+  readonly clearBrush: () => boolean;
   /** A click at a point, which selects a bar's or a slice's group. */
   readonly pick: (at: Point) => void;
 }
@@ -265,31 +267,32 @@ class ChartPointer implements EventListenerObject {
   }
 
   /** Plus and minus zoom, the arrows pan, 0 shows everything, Delete removes the selected drawing, and Escape drops a
-   * drawing in progress or the selection, then the brush. */
+   * drawing in progress or the selection, then the brush; an Escape with nothing to drop is left to the page, which
+   * restores a maximized chart with it. */
   #key(event: KeyboardEvent): void {
     const action = keys[event.key];
     const range = this.#scene.zoom.shown();
-    if (action === undefined || range === null || event.target !== this.#plot) {
-      return;
+    const mine = action !== undefined && range !== null && event.target === this.#plot;
+    if (mine && this.#act(action, range)) {
+      event.preventDefault();
     }
-    event.preventDefault();
-    if (action === "clear" || action === "remove" || action === "all") {
-      this.#act(action);
-      return;
-    }
-    this.#scene.zoom.schedule(keyed(action, range, this.#scene.extent()));
-    this.#scene.zoom.settle("now");
   }
 
-  #act(action: "clear" | "remove" | "all"): void {
+  /** Does what a key asks; returns whether it did anything. */
+  #act(action: KeyAction, range: Range): boolean {
     const scene = this.#scene;
+    if (action === "clear") {
+      return scene.editor.cancel() || scene.clearBrush();
+    }
     if (action === "all") {
       scene.zoom.reset();
     } else if (action === "remove") {
       scene.editor.remove();
-    } else if (!scene.editor.cancel()) {
-      scene.clearBrush();
+    } else {
+      scene.zoom.schedule(keyed(action, range, scene.extent()));
+      scene.zoom.settle("now");
     }
+    return true;
   }
 }
 

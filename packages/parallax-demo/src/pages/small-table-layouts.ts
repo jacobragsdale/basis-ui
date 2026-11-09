@@ -29,7 +29,8 @@ const book: LayoutInput = {
   ],
 };
 
-/** The blotter: trades with their ticker pinned, counted and their quantities totalled. */
+/** The blotter: trades with their ticker pinned, and counted. Their quantities are of different tickers bought and
+ * sold, which do not add. */
 const blotter: LayoutInput = {
   columns: [
     "ticker",
@@ -46,10 +47,7 @@ const blotter: LayoutInput = {
   ],
   dataset: "blotter",
   pinned: ["ticker"],
-  totals: [
-    { aggregate: "count", column: "trade_id" },
-    { aggregate: "sum", column: "quantity" },
-  ],
+  totals: [{ aggregate: "count", column: "trade_id" }],
 };
 
 export { blotter, book };

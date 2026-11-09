@@ -146,22 +146,13 @@ function withShown(
   return listed.includes(column) ? layout : { ...layout, columns: [...listed, column] };
 }
 
-/** Totals for a grid that has none: the sum of each number column it shows, or failing that a count of its first. */
+/**
+ * Totals for a grid that has none: a count of its rows, under the first column it shows. No column is summed on its
+ * own, since most of a desk's numbers, its prices, yields, spreads and durations, do not add; each column's menu
+ * picks its total, a sum among them.
+ */
 function defaultTotals(layout: Layout, fields: readonly SourceField[]): Layout {
-  const kinds = new Map(fields.map((field) => [field.name, field.kind]));
-  const shown = shownColumns(layout, fields);
-  const summed = shown.filter((column) => {
-    const kind = kinds.get(column);
-    return kind === "float" || kind === "decimal";
-  });
-  const [first] = shown;
-  if (summed.length > 0) {
-    let next: Layout = { ...layout, totals: [] };
-    for (const column of summed) {
-      next = withTotal(next, column, "sum");
-    }
-    return next;
-  }
+  const [first] = shownColumns(layout, fields);
   return first === undefined ? layout : withTotal({ ...layout, totals: [] }, first, "count");
 }
 

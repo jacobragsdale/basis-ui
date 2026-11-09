@@ -1,6 +1,7 @@
 /* The keyboard on a grid: the arrow keys, Page Up and Down, Home and End move the focused cell, with Ctrl to the edge
- * and Shift extending the selection; Ctrl+A selects everything and Escape nothing; Space checks the focused row when
- * rows are chosen by checkbox, and with Shift every row from the last one checked; Enter or Space on a group opens or
+ * and Shift extending the selection; Ctrl+A selects everything and Escape nothing, leaving an Escape with no selection
+ * to drop to the page, which restores a maximized grid with it; Space checks the focused row when rows are chosen by
+ * checkbox, and with Shift every row from the last one checked; Enter or Space on a group opens or
  * closes it; Ctrl+F searches the grid rather than the page; and Alt+Down opens the focused cell's column menu, as a
  * spreadsheet's filter does. */
 
@@ -53,19 +54,25 @@ class KeyInput {
     if (this.#escape(event) || this.#check(event, selection)) {
       return true;
     }
-    if ((event.key === "Enter" || event.key === " ") && selection.focus.column === -1) {
+    // Alt+Enter is the page's: it maximizes the grid.
+    if (
+      (event.key === "Enter" || event.key === " ") &&
+      !event.altKey &&
+      selection.focus.column === -1
+    ) {
       this.#host.toggleRow(selection.focus.row);
       return true;
     }
     return this.#move(this.#navigate(event, selection, extent));
   }
 
-  /** Escape selects nothing. Returns whether the key was Escape. */
+  /** Escape selects nothing. Returns whether it dropped a selection: an Escape with none is left to the page. */
   #escape(event: KeyboardEvent): boolean {
+    const had = this.#host.model.interaction.selection !== null;
     if (event.key === "Escape") {
       this.#host.select(null);
     }
-    return event.key === "Escape";
+    return event.key === "Escape" && had;
   }
 
   /** Space checks the focused row, if rows are checked and the focus is on a table row: a group's row has no

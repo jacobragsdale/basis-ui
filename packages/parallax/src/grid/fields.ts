@@ -1,9 +1,11 @@
-/* A dataset's columns, as a grid's menus offer them: each one's name and the kind of value it holds, read from the
- * schema the engine sends when a view opens. */
+/* A dataset's columns, as a grid's menus offer them: each one's name, the kind of value it holds and the display
+ * format its API declares, read from the schema the engine sends when a view opens. */
 
 import { DataType, tableFromIPC } from "apache-arrow";
 
+import { declaredFormats } from "#chart/axis-styles.ts";
 import { isNumericType } from "#frame/readers.ts";
+import type { LayoutFormat } from "#layout/layout.ts";
 
 /** The kind of value a column holds. */
 type FieldKind = "boolean" | "integer" | "float" | "decimal" | "text" | "date" | "timestamp";
@@ -12,6 +14,8 @@ type FieldKind = "boolean" | "integer" | "float" | "decimal" | "text" | "date" |
 interface SourceField {
   readonly name: string;
   readonly kind: FieldKind;
+  /** The display format the column's API declares under `basis.format`, as a layout format; absent without one. */
+  readonly format?: LayoutFormat;
 }
 
 function numberKind(type: unknown): FieldKind {
@@ -39,10 +43,11 @@ function readFields(schema: Uint8Array): readonly SourceField[] {
   if (schema.length === 0) {
     return [];
   }
-  return tableFromIPC(schema).schema.fields.map((field) => ({
-    kind: kindOf(field.type),
-    name: field.name,
-  }));
+  const declared = declaredFormats(schema);
+  return tableFromIPC(schema).schema.fields.map((field): SourceField => {
+    const [kind, name, format] = [kindOf(field.type), field.name, declared[field.name]];
+    return format === undefined ? { kind, name } : { format, kind, name };
+  });
 }
 
 export { readFields };

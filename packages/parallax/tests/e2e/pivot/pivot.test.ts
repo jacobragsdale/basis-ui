@@ -51,13 +51,15 @@ test("removing a row group from the settings regroups the pivot", async ({ page 
   await expect.poll(async () => rowCount(page)).toBeLessThan(before);
 });
 
-test("a value added from a field's menu becomes a column", async ({ page }) => {
+test("a value added from a field's menu becomes a column, a number as its mean", async ({
+  page,
+}) => {
   await open(page);
   await page.getByRole("button", { name: "Add quantity to" }).click();
   await page.getByRole("menuitem", { name: "Add to Values" }).click();
   await expect
     .poll(async () => layout(page))
-    .toMatchObject({ measures: [{}, {}, {}, { aggregate: "sum", column: "quantity" }] });
+    .toMatchObject({ measures: [{}, {}, {}, { aggregate: "mean", column: "quantity" }] });
   expect(await errors(page)).toBe(0);
 });
 

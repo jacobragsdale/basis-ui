@@ -138,6 +138,8 @@ function ChartNote({ at, onDone }: ChartNoteProps): ReactNode {
     if (event.key === "Enter") {
       finish(event.currentTarget.value);
     } else if (event.key === "Escape") {
+      // The Escape is spent dropping the note, so a maximized chart stays maximized.
+      event.preventDefault();
       finish(null);
     }
   };

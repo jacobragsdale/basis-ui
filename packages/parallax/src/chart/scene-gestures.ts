@@ -85,11 +85,13 @@ class SceneGestures implements PointerScene {
     this.#parts.host()?.brushed(result?.filters ?? null);
   }
 
-  /** Drops the brush, and says so. */
-  public clearBrush(): void {
+  /** Drops the brush, and says so. Returns whether there was one. */
+  public clearBrush(): boolean {
+    const had = this.brushed !== null;
     this.brushed = null;
     this.#parts.schedule();
     this.#parts.host()?.brushed(null);
+    return had;
   }
 
   /** Selects the group of the bar or slice clicked, or clears the selection on a second click or a click elsewhere. */

@@ -49,7 +49,7 @@ const tablePages = {
   },
   largestTrades: {
     about:
-      "The trades sorted by gross amount, largest first, with amounts shown exactly. The trade's id and ticker stay pinned at the left, and the footer counts the trades and totals their quantities.",
+      "The trades sorted by gross amount, largest first, with amounts shown exactly. The trade's id and ticker stay pinned at the left, and the footer counts the trades.",
     group: "Tables",
     Icon: ArrowDownWideNarrowIcon,
     path: "/largest-trades",

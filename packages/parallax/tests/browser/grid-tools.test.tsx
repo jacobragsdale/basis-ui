@@ -36,15 +36,31 @@ describe("Grid's menus and tools", () => {
     await expect.element(grid).toHaveAttribute("aria-rowcount", "3");
   });
 
-  test("adds a totals row of the number columns, which it says in text", async () => {
+  test("adds a totals row that counts the rows and sums no number, which it says in text", async () => {
     const { screen, changes } = await renderGrid();
     await screen.getByRole("button", { name: "Totals" }).click();
     await expect
-      .poll(() => changes.at(-1)?.totals.map((total) => total.column))
-      .toStrictEqual(["market_value"]);
+      .poll(() => changes.at(-1)?.totals.map((total) => [total.column, total.aggregate]))
+      .toStrictEqual([["desk", "count"]]);
     await expect
       .element(screen.getByRole("status", { name: "Totals row" }))
-      .toHaveTextContent("Totals. market_value: 652.75");
+      .toHaveTextContent("Totals. desk: 6");
+  });
+
+  test("reads the numbers selected in the status bar: their mean, extremes, exact sum and count", async () => {
+    const { grid, screen } = await renderGrid();
+    const reading = screen.getByRole("status", { name: "Selected numbers" });
+    await pressAt(grid, { x: 40, y: firstRow });
+    await userEvent.keyboard("{ArrowRight}{ArrowRight}");
+    // One cell has no reading.
+    await expect.element(reading).not.toBeInTheDocument();
+    await userEvent.keyboard("{Shift>}{ArrowDown}{ArrowDown}{ArrowLeft}{ArrowLeft}{/Shift}");
+    // The text columns in the selection hold no numbers; market value's three do.
+    await expect
+      .element(reading)
+      .toHaveAttribute("title", "Avg 83.58, Min -50.00, Max 200.25, Sum 250.75, Count 3");
+    await userEvent.keyboard("{Escape}");
+    await expect.element(reading).not.toBeInTheDocument();
   });
 
   test("opens and closes a pivot's group with Enter, which the layout records", async () => {

@@ -39,7 +39,7 @@ describe("Pivot's field list", () => {
       .poll(() => last()?.measures.map((measure) => [measure.aggregate, measure.column]))
       .toStrictEqual([
         ["sum", "market_value"],
-        ["sum", "quantity"],
+        ["mean", "quantity"],
       ]);
     await expect
       .element(fields.getByRole("listitem").filter({ hasText: "quantity" }))

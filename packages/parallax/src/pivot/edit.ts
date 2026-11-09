@@ -45,9 +45,11 @@ function removeGroup(layout: Layout, axis: Axis, index: number): Layout {
   );
 }
 
-/** The measure a field gets on Values, as Excel gives it: the sum of a number column, and the count of any other. */
+/** The measure a field gets on Values: the mean of a number column, and the count of any other. Excel sums a number,
+ * but most of a desk's numbers, its prices, yields, spreads and durations, do not add, so a sum is picked in the
+ * value's menu where one is meant. */
 function defaultMeasure(field: SourceField): LayoutMeasure {
-  return isNumeric(field) ? measure("sum", field.name) : measure("count", field.name);
+  return isNumeric(field) ? measure("mean", field.name) : measure("count", field.name);
 }
 
 /** Where a position before which to insert lands once the item at `from` is taken out; null is the end. */
