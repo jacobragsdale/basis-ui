@@ -46,6 +46,31 @@ pub enum LoadError {
         /// Row within its batch.
         row: usize,
     },
+    /// A timestamp in seconds or milliseconds is too far from 1970 to hold in
+    /// microseconds.
+    #[error(
+        "column {column} row {row}: the timestamp overflows the microseconds a 64-bit integer holds, about 292,000 years either side of 1970; check the source's unit"
+    )]
+    TimestampOverflow {
+        /// Column name.
+        column: String,
+        /// Row within its batch.
+        row: usize,
+    },
+    /// A decimal of negative scale does not fit 38 digits once it is scaled up to
+    /// scale 0. Arrow does not hold a value to its column's precision, so a stream
+    /// can carry one.
+    #[error(
+        "column {column} row {row}: the value overflows 38 digits once its scale of {scale} is applied; have the source send it with fewer digits"
+    )]
+    DecimalOverflow {
+        /// Column name.
+        column: String,
+        /// Row within its batch.
+        row: usize,
+        /// The column's negative scale.
+        scale: i8,
+    },
     /// The load repeats primary keys and the table does not allow it.
     #[error("column {column} has {count} duplicate primary keys, for example {examples:?}")]
     DuplicateKeys {

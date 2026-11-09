@@ -422,8 +422,19 @@ impl Column {
                     unreachable!()
                 };
                 for i in 0..n {
-                    v.push(a.value(i) * factor);
-                    self.valid.push(a.is_valid(i));
+                    let valid = a.is_valid(i);
+                    match a.value(i).checked_mul(factor) {
+                        Some(value) => v.push(value),
+                        None if !valid => v.push(0),
+                        None => {
+                            return Err(LoadError::DecimalOverflow {
+                                column: name.to_owned(),
+                                row: i,
+                                scale: *source_scale,
+                            });
+                        }
+                    }
+                    self.valid.push(valid);
                 }
             }
             DataType::Utf8
@@ -463,32 +474,42 @@ impl Column {
                 };
                 for i in 0..n {
                     let valid = array.is_valid(i);
+                    // Seconds and milliseconds can overflow on the way to
+                    // microseconds; nanoseconds can only lose precision.
+                    let overflow = || LoadError::TimestampOverflow {
+                        column: name.to_owned(),
+                        row: i,
+                    };
                     let micros = match unit {
                         TimeUnit::Second => array
                             .as_primitive::<TimestampSecondType>()
                             .value(i)
-                            .checked_mul(1_000_000),
+                            .checked_mul(1_000_000)
+                            .ok_or_else(overflow),
                         TimeUnit::Millisecond => array
                             .as_primitive::<TimestampMillisecondType>()
                             .value(i)
-                            .checked_mul(1_000),
+                            .checked_mul(1_000)
+                            .ok_or_else(overflow),
                         TimeUnit::Microsecond => {
-                            Some(array.as_primitive::<TimestampMicrosecondType>().value(i))
+                            Ok(array.as_primitive::<TimestampMicrosecondType>().value(i))
                         }
                         TimeUnit::Nanosecond => {
                             let nanos = array.as_primitive::<TimestampNanosecondType>().value(i);
-                            (!valid || nanos % 1_000 == 0).then_some(nanos / 1_000)
+                            if !valid || nanos % 1_000 == 0 {
+                                Ok(nanos / 1_000)
+                            } else {
+                                Err(LoadError::LossyTimestamp {
+                                    column: name.to_owned(),
+                                    row: i,
+                                })
+                            }
                         }
                     };
                     match micros {
-                        Some(m) => v.push(m),
-                        None if !valid => v.push(0),
-                        None => {
-                            return Err(LoadError::LossyTimestamp {
-                                column: name.to_owned(),
-                                row: i,
-                            });
-                        }
+                        Ok(m) => v.push(m),
+                        Err(_) if !valid => v.push(0),
+                        Err(error) => return Err(error),
                     }
                     self.valid.push(valid);
                 }
@@ -601,6 +622,62 @@ mod tests {
         c.extend_from_arrow("n", &a).unwrap();
         assert_eq!(c.exact(0), Some(12_300));
         assert_eq!(c.exact(1), None);
+    }
+
+    #[test]
+    fn a_negative_scale_value_too_large_to_scale_up_is_refused() {
+        // Arrow does not hold values to their precision, so a stream can carry one
+        // that overflows 128 bits once it is multiplied by 10.
+        let a = Decimal128Array::from(vec![Some(1), None, Some(i128::MAX / 5)])
+            .with_precision_and_scale(10, -1)
+            .unwrap();
+        let mut c = Column::new(ColumnType::from_arrow(a.data_type()).unwrap());
+        let err = c.extend_from_arrow("n", &a).unwrap_err();
+        assert_eq!(
+            err,
+            LoadError::DecimalOverflow {
+                column: "n".into(),
+                row: 2,
+                scale: -1,
+            }
+        );
+        assert_eq!(
+            err.to_string(),
+            "column n row 2: the value overflows 38 digits once its scale of -1 is applied; have the source send it with fewer digits"
+        );
+    }
+
+    #[test]
+    fn a_timestamp_too_far_from_1970_for_microseconds_is_an_overflow() {
+        use arrow_array::{TimestampMillisecondArray, TimestampSecondArray};
+        let seconds = TimestampSecondArray::from(vec![Some(0), None, Some(i64::MAX / 10)]);
+        let mut c = Column::new(ColumnType::from_arrow(seconds.data_type()).unwrap());
+        let err = c.extend_from_arrow("t", &seconds).unwrap_err();
+        assert_eq!(
+            err,
+            LoadError::TimestampOverflow {
+                column: "t".into(),
+                row: 2,
+            }
+        );
+        assert_eq!(
+            err.to_string(),
+            "column t row 2: the timestamp overflows the microseconds a 64-bit integer holds, about 292,000 years either side of 1970; check the source's unit"
+        );
+        let millis = TimestampMillisecondArray::from(vec![Some(i64::MIN / 10)]);
+        let mut c = Column::new(ColumnType::from_arrow(millis.data_type()).unwrap());
+        assert!(matches!(
+            c.extend_from_arrow("t", &millis),
+            Err(LoadError::TimestampOverflow { row: 0, .. })
+        ));
+        // A null's stored value is never read, however large.
+        let null = TimestampSecondArray::new(
+            vec![i64::MAX, 1].into(),
+            Some(arrow_buffer::NullBuffer::from(vec![false, true])),
+        );
+        let mut c = Column::new(ColumnType::from_arrow(null.data_type()).unwrap());
+        c.extend_from_arrow("t", &null).unwrap();
+        assert_eq!(c.key(0), Key::Null);
     }
 
     #[test]

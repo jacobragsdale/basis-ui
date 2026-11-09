@@ -15,7 +15,7 @@
 
 use std::collections::{BTreeMap, VecDeque};
 use std::ops::Range;
-use std::sync::{Arc, RwLock, RwLockReadGuard};
+use std::sync::{Arc, Mutex, PoisonError, RwLock, RwLockReadGuard, Weak};
 
 use arrow_array::RecordBatch;
 use arrow_schema::Schema;
@@ -41,15 +41,55 @@ pub mod testing;
 
 pub use load::{LOAD_METADATA, LoadStatus};
 
-/// How many recent change sets a table keeps for views that are behind.
+/// The most change sets one view keeps while it is behind; one more and it is
+/// rebuilt instead.
 const HISTORY: usize = 16;
+
+/// The change sets one open view has yet to apply. The table adds each load's to
+/// every open view's, and the view takes them when it catches up, so a change set
+/// lives only while some view still needs it. A view behind by more change sets
+/// than [`HISTORY`], or by more old rows than the table has slots, keeps none and
+/// is rebuilt instead, which then costs less than replaying them.
+#[derive(Debug, Default)]
+struct Missed {
+    changes: VecDeque<Arc<ChangeSet>>,
+    /// The old rows the changes hold.
+    rows: usize,
+    /// Whether changes were dropped since the view last caught up.
+    dropped: bool,
+}
+
+impl Missed {
+    fn push(&mut self, change: &Arc<ChangeSet>, slots: usize) {
+        if self.dropped {
+            return;
+        }
+        self.rows += change.removed.len();
+        self.changes.push_back(Arc::clone(change));
+        if self.changes.len() > HISTORY || self.rows > slots {
+            *self = Self {
+                dropped: true,
+                ..Self::default()
+            };
+        }
+    }
+
+    fn take(&mut self) -> VecDeque<Arc<ChangeSet>> {
+        std::mem::take(self).changes
+    }
+}
+
+/// An open view's [`Missed`], which the table reaches while the view is open.
+type Inbox = Arc<Mutex<Missed>>;
 
 /// A table and what the views need to know about its loads.
 #[derive(Debug)]
 pub struct TableState {
     /// The table.
     pub table: Table,
-    history: VecDeque<Arc<ChangeSet>>,
+    /// The open views' inboxes. A view registers under the read lock, so the list
+    /// has a lock of its own; a closed view's entry is dropped at the next load.
+    views: Mutex<Vec<Weak<Mutex<Missed>>>>,
     loaded_at_micros: i64,
     source_as_of_micros: i64,
     nans_to_null: Vec<(String, usize)>,
@@ -72,7 +112,7 @@ impl TableState {
     pub fn new(table: Table, loaded_at_micros: i64, source_as_of_micros: i64) -> Self {
         Self {
             table,
-            history: VecDeque::new(),
+            views: Mutex::new(Vec::new()),
             loaded_at_micros,
             source_as_of_micros,
             nans_to_null: Vec::new(),
@@ -114,10 +154,17 @@ impl TableState {
     ) -> Result<LoadReport, LoadError> {
         match self.table.load(batches) {
             Ok((report, change)) => {
-                self.history.push_back(Arc::new(change));
-                while self.history.len() > HISTORY {
-                    self.history.pop_front();
-                }
+                let change = Arc::new(change);
+                let slots = self.table.num_slots();
+                self.views
+                    .get_mut()
+                    .unwrap_or_else(PoisonError::into_inner)
+                    .retain(|view| {
+                        view.upgrade().is_some_and(|inbox| {
+                            lock(&inbox).push(&change, slots);
+                            true
+                        })
+                    });
                 self.loaded_at_micros = now_micros;
                 self.source_as_of_micros = source_as_of_micros;
                 self.nans_to_null.clone_from(&report.nans_to_null);
@@ -129,6 +176,27 @@ impl TableState {
                 Err(error)
             }
         }
+    }
+
+    /// How many old row images the table holds for views that have not yet caught
+    /// up with its loads.
+    #[must_use]
+    pub fn held_rows(&self) -> usize {
+        let mut held = BTreeMap::new();
+        for inbox in lock(&self.views).iter().filter_map(Weak::upgrade) {
+            for change in &lock(&inbox).changes {
+                held.insert(change.load_version, change.removed.len());
+            }
+        }
+        held.values().sum()
+    }
+
+    /// Registers an open view, which from now on is handed every load's change set
+    /// until it is dropped.
+    fn watch(&self) -> Inbox {
+        let inbox = Inbox::default();
+        lock(&self.views).push(Arc::downgrade(&inbox));
+        inbox
     }
 
     fn status(&self, view_id: u32) -> TableStatus {
@@ -153,6 +221,12 @@ impl TableState {
                 .collect(),
         }
     }
+}
+
+/// Locks a list of inboxes or one inbox. Neither is left half-changed by a panic,
+/// so a poisoned lock is taken as it is.
+fn lock<T>(mutex: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
+    mutex.lock().unwrap_or_else(PoisonError::into_inner)
 }
 
 /// Reads a shared table. A lock poisoned by a panic during a reload means the table
@@ -330,6 +404,8 @@ struct OpenView {
     parameters: BTreeMap<String, String>,
     layout: Layout,
     view: Computed,
+    /// The change sets the view has yet to apply.
+    missed: Inbox,
     config_version: u64,
     viewport: Option<Viewport>,
     status_version: u64,
@@ -416,9 +492,11 @@ fn build_view(
 }
 
 impl OpenView {
-    /// Applies the change sets the view missed, or rebuilds it if the kept history
-    /// does not reach back far enough. Returns `true` if the view changed.
+    /// Applies the change sets the view missed, or rebuilds it if it was handed too
+    /// many to keep. Returns `true` if the view changed.
     fn catch_up(&mut self, state: &TableState) -> Result<bool, String> {
+        // Taken under the table's read lock, so no load adds to them meanwhile.
+        let missed = lock(&self.missed).take();
         let current = state.table.load_version();
         let behind = self.view.load_version();
         if behind >= current {
@@ -438,11 +516,8 @@ impl OpenView {
             }
             return Ok(true);
         }
-        let missing: Vec<&Arc<ChangeSet>> = state
-            .history
-            .iter()
-            .filter(|c| c.load_version > behind)
-            .collect();
+        let missing: Vec<&Arc<ChangeSet>> =
+            missed.iter().filter(|c| c.load_version > behind).collect();
         let contiguous = missing
             .first()
             .is_some_and(|c| c.load_version == behind + 1)
@@ -788,12 +863,12 @@ impl Session {
         parameters: BTreeMap<String, String>,
         layout: Layout,
     ) -> Result<Vec<ServerMessage>, String> {
-        let (view, schema, status) = {
+        let (view, schema, status, missed) = {
             let state = read_table(&table)?;
             let resolved = layout.resolve(&state.table).map_err(|e| e.to_string())?;
             let view = build_view(&state.table, &layout, resolved)?;
             let schema = encode_schema(state.table.schema()).map_err(|e| e.to_string())?;
-            (view, schema, state.status(view_id))
+            (view, schema, state.status(view_id), state.watch())
         };
         let layout_json = layout.to_json();
         let status_version = status.load_version;
@@ -806,6 +881,7 @@ impl Session {
                 parameters,
                 layout,
                 view,
+                missed,
                 config_version: 0,
                 viewport: None,
                 status_version,
