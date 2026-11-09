@@ -8,7 +8,7 @@ import { describe, expect, test, vi } from "vite-plus/test";
 import { page, userEvent } from "vite-plus/test/browser";
 import { render } from "vitest-browser-react";
 
-import { day, focusIsOn, inCompactDensity, keysTo } from "./test-helpers.ts";
+import { day, focusIsOn, inCompactDensity, keysTo, withToday } from "./test-helpers.ts";
 
 const date = (text: string): Temporal.PlainDate => Temporal.PlainDate.from(text);
 /** The tests' today: Thursday, the day after Veterans Day, so the presets run to Tuesday 2026-11-10. */
@@ -115,6 +115,25 @@ describe("DateRangePicker", () => {
       .toHaveAttribute("data-in-range", "true");
     await expect.element(day("Friday, November 6, 2026")).toHaveAttribute("data-selected", "true");
     await focusIsOn(day("Friday, November 6, 2026"));
+  });
+
+  test("counts its presets from the day it opens, not the day it was first drawn", async () => {
+    // Drawn on Thursday the 12th, opened the Tuesday after, a tab left open over the weekend.
+    await withToday("2026-11-12", async (moveTo) => {
+      const onValueChange = vi.fn<(range: DateRange) => void>();
+      const screen = await render(
+        <Field>
+          <FieldLabel htmlFor="period">Period</FieldLabel>
+          <DateRangePicker id="period" onValueChange={onValueChange} />
+        </Field>,
+      );
+      moveTo("2026-11-17");
+      await userEvent.click(screen.getByRole("button", { name: "Period" }));
+      await focusIsOn(day("Monday, November 16, 2026"));
+      const dialog = page.getByRole("dialog", { name: "Choose a date range" });
+      await userEvent.click(dialog.getByRole("button", { name: "Month to date" }));
+      expect(heard(onValueChange)).toStrictEqual(["2026-11-02 – 2026-11-16"]);
+    });
   });
 
   test("stays at least 24 px tall in the compact density, and its days 24 px square", async () => {

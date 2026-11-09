@@ -10,8 +10,8 @@
  *   adds them with arbitrary `calc()` widths.
  * - Below the `md` breakpoint it is a Sheet whose panel draws on Base UI's dialog with the Sheet's classes, from
  *   sheet-variants.ts, in the sidebar's colours: shadcn's colour classes on SheetContent would fail `no-restyle`.
- * - SidebarInset takes `render`, as the sidebar's other parts do, so a page that already has its `<main>` can make
- *   it a `<div>`.
+ * - SidebarInset takes `render`, as its other parts do, so a page that has its own `<main>` can make it a `<div>`.
+ * - The fixed panel's top and bottom size it, without shadcn's `h-svh`, so AppShell's row below its banner holds it.
  * - Right-to-left support is left out, as @basis/ui does throughout. */
 
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
@@ -155,7 +155,7 @@ function SidebarDesktop({
         data-slot="sidebar-container"
         data-side={side}
         className={cn(
-          "fixed inset-y-0 z-10 hidden h-svh w-(--sidebar-width) transition-all duration-150 ease-out group-data-[collapsible=icon]:w-(--sidebar-width-icon) data-[side=left]:left-0 data-[side=left]:group-data-[collapsible=offcanvas]:-translate-x-full data-[side=right]:right-0 data-[side=right]:group-data-[collapsible=offcanvas]:translate-x-full md:flex",
+          "fixed inset-y-0 z-10 hidden w-(--sidebar-width) transition-all duration-150 ease-out group-data-[collapsible=icon]:w-(--sidebar-width-icon) data-[side=left]:left-0 data-[side=left]:group-data-[collapsible=offcanvas]:-translate-x-full data-[side=right]:right-0 data-[side=right]:group-data-[collapsible=offcanvas]:translate-x-full md:flex",
           framed
             ? "p-2 group-data-[collapsible=icon]:box-content group-data-[collapsible=icon]:h-auto"
             : "group-data-[side=left]:border-r group-data-[side=right]:border-l",

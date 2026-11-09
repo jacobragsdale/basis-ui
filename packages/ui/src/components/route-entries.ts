@@ -17,7 +17,16 @@ declare module "@tanstack/react-router" {
     readonly icon?: ComponentType<SVGProps<SVGSVGElement>>;
     /** Leave it out of the sidebar and the command palette, though it keeps its breadcrumb: `false`. */
     readonly inNavigation?: boolean;
+    /** The page's breadcrumb from its data, such as a bond's name on `/bonds/$security`: given the route's params and
+     * what its loader returned, the text, or `undefined` while there is none, when the breadcrumb is `title`. */
+    readonly breadcrumb?: (match: RouteCrumbMatch) => string | undefined;
   }
+}
+
+/** What a route's `breadcrumb` is given: its path's params and what its loader returned, if it has one. */
+interface RouteCrumbMatch {
+  readonly params: Readonly<Record<string, string>>;
+  readonly loaderData: unknown;
 }
 
 /** A page the shell can link to: a route with a title and no path parameters. */
@@ -57,6 +66,17 @@ function isListed(route: RouteLike): boolean {
   );
 }
 
+/** The entry the page at `path` belongs to: the one whose path it is, or else the one with the longest path it lies
+ * under, as `/bonds/912810TM0` lies under `/bonds`. The start page, `/`, is only its own. */
+function currentEntry(entries: readonly RouteEntry[], path: string): RouteEntry | undefined {
+  const trimmed = path.length > 1 ? path.replace(/\/+$/u, "") : path;
+  const under = entries.filter(
+    ({ to }) => trimmed === to || (to !== "/" && trimmed.startsWith(`${to}/`)),
+  );
+  const longest = Math.max(...under.map(({ to }) => to.length));
+  return under.find(({ to }) => to.length === longest);
+}
+
 /** The app's pages, in the order its route tree declares them. */
 function useRouteEntries(): readonly RouteEntry[] {
   const routes: unknown = useRouter().routesById;
@@ -72,5 +92,5 @@ function useRouteEntries(): readonly RouteEntry[] {
     }));
 }
 
-export { useRouteEntries };
-export type { RouteEntry };
+export { currentEntry, useRouteEntries };
+export type { RouteCrumbMatch, RouteEntry };

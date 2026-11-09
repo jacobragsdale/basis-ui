@@ -10,13 +10,15 @@
  * the text reads as no number its value is the text itself, so no form takes it for a number, and the parser's reason
  * is the field's error: AmountInput shows it once the field has been left, and `amountSchema` gives a form's check the
  * same reason. AmountInput draws the field's error line, so a form passes it the field's errors rather than drawing a
- * FieldError of its own; while the text reads as no number, the reason replaces them. */
+ * FieldError of its own; while the text reads as no number, the reason replaces them. The input, the echo and the
+ * error line stack in a column of their own, so a horizontal Field sets the column beside its label. */
 
 import { useId, useState } from "react";
 import type { ComponentProps, FocusEvent, ReactElement } from "react";
 
 import { amountSuffixes, parseAmount, parseAmountText } from "#format/parse.ts";
 import type { Suffixes } from "#format/parse.ts";
+import { decimalText, parseDecimal } from "#numbers/decimal-text.ts";
 import { idList, useControlled } from "./field-state.ts";
 import { FieldError } from "./field.tsx";
 import { InputGroup, InputGroupInput } from "./input-group.tsx";
@@ -67,6 +69,23 @@ function reasonOf(text: string, suffixes: Suffixes): string | undefined {
   return reading.ok ? undefined : reading.reason;
 }
 
+/** The digits a double is shown with, as the formatter reads one. */
+const significantDigits = 15;
+
+/** A value set from outside as the field writes it: plain decimal text at 15 significant digits, as the formatter
+ * reads a double, so `0.1 + 0.2` is `0.3` and `1e-7` is `0.0000001`, which the parser reads back. Text, a value that
+ * reads as no number, is shown as it is. */
+function valueText(value: number | string | null): string {
+  if (value === null) {
+    return "";
+  }
+  if (typeof value === "string" || !Number.isFinite(value)) {
+    return String(value);
+  }
+  const rounded = Number(value.toPrecision(significantDigits));
+  return decimalText(parseDecimal(String(rounded)));
+}
+
 /** The field's text and what it reads as. */
 interface AmountText {
   readonly text: string;
@@ -95,7 +114,7 @@ function useAmountText({
   });
   const [typed, setTyped] = useState<string | null>(null);
   const [left, setLeft] = useState(false);
-  const shown = current === null ? "" : String(current);
+  const shown = valueText(current);
   const text = typed !== null && valueOf(typed, suffixes) === current ? typed : shown;
   return {
     echo: echoOf(text, suffixes),
@@ -173,7 +192,7 @@ function useAmountField({
 function AmountInput({ className, errors, ...props }: AmountInputProps): ReactElement {
   const field = useAmountField(props);
   return (
-    <>
+    <div data-slot="field-content" className="flex min-w-0 flex-1 flex-col gap-2">
       <InputGroup className={className}>
         <InputGroupInput {...field.input} />
       </InputGroup>
@@ -191,7 +210,7 @@ function AmountInput({ className, errors, ...props }: AmountInputProps): ReactEl
         id={`${field.inputId}-error`}
         errors={field.reason === undefined ? errors : [field.reason]}
       />
-    </>
+    </div>
   );
 }
 

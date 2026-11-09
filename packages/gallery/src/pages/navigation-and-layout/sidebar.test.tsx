@@ -1,6 +1,7 @@
 import "#styles.css";
 
-import { afterEach, beforeEach, describe, expect, test } from "vite-plus/test";
+import { Sidebar, SidebarContent, SidebarInset, SidebarProvider, SidebarTrigger } from "@basis/ui";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vite-plus/test";
 import { userEvent } from "vite-plus/test/browser";
 import { render } from "vitest-browser-react";
 
@@ -70,6 +71,23 @@ describe("Sidebar, folding", () => {
     expect(stateOf(screen.container)).toBe("collapsed");
     await userEvent.keyboard("{Control>}b{/Control}");
     expect(stateOf(screen.container)).toBe("expanded");
+  });
+
+  test("onOpenChange without open hears each change, and the sidebar still folds", async () => {
+    const onOpenChange = vi.fn<(open: boolean) => void>();
+    const screen = await render(
+      <SidebarProvider onOpenChange={onOpenChange}>
+        <Sidebar>
+          <SidebarContent>Pages</SidebarContent>
+        </Sidebar>
+        <SidebarInset render={<div />}>
+          <SidebarTrigger />
+        </SidebarInset>
+      </SidebarProvider>,
+    );
+    await userEvent.click(only(screen.container, '[data-slot="sidebar-trigger"]'));
+    expect(stateOf(screen.container)).toBe("collapsed");
+    expect(onOpenChange).toHaveBeenCalledExactlyOnceWith(false);
   });
 
   test("the rail folds it too, and stays out of the tab order", async () => {

@@ -20,12 +20,33 @@ interface ShortcutRegistry {
 
 const ShortcutContext = createContext<ShortcutRegistry | null>(null);
 
-/** Whether the key event was typed into a field, where a shortcut without a modifier must not fire. */
+/** The roles whose element takes a plain key itself: a field typed into, a Select's trigger or a list that finds an
+ * option by its first letter, and a dialog, which holds the page's focus while it is open, so a modal one stands in
+ * front of the page's shortcuts. */
+const keyTakingRoles = [
+  "alertdialog",
+  "combobox",
+  "dialog",
+  "listbox",
+  "menu",
+  "menubar",
+  "option",
+  "searchbox",
+  "spinbutton",
+  "textbox",
+]
+  .map((role) => `[role="${role}"]`)
+  .join(",");
+
+/** Whether a plain key, one without a modifier, belongs to what has focus rather than to the page's shortcuts: it was
+ * typed into a field, or pressed on or inside a control or dialog that takes keys itself. */
 function typedIntoField(event: KeyboardEvent): boolean {
   const { target } = event;
   return (
     target instanceof HTMLElement &&
-    (target.isContentEditable || ["INPUT", "SELECT", "TEXTAREA"].includes(target.tagName))
+    (target.isContentEditable ||
+      ["INPUT", "SELECT", "TEXTAREA"].includes(target.tagName) ||
+      target.closest(keyTakingRoles) !== null)
   );
 }
 

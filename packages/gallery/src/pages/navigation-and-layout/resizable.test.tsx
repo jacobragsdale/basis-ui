@@ -5,7 +5,7 @@ import { userEvent } from "vite-plus/test/browser";
 import { render } from "vitest-browser-react";
 
 import { BlotterSplit } from "./resizable.tsx";
-import { inCompactDensity, only, sizeOf } from "./test-helpers.ts";
+import { only, sizeOf } from "./test-helpers.ts";
 
 /** A handle's value and range, as its ARIA attributes give them. */
 function valuesOf(handle: Element): readonly (string | null)[] {
@@ -116,17 +116,15 @@ describe("Resizable", () => {
     await expect.element(handle).not.toHaveAttribute("tabindex");
   });
 
-  test("its hit area is 24 px across, centred on the line, in the compact density too", async () => {
-    await inCompactDensity(async () => {
-      const screen = await render(<BlotterSplit />);
-      const handle = screen.getByRole("separator", { name: "Resize the trade list" }).element();
-      const line = handle.getBoundingClientRect();
-      const middle = line.left + line.width / 2;
-      const height = line.top + line.height / 4;
-      const hits = [-13, -11, 11, 13].map(
-        (offset) => document.elementFromPoint(middle + offset, height) === handle,
-      );
-      expect(hits).toStrictEqual([false, true, true, false]);
-    });
+  test("for a mouse, its hit area is 4 px across, centred on the line, so a pane's scrollbar beside it stays the pane's", async () => {
+    const screen = await render(<BlotterSplit />);
+    const handle = screen.getByRole("separator", { name: "Resize the trade list" }).element();
+    const line = handle.getBoundingClientRect();
+    const middle = line.left + line.width / 2;
+    const height = line.top + line.height / 4;
+    const hits = [-3, -1, 1, 3].map(
+      (offset) => document.elementFromPoint(middle + offset, height) === handle,
+    );
+    expect(hits).toStrictEqual([false, true, true, false]);
   });
 });

@@ -33,7 +33,8 @@ function useRegistry(): ShortcutRegistry {
   );
 }
 
-/** Runs the shortcut each key press names; one without a modifier waits while the user types into a field. */
+/** Runs the shortcut each key press names; one without a modifier waits while the user types into a field, or while
+ * a control or dialog that takes keys has focus. */
 function useKeyListener(registry: ShortcutRegistry): void {
   useEffect(() => {
     const listener = (event: KeyboardEvent): void => {
@@ -52,12 +53,26 @@ function useKeyListener(registry: ShortcutRegistry): void {
   }, [registry]);
 }
 
-/** The `?` overlay: every shortcut the page has, with its keys. */
+/** The shortcuts a key press can run: of two that declare the same keys, the first declared, which the listener
+ * finds first. */
+function answering(shortcuts: readonly Shortcut[]): readonly Shortcut[] {
+  const seen = new Set<string>();
+  return shortcuts.filter(({ keys }) => {
+    const key = keys.toLowerCase();
+    if (seen.has(key)) {
+      return false;
+    }
+    seen.add(key);
+    return true;
+  });
+}
+
+/** The `?` overlay: every shortcut the page has, with its keys, each keys once. */
 function ShortcutList({ registry }: { readonly registry: ShortcutRegistry }): ReactElement {
   return (
     <Table>
       <TableBody>
-        {registry.list().map((shortcut) => (
+        {answering(registry.list()).map((shortcut) => (
           <TableRow key={shortcut.keys}>
             <TableCell>{shortcut.description}</TableCell>
             <TableCell>

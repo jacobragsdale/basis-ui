@@ -6,7 +6,8 @@
  * York unless it sets other bounds. It starts at the last business day before today, the last close whose data is
  * complete. A typed date the field cannot take leaves the value `null` and says why, as the field's error: not a
  * date, before or after the field's dates, or a day the market is closed, naming the holiday. AsOfDatePicker draws
- * the field's error line, so a form passes it the field's errors rather than drawing a FieldError of its own. */
+ * the field's error line, so a form passes it the field's errors rather than drawing a FieldError of its own. The
+ * input and the error line stack in a column of their own, so a horizontal Field sets the column beside its label. */
 
 import { useId, useState } from "react";
 import type { ComponentProps, FocusEvent, KeyboardEvent, ReactElement } from "react";
@@ -88,7 +89,7 @@ interface TypedDate {
 function useTypedDate(
   current: Temporal.PlainDate | null,
   change: (next: Temporal.PlainDate | null) => void,
-  rules: PickRules,
+  rulesNow: () => PickRules,
 ): TypedDate {
   const [draft, setDraft] = useState<Draft | null>(null);
   const live = draft !== null && sameDate(draft.over, current) ? draft : null;
@@ -100,7 +101,7 @@ function useTypedDate(
       if (live === null || live.reason !== undefined) {
         return;
       }
-      const taken = takeText(live.text, rules);
+      const taken = takeText(live.text, rulesNow());
       setDraft(taken.reason === undefined ? null : { ...live, over: null, reason: taken.reason });
       change(taken.date);
     },
@@ -216,17 +217,21 @@ function useAsOfField({
 } {
   const generatedId = useId();
   const inputId = id ?? generatedId;
-  const day = useToday(today);
+  const now = useToday(today);
+  const { day } = now;
   const rules = pickRules({ calendar, max, min, today: day });
-  const fallback = (): Temporal.PlainDate => defaultAsOfDate({ calendar, today: day });
+  const fallback = (from: Temporal.PlainDate): Temporal.PlainDate =>
+    defaultAsOfDate({ calendar, today: from });
   const [current, change] = useControlled({
-    initial: () => (defaultValue === undefined ? fallback() : defaultValue),
+    initial: () => (defaultValue === undefined ? fallback(day) : defaultValue),
     onChange: onValueChange,
     same: sameDate,
     value,
   });
-  const typed = useTypedDate(current, change, rules);
-  const popover = useGridPopover(() => current ?? fallback());
+  const typed = useTypedDate(current, change, () =>
+    pickRules({ calendar, max, min, today: now.refresh() }),
+  );
+  const popover = useGridPopover((from) => current ?? fallback(from), now);
   return {
     errorId: `${inputId}-error`,
     input: inputPropsOf(typed, inputId, props),
@@ -265,7 +270,7 @@ function AsOfDatePicker({
 }: AsOfDatePickerProps): ReactElement {
   const field = useAsOfField(props);
   return (
-    <>
+    <div data-slot="field-content" className="flex min-w-0 flex-1 flex-col gap-2">
       <InputGroup className={className}>
         <InputGroupInput {...field.input} />
         <InputGroupAddon align="inline-end">
@@ -276,7 +281,7 @@ function AsOfDatePicker({
         id={field.errorId}
         errors={field.reason === undefined ? errors : [field.reason]}
       />
-    </>
+    </div>
   );
 }
 

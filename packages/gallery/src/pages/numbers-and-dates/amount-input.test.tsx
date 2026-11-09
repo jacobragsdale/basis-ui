@@ -133,6 +133,36 @@ describe("AmountInput", () => {
     await expect.element(screen.getByRole("status")).toHaveTextContent("= 2,000");
   });
 
+  test.each([
+    { shown: "0.3", value: 0.1 + 0.2 },
+    { shown: "0.0000001", value: 1e-7 },
+    { shown: "1500000000000000000000", value: 1.5e21 },
+    { shown: "-1234.5", value: -1234.5 },
+  ])(
+    "a value of $value set from outside shows as $shown, which it reads back",
+    async ({ shown, value }) => {
+      const screen = await render(<AmountField value={value} />);
+      const input = screen.getByRole("textbox", { name: "Amount" });
+      await expect.element(input).toHaveValue(shown);
+      input.element().focus();
+      await userEvent.tab();
+      await expect.element(screen.getByRole("alert")).not.toBeInTheDocument();
+    },
+  );
+
+  test("in a horizontal Field, its echo and error sit under the input, not beside it", async () => {
+    const screen = await render(
+      <Field orientation="horizontal">
+        <FieldLabel htmlFor="amount">Amount</FieldLabel>
+        <AmountInput id="amount" defaultValue={250_000} errors={[{ message: "Too large." }]} />
+      </Field>,
+    );
+    const input = screen.getByRole("textbox", { name: "Amount" }).element().getBoundingClientRect();
+    const echo = screen.getByRole("status").element().getBoundingClientRect();
+    const error = screen.getByRole("alert").element().getBoundingClientRect();
+    expect([echo.top >= input.bottom, error.top >= echo.bottom]).toStrictEqual([true, true]);
+  });
+
   test("stays at least 24 px tall in the compact density", async () => {
     await inCompactDensity(async () => {
       const screen = await render(<AmountField />);

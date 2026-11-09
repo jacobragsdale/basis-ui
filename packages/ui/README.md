@@ -629,9 +629,9 @@ focused one.
 
 `Num`, `Money`, `Pct`, `Bps`, `Price32` and `DateTime` show a value through the formatter, by parallax's rules, so it
 reads the same in a card as in the grid. Pass `value` as the API sends it, a number, and for `DateTime` a Temporal value
-or ISO 8601 text. `null` and NaN show the formatter's null text, which is empty. The formatter rounds once, for display:
-to 15 significant digits, half away from zero, then to the decimals shown, two for a double unless `decimals` says
-otherwise. For a number inside text, such as a toast's, `numberText(value, { decimals })` gives the same text. Never
+or ISO 8601 text. `null` shows the formatter's null text, which is empty, and NaN its `—`. The formatter rounds once,
+for display: to 15 significant digits, half away from zero, then to the decimals shown, two for a double unless
+`decimals` says otherwise. For a number inside text, such as a toast's, `numberText(value, { decimals })` gives the same text. Never
 round a number yourself: the lint refuses `toFixed`, `toPrecision`, `toLocaleString`, `Math.round` and
 `Intl.NumberFormat` in an app, and each error names the component to use; an integer that is not shown, such as an
 index or a pixel count, takes `Math.floor` or `Math.trunc`.
@@ -661,7 +661,9 @@ import { Bps, DateTime, Money, Num, Pct, Price32 } from "@basis/ui";
 - **`DateTime`** takes `zone`, `precision` (`seconds`, `milliseconds` or `microseconds`) and `show` (`date-time`,
   `date` or `time`). Text with an offset or `Z` is an instant, a bare date is a date, and a time without either is a
   wall-clock time shown as stored. It renders a `<time>` whose title gives the full instant with its offset and zone.
-- Text that is not ISO 8601 throws, as Temporal does: the response's schema should have refused it.
+- Bad data never breaks a page: text that is not ISO 8601, a zone or currency that is none, and decimals no format
+  takes show `—`, the formatter's text for an undefined result, as NaN does, and `DateTime`'s title gives the reason.
+  The response's schema should have refused such text.
 
 ### Display formats
 
@@ -800,7 +802,8 @@ const columns: readonly DataTableColumn<Position>[] = [
   sort, and each sorted heading shows its place. Missing values sort last either way.
 - **Selection.** `selectable` adds a checkbox to each row, named after the row (`rowLabel`, the first column's value
   unless set), and one to the heading, which selects every row the filter shows, on every page. Shift with a click
-  selects a range. `onSelectionChange` hears the selected rows.
+  selects a range. `onSelectionChange` hears the selected rows and their ids, and again when new data, such as a
+  refetch's, drops or replaces a selected row; hold the ids, which outlast a refetch.
 - **Toolbar.** The text filter searches the columns' values, ignoring case. The columns menu hides and shows
   columns. Copy puts the selected rows on the clipboard as TSV, which pastes into a spreadsheet's cells; Export CSV
   saves the rows the filter shows as `label.csv` (`exportName` to change it). Both write the columns showing, through
@@ -928,7 +931,8 @@ template copies it into each app.
 ## Showing a query's states and small charts
 
 `QueryState` takes a query as `useQuery` returns it and shows whichever state it is in: a skeleton while it first
-loads, an `ErrorAlert` read from the API's problem details with a retry, an `Empty` when there is nothing to show, and
+loads, an `Empty` with `idleTitle` while a disabled query waits for what it needs, such as the user's choice, an
+`ErrorAlert` read from the API's problem details with a retry, an `Empty` when there is nothing to show, and
 otherwise its children with the data, under the time it was current, in the warning colour once older than
 `staleAfter`:
 

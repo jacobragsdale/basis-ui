@@ -6,6 +6,8 @@
 
 import { createContext, use, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 
+import { ShortcutContext, matchesKeys, useShortcut } from "./shortcuts-context.ts";
+
 type SidebarState = "expanded" | "collapsed";
 
 interface SidebarContextProps {
@@ -28,8 +30,8 @@ interface SidebarStateOptions {
 const sidebarCookie = "basis-ui-sidebar";
 const secondsPerDay = 86_400;
 const cookieDays = 7;
-/** The key that toggles the sidebar with Ctrl, or Cmd on a Mac. */
-const sidebarShortcut = "b";
+/** The keys that toggle the sidebar: Ctrl+B, or Cmd+B on a Mac. */
+const sidebarShortcut = "mod+b";
 /** Below Tailwind's `md` breakpoint, the sidebar is a sheet. */
 const mobileQuery = "(max-width: 767px)";
 
@@ -78,11 +80,18 @@ function useIsMobile(): boolean {
   return useSyncExternalStore(subscribeToMobile, isMobileNow, () => false);
 }
 
-/** Calls `toggle` on Ctrl+B or Cmd+B, anywhere in the page. */
+/** Calls `toggle` on Ctrl+B or Cmd+B, anywhere in the page. Inside a ShortcutProvider, as in AppShell, it is one of
+ * the provider's shortcuts, which the `?` list names; outside one it listens for itself, by the same rule. Either way
+ * the key is matched whatever its case, so Caps Lock does not stop it. */
 function useSidebarShortcut(toggle: () => void): void {
-  useEffect((): (() => void) => {
+  const registry = use(ShortcutContext);
+  useShortcut(sidebarShortcut, "Toggle the sidebar", toggle);
+  useEffect((): (() => void) | undefined => {
+    if (registry !== null) {
+      return undefined;
+    }
     const onKeyDown = (event: KeyboardEvent): void => {
-      if (event.key === sidebarShortcut && (event.metaKey || event.ctrlKey)) {
+      if (matchesKeys(sidebarShortcut, event)) {
         event.preventDefault();
         toggle();
       }
@@ -91,11 +100,12 @@ function useSidebarShortcut(toggle: () => void): void {
     return () => {
       globalThis.removeEventListener("keydown", onKeyDown);
     };
-  }, [toggle]);
+  }, [registry, toggle]);
 }
 
-/** The provider's state: open or not, from `open` when the app controls it, else from the cookie or `defaultOpen`;
- * every change is written to the cookie. */
+/** The provider's state: open or not, from `open` when the app controls it, else its own, from the cookie or
+ * `defaultOpen`; every change is written to the cookie, and told to `onOpenChange` whether or not the app controls
+ * it. */
 function useSidebarState({
   defaultOpen,
   open: openProp,
@@ -107,7 +117,10 @@ function useSidebarState({
   const open = openProp ?? ownOpen;
   const value = useMemo<SidebarContextProps>(() => {
     const setOpen = (next: boolean): void => {
-      (onOpenChange ?? setOwnOpen)(next);
+      if (openProp === undefined) {
+        setOwnOpen(next);
+      }
+      onOpenChange?.(next);
       writeSidebarCookie(next);
     };
     const toggleSidebar = (): void => {
@@ -119,7 +132,7 @@ function useSidebarState({
     };
     const state = open ? "expanded" : "collapsed";
     return { isMobile, open, openMobile, setOpen, setOpenMobile, state, toggleSidebar };
-  }, [isMobile, onOpenChange, open, openMobile]);
+  }, [isMobile, onOpenChange, open, openMobile, openProp]);
   useSidebarShortcut(value.toggleSidebar);
   return value;
 }

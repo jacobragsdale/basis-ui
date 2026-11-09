@@ -1,5 +1,5 @@
-/* QueryState: one component for every state of a query's data. While it first loads, a skeleton stands in; if it
- * failed, an ErrorAlert says why from the problem details the API answered, with a button to try again; with nothing
+/* QueryState: one component for every state of a query's data. While it first loads, a skeleton stands in; while it
+ * waits to be enabled, as a query that needs the user's choice does, an Empty says what it waits for; if it failed, an ErrorAlert says why from the problem details the API answered, with a button to try again; with nothing
  * to show, an Empty says so; and otherwise its children draw the data, under the time it was current, which turns to
  * the warning colour once it is older than `staleAfter`. A refetch that fails keeps the data on show, with the error
  * above it. It reads TanStack Query's result, or anything shaped like it. */
@@ -19,6 +19,9 @@ interface QueryLike<TData> {
   readonly data: TData | undefined;
   readonly error: unknown;
   readonly isPending: boolean;
+  /** Whether the query is fetching: TanStack Query's `fetchStatus`. A pending query that is `idle` is disabled, waiting
+   * for what it needs, rather than loading. */
+  readonly fetchStatus?: "fetching" | "paused" | "idle" | undefined;
   /** When the data was fetched, in milliseconds since the epoch; 0 before it ever was. */
   readonly dataUpdatedAt: number;
   readonly refetch: () => unknown;
@@ -34,6 +37,10 @@ interface QueryStateProps<TData> {
   /** What the empty state says, such as "No trades today", and what may change that. */
   readonly emptyTitle?: string | undefined;
   readonly emptyDescription?: string | undefined;
+  /** What the idle state says, while a disabled query waits for what it needs, such as "Choose a book", and what will
+   * show once it has it. */
+  readonly idleTitle?: string | undefined;
+  readonly idleDescription?: string | undefined;
   /** What stands in while the data first loads; three lines of skeleton by default. */
   readonly loading?: ReactNode;
   /** How old the data may be before its time turns to the warning colour, such as `{ minutes: 15 }`; without it, the
@@ -89,38 +96,67 @@ function Age({
   );
 }
 
-/** A query with no data yet: loading, or failed with no data to keep showing. */
+/** What a query with no data yet is doing: loading, waiting to be enabled, or failed with no data to keep showing. */
+function unloadedState(query: QueryLike<unknown>): "loading" | "idle" | "failed" {
+  if (!query.isPending) {
+    return "failed";
+  }
+  return query.fetchStatus === "idle" ? "idle" : "loading";
+}
+
+/** An Empty that says what is, or is not, there. */
+function Nothing({
+  title,
+  description,
+}: {
+  readonly title: string;
+  readonly description: string | undefined;
+}): ReactElement {
+  return (
+    <Empty>
+      <EmptyHeader>
+        <EmptyTitle>{title}</EmptyTitle>
+        {description === undefined ? null : <EmptyDescription>{description}</EmptyDescription>}
+      </EmptyHeader>
+    </Empty>
+  );
+}
+
+/** A query with no data yet: loading, waiting to be enabled, or failed with no data to keep showing. */
 function Unloaded({
   query,
   loading,
+  idleTitle,
+  idleDescription,
   className,
 }: {
   readonly query: QueryLike<unknown>;
   readonly loading: ReactNode;
+  readonly idleTitle: string;
+  readonly idleDescription: string | undefined;
   readonly className: string | undefined;
 }): ReactElement {
+  const state = unloadedState(query);
   return (
-    <div
-      data-slot="query-state"
-      data-state={query.isPending ? "loading" : "failed"}
-      className={className}
-    >
-      {query.isPending ? (
-        (loading ?? (
-          <div aria-busy="true" aria-label="Loading" className="flex flex-col gap-2">
-            {lines.map((line) => (
-              <Skeleton key={line} className="h-5 w-full" />
-            ))}
-          </div>
-        ))
-      ) : (
+    <div data-slot="query-state" data-state={state} className={className}>
+      {state === "loading"
+        ? (loading ?? (
+            <output aria-busy="true" aria-label="Loading" className="flex flex-col gap-2">
+              {lines.map((line) => (
+                <Skeleton key={line} className="h-5 w-full" />
+              ))}
+            </output>
+          ))
+        : null}
+      {state === "idle" ? <Nothing title={idleTitle} description={idleDescription} /> : null}
+      {state === "failed" ? (
         <ErrorAlert
           error={query.error ?? new Error("The data could not be loaded.")}
           onRetry={() => {
             query.refetch();
           }}
         />
-      )}
+      ) : null}
     </div>
   );
 }
@@ -158,12 +194,22 @@ function QueryState<TData>(props: QueryStateProps<TData>): ReactElement {
     isEmpty,
     emptyTitle = "Nothing to show",
     emptyDescription,
+    idleTitle = "Nothing chosen yet",
+    idleDescription,
     staleAfter,
     className,
   } = props;
   const { data } = query;
   if (data === undefined) {
-    return <Unloaded query={query} loading={props.loading} className={className} />;
+    return (
+      <Unloaded
+        query={query}
+        loading={props.loading}
+        idleTitle={idleTitle}
+        idleDescription={idleDescription}
+        className={className}
+      />
+    );
   }
   const empty = emptyOf(data, isEmpty);
   return (
@@ -178,18 +224,7 @@ function QueryState<TData>(props: QueryStateProps<TData>): ReactElement {
           query.refetch();
         }}
       />
-      {empty ? (
-        <Empty>
-          <EmptyHeader>
-            <EmptyTitle>{emptyTitle}</EmptyTitle>
-            {emptyDescription === undefined ? null : (
-              <EmptyDescription>{emptyDescription}</EmptyDescription>
-            )}
-          </EmptyHeader>
-        </Empty>
-      ) : (
-        children(data)
-      )}
+      {empty ? <Nothing title={emptyTitle} description={emptyDescription} /> : children(data)}
       {staleAfter === undefined || query.dataUpdatedAt === 0 ? null : (
         <Age updatedAt={query.dataUpdatedAt} staleAfter={staleAfter} />
       )}

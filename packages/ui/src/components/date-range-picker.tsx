@@ -176,8 +176,11 @@ function useRangeField({
   readonly popover: GridPopover;
   readonly body: Omit<RangePopoverProps, "label" | "presets">;
 } {
-  const day = useToday(today);
-  const until = asOf ?? defaultAsOfDate({ calendar, today: day });
+  const now = useToday(today);
+  const { day } = now;
+  const untilFrom = (from: Temporal.PlainDate): Temporal.PlainDate =>
+    asOf ?? defaultAsOfDate({ calendar, today: from });
+  const until = untilFrom(day);
   const [current, change] = useControlled<DateRange | null>({
     initial: () => defaultValue,
     onChange: (next) => {
@@ -188,7 +191,7 @@ function useRangeField({
     same: sameRange,
     value,
   });
-  const popover = useGridPopover(() => current?.end ?? until);
+  const popover = useGridPopover((from) => current?.end ?? untilFrom(from), now);
   const onChoose = (range: DateRange): void => {
     change(range);
     popover.close();

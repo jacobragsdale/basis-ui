@@ -47,6 +47,22 @@ describe("Sparkline", () => {
     expect(image.element().querySelectorAll("circle")).toHaveLength(1);
   });
 
+  test("says it is an image in its own markup, which some screen readers need of an SVG", async () => {
+    const screen = await render(<Sparkline label="NAV, up" values={[1, 2, 3]} />);
+    expect(screen.getByRole("img", { name: "NAV, up" }).element().getAttribute("role")).toBe("img");
+  });
+
+  test("draws a lone value between gaps as a dot of the line", async () => {
+    const screen = await render(
+      <Sparkline label="three lone closes" values={[1, null, 2, null, 3]} className="h-24 w-96" />,
+    );
+    const svg = screen.getByRole("img", { name: "three lone closes" }).element();
+    const box = svg.getBoundingClientRect();
+    // The middle value sits at the centre of the box, alone between two gaps.
+    const hit = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
+    expect(hit?.tagName.toLowerCase()).toBe("path");
+  });
+
   test("takes the gain colour for a rise, the loss colour for a fall, and the reverse when a rise is a loss", async () => {
     const screen = await render(
       <>
@@ -104,7 +120,34 @@ describe("QueryState", () => {
     const screen = await render(
       <QueryState query={queryOf({ isPending: true })}>{list}</QueryState>,
     );
-    await expect.element(screen.getByLabelText("Loading")).toHaveAttribute("aria-busy", "true");
+    const loading = screen.getByRole("status", { name: "Loading" });
+    await expect.element(loading).toHaveAttribute("aria-busy", "true");
+  });
+
+  test("a query that waits for a choice, disabled until then, says what it waits for rather than loading", async () => {
+    const screen = await render(
+      <QueryState
+        query={queryOf({ fetchStatus: "idle", isPending: true })}
+        idleTitle="Choose a book"
+        idleDescription="The positions show once a book is chosen."
+      >
+        {list}
+      </QueryState>,
+    );
+    await expect.element(screen.getByText("Choose a book")).toBeVisible();
+    await expect
+      .element(screen.getByText("The positions show once a book is chosen."))
+      .toBeVisible();
+    await expect.element(screen.getByLabelText("Loading")).not.toBeInTheDocument();
+    const state = screen.container.querySelector<HTMLElement>("[data-slot=query-state]");
+    expect(state?.dataset["state"]).toBe("idle");
+  });
+
+  test("a query that is fetching for the first time still loads", async () => {
+    const screen = await render(
+      <QueryState query={queryOf({ fetchStatus: "fetching", isPending: true })}>{list}</QueryState>,
+    );
+    await expect.element(screen.getByRole("status", { name: "Loading" })).toBeVisible();
   });
 
   test("says why it failed, and retries", async () => {

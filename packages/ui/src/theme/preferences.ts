@@ -106,18 +106,21 @@ function writePreferences(preferences: Preferences, options: CookieOptions = {})
   applyPreferences(document.documentElement, preferences, matchMedia(darkQuery).matches);
 }
 
-/** Applies the preferences now, and again whenever the cookie or the operating system's mode changes. Returns a
+/** Applies the stored preferences now, and again whenever the cookie or the operating system's mode changes. Given
+ * `shown`, it applies those in place of the stored ones and follows only the operating system's mode, which a
+ * `system` mode reads: for a page told its preferences another way, as the gallery is by its query. Returns a
  * function that stops following them. */
-function followPreferences(): () => void {
+function followPreferences(shown?: Preferences): () => void {
   const media = matchMedia(darkQuery);
   const apply = (): void => {
-    applyPreferences(document.documentElement, readPreferences(), media.matches);
+    applyPreferences(document.documentElement, shown ?? readPreferences(), media.matches);
   };
   apply();
   media.addEventListener("change", apply);
   /* A window left open in view gets no focus or visibility event when another app changes the cookie; only the
    * cookie store's change event reaches it. Browsers without a cookie store pick the change up on the next load. */
-  const store = (globalThis as { cookieStore?: EventTarget }).cookieStore;
+  const store =
+    shown === undefined ? (globalThis as { cookieStore?: EventTarget }).cookieStore : undefined;
   store?.addEventListener("change", apply);
   return () => {
     media.removeEventListener("change", apply);

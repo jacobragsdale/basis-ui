@@ -1,6 +1,7 @@
 import "#styles.css";
 
 import { DataTable } from "@basis/ui";
+import type { ReactElement } from "react";
 import { afterEach, describe, expect, test, vi } from "vite-plus/test";
 import { page, userEvent } from "vite-plus/test/browser";
 import { render } from "vitest-browser-react";
@@ -10,21 +11,33 @@ import { positions } from "./fixtures.ts";
 import type { Position } from "./fixtures.ts";
 
 /** The positions, selectable, eight rows a page. */
-async function renderPositions(
-  onSelectionChange?: (rows: readonly Position[]) => void,
-): Promise<Awaited<ReturnType<typeof render>>> {
-  return render(
+function PositionsTable({
+  data = positions,
+  onSelectionChange,
+}: {
+  readonly data?: readonly Position[];
+  readonly onSelectionChange?:
+    | ((rows: readonly Position[], ids: readonly string[]) => void)
+    | undefined;
+}): ReactElement {
+  return (
     <DataTable
       label="Positions"
       columns={positionColumns}
-      data={positions}
+      data={data}
       getRowId={(row) => row.id}
       rowLabel={(row) => row.cusip}
       selectable
       pageSize={8}
       onSelectionChange={onSelectionChange}
-    />,
+    />
   );
+}
+
+async function renderPositions(
+  onSelectionChange?: (rows: readonly Position[], ids: readonly string[]) => void,
+): Promise<Awaited<ReturnType<typeof render>>> {
+  return render(<PositionsTable onSelectionChange={onSelectionChange} />);
 }
 
 /** The first Blob saved through `URL.createObjectURL`: its first three bytes, and its text after them. */
@@ -99,6 +112,41 @@ describe("DataTable selection", () => {
     await screen.getByRole("checkbox", { name: "Select 91282CRU7" }).click();
     await screen.getByRole("checkbox", { name: "Select 91282CRV5" }).click();
     expect(changes).toStrictEqual([["91282CRU7"], ["91282CRV5", "91282CRU7"]]);
+  });
+
+  test("tells the app the selected rows and their ids", async () => {
+    const heard = vi.fn<(rows: readonly Position[], ids: readonly string[]) => void>();
+    const screen = await renderPositions(heard);
+    await screen.getByRole("checkbox", { name: "Select 91282CRV5" }).click();
+    await screen.getByRole("checkbox", { name: "Select 91282CRT0" }).click();
+    expect(heard).toHaveBeenLastCalledWith(
+      positions.filter((row) => ["91282CRV5", "91282CRT0"].includes(row.cusip)),
+      ["rates-91282CRV5", "rates-91282CRT0"],
+    );
+  });
+
+  test("tells the app again when new data drops a selected row, with the rows as the new data holds them", async () => {
+    const heard = vi.fn<(rows: readonly Position[], ids: readonly string[]) => void>();
+    const screen = await renderPositions(heard);
+    await screen.getByRole("checkbox", { name: "Select 91282CRV5" }).click();
+    await screen.getByRole("checkbox", { name: "Select 91282CRT0" }).click();
+    // A refetch: new objects for every row, and 91282CRV5 gone.
+    const refetched = positions
+      .filter((row) => row.cusip !== "91282CRV5")
+      .map((row) => structuredClone(row));
+    await screen.rerender(<PositionsTable data={refetched} onSelectionChange={heard} />);
+    await expect.element(screen.getByText("1 of 11 selected")).toBeVisible();
+    const kept = refetched.filter((row) => row.cusip === "91282CRT0");
+    expect(heard).toHaveBeenLastCalledWith(kept, ["rates-91282CRT0"]);
+    expect(heard.mock.lastCall?.[0][0]).toBe(kept[0]);
+  });
+
+  test("new data with nothing selected tells the app nothing", async () => {
+    const heard = vi.fn<(rows: readonly Position[], ids: readonly string[]) => void>();
+    const screen = await renderPositions(heard);
+    const refetched = positions.map((row) => structuredClone(row));
+    await screen.rerender(<PositionsTable data={refetched} onSelectionChange={heard} />);
+    expect(heard).not.toHaveBeenCalled();
   });
 });
 

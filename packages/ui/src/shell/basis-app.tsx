@@ -25,6 +25,7 @@ import { ErrorAlert } from "#components/error-alert.tsx";
 import { Spinner } from "#components/spinner.tsx";
 import { Toaster } from "#components/toast.tsx";
 import { followPreferences } from "#theme/preferences.ts";
+import type { Preferences } from "#theme/preferences.ts";
 
 import { toastError } from "./toast-error.tsx";
 import { createQueryClient } from "./query-client.ts";
@@ -47,6 +48,9 @@ interface BasisAppProps {
   readonly telemetry?: Telemetry;
   /** The query client, for a test that reads its cache; one from `createQueryClient()` by default. */
   readonly queryClient?: QueryClient;
+  /** The mode and density to show in place of the stored choice, which it otherwise follows: for a page told them
+   * another way, as the gallery is by its query. A choice made in the user menu is still stored, and shown at once. */
+  readonly preferences?: Preferences | undefined;
 }
 
 /** Reports every failed query and mutation to telemetry, once its retries are spent, and raises a toast for each
@@ -179,8 +183,9 @@ function Routes({ router }: { readonly router: AnyRouter }): ReactElement {
 }
 
 /** The app's providers: telemetry, the query client, the toasts, an error boundary round everything, the signed-in
- * session, and the router. It also keeps the page in the user's mode and density as they change them, signs the user
- * out when the API says their session has ended, and asks them to sign in when it says a request needs them to.
+ * session, and the router. It also keeps the page in the user's mode and density as they change them, or in the
+ * `preferences` it is given, signs the user out when the API says their session has ended, and asks them to sign in
+ * when it says a request needs them to.
  *
  * @example
  * ```tsx
@@ -197,11 +202,22 @@ function BasisApp({
   signIn,
   telemetry = consoleTelemetry,
   queryClient: givenClient,
+  preferences,
 }: BasisAppProps): ReactElement {
   // oxlint-disable-next-line react/hook-use-state -- one query client for the app's life, made once; nothing sets it.
   const [queryClient] = useState(() => givenClient ?? createQueryClient());
   const { state, retry, session } = useSessionState(signIn, queryClient, telemetry);
-  useEffect(() => followPreferences(), []);
+  const shownMode = preferences?.mode;
+  const shownDensity = preferences?.density;
+  useEffect(
+    () =>
+      followPreferences(
+        shownMode === undefined || shownDensity === undefined
+          ? undefined
+          : { density: shownDensity, mode: shownMode },
+      ),
+    [shownMode, shownDensity],
+  );
   useEffect(() => reportRequests(queryClient, telemetry), [queryClient, telemetry]);
   useEffect(() => reportNavigations(router, telemetry), [router, telemetry]);
   const report = (error: unknown): void => {

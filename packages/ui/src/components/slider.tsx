@@ -14,14 +14,14 @@ import type { ReactElement } from "react";
 
 type SliderValue = SliderPrimitive.Root.Props["value"];
 
-/** How many thumbs the slider draws: one per value, and two, for a range, when it has no value yet. A single number
- * is one thumb, where shadcn drew two. */
+/** How many thumbs the slider draws: one per value, and one, as Base UI takes it, when it has no value yet. A single
+ * number is one thumb, where shadcn drew two. */
 function thumbCount(value: SliderValue, defaultValue: SliderValue): number {
   const shown = value ?? defaultValue;
-  if (shown === undefined) {
-    return 2;
+  if (shown === undefined || typeof shown === "number") {
+    return 1;
   }
-  return typeof shown === "number" ? 1 : shown.length;
+  return shown.length;
 }
 
 /** A slider. Give it `value` and `onValueChange`, or `defaultValue`; an array of two values draws a range. Name it

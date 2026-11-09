@@ -79,9 +79,13 @@ function runsOf(
   return runs.filter((run) => run.length > 0);
 }
 
-/** A run as a path's moves and lines. */
+/** A run as a path's moves and lines. A run of one value, alone between gaps, is a line of no length, which the
+ * line's round caps draw as a dot. */
 function runPath(run: readonly SparkPoint[]): string {
-  return run.map((point, i) => `${i === 0 ? "M" : "L"}${at(point.x)} ${at(point.y)}`).join("");
+  const path = run
+    .map((point, i) => `${i === 0 ? "M" : "L"}${at(point.x)} ${at(point.y)}`)
+    .join("");
+  return run.length === 1 ? `${path}h0` : path;
 }
 
 /** A run's area, closed down to the box's bottom. */
@@ -97,7 +101,8 @@ function areaPath(run: readonly SparkPoint[], height: number): string {
 
 /**
  * The geometry of `values` in `box`: evenly spaced across it, the lowest value at the bottom and the highest at the top,
- * and a flat series across its middle. A single value is a point at the middle of the box's width.
+ * and a flat series across its middle. A single value is a point at the middle of the box's width, and a value alone
+ * between gaps a dot.
  */
 function sparkGeometry(values: readonly SparkValue[], box: SparkBox): SparkGeometry {
   const range = rangeOf(values);

@@ -9,8 +9,10 @@
  * panel grows by its percentage from a zero basis, so the handles' own width never pushes the sum past the group.
  *
  * A handle is a focusable `separator` whose value is the size of the panel before it, the primary pane, and whose
- * range is what both panels' limits allow that pane (resizable-handle.ts has its keys). Its 24 px hit area reaches
- * past the drawn line on both sides, over the panels' edges, as react-resizable-panels' own hit targets do. */
+ * range is what both panels' limits allow that pane (resizable-handle.ts has its keys). For a finger, its 24 px hit
+ * area reaches past the drawn line on both sides, over the panels' edges, as react-resizable-panels' own hit targets
+ * do. For a mouse it is 4 px, 3 in the compact density, so a panel's scrollbar beside the line stays the panel's: the
+ * arrow keys on the focused handle are its equivalent, WCAG 2.2's exception to the 24 px target, as SidebarRail's is. */
 
 import { mergeProps } from "@base-ui/react/merge-props";
 import { cn } from "cn";
@@ -170,8 +172,8 @@ function ResizableHandle({
       data-slot="resizable-handle"
       className={cn(
         "relative z-10 flex shrink-0 touch-none items-center justify-center bg-border outline-none select-none after:absolute focus-visible:ring-1 focus-visible:ring-ring aria-disabled:cursor-default",
-        "aria-[orientation=vertical]:w-px aria-[orientation=vertical]:cursor-col-resize aria-[orientation=vertical]:after:inset-y-0 aria-[orientation=vertical]:after:left-1/2 aria-[orientation=vertical]:after:w-target aria-[orientation=vertical]:after:-translate-x-1/2",
-        "aria-[orientation=horizontal]:h-px aria-[orientation=horizontal]:cursor-row-resize aria-[orientation=horizontal]:after:inset-x-0 aria-[orientation=horizontal]:after:top-1/2 aria-[orientation=horizontal]:after:h-target aria-[orientation=horizontal]:after:-translate-y-1/2 [&[aria-orientation=horizontal]>div]:rotate-90",
+        "aria-[orientation=vertical]:w-px aria-[orientation=vertical]:cursor-col-resize aria-[orientation=vertical]:after:inset-y-0 aria-[orientation=vertical]:after:left-1/2 aria-[orientation=vertical]:after:w-target aria-[orientation=vertical]:after:-translate-x-1/2 pointer-fine:aria-[orientation=vertical]:after:w-1",
+        "aria-[orientation=horizontal]:h-px aria-[orientation=horizontal]:cursor-row-resize aria-[orientation=horizontal]:after:inset-x-0 aria-[orientation=horizontal]:after:top-1/2 aria-[orientation=horizontal]:after:h-target aria-[orientation=horizontal]:after:-translate-y-1/2 pointer-fine:aria-[orientation=horizontal]:after:h-1 [&[aria-orientation=horizontal]>div]:rotate-90",
         className,
       )}
       {...props}

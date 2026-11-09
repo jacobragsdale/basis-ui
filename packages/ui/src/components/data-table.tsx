@@ -38,7 +38,7 @@ import {
   shownRows,
   useDataTable,
 } from "./data-table-state.ts";
-import type { DataTableInstance } from "./data-table-state.ts";
+import type { DataTableInstance, SelectionListener } from "./data-table-state.ts";
 import { DataTableToolbar } from "./data-table-toolbar.tsx";
 import { ErrorAlert } from "./error-alert.tsx";
 import { Table, TableBody, TableHeader } from "./table.tsx";
@@ -57,8 +57,8 @@ interface DataTableProps<TRow extends RowData> {
   readonly rowActions?: ((row: TRow) => readonly DataTableRowAction[]) | undefined;
   /** Adds a checkbox to each row and the heading, and the button that copies the selection; no unless set. */
   readonly selectable?: boolean | undefined;
-  /** Called with the selected rows, in the data's order, each time the selection changes. */
-  readonly onSelectionChange?: ((rows: readonly TRow[]) => void) | undefined;
+  /** Hears the selected rows, in order, and their ids on each change and when new data drops or replaces one. */
+  readonly onSelectionChange?: SelectionListener<TRow> | undefined;
   /** Whether the toolbar has the text filter; yes unless set. */
   readonly filterable?: boolean | undefined;
   /** Whether the toolbar has the CSV export; yes unless set. */

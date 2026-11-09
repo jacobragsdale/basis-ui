@@ -4815,10 +4815,10 @@
           "type": "boolean | undefined"
         },
         {
-          "description": "Called with the selected rows, in the data's order, each time the selection changes.",
+          "description": "Hears the selected rows, in order, and their ids on each change and when new data drops or replaces one.",
           "name": "onSelectionChange",
           "optional": true,
-          "type": "((rows: readonly TRow[]) => void) | undefined"
+          "type": "SelectionListener<TRow> | undefined"
         },
         {
           "description": "Whether the toolbar has the text filter; yes unless set.",
@@ -5176,6 +5176,18 @@
           "type": "string | undefined"
         },
         {
+          "description": "What the idle state says, while a disabled query waits for what it needs, such as \"Choose a book\", and what will show once it has it.",
+          "name": "idleTitle",
+          "optional": true,
+          "type": "string | undefined"
+        },
+        {
+          "description": "",
+          "name": "idleDescription",
+          "optional": true,
+          "type": "string | undefined"
+        },
+        {
           "description": "What stands in while the data first loads; three lines of skeleton by default.",
           "name": "loading",
           "optional": true,
@@ -5296,9 +5308,15 @@
           "name": "queryClient",
           "optional": true,
           "type": "QueryClient"
+        },
+        {
+          "description": "The mode and density to show in place of the stored choice, which it otherwise follows: for a page told them another way, as the gallery is by its query. A choice made in the user menu is still stored, and shown at once.",
+          "name": "preferences",
+          "optional": true,
+          "type": "Preferences | undefined"
         }
       ],
-      "purpose": "The app's providers: telemetry, the query client, the toasts, an error boundary round everything, the signed-in session, and the router. It also keeps the page in the user's mode and density as they change them, signs the user out when the API says their session has ended, and asks them to sign in when it says a request needs them to.",
+      "purpose": "The app's providers: telemetry, the query client, the toasts, an error boundary round everything, the signed-in session, and the router. It also keeps the page in the user's mode and density as they change them, or in the `preferences` it is given, signs the user out when the API says their session has ended, and asks them to sign in when it says a request needs them to.",
       "variants": {},
       "example": "import { BasisApp, anonymousSignIn } from \"@basis/ui\";\nimport { createRootRoute, createRouter } from \"@tanstack/react-router\";\n\nconst router = createRouter({ routeTree: createRootRoute() });\n\n<BasisApp router={router} signIn={anonymousSignIn()} />;\n"
     }

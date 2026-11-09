@@ -1,7 +1,7 @@
 /* What the numbers and dates tests share: a token's computed colour, the dark mode, the compact density, where focus
  * is, and the month grid's days and keys. */
 
-import { expect } from "vite-plus/test";
+import { expect, vi } from "vite-plus/test";
 import { page, userEvent } from "vite-plus/test/browser";
 import type { Locator } from "vite-plus/test/browser";
 
@@ -55,4 +55,22 @@ async function keysTo(keys: string, name: string, month?: string): Promise<void>
   }
 }
 
-export { computedColour, day, focusIsOn, inCompactDensity, inMode, keysTo };
+/** Runs `check` with today in New York as `first`, as the page is first drawn; the function `check` is given moves
+ * today on, as midnight does to a page left open. */
+async function withToday(
+  first: string,
+  check: (moveTo: (later: string) => void) => Promise<void>,
+): Promise<void> {
+  const now = vi
+    .spyOn(Temporal.Now, "plainDateISO")
+    .mockReturnValue(Temporal.PlainDate.from(first));
+  try {
+    await check((later) => {
+      now.mockReturnValue(Temporal.PlainDate.from(later));
+    });
+  } finally {
+    now.mockRestore();
+  }
+}
+
+export { computedColour, day, focusIsOn, inCompactDensity, inMode, keysTo, withToday };

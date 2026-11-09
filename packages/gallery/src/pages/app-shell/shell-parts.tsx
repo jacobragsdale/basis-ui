@@ -19,6 +19,7 @@ import {
   fakeSignIn,
   toast,
 } from "@basis/ui";
+import type { Preferences } from "@basis/ui";
 import {
   createMemoryHistory,
   createRootRoute,
@@ -107,7 +108,13 @@ function EnvironmentBannerSection(): ReactElement {
   );
 }
 
-function AppShellSection(): ReactElement {
+/** AppShell in BasisApp, showing `preferences` when given, as the page does when its query names a mode or density,
+ * and the stored choice otherwise. */
+function AppShellSection({
+  preferences,
+}: {
+  readonly preferences?: Preferences | undefined;
+}): ReactElement {
   return (
     <Section
       title="App shell"
@@ -115,9 +122,9 @@ function AppShellSection(): ReactElement {
     >
       <section
         aria-label="An app on the shell"
-        className="relative h-svh overflow-hidden rounded-lg border transform-gpu"
+        className="relative box-content h-svh overflow-hidden rounded-lg border transform-gpu"
       >
-        <BasisApp router={router} signIn={fakeSignIn()} />
+        <BasisApp router={router} signIn={fakeSignIn()} preferences={preferences} />
       </section>
     </Section>
   );

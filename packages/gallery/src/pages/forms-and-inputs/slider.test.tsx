@@ -30,6 +30,11 @@ describe("Slider", () => {
     ]);
   });
 
+  test("with no value yet, it draws one thumb", async () => {
+    const screen = await render(<Slider aria-label="Fill rate" />);
+    expect(screen.getByRole("slider", { name: "Fill rate" }).all()).toHaveLength(1);
+  });
+
   test("disabled, the arrow keys leave it", async () => {
     const screen = await render(<Slider defaultValue={60} disabled aria-label="Fill rate" />);
     const slider = screen.getByRole("slider", { name: "Fill rate" });

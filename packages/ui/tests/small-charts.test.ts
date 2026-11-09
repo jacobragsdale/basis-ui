@@ -32,6 +32,10 @@ describe("sparkGeometry", () => {
     });
   });
 
+  test("draws a lone value between gaps as a dot: a line of no length, which the round caps draw", () => {
+    expect(sparkGeometry([1, null, 2, null, 3], box).line).toBe("M2 22h0M48 12h0M94 2h0");
+  });
+
   test("closes each run's area down to the box's bottom", () => {
     expect(sparkGeometry([1, 3], box).area).toBe("M2 24L2 22L94 2L94 24Z");
   });

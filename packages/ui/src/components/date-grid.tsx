@@ -201,10 +201,15 @@ function useGridKeys(grid: DateGridProps): (event: KeyboardEvent<HTMLButtonEleme
   }, [focused, tableId]);
   return (event) => {
     const next = movedDate(focused, event.key, event.shiftKey);
-    if (next !== undefined) {
-      event.preventDefault();
+    if (next === undefined) {
+      return;
+    }
+    event.preventDefault();
+    const landed = clampDate(next, rules.min, rules.max);
+    // A key that moves nothing, as at the latest date, draws nothing, so it leaves no move waiting for a later draw.
+    if (!landed.equals(focused)) {
       moved.current = true;
-      onFocusedChange(clampDate(next, rules.min, rules.max));
+      onFocusedChange(landed);
     }
   };
 }

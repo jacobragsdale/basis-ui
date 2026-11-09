@@ -60,9 +60,21 @@ describe("money text", () => {
     expect(moneyText(value, currency, format).text).toBe(text);
   });
 
-  test("a code that is not a currency throws", () => {
-    expect(() => moneyText(1, "DOLLARS")).toThrow(RangeError);
+  test("a code that is not a currency shows a dash", () => {
+    expect(moneyText(1, "DOLLARS")).toStrictEqual({ direction: "none", text: "—" });
   });
+
+  test.each([31, -1, 2.5, Number.NaN])(
+    "%d decimals, which no format takes, show a dash",
+    (decimals) => {
+      expect([
+        numText(1234.5, { decimals }).text,
+        moneyText(1234.5, "USD", { decimals }).text,
+        pctText(0.05, { decimals }).text,
+        bpsText(0.0025, { decimals }).text,
+      ]).toStrictEqual(["—", "—", "—", "—"]);
+    },
+  );
 });
 
 describe("rate text", () => {

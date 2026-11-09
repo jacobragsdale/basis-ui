@@ -67,8 +67,19 @@ describe("date and time text", () => {
     expect(dateTimeShown(value, format).text).toBe(text);
   });
 
-  test("text that is not ISO 8601 throws, naming the forms it may take", () => {
-    expect(() => dateTimeShown("06/11/2026")).toThrow(/is not an ISO 8601 date or time/u);
+  test("text that is not ISO 8601 shows a dash, its title naming the forms it may take", () => {
+    expect(dateTimeShown("06/11/2026")).toStrictEqual({
+      dateTime: undefined,
+      text: "—",
+      title:
+        '"06/11/2026" is not an ISO 8601 date or time, such as 2026-11-06, 2026-11-06T14:30:00Z or 2026-11-06T09:30:00-05:00.',
+    });
+  });
+
+  test("a zone the platform does not know shows a dash, its title saying why", () => {
+    const shown = dateTimeShown("2026-11-06T14:30:00Z", { zone: "Mars/Olympus_Mons" });
+    expect([shown.text, shown.dateTime]).toStrictEqual(["—", undefined]);
+    expect(shown.title).toMatch(/Mars\/Olympus_Mons/u);
   });
 });
 

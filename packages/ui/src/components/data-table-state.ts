@@ -1,6 +1,7 @@
 /* DataTable's state on TanStack Table v9: the features it registers, its columns as TanStack's definitions, and the
  * table it renders from. Sorting, the text filter, column visibility and paging are TanStack's own state; the row
- * selection is React's, so a change can tell the app which rows are chosen. */
+ * selection is React's, by row id, so a change can tell the app which rows are chosen, and new data, such as a
+ * refetch's, keeps the rows it still holds and tells the app again. */
 
 import {
   columnFilteringFeature,
@@ -23,7 +24,7 @@ import type {
   RowSelectionState,
   Updater,
 } from "@tanstack/react-table";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { cellOf, compareCells, matchesFilter } from "./data-table-columns.ts";
 import type { DataTableColumn, DataTableSort } from "./data-table-columns.ts";
@@ -55,8 +56,11 @@ interface DataTableOptions<TRow> {
   /** Rows a page; the row cap when the table does not page, so every row is on its one page. */
   readonly pageSize: number;
   readonly defaultSorting: readonly DataTableSort[];
-  readonly onSelectionChange: ((rows: readonly TRow[]) => void) | undefined;
+  readonly onSelectionChange: SelectionListener<TRow> | undefined;
 }
+
+/** What hears the selection: the selected rows, in the data's order, and their ids. */
+type SelectionListener<TRow> = (rows: readonly TRow[], ids: readonly string[]) => void;
 
 /** Shift with a click adds a column to the sort, or selects the rows from the last one chosen. */
 function isShiftEvent(event: unknown): boolean {
@@ -89,6 +93,69 @@ function nextSelection(
   return typeof updater === "function" ? updater(current) : updater;
 }
 
+/** The selection, keeping only the chosen rows whose ids `ids` holds. */
+function keptSelection(selection: RowSelectionState, ids: ReadonlySet<string>): RowSelectionState {
+  return Object.fromEntries(
+    Object.entries(selection).filter(([id, chosen]) => chosen && ids.has(id)),
+  );
+}
+
+/** The rows the selection holds, in the data's order. */
+function selectedIn<TRow>(
+  data: readonly TRow[],
+  selection: RowSelectionState,
+  getRowId: (row: TRow) => string,
+): TRow[] {
+  return data.filter((row) => selection[getRowId(row)] === true);
+}
+
+/** Whether two lists hold the same rows, in the same order. */
+function sameRows<TRow>(left: readonly TRow[], right: readonly TRow[]): boolean {
+  return left.length === right.length && left.every((row, index) => row === right[index]);
+}
+
+/** The row selection, by id, kept to the rows `data` holds. The app hears the selected rows and their ids on each
+ * change, and again when new data arrives whose selected rows differ from those it heard of: the rows as the new data
+ * holds them, without those it dropped. Data made afresh each render from the same rows tells it nothing. */
+function useRowSelection<TRow>(
+  data: readonly TRow[],
+  getRowId: (row: TRow) => string,
+  onSelectionChange: DataTableOptions<TRow>["onSelectionChange"],
+): {
+  readonly rowSelection: RowSelectionState;
+  readonly change: (updater: Updater<RowSelectionState>) => void;
+} {
+  const [chosen, setChosen] = useState<RowSelectionState>({});
+  const rowSelection = keptSelection(chosen, new Set(data.map((row) => getRowId(row))));
+  // The rows the app last heard of, and the data it last heard of them in.
+  const heard = useRef<readonly TRow[]>([]);
+  const heardIn = useRef(data);
+  const report = (rows: readonly TRow[]): void => {
+    heard.current = rows;
+    onSelectionChange?.(
+      rows,
+      rows.map((row) => getRowId(row)),
+    );
+  };
+  useEffect(() => {
+    if (heardIn.current !== data) {
+      heardIn.current = data;
+      const rows = selectedIn(data, rowSelection, getRowId);
+      if (!sameRows(rows, heard.current)) {
+        report(rows);
+      }
+    }
+  });
+  return {
+    change: (updater) => {
+      const next = nextSelection(updater, rowSelection);
+      setChosen(next);
+      report(selectedIn(data, next, getRowId));
+    },
+    rowSelection,
+  };
+}
+
 /** The table DataTable renders. Sorting starts ascending on every column, and Shift adds a column to it. */
 function useDataTable<TRow extends RowData>({
   data,
@@ -99,7 +166,7 @@ function useDataTable<TRow extends RowData>({
   defaultSorting,
   onSelectionChange,
 }: DataTableOptions<TRow>): DataTableInstance<TRow> {
-  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+  const selection = useRowSelection(data, getRowId, onSelectionChange);
   const columnDefs = useMemo(() => columnDefsFor(columns), [columns]);
   const filterable = new Set(
     columns.filter((column) => column.filterable !== false).map((column) => column.id),
@@ -120,13 +187,9 @@ function useDataTable<TRow extends RowData>({
     },
     isMultiSortEvent: isShiftEvent,
     isRowRangeSelectionEvent: isShiftEvent,
-    onRowSelectionChange: (updater) => {
-      const next = nextSelection(updater, rowSelection);
-      setRowSelection(next);
-      onSelectionChange?.(data.filter((row) => next[getRowId(row)] === true));
-    },
+    onRowSelectionChange: selection.change,
     sortDescFirst: false,
-    state: { rowSelection },
+    state: { rowSelection: selection.rowSelection },
   });
 }
 
@@ -164,4 +227,4 @@ function columnChoices<TRow extends RowData>(
 }
 
 export { columnChoices, filterOf, isShiftEvent, selectedRows, shownRows, useDataTable };
-export type { DataTableInstance, DataTableRow };
+export type { DataTableInstance, DataTableRow, SelectionListener };

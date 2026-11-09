@@ -1,6 +1,10 @@
 /* AppShell: the page every app's routes sit in, its root route's component. It holds the sidebar of the app's pages,
  * a header with the breadcrumbs, the environment banner, the command palette and the keyboard shortcuts with their `?`
- * list, so an app's pages hold only their own content. */
+ * list, so an app's pages hold only their own content.
+ *
+ * It is one column the window's height: the banner, then the sidebar and the page, which scrolls inside it. The
+ * sidebar's row contains its layout, so the sidebar's fixed panel is placed in the row, below the banner, rather than
+ * in the window, where it would cover the banner's left edge. */
 
 import { Outlet } from "@tanstack/react-router";
 import type { ReactElement, ReactNode } from "react";
@@ -40,17 +44,21 @@ interface AppShellProps {
 function AppShell({ appName, environment, commands, children }: AppShellProps): ReactElement {
   return (
     <ShortcutProvider>
-      {environment === undefined ? null : <EnvironmentBanner environment={environment} />}
-      <SidebarProvider>
-        <AppSidebar appName={appName} />
-        <SidebarInset>
-          <header className="flex h-12 items-center gap-2 border-b px-4">
-            <SidebarTrigger />
-            <RouteBreadcrumbs />
-          </header>
-          <main className="flex flex-1 flex-col gap-4 p-4">{children ?? <Outlet />}</main>
-        </SidebarInset>
-      </SidebarProvider>
+      <div data-slot="app-shell" className="flex h-svh flex-col">
+        {environment === undefined ? null : (
+          <EnvironmentBanner environment={environment} className="shrink-0" />
+        )}
+        <SidebarProvider className="min-h-0 flex-1 contain-layout">
+          <AppSidebar appName={appName} />
+          <SidebarInset className="min-h-0 overflow-y-auto">
+            <header className="flex h-12 shrink-0 items-center gap-2 border-b px-4">
+              <SidebarTrigger />
+              <RouteBreadcrumbs />
+            </header>
+            <main className="flex flex-1 flex-col gap-4 p-4">{children ?? <Outlet />}</main>
+          </SidebarInset>
+        </SidebarProvider>
+      </div>
       <CommandPalette commands={commands} />
     </ShortcutProvider>
   );

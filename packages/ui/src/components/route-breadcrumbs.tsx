@@ -1,5 +1,6 @@
-/* The breadcrumbs of the page shown: one for each route matched on the way to it that has a title, the last one the
- * page itself. */
+/* The breadcrumbs of the page shown: one for each route matched on the way to it that has a title or a breadcrumb,
+ * the last one the page itself. A route's `breadcrumb` titles it by its data, such as a bond's name, over its static
+ * `title`. */
 
 import { Link, useMatches } from "@tanstack/react-router";
 import { Fragment } from "react";
@@ -14,6 +15,18 @@ import {
   BreadcrumbSeparator,
 } from "./breadcrumb.tsx";
 
+/** A match's params, as text by name. */
+function paramsOf(value: unknown): Readonly<Record<string, string>> {
+  if (typeof value !== "object" || value === null) {
+    return {};
+  }
+  return Object.fromEntries(
+    Object.entries(value).filter(
+      (entry): entry is [string, string] => typeof entry[1] === "string",
+    ),
+  );
+}
+
 /** The trail to the page shown, from the titles its routes set in `staticData`. `AppShell` puts it in the header.
  *
  * @example
@@ -27,7 +40,9 @@ function RouteBreadcrumbs(): ReactElement {
   const trail = useMatches({
     select: (matches) =>
       matches.flatMap((match) => {
-        const { title } = match.staticData;
+        const { breadcrumb, title: staticTitle } = match.staticData;
+        const params = paramsOf(match.params as unknown);
+        const title = breadcrumb?.({ loaderData: match.loaderData, params }) ?? staticTitle;
         return title === undefined ? [] : [{ id: match.id, path: match.pathname, title }];
       }),
   });

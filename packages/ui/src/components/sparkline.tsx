@@ -64,6 +64,8 @@ function Sparkline({
   const geometry = sparkGeometry(values, box);
   return (
     <svg
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- an inline SVG drawn from data cannot be an <img>; role="img" makes it one image, which some screen readers otherwise read part by part.
+      role="img"
       viewBox={`0 0 ${String(box.width)} ${String(box.height)}`}
       preserveAspectRatio="none"
       data-slot="sparkline"

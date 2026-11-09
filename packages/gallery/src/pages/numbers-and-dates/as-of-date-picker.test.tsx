@@ -8,7 +8,7 @@ import { page, userEvent } from "vite-plus/test/browser";
 import type { Locator } from "vite-plus/test/browser";
 import { render } from "vitest-browser-react";
 
-import { day, focusIsOn, keysTo } from "./test-helpers.ts";
+import { day, focusIsOn, keysTo, withToday } from "./test-helpers.ts";
 
 const date = (text: string): Temporal.PlainDate => Temporal.PlainDate.from(text);
 /** The tests' today: Thursday, the day after Veterans Day. */
@@ -20,6 +20,16 @@ function AsOfField(props: Partial<ComponentProps<typeof AsOfDatePicker>>): React
     <Field>
       <FieldLabel htmlFor="as-of">As of</FieldLabel>
       <AsOfDatePicker id="as-of" today={today} {...props} />
+    </Field>
+  );
+}
+
+/** An AsOfDatePicker in a Field, labelled "As of", that counts from today in New York. */
+function UndatedField(): ReactElement {
+  return (
+    <Field>
+      <FieldLabel htmlFor="as-of">As of</FieldLabel>
+      <AsOfDatePicker id="as-of" />
     </Field>
   );
 }
@@ -95,6 +105,55 @@ describe("AsOfDatePicker's grid", () => {
     await openGrid();
     await keysTo("{PageDown}", "Thursday, November 12, 2026");
     await expect.element(page.getByRole("button", { name: "Next month" })).toBeDisabled();
+  });
+
+  test("a key held at the latest date leaves the month buttons their focus", async () => {
+    await render(<AsOfField defaultValue={date("2026-11-10")} />);
+    await openGrid();
+    await keysTo("{PageDown}", "Thursday, November 12, 2026");
+    // At the latest date already: the key moves nothing.
+    await keysTo("{PageDown}", "Thursday, November 12, 2026");
+    const previous = page.getByRole("button", { name: "Previous month" });
+    await userEvent.click(previous);
+    await expect.element(page.getByRole("grid", { name: "October 2026" })).toBeVisible();
+    await focusIsOn(previous);
+  });
+
+  test("takes the latest close as of the day it opens, not the day it was first drawn", async () => {
+    // Drawn on Thursday the 12th, opened the Tuesday after, a tab left open over the weekend.
+    await withToday("2026-11-12", async (moveTo) => {
+      const screen = await render(<UndatedField />);
+      moveTo("2026-11-17");
+      await openGrid();
+      await userEvent.click(day("Monday, November 16, 2026"));
+      await expect
+        .element(screen.getByRole("textbox", { name: "As of" }))
+        .toHaveValue("2026-11-16");
+    });
+  });
+
+  test("takes the latest close typed as of the day it is typed", async () => {
+    await withToday("2026-11-12", async (moveTo) => {
+      const screen = await render(<UndatedField />);
+      moveTo("2026-11-17");
+      const input = screen.getByRole("textbox", { name: "As of" });
+      await userEvent.fill(input, "2026-11-16");
+      await userEvent.tab();
+      await expect.element(input).toHaveValue("2026-11-16");
+      await expect.element(screen.getByRole("alert")).not.toBeInTheDocument();
+    });
+  });
+
+  test("in a horizontal Field, its error sits under the input, not beside it", async () => {
+    const screen = await render(
+      <Field orientation="horizontal">
+        <FieldLabel htmlFor="as-of">As of</FieldLabel>
+        <AsOfDatePicker id="as-of" today={today} errors={[{ message: "Pick a date." }]} />
+      </Field>,
+    );
+    const input = screen.getByRole("textbox", { name: "As of" }).element().getBoundingClientRect();
+    const error = screen.getByRole("alert").element().getBoundingClientRect();
+    expect(error.top).toBeGreaterThanOrEqual(input.bottom);
   });
 
   test.each([

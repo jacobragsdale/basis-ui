@@ -1,10 +1,11 @@
 /* The app's sidebar, built from its route tree: one item for each titled page, the current one marked, and the user
- * menu in its footer. A page added to the routes appears here with no change to the sidebar. */
+ * menu in its footer. A page added to the routes appears here with no change to the sidebar. A page that has no item,
+ * such as a bond's at `/bonds/$security`, marks the item it lies under, `/bonds`. */
 
 import { Link, useRouterState } from "@tanstack/react-router";
 import type { ReactElement } from "react";
 
-import { useRouteEntries } from "./route-entries.ts";
+import { currentEntry, useRouteEntries } from "./route-entries.ts";
 import { Sidebar } from "./sidebar.tsx";
 import { SidebarGroup, SidebarGroupContent } from "./sidebar-group.tsx";
 import { SidebarMenu, SidebarMenuItem } from "./sidebar-menu.tsx";
@@ -27,6 +28,7 @@ import { UserMenu } from "./user-menu.tsx";
 function AppSidebar({ appName }: { readonly appName: string }): ReactElement {
   const entries = useRouteEntries();
   const path = useRouterState({ select: (state) => state.location.pathname });
+  const current = currentEntry(entries, path);
   return (
     <Sidebar>
       <SidebarHeader>
@@ -38,7 +40,7 @@ function AppSidebar({ appName }: { readonly appName: string }): ReactElement {
             <SidebarMenu>
               {entries.map(({ id, title, to, icon: Icon }) => (
                 <SidebarMenuItem key={id}>
-                  <SidebarMenuButton isActive={path === to} render={<Link to={to} />}>
+                  <SidebarMenuButton isActive={id === current?.id} render={<Link to={to} />}>
                     {Icon === undefined ? null : <Icon />}
                     {title}
                   </SidebarMenuButton>
