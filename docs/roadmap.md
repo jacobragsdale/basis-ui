@@ -502,7 +502,9 @@ flowchart TD
    mark what is not built as "not yet", with its step.
 1. **6.1 Defects.** Four branches at once, one per package area, each fix a failing test first: `@basis/ui`'s
    components (`6.1a-component-defects`), the preset's tasks (`6.1b-task-defects`, which lands before 6.8 starts),
-   parallax's TypeScript (`6.1c-parallax-defects`) and parallax's Rust (`6.1d-engine-defects`).
+   parallax's TypeScript (`6.1c-parallax-defects`) and parallax's Rust (`6.1d-engine-defects`). 6.1d built on
+   2026-11-09: a reload's old rows stay only until the open views that need them apply them, and a decimal or
+   timestamp too large to load is refused as an overflow.
 2. **6.2 Gates that see.** Three branches at once, so that every later step is judged by them:
    - **6.2a** (`6.2a-gallery-shots`): a screenshot of each gallery section in every theme, mode and density, compared
      with baselines in the pinned Playwright image by `vp run @basis/gallery#shots`, an axe check on each, which waits
