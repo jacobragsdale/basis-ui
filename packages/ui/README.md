@@ -553,8 +553,10 @@ Where these differ from what shadcn's documentation leads one to expect:
   `HoverCard`'s content must also be reachable by following its link: neither reaches touch or screen reader users.
 - A `Drawer` takes no snap points: placing the panel at one needs arbitrary values the theme does not allow.
 
-Overlays animate with a short fade and scale, or a short slide for Sheet and Drawer, which stop under
-`prefers-reduced-motion`. The gallery's overlays and menus page shows each one closed, with its tests beside it.
+Overlays animate with a short fade and scale, or a short slide for Sheet and Drawer, and an Accordion's or a
+Collapsible's content slides open and shut over 150 ms through the height Base UI measures, all of which stop under
+`prefers-reduced-motion`. A Collapsible's content clips what overflows it, as the motion needs, so a focus ring at its edge
+needs a little padding inside it. The gallery's overlays and menus page shows each one closed, with its tests beside it.
 
 ## Laying out an app
 
@@ -582,7 +584,9 @@ The navigation and layout components keep shadcn's names, props and parts. Where
 
 - **Sidebar.** `SidebarProvider` keeps whether the sidebar is open in the `basis-ui-sidebar` cookie for a week, and
   reads it back on load, so the user's last choice wins over `defaultOpen`; an app passes no cookie to it. Ctrl+B, or
-  Cmd+B on a Mac, toggles it. It folds to its icon rail or off the canvas at once, with no animation. A sidebar on the
+  Cmd+B on a Mac, toggles it, and `SidebarTrigger`'s tooltip says so. It folds to its icon rail, or slides off the
+  canvas, over 150 ms, but only the sidebar's own panel moves: the space it holds in the page changes at once, so the
+  page lays out once rather than on every frame, and its grids and charts resize once. A sidebar on the
   right comes after `SidebarInset` in the provider, so its gap sits on the right. `SidebarInset` is the page's
   `<main>`; where a layout already has one, `render={<div />}` makes it a `<div>`.
 - **Resizable.** It is @basis/ui's own build on the WAI-ARIA window splitter pattern, with no dependency, and sizes

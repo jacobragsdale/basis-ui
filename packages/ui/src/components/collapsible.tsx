@@ -1,7 +1,10 @@
-/* Collapsible, from shadcn's Base UI source: Base UI's collapsible with its `data-slot`s and no styling, since its
- * trigger and content are whatever the app puts in them. */
+/* Collapsible, from shadcn's Base UI source: Base UI's collapsible with its `data-slot`s, and no styling but the
+ * content's motion, since its trigger and content are whatever the app puts in them. The content opens and closes
+ * through the height Base UI measures, `--collapsible-panel-height`, on a 150 ms transition, as Base UI's own example
+ * does, where shadcn's shows and hides it at once; it clips what overflows it, as the transition needs. */
 
 import { Collapsible as CollapsiblePrimitive } from "@base-ui/react/collapsible";
+import { cn } from "cn";
 import type { ReactElement } from "react";
 
 /** A section that shows and hides its content. `open` and `onOpenChange` control it, or `defaultOpen` starts it.
@@ -26,9 +29,21 @@ function CollapsibleTrigger(props: CollapsiblePrimitive.Trigger.Props): ReactEle
   return <CollapsiblePrimitive.Trigger data-slot="collapsible-trigger" {...props} />;
 }
 
-/** What the collapsible shows when open and hides when closed. */
-function CollapsibleContent(props: CollapsiblePrimitive.Panel.Props): ReactElement {
-  return <CollapsiblePrimitive.Panel data-slot="collapsible-content" {...props} />;
+/** What the collapsible shows when open and hides when closed, sliding open and shut. */
+function CollapsibleContent({
+  className,
+  ...props
+}: CollapsiblePrimitive.Panel.Props): ReactElement {
+  return (
+    <CollapsiblePrimitive.Panel
+      data-slot="collapsible-content"
+      className={cn(
+        "h-(--collapsible-panel-height) overflow-hidden transition-all duration-150 ease-out data-ending-style:h-0 data-starting-style:h-0",
+        className,
+      )}
+      {...props}
+    />
+  );
 }
 
 export { Collapsible, CollapsibleContent, CollapsibleTrigger };

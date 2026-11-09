@@ -2471,7 +2471,7 @@
       "family": "accordion",
       "name": "AccordionContent",
       "props": [],
-      "purpose": "The section's content, a region named by its trigger, which fades in as it opens.",
+      "purpose": "The section's content, a region named by its trigger, which slides open and fades in.",
       "variants": {}
     },
     {
@@ -2679,7 +2679,7 @@
       "family": "collapsible",
       "name": "CollapsibleContent",
       "props": [],
-      "purpose": "What the collapsible shows when open and hides when closed.",
+      "purpose": "What the collapsible shows when open and hides when closed, sliding open and shut.",
       "variants": {}
     },
     {
@@ -3242,7 +3242,7 @@
       "family": "sidebar",
       "name": "SidebarTrigger",
       "props": [],
-      "purpose": "The button that opens and closes the sidebar, named \"Toggle Sidebar\".",
+      "purpose": "The button that opens and closes the sidebar, named \"Toggle Sidebar\", whose tooltip gives its shortcut.",
       "variants": {}
     },
     {
@@ -5361,7 +5361,9 @@
     "Loader2Icon",
     "LoaderCircleIcon",
     "LogOutIcon",
+    "Maximize2Icon",
     "MenuIcon",
+    "Minimize2Icon",
     "MinusIcon",
     "MoreHorizontalIcon",
     "MoreVerticalIcon",

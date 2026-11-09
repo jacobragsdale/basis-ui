@@ -56,12 +56,12 @@ describe("Sidebar, folding", () => {
       256,
     ]);
     await userEvent.click(trigger);
-    expect([stateOf(screen.container), panelWidth(screen.container)]).toStrictEqual([
-      "collapsed",
-      48,
-    ]);
+    expect(stateOf(screen.container)).toBe("collapsed");
+    // The panel folds over the theme's short transition, while the page beside it moves at once.
+    await expect.poll(() => panelWidth(screen.container)).toBe(48);
     await userEvent.click(trigger);
     expect(stateOf(screen.container)).toBe("expanded");
+    await expect.poll(() => panelWidth(screen.container)).toBe(256);
   });
 
   test("Ctrl+B folds and unfolds it", async () => {
@@ -124,8 +124,13 @@ describe("Sidebar, its parts", () => {
         ? 0
         : frame.getBoundingClientRect().left + frame.clientLeft + frame.clientWidth;
     await userEvent.click(only(screen.container, '[data-slot="sidebar-trigger"]'));
-    const panel = only(screen.container, '[data-slot="sidebar-container"]').getBoundingClientRect();
-    expect(panel.left).toBeGreaterThanOrEqual(inside);
+    // It slides out over the theme's short transition.
+    await expect
+      .poll(
+        () =>
+          only(screen.container, '[data-slot="sidebar-container"]').getBoundingClientRect().left,
+      )
+      .toBeGreaterThanOrEqual(inside);
   });
 
   test("below the md breakpoint, the trigger opens it as a dialog named Sidebar", async () => {

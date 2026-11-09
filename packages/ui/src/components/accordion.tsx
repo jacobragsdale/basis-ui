@@ -1,7 +1,8 @@
 /* Accordion and its parts, from shadcn's Base UI source. shadcn opens a panel with height keyframes from its own
- * stylesheet; here the panel fades in over the theme's short transition instead, since animating height lays the
- * page out again on every frame, which Citrix desktops draw on the CPU, and the theme stops the fade under reduced
- * motion. The chevrons take their size, colour and place from the trigger, as `shadcn/no-restyle` requires, and a
+ * stylesheet; here the panel opens and closes through the height Base UI measures, `--accordion-panel-height`, on a
+ * 150 ms transition with a fade, as Base UI's own example does, in place of keyframes the theme lacks. A panel is
+ * small, so the page lays out again for a few frames only, and the theme stops the transition under reduced motion.
+ * The chevrons take their size, colour and place from the trigger, as `shadcn/no-restyle` requires, and a
  * disabled trigger dims through `disabled:` as well as shadcn's `aria-disabled:`, since Base UI disables the button. */
 
 import { Accordion as AccordionPrimitive } from "@base-ui/react/accordion";
@@ -78,7 +79,7 @@ function AccordionTrigger({
   );
 }
 
-/** The section's content, a region named by its trigger, which fades in as it opens. */
+/** The section's content, a region named by its trigger, which slides open and fades in. */
 function AccordionContent({
   className,
   children,
@@ -87,7 +88,7 @@ function AccordionContent({
   return (
     <AccordionPrimitive.Panel
       data-slot="accordion-content"
-      className="overflow-hidden text-sm transition-opacity data-ending-style:opacity-0 data-starting-style:opacity-0"
+      className="h-(--accordion-panel-height) overflow-hidden text-sm transition-all duration-150 ease-out data-ending-style:h-0 data-ending-style:opacity-0 data-starting-style:h-0 data-starting-style:opacity-0"
       {...props}
     >
       <div

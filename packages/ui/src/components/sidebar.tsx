@@ -3,8 +3,9 @@
  * sidebar-group.tsx, its menus in sidebar-menu.tsx, and its state, cookie and shortcut in sidebar-context.ts.
  *
  * Changes from shadcn's source:
- * - It folds to its icon rail, or off the canvas, at once. shadcn animates its width and position, which lays the
- *   page out on every frame, and Citrix desktops draw on the CPU.
+ * - Only the fixed panel moves, folding to its icon rail or sliding off the canvas over 150 ms, while the gap that
+ *   holds its place changes at once, so the page lays out once. shadcn animates the gap too, which lays the page out,
+ *   and resizes its grids and charts, on every frame, and Citrix desktops draw on the CPU.
  * - The floating and inset rail's width is the rail plus the frame's padding through `box-content`, where shadcn
  *   adds them with arbitrary `calc()` widths.
  * - Below the `md` breakpoint it is a Sheet whose panel draws on Base UI's dialog with the Sheet's classes, from
@@ -22,9 +23,12 @@ import type { ComponentProps, ReactElement, ReactNode } from "react";
 import { PanelLeftIcon } from "#vendor/lucide/panel-left.tsx";
 
 import { Button } from "./button.tsx";
+import { Kbd, KbdGroup } from "./kbd.tsx";
 import { Sheet } from "./sheet.tsx";
 import { sheetContentVariants, sheetOverlayVariants } from "./sheet-variants.ts";
+import { keyLabels } from "./shortcuts-context.ts";
 import { SidebarContext, useSidebar, useSidebarState } from "./sidebar-context.ts";
+import { Tooltip, TooltipContent, TooltipTrigger } from "./tooltip.tsx";
 
 const sidebarWidth = "16rem";
 const sidebarWidthMobile = "18rem";
@@ -151,7 +155,7 @@ function SidebarDesktop({
         data-slot="sidebar-container"
         data-side={side}
         className={cn(
-          "fixed inset-y-0 z-10 hidden h-svh w-(--sidebar-width) group-data-[collapsible=icon]:w-(--sidebar-width-icon) data-[side=left]:left-0 data-[side=left]:group-data-[collapsible=offcanvas]:-left-(--sidebar-width) data-[side=right]:right-0 data-[side=right]:group-data-[collapsible=offcanvas]:-right-(--sidebar-width) md:flex",
+          "fixed inset-y-0 z-10 hidden h-svh w-(--sidebar-width) transition-all duration-150 ease-out group-data-[collapsible=icon]:w-(--sidebar-width-icon) data-[side=left]:left-0 data-[side=left]:group-data-[collapsible=offcanvas]:-translate-x-full data-[side=right]:right-0 data-[side=right]:group-data-[collapsible=offcanvas]:translate-x-full md:flex",
           framed
             ? "p-2 group-data-[collapsible=icon]:box-content group-data-[collapsible=icon]:h-auto"
             : "group-data-[side=left]:border-r group-data-[side=right]:border-l",
@@ -212,24 +216,38 @@ function Sidebar({
   );
 }
 
-/** The button that opens and closes the sidebar, named "Toggle Sidebar". */
+/** The button that opens and closes the sidebar, named "Toggle Sidebar", whose tooltip gives its shortcut. */
 function SidebarTrigger({ onClick, ...props }: ComponentProps<typeof Button>): ReactElement {
   const { toggleSidebar } = useSidebar();
   return (
-    <Button
-      data-sidebar="trigger"
-      data-slot="sidebar-trigger"
-      variant="ghost"
-      size="icon-sm"
-      onClick={(event) => {
-        onClick?.(event);
-        toggleSidebar();
-      }}
-      {...props}
-    >
-      <PanelLeftIcon />
-      <span className="sr-only">Toggle Sidebar</span>
-    </Button>
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <Button
+            data-sidebar="trigger"
+            data-slot="sidebar-trigger"
+            variant="ghost"
+            size="icon-sm"
+            onClick={(event) => {
+              onClick?.(event);
+              toggleSidebar();
+            }}
+            {...props}
+          />
+        }
+      >
+        <PanelLeftIcon />
+        <span className="sr-only">Toggle Sidebar</span>
+      </TooltipTrigger>
+      <TooltipContent side="bottom">
+        Toggle sidebar
+        <KbdGroup>
+          {keyLabels("mod+b").map((label) => (
+            <Kbd key={label}>{label}</Kbd>
+          ))}
+        </KbdGroup>
+      </TooltipContent>
+    </Tooltip>
   );
 }
 

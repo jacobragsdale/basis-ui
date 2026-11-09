@@ -495,7 +495,9 @@ export {
   LoaderCircleIcon as Loader2Icon,
 } from "./vendor/lucide/loader-circle.tsx";
 export { LogOutIcon } from "./vendor/lucide/log-out.tsx";
+export { Maximize2Icon } from "./vendor/lucide/maximize-2.tsx";
 export { MenuIcon } from "./vendor/lucide/menu.tsx";
+export { Minimize2Icon } from "./vendor/lucide/minimize-2.tsx";
 export { MinusIcon } from "./vendor/lucide/minus.tsx";
 export { OctagonXIcon, OctagonXIcon as XOctagonIcon } from "./vendor/lucide/octagon-x.tsx";
 export { PaletteIcon } from "./vendor/lucide/palette.tsx";
