@@ -1,7 +1,7 @@
 # Roadmap
 
-This roadmap is the build order for basis-ui: six phases, the steps in each, what each step needs first, and when it is
-done. Steps in different lanes run at the same time. For the reasons behind each piece, see [the design](design.md).
+This roadmap is the build order for basis-ui: seven phases, the steps in each, what each step needs first, and when it
+is done. Steps in different lanes run at the same time. For the reasons behind each piece, see [the design](design.md).
 basis has [a roadmap of its own](https://github.com/jacobragsdale/basis/blob/main/docs/roadmap.md), and the two meet at
 the contract (basis's step 2.5, which this roadmap's step 1.3 builds on) and the pilot (basis's step 2.8 and this
 roadmap's step 3.2).
@@ -13,16 +13,17 @@ Actions.
 
 ## Lanes
 
-| Lane        | Builds                              | Phases  |
-| ----------- | ----------------------------------- | ------- |
-| A. UI       | `@basis/ui`                         | 1, 3, 5 |
-| B. Parallax | `@basis/parallax`                   | 2       |
-| C. Ports    | the firm's Angular library and apps | 4       |
+| Lane        | Builds                              | Phases     |
+| ----------- | ----------------------------------- | ---------- |
+| A. UI       | `@basis/ui`                         | 1, 3, 5, 6 |
+| B. Parallax | `@basis/parallax`                   | 2, 6       |
+| C. Ports    | the firm's Angular library and apps | 4          |
 
 The critical path runs through lane A: the Vite+ and orval spikes, the workspace, the preset, the shell, fixture mode,
 screenshots, the firm's components, the template, and the pilot. Parallax runs alongside phase 1 once the preset exists,
 and the ports start at the firm as soon as the base components set the patterns. The eval's UI tasks run in basis's eval
-lane, against this roadmap's pilot.
+lane, against this roadmap's pilot. Phase 6, demo readiness, runs in both lanes A and B at once, and splits each into
+lanes of its own.
 
 ```mermaid
 flowchart TD
@@ -52,6 +53,8 @@ flowchart TD
   c1 --> c2
   p7 --> c2
   l2 --> g[5 upkeep]
+  u15 --> d6[6 demo readiness]
+  p8 --> d6
 ```
 
 ## Rules for working in parallel
@@ -120,7 +123,8 @@ second consumer on 2026-11-07: 1.12 and 1.13 wait on basis's contract, and 1.14 
    before the first paint, and the theme's checks. Then the gallery app, with its screenshots in both modes and both
    densities and the axe check. Then shadcn's components on Base UI, one family per agent at once (forms and inputs,
    overlays and menus, navigation and layout, feedback and display), each with its `no-restyle` contract and its gallery
-   page. They set the patterns the library port follows. Needs 1.2.
+   page. They set the patterns the library port follows. Needs 1.2. The gallery is built in both modes and densities;
+   its screenshots' baselines and the axe check are not yet, and come in step 6.2a.
 5. **1.5 Fixture mode.** Fixture mode answers from the records in `.fixtures/`, then the synthetic responses in
    `fixtures/`, then orval's MSW handlers. Records and fixtures share basis-ui's record format, which `@basis/ui` ships
    as a JSON Schema for basis's `basis records export` (its step 4.2) to write. `vp dev` starts the app on fixtures on
@@ -180,10 +184,12 @@ second consumer on 2026-11-07: 1.12 and 1.13 wait on basis's contract, and 1.14 
       split panes and shortcuts;
     - query states, `Sparkline` and the in-cell bar.
 
-    Each has its gallery page. Needs 1.3, 1.4, and 2.1 for the formatter's fixtures. On 2026-11-08 the shell's parts were built
-    but for the filter bar, saved views and split panes: `AppShell`, with the sidebar, breadcrumbs and command palette
-    built from routes' `staticData`, the environment banner, the user menu and the shortcut registry with its `?`
-    list, used and tested by the example app; t1b built `Sparkline`, `CellBar` and `QueryState`.
+    Each has its gallery page. Needs 1.3, 1.4, and 2.1 for the formatter's fixtures. On 2026-11-08 the shell's parts
+    were built but for the filter bar, saved views and split panes: `AppShell`, with the sidebar, breadcrumbs and
+    command palette built from routes' `staticData`, the environment banner, the user menu and the shortcut registry
+    with its `?` list, used and tested by the example app; t1b built `Sparkline`, `CellBar` and `QueryState`. Not yet:
+    the filter bar (step 6.7.2), saved views (6.6.3), split panes (6.7), and the forms' unsaved-changes guard and typed
+    confirmation (6.7.6).
 
 11. **1.11 Utilities.** Build the four modules the design's Utilities section lists, two agents at once: `dates`, with
     the SIFMA calendar first since the firm trades US fixed income, then the NYSE's and TARGET2's, alongside
@@ -231,8 +237,8 @@ second consumer on 2026-11-07: 1.12 and 1.13 wait on basis's contract, and 1.14 
     from the source's types and doc comments: its name, what it is for, its props with their types and docs, its
     variants, and one example per family. The catalogue ships in the package, and a test fails when it is stale, when
     a component lacks a purpose or a family an example, or when an example does not type-check. Needs 1.10. Built:
-    `catalogue.json`, read by `src/catalogue/` with oxc's parser, 317 components in 63 families and 92 icons, each
-    example type-checked in `packages/consumer`.
+    `catalogue.json`, read by `src/catalogue/` with oxc's parser, 328 components in 74 families and 94 icons, as of
+    2026-11-09, each example type-checked in `packages/consumer`.
 
 16. **1.16 ctzd's surface.** Keep working what the design's [Consumers](design.md#consumers) section says ctzd uses:
     - a test app in this repo whose `vite.config.ts`, `tsconfig.json` and `styles.css` are exactly the lines
@@ -442,3 +448,101 @@ Lane A. Needs step 3.2.
    done it.
 4. **5.4 CI (work).** When the firm builds CI, turn on the generated pipeline's `vp run check-full` stage, and add a
    branch policy on `main` that requires it.
+
+## Phase 6: demo readiness
+
+Lanes A and B. This phase takes basis-ui from "the checks are green" to a demo for both the people who build the
+firm's UIs and the people who use them: a fixed-income workbench, made from the template as any app is, with a
+blotter of 1,000,000 trades and a pivot over 1,000,000 positions that run fast on a Citrix desktop with no GPU. It
+comes from a review of the whole repo on 2026-11-09, and carries out the decisions the maintainer made that day, which
+[the design](design.md) records. [PLAN.md](../PLAN.md) holds each step's detail, its findings, its targets and its
+measurements, until the phase is done, then is deleted; this section is the summary.
+
+By the maintainer's choice on 2026-11-09, Phase 6's steps push straight to `main`, after a fetch, a rebase onto
+`origin/main` and the checks, rather than merging through a pull request. Every other rule for working in parallel
+holds: a branch and worktree per step, named after its id, and the preset's changes one at a time, so the steps of 6.8
+run in order.
+
+Steps 6.1 and 6.2 run at once, then 6.3, 6.4, 6.5 and 6.8, each in a lane of its own:
+
+| Lane       | Builds                                                 | Steps    |
+| ---------- | ------------------------------------------------------ | -------- |
+| Rust       | parallax's engine, in `packages/parallax/crates/`      | 6.3      |
+| Grid       | parallax's TypeScript, in `src/grid/` and `src/chart/` | 6.4, 6.6 |
+| Theme      | `@basis/ui`'s theme, then parallax's                   | 6.5      |
+| Components | `@basis/ui`'s components and shell                     | 6.7      |
+| Preset     | `@basis/ui`'s preset and catalogue                     | 6.8      |
+
+Step 6.6 waits for 6.3 and 6.4, since it edits the painter and reads the engine's statistics, and for 6.5's scales. The
+showcase comes last on purpose: an agent builds it with only the shipped tools, and each place it stumbles becomes a
+fix in 6.8.
+
+```mermaid
+flowchart TD
+  d[6.0 decisions and true docs] --> f[6.1 defects]
+  d --> g[6.2 gates that see]
+  g --> e[6.3 engine at 1M rows]
+  g --> c[6.4 canvas on Citrix]
+  g --> t[6.5 themes]
+  f --> k[6.8 agent's toolbelt]
+  e --> r[6.6 grid features]
+  c --> r
+  t --> r
+  t --> p[6.7 components for real apps]
+  r --> s[6.9 showcase]
+  p --> s
+  k --> s
+  s --> v[6.10 Citrix validation, work]
+```
+
+0. **6.0 Decisions and true docs** (`6.0-decisions`). The design records the decisions of 2026-11-09, this phase joins
+   the roadmap, and each line of the docs that claimed something not built says so, with the step that builds it.
+   Built on 2026-11-09: the design's theme, toolchain and parallax sections, "Decided against", the facts and "Not yet
+   verified" carry the decisions; the design, the roadmap, `@basis/ui`'s README and parallax's design and theming pages
+   mark what is not built as "not yet", with its step.
+1. **6.1 Defects.** Four branches at once, one per package area, each fix a failing test first: `@basis/ui`'s
+   components (`6.1a-component-defects`), the preset's tasks (`6.1b-task-defects`, which lands before 6.8 starts),
+   parallax's TypeScript (`6.1c-parallax-defects`) and parallax's Rust (`6.1d-engine-defects`).
+2. **6.2 Gates that see.** Three branches at once, so that every later step is judged by them:
+   - **6.2a** (`6.2a-gallery-shots`): a screenshot of each gallery section in every theme, mode and density, compared
+     with baselines in the pinned Playwright image by `vp run @basis/gallery#shots`, an axe check on each, which waits
+     for the maintainer to approve `axe-core`, a render matrix test, and a gallery page of the tokens;
+   - **6.2b** (`6.2b-scale-harness`): `vp run @basis/parallax#bench`, a harness that measures load, sort, filter,
+     search, pivots and drawing at 150,000, 1,000,000 and 2,000,000 rows against budgets, with a phase profile of the
+     engine, written up in `docs/spikes/scale-1m.md`;
+   - **6.2c** (`6.2c-bundles-and-motion`): `@basis/ui` that tree-shakes, `vp run budget` for each route's bundle, lazy
+     routes, and motion that suits a desktop drawn on the CPU, with a `motion` preference beside mode and density.
+3. **6.3 The engine at 1,000,000 rows.** Lane Rust, one branch per sub-step in order, each starting and ending with the
+   harness: a load that copies once (`6.3.1-load`), a progressive load (`6.3.2-progressive-load`), sorts on keys
+   (`6.3.3-sort`), filters as kernels (`6.3.4-filter`), a typed group-by (`6.3.5-group-by`), no rebuild where the order
+   alone changes (`6.3.6-rebuilds`), memory that comes back (`6.3.7-release`), narrower storage and build flags
+   (`6.3.8-storage-and-flags`), and the new limit in bytes (`6.3.9-limit`).
+4. **6.4 The canvas on a Citrix desktop.** Lane Grid, one branch per item in order: digits that line up
+   (`6.4.1-tabular-digits`), whole device pixels (`6.4.2-device-pixels`), one draw per frame and one row step per notch
+   (`6.4.3-frame-aligned`), a scroll that moves pixels (`6.4.4-scroll-blit`), rows past the scrollbar's reach
+   (`6.4.5-row-position`), less work in a pass (`6.4.6-paint-cost`), selection that does not count rows
+   (`6.4.7-selection`), and the charts' costs (`6.4.8-chart-cost`).
+5. **6.5 Themes.** Lane Theme, one branch per item in order: tokens for what opacity fakes (`6.5.1-tokens`), density
+   in whole pixels (`6.5.2-density`), `defineTheme` (`6.5.3-define-theme`), `checkTheme` (`6.5.4-check-theme`), the
+   choice of theme in the cookie (`6.5.5-theme-preference`), parallax on the same theme (`6.5.6-parallax-theme`), the
+   default's identity and two more themes (`6.5.7-identity`), and the studio in the gallery (`6.5.8-studio`).
+6. **6.6 Grid features.** Lane Grid, after 6.3, 6.4 and 6.5, one branch per item: rich cells (`6.6.1-rich-cells`), a
+   context menu and events (`6.6.2-context-menu`), saved views (`6.6.3-saved-views`), layouts typed by the dataset's
+   rows (`6.6.4-typed-layouts`), states on the canvas (`6.6.5-states`), and small charts that say what their marks are
+   (`6.6.6-chart-finish`).
+7. **6.7 Components for real apps.** Lane Components, after 6.5.1 and 6.5.2, one family per branch in order: the shell
+   (`6.7.1-shell`), the filter bar (`6.7.2-filter-bar`), `DataTable` (`6.7.3-data-table`), `StatCard`
+   (`6.7.4-stat-card`), dates (`6.7.5-dates`), forms (`6.7.6-forms`), choosing (`6.7.7-choosing`), display
+   (`6.7.8-display`), long lists (`6.7.9-long-lists`), and one vocabulary of props (`6.7.10-vocabulary`).
+8. **6.8 The agent's toolbelt.** Lane Preset, in order, since preset changes land one at a time: a catalogue that
+   answers, with `vp run docs NAME` (`6.8.1-catalogue`), lint that costs fewer rounds (`6.8.2-lint-limits`), the doors
+   that are open (`6.8.3-closed-doors`), one verdict, `vp run verify` (`6.8.4-verify`), a shot that explains itself
+   (`6.8.5-shot`), scaffolds, `vp run new` (`6.8.6-new`), checks that read code, for ctzd (`6.8.7-check-routes`),
+   upgrades (`6.8.8-upgrade`), the template proven in CI (`6.8.9-template-ci`), and skills (`6.8.10-skills`).
+9. **6.9 The showcase** (`6.9-showcase`, then a branch per page). `packages/showcase`, made from the template, with ten
+   pages: overview, blotter, positions, relative value, P&L explain, curves, a bond, booking a trade, import, and a
+   probe of the desktop. An agent builds it with only the shipped tools, and logs in `BUILDING.md` each place they fell
+   short.
+10. **6.10 Citrix validation (work).** The maintainer runs the built showcase on a Citrix desktop and sends back the
+    probe's and the performance overlay's reports and screenshots. The limit, the budgets and the motion defaults are
+    then set from the desktop's figures. This is spike 0.3's Citrix repeat, on the new engine.

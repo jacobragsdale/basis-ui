@@ -254,23 +254,10 @@ useCreatePosition({ mutation: { meta: { errorToast: false } } });
 A dataset route, one whose success lists Arrow, is generated to ask for Arrow, and its hook's data is a `Blob` of the
 Arrow IPC stream.
 
-In tests, MSW's service worker stands in for the API: `basisPlugins()` serves its script in `vp dev` and `vp test`
-only. Start it once in a test helper, add each test's handlers, and render the app at an address:
-
-```tsx
-import { setupWorker } from "msw/browser";
-import { createMemoryHistory, createRouter } from "@tanstack/react-router";
-import { getGetPositionsMockHandler } from "#api/mocks.ts";
-
-const worker = setupWorker();
-await worker.start({ onUnhandledFrame: "bypass", quiet: true });
-
-worker.use(getGetPositionsMockHandler([position]));
-const router = createRouter({ history: createMemoryHistory({ initialEntries: ["/"] }), routeTree });
-await render(<BasisApp router={router} signIn={fakeSignIn()} />);
-```
-
-`packages/example`'s `src/test-support.tsx` and its tests do this in full.
+In tests, MSW stands in for the API: `basisPlugins()` serves its service worker's script in `vp dev` and `vp test`
+only, and `mockApi` from `@basis/ui/testing` starts it, or MSW's Node server where there is no browser, as [Testing the
+app](#testing-the-app) shows. `packages/example`'s `src/test-support.tsx` starts `msw/browser`'s worker itself, which
+runs only in Chromium; an app uses `mockApi`, whose tests run in both setups.
 
 ## Running the app in fixture mode
 
@@ -329,7 +316,7 @@ A fixture is one JSON file holding one exchange. `packages/example/fixtures/` ho
     "media_type": "application/json",
     "body": {
       "security_id": "US91282CRF04",
-      "coupon_rate": "0.04125",
+      "coupon_rate": 0.04125,
       "convention": "30/360",
       "frequency": 2,
       "issued": "2026-05-15",
@@ -342,9 +329,9 @@ A fixture is one JSON file holding one exchange. `packages/example/fixtures/` ho
 A problem is a fixture too: a `404` with `"media_type": "application/problem+json"` and the problem as its body. A
 dataset route's fixture holds an Arrow IPC stream, in base64, as `body_base64`, with `"media_type":
 "application/vnd.apache.arrow.stream"`: write the table with apache-arrow's `tableToIPC(table, "stream")`, or pyarrow's
-`ipc.new_stream`, with the column types basis's contract gives a dataset (`date32` for a date, `decimal128` for a
-decimal, and so on), and encode the bytes in base64. `packages/example/fixtures/bond-US91282CRF04-coupons.json` is one,
-and `src/fixture-mode-arrow.test.ts` reads it back.
+`ipc.new_stream`, with the column types basis's contract gives a dataset (`date32` for a date, `float64` for a
+number, and so on), and encode the bytes in base64. `packages/example/fixtures/bond-US91282CRF04-coupons.json` is one,
+and `src/fixture-mode-arrow.browser.test.ts` reads it back.
 
 When `vp dev` starts, and whenever a file in `fixtures/` or `.fixtures/`, or `openapi.json`, changes, every file is
 checked and the page reloads. Each problem is one `ERROR` line in the terminal, ending with its fix, and the page shows
@@ -433,7 +420,8 @@ alternative, not pixels.
 
 A component's look comes from its props, `variant` and `size`, never from `className`. `className` places a component:
 margin, width, and flex or grid placement. The lint rule `shadcn/no-restyle` rejects any other class, and its error
-lists the component's variants and sizes. When no variant fits, the variant is added to `@basis/ui` in a basis-ui pull
+says the component owns that look and to add a variant to `@basis/ui`; it does not yet list the component's variants
+and sizes, which basis-ui's roadmap step 6.8.2 adds. When no variant fits, the variant is added to `@basis/ui` in a basis-ui pull
 request, never restyled in the app. `@basis/ui` exports no `*Variants` helpers, so no plain element can take a
 component's classes either.
 

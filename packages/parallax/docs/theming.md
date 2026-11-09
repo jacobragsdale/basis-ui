@@ -175,10 +175,10 @@ parameter can be a number of pixels.
 | Property | Parameter | Light default | Dark default | Styles |
 |---|---|---|---|---|
 | `--px-series-1` to `--px-series-8` | `series`, a list | eight colours from `#2a78d6` | eight colours from `#3987e5` | Series and groups, in order; past the eighth, the muted colour. |
-| `--px-up`, `--px-down` | `up`, `down` | `#1baf7a`, `#e34948` | `#199e70`, `#e66767` | Candles, OHLC bars and volume that close up or down. |
-| `--px-ramp-1` to `--px-ramp-7` | `ramp`, a list | `#cde2fb` to `#0d366b` | `#0d366b` to `#cde2fb` | Densities and heatmaps, from least to most. |
-| `--px-middle` | `middle` | `#f0efec` | `#383835` | A heatmap's zero when values take both signs. |
-| `--px-negative-ramp-1` to `--px-negative-ramp-7` | `negativeRamp`, a list | `#fbd5d4` to `#701818` | `#5c1414` to `#f8cbca` | A heatmap's negative values, from least to most. |
+| `--px-up`, `--px-down` | `up`, `down` | `oklch(0.47 0.1294 150)`, `oklch(0.36 0.1459 25)` | `oklch(0.84 0.16 150)`, `oklch(0.7 0.1908 25)` | Candles, OHLC bars and volume that close up or down. |
+| `--px-ramp-1` to `--px-ramp-9` | `ramp`, a list | nine OKLCH steps of hue 245, from `oklch(0.93 0.0361 245)` to `oklch(0.37 0.0931 245)` | nine steps from `oklch(0.27 0.0679 245)` to `oklch(0.83 0.091 245)` | Densities and heatmaps, from least to most. |
+| `--px-middle` | `middle` | `oklch(0.935 0.0034 255)` | `oklch(0.348 0.0056 255)` | A heatmap's zero when values take both signs. |
+| `--px-negative-ramp-1` to `--px-negative-ramp-5` | `negativeRamp`, a list | five OKLCH steps of hue 25, from `oklch(0.82 0.1008 25)` to `oklch(0.42 0.1703 25)` | five steps from `oklch(0.42 0.1703 25)` to `oklch(0.82 0.1008 25)` | A heatmap's negative values, from least to most. |
 
 The categorical order is checked for colour-vision deficiency on each scheme's
 surface. A theme that replaces `series` should check its own.

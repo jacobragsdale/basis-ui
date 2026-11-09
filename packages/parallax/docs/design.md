@@ -637,12 +637,13 @@ M4's guarantee is tested directly: for random series with gaps and repeated x
 values, the line through the reduced points reaches exactly the same lowest and
 highest value in every pixel column as the line through every point.
 
-The client draws with Canvas 2D:
-
-- only on animation frames
-- only in regions that changed
-- with updates batched to a configurable visual rate, 4 Hz by default for
-  flashing cells
+The client draws with Canvas 2D, in the regions that changed, though a scroll
+repaints the whole grid until basis-ui's roadmap step 6.4.4 copies the rows
+that stay. The charts draw on animation frames. The grid does not yet: it
+queues its drawing as a microtask after each event, so one notch of a smooth
+wheel can repaint it several times, and step 6.4.3 moves it to animation
+frames. Flashing cells, and the batching of live updates to a visual rate that
+they would need, are not in the code: live updates stay deferred.
 
 Renderers, hit-testing and interaction are TypeScript inside `@basis/parallax`.
 Drawing from Rust would cross the WebAssembly boundary on every text call and

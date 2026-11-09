@@ -26,9 +26,9 @@ as little of its own as it can. The one addition to its linting is `@shadcn/lint
 have no built-in replacement. A UI repo's command is Vite+'s `vp`, and the verbs a developer knows from basis repos mean
 the same thing here.
 
-What basis-ui adds is the firm's design system: one theme in light and dark, the components every app needs, and every
-chart through parallax. Apps import the components and cannot restyle them, so every app looks and behaves alike, and a
-fix reaches all of them in one upgrade.
+What basis-ui adds is the firm's design system: themes the library defines, each in light and dark, the components every
+app needs, and every chart through parallax. Apps import the components and cannot restyle them, so every app looks and
+behaves alike, and a fix reaches all of them in one upgrade.
 
 ## What a developer sees
 
@@ -37,13 +37,16 @@ fix reaches all of them in one upgrade.
 | `vp check`                      | Formatting, linting and type checking together                                                                                        |
 | `vp test`                       | The Vitest suites, in Vitest's browser mode with the Playwright provider                                                              |
 | `vp dev`                        | The app in fixture mode, on a free port per git worktree, with no backend                                                             |
-| `vp run check-full`             | `client-check`, `tsc --noEmit` on the whole app, generated client included, `check` and `test`, plus screenshot comparison in WSL     |
+| `vp run check-full`             | `sync --check`, `client-check`, `tsc --noEmit` on the whole app, `check` and `test`; screenshot comparison in WSL, not yet            |
 | `vp run shot ROUTE`             | A screenshot of a page, its accessibility tree and its console errors                                                                 |
 | `vp run client-pull`            | Copies the API's `openapi.json` from the API repo at a tag, or from a deployed API, and regenerates the client                        |
 | `vp run client-check`           | Whether the generated client still matches the repo's `openapi.json`: a task of its own, since an app cannot add a step to `vp check` |
-| `vp run review`                 | A pull request's summary: screenshot diffs, the client's diff, the versions, and the commit that was checked                          |
+| `vp run review`                 | A pull request's summary: the client's diff, the versions, and the commit that was checked; screenshot diffs, not yet                 |
 | `vp run sync`, `vp run upgrade` | Rewrite the framework's files from the installed version; update `@basis/ui`, sync and check in one step                              |
 | `vp run doctor`, `vp run docs`  | Check the desktop's setup and print the fix for each problem; print the docs for the installed version                                |
+
+Screenshot comparison in `check-full` and screenshot diffs in `review` wait for baselines: the gallery's in roadmap
+step 6.2a, an app's in step 6.8.5.
 
 The `vp run` tasks come from `@basis/ui`'s preset, which an app's `vite.config.ts` spreads in, so every UI repo has the
 same ones. `check-full`'s `tsc --noEmit`, from the app's installed TypeScript, is what type-checks the generated client:
@@ -77,6 +80,9 @@ version line is its own, apart from basis's: the two meet at the contract, not a
 | `Dockerfile`, `azure-pipelines.yml`                            | An image that serves the built files with a static file server, and the deploy pipeline that calls the maintainer's team's templates       |
 | `AGENTS.md`, `CLAUDE.md`, `.agents/skills/`, `.claude/skills/` | The agent files, as basis writes them: `AGENTS.md` a short map, `CLAUDE.md` containing `@AGENTS.md`, and the skills copied for Claude Code |
 | `.vite-hooks/`, `.gitattributes`, `.gitignore`                 | Vite+'s commit and push hooks, LF line endings on Windows and in WSL alike, and the ignored files, `.fixtures/` among them                 |
+
+The template writes `.gitignore`, but `vp run sync` does not keep it, so nothing stops an app dropping `.fixtures/`
+from it: not yet, step 6.8.3.
 
 ## Consumers
 
@@ -127,6 +133,14 @@ basis-ui adds one lint plugin, `@shadcn/lint`, described below:
   catching a bug: `eslint/capitalized-comments` and `eslint/sort-keys` are off, `eslint/id-length` allows `l`, `c`, `h`,
   `x`, `y` and `i`, `unicorn/no-useless-promise-resolve-reject` is off, and `eslint/max-lines-per-function` is off on
   tests.
+- Six more are to be loosened in app code, by the maintainer's choice on 2026-11-09, because a 60-line table page
+  failed all six without a UI bug among them, and each failure costs an agent a round: `eslint/max-lines-per-function`,
+  `eslint/complexity` and `eslint/max-params` turned off or loosened, `eslint/id-length` and `eslint/no-magic-numbers`
+  loosened for literals in JSX, and `typescript/explicit-function-return-type` off for event handlers. The same choice
+  closes the real holes that probes found open: an app's `src/styles.css`, `vite.config.ts` and `tsconfig.json` held to
+  the framework's lines, suppression comments refused outside a short allowlist, and the classes, formatting calls,
+  network APIs and dependencies the lint lets past today. Not yet: step 6.8.2 loosens the six, and step 6.8.3 closes
+  the holes.
 - Oxfmt with its defaults.
 
 Two guarantees need more than Oxlint's built-in rules. Components the React Compiler cannot optimize fail the build,
@@ -146,7 +160,8 @@ which variant, size or token to use instead, from the components and the theme t
 | `require-static-classes` | Classes built at run time, which no check can read                                                                                   |
 
 It is pinned to an exact version, since it is at 0.2 and Oxlint still calls its JS plugins alpha. If it breaks, its
-rules are turned off until it is fixed, and the screenshot tests catch what they would have.
+rules are turned off until it is fixed, and the gallery's screenshot tests catch what they would have, once step 6.2a
+builds them (not yet).
 
 ## The stack
 
@@ -212,11 +227,11 @@ The firm's own components cover what shadcn does not:
   business days on its declared calendar, SIFMA by default, and `DateRangePicker` offers month, quarter and year to
   date.
 - **Forms.** Fields bind to the Zod schemas orval generates, so a form checks what the API's document declares. Errors
-  the API returns land on the fields they name, leaving a page with unsaved changes asks first, and a destructive action
-  asks for typed confirmation. basis's contract names each field at fault in a 422's `errors`, RFC 9457's own list of
-  `{detail, pointer}`, with `{detail, parameter}` for a query or path parameter, the shape spike 0.2 found and basis-ui
-  asked basis for (jacobragsdale/basis#7). `fieldErrors` names each field as TanStack Form does, so the errors go
-  straight onto the form; the example app's settlement form does this.
+  the API returns land on the fields they name. Leaving a page with unsaved changes is to ask first, and a destructive
+  action to ask for typed confirmation: neither is built yet (step 6.7.6). basis's contract names each field at fault in
+  a 422's `errors`, RFC 9457's own list of `{detail, pointer}`, with `{detail, parameter}` for a query or path
+  parameter, the shape spike 0.2 found and basis-ui asked basis for (jacobragsdale/basis#7). `fieldErrors` names each
+  field as TanStack Form does, so the errors go straight onto the form; the example app's settlement form does this.
 - **Data.** `DataTable`, on TanStack Table, is for small data whose cells hold links and buttons; past its row cap it
   fails with a message that points to parallax's grid. `EntityPicker` searches through the generated client, and
   `SecurityPicker` sends only a valid CUSIP, ISIN or SEDOL. `FileImport` reads CSV and Excel workbooks (.xlsx), previews
@@ -224,32 +239,45 @@ The firm's own components cover what shadcn does not:
   with dates in ISO 8601, and a workbook with several sheets of the schema's columns offers a choice of sheet. An .xls,
   .xlsb or .ods is refused with how to save it as .xlsx ([the reader's spike](spikes/xlsx-reader.md)).
 - **The shell's parts.** A sidebar built from the route tree, breadcrumbs, a user menu holding the mode and density, a
-  banner naming the environment, a command palette (Ctrl+K) filled from the routes, a filter bar whose state lives in
-  the URL's search parameters, saved views, split panes for master and detail, and a shortcut registry with a `?`
-  overlay.
+  banner naming the environment, a command palette (Ctrl+K) filled from the routes, and a shortcut registry with a `?`
+  overlay. Not yet: a filter bar whose state lives in the URL's search parameters (step 6.7.2), saved views (step
+  6.6.3), and split panes for master and detail (step 6.7).
 - **States.** One component shows a query's loading skeleton, its empty state, its error, read from problem details, and
   its staleness, as the time its data was current.
 - **Small charts.** `Sparkline` and an in-cell bar, drawn as SVG, for KPI cards and table cells, which are too small to
   load parallax for.
 
-A gallery in this repo shows every component in both modes and both densities, and its screenshots are the components'
-visual tests. Every screenshot `vp run shot` takes, in the gallery or in an app, also runs an axe accessibility check,
-and a violation fails it.
+A gallery in this repo shows every component in both modes and both densities. Its screenshots are to be the
+components' visual tests, and every screenshot, in the gallery or through `vp run shot` in an app, is to run an axe
+accessibility check that a violation fails. Neither is built yet: no gallery screenshot has a baseline, and no axe check
+runs (steps 6.2a and 6.8.5, the axe check waiting for the maintainer to approve `axe-core`).
 
 ## The theme
 
-There is one theme, the firm's, in a light mode and a dark mode. It has three layers, and no app can change it: apps
-declare no tokens, and use no `dark:` variants, since every token already switches with the mode. `no-restyle` rejects
-`dark:` on a component; on plain elements no built-in rule can, so the theme points `dark:` at the user's chosen mode,
-and the template's drift check rejects tokens an app's stylesheet declares, since `@shadcn/lint` accepts them once it
-reads the package's theme.
+The library defines the themes, each in a light mode and a dark mode, and the user picks one as they pick a mode and a
+density. The maintainer chose this on 2026-11-09, where there had been one theme: `@basis/ui` ships several themes from
+one typed generator, each held to the checks below, so that a desk that lives in the grid can choose a dense, dark-first
+theme and a user who needs it one of high contrast, while every app still looks alike, since the themes are the
+library's and not an app's. The default theme gets a look of its own, decided the same day, since the components read as
+shadcn's defaults: status colours with their own lightness, a neutral whose tint shows, elevation that reads, a dark
+primary that is not pastel, and a considered look for numbers. The firm's brand is ported onto the generator's inputs
+later, when the maintainer has its guidelines, and its values stay out of this public repo. Not yet: today there is one
+theme, the default, which still reads as shadcn's; the generator, `defineTheme`, is step 6.5.3, the choice of theme
+6.5.5, and the default's identity with the two more themes, dense dark and high contrast, 6.5.7.
+
+Each theme has three layers, and no app can change it: apps declare no tokens, and use no `dark:` variants, since every
+token already switches with the mode. `no-restyle` rejects `dark:` on a component; on plain elements no built-in rule
+can, so the theme points `dark:` at the user's chosen mode, and the template's drift check is to reject tokens an app's
+stylesheet declares, since `@shadcn/lint` accepts them once it reads the package's theme. Not yet: no check reads an
+app's stylesheet today (step 6.8.3).
 
 1. **Ramps.** Twelve-step OKLCH scales for a neutral, the brand, and four status hues (red, amber, green and blue). Each
    step has one job: steps 1 and 2 are page backgrounds, 3 to 5 control fills at rest, hovered and pressed, 6 to 8
    borders, 9 and 10 solid fills, and 11 and 12 text. A dark ramp has the same steps at different lightness, so the dark
    mode is designed rather than inverted. A script in this repo generates the ramps from a few inputs, the brand's hue
    and chroma and the neutral's tint, and commits the CSS. Porting the firm's existing theme means changing those
-   inputs, the fonts and the radius.
+   inputs, the fonts and the radius; step 6.5.3 makes every hand-written value an input, so that a theme is one file of
+   them.
 2. **Semantic tokens.** These are the only colours Tailwind exposes, and each one is a ramp step in each mode.
    Tailwind's own palette is removed, and `no-raw-colors` rejects a class such as `bg-pink-500`.
 
@@ -277,21 +305,27 @@ reads the package's theme.
    The maintainer asked for this motion on 2026-11-08, where the sidebar had folded at once. Fonts are bundled, so screenshots match on every desktop: Inter for text and JetBrains Mono
    for code, until the firm's fonts replace them.
 
-The user chooses a mode (system, light or dark) and a density (compact, the default by the maintainer's choice of 2026-11-07, or comfortable). Both live in a
-cookie on the parent domain the firm's apps share, so every app follows one choice, and a page left open changes when
-another app changes it. A script in the page's head applies them before the first paint, and sets `color-scheme` to
-match, so scrollbars and native controls follow. If the apps share no parent domain, each app keeps its own choice.
+The user chooses a mode (system, light or dark) and a density (compact, the default by the maintainer's choice of
+2026-11-07, or comfortable), and once step 6.5.5 is built a theme. They live in one cookie, meant to sit on the parent
+domain the firm's apps share, so that every app follows one choice, and a page left open changes when another app
+changes it. A script in the page's head applies them before the first paint, and sets `color-scheme` to match, so
+scrollbars and native controls follow. If the apps share no parent domain, each app keeps its own choice. Not yet: the
+cookie can take a domain, but the user menu passes none, so today each app keeps its own choice (step 6.5.5).
 
-This repo's `vp check` runs the theme's checks, since no app can change the theme:
+This repo's `vp check` runs the theme's checks, since no app can change the theme. Step 6.5.4 lifts them into
+`checkTheme`, which every shipped theme must pass, and widens them to every text token on every surface, the focus
+ring as drawn, and every pair of chart colours (not yet):
 
 - every token is defined in both modes, and nothing outside the theme defines one;
 - text tokens reach 5.5:1 contrast on the surfaces they sit on, and control outlines and focus rings 3:1;
 - `chart-1` to `chart-8` stay distinct under simulated protanopia, deuteranopia and tritanopia;
 - `gain` and `loss` differ in lightness;
 - in the compact density, controls stay at least 24 pixels tall, WCAG 2.2's minimum target size;
-- the gallery's screenshots, in light and dark, comfortable and compact, match their baselines.
+- the gallery's screenshots, in every theme, light and dark, comfortable and compact, match their baselines. Not yet:
+  no baseline exists outside parallax (step 6.2a).
 
-Apps' routes are screenshotted in light and dark, at the compact density.
+Apps' routes are screenshotted in light and dark, at the compact density, with `vp run shot`; comparing them with
+baselines is step 6.8.5 (not yet).
 
 ## Numbers
 
@@ -447,7 +481,8 @@ for coding agents.
 Screenshots differ between operating systems, as Playwright's docs warn, and the desktops run no Docker to pin a Linux
 image in. So visual baselines are made and compared only in WSL, with the Chromium build Playwright pins and the fonts
 `@basis/ui` bundles, and on Windows `vp run check-full` says it skipped the comparison and to run it in WSL. An agent on
-Windows still takes screenshots to look at.
+Windows still takes screenshots to look at. Not yet: an app has no baselines and `check-full` compares none (step
+6.8.5); this repo's gallery gets its baselines in step 6.2a, made in the pinned Playwright image as parallax's are.
 
 ## Serving the build
 
@@ -462,7 +497,8 @@ The maintainer asked for it on 2026-11-08, finding the demos slow when served un
 Every UI repo has Node, so basis-ui uses Vite+'s own hooks: `vp config`, run from the repo's `prepare` script, installs
 them on every `vp install`. The commit hook runs `vp staged`, which formats and lint-fixes the staged files, then `vp
 check` and `vp test`; the push hook runs `vp run check-full`. `vp run review` writes the pull request's summary, so a
-reviewer judges screenshots and the client's diff rather than lines of agent-written code. A hook can be skipped with
+reviewer judges screenshots and the client's diff rather than lines of agent-written code; until step 6.8.5 compares
+screenshots, the summary asks for a `vp run shot` of each page instead of a diff. A hook can be skipped with
 `--no-verify`, so until CI exists the gates are only as strong as the hooks; the generated pipeline already runs `vp run
 check-full`, and a branch policy on `main` that requires it turns the checks into the gate the day the firm builds CI.
 
@@ -477,19 +513,36 @@ session layer, the protocol between the page and its worker, and the wasm wrappe
 build, where each xlsx cell holds about 190 bytes of memory that is never returned, so xlsx stops at 1,000,000 cells
 and larger exports are CSV, written in chunks.
 
-The reason is the data's size. The firm's tables are not millions of rows, so a server that holds data the browser
-cannot is cost without benefit, and every app would have needed one deployed beside it. A documented limit replaces it,
-and a larger load fails before it starts, with a message that names the limit. Spike 0.3 set it at 150,000 rows of a
-positions-shaped table and 70 MB of Arrow, whichever comes first: time follows rows and memory follows bytes. At 150,000
-rows the reference pivot met its 500 ms budget with the CPU held to a quarter, and the engine held 350 MB. The Citrix
-repeat moves the limit to what a desktop's own browser meets, and restates parallax's 300 MB memory budget, written for
-views held on a server, for tables held in the browser. A load past the engine's memory traps the wasm, so the worker
-treats a trap as fatal: it fails every view with the reason and starts again. React components replaced the 44 Angular
-component files of its web layer in step 2.6, the canvas renderers, the formatter, the charts and the technical-analysis
-tools ported unchanged and checked pixel for pixel against the Angular layer's, and the DuckDB comparisons that test the
-engine's numbers stayed. Each column is formatted by the display format its Arrow field carries, as [Numbers](#numbers)
-describes. App developers install one npm package with the wasm built into it, and Rust stays inside this repo's build.
-Parallax keeps its Apache-2.0 license.
+The reason is that the browser can hold the data. A server that holds data the browser cannot is cost without benefit
+when the engine alone holds the tables, and every app would have needed one deployed beside it. A documented limit
+replaces it, and a larger load fails before it starts, with a message that names the limit. Spike 0.3 set it at 150,000
+rows of a positions-shaped table and 70 MB of Arrow, whichever comes first: time follows rows and memory follows bytes.
+At 150,000 rows the reference pivot met its 500 ms budget with the CPU held to a quarter, and the engine held 350 MB.
+
+On 2026-11-09 the maintainer set the grid's target at 1,000,000 wide rows, fast, still with no server and no threads,
+since the grid it replaces manages about 200,000 rows, so a limit of 150,000 is a step back from it. The review that
+day lifted the limit in a copy of the built demo: the engine as it stood loaded 2,000,000 trades, and its time and
+memory grew in a straight line with rows, so what bounds it is memory, the load and the first sort, each with a cause
+that step 6.3 removes. The limit is restated in bytes of Arrow, since memory follows bytes: step 6.3.9 sets it from the
+scale harness, expected near 500 MB, and drops the row limit or sets it far above. Until then it stays at 150,000 rows
+and 70 MB. The budgets are stated against a Citrix session of about 4 virtual CPUs and 16 GB, the maintainer's figure,
+until step 6.10 measures a desktop; that repeat of spike 0.3 also restates parallax's 300 MB memory budget, written for
+views held on a server, for tables held in the browser. Threads, sharded workers, 64-bit memory and a remote engine
+stay out: wide tables of 5,000,000 rows do not fit in 4 GB, and a session's 16 GB binds first. The session layer stays
+independent of its transport, so a remote engine remains possible. A load past the engine's memory traps the wasm, so
+the worker treats a trap as fatal: it fails every view with the reason and starts again.
+
+The grid gains cells that draw data bars, heat, badges, sparklines and links, a context menu at the pointer, and saved
+views, by the maintainer's choice on 2026-11-09, so that a desk reads magnitude and status at a glance and keeps the
+layouts it builds (steps 6.6.1 to 6.6.3, not yet). The cells are kinds a layout declares for a column and the canvas
+draws, not React renderers, since a canvas cannot host one for each cell. Live updates with flashing cells, and cell
+editing, stay deferred; the engine already applies a keyed reload as a diff, so the door stays open.
+
+React components replaced the 44 Angular component files of its web layer in step 2.6, the canvas renderers, the
+formatter, the charts and the technical-analysis tools ported unchanged and checked pixel for pixel against the Angular
+layer's, and the DuckDB comparisons that test the engine's numbers stayed. Each column is formatted by the display
+format its Arrow field carries, as [Numbers](#numbers) describes. App developers install one npm package with the wasm
+built into it, and Rust stays inside this repo's build. Parallax keeps its Apache-2.0 license.
 
 Step 2.7 deleted the Angular layer, `packages/parallax/web`: the Angular library, its demo app, their own pnpm
 workspace, ESLint, Prettier and unit tests, their Playwright specs and screenshots, CI's two Angular jobs, and the
@@ -523,14 +576,14 @@ managed by `vp env`.
 | React Hook Form                                                       | It is on the React Compiler's list of incompatible libraries.                                                                                                                                                                                                                      |
 | Sonner                                                                | Base UI ships a toast, and shadcn added one for Base UI in July 2026.                                                                                                                                                                                                              |
 | React Aria as a second component base                                 | shadcn has supported it since July 2026, but one base keeps every component alike, and Base UI is shadcn's default.                                                                                                                                                                |
-| Several themes, or a theme per app                                    | The firm has one brand; light and dark are modes of it.                                                                                                                                                                                                                            |
+| A theme per app, and themes a user edits                              | Every app looks alike: the themes are the library's, and the user picks among them. Several themes left this row on 2026-11-09, when the maintainer chose to ship them.                                                                                                            |
 | Blur and backdrop filters                                             | Citrix desktops draw on the CPU.                                                                                                                                                                                                                                                   |
 | Rust for components, forms or JSON                                    | No win to measure: the page's DOM work stays in JavaScript either way, and `JSON.parse` is native.                                                                                                                                                                                 |
 | Prettier                                                              | Oxfmt ships with Vite+.                                                                                                                                                                                                                                                            |
 | Bun                                                                   | Vite+ already installs packages (`vp install`) and manages Node (`vp env`); `bun test` has no browser mode; Vitest under Bun has open worker failures.                                                                                                                             |
 | MCP servers                                                           | Every agent reads MCP settings from a different file.                                                                                                                                                                                                                              |
 | Rejecting unknown fields in API responses                             | A UI and its API deploy separately; a UI that rejected a new field would break on every additive change.                                                                                                                                                                           |
-| Parallax's server                                                     | The firm does not need million-row tables in the browser, and every app would have deployed one.                                                                                                                                                                                   |
+| Parallax's server                                                     | The engine alone holds the tables in the browser: it loaded 2,000,000 trades with its limit lifted on 2026-11-09, and its target is 1,000,000 wide rows. Every app would have deployed a server beside it.                                                                         |
 | Decimal strings for API numbers, and rates in percent or basis points | The maintainer's call on 2026-11-07, for the whole firm: one number type, a double that the UI rounds once at display by parallax's 15-digit rule, and one unit for rates, the fraction. Exact decimals stay inside parallax's sums, and `@basis/ui`'s `Decimal` class is deleted. |
 | Storybook visual tests, Argos, Lost Pixel                             | Storybook's visual tests send stories to Chromatic's cloud, Argos's maintainers do not support self-hosting, and Lost Pixel was archived in April 2026. Playwright compares screenshots locally.                                                                                   |
 | @hey-api/openapi-ts                                                   | It lists `typescript` as a peer, and TypeScript 7 ships no compiler API. orval also depends on TypeScript 6 since 8.45, but runs with it overridden to 7 (spike 0.2); hey-api was not tried that way.                                                                              |
@@ -561,17 +614,27 @@ Each fact was checked on 2026-11-06 against the source named, unless it says sec
 | Chromium's CDP CPU throttling does not reach Web Workers, so throttled figures for a worker-held engine need a CPU quota on the whole browser                                                                                                                                          | Spike 0.3                                                       |
 | Parallax's engine holds about four times a table's Arrow size in memory, and an xlsx written in wasm about 190 bytes a cell, which WebAssembly never returns                                                                                                                           | Spike 0.3                                                       |
 | orval 8.46's MSW mocks pick an enum field's value from `Object.values` of its Zod schema, which is no value of the enum, so a generated response with an enum failed its schema until `client-pull` rewrote the picks to the enum's `options`; its Arrow mock is 1 to 64 random bytes  | Measured here on 2026-11-07, and in spike 0.2                   |
+| With its limits lifted in a copy of the built demo, parallax's engine at commit `bda50ad` loaded 2,000,000 trades, 608 MB of Arrow; its time and memory grew in a straight line with rows, and scrolling held a 16.7 ms frame at every size                                            | Measured here on 2026-11-09, with the GPU off                   |
+| 1,000,000 trades, 304 MB of Arrow, drew their first rows in 2.5 s with 1.9 GB of browser memory, and in 9.9 s with 1.7 GB under spike 0.3's CPU quota, where a first sort of a text column took 2.4 to 2.7 s                                                                           | Measured here on 2026-11-09, with the GPU off                   |
+| The grid parallax replaces, DevExpress's, manages about 200,000 rows                                                                                                                                                                                                                   | The review of 2026-11-09, secondhand                            |
+| A Citrix session has about 4 virtual CPUs and 16 GB                                                                                                                                                                                                                                    | The maintainer on 2026-11-09, secondhand                        |
+| On a canvas, Inter's digits are proportional: `1111111111` is 50 pixels wide and `0000000000` 80, where the DOM's `tabular-nums` gives 80 for both                                                                                                                                     | Measured here on 2026-11-09                                     |
 
 ## Not yet verified
 
-Each item is a spike in [Phase 0 of the roadmap](roadmap.md#phase-0-spikes):
+Each item is a spike in [Phase 0 of the roadmap](roadmap.md#phase-0-spikes), or step 6.10, which runs spike 0.3's
+Citrix repeat on the new engine:
 
 - that `vp` installs on a Citrix desktop without admin rights, on Windows and in WSL, and installs from the internal npm
   feed;
 - that Vite+'s hooks install on a fresh clone on Windows and in WSL (they do on Linux; Vite+ issue #2252 reports a
   case where they do not on Windows);
 - that screenshots of the same page match between two Citrix desktops' WSL setups;
-- how many rows parallax holds on a Citrix desktop, and how much memory the tab may use there (spike 0.3's Citrix
-  repeat);
+- that a Citrix session has about 4 virtual CPUs and 16 GB, as the maintainer reports, and how much memory its tab may
+  use;
+- that 1,000,000 wide rows load, sort and scroll within the budgets on a Citrix desktop, and so the limit in bytes that
+  step 6.3.9 sets (step 6.10);
 - how long parallax's wasm takes to download, compile and draw a first chart on a Citrix desktop (the same repeat);
-- that the firm's apps share a parent domain, for the cookie that holds the mode and density.
+- whether a Citrix desktop's display scaling leaves the canvases' text and rules sharp, and whether Windows has its
+  animations turned off there (step 6.10);
+- that the firm's apps share a parent domain, for the cookie that holds the mode, density and theme.
