@@ -5,6 +5,12 @@ What changed in `@basis/ui`, newest first, in the words an app's agent needs: wh
 
 ## Unreleased
 
+- The lint asks less of a page and says more when it refuses one. In app code a function may run to 200 lines,
+  blanks and comments aside, with a complexity of 30 and 4 parameters; `a`, `b`, `e`, `k`, `v` and `_` are names; a
+  number inside JSX needs no name; and only exported functions need a return type. A class that restyles a component
+  names its variants and sizes and `vp run docs NAME`; a raw colour or a missing shadow names the tokens it means,
+  such as `text-loss` or `bg-destructive` for red, and `shadow-sm` or `shadow-md`; `fetch` is refused by
+  `basis/no-fetch`, so a disable comment for it names that rule, not `eslint/no-restricted-globals`.
 - `vp run docs NAME` prints one component, hook, function, type or module from the installed catalogue, such as
   `vp run docs Select`, `vp run docs numberText`, `vp run docs DataTableColumn` or `vp run docs dates`: what it is for,
   when to use it, what goes with it, its props with their defaults, its variants and an example. `vp run docs --search

@@ -448,8 +448,7 @@ alternative, not pixels.
 
 A component's look comes from its props, `variant` and `size`, never from `className`. `className` places a component:
 margin, width, and flex or grid placement. The lint rule `shadcn/no-restyle` rejects any other class, and its error
-says the component owns that look and to add a variant to `@basis/ui`. `vp run docs NAME` lists the component's
-variants and sizes. When no variant fits, the variant is added to `@basis/ui` in a basis-ui pull
+names the component's variants and sizes and `vp run docs NAME`, which shows each. When no variant fits, the variant is added to `@basis/ui` in a basis-ui pull
 request, never restyled in the app. `@basis/ui` exports no `*Variants` helpers, so no plain element can take a
 component's classes either.
 

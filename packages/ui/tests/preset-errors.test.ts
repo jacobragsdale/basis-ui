@@ -1,8 +1,9 @@
 /* Every error the preset adds to an app's lint names its fix, since in an app agents write nobody reads the code
  * (docs/design.md, The idea): the libraries @basis/ui replaces, `fetch` and the generated files outside the client
- * layer, and display rounding (docs/design.md, Numbers). The probe runs `vp lint` in packages/consumer, the app
- * configured exactly as the README says, on a file of every banned import and call. `vp run docs`'s errors, for a name
- * or a search it cannot answer, are held here by their text too, run in the same app. */
+ * layer, display rounding (docs/design.md, Numbers), and the classes that restyle a component or name a colour the
+ * theme lacks. The probe runs `vp lint` in packages/consumer, the app configured exactly as the README says, on a file
+ * of every banned import and call. The app's limits are held by its table page, which they pass. `vp run docs`'s
+ * errors, for a name or a search it cannot answer, are held here by their text too, run in the same app. */
 
 import { execFileSync, spawnSync } from "node:child_process";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
@@ -95,10 +96,13 @@ describe("the preset's lint against what an app must not import or call", () => 
     expect(finding).toContain(fix);
   });
 
-  test("refuses fetch outside the client layer, naming the generated client", () => {
-    const finding = findingFor("no-restricted-globals", 'fetch("/api/positions")');
-    expect(finding, report).toBeDefined();
-    expect(finding).toContain("import the operation's hook from src/api/client.ts");
+  test("refuses fetch outside the client layer, naming the generated client and nothing else", () => {
+    expect(findingFor("basis(no-fetch)", 'fetch("/api/positions")'), report).toBe(
+      "ERROR feature code calls the API only through the generated client: import the operation's hook from src/api/client.ts. ",
+    );
+    expect(diagnostics.filter(({ code }) => code.includes("no-restricted-globals"))).toStrictEqual(
+      [],
+    );
   });
 });
 
@@ -162,6 +166,90 @@ describe("the preset's lint against Vitest's browser API outside a browser-only 
       expect(found[0]?.help).toContain("render, screen and userEvent from @basis/ui/testing");
     },
   );
+});
+
+/** `vp lint`'s diagnostics in packages/consumer on `file`, a path in the app such as `src/positions.tsx`. */
+function lintDiagnostics(file: string): z.infer<typeof diagnosticSchema>[] {
+  const vp = new URL("node_modules/.bin/vp", consumer).pathname;
+  let output = "";
+  try {
+    output = execFileSync(vp, ["lint", "--format", "json", file], {
+      cwd: consumer,
+      encoding: "utf8",
+    });
+  } catch (error) {
+    output = error instanceof Error && "stdout" in error ? String(error.stdout) : String(error);
+  }
+  const parsed: unknown = JSON.parse(output.slice(output.indexOf("{")));
+  return reportSchema.parse(parsed).diagnostics;
+}
+
+describe("the app's limits, loosened for app code on 2026-11-09", () => {
+  test("pass the table page that failed basis-ui's own six limits with no fault in it", () => {
+    expect(lintDiagnostics("src/positions.tsx")).toStrictEqual([]);
+  });
+});
+
+const classes = `import { Badge, Button } from "@basis/ui";
+
+export const shown = [
+  <Button className="bg-blue-600">Save</Button>,
+  <Badge className="font-bold">New</Badge>,
+  <div className="bg-red-500">Loss</div>,
+  <div className="drop-shadow-lg">Card</div>,
+  <p title={String(page * 25)}>{rows > 25 ? 4 : 3}</p>,
+];
+const page = 3;
+export const rows = page * 25;
+`;
+
+/** What `rule` reports in packages/consumer on the classes probe, on the line holding `text`. */
+function classFinding(
+  found: z.infer<typeof diagnosticSchema>[],
+  rule: string,
+  text: string,
+): string[] {
+  const line = classes.split("\n").findIndex((source) => source.includes(text)) + 1;
+  return found
+    .filter(({ code, labels }) => code === rule && labels.some(({ span }) => span.line === line))
+    .map(({ message }) => message);
+}
+
+describe("the preset's lint against a class that restyles a component or names a colour the theme lacks", () => {
+  mkdirSync(probeFolder, { recursive: true });
+  writeFileSync(new URL("classes.tsx", probeFolder), classes);
+  const found = lintDiagnostics(".lint-probe/classes.tsx");
+
+  test("names the component's variants and sizes and vp run docs NAME, not a file inside @basis/ui", () => {
+    expect(classFinding(found, "shadcn(no-restyle)", "bg-blue-600")).toStrictEqual([
+      'ERROR "bg-blue-600" restyles Button, whose look is its own: set variant (default, outline, secondary, ghost, destructive or link) or size (default, xs, sm, lg, icon, icon-xs, icon-sm or icon-lg), give className only margin, width, and flex or grid placement, and run vp run docs Button to see each.',
+    ]);
+    expect(classFinding(found, "shadcn(no-restyle)", "font-bold")).toStrictEqual([
+      'ERROR "font-bold" restyles Badge, whose look is its own: set variant (default, secondary, outline, ghost, link, success, warning, info or destructive), give className only margin, width, and flex or grid placement, and run vp run docs Badge to see each.',
+    ]);
+  });
+
+  const rawColour =
+    "is not a colour or shadow of @basis/ui's theme, whose tokens follow the user's theme and mode: name a colour by what it means, as text-loss or bg-destructive for red, text-gain or bg-success for green, bg-warning for amber, bg-info or bg-primary for blue, and text-muted-foreground, bg-muted or border-edge for grey; a status is a Badge or Alert variant, and a shadow shadow-sm or shadow-md.";
+
+  test("sends red to the tokens a person means by it, not the nearest chart colours", () => {
+    expect(classFinding(found, "shadcn(no-raw-colors)", "bg-red-500")).toStrictEqual([
+      `ERROR "bg-red-500" ${rawColour}`,
+    ]);
+  });
+
+  test("calls a drop shadow the theme lacks a shadow, and names the theme's", () => {
+    expect(classFinding(found, "shadcn(no-raw-colors)", "drop-shadow-lg")).toStrictEqual([
+      `ERROR "drop-shadow-lg" ${rawColour}`,
+    ]);
+  });
+
+  test("lets a number inside JSX stand as itself, and names the fix for one outside it", () => {
+    expect(classFinding(found, "basis(no-magic-numbers)", "rows > 25")).toStrictEqual([]);
+    expect(classFinding(found, "basis(no-magic-numbers)", "rows = page")).toStrictEqual([
+      "ERROR 25 is a number with no name: declare it once, as a const named for what it is, and use the name, or write it inside JSX, where a number may stand as itself.",
+    ]);
+  });
 });
 
 /** What `vp run docs` prints to its error stream in packages/consumer, which has `@basis/ui` installed. */

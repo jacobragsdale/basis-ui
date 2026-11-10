@@ -16,7 +16,7 @@ type DatasetName = keyof typeof datasets;
 /** Fetches a generated dataset's Arrow stream. */
 async function fetchArrow(name: DatasetName): Promise<ArrayBuffer> {
   const url = `data/${name}.arrows`;
-  // oxlint-disable-next-line eslint/no-restricted-globals -- the harness reads files data.sh wrote beside it; it calls no API, so there is no generated client to go through.
+  // oxlint-disable-next-line basis/no-fetch -- the harness reads files data.sh wrote beside it; it calls no API, so there is no generated client to go through.
   const response = await fetch(url);
   if (!response.ok) {
     throw new Error(`${url} answered ${String(response.status)}; run tests/e2e/data.sh`);

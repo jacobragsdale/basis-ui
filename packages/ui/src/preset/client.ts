@@ -90,7 +90,7 @@ function documentAtTag(source: string, tag: string): string {
 /** What a deployed API answers at `url`. */
 async function request(url: string): Promise<Response> {
   try {
-    // oxlint-disable-next-line eslint/no-restricted-globals -- this downloads the API's document in Node, outside any app's client.
+    // oxlint-disable-next-line basis/no-fetch -- this downloads the API's document in Node, outside any app's client.
     return await fetch(url, { headers: { accept: "application/json" } });
   } catch (error) {
     throw new TaskError(

@@ -18,6 +18,8 @@ export default defineConfig({
       "src/preset/client.ts",
       "src/preset/shot.ts",
       "src/preset/tasks.ts",
+      // Oxlint loads the preset's lint plugin by its path, so it is a module of its own.
+      "src/preset/lint-plugin.ts",
       "src/fixtures/index.ts",
       "src/numbers/index.ts",
       "src/utils/index.ts",

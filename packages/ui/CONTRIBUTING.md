@@ -39,7 +39,8 @@ under `## Unreleased`, in the words an app's agent needs: what changed and what 
    no `variant` or `size` needs no `cva`. Other `@basis/ui` components may import the variants; the package never
    exports them, which `tests/exports.test.ts` checks.
 3. If the component takes another component's `variant` and `size`, as `ButtonLink` takes Button's, import that
-   component's variants under this one's name, so that `shadcn/no-restyle`'s errors list them:
+   component's variants under this one's name, so that the catalogue lists them, and `shadcn/no-restyle`'s errors,
+   which the preset writes from the catalogue, with it:
 
    ```ts
    import { buttonVariants as buttonLinkVariants } from "./button-variants.ts";

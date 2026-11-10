@@ -22,7 +22,7 @@ const answerMs = millisecondsPerSecond;
 /** What `url` answers within a second, if it answers with success. */
 async function answer(url: string): Promise<string | undefined> {
   try {
-    // oxlint-disable-next-line eslint/no-restricted-globals -- this asks the app's own dev server, in Node, outside any app's client.
+    // oxlint-disable-next-line basis/no-fetch -- this asks the app's own dev server, in Node, outside any app's client.
     const response = await fetch(url, { signal: AbortSignal.timeout(answerMs) });
     return response.ok ? await response.text() : undefined;
   } catch {

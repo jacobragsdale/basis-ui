@@ -139,14 +139,19 @@ basis-ui adds one lint plugin, `@shadcn/lint`, described below:
   catching a bug: `eslint/capitalized-comments` and `eslint/sort-keys` are off, `eslint/id-length` allows `l`, `c`, `h`,
   `x`, `y` and `i`, `unicorn/no-useless-promise-resolve-reject` is off, and `eslint/max-lines-per-function` is off on
   tests.
-- Six more are to be loosened in app code, by the maintainer's choice on 2026-11-09, because a 60-line table page
-  failed all six without a UI bug among them, and each failure costs an agent a round: `eslint/max-lines-per-function`,
-  `eslint/complexity` and `eslint/max-params` turned off or loosened, `eslint/id-length` and `eslint/no-magic-numbers`
-  loosened for literals in JSX, and `typescript/explicit-function-return-type` off for event handlers. The same choice
-  closes the real holes that probes found open: an app's `src/styles.css`, `vite.config.ts` and `tsconfig.json` held to
-  the framework's lines, suppression comments refused outside a short allowlist, and the classes, formatting calls,
-  network APIs and dependencies the lint lets past today. Not yet: step 6.8.2 loosens the six, and step 6.8.3 closes
-  the holes.
+- Six more are loosened in app code, by the maintainer's choice on 2026-11-09, because a table page failed all six
+  without a UI bug among them, and each failure costs an agent a round; basis-ui's own code keeps them as they were,
+  and packages/consumer keeps the page, which the app's lint passes. `eslint/max-lines-per-function` allows 200 lines,
+  blanks and comments aside, since formatted JSX is most of a page's lines; `eslint/complexity` allows 30, since every
+  `&&` and ternary a page renders by counts; `eslint/max-params` allows 4, past which an options object reads better;
+  `eslint/id-length` also allows `a` and `b` (a comparator's sides), `e` (an event), `k` and `v` (an entry's key and
+  value) and `_` (an unused parameter); `eslint/no-magic-numbers` gives way to the preset's `basis/no-magic-numbers`,
+  the same rule except that a number inside JSX may stand as itself; and `typescript/explicit-function-return-type` is
+  off, since a handler's or a local helper's type is inferred and `typescript/explicit-module-boundary-types` still
+  types every export. The same choice closes the real holes that probes found open: an app's `src/styles.css`,
+  `vite.config.ts` and `tsconfig.json` held to the framework's lines, suppression comments refused outside a short
+  allowlist, and the classes, formatting calls, network APIs and dependencies the lint lets past today. Not yet: step
+  6.8.3 closes the holes.
 - Oxfmt with its defaults.
 
 Two guarantees need more than Oxlint's built-in rules. Components the React Compiler cannot optimize fail the build,
@@ -154,7 +159,9 @@ through the compiler's `panicThreshold: "all_errors"`, which React Compiler 1.0 
 on destructured defaults). Its Rust port in `@vitejs/plugin-react` caught the same faults three times faster in spike
 0.1, and replaces it once it is no longer experimental. The design system's rules come from `@shadcn/lint`, shadcn's
 linter for Tailwind design systems, which runs as an Oxlint JS plugin through Vite+'s `lint.jsPlugins`. Its errors say
-which variant, size or token to use instead, from the components and the theme themselves:
+which variant, size or token to use instead: `no-restyle` names each component's variants and sizes from the
+catalogue and `vp run docs NAME`, and `no-raw-colors` names the tokens a colour means, such as `text-loss` for red,
+rather than the nearest in hue:
 
 | Rule                     | What it rejects                                                                                                                      |
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
@@ -187,8 +194,9 @@ the generated client, telemetry, and how errors are shown, reading RFC 9457 prob
 problems basis's contract names by their type: `invalid-token` means the session has ended, so the shell signs the user
 out through the sign-in adapter and says so; `sign-in-required` asks the user to sign in; and `keys-unavailable`, a 503
 while the sign-in system's keys cannot be fetched, is retried and never signs the user out. Feature code reaches the
-backend only through the generated client, which Oxlint's built-in `no-restricted-imports` and `no-restricted-globals`
-(for `fetch`) enforce.
+backend only through the generated client, which Oxlint's built-in `no-restricted-imports` and the preset's own
+`basis/no-fetch` enforce; it replaced `no-restricted-globals`, whose help told an agent to shadow `fetch` with a local
+variable.
 
 A UI and its API sit behind one host on the AKS cluster, the ingress routing `/api` to the API, so the browser makes no
 cross-origin calls. Where that routing is not possible, the API declares the UI's origin as one it allows.

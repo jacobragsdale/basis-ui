@@ -570,6 +570,9 @@ flowchart TD
    component takes from Base UI, every type an entry names, the hooks and functions, the subpath modules and parallax's
    components, hooks and `LayoutInput` fields, each prop held to the component by a type-checked probe, and the README
    keeps what an app needs, with a changelog, while `CONTRIBUTING.md` holds the rest.
+   6.8.2 built on 2026-11-09: in app code the six limits a table page failed are loosened or off, as the design lists,
+   while basis-ui's own code keeps them, and `no-restyle`, the `fetch` ban and the raw-colour errors name the variants,
+   `vp run docs NAME` and the tokens meant, with nothing after them that contradicts them.
 9. **6.9 The showcase** (`6.9-showcase`, then a branch per page). `packages/showcase`, made from the template, with ten
    pages: overview, blotter, positions, relative value, P&L explain, curves, a bond, booking a trade, import, and a
    probe of the desktop. An agent builds it with only the shipped tools, and logs in `BUILDING.md` each place they fell

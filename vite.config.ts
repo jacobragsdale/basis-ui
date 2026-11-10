@@ -1,6 +1,7 @@
 import { defineConfig } from "vite-plus";
 
 import { basisPreset } from "./packages/ui/src/preset/index.ts";
+import { appLimits, libraryLimits } from "./packages/ui/src/preset/lint.ts";
 
 // This repo checks its own code with the preset every app uses, so the packages meet the rules they ship.
 const preset = basisPreset();
@@ -32,6 +33,9 @@ const parallaxGenerated = ["packages/parallax/src/proto/**", "packages/parallax/
 /* Test fixtures that a script writes, one case a line, are rewritten by their script rather than formatted, and their
  * tests fail when the script has changed since. */
 const generatedFixtures = "packages/*/tests/fixtures/*.json";
+/* The two apps, written as an app's agent or ctzd writes one, take the app's limits; the rest of the repo keeps
+ * basis-ui's own, as strict as before they were loosened for apps. */
+const apps = ["packages/example/**", "packages/consumer/**"];
 // A spike's reference code runs in the spike's own throwaway project, whose dependencies this workspace lacks.
 const spikeCode = ["docs/spikes/**/*.ts", "docs/spikes/**/*.mjs"];
 // The repo's own scripts, package tests and the preset run in Node, unlike an app's code, which runs in a browser.
@@ -57,6 +61,7 @@ export default defineConfig({
   },
   lint: {
     ...lint,
+    rules: { ...lint.rules, ...libraryLimits },
     ignorePatterns: [
       ...(lint.ignorePatterns ?? []),
       ...parallax,
@@ -66,6 +71,8 @@ export default defineConfig({
       "packages/create/templates/**",
     ],
     overrides: [
+      // Before the preset's overrides, so that a test in an app still turns off what tests turn off.
+      { files: apps, rules: appLimits },
       ...(lint.overrides ?? []),
       ...(browserTestRules === undefined
         ? []

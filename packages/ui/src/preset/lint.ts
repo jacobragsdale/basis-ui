@@ -4,15 +4,14 @@
  * `import/max-dependencies`, `oxc/no-optional-chaining`, `react/jsx-max-depth` and `react/no-multi-comp`, and the
  * three rules for test files; and, the same day, five rules that obstructed basis-ui's own code without catching a
  * bug: `eslint/capitalized-comments`, `eslint/sort-keys`, `eslint/id-length`,
- * `unicorn/no-useless-promise-resolve-reject` and `eslint/max-lines-per-function` in tests. Every rule turned off or
- * loosened has its reason on the line above it, because `eslint/no-inline-comments` rejects a comment at the end of a
- * line. */
+ * `unicorn/no-useless-promise-resolve-reject` and `eslint/max-lines-per-function` in tests; and on 2026-11-09 six limits
+ * loosened in app code, which basis-ui's own code keeps as `libraryLimits`. Every rule turned off or loosened has its
+ * reason on the line above it, because `eslint/no-inline-comments` rejects a comment at the end of a line. */
 
 import { fileURLToPath } from "node:url";
 import type { OxlintConfig } from "vite-plus/lint";
 
 import {
-  bannedFetch,
   bannedImports,
   bannedPatterns,
   bannedRounding,
@@ -20,6 +19,47 @@ import {
   browserTestImports,
   generatedImports,
 } from "./lint-bans.ts";
+import { rawColour, restyleContracts, restyleFallback } from "./lint-messages.ts";
+
+type Rules = NonNullable<OxlintConfig["rules"]>;
+
+// OKLCH's channels are l, c and h, coordinates x and y, a counter i; Oxfmt unquotes keys the rule would accept.
+const shortNames = ["c", "h", "i", "l", "x", "y"];
+// -1, 0, 1, 2 and 100 read as themselves; other numbers still need a name.
+const plainNumbers = [-1, 0, 1, 2, 100];
+
+/** The six limits as basis-ui's own code keeps them: the root vite.config.ts sets them over `lint`'s for everything
+ * but its two apps, packages/example and packages/consumer. */
+const libraryLimits: Rules = {
+  "basis/no-magic-numbers": "off",
+  "eslint/complexity": "error",
+  "eslint/id-length": ["error", { exceptions: shortNames }],
+  "eslint/max-lines-per-function": "error",
+  "eslint/max-params": "error",
+  "eslint/no-magic-numbers": ["error", { ignore: plainNumbers }],
+  "typescript/explicit-function-return-type": "error",
+};
+
+/* The six limits in app code, loosened by the maintainer's choice on 2026-11-09: a table page failed all six without a
+ * fault among them (packages/consumer/src/positions.tsx), and each failure costs an agent a round. */
+const appLimits: Rules = {
+  // A page's JSX is most of its lines once formatted; 200 lines of code, blanks and comments aside, is still too many.
+  "eslint/max-lines-per-function": [
+    "error",
+    { max: 200, skipBlankLines: true, skipComments: true },
+  ],
+  // Every `&&` and ternary a page renders by counts; 30 still stops a function that decides too much.
+  "eslint/complexity": ["error", { max: 30 }],
+  // A filter of a row by three choices takes four; past four, an options object reads better.
+  "eslint/max-params": ["error", { max: 4 }],
+  // Also a and b, a comparator's two sides; e, an event; k and v, an entry's key and value; _, a parameter unused.
+  "eslint/id-length": ["error", { exceptions: [...shortNames, "_", "a", "b", "e", "k", "v"] }],
+  // `basis/no-magic-numbers` is the same rule, except that a number inside JSX may stand as itself.
+  "eslint/no-magic-numbers": "off",
+  "basis/no-magic-numbers": "error",
+  // A handler's or a local helper's type is inferred; `explicit-module-boundary-types` still types every export.
+  "typescript/explicit-function-return-type": "off",
+};
 
 // Every built-in plugin the design names. `eslint` is implicit in Oxlint 1.91; listing it changes nothing.
 const corePlugins: NonNullable<OxlintConfig["plugins"]> = [
@@ -51,6 +91,16 @@ const lint: OxlintConfig = {
     { name: "vite-plus", specifier: "vite-plus/oxlint-plugin" },
     // Resolved from this package, so an app needs no direct dependency on @shadcn/lint.
     { name: "shadcn", specifier: fileURLToPath(import.meta.resolve("@shadcn/lint")) },
+    // The preset's own rules, whose messages name their fix (lint-plugin.ts).
+    {
+      name: "basis",
+      specifier: fileURLToPath(
+        new URL(
+          import.meta.url.endsWith(".ts") ? "lint-plugin.ts" : "lint-plugin.mjs",
+          import.meta.url,
+        ),
+      ),
+    },
   ],
   options: {
     denyWarnings: true,
@@ -66,7 +116,7 @@ const lint: OxlintConfig = {
        * the tests' bans. */
       files: ["**/src/api/**"],
       rules: {
-        "eslint/no-restricted-globals": "off",
+        "basis/no-fetch": "off",
         "eslint/no-restricted-imports": [
           "error",
           { paths: bannedImports, patterns: bannedPatterns },
@@ -80,6 +130,7 @@ const lint: OxlintConfig = {
       rules: {
         // A test's inputs and expected values are its literals; naming each one hides what the test checks.
         "eslint/no-magic-numbers": "off",
+        "basis/no-magic-numbers": "off",
         // A `describe` callback counts as one function, so a full suite would split into many.
         "eslint/max-lines-per-function": "off",
         /* The maintainer's choice: Vitest's default timeout applies, and a test that asserts nothing fails its own
@@ -112,7 +163,8 @@ const lint: OxlintConfig = {
       },
     },
     {
-      files: ["**/vite.config.ts"],
+      // Oxlint loads a JS plugin from its module's default export.
+      files: ["**/vite.config.ts", "**/preset/lint-plugin.ts"],
       rules: {
         // Vite loads its configuration from the file's default export.
         "import/no-default-export": "off",
@@ -125,14 +177,12 @@ const lint: OxlintConfig = {
     "eslint/capitalized-comments": "off",
     // Conflicts with `react/function-component-definition`, which wants components as function declarations.
     "eslint/func-style": "off",
-    // OKLCH's channels are l, c and h, coordinates x and y, a counter i; Oxfmt unquotes keys the rule would accept.
-    "eslint/id-length": ["error", { exceptions: ["c", "h", "i", "l", "x", "y"] }],
     // With `import/consistent-type-specifier-style`, a module's types and values arrive in two imports.
     "eslint/no-duplicate-imports": ["error", { allowSeparateTypeImports: true }],
-    // -1, 0, 1, 2 and 100 read as themselves; other numbers still need a name.
-    "eslint/no-magic-numbers": ["error", { ignore: [-1, 0, 1, 2, 100] }],
     // Outside the client layer, `fetch` is banned, as are the generated files and the libraries @basis/ui replaces.
-    "eslint/no-restricted-globals": ["error", { checkGlobalObject: true, globals: [bannedFetch] }],
+    "basis/no-fetch": "error",
+    // Its help for `fetch`, to use a local variable instead of the global, contradicts `basis/no-fetch`'s.
+    "eslint/no-restricted-globals": "off",
     "eslint/no-restricted-imports": [
       "error",
       { paths: bannedImports, patterns: [...bannedPatterns, generatedImports] },
@@ -185,9 +235,17 @@ const lint: OxlintConfig = {
     "react/react-in-jsx-scope": "off",
     "shadcn/no-arbitrary-values": "error",
     "shadcn/no-inline-styles": "error",
-    "shadcn/no-raw-colors": "error",
+    "shadcn/no-raw-colors": ["error", { message: rawColour }],
     // Components take placement only; `dark:` on a component is an error, since every token switches with the mode.
-    "shadcn/no-restyle": ["error", { allow: ["layout"], deny: ["dark:*"] }],
+    "shadcn/no-restyle": [
+      "error",
+      {
+        allow: ["layout"],
+        contracts: restyleContracts(),
+        deny: ["dark:*"],
+        message: restyleFallback,
+      },
+    ],
     "shadcn/no-unknown-classes": "error",
     "shadcn/require-static-classes": "error",
     // React's props and DOM events are mutable library types that no annotation makes deeply readonly.
@@ -205,10 +263,10 @@ const lint: OxlintConfig = {
     "vitest/no-importing-vitest-globals": "off",
     // Conflicts with `vitest/valid-title`, which rejects the function title this rule asks for.
     "vitest/prefer-describe-function-title": "off",
+    ...appLimits,
   },
   settings: {
     shadcn: {
-      note: "Design rules: docs/design.md#components",
       // Counts the theme's tokens from the package's stylesheet, beside any the app declares.
       themeImports: ["^@basis/ui/"],
       ui: "@basis/ui",
@@ -216,4 +274,4 @@ const lint: OxlintConfig = {
   },
 };
 
-export { lint };
+export { appLimits, libraryLimits, lint };

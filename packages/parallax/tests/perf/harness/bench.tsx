@@ -29,7 +29,7 @@ const { dataset, rows } = chosen();
 /** The dataset's Arrow stream, as the bench wrote it beside the page. */
 const source: DatasetSource = async () => {
   const url = `data/${dataset}-${rows}.arrows`;
-  // oxlint-disable-next-line eslint/no-restricted-globals -- the harness reads files the bench wrote beside it; it calls no API, so there is no generated client to go through.
+  // oxlint-disable-next-line basis/no-fetch -- the harness reads files the bench wrote beside it; it calls no API, so there is no generated client to go through.
   const response = await fetch(url);
   if (!response.ok) {
     throw new Error(`${url} answered ${String(response.status)}; run vp run @basis/parallax#bench`);
