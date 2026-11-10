@@ -11,7 +11,7 @@
 import { spawnSync } from "node:child_process";
 
 import { appDependencies, exactVersion, installedVersion } from "./installed.ts";
-import { TaskError } from "./shot-options.ts";
+import { TaskError } from "./task-error.ts";
 
 /** The packages that release together, at one version. */
 const released = ["@basis/ui", "@basis/parallax"];

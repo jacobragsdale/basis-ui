@@ -21,7 +21,7 @@ import path from "node:path";
 import { appProblems, configFiles, isAppConfig } from "./app-config.ts";
 import type { Problem } from "./app-config.ts";
 import { ignored } from "./installed.ts";
-import { TaskError } from "./shot-options.ts";
+import { TaskError } from "./task-error.ts";
 import {
   agentsFile,
   blockBegin,

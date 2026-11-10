@@ -13,26 +13,75 @@ mode on a port of its own, answering `/api` from `.fixtures/`, `fixtures/` and o
 ## One look at a route: `vp run shot`
 
 ```sh
-vp run shot /positions                       # light, compact, 1280 by 800
-vp run shot /positions --dark --comfortable  # the other mode and density
+vp run shot /positions                                  # light, compact, 1280 by 800
+vp run shot /positions --mode dark --density comfortable
 vp run shot /trades/42 --width 390 --wait 2000
+vp run shot /positions --selector '#exposure'           # one element, by its CSS selector
+vp run shot --all                                       # every route of the router
+vp run shot /bonds/US91282CRF04 --all --json            # with a page for /bonds/$security, as one line of JSON
 ```
 
-It uses the `vp dev` already running, or starts one in fixture mode and stops it after, and writes three files to
-`.shots/`, named after the route:
+`--theme` takes only `default` until @basis/ui lets the user choose a theme. The mode and density are set through the
+preferences cookie, as the user menu sets them.
 
-- `positions.png`: the whole page. Read it, as an image.
+It uses the `vp dev` already running, or starts one in fixture mode and stops it after, and writes five files to
+`.shots/` for each route, named after it, with `-dark`, `-comfortable` and `--SELECTOR` added when asked for:
+
+- `positions.png`: the page. Read it, as an image.
 - `positions.aria.yml`: the accessibility tree: roles, names and text. Check headings, labels and that the data is
   there.
-- `positions.console.txt`: every console error and uncaught exception. The task fails when it is not empty: fix the
-  errors before trusting the picture.
+- `positions.console.txt`: every console error and uncaught exception.
+- `positions.network.txt`: each request to `/api`, its status, and what answered it: `record` (`.fixtures/`),
+  `fixture` (`fixtures/`, with the file), `generated` (orval's mocks), `none` (nothing did: add a fixture) or `live`.
+  A page that shows the wrong data, or none, starts here.
+
+  ```text
+  GET /api/bonds/US91282CRF04 200 fixture fixtures/bond-US91282CRF04.json
+  ```
+
+- `positions.axe.txt`: axe's accessibility check, WCAG 2.2 A and AA and best practices, one `ERROR` line for each
+  element at fault, with the rule and the fix.
+
+The task fails on a console error, an axe violation, a step it cannot take or a picture that differs from its
+baseline, each an `ERROR` line that ends in its fix, with the files still written. `--all` skips a route with a
+parameter unless a route you name is one of its pages. `--json` prints `{ok, shots, skipped, problems}` on one line.
+
+### Clicking before the picture: `--step`
+
+```sh
+vp run shot /settlements/new --step 'type:Amount=1,000,000' --step 'click:Save' --step 'wait:Saved'
+vp run shot /positions --step 'click:Book' --step 'click:Rates' --step 'press:Escape'
+```
+
+| Step               | Does                                                        |
+| ------------------ | ----------------------------------------------------------- |
+| `click:TARGET`     | clicks it                                                   |
+| `hover:TARGET`     | moves the pointer over it                                   |
+| `type:TARGET=TEXT` | fills it with TEXT; nothing after `=` clears it             |
+| `press:KEY`        | presses a key or chord, as `Enter`, `Escape` or `Control+k` |
+| `wait:MS`          | waits that many milliseconds                                |
+| `wait:TARGET`      | waits until it shows                                        |
+
+A TARGET is a control's exact name, label or placeholder, as the `.aria.yml` shows it, or an element's exact text; or a
+CSS selector when it starts with `#`, `.` or `[`, or after `css=`, as `css=main button`. It must pick one element that
+shows. Steps act on one route, so give them with one route and no `--all`.
+
+### Comparing with a baseline: `--compare`
+
+```sh
+vp run shot --all --compare baselines   # each .shots/NAME.png against baselines/NAME.png
+```
+
+A picture that differs fails, giving the count of changed pixels and `.shots/NAME.diff.png`, the changes in red. Copy
+a picture into the folder to make it the baseline. Pictures differ from one operating system to the next, so make and
+compare baselines in WSL.
 
 Take one shot of each page you changed, in both modes when you changed colours. `.shots/` is not committed.
 
 ## Clicking through: Playwright CLI
 
-For anything more than one look, such as opening a menu, filling a form or following a link, drive the page with
-Playwright CLI in a session named after the app. Start `vp dev` first and use the URL it prints.
+For more than `--step` does, such as reading the page between actions or following a link and looking around, drive
+the page with Playwright CLI in a session named after the app. Start `vp dev` first and use the URL it prints.
 
 ```sh
 vp dev &                                                     # prints http://localhost:PORT
@@ -56,6 +105,6 @@ pw close
 ## What to check
 
 - The page draws what the fixtures hold, with nothing cut off or overlapping.
-- No console errors.
+- No console errors, no axe violations, and every request to `/api` answered by what you meant.
 - Every control has a name in the accessibility tree, and headings are in order.
 - Both modes, when you changed colours or added a component.

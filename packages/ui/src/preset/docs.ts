@@ -15,7 +15,7 @@ import { cut, entryJson, entryText, width, wrap } from "./docs-entry.ts";
 import { docsOf } from "./docs-read.ts";
 import type { Docs, Page } from "./docs-read.ts";
 import { entryNamed, search, suggestions } from "./docs-search.ts";
-import { TaskError } from "./shot-options.ts";
+import { TaskError } from "./task-error.ts";
 
 /** Each family's main component, the one its example is on, with what it is for. */
 function familyLines(catalogue: Catalogue): string[] {

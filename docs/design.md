@@ -38,7 +38,7 @@ behaves alike, and a fix reaches all of them in one upgrade.
 | `vp test`                       | The Vitest suites, in Vitest's browser mode with the Playwright provider                                                                                                                                                                     |
 | `vp dev`                        | The app in fixture mode, on a free port per git worktree, with no backend                                                                                                                                                                    |
 | `vp run verify`                 | Every check, each stage to its end, then one summary, or with `--json` one line of JSON: sync, client, fixtures, config, lint, types, tests, build, budget and suppressions; `--stage NAME` runs some; screenshot comparison in WSL, not yet |
-| `vp run shot ROUTE`             | A screenshot of a page, its accessibility tree and its console errors                                                                                                                                                                        |
+| `vp run shot ROUTE`             | A screenshot of a page or of every route, its accessibility tree, console errors, requests to `/api` and their sources, and axe's check; steps before it, and a comparison with baselines                                                    |
 | `vp run budget`                 | The build, then each route's JavaScript and CSS, gzipped, against the budget the app's `vite.config.ts` gives it                                                                                                                             |
 | `vp run client-pull`            | Copies the API's `openapi.json` from the API repo at a tag, or from a deployed API, and regenerates the client                                                                                                                               |
 | `vp run client-check`           | Whether the generated client still matches the repo's `openapi.json`: a task of its own, since an app cannot add a step to `vp check`                                                                                                        |
@@ -46,8 +46,8 @@ behaves alike, and a fix reaches all of them in one upgrade.
 | `vp run sync`, `vp run upgrade` | Rewrite the framework's files from the installed version; update `@basis/ui`, sync and check in one step                                                                                                                                     |
 | `vp run doctor`, `vp run docs`  | Check the desktop's setup and print the fix for each problem; print the installed version's docs: one entry of the catalogue, a search by purpose, or a README section                                                                       |
 
-Screenshot comparison in `verify` and screenshot diffs in `review` wait for an app's baselines, step 6.8.5; the
-gallery's exist, as [Components](#components) says.
+`vp run shot --compare DIR` compares an app's pictures with its baselines; `verify` and `review` do not yet run it, as
+an app keeps no baselines yet. The gallery's exist, as [Components](#components) says.
 
 `vp run verify` is the one verdict an agent or a hook asks for. It runs every stage to its end rather than stopping
 at the first failure, so one run shows everything left to fix, and gives each failure as the stage's existing `ERROR`
@@ -302,8 +302,8 @@ image; CI runs it when `@basis/ui` or the gallery changes. A screenshot is named
 component. Every shot runs an axe accessibility check, WCAG 2.2's levels A and AA and axe's best practices, that a
 violation fails, naming the section, the rule and the element; a rule off for a section is listed with its reason
 beside the spec. The maintainer approved `axe-core` for it on 2026-11-09. A render matrix renders every section, on its
-page and alone, in Chromium and in a Node DOM, in both modes and densities, with no console error. Not yet: `vp run
-shot` in an app runs no axe check (step 6.8.5).
+page and alone, in Chromium and in a Node DOM, in both modes and densities, with no console error. `vp run shot` runs
+the same check on an app's pages, with Base UI's exceptions that hold in every app, each by its rule and a selector.
 
 ## The theme
 
@@ -437,8 +437,8 @@ ring as drawn, and every pair of chart colours (not yet):
   paddings, gaps and icons are whole pixels, with icons no shorter than the capitals beside them;
 - the gallery's screenshots, in every theme, light and dark, comfortable and compact, match their baselines.
 
-Apps' routes are screenshotted in light and dark, at the compact density, with `vp run shot`; comparing them with
-baselines is step 6.8.5 (not yet).
+Apps' routes are screenshotted in light and dark, at the compact density, with `vp run shot`, and compared with
+baselines in WSL with its `--compare`.
 
 ## Numbers
 
@@ -591,16 +591,20 @@ newer document has left behind fails with an `ERROR` line rather than serving an
 
 `vp dev` starts the app in fixture mode with no code in the app: the preset rewrites `index.html` to start the worker
 before the app's entry runs, and reports each answer and its source through the telemetry interface, which writes to
-the browser's console. `BASIS_API_URL` sends `/api` to a live API instead. The app runs on a port derived from its
+the browser's console, and in the `x-basis-fixture-source` and `x-basis-fixture-file` headers of the answer. `BASIS_API_URL` sends `/api` to a live API instead. The app runs on a port derived from its
 folder, the same on every run and another in another git worktree, and `vp run shot ROUTE` writes a screenshot, the
-page's accessibility tree and its console errors. Agents drive the browser with Playwright CLI, which Microsoft built
-for coding agents.
+page's accessibility tree, its console errors, each request to `/api` with its status and source, and axe's check, a
+violation failing it. It sets the mode and density through the preferences cookie, as a user does, never by editing
+the page; it takes steps, a click, a hover, typing, a key or a wait, so an agent sees a page after an action without a
+second tool; `--all` pictures every route of the router; and `--json` prints one line an agent reads. Agents drive the
+browser further with Playwright CLI, which Microsoft built for coding agents.
 
 Screenshots differ between operating systems, as Playwright's docs warn, and the desktops run no Docker to pin a Linux
 image in. So visual baselines are made and compared only in WSL, with the Chromium build Playwright pins and the fonts
 `@basis/ui` bundles, and on Windows `vp run verify` says it skipped the comparison and to run it in WSL. An agent on
-Windows still takes screenshots to look at. Not yet: an app has no baselines and `verify` compares none (step
-6.8.5). This repo's gallery has its baselines, made and compared in the pinned Playwright image as parallax's are.
+Windows still takes screenshots to look at. `vp run shot --compare DIR` compares each picture with its baseline with
+Playwright's comparator, giving the changed pixels and a diff. Not yet: an app keeps no baselines, and `verify`
+compares none. This repo's gallery has its baselines, made and compared in the pinned Playwright image as parallax's are.
 
 ## Serving the build
 
@@ -629,8 +633,8 @@ run verify`'s stages that take seconds, sync, config, lint, types and suppressio
 the push hook runs `vp run verify`, every stage, the tests in the browser, the build and the budget among them, about
 18 s there. A commit hook that ran the browser suite, as `vp check` and `vp test` did, took 14 s, which is what sends
 an agent to `--no-verify`. `vp run review` writes the pull request's summary, so a
-reviewer judges screenshots and the client's diff rather than lines of agent-written code; until step 6.8.5 compares
-screenshots, the summary asks for a `vp run shot` of each page instead of a diff. A hook can be skipped with
+reviewer judges screenshots and the client's diff rather than lines of agent-written code; until an app keeps
+baselines, the summary asks for a `vp run shot` of each page instead of a diff. A hook can be skipped with
 `--no-verify`, so until CI exists the gates are only as strong as the hooks; the generated pipeline already runs `vp run
 verify`, and a branch policy on `main` that requires it turns the checks into the gate the day the firm builds CI.
 

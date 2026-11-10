@@ -25069,6 +25069,152 @@
     {
       "fields": [
         {
+          "description": "",
+          "name": "route",
+          "optional": false,
+          "type": "string"
+        },
+        {
+          "description": "",
+          "name": "files",
+          "optional": false,
+          "type": "ShotFiles"
+        },
+        {
+          "description": "The errors the page logged.",
+          "name": "console",
+          "optional": false,
+          "type": "number"
+        },
+        {
+          "description": "The elements axe found at fault.",
+          "name": "axe",
+          "optional": false,
+          "type": "number"
+        },
+        {
+          "description": "The requests to `/api`.",
+          "name": "requests",
+          "optional": false,
+          "type": "number"
+        },
+        {
+          "description": "How the picture compared with its baseline, with `--compare` and a baseline to hold it to.",
+          "name": "compare",
+          "optional": false,
+          "type": "{ readonly baseline: string; readonly changed: number; readonly diff: string | null; } | null"
+        }
+      ],
+      "exported": true,
+      "module": "@basis/ui/preset",
+      "name": "ShotEntry",
+      "purpose": "One route's shot."
+    },
+    {
+      "fields": [
+        {
+          "description": "",
+          "name": "png",
+          "optional": false,
+          "type": "string"
+        },
+        {
+          "description": "",
+          "name": "aria",
+          "optional": false,
+          "type": "string"
+        },
+        {
+          "description": "",
+          "name": "console",
+          "optional": false,
+          "type": "string"
+        },
+        {
+          "description": "",
+          "name": "network",
+          "optional": false,
+          "type": "string"
+        },
+        {
+          "description": "",
+          "name": "axe",
+          "optional": false,
+          "type": "string"
+        },
+        {
+          "description": "The diff against the baseline, written only when `--compare` found a difference.",
+          "name": "diff",
+          "optional": false,
+          "type": "string | null"
+        }
+      ],
+      "exported": true,
+      "module": "@basis/ui/preset",
+      "name": "ShotFiles",
+      "purpose": "The files one shot wrote, from the app's root."
+    },
+    {
+      "fields": [
+        {
+          "description": "",
+          "name": "route",
+          "optional": false,
+          "type": "string | null"
+        },
+        {
+          "description": "",
+          "name": "kind",
+          "optional": false,
+          "type": "(typeof kinds)[number]"
+        },
+        {
+          "description": "",
+          "name": "message",
+          "optional": false,
+          "type": "string"
+        }
+      ],
+      "exported": true,
+      "module": "@basis/ui/preset",
+      "name": "ShotProblem",
+      "purpose": "What failed: the route, unless the whole task did, what kind of failure, and its ERROR line."
+    },
+    {
+      "fields": [
+        {
+          "description": "",
+          "name": "ok",
+          "optional": false,
+          "type": "boolean"
+        },
+        {
+          "description": "",
+          "name": "shots",
+          "optional": false,
+          "type": "readonly ShotEntry[]"
+        },
+        {
+          "description": "The router's paths `--all` could not open, each with how to picture it.",
+          "name": "skipped",
+          "optional": false,
+          "type": "readonly { readonly route: string; readonly reason: string }[]"
+        },
+        {
+          "description": "",
+          "name": "problems",
+          "optional": false,
+          "type": "readonly ShotProblem[]"
+        }
+      ],
+      "exported": true,
+      "module": "@basis/ui/preset",
+      "name": "ShotReport",
+      "purpose": "What `vp run shot --json` prints: `ok` when nothing failed."
+    },
+    {
+      "fields": [
+        {
           "description": "The file, `/`-separated from the app's root, or `null` when the failure has none, as a route over budget.",
           "name": "file",
           "optional": false,

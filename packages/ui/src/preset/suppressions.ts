@@ -11,7 +11,7 @@
 import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 
-import { TaskError } from "./shot-options.ts";
+import { TaskError } from "./task-error.ts";
 
 /** The rules an app may turn off, each in the files of the folder it names from the app's root: the barrel files that
  * re-export the generated client, src/api/client.ts and src/api/mocks.ts, whose surface changes on every pull. */

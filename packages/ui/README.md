@@ -1063,22 +1063,69 @@ const positionRow = z.object({
 
 ## Seeing a page: `vp run shot`
 
-`vp run shot ROUTE` pictures a route of the app in headless Chromium and writes three files to `.shots/`, named after
-the route: the page as `NAME.png`, its accessibility tree as `NAME.aria.yml`, and its console errors as
-`NAME.console.txt`. It uses the app's running `vp dev`, or starts one in fixture mode and stops it after. A page that
-logged errors fails the task, with the files still written. `--dark` and `--comfortable` take the other mode and density (the default is light and compact),
-`--width` and `--height` the viewport, and `--wait` the milliseconds, 0 or more, to let the page settle after it loads
-and its network is quiet, or 5 s have passed, since a page that polls is never quiet:
+`vp run shot ROUTE` pictures a route of the app in headless Chromium and writes five files to `.shots/`, named after
+the route: the page as `NAME.png`, its accessibility tree as `NAME.aria.yml`, its console errors as
+`NAME.console.txt`, each request to `/api` as `NAME.network.txt`, and axe's accessibility check as `NAME.axe.txt`. It
+uses the app's running `vp dev`, or starts one in fixture mode and stops it after.
 
 ```sh
-vp run shot /positions --dark
+vp run shot /positions --mode dark --density comfortable
+vp run shot /settlements/new --step 'type:Amount=1,000,000' --step 'click:Save' --step 'wait:Saved'
+vp run shot /bonds/US91282CRF04 --all --compare baselines --json
 ```
+
+| Option                           | What it does                                                                                 |
+| -------------------------------- | -------------------------------------------------------------------------------------------- |
+| `ROUTE...`                       | The routes to picture, each starting with `/`                                                |
+| `--all`                          | Every route of the app's router as well; a route with a parameter only through a ROUTE of it |
+| `--mode light\|dark`             | The mode, light by default; `--dark` is the same as `--mode dark`                            |
+| `--density compact\|comfortable` | The density, compact by default; `--comfortable` is the same as `--density comfortable`      |
+| `--theme default`                | The theme: only `default` until a user can choose one                                        |
+| `--width N`, `--height N`        | The viewport, 1280 by 800 by default                                                         |
+| `--wait MS`                      | How long to let the page settle, after it loads and its network is quiet, 500 by default     |
+| `--selector CSS`                 | Picture the one element the selector picks, rather than the whole page                       |
+| `--step STEP`                    | Click, hover, type, press or wait before the picture, in order                               |
+| `--compare DIR`                  | Compare each picture with DIR's of the same name, pixel for pixel                            |
+| `--json`                         | Print one line of JSON, the type `ShotReport` from `@basis/ui/preset`                        |
+
+- **The mode and density** are set through the preferences cookie the head script reads, as the user menu sets them,
+  so the page is never edited. Their names join the files', as `positions-dark-comfortable.png`, and a selector's
+  joins after two dashes, as `positions--exposure.png`.
+- **The network file** has a line for each request to `/api`, with its status and what answered it, which fixture mode
+  names in the `x-basis-fixture-source` and `x-basis-fixture-file` headers: `record` from `.fixtures/`, `fixture` from
+  `fixtures/`, `generated` from orval's mocks, `none` when nothing did, or `live` from the API `BASIS_API_URL` names.
+
+  ```text
+  GET /api/bonds/US91282CRF04 200 fixture fixtures/bond-US91282CRF04.json
+  ```
+
+- **The axe check** runs WCAG 2.2's rules at levels A and AA and axe's best practices, as the gallery's shots do, with
+  one `ERROR` line for each element at fault, naming the rule, the element and axe's fix. Four things Base UI does in
+  every app are excepted, each by its rule and a selector the element or an ancestor matches: `region` in
+  `[data-base-ui-portal]`, a popup portalled outside the landmarks; `aria-hidden-focus` at
+  `[data-base-ui-focus-guard]`, a popup's focus guards; `aria-hidden-focus` and `page-has-heading-one` while a
+  combobox's list is open, which hides the page; and `aria-hidden-focus` in a high-priority toast Base UI hides until
+  it has focus.
+- **A step** is `click:TARGET`, `hover:TARGET`, `type:TARGET=TEXT`, `press:KEY`, `wait:MS` or `wait:TARGET`. A TARGET is
+  a control's exact name, label or placeholder, or an element's exact text, or a CSS selector when it starts with `#`,
+  `.` or `[`, or after `css=`. It must pick one element that shows, within 5 s. Steps act on one route.
+- **`--all`** reads the routes from the TanStack Router the page makes. A route with a parameter, as
+  `/bonds/$security`, is pictured through a ROUTE that is one of its pages, and skipped, with a line that says so,
+  without one.
+- **`--compare DIR`** holds each picture to `DIR/NAME.png` with Playwright's comparator, as the gallery's shots are
+  held, and one that differs gets `.shots/NAME.diff.png` with the changed pixels in red. A picture is made a baseline
+  by copying it there. Text draws differently from one operating system to the next, so make and compare baselines in
+  WSL.
+
+A console error, an axe violation, a step that cannot be taken, a selector that picks no one element and a picture
+that differs from its baseline, or has none, each fail the task with an `ERROR` line that ends in its fix, and the
+files are still written, so the picture shows the page as it stood.
 
 It needs the Chromium that `@basis/ui`'s Playwright pins, which `vp dlx playwright@1.65.0 install chromium` installs, as
 `vp run doctor` says. It trusts only the `vp dev` that answers on the app's port with the app's own folder, and one it
 starts writes its output to the task's, so a fixture's `ERROR` line shows there. The skill in
-`skills/drive-the-app` says how an agent looks at its pages and clicks through them with Playwright CLI; the UI repo
-template copies it into each app.
+`skills/drive-the-app` says how an agent looks at its pages and clicks through them; the UI repo template copies it
+into each app.
 
 ## Weighing the build: `vp run budget`
 

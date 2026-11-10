@@ -15,7 +15,7 @@ import { fileURLToPath } from "node:url";
 import { budgetTask } from "./budget.ts";
 import { checkFixtures } from "./fixture-files.ts";
 import { recordCheck } from "./review.ts";
-import { TaskError } from "./shot-options.ts";
+import { TaskError } from "./task-error.ts";
 import { suppressionsIn } from "./suppressions.ts";
 import { driftProblems, planSync, syncedApp } from "./sync.ts";
 import { buildFindings } from "./verify-build.ts";

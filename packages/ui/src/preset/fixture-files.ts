@@ -12,7 +12,7 @@ import type { FixtureSource, LoadedFixture } from "#fixtures/record.ts";
 import { documentProblems, operationsOf } from "./fixture-document.ts";
 import { ignored } from "./installed.ts";
 import { documentFile } from "./orval-options.ts";
-import { TaskError } from "./shot-options.ts";
+import { TaskError } from "./task-error.ts";
 
 interface ReadFixtures {
   readonly records: readonly LoadedFixture[];

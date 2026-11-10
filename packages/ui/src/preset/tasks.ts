@@ -19,7 +19,7 @@ import { docs } from "./docs.ts";
 import { doctor } from "./doctor.ts";
 import { checkFixtures } from "./fixture-files.ts";
 import { review } from "./review.ts";
-import { TaskError } from "./shot-options.ts";
+import { TaskError } from "./task-error.ts";
 import { suppressionsTask } from "./suppressions.ts";
 import { sync } from "./sync.ts";
 import { upgrade } from "./upgrade.ts";

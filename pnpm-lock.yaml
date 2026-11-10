@@ -594,6 +594,9 @@ importers:
       '@vitest/browser-playwright':
         specifier: 'catalog:'
         version: 5.1.0(@voidzero-dev/vite-plus-core@1.5.0(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1))(msw@3.0.4(@types/node@26.6.6)(@voidzero-dev/vite-plus-core@1.5.0(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1))(typescript@7.0.2))(playwright@1.65.0)(vitest@5.1.0)
+      axe-core:
+        specifier: 'catalog:'
+        version: 4.14.0
       babel-plugin-react-compiler:
         specifier: 'catalog:'
         version: 1.0.0

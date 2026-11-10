@@ -21,7 +21,7 @@ import type { Browser } from "playwright";
 
 import { budgetOf, verdict } from "./budget-options.ts";
 import type { Budget, RouteWeight } from "./budget-options.ts";
-import { TaskError } from "./shot-options.ts";
+import { TaskError } from "./task-error.ts";
 import { launch, open } from "./shot-page.ts";
 
 const contentTypes: Readonly<Record<string, string>> = {

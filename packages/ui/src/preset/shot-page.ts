@@ -1,16 +1,16 @@
-/* The browser's part of `vp run shot`: headless Chromium, the page at the options' size, mode and density, and the
- * three files written from it. */
+/* The browser's part of `vp run shot`: headless Chromium, the page at the options' size, mode and density, and how it
+ * opens and settles. */
 
-import { mkdir, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
-import path from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 
 import { chromium, errors as playwrightErrors } from "playwright";
 import type { Browser, Page } from "playwright";
 
+import { defaultPreferences, preferencesCookie, serializePreferences } from "#theme/preferences.ts";
+
 import { chromiumInstall, ignored, versionSchema } from "./installed.ts";
-import { TaskError } from "./shot-options.ts";
+import { TaskError } from "./task-error.ts";
 import type { ShotOptions } from "./shot-options.ts";
 
 /** The command that installs the Chromium of the Playwright beside this module, `@basis/ui`'s. */
@@ -33,14 +33,25 @@ async function launch(task = "shot"): Promise<Browser> {
   }
 }
 
-/** A page at the options' size and scheme, with the mode and density the app's head script reads from its cookie. */
-async function pageFor(browser: Browser, origin: string, options: ShotOptions): Promise<Page> {
+/** A page at the options' size and scheme, with the mode and density the app's head script reads from its cookie, as
+ * a user's choice in the user menu sets them; the page is never edited. The default theme needs nothing set. */
+async function pageFor(
+  browser: Browser,
+  origin: string,
+  options: Pick<ShotOptions, "density" | "height" | "mode" | "width">,
+): Promise<Page> {
   const context = await browser.newContext({
-    colorScheme: options.dark ? "dark" : "light",
+    colorScheme: options.mode,
     viewport: { height: options.height, width: options.width },
   });
-  const preference = `${options.dark ? "dark" : "light"}.${options.density}`;
-  await context.addCookies([{ name: "basis-ui-preferences", url: origin, value: preference }]);
+  // The cookie as the user menu writes it, `dark.compact.full`, without its attributes.
+  const [cookie = ""] = serializePreferences({
+    density: options.density,
+    mode: options.mode,
+    motion: defaultPreferences.motion,
+  }).split(";");
+  const value = cookie.slice(cookie.indexOf("=") + 1);
+  await context.addCookies([{ name: preferencesCookie, url: origin, value }]);
   return context.newPage();
 }
 
@@ -82,17 +93,4 @@ async function open(page: Page, url: string, wait: number): Promise<string[]> {
   return errors;
 }
 
-/** Writes the page's picture, its accessibility tree and its errors beside each other, returning their paths. */
-async function write(
-  page: Page,
-  base: string,
-  errors: readonly string[],
-): Promise<readonly string[]> {
-  await mkdir(path.dirname(base), { recursive: true });
-  await page.screenshot({ fullPage: true, path: `${base}.png` });
-  await writeFile(`${base}.aria.yml`, `${await page.locator("body").ariaSnapshot()}\n`);
-  await writeFile(`${base}.console.txt`, errors.map((line) => `${line}\n`).join(""));
-  return [".png", ".aria.yml", ".console.txt"].map((end) => base + end);
-}
-
-export { launch, open, pageFor, write };
+export { launch, open, pageFor };

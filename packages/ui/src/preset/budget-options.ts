@@ -3,7 +3,7 @@
  * JavaScript and of CSS, gzipped, that opening the route may load. The preset passes them to the task as arguments,
  * one a route, such as `/=180,25`. */
 
-import { TaskError } from "./shot-options.ts";
+import { TaskError } from "./task-error.ts";
 
 /** What a route may load, in kilobytes (1,000 bytes) gzipped, as `vp build` reports them. */
 interface RouteBudget {

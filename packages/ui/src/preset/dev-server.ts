@@ -10,7 +10,7 @@ import path from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 
 import { rootPath } from "./fixture-mode.ts";
-import { TaskError } from "./shot-options.ts";
+import { TaskError } from "./task-error.ts";
 
 /** How long a `vp dev` this task starts may take to answer, how often it is asked, and how long one answer may take. */
 const startSeconds = 60;

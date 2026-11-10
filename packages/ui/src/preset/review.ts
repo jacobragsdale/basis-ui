@@ -15,7 +15,7 @@ import { z } from "zod";
 
 import { git } from "./git.ts";
 import { ignored, manifestSchema } from "./installed.ts";
-import { TaskError } from "./shot-options.ts";
+import { TaskError } from "./task-error.ts";
 import { suppressionInLine, turningOff } from "./suppressions.ts";
 import type { Found } from "./suppressions.ts";
 import { installedUi } from "./sync.ts";

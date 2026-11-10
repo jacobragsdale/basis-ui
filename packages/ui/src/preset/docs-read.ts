@@ -10,7 +10,7 @@ import { z } from "zod";
 import { catalogueSchema } from "#catalogue/format.ts";
 import type { Catalogue } from "#catalogue/format.ts";
 
-import { TaskError } from "./shot-options.ts";
+import { TaskError } from "./task-error.ts";
 
 /** The packages whose README is the docs, by the short name a page starts with. */
 const documented = [

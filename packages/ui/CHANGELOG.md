@@ -5,6 +5,17 @@ What changed in `@basis/ui`, newest first, in the words an app's agent needs: wh
 
 ## Unreleased
 
+- `vp run shot` explains what it pictured. Beside `NAME.png`, `NAME.aria.yml` and `NAME.console.txt` it writes
+  `NAME.network.txt`, each request to `/api` with its status and what answered it (`record`, `fixture` with its file,
+  `generated`, `none` or `live`), and `NAME.axe.txt`, axe's accessibility check, whose every violation fails the shot
+  with the rule, the element and the fix. New options: `--mode light|dark` and `--density compact|comfortable` (set
+  through the preferences cookie; `--dark` and `--comfortable` still work), `--theme default`, `--selector CSS` for one
+  element, several routes at once, `--all` for every route of the router, `--step` to click, hover, type, press or wait
+  before the picture, as `--step 'click:Save'`, `--compare DIR` against baselines, with the count of changed pixels and
+  `NAME.diff.png`, and `--json`, one line of the type `ShotReport` from `@basis/ui/preset`. What to do: run `vp run
+  sync` for the new `drive-the-app` skill, and fix what `NAME.axe.txt` lists; a page that fails only on the shell's
+  landmarks waits for the shell's fix. Fixture mode's answers now carry `x-basis-fixture-source` and
+  `x-basis-fixture-file` headers.
 - `vp run verify` runs every check, each stage to its end, then prints one summary: sync, client, fixtures, config,
   lint, types, tests, build, budget and suppressions, each failure one `ERROR` line with its file and line where the
   tool gives them. `--stage NAME`, once for each, runs those stages alone, and `--json` prints the report as one line

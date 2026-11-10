@@ -134,6 +134,7 @@
     "@testing-library/user-event": "catalog:",
     "@vitejs/plugin-react": "catalog:",
     "@vitest/browser-playwright": "catalog:",
+    "axe-core": "catalog:",
     "babel-plugin-react-compiler": "catalog:",
     "cn": "catalog:",
     "happy-dom": "catalog:",

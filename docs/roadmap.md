@@ -595,6 +595,12 @@ flowchart TD
    line, or with `--json` one line of `VerifyReport`, read from each tool's machine format; `--stage NAME` runs some.
    The commit hook runs the fast stages, about 3 s in `packages/example`, and the push hook every stage, about 18 s;
    `check-full` is an alias that says so, and `packages/consumer`, with a test now, passes it as a ctzd app.
+   6.8.5 built on 2026-11-09: `vp run shot` writes, beside the picture, the accessibility tree and the console, each
+   request to `/api` with its status and source, named by fixture mode's headers, and axe's check, a violation failing
+   it, with Base UI's four known exceptions by rule and selector. It takes `--mode`, `--density`, `--theme default`,
+   `--selector`, several routes, `--all` from the router, steps (`click`, `hover`, `type`, `press`, `wait`), `--compare`
+   with Playwright's comparator, and `--json`, one line of `ShotReport`. In `packages/example` it finds the shell's
+   two `main` landmarks and its sidebar outside any landmark, left to the shell's step.
 9. **6.9 The showcase** (`6.9-showcase`, then a branch per page). `packages/showcase`, made from the template, with ten
    pages: overview, blotter, positions, relative value, P&L explain, curves, a bond, booking a trade, import, and a
    probe of the desktop. An agent builds it with only the shipped tools, and logs in `BUILDING.md` each place they fell

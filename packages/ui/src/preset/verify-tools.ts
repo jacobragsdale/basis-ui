@@ -11,7 +11,7 @@ import { stripVTControlCharacters } from "node:util";
 
 import { z } from "zod";
 
-import { TaskError } from "./shot-options.ts";
+import { TaskError } from "./task-error.ts";
 import { findingOf, reasonAndFix } from "./verify-report.ts";
 import type { Finding } from "./verify-report.ts";
 

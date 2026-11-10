@@ -22,7 +22,7 @@ import {
   installedVersion,
   versionSchema,
 } from "./installed.ts";
-import { TaskError } from "./shot-options.ts";
+import { TaskError } from "./task-error.ts";
 import { installedUi } from "./sync.ts";
 
 /** One check's outcome: a line saying what it found, or an ERROR line ending with the fix. */

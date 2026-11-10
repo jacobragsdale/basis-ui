@@ -261,3 +261,4 @@ export { basisPlugins, basisPreset, basisTest };
 export type { BasisPreset, BasisPresetOptions, BasisTestOptions };
 export type { Budget, RouteBudget } from "./budget-options.ts";
 export type { VerifyError, VerifyReport, VerifyStage } from "./verify-report.ts";
+export type { ShotEntry, ShotFiles, ShotProblem, ShotReport } from "./shot-report.ts";

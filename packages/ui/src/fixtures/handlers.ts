@@ -7,7 +7,7 @@
  * Within the first two, the first fixture whose method, path and query match the request answers, in the order of
  * the files' names. A request for Arrow that no fixture answers gets a problem rather than orval's random bytes, which
  * are not Arrow, and so does a request nothing answers. Each answer is reported through telemetry, as the event
- * `fixture.answered`, with the source that gave it. */
+ * `fixture.answered`, with the source that gave it, and named on the response, in the headers answered-by.ts names. */
 
 import { HttpResponse, getResponse, http, passthrough } from "msw";
 import type { RequestHandler } from "msw";
@@ -16,6 +16,8 @@ import { apiPrefix, arrowStream } from "#api/fetch.ts";
 import { consoleTelemetry } from "#shell/telemetry.ts";
 import type { Telemetry, TelemetryAttributes } from "#shell/telemetry.ts";
 
+import { fileHeader, sourceHeader } from "./answered-by.ts";
+import type { AnswerSource } from "./answered-by.ts";
 import type { FixtureRecord, FixtureResponse, LoadedFixture } from "./record.ts";
 
 /** The status fixture mode answers a request with when nothing it holds can: the request is fine, the fixtures lack it. */
@@ -126,7 +128,7 @@ async function generatedAnswer(
   request: Request,
   key: RequestKey,
   generated: readonly RequestHandler[],
-): Promise<{ readonly response: Response; readonly source: string }> {
+): Promise<{ readonly response: Response; readonly source: AnswerSource }> {
   if (request.headers.get("accept")?.includes(arrowStream) === true) {
     return {
       response: missing(
@@ -145,6 +147,18 @@ async function generatedAnswer(
     ),
     source: "none",
   };
+}
+
+/** `response`, with headers naming its source and the file that holds it, if any. A generated handler's response can
+ * hold headers that may not change, so its parts are copied into a new one. */
+function named(response: Response, source: AnswerSource, file: string | undefined): Response {
+  const headers = new Headers(response.headers);
+  headers.set(sourceHeader, source);
+  if (file !== undefined) {
+    headers.set(fileHeader, file);
+  }
+  const { body, status, statusText } = response;
+  return new Response(body, { headers, status, statusText });
 }
 
 /** The MSW handlers of fixture mode: one, for every request under `/api`. */
@@ -174,7 +188,7 @@ function fixtureHandlers({
         ...(fixture === undefined ? {} : { file: fixture.file }),
       };
       telemetry.event("fixture.answered", attributes);
-      return answer.response;
+      return named(answer.response, answer.source, fixture?.file);
     }),
   ];
 }
