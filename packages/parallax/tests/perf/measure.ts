@@ -1,5 +1,5 @@
-/* One run of the bench: a dataset at a size, plain or throttled, in a fresh browser. The page loads once at each
- * device pixel ratio, in a context of its own; the first load also rests, has its memory read, and runs the rounds of
+/* One run of the bench: a dataset at a size, plain or throttled. The page loads once at each device pixel ratio, in a
+ * browser started at that ratio; the first load also rests, has its memory read, and runs the rounds of
  * changes; every load scrolls, once for each round. Each figure is the median of its samples. */
 
 import { statSync } from "node:fs";
@@ -125,27 +125,33 @@ async function measurePage(
   }
 }
 
-async function measurePages(browser: Browser, plan: Plan, samples: Samples): Promise<void> {
+/** Measures the page at each ratio, in a browser started at it, one after another. */
+async function measurePages(plan: Plan, executable: string, samples: Samples): Promise<void> {
   for (const [index, ratio] of plan.ratios.entries()) {
-    // oxlint-disable-next-line eslint/no-await-in-loop -- one page at a time, so that each has the machine to itself.
-    await measurePage(browser, plan, { first: index === 0, ratio, samples });
+    // oxlint-disable-next-line eslint/no-await-in-loop -- one browser at a time, so that each has the machine to itself.
+    const browser = await launch(plan.mode, executable, ratio);
+    try {
+      // oxlint-disable-next-line eslint/no-await-in-loop -- as above.
+      await measurePage(browser, plan, { first: index === 0, ratio, samples });
+    } finally {
+      // oxlint-disable-next-line eslint/no-await-in-loop -- as above.
+      await browser.close();
+    }
   }
 }
 
-/** One run, in a fresh browser, with the browser's resident memory sampled throughout for its peak. */
+/** One run, a fresh browser at each ratio, with the browsers' resident memory sampled throughout for its peak. */
 async function measure(plan: Plan, executable: string): Promise<Run> {
   const before = loadavg();
   const samples = new Samples();
-  const browser = await launch(plan.mode, executable);
   const peak = samplePeak(sampleEveryMs);
-  const error = await measurePages(browser, plan, samples).then(
+  const error = await measurePages(plan, executable, samples).then(
     () => null,
     (error_: unknown) => (error_ instanceof Error ? error_.message : String(error_)),
   );
   const most = peak();
   samples.add("rssPeakMB", most.rssMB);
   samples.add("pssPeakMB", most.pssMB);
-  await browser.close();
   return {
     arrowMB: statSync(arrowFile(plan.dataset, plan.rows)).size / megabyte,
     dataset: plan.dataset,

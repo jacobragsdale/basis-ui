@@ -1,5 +1,5 @@
-/* Helpers for the grid's browser tests: a grid rendered in a provider and waiting for its rows, a press on its canvas,
- * and its selection copied through a copy event. */
+/* Helpers for the grid's browser tests: a grid rendered in a provider and waiting for its rows, a wait for its next
+ * drawing, a press on its canvas, and its selection copied through a copy event. */
 
 import { expect } from "vite-plus/test";
 import type { Locator } from "vite-plus/test/browser";
@@ -43,6 +43,17 @@ function canvasOf(grid: Locator): HTMLCanvasElement {
   return canvas;
 }
 
+/** Waits until what changed is drawn: the grid draws in the next animation frame, so it has once the frame after it
+ * starts. */
+async function drawn(): Promise<void> {
+  for (let frame = 0; frame < 2; frame += 1) {
+    const { promise, resolve } = Promise.withResolvers<number>();
+    requestAnimationFrame(resolve);
+    // oxlint-disable-next-line eslint/no-await-in-loop -- frames come one after another.
+    await promise;
+  }
+}
+
 /** Presses the canvas at `x`, `y`, in CSS pixels from its top left. */
 async function pressAt(
   grid: Locator,
@@ -62,5 +73,5 @@ function copyFrom(grid: Locator): string {
   return event.clipboardData?.getData("text/plain") ?? "";
 }
 
-export { canvasOf, copyFrom, pressAt, renderGrid };
+export { canvasOf, copyFrom, drawn, pressAt, renderGrid };
 export type { Rendered };

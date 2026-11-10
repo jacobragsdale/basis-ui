@@ -1,6 +1,6 @@
-/* A grid's canvas and the elements around it, once React has rendered them: the listeners for scrolling, the pointer,
- * the keyboard and the clipboard, the scroll's extent and the body's height, what the canvas draws, and the focused
- * cell as screen readers read it. */
+/* A grid's canvas and the elements around it, once React has rendered them: the listeners for scrolling, the wheel,
+ * the pointer, the keyboard and the clipboard, the scroll's extent and the body's height, what the canvas draws, and
+ * the focused cell as screen readers read it. */
 
 import { DevicePixels } from "#canvas/device-pixels.ts";
 import type { FrameData } from "#frame/frame.ts";
@@ -15,6 +15,7 @@ import type { Metrics } from "./paint/metrics.ts";
 import type { GridPainter } from "./paint/painter.ts";
 import { PointerInput } from "./pointer.ts";
 import type { CellRef, Selection } from "./selection.ts";
+import { wheelTop } from "./wheel.ts";
 import { searchIn } from "./window.ts";
 
 /** How tall a horizontal scrollbar is until one shows and is measured: the widest a browser draws. */
@@ -31,6 +32,15 @@ function on<TType extends keyof HTMLElementEventMap>(
   target.addEventListener(type, listener);
   return () => {
     target.removeEventListener(type, listener);
+  };
+}
+
+/** Listens for the wheel on `target` with a listener that may cancel it, which a notch's rows need to replace the
+ * browser's own scroll; returns a function that stops. */
+function onWheel(target: HTMLElement, listener: (event: WheelEvent) => void): () => void {
+  target.addEventListener("wheel", listener, { passive: false });
+  return () => {
+    target.removeEventListener("wheel", listener);
   };
 }
 
@@ -80,6 +90,7 @@ class GridSurface {
     this.#device = device;
     const stops = [
       on(scroll, "scroll", scrolled),
+      onWheel(scroll, this.#wheel),
       on(scroll, "keydown", this.#keys.down),
       on(scroll, "copy", this.#copier.copy),
       on(canvas, "pointerdown", pointer.down),
@@ -198,6 +209,20 @@ class GridSurface {
       scroll.scrollTop = rows.scrollTopFor(row - visibleRows + 1, scroll.clientHeight);
     }
   }
+
+  /** Moves a notch of the wheel's rows at once, by setting the scroll to the row they reach, which draws once. At
+   * either end, where the rows cannot move, the event is the browser's, which scrolls the page instead. */
+  readonly #wheel = (event: WheelEvent): void => {
+    const { model } = this.#host;
+    const { metrics } = model;
+    const { scroll } = this.dom.parts;
+    const body = metrics === null ? null : { metrics, rows: model.rows(metrics), scroll };
+    const top = body === null ? null : wheelTop(event, { ...body, totalRows: model.totalRows });
+    if (top !== null) {
+      event.preventDefault();
+      scroll.scrollTop = top;
+    }
+  };
 
   /** Replaces the selection, drawing it and saying it to screen readers. */
   public select(selection: Selection | null): void {

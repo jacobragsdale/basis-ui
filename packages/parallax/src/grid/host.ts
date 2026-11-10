@@ -19,7 +19,7 @@ interface GridHost {
   readonly metrics: () => Metrics | null;
   /** What is at `x`, `y` on the canvas, once the tokens are read. */
   readonly hit: (x: number, y: number) => Hit | null;
-  /** Draws the canvas again, once the current task's changes are all made. */
+  /** Draws the canvas again in the next animation frame, once whatever else changes before it is made. */
   readonly redraw: () => void;
   /** Tells React that what it shows of the grid may have changed. */
   readonly publish: () => void;

@@ -645,10 +645,23 @@ highest value in every pixel column as the line through every point.
 
 The client draws with Canvas 2D, in the regions that changed, though a scroll
 repaints the whole grid until basis-ui's roadmap step 6.4.4 copies the rows
-that stay. The charts draw on animation frames. The grid does not yet: it
-queues its drawing as a microtask after each event, so one notch of a smooth
-wheel can repaint it several times, and step 6.4.3 moves it to animation
-frames. Flashing cells, and the batching of live updates to a visual rate that
+that stay. The grid, the pivot and the charts draw on animation frames: every
+event, frame from the engine and change that arrives before the next frame
+marks the canvas stale, and the frame draws it once, as the model then is. So
+pointer moves, a scroll and the rows it asked for, arriving in one frame, paint
+once and send a remote desktop one picture. A hidden tab runs no animation
+frames: what changes while it is hidden is still asked for, kept and told to
+React, and the first frame after it is shown draws it. The wheel over the grid's
+body is the grid's own: a mouse's notch, a whole number of 120 in its legacy
+delta, moves the rows a row for each of Chromium's lines, three at the
+platform's default, at once, and a delta in lines or pages moves as many rows.
+The browser's own scroll would animate a notch's 100 pixels, four rows and a
+sixth, over several frames, each a full repaint. A trackpad's small pixel
+deltas, the horizontal wheel, Shift's sideways scroll and Ctrl's zoom stay the
+browser's, as does a wheel at either end, which scrolls the page. The
+keyboard, which moves the focused cell and reveals it, and the native
+scrollbar, dragged, are unchanged. The code is in `src/grid/next-frame.ts` and
+`src/grid/wheel.ts`. Flashing cells, and the batching of live updates to a visual rate that
 they would need, are not in the code: live updates stay deferred.
 
 Every canvas, the grid's, the pivot's and each chart's, draws in whole device

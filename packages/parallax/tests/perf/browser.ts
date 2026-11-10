@@ -63,10 +63,13 @@ async function defaultExecutable(): Promise<string> {
   }
 }
 
-/** Launches the browser, plain or under the quota, checking that the quota's scope holds it. */
-async function launch(mode: Run["mode"], executable: string): Promise<Browser> {
+/** Launches the browser at a device pixel ratio, plain or under the quota, checking that the quota's scope holds it.
+ * Chromium starts at the ratio, as a desktop scaled to 125 % starts it: emulating the ratio alone, as a context's
+ * `deviceScaleFactor` does, has the software compositor scale every frame, which at 1.25 and 1.5 cost it three times
+ * the CPU of a real ratio and, under the quota, stretched the grid's drawing with it. */
+async function launch(mode: Run["mode"], executable: string, ratio = 1): Promise<Browser> {
   const browser = await chromium.launch({
-    args: chromiumFlags,
+    args: [...chromiumFlags, `--force-device-scale-factor=${String(ratio)}`],
     ...(mode === "throttled" ? { executablePath: throttledLauncher(executable) } : {}),
   });
   const cgroup = browserProcess()?.cgroup ?? "";

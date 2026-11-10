@@ -1,7 +1,8 @@
 /* A grid's controller: everything the grid does between React's renders. It takes the view's frames as they arrive,
- * scrolls by asking the view's handle for rows, and draws the canvas, so a scroll at 60 frames a second renders
- * nothing in React. React gives it the layout, the dataset's columns, the tokens and the rows chosen (row-checks.ts),
- * and renders again only when what it shows changes: the row count, the totals, the menu or the status bar's note. */
+ * scrolls by asking the view's handle for rows, and draws the canvas once an animation frame (next-frame.ts), so a
+ * scroll at 60 frames a second renders nothing in React and paints each frame once. React gives it the layout, the
+ * dataset's columns, the tokens and the rows chosen (row-checks.ts), and renders again only when what it shows
+ * changes: the row count, the totals, the menu or the status bar's note. */
 
 import type { ViewHandle } from "#engine/view.ts";
 import type { Viewport } from "#engine/view-types.ts";
@@ -16,6 +17,7 @@ import { hitAt } from "./hit.ts";
 import type { Hit } from "./hit.ts";
 import type { GridHost } from "./host.ts";
 import { GridModel } from "./model.ts";
+import { NextFrame } from "./next-frame.ts";
 import type { Metrics } from "./paint/metrics.ts";
 import { GridPainter } from "./paint/painter.ts";
 import type { DrawStats } from "./paint/stats.ts";
@@ -36,7 +38,10 @@ class GridController {
   #layoutJson: string | null = null;
   #surface: GridSurface | null = null;
   #handle: ViewHandle | null = null;
-  #drawing = false;
+  /** The next frame's drawing. */
+  readonly #draw = new NextFrame(() => {
+    this.#surface?.draw(this.#painter);
+  });
   #focusSearch: (() => boolean) | null = null;
   readonly #rows = new RowChecks({
     handle: (): ViewHandle | null => this.#handle,
@@ -85,6 +90,7 @@ class GridController {
     return () => {
       stop();
       this.#surface = null;
+      this.#draw.cancel();
     };
   }
 
@@ -284,16 +290,9 @@ class GridController {
     this.#snapshots.publish(this.#model, { fill: this.#inputs?.maxHeight === null, id, opening });
   }
 
-  /** Draws once the current task's changes are made, so several changes draw once. */
+  /** Draws in the next animation frame, as the model is then, so that everything that changes before it draws once. */
   #redraw(): void {
-    if (this.#drawing) {
-      return;
-    }
-    this.#drawing = true;
-    queueMicrotask(() => {
-      this.#drawing = false;
-      this.#surface?.draw(this.#painter);
-    });
+    this.#draw.ask();
   }
 }
 

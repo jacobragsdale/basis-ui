@@ -14,7 +14,7 @@ import { ParallaxProvider } from "#react/provider.tsx";
 import { useDataset } from "#react/use-dataset.ts";
 
 import { positionsBytes, startWorker } from "./data.ts";
-import { canvasOf, pressAt, renderGrid } from "./grid-helpers.tsx";
+import { canvasOf, drawn, pressAt, renderGrid } from "./grid-helpers.tsx";
 
 /** The middle of the header, and of the first row, in the compact density, the default. */
 const header = 15;
@@ -83,6 +83,7 @@ async function everyRowChecked(): Promise<string> {
   const { grid, screen } = await renderGrid({ grid: { rowKey: "market_value", selectable: true } });
   await pressAt(grid, { x: checkbox, y: header });
   await expect.element(screen.getByText("6 rows selected")).toBeInTheDocument();
+  await drawn();
   const all = headerCheck(canvasOf(grid));
   await screen.unmount();
   return all;
@@ -112,11 +113,13 @@ describe("Grid in an app's page", () => {
     );
     const grid = screen.getByRole("grid");
     await expect.element(grid).toHaveAttribute("aria-rowcount", "6");
+    await drawn();
     const none = headerCheck(canvasOf(grid));
     await pressAt(grid, { x: checkbox, y: header });
     await expect.element(screen.getByText("6 rows selected")).toBeInTheDocument();
     await expect.poll(() => headerCheck(canvasOf(grid))).not.toBe(none);
-    expect(headerCheck(canvasOf(grid))).toBe(all);
+    // The press's frame may draw before the page's choice arrives, so the header ends checked rather than starts so.
+    await expect.poll(() => headerCheck(canvasOf(grid))).toBe(all);
   });
 
   test("says what to do when its container gives it no height", async () => {

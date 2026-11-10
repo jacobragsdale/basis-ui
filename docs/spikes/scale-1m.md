@@ -9,7 +9,8 @@ staging, and decoding the stream costs 1.5%; the reference pivot spends about 70
 and the tree, the leaf sort and the merge share the rest. Run on 2026-11-09 in three full runs on a shared host, the
 last at a load average of 1.4 to 5.2. Step 6.3.1 then made the load of 1,000,000 trades 2.4 times as fast throttled,
 3.2 s, and its WebAssembly memory a quarter, 0.8 times the Arrow, as [its section](#step-631-a-load-that-copies-once)
-says.
+says. Step 6.4.3 found the throttled drawing at 1.25 and 1.5 to be mostly the harness's emulated ratio, and measures
+at real ones, as [its section](#step-643-one-draw-per-frame) says.
 
 ## Versions
 
@@ -58,7 +59,8 @@ How each figure is taken:
   once, is kept beside it and is about 250 MB less.
 - **Drawing per frame** is the grid's own drawing time, `drawStats().drawMs`, over the frames it drew while the bench
   scrolled 240 animation frames of 3 rows, as the grid's performance spec scrolls. The page loads again in a context of
-  its own at each ratio, which adds two samples of the load.
+  its own at each ratio, which adds two samples of the load. Since step 6.4.3 each ratio has a browser started at it,
+  as [its section](#step-643-one-draw-per-frame) says; before, a context emulated it.
 - Each figure is the median of its samples: three rounds of changes, three loads, one at each ratio, and three scrolls
   at each ratio. A single scroll proved too noisy to budget: one throttled scroll of 150,000 positions drew at 6.0 ms
   a frame at ratio 1, and the next at 1.9 ms.
@@ -265,3 +267,52 @@ WebAssembly and the first view. Step 6.3.2's progressive load, whose target is t
 6.3.8's narrower storage are the next to act on it. The memory target, 700 MB of browser at rest, is 6.3.7's and
 6.3.8's; at 756 MB it is within 60 MB of it. The host budgets for these runs' loads and memory are now set as above:
 twice the slowest time and 1.25 times the memory.
+
+## Step 6.4.3: one draw per frame
+
+Step 6.4.3 moved the grid's drawing from a microtask after each event to the next animation frame, and gave the grid
+the wheel over its body, and measured trades at 1,000,000 rows with this harness before and after, on 2026-11-09
+(`--datasets trades --sizes 1000000`, three rounds). What changed:
+
+- Every event, frame from the engine and change that arrives before an animation frame marks the canvas stale, and the
+  frame draws it once. Six pointer moves in six tasks of one frame drew six times, and now draw once; a hidden tab
+  draws in its first frame what changed while it ran none.
+- A mouse's notch, 100 pixels with a legacy delta of 120 in Chromium, moves the rows three at once, a row for each of
+  Chromium's lines, and paints once; the browser's own scroll moved 100 pixels, four rows and a sixth, animated over
+  several frames where smooth scrolling is on. A trackpad's small deltas stay the browser's, smooth.
+- The bench starts a browser at each ratio, with `--force-device-scale-factor`, rather than emulating the ratio in a
+  context, for the reason below.
+
+**Why the throttled drawing cost more at 1.25 and 1.5.** The quota is the whole browser's, 40% of a core, which is
+6.7 ms of CPU in a 16.7 ms frame. Reading every browser thread's CPU from `/proc` over the bench's scrolls, before
+this step's change, plain:
+
+| CPU in a frame of scrolling, plain | Ratio 1 | 1.25, emulated | 1.5, emulated | 1.25, real | 1.5, real |
+| ---------------------------------- | ------- | -------------- | ------------- | ---------- | --------- |
+| The renderer's main thread         | 3.0 ms  | 3.9 ms         | 4.2 ms        | 3.5 ms     | 4.3 ms    |
+| The display compositor             | 0.8 ms  | 2.7 ms         | 2.7 ms        | 0.9 ms     | 0.9 ms    |
+| The whole browser                  | 5.1 ms  | 8.1 ms         | 8.3 ms        | 5.6 ms     | 6.5 ms    |
+| The painter's own drawing          | 1.4 ms  | 1.4 ms         | 1.5 ms        | 1.4 ms     | 1.4 ms    |
+
+The painter's work is the same at every ratio. A ratio that a context only emulates has Chromium's software
+compositor scale every frame, which triples its CPU; the browser then needs 8 ms or more a frame, past the quota's 6.7,
+so every thread waits for the next period and the painter's measured time stretches with it: 5.4 and 5.5 ms a frame,
+its 95th-percentile frame 33 and 50 ms. At a real ratio, as a desktop scaled to 125 % starts Chromium, the compositor
+costs what it does at 1, and only the canvas's larger raster on the main thread grows, by 0.5 and 1.3 ms. At 1.5 that
+brings the browser to the quota, so a frame is still sometimes stretched there.
+
+| Trades at 1,000,000 rows, throttled    | Before, emulated ratio | Before, real ratio | After, real ratio |
+| -------------------------------------- | ---------------------- | ------------------ | ----------------- |
+| Drawing per frame, ratio 1             | 2.3 ms                 | 1.8 ms             | 1.7 ms            |
+| Drawing per frame, 1.25                | 5.4 ms                 | 2.5 ms             | 2.6 ms            |
+| Drawing per frame, 1.5                 | 5.5 ms                 | 3.3 ms             | 3.8 ms            |
+| 95th-percentile frame, 1, 1.25 and 1.5 | 17, 33 and 50 ms       | 17, 17 and 17 ms   | 17, 17 and 17 ms  |
+| Draws in a scroll of 240 frames        | 257                    | 257                | 240               |
+
+Each "real" figure is the median of nine scrolls, three in each of three runs, before and after alternating, at load
+averages of 1.5 to 7.6; plain, the drawing is 1.4 to 1.5 ms a frame at every ratio, before and after. The harness
+scrolls one step a frame, so this step changes little of its figure: the 17 draws it saves are the partial ones when
+rows arrived between frames, which leaves each remaining draw's average a little higher. What it saves is a real
+desktop's: several paints for a notch and for the events of one frame. Every ratio is within the throttled budget of
+8 ms; the frame at 1.5 that waits for the quota is the main thread's raster of the canvas, which step 6.4.4, copying
+the rows that stay, is meant to reduce.

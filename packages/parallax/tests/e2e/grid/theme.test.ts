@@ -104,6 +104,25 @@ async function drawn(draws: Locator): Promise<number> {
   return frames;
 }
 
+/** How long the harness takes to show the counters again, which it reads once a second. */
+const countersMs = 1100;
+
+/** The counters once they stop changing: the grid draws on animation frames, and the harness shows its counters a
+ * second late, so a full draw of the load can show after the pointer has begun to move. */
+async function settledCounts(page: Page, draws: Locator): Promise<readonly number[]> {
+  let was = await counts(draws);
+  await expect
+    .poll(async () => {
+      await page.waitForTimeout(countersMs);
+      const now = await counts(draws);
+      const same = now.join(",") === was.join(",");
+      was = now;
+      return same;
+    })
+    .toBe(true);
+  return was;
+}
+
 /** Moves the pointer down the rows of the canvas, one row a step. */
 async function hoverRows(page: Page, steps: number): Promise<void> {
   const box = await canvasOf(page).boundingBox();
@@ -121,7 +140,7 @@ test("the row under the pointer is highlighted by drawing its cells again, never
   await expect(draws).toHaveText(/^\d+, \d+ of them full$/u);
   await hoverRows(page, 1);
   await expect.poll(async () => drawn(draws)).toBeGreaterThan(0);
-  const [before, fullBefore] = await counts(draws);
+  const [before, fullBefore] = await settledCounts(page, draws);
   await hoverRows(page, 6);
   // The counters are read once a second.
   await expect.poll(async () => drawn(draws)).toBeGreaterThan(before ?? 0);

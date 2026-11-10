@@ -546,7 +546,10 @@ flowchart TD
    `--font-num`, Inter declared again with tabular figures on, at `@basis/ui`'s text sizes, 14 px in cells and 12 on
    axes, as the DOM's numbers are. 6.4.2 built on 2026-11-09: every canvas is sized from `devicePixelContentBoxSize`
    in whole device pixels, its rules and gridlines land on them, it sizes again when the ratio changes, and tests and
-   screenshots run in Chromium at 1.25 and 1.5.
+   screenshots run in Chromium at 1.25 and 1.5. 6.4.3 built on 2026-11-09: the grid and the pivot draw once an animation frame however many
+   events arrive in it, a mouse's notch moves three rows at once and paints once, a trackpad's pixels stay smooth, and
+   the bench starts Chromium at each ratio, since an emulated ratio, not the painter, made the throttled drawing at 1.25
+   and 1.5 cost 5.5 ms.
 5. **6.5 Themes.** Lane Theme, one branch per item in order: tokens for what opacity fakes (`6.5.1-tokens`), density
    in whole pixels (`6.5.2-density`), `defineTheme` (`6.5.3-define-theme`), `checkTheme` (`6.5.4-check-theme`), the
    choice of theme in the cookie (`6.5.5-theme-preference`), parallax on the same theme (`6.5.6-parallax-theme`), the
