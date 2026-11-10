@@ -110,6 +110,33 @@ CSS refuses is ignored.
 The comfortable density, `@basis/ui`'s, adds 6 px to `--px-row-height` and
 `--px-header-height`, whoever set them.
 
+### Numbers that line up on the canvas
+
+A canvas's font cannot ask for tabular figures, as `tabular-nums` does in the
+DOM, so a canvas draws a face's default figures, which in most faces are
+proportional: a column of numbers is ragged. Name a face whose figures are
+tabular by default in `--px-font-family`. A face of your own can be declared
+again under another name with the feature on, which Chrome honours from
+version 139:
+
+```css
+@font-face {
+  font-family: "Plex Tabular";
+  src: url("./fonts/IBMPlexSans-Regular.woff2") format("woff2");
+  font-feature-settings: "tnum";
+}
+
+:root {
+  --px-font-family: "Plex Tabular", "IBM Plex Sans", system-ui, sans-serif;
+}
+```
+
+`basisTheme` does this with `@basis/ui`'s `--font-num`, its Inter declared
+again as `Inter Tabular`. It draws at `@basis/ui`'s text sizes, so the
+canvas's numbers are the size of the DOM's: `--text-sm`, 14 px, a table's,
+for cells and headers, and `--text-xs`, 12 px, the charts' readouts', for
+axes and labels.
+
 ### Colours, fonts and sizes
 
 The parameter is the token's name in `defineTheme`'s `params`. A length

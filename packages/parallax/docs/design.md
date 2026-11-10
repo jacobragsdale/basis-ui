@@ -892,7 +892,19 @@ loading. The components read their tokens again then, when
 `useParallaxTheme()`'s `read` changes, and when their inputs change. Reading tokens on every redraw
 would cost a style recalculation per frame, and Citrix desktops have no cycles
 to spare. Text widths are cached per font, so a theme that changes the font
-measures again.
+measures again, and so does a font that arrives after the first frame: a
+canvas asks for a face only when it draws in it, so reading the tokens starts
+loading the font, and the tokens say whether it had loaded.
+
+A canvas's font cannot ask for tabular figures, so the theme's font must be a
+face whose figures are tabular by default, or numbers in a column do not line
+up. `basisTheme` draws in `@basis/ui`'s `--font-num`, Inter declared again as
+`Inter Tabular` with `font-feature-settings: "tnum"` in its `@font-face` rule,
+which Chrome honours from version 139. A build of the face with tabular
+figures as its default, or a numeric face, would have been the fallbacks. It
+draws at `@basis/ui`'s text sizes, `--text-sm` for cells and headers and
+`--text-xs` for axes and labels, so a grid's numbers are the size of a
+table's in the DOM, and an axis's the size of the chart's readouts.
 
 Comfortable density adds a fixed 6 px to the row and header heights, whatever
 the theme sets, so the two choices are independent. The row under the pointer

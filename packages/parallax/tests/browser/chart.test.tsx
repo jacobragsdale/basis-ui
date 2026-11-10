@@ -10,7 +10,15 @@ import { ParallaxProvider } from "#react/provider.tsx";
 import type { ChartSelection } from "#chart/scene.ts";
 
 import { bonds, deskExposures, exposures, yields } from "./chart-data.ts";
-import { fire, plotOf, rest, summaryOf, surfaceOf, wordsOf } from "./chart-reads.ts";
+import {
+  colouredMiddleOf,
+  fire,
+  plotOf,
+  rest,
+  summaryOf,
+  surfaceOf,
+  wordsOf,
+} from "./chart-reads.ts";
 import { PricesChart } from "./charts.tsx";
 import { startWorker } from "./data.ts";
 
@@ -112,13 +120,7 @@ describe("Chart's small-data form", () => {
   });
 });
 
-/** The middle of a chart's plot, where a scatter of one row draws its dot. */
-function middleOf(root: HTMLElement): { readonly x: number; readonly y: number } {
-  const box = plotOf(root).getBoundingClientRect();
-  return { x: box.width / 2, y: box.height / 2 };
-}
-
-/** A scatter of one bond, whose dot sits in the middle of the plot, once it has drawn: its root and the middle. */
+/** A scatter of one bond, once it has drawn: its root and the middle of its dot. */
 async function oneBond(onSelect: (selection: ChartSelection | null) => void): Promise<{
   readonly root: HTMLElement;
   readonly middle: { readonly x: number; readonly y: number };
@@ -137,7 +139,10 @@ async function oneBond(onSelect: (selection: ChartSelection | null) => void): Pr
     </ParallaxProvider>,
   );
   await expect.poll(() => summaryOf(screen.container)).toBe("1 dot");
-  return { middle: middleOf(screen.container), root: screen.container };
+  // The axes' font may arrive after the first frame, and move the dot over as their labels take their width in it.
+  await document.fonts.ready;
+  await rest(50);
+  return { middle: colouredMiddleOf(screen.container), root: screen.container };
 }
 
 describe("a scatter of a few rows, drawn as dots", () => {

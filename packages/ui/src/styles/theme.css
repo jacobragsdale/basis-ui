@@ -4,6 +4,23 @@
 @import "@fontsource-variable/inter";
 @import "@fontsource-variable/jetbrains-mono";
 
+/* Inter's Latin file again, under the name `--font-num` gives it, with tabular figures on, so that a canvas, which
+   cannot ask for them, draws digits of one width. Chrome honours the descriptor from version 139, and parallax's
+   browser tests measure that it does. Text outside these characters falls through to Inter Variable, the next face in
+   the stack, whose other files hold no figures. The file is a copy of the package's, which `vp run @basis/ui#theme`
+   makes, since a stylesheet can name a file in a package only by a relative URL. */
+@font-face {
+  font-family: "Inter Tabular";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  font-feature-settings: "tnum";
+  src: url("./fonts/inter-latin-wght-normal.woff2") format("woff2-variations");
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
 /* Tokens switch with the mode, so `dark:` variants have nothing to do. This keeps any that slip in on the user's
    chosen mode rather than the operating system's. */
 @custom-variant dark (&:where(.dark, .dark *));
@@ -11,6 +28,7 @@
 :root {
   color-scheme: light;
   --radius: 0.375rem;
+  --font-num: "Inter Tabular", "Inter Variable", ui-sans-serif, system-ui, sans-serif;
   --background: oklch(0.981 0.0011 255);
   --foreground: oklch(0.24 0.0063 255);
   --card: oklch(0.993 0.0006 255);

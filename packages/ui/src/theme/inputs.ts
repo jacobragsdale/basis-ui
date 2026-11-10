@@ -27,6 +27,10 @@ const radius = "0.375rem";
 /** Font stacks. Both faces are bundled with `@basis/ui`, so text renders alike on every desktop. */
 const fonts = {
   mono: '"JetBrains Mono Variable", ui-monospace, monospace',
+  /** The sans face with tabular figures as its default, for text a canvas draws, such as parallax's grids and axes: a
+   * canvas's font cannot ask for `tabular-nums`, so `--font-num` names a face that has them on. The DOM's numbers keep
+   * the sans stack and ask with `tabular-nums`. */
+  num: '"Inter Tabular", "Inter Variable", ui-sans-serif, system-ui, sans-serif',
   sans: '"Inter Variable", ui-sans-serif, system-ui, sans-serif',
 } as const;
 

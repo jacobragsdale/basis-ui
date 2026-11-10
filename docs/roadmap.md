@@ -532,7 +532,9 @@ flowchart TD
    (`6.4.1-tabular-digits`), whole device pixels (`6.4.2-device-pixels`), one draw per frame and one row step per notch
    (`6.4.3-frame-aligned`), a scroll that moves pixels (`6.4.4-scroll-blit`), rows past the scrollbar's reach
    (`6.4.5-row-position`), less work in a pass (`6.4.6-paint-cost`), selection that does not count rows
-   (`6.4.7-selection`), and the charts' costs (`6.4.8-chart-cost`).
+   (`6.4.7-selection`), and the charts' costs (`6.4.8-chart-cost`). 6.4.1 built on 2026-11-09: the canvases draw in
+   `--font-num`, Inter declared again with tabular figures on, at `@basis/ui`'s text sizes, 14 px in cells and 12 on
+   axes, as the DOM's numbers are.
 5. **6.5 Themes.** Lane Theme, one branch per item in order: tokens for what opacity fakes (`6.5.1-tokens`), density
    in whole pixels (`6.5.2-density`), `defineTheme` (`6.5.3-define-theme`), `checkTheme` (`6.5.4-check-theme`), the
    choice of theme in the cookie (`6.5.5-theme-preference`), parallax on the same theme (`6.5.6-parallax-theme`), the

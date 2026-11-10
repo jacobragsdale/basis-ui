@@ -77,7 +77,7 @@ describe("ParallaxProvider's theme", () => {
     await expect.element(screen.getByLabelText("ramp")).toHaveTextContent("9");
     await expect
       .element(screen.getByLabelText("font"))
-      .toMatchTextContent(/^13px "Inter Variable"/u);
+      .toMatchTextContent(/^14px "Inter Tabular", "Inter Variable"/u);
   });
 
   test("reads its colours as oklch(), on which labels take the ink that contrasts, white or dark", async () => {

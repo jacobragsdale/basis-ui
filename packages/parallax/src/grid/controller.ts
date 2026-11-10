@@ -111,8 +111,8 @@ class GridController {
       return;
     }
     this.#model.theme = theme;
-    if (was !== null && was.font !== theme.font) {
-      // Text measured in the old font is the wrong width now, so columns fitted to it are fitted again.
+    if (was !== null && (was.font !== theme.font || was.fontLoaded !== theme.fontLoaded)) {
+      // Text measured in the old font, or in a fallback before it loaded, is the wrong width now: fit it again.
       this.#painter.widths.clear();
       this.#model.fitter.reset();
       this.#fit();

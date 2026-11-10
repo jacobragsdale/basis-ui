@@ -310,7 +310,8 @@ app's stylesheet today (step 6.8.3).
    a Sheet or an Accordion's content. Motion never lays the page out frame by frame where a grid or chart would resize
    with it: the sidebar's panel moves on its own while the space it holds changes at once, and canvases never animate.
    The maintainer asked for this motion on 2026-11-08, where the sidebar had folded at once. Fonts are bundled, so screenshots match on every desktop: Inter for text and JetBrains Mono
-   for code, until the firm's fonts replace them.
+   for code, until the firm's fonts replace them. A canvas's font cannot ask for tabular figures, so `--font-num` names
+   Inter declared again with them on, which parallax's canvases draw in.
 
 The user chooses a mode (system, light or dark) and a density (compact, the default by the maintainer's choice of
 2026-11-07, or comfortable), and once step 6.5.5 is built a theme. They live in one cookie, meant to sit on the parent

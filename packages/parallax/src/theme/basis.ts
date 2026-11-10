@@ -2,6 +2,10 @@
  * `@basis/ui`'s tokens, so it switches with the page's mode as every component does, and the canvas reads it resolved
  * to a concrete colour or length. Tokens it leaves out keep parallax's own defaults, most of which derive from these.
  *
+ * Text takes `--font-num`, the theme's face with tabular figures on, since a canvas cannot ask for them, so a column
+ * of numbers lines up. It draws at the sizes of the DOM's text: `text-sm`, a table's, for cells and headers, and
+ * `text-xs`, the chart's readouts', for axes and labels.
+ *
  * Charts take `chart-1` to `chart-8` in order, gains and losses for candles, the sequential scale for a heatmap's
  * positive values, and for its negative ones the red arm of the diverging scale, out from its neutral midpoint. */
 
@@ -35,7 +39,9 @@ const basisTheme: ParallaxTheme = defineTheme({
     danger: "var(--destructive)",
     down: "var(--loss)",
     focus: "var(--ring)",
-    fontFamily: "var(--font-sans)",
+    fontFamily: "var(--font-num)",
+    fontSize: "var(--text-sm)",
+    fontSizeSmall: "var(--text-xs)",
     foreground: "var(--card-foreground)",
     highlight: "var(--highlight)",
     middle: "var(--div-6)",

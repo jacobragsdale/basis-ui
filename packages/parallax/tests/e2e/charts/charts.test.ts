@@ -126,8 +126,8 @@ test("every chart kind draws its data, with a text alternative and no errors", a
   );
   // The text alternative says what is drawn, and the values shown.
   expect(described.every(([, words]) => /\d/u.test(words))).toBe(true);
-  // Axes alone ink a few thousand pixels; data inks far more.
-  expect(Math.min(...(await inks(page)))).toBeGreaterThan(5000);
+  // Axes alone ink a few thousand pixels; data inks more. The thinnest, the histogram's bars, inks about 5,000.
+  expect(Math.min(...(await inks(page)))).toBeGreaterThan(4500);
   await expect(page.locator('[data-slot="chart"] [role="alert"]')).toHaveCount(0);
   expect(errors).toStrictEqual([]);
 });

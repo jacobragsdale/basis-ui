@@ -30,6 +30,47 @@ function surfaceOf(root: HTMLElement): string {
   return pixel === undefined ? "" : pixel.slice(0, channels).join(",");
 }
 
+/** How far apart a pixel's channels must be for it to count as coloured, rather than the greys of text and lines. */
+const colouredSpread = 64;
+/** The channels of a pixel, with its alpha. */
+const rgba = 4;
+
+/** The bounds of the coloured pixels of `image`, in its pixels. */
+function colouredBounds({ width, height, data }: ImageData): {
+  readonly left: number;
+  readonly right: number;
+  readonly top: number;
+  readonly bottom: number;
+} {
+  const box = { bottom: 0, left: width, right: 0, top: height };
+  for (let index = 0; index < width * height; index += 1) {
+    const [red = 0, green = 0, blue = 0] = data.subarray(index * rgba, index * rgba + channels);
+    if (Math.max(red, green, blue) - Math.min(red, green, blue) >= colouredSpread) {
+      const [x, y] = [index % width, Math.floor(index / width)];
+      Object.assign(box, {
+        bottom: Math.max(box.bottom, y),
+        left: Math.min(box.left, x),
+        right: Math.max(box.right, x),
+        top: Math.min(box.top, y),
+      });
+    }
+  }
+  return box;
+}
+
+/** The middle of the coloured pixels the canvas draws, such as a scatter's one dot, from the plot's top-left corner;
+ * the plot's middle is not the dot's, since the axes' labels take room on one side. */
+function colouredMiddleOf(root: HTMLElement): { readonly x: number; readonly y: number } {
+  const canvas = root.querySelector("canvas");
+  const context = canvas?.getContext("2d");
+  if (canvas === null || context === null || context === undefined) {
+    throw new Error("the chart has no canvas");
+  }
+  const box = colouredBounds(context.getImageData(0, 0, canvas.width, canvas.height));
+  const scale = canvas.width / canvas.getBoundingClientRect().width;
+  return { x: (box.left + box.right) / 2 / scale, y: (box.top + box.bottom) / 2 / scale };
+}
+
 /** A point of the plot, from its top-left corner, and how far the wheel turns there. */
 interface At {
   readonly x: number;
@@ -65,4 +106,4 @@ async function rest(ms: number): Promise<void> {
   return promise;
 }
 
-export { fire, plotOf, rest, summaryOf, surfaceOf, wordsOf };
+export { colouredMiddleOf, fire, plotOf, rest, summaryOf, surfaceOf, wordsOf };

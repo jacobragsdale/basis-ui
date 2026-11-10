@@ -271,6 +271,7 @@ class ChartScene {
     const canvas = this.parts.get("canvas");
     if (canvas !== null && this.#readTokens !== null) {
       const tokens = this.#readTokens(canvas);
+      this.#measurer?.fontLoaded(tokens.theme.fontLoaded);
       this.#model.setTheme(tokens.theme, tokens.colors);
     }
   }

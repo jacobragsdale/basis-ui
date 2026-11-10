@@ -10,6 +10,7 @@ const characterWidth = 7;
 class TextMeasurer {
   readonly #context: CanvasRenderingContext2D | null;
   readonly #widths = new Map<string, number>();
+  #loaded = true;
 
   public constructor(document: Document) {
     this.#context = document.createElement("canvas").getContext("2d");
@@ -26,6 +27,15 @@ class TextMeasurer {
       return text.length * characterWidth;
     }
     return this.#remember(key, this.#measured(text, font));
+  }
+
+  /** Takes whether the theme's font has loaded, forgetting every width when that changes: what was measured before
+   * it loaded was the fallback's width. */
+  public fontLoaded(loaded: boolean): void {
+    if (loaded !== this.#loaded) {
+      this.#loaded = loaded;
+      this.#widths.clear();
+    }
   }
 
   #measured(text: string, font: string): number {

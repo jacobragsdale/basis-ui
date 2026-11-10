@@ -1,4 +1,5 @@
 import { readdirSync, readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import path from "node:path";
 
 import { compile } from "@tailwindcss/node";
@@ -13,7 +14,7 @@ import {
 import type { Color } from "culori";
 import { describe, expect, test } from "vite-plus/test";
 
-import { colourOf, themeCss } from "#theme/css.ts";
+import { colourOf, tabularFace, themeCss } from "#theme/css.ts";
 import type { Mode } from "#theme/ramps.ts";
 import { tokenNames } from "#theme/tokens.ts";
 
@@ -52,6 +53,17 @@ async function build(candidates: readonly string[]): Promise<string> {
 
 test("the committed theme.css is what the inputs produce (run `vp run @basis/ui#theme` after changing them)", () => {
   expect(committed).toBe(themeCss());
+});
+
+test("the tabular face's file, and its licence, are the package's (run `vp run @basis/ui#theme` after updating it)", () => {
+  const require = createRequire(import.meta.url);
+  const fonts = path.join(source, "styles/fonts");
+  expect(readFileSync(path.join(fonts, tabularFace.file))).toStrictEqual(
+    readFileSync(require.resolve(tabularFace.source)),
+  );
+  expect(readFileSync(path.join(fonts, "LICENSE"), "utf8")).toBe(
+    readFileSync(require.resolve("@fontsource-variable/inter/LICENSE"), "utf8"),
+  );
 });
 
 test("every token is defined in both modes, and nothing outside theme.css defines one", () => {
