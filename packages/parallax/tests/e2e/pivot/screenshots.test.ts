@@ -69,6 +69,15 @@ async function pivot(page: Page, theme: string): Promise<void> {
 async function shot(target: Locator, name: string): Promise<void> {
   const page = target.page();
   await page.mouse.move(0, 0);
+  /* Every transition run out first, such as a checkbox's colour after a click: on CI's slower runners the screenshot
+   * came before its 120 ms were up, and the checked box's rounded corners a shade off, as Chromium can draw an element
+   * whose colour is moving in a layer of its own. A cancelled one counts as run out. */
+  await page.evaluate(async () => {
+    const finite = document
+      .getAnimations()
+      .filter((animation) => Number.isFinite(animation.effect?.getComputedTiming().endTime));
+    await Promise.allSettled(finite.map(async (animation) => animation.finished));
+  });
   await paintAfresh(page);
   await expect(target).toHaveScreenshot(name, {
     ...exactly,

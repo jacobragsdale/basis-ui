@@ -151,13 +151,15 @@ describe("ButtonLink", () => {
   });
 
   test.each(variants)("the %s variant looks like the Button of that variant", async (variant) => {
+    /* Out of the pointer's reach: a pointer an earlier test left over the Button hovers it a moment after it renders,
+     * and its colour is read mid-transition to the hover's. */
     const screen = await render(
-      <>
+      <div className="pointer-events-none">
         <Button variant={variant}>Save</Button>
         <ButtonLink href="#save" variant={variant}>
           Save
         </ButtonLink>
-      </>,
+      </div>,
     );
     const button = screen.getByRole("button", { name: "Save" }).element();
     const link = screen.getByRole("link", { name: "Save" }).element();
