@@ -5,10 +5,17 @@ What changed in `@basis/ui`, newest first, in the words an app's agent needs: wh
 
 ## Unreleased
 
+- `vp run verify` runs every check, each stage to its end, then prints one summary: sync, client, fixtures, config,
+  lint, types, tests, build, budget and suppressions, each failure one `ERROR` line with its file and line where the
+  tool gives them. `--stage NAME`, once for each, runs those stages alone, and `--json` prints the report as one line
+  of JSON, the type `VerifyReport` from `@basis/ui/preset`. `vp run check-full` is now `vp run verify`: it still runs,
+  saying so, so call `vp run verify` instead. The commit hook now runs `vp staged` and verify's fast stages, a few
+  seconds, and the push hook every stage; run `vp run sync` to write the new hooks and the framework files' new first
+  line, which names `vp run verify`. An app with no test file now fails the tests stage: write a test of each page.
 - The lint and the drift check close what probes found open, each with an `ERROR` line that ends in its fix. What an
   app must change: remove every `oxlint-disable` and `eslint-disable` comment but `oxc/no-barrel-file`'s in
   `src/api`, and every `@ts-expect-error`, `@ts-ignore` and `@ts-nocheck`, fixing what they hid (`basis/no-suppressions`,
-  and `vp run check-full`'s new suppressions step, which `vp run review` counts); on a plain element, drop `dark:`,
+  and the new suppressions step of `vp run check-full`, now `vp run verify`, which `vp run review` counts); on a plain element, drop `dark:`,
   `!`, selector variants such as `[&>*]:`, filters such as `grayscale` and `brightness-50`, `black` and `white`, and
   classes built from template strings (`basis/theme-classes`); show dates with `DateTime` or `relativeTime`, not
   `toLocaleDateString`, `toLocaleTimeString`, `Intl.DateTimeFormat` or `Intl.RelativeTimeFormat`, and round to a step

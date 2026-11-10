@@ -24207,6 +24207,13 @@
       "purpose": "A value of a sparkline: a number, or null or NaN where it is missing, which breaks the line."
     },
     {
+      "definition": "| \"budget\" | \"build\" | \"client\" | \"config\" | \"fixtures\" | \"lint\" | \"suppressions\" | \"sync\" | \"tests\" | \"types\"",
+      "exported": false,
+      "module": "@basis/ui",
+      "name": "StageName",
+      "purpose": "A stage of `vp run verify`, which `--stage` names."
+    },
+    {
       "definition": "Readonly<Record<string, number>>",
       "exported": true,
       "module": "@basis/ui",
@@ -25058,6 +25065,96 @@
       "module": "@basis/ui/preset",
       "name": "RouteBudget",
       "purpose": "What a route may load, in kilobytes (1,000 bytes) gzipped, as `vp build` reports them."
+    },
+    {
+      "fields": [
+        {
+          "description": "The file, `/`-separated from the app's root, or `null` when the failure has none, as a route over budget.",
+          "name": "file",
+          "optional": false,
+          "type": "string | null"
+        },
+        {
+          "description": "The line in `file`, from 1, or `null` when the tool gives none.",
+          "name": "line",
+          "optional": false,
+          "type": "number | null"
+        },
+        {
+          "description": "The lint rule, as `eslint(no-debugger)`, the compiler's code, as `TS2322`, or the bundler's, or `null`.",
+          "name": "rule",
+          "optional": false,
+          "type": "string | null"
+        },
+        {
+          "description": "",
+          "name": "message",
+          "optional": false,
+          "type": "string"
+        },
+        {
+          "description": "",
+          "name": "fix",
+          "optional": false,
+          "type": "string"
+        }
+      ],
+      "exported": true,
+      "module": "@basis/ui/preset",
+      "name": "VerifyError",
+      "purpose": "One failure: where it is, when the tool says, the rule or code that found it, what is wrong and what fixes it."
+    },
+    {
+      "fields": [
+        {
+          "description": "",
+          "name": "ok",
+          "optional": false,
+          "type": "boolean"
+        },
+        {
+          "description": "",
+          "name": "stages",
+          "optional": false,
+          "type": "readonly VerifyStage[]"
+        }
+      ],
+      "exported": true,
+      "module": "@basis/ui/preset",
+      "name": "VerifyReport",
+      "purpose": "What `vp run verify --json` prints, on one line: `ok` when every stage it ran passed."
+    },
+    {
+      "fields": [
+        {
+          "description": "",
+          "name": "name",
+          "optional": false,
+          "type": "StageName"
+        },
+        {
+          "description": "",
+          "name": "ok",
+          "optional": false,
+          "type": "boolean"
+        },
+        {
+          "description": "How long the stage took, in whole milliseconds.",
+          "name": "ms",
+          "optional": false,
+          "type": "number"
+        },
+        {
+          "description": "",
+          "name": "errors",
+          "optional": false,
+          "type": "readonly VerifyError[]"
+        }
+      ],
+      "exported": true,
+      "module": "@basis/ui/preset",
+      "name": "VerifyStage",
+      "purpose": "One stage's verdict: `ok` when it found no error."
     },
     {
       "extends": [

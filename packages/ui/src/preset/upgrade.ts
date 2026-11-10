@@ -4,7 +4,7 @@
  *                             `latest`
  *   vp run upgrade VERSION    moves them to VERSION, such as 0.4.0, the two always at one version
  *
- * then runs `vp run sync` and `vp run check-full`, each in a process of its own, so the new version's preset writes the
+ * then runs `vp run sync` and `vp run verify`, each in a process of its own, so the new version's preset writes the
  * framework's files and checks the app. Every failure ends with one ERROR line, after the output of the step that
  * failed. */
 
@@ -83,15 +83,15 @@ async function upgrade(root: string, args: readonly string[]): Promise<string> {
   const after = (await installedVersion(root, "@basis/ui")) ?? target;
   if (!vp(root, ["run", "sync"])) {
     throw new TaskError(
-      `ERROR @basis/ui ${after} is installed, but vp run sync failed, as its ERROR lines above say: fix what they say, then run vp run sync and vp run check-full.`,
+      `ERROR @basis/ui ${after} is installed, but vp run sync failed, as its ERROR lines above say: fix what they say, then run vp run sync and vp run verify.`,
     );
   }
-  if (!vp(root, ["run", "check-full"])) {
+  if (!vp(root, ["run", "verify"])) {
     throw new TaskError(
-      `ERROR @basis/ui ${after} is installed and its files synced, but vp run check-full fails, as its output above says: fix what it says, then commit the upgrade.`,
+      `ERROR @basis/ui ${after} is installed and its files synced, but vp run verify fails, as its output above says: fix what it says, then commit the upgrade.`,
     );
   }
-  return `Upgraded @basis/ui from ${before ?? "nothing"} to ${after}, wrote its framework files, and vp run check-full passed: commit package.json, the lockfile and the synced files together.`;
+  return `Upgraded @basis/ui from ${before ?? "nothing"} to ${after}, wrote its framework files, and vp run verify passed: commit package.json, the lockfile and the synced files together.`;
 }
 
 export { upgrade };

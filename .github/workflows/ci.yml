@@ -90,15 +90,14 @@ jobs:
       # The gallery's render matrix again, in a Node DOM, as on a machine with no browser.
       - run: vp run @basis/gallery#test-node
       - run: vp run @basis/gallery#build
-      # The example app proves the app shell: its client must match its openapi.json, and its tests run in Chromium.
-      - run: vp run @basis/example#client-check
-      - run: vp run @basis/example#test
+      # The example app proves the app shell: `vp run verify`, every stage of an app's check, its client against its
+      # openapi.json, its tests in Chromium and its build among them.
+      - run: vp run @basis/example#verify
       # The same app on a machine with no browser: the tests written with @basis/ui/testing, in a Node DOM.
       - run: vp run @basis/example#test-node
-      - run: vp run @basis/example#build
-      # The consumer app is configured by hand with the README's lines, as ctzd writes its apps, and must build and meet
-      # its budget: `vp run budget` builds it, then weighs its route in Chromium.
-      - run: vp run @basis/consumer#budget
+      # The consumer app is configured by hand with the README's lines, as ctzd writes its apps, and passes verify as
+      # one: its configuration, lint, types, test and build, and its budget, weighed in Chromium.
+      - run: vp run @basis/consumer#verify
 
   # Every gallery section's screenshot, in light and dark, comfortable and compact, and its axe check, in the pinned
   # Playwright image, against the gallery built here on @basis/ui's build. A change to either runs them.

@@ -231,12 +231,12 @@ says. To run it against a live API instead, such as `basis dev`'s on the desktop
 as in `BASIS_API_URL=http://127.0.0.1:8000 vp dev`: the preset sends `/api` to it with the prefix removed, as the
 ingress does, `fakeSignIn()`'s tokens sign the user in, and fixture mode is off.
 
-`vp run client-check`, which `vp run check-full` runs first, fails when `src/api/generated` is not what `openapi.json`
-generates, one line for each file. Its fix is `vp run client-pull`, which keeps the repo's `openapi.json` when the
-client cannot be generated from the copy it pulls. `check-full` then checks each fixture in `fixtures/` against
-`openapi.json`, as `vp dev` does, so one the document has left behind fails, type-checks the whole app with the
-installed TypeScript's `tsc --noEmit`, the generated client included, since `vp check` lints around it, and, after
-`vp check` and `vp test`, runs `vp build`. `@basis/ui/orval` exports `basisOrval()`, the
+`vp run client-check`, which `vp run verify` runs as its client stage, fails when `src/api/generated` is not what
+`openapi.json` generates, one line for each file. Its fix is `vp run client-pull`, which keeps the repo's `openapi.json`
+when the client cannot be generated from the copy it pulls. `vp run verify` also checks each fixture in `fixtures/`
+against `openapi.json`, as `vp dev` does, so one the document has left behind fails, and type-checks the whole app with
+the installed TypeScript's `tsc --noEmit`, the generated client included, since `vp check` lints around it, as
+[Checking the app](#checking-the-app-vp-run-verify) says. `@basis/ui/orval` exports `basisOrval()`, the
 configuration both tasks use, from spike 0.2: a Zod 4 schema for each model, which drops fields it does not know, a
 TanStack Query v5 hook for each operation, with every response parsed by its schema, and MSW handlers for each
 operation and status. Two settings never change: `zod.strict` stays off, since it would make every response refuse a
@@ -267,7 +267,7 @@ Those two comments are the only ones an app may write to turn a check off. `basi
 `oxlint-disable` or `eslint-disable` comment, which only `oxc/no-barrel-file` in `src/api` passes, and every
 `@ts-expect-error`, `@ts-ignore` and `@ts-nocheck`: fix what the rule or the compiler reports instead, and parse a
 value of unknown shape with a zod schema. A comment that turns off every rule hides from the lint as well, so
-`vp run check-full` reads `src/` as text for them, and `vp run review` counts them.
+`vp run verify` reads `src/` as text for them, and `vp run review` counts them.
 
 A hook returns the response as `{ data, status, headers }`, so a component reads `query.data.data`, and its error is an
 `ApiError` holding the API's problem details. Show it with `ErrorAlert`, which renders nothing while there is no error:
@@ -458,6 +458,78 @@ A test that needs a real browser, for layout, focus or pixels, goes in a file na
 Vitest's browser API (`vitest-browser-react`, `expect.element`) and which the Node run leaves out. The lint refuses that
 API in every other test, with the fix in its message. Under a Node DOM, parallax's charts and grids render their text
 alternative, not pixels.
+
+## Checking the app: `vp run verify`
+
+`vp run verify` runs every check of the app, each stage to its end whatever an earlier one found, then prints one
+summary: a line for each stage, and under it one `ERROR` line for each failure, with its file and line where the tool
+gives them, its rule, and its fix. The stages, in order:
+
+| Stage          | What it checks                                                                                             |
+| -------------- | ---------------------------------------------------------------------------------------------------------- |
+| `sync`         | the framework's files against the installed `@basis/ui`, as `vp run sync --check`, in an app that has them |
+| `client`       | `src/api/generated` against `openapi.json`, as `vp run client-check`                                       |
+| `fixtures`     | each fixture in `fixtures/` against `openapi.json`                                                         |
+| `config`       | `vite.config.ts`, `tsconfig.json`, `src/styles.css` and `package.json`'s dependencies                      |
+| `lint`         | formatting, and the lint's rules                                                                           |
+| `types`        | `tsc --noEmit` on the whole app, the generated client included                                             |
+| `tests`        | `vp test`, in Chromium unless the app runs with no browser                                                 |
+| `build`        | `vp build`, which fails on what only the React Compiler or the bundler finds                               |
+| `budget`       | each route of `basisPreset({ budget })` against its budget, as `vp run budget`                             |
+| `suppressions` | the comments that turn a check off, read as text                                                           |
+
+```sh
+$ vp run verify
+ok    sync            0.0 s
+ok    client          0.4 s
+ok    fixtures        0.0 s
+ok    config          0.0 s
+FAIL  lint            1.4 s
+ERROR src/pages/positions.tsx:2: `debugger` statement is not allowed (eslint(no-debugger)): Remove the debugger statement.
+FAIL  types           0.4 s
+ERROR src/pages/positions.tsx:9: Type 'string' is not assignable to type 'number' (TS2322): make the code agree with the types the compiler names, ...
+ok    tests          13.4 s
+...
+ERROR vp run verify failed 2 of 10 stages, lint and types: fix each ERROR line above, then run vp run verify --stage lint --stage types to check them again.
+```
+
+`--stage NAME`, given once for each, runs those stages alone, in their order. `--json` prints the report instead, as
+one line, the one that starts with `{`, of the type `VerifyReport` that `@basis/ui/preset` exports:
+
+```ts
+interface VerifyReport {
+  ok: boolean;
+  stages: {
+    name:
+      | "sync"
+      | "client"
+      | "fixtures"
+      | "config"
+      | "lint"
+      | "types"
+      | "tests"
+      | "build"
+      | "budget"
+      | "suppressions";
+    ok: boolean;
+    ms: number;
+    errors: {
+      file: string | null;
+      line: number | null;
+      rule: string | null;
+      message: string;
+      fix: string;
+    }[];
+  }[];
+}
+```
+
+`file`, `line` and `rule` are `null` where none is known, as for a route over its budget. When every stage runs and
+passes on a commit with nothing uncommitted, verify records it for `vp run review`. The commit hook runs `vp staged`,
+then the stages that take seconds, `vp run verify --stage sync --stage config --stage lint --stage types --stage
+suppressions`, and the push hook all of them. An app ctzd writes, which holds none of the framework's files, has
+nothing for the `sync` stage to check; its configuration is still checked. `vp run check-full`, verify's former
+name, says so and runs it.
 
 ## Using the components
 

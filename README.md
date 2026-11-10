@@ -10,7 +10,7 @@ placeholder.
 generated client, and runs with no API in `vp dev`'s fixture mode; the roadmap's phase 1 fills in the rest. A new UI
 repo starts from [`@basis/create`'s template](packages/create), with the preset, `AppShell`, a sample API that fixture
 mode answers until `vp run client-pull` copies the app's own, the agent files, the hooks, an Azure pipeline and a
-Dockerfile whose image serves the build; `vp run sync` keeps the framework's files current, `vp run check-full` fails
+Dockerfile whose image serves the build; `vp run sync` keeps the framework's files current, `vp run verify` fails
 when one is edited, and `vp run upgrade`, `doctor`, `review` and `docs` do the rest. The design and the build order:
 
 - [The basis-ui design](docs/design.md): the toolchain, the stack, how agents see a UI, parallax in the browser, and

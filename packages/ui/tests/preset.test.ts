@@ -11,7 +11,6 @@ import { fileURLToPath } from "node:url";
 
 import { build, resolveConfig } from "vite-plus";
 import { describe, expect, test } from "vite-plus/test";
-import { z } from "zod";
 
 import { headScript } from "#index.ts";
 import { basisPlugins, basisPreset } from "#preset/index.ts";
@@ -41,7 +40,7 @@ async function builtPage(): Promise<string> {
   }
 }
 
-/** The installed TypeScript's `tsc`, which `vp run check-full` runs in an app. */
+/** The installed TypeScript's `tsc`, which `vp run verify` runs in an app. */
 const tsc = path.join(
   path.dirname(createRequire(import.meta.url).resolve("typescript/package.json")),
   "bin/tsc",
@@ -96,18 +95,24 @@ describe(basisPreset, () => {
     return typeof task === "object" && !Array.isArray(task) ? task.command : task;
   }
 
-  test("vp run check-full checks the framework's files, the generated client and the fixtures, type-checks the whole app and reads its suppressions, then tests and builds it", () => {
-    const [drift, client, fixtures, types, suppressions, ...steps] = z
-      .array(z.string())
-      .parse(commandOf("check-full"));
-    expect(drift).toMatch(/^node "[^"]+" sync --check$/u);
-    expect(client).toBe("vp run client-check");
-    expect(fixtures).toMatch(/^node "[^"]+" fixtures$/u);
-    expect(types).toBe("tsc --noEmit");
-    expect(suppressions).toMatch(/^node "[^"]+" suppressions$/u);
-    expect(steps.slice(0, -1)).toStrictEqual(["vp check", "vp test", "vp build"]);
-    expect(steps.at(-1)).toMatch(/^node "[^"]+" checked$/u);
-  });
+  test.each(["verify", "check-full"])(
+    "vp run %s runs verify in the framework tasks' script, with the app's budget",
+    (name) => {
+      const match = /^node "(?<script>[^"]+)" (?<task>[\w-]+)$/u.exec(String(commandOf(name)));
+      expect(match?.groups?.["task"]).toBe(name);
+      expect(existsSync(match?.groups?.["script"] ?? "")).toBe(true);
+      const budgeted = basisPreset({
+        budget: { "/": { css: 25, js: 180 }, "/bonds": { css: 25, js: 210 } },
+      });
+      const task = budgeted.run?.tasks?.[name];
+      expect(typeof task === "object" && !Array.isArray(task) ? task.command : task).toMatch(
+        new RegExp(
+          String.raw`^node "[^"]+" ${name} --budget "/=180,25" --budget "/bonds=210,25"$`,
+          "u",
+        ),
+      );
+    },
+  );
 
   test.each(["docs", "doctor", "review", "sync", "upgrade"])(
     "vp run %s runs the framework tasks' script",

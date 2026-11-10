@@ -2,7 +2,7 @@
  * passed an app's lint then, and fails it now with one line that starts with ERROR and ends with its fix, held here by
  * its exact text, as preset-errors.test.ts holds the rest of the preset's errors. The probe runs `vp lint` in
  * packages/consumer, configured as ctzd configures an app. The drift check's doors, an app's own configuration and
- * dependencies, and check-full's step that reads suppressions as text are held in drift-check.test.ts. */
+ * dependencies, and verify's step that reads suppressions as text are held in drift-check.test.ts. */
 
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 
@@ -83,7 +83,7 @@ describe("the preset's lint against a comment that turns a check off", () => {
       `ERROR oxlint-disable-next-line turns off eslint/no-console, ${ignoreRule}`,
     ]);
     /* One that names no rule turns this rule off too, from where it stands; Oxlint's own rule still refuses it,
-     * and check-full's suppressions step, which reads the file as text, names the fix. */
+     * and verify's suppressions step, which reads the file as text, names the fix. */
     expect(at("unicorn(no-abusive-eslint-disable)", "/* eslint-disable */")).toHaveLength(1);
     expect(at("basis(no-suppressions)", "outside src/api")).toStrictEqual([
       `ERROR oxlint-disable-next-line turns off oxc/no-barrel-file, ${ignoreRule}`,

@@ -1,4 +1,4 @@
-/* `vp run check-full`'s check of the fixtures in git, run as the preset runs it: Node on src/preset/tasks.ts, in an
+/* `vp run verify`'s check of the fixtures in git, run as the preset runs it: Node on src/preset/tasks.ts, in an
  * app's root, here a temporary one holding basis's sample document. */
 
 import { spawnSync } from "node:child_process";
@@ -33,7 +33,7 @@ afterEach(() => {
   removeApp(app);
 });
 
-describe("vp run check-full's fixture check", () => {
+describe("vp run verify's fixture check", () => {
   test("passes the fixtures openapi.json answers", () => {
     expect(checkFixtures()).toStrictEqual({
       status: 0,

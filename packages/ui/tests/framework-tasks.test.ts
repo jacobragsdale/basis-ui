@@ -1,7 +1,7 @@
 /* The framework tasks, run as the preset runs them: Node on src/preset/tasks.ts, in an app's root. The app is a
  * temporary folder with this package linked in as `node_modules/@basis/ui`, as an installed app has it, and the
  * template in packages/create holds exactly what `vp run sync` writes. The drift check's hold on an app's own
- * configuration and dependencies, and check-full's suppressions step, are in drift-check.test.ts. */
+ * configuration and dependencies, and verify's suppressions stage, are in drift-check.test.ts. */
 
 import { execFileSync, spawnSync } from "node:child_process";
 import {
@@ -19,6 +19,7 @@ import { fileURLToPath } from "node:url";
 
 import { afterEach, beforeEach, describe, expect, test } from "vite-plus/test";
 
+import { recordCheck } from "#preset/review.ts";
 import { planSync, syncProblems, syncWrite } from "#preset/sync.ts";
 
 const packageRoot = fileURLToPath(new URL("..", import.meta.url));
@@ -33,7 +34,7 @@ interface Run {
 
 /** The line every framework file opens with, but CLAUDE.md, and AGENTS.md, whose block has markers of its own. */
 const header =
-  "# This file is managed by basis-ui: `vp run sync` rewrites it from the installed @basis/ui, and `vp run check-full` fails when it differs.";
+  "# This file is managed by basis-ui: `vp run sync` rewrites it from the installed @basis/ui, and `vp run verify` fails when it differs.";
 
 /** The environment without git's own variables, which a commit hook sets. */
 const environment = Object.fromEntries(
@@ -198,14 +199,16 @@ describe("vp run review", () => {
     git("commit", "--quiet", "-m", "Books");
   });
 
-  test("refuses a commit vp run check-full has not passed on", () => {
+  test("refuses a commit vp run verify has not passed on", () => {
     expect(run("review").stderr).toMatch(
-      /^ERROR vp run check-full has not passed on \w+, the commit to review: .+\.\n$/u,
+      /^ERROR vp run verify has not passed on \w+, the commit to review: .+\.\n$/u,
     );
   });
 
-  test("summarises a checked commit against main: versions and operations", () => {
-    expect(run("checked").stdout).toMatch(/^Recorded for vp run review/u);
+  test("summarises a checked commit against main: versions and operations", async () => {
+    expect(await recordCheck(app)).toMatch(
+      /^Recorded for vp run review: vp run verify passed on \w+\.$/u,
+    );
     const summary = run("review").stdout;
     expect(summary).toContain(": Books\n");
     expect(summary).toContain("| `@basis/ui` | 0.0.0 | 0.1.0 (changed) |");
@@ -215,20 +218,20 @@ describe("vp run review", () => {
     );
   });
 
-  test("counts the comments that turn a check off, on the branch and on the one it merges into", () => {
+  test("counts the comments that turn a check off, on the branch and on the one it merges into", async () => {
     write("src/api/client.ts", "// oxlint-disable-next-line oxc/no-barrel-file -- the client.\n");
     write("src/page.tsx", "// @ts-expect-error -- a reason\n");
     git("add", "--all");
     git("commit", "--quiet", "-m", "Suppressions");
-    run("checked");
+    await recordCheck(app);
     expect(run("review", "main").stdout).toContain(
       "### Suppressions\n\n2 comments in `src` turn a check off, against 0 on main.\n\n- `src/api/client.ts:1` `oxlint-disable-next-line`\n- `src/page.tsx:1` `@ts-expect-error`, refused\n",
     );
   });
 
-  test("records no check while the worktree has uncommitted changes", () => {
+  test("records no check while the worktree has uncommitted changes", async () => {
     write("notes.txt", "uncommitted\n");
-    expect(run("checked").stdout).toMatch(
+    expect(await recordCheck(app)).toMatch(
       /^Not recorded for vp run review: the worktree has uncommitted changes/u,
     );
   });
@@ -287,7 +290,7 @@ describe("vp run upgrade", () => {
 describe("a task @basis/ui does not have", () => {
   test("names the ones it has", () => {
     expect(run("deploy").stderr).toBe(
-      "ERROR deploy is no task of @basis/ui's: run one of budget, checked, docs, doctor, fixtures, review, suppressions, sync, upgrade with vp run.\n",
+      "ERROR deploy is no task of @basis/ui's: run one of budget, check-full, docs, doctor, fixtures, review, suppressions, sync, upgrade, verify with vp run.\n",
     );
   });
 });

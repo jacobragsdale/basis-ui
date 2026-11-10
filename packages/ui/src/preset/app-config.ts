@@ -115,6 +115,11 @@ function isConfigFile(file: string): boolean {
   return file === stylesFile || file === tsconfigFile;
 }
 
+/** Whether `file` is the app's own configuration, rather than a file of the framework's. */
+function isAppConfig(file: string): boolean {
+  return isConfigFile(file) || file === viteConfigFile;
+}
+
 /** The app's vite.config.ts, or `undefined` while it has none. */
 async function viteConfigOf(root: string): Promise<string | undefined> {
   const text = await readFile(path.join(root, viteConfigFile), "utf8").catch(ignored);
@@ -135,13 +140,30 @@ async function configFiles(
   ];
 }
 
+/** A problem the drift check finds: the file it is in, and its one ERROR line. */
+interface Problem {
+  readonly file: string;
+  readonly text: string;
+}
+
 /** One ERROR line for what `vp run sync` cannot put right: `vite.config.ts` beyond the framework's lines, and each
  * dependency an app may not have. */
-async function appProblems(root: string): Promise<readonly string[]> {
+async function appProblems(root: string): Promise<readonly Problem[]> {
   const viteConfig = await viteConfigOf(root);
   const config = viteConfig === undefined ? undefined : viteConfigProblem(viteConfig);
   const dependencies = await appDependencies(root);
-  return [...(config === undefined ? [] : [config]), ...dependencyProblems(dependencies.keys())];
+  return [
+    ...(config === undefined ? [] : [{ file: viteConfigFile, text: config }]),
+    ...dependencyProblems(dependencies.keys()).map((text) => ({ file: "package.json", text })),
+  ];
 }
 
-export { appProblems, configFileProblem, configFiles, isConfigFile, viteConfigProblem };
+export {
+  appProblems,
+  configFileProblem,
+  configFiles,
+  isAppConfig,
+  isConfigFile,
+  viteConfigProblem,
+};
+export type { Problem };

@@ -1,6 +1,6 @@
 /* The doors the drift check closes (docs/design.md, A UI repo): `.gitignore`, `src/styles.css`, `tsconfig.json` and
  * `vite.config.ts` held to the framework's lines, and package.json to the packages an app may use, by `vp run sync
- * --check`; and check-full's suppressions step, which reads src/ as text, since a comment that turns every rule off
+ * --check`; and verify's suppressions stage, which reads src/ as text, since a comment that turns every rule off
  * hides from the lint. Each failure is held by the exact text of its ERROR line. The tasks run as the preset runs
  * them, Node on src/preset/tasks.ts, in a temporary app with this package linked in as `node_modules/@basis/ui`. */
 
@@ -143,7 +143,7 @@ describe("vp run sync, on the app's own configuration and dependencies", () => {
   });
 });
 
-describe("check-full's suppressions step", () => {
+describe("verify's suppressions stage", () => {
   test("counts the comments the allowlist allows: oxc/no-barrel-file in src/api", () => {
     write(
       "src/api/client.ts",

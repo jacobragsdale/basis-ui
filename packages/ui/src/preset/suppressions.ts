@@ -3,7 +3,7 @@
  * everywhere. Three places read them through this module:
  *
  *   basis/no-suppressions   the lint rule, which reports each refused comment as it is written (lint-plugin.ts)
- *   suppressions            check-full's step, which reads every file of src/ as text, since a comment that turns off
+ *   suppressions            verify's suppressions stage, which reads every file of src/ as text, since a comment that turns off
  *                           every rule would turn off the lint rule too, and counts what it finds
  *   vp run review           the count on the branch and on the one it merges into (review.ts)
  */
@@ -138,11 +138,11 @@ function turningOff(count: number, where: string): string {
     : `${String(count)} comments in ${where} turn a check off`;
 }
 
-/** check-full's step: one ERROR line for each suppression the app may not write, or the count of those it may. */
+/** The task of verify's stage: one ERROR line for each suppression the app may not write, or the count of those it may. */
 async function suppressionsTask(root: string, args: readonly string[]): Promise<string> {
   if (args.length > 0) {
     throw new TaskError(
-      "ERROR suppressions takes no arguments: run it as vp run check-full runs it, with none.",
+      "ERROR suppressions takes no arguments: run it as vp run verify runs it, with none.",
     );
   }
   const found = await suppressionsIn(root);

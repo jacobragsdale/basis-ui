@@ -32,25 +32,37 @@ behaves alike, and a fix reaches all of them in one upgrade.
 
 ## What a developer sees
 
-| Command                         | What it does                                                                                                                                                                                                 |
-| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `vp check`                      | Formatting, linting and type checking together                                                                                                                                                               |
-| `vp test`                       | The Vitest suites, in Vitest's browser mode with the Playwright provider                                                                                                                                     |
-| `vp dev`                        | The app in fixture mode, on a free port per git worktree, with no backend                                                                                                                                    |
-| `vp run check-full`             | `sync --check`, `client-check`, the fixtures against `openapi.json`, `tsc --noEmit` on the whole app, the comments that turn a check off, `check`, `test` and `build`; screenshot comparison in WSL, not yet |
-| `vp run shot ROUTE`             | A screenshot of a page, its accessibility tree and its console errors                                                                                                                                        |
-| `vp run budget`                 | The build, then each route's JavaScript and CSS, gzipped, against the budget the app's `vite.config.ts` gives it                                                                                             |
-| `vp run client-pull`            | Copies the API's `openapi.json` from the API repo at a tag, or from a deployed API, and regenerates the client                                                                                               |
-| `vp run client-check`           | Whether the generated client still matches the repo's `openapi.json`: a task of its own, since an app cannot add a step to `vp check`                                                                        |
-| `vp run review`                 | A pull request's summary: the client's diff, the versions, the count of comments that turn a check off, and the commit that was checked; screenshot diffs, not yet                                           |
-| `vp run sync`, `vp run upgrade` | Rewrite the framework's files from the installed version; update `@basis/ui`, sync and check in one step                                                                                                     |
-| `vp run doctor`, `vp run docs`  | Check the desktop's setup and print the fix for each problem; print the installed version's docs: one entry of the catalogue, a search by purpose, or a README section                                       |
+| Command                         | What it does                                                                                                                                                                                                                                 |
+| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `vp check`                      | Formatting, linting and type checking together                                                                                                                                                                                               |
+| `vp test`                       | The Vitest suites, in Vitest's browser mode with the Playwright provider                                                                                                                                                                     |
+| `vp dev`                        | The app in fixture mode, on a free port per git worktree, with no backend                                                                                                                                                                    |
+| `vp run verify`                 | Every check, each stage to its end, then one summary, or with `--json` one line of JSON: sync, client, fixtures, config, lint, types, tests, build, budget and suppressions; `--stage NAME` runs some; screenshot comparison in WSL, not yet |
+| `vp run shot ROUTE`             | A screenshot of a page, its accessibility tree and its console errors                                                                                                                                                                        |
+| `vp run budget`                 | The build, then each route's JavaScript and CSS, gzipped, against the budget the app's `vite.config.ts` gives it                                                                                                                             |
+| `vp run client-pull`            | Copies the API's `openapi.json` from the API repo at a tag, or from a deployed API, and regenerates the client                                                                                                                               |
+| `vp run client-check`           | Whether the generated client still matches the repo's `openapi.json`: a task of its own, since an app cannot add a step to `vp check`                                                                                                        |
+| `vp run review`                 | A pull request's summary: the client's diff, the versions, the count of comments that turn a check off, and the commit that was checked; screenshot diffs, not yet                                                                           |
+| `vp run sync`, `vp run upgrade` | Rewrite the framework's files from the installed version; update `@basis/ui`, sync and check in one step                                                                                                                                     |
+| `vp run doctor`, `vp run docs`  | Check the desktop's setup and print the fix for each problem; print the installed version's docs: one entry of the catalogue, a search by purpose, or a README section                                                                       |
 
-Screenshot comparison in `check-full` and screenshot diffs in `review` wait for an app's baselines, step 6.8.5; the
+Screenshot comparison in `verify` and screenshot diffs in `review` wait for an app's baselines, step 6.8.5; the
 gallery's exist, as [Components](#components) says.
 
+`vp run verify` is the one verdict an agent or a hook asks for. It runs every stage to its end rather than stopping
+at the first failure, so one run shows everything left to fix, and gives each failure as the stage's existing `ERROR`
+line, with the file and line where the tool gives them. Each tool is read through its own machine format: Oxlint's and
+Vitest's JSON reporters, `tsc --pretty false`'s line a diagnostic, `vp fmt --list-different`'s file a line, and the
+error object Vite's `build()` throws, run in a Node of its own; no output is read through its colours. `--json` prints
+`{ok, stages: [{name, ok, ms, errors: [{file, line, rule, message, fix}]}]}`, the type `VerifyReport` the preset
+exports, on one line, since `vp run` prints the command above it. The lint stage leaves the compiler's errors, which
+the lint's type check also reports, to the types stage, so a type error is reported once. The stages run one at a
+time, since the tests, the build and the budget each take every core. An app ctzd writes holds none of the framework's
+files, so its sync stage has nothing to check, and the rest hold it as they hold a UI repo. `check-full`, its name
+until step 6.8.4, stays as an alias that says so, since ctzd's apps or a hook may still call it.
+
 The `vp run` tasks come from `@basis/ui`'s preset, which an app's `vite.config.ts` spreads in, so every UI repo has the
-same ones. `check-full`'s `tsc --noEmit`, from the app's installed TypeScript, is what type-checks the generated client:
+same ones. `verify`'s `tsc --noEmit`, from the app's installed TypeScript, is what type-checks the generated client:
 `vp check` lints around `src/api/generated`, so a type error there, such as one an upgrade of `@basis/ui`'s mutator
 causes, would pass it. As in basis, every file `vp run sync` writes opens with a line saying that basis-ui manages it,
 the drift check fails when someone edits one, and every failure is one line that starts with `ERROR`, gives the reason
@@ -162,7 +174,7 @@ basis-ui adds one lint plugin, `@shadcn/lint`, described below:
   [A UI repo](#a-ui-repo) says; `basis/no-suppressions`, which refuses every `oxlint-disable` and `eslint-disable`
   comment but one naming `oxc/no-barrel-file` in `src/api`, the allowlist, a list of rule names with their folder in
   the preset's `suppressions.ts`, and every `@ts-expect-error`, `@ts-ignore` and `@ts-nocheck`, in place of
-  `typescript/ban-ts-comment`, whose advice sent an app from one to another; `check-full`'s suppressions step, which
+  `typescript/ban-ts-comment`, whose advice sent an app from one to another; `verify`'s suppressions stage, which
   reads `src/` as text, since a comment that turns off every rule hides from the lint, and `vp run review`'s count;
   `basis/theme-classes`, which refuses on a plain element a `dark:` variant, `!important`, a selector variant such as
   `[&>*]:`, a filter such as `grayscale` or `brightness-50`, black and white, and a class built from a template
@@ -556,7 +568,7 @@ path without `/api`, its query and its body, and the response's status, the head
 as JSON or as base64 bytes with their media type. A record never holds the bearer token: a request keeps no headers,
 and a JWT anywhere in a record is refused. A request for Arrow is answered only by a fixture, since orval's handlers
 make random bytes, and a request no source answers gets a problem that says what to add. Every file is checked against
-`openapi.json` when `vp dev` starts and when one changes, and each in `fixtures/` by `vp run check-full`, so a fixture a
+`openapi.json` when `vp dev` starts and when one changes, and each in `fixtures/` by `vp run verify`, so a fixture a
 newer document has left behind fails with an `ERROR` line rather than serving an answer the API no longer gives.
 
 `vp dev` starts the app in fixture mode with no code in the app: the preset rewrites `index.html` to start the worker
@@ -568,8 +580,8 @@ for coding agents.
 
 Screenshots differ between operating systems, as Playwright's docs warn, and the desktops run no Docker to pin a Linux
 image in. So visual baselines are made and compared only in WSL, with the Chromium build Playwright pins and the fonts
-`@basis/ui` bundles, and on Windows `vp run check-full` says it skipped the comparison and to run it in WSL. An agent on
-Windows still takes screenshots to look at. Not yet: an app has no baselines and `check-full` compares none (step
+`@basis/ui` bundles, and on Windows `vp run verify` says it skipped the comparison and to run it in WSL. An agent on
+Windows still takes screenshots to look at. Not yet: an app has no baselines and `verify` compares none (step
 6.8.5). This repo's gallery has its baselines, made and compared in the pinned Playwright image as parallax's are.
 
 ## Serving the build
@@ -595,11 +607,14 @@ rest; `@basis/ui`'s own part fell from 60 kB to 47 kB.
 
 Every UI repo has Node, so basis-ui uses Vite+'s own hooks: `vp config`, run from the repo's `prepare` script, installs
 them on every `vp install`. The commit hook runs `vp staged`, which formats and lint-fixes the staged files, then `vp
-check` and `vp test`; the push hook runs `vp run check-full`. `vp run review` writes the pull request's summary, so a
+run verify`'s stages that take seconds, sync, config, lint, types and suppressions, about 3 s in `packages/example`;
+the push hook runs `vp run verify`, every stage, the tests in the browser, the build and the budget among them, about
+18 s there. A commit hook that ran the browser suite, as `vp check` and `vp test` did, took 14 s, which is what sends
+an agent to `--no-verify`. `vp run review` writes the pull request's summary, so a
 reviewer judges screenshots and the client's diff rather than lines of agent-written code; until step 6.8.5 compares
 screenshots, the summary asks for a `vp run shot` of each page instead of a diff. A hook can be skipped with
 `--no-verify`, so until CI exists the gates are only as strong as the hooks; the generated pipeline already runs `vp run
-check-full`, and a branch policy on `main` that requires it turns the checks into the gate the day the firm builds CI.
+verify`, and a branch policy on `main` that requires it turns the checks into the gate the day the firm builds CI.
 
 ## Parallax: @basis/parallax
 

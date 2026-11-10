@@ -2,7 +2,7 @@
  *
  *   vp run sync           writes each one that differs, and removes each one an earlier version wrote and this one
  *                         does not, at a path `retiredPaths` names, while it opens as basis-ui wrote it
- *   vp run sync --check   fails with one ERROR line for each one that differs, which `vp run check-full` runs first
+ *   vp run sync --check   fails with one ERROR line for each one that differs, which `vp run verify` runs first
  *
  * They are the files in this package's `sync/` folder, at the paths `framework` names, each opening with `header`, the
  * line that says basis-ui manages it, but `pnpm-workspace.yaml` in an app that is a package of a larger pnpm
@@ -18,24 +18,24 @@ import { mkdir, readFile, readdir, rm, rmdir, writeFile } from "node:fs/promises
 import { createRequire } from "node:module";
 import path from "node:path";
 
-import { appProblems, configFileProblem, configFiles, isConfigFile } from "./app-config.ts";
+import { appProblems, configFiles, isAppConfig } from "./app-config.ts";
+import type { Problem } from "./app-config.ts";
 import { ignored } from "./installed.ts";
 import { TaskError } from "./shot-options.ts";
+import {
+  agentsFile,
+  blockBegin,
+  frontMatterStart,
+  opensAsWritten,
+  problem,
+  retiredProblem,
+  skillStamp,
+} from "./sync-problems.ts";
 import { inWorkspace, workspaceFile } from "./workspace.ts";
 
-/** The line every framework file opens with, which marks one `vp run sync` wrote. */
-const header =
-  "# This file is managed by basis-ui: `vp run sync` rewrites it from the installed @basis/ui, and `vp run check-full` fails when it differs.";
-/** What a skill's front matter says in its `metadata`, the marker for a skill. */
-const marker = "managed by basis-ui";
-
-const blockBegin = "<!-- basis-ui:begin (written by vp run sync; edit outside the markers) -->";
 const blockEnd = "<!-- basis-ui:end -->";
 const blockPattern = /<!-- basis-ui:begin\b[^\n]*-->\n[\s\S]*?<!-- basis-ui:end -->\n?/gu;
-const agentsFile = "AGENTS.md";
 const claudeText = "@AGENTS.md\n";
-const skillStamp = `metadata:\n  basis-ui: "${marker}: \`vp run sync\` rewrites it"\n`;
-const frontMatterStart = "---\n";
 
 /** Each file of `sync/` an app holds, by its path in the app, `/`-separated, and its name in `sync/`, which has no
  * leading dot, since a package's dotfiles do not all survive publishing. */
@@ -147,9 +147,15 @@ function withBlock(current: string | undefined, wanted: string): string {
   return `${current.slice(0, first.index)}${wanted}${after}`;
 }
 
-/** Whether `text` opens as a file `vp run sync` wrote: with the framework's header, or a skill's stamped front matter. */
-function opensAsWritten(text: string): boolean {
-  return text.startsWith(`${header}\n`) || text.startsWith(`${frontMatterStart}${skillStamp}`);
+/** Whether the app holds a file `vp run sync` wrote, or basis-ui's block of AGENTS.md: an app ctzd writes holds none,
+ * as it never runs `vp run sync`, so `vp run verify` holds it to its configuration alone. */
+async function syncedApp(root: string, plan: SyncPlan): Promise<boolean> {
+  const texts = await Promise.all(
+    plan.wanted.map(async ({ path: file }) => textOf(path.join(root, file))),
+  );
+  return texts.some(
+    (text) => text !== undefined && (opensAsWritten(text) || text.includes(blockBegin)),
+  );
 }
 
 /** The retired paths whose file the app holds as basis-ui wrote it. An app's own file at one of them, or anywhere
@@ -186,31 +192,6 @@ async function planSync(root: string, retired = retiredPaths): Promise<SyncPlan>
   return { retired: await retiredFiles(root, retired), version: await version(), wanted };
 }
 
-/** The one line for `AGENTS.md`, when it differs. */
-function agentsProblem(current: string | undefined, installed: string): string {
-  if (current === undefined) {
-    return `ERROR ${agentsFile} is missing: run vp run sync to write it, with basis-ui's block.`;
-  }
-  if (!current.includes(blockBegin)) {
-    return `ERROR ${agentsFile} has no basis-ui block: run vp run sync to add it at the end.`;
-  }
-  return `ERROR ${agentsFile}'s basis-ui block differs from what @basis/ui ${installed} writes: run vp run sync to rewrite it, and keep the repo's own notes outside its markers.`;
-}
-
-/** The one line for a file that differs from what the installed version writes. */
-function problem(file: string, current: string | undefined, installed: string): string {
-  if (file === agentsFile) {
-    return agentsProblem(current, installed);
-  }
-  if (isConfigFile(file)) {
-    return configFileProblem(file, current);
-  }
-  if (current === undefined) {
-    return `ERROR ${file} is missing: run vp run sync to write it.`;
-  }
-  return `ERROR ${file} differs from what @basis/ui ${installed} writes: run vp run sync to put it back, since a change it needs belongs in @basis/ui.`;
-}
-
 /** The files of the plan that differ from what the app holds, with the text the app holds. */
 async function stale(
   root: string,
@@ -224,16 +205,29 @@ async function stale(
   );
 }
 
-/** One ERROR line for each framework file that differs from what the installed version writes, and for each problem
- * of `appProblems`. */
+/** What the drift check finds, by the stage of `vp run verify` that reports it: `sync`, each framework file that
+ * differs from what the installed version writes, or that it retired; `config`, the app's own configuration beyond
+ * the framework's lines, and each dependency an app may not have. */
+async function driftProblems(
+  root: string,
+  plan: SyncPlan,
+): Promise<{ readonly sync: readonly Problem[]; readonly config: readonly Problem[] }> {
+  const differing = await stale(root, plan);
+  const files = differing.map(({ current, file }) => ({
+    file: file.path,
+    text: problem(file.path, current, plan.version),
+  }));
+  const retired = plan.retired.map((file) => ({ file, text: retiredProblem(file, plan.version) }));
+  return {
+    config: [...files.filter(({ file }) => isAppConfig(file)), ...(await appProblems(root))],
+    sync: [...files.filter(({ file }) => !isAppConfig(file)), ...retired],
+  };
+}
+
+/** One ERROR line for each problem `driftProblems` finds, the framework's files first. */
 async function syncProblems(root: string, plan: SyncPlan): Promise<readonly string[]> {
-  const files = await stale(root, plan);
-  const differing = files.map(({ current, file }) => problem(file.path, current, plan.version));
-  const retired = plan.retired.map(
-    (file) =>
-      `ERROR ${file} carries basis-ui's header, and @basis/ui ${plan.version} no longer writes it: run vp run sync to remove it.`,
-  );
-  return [...differing, ...retired, ...(await appProblems(root))];
+  const { config, sync: files } = await driftProblems(root, plan);
+  return [...files, ...config].map(({ text }) => text);
 }
 
 /** Removes a retired file, and its skill's folder once it is empty. */
@@ -260,7 +254,7 @@ async function syncWrite(root: string, retired = retiredPaths): Promise<string> 
   await Promise.all(plan.retired.map(async (file) => remove(root, file)));
   const left = await appProblems(root);
   if (left.length > 0) {
-    throw new TaskError(left.join("\n"));
+    throw new TaskError(left.map(({ text }) => text).join("\n"));
   }
   const done = [
     ...writing.map(({ file }) => `Wrote ${file.path}.`),
@@ -294,5 +288,5 @@ async function installedUi(): Promise<{ readonly root: string; readonly version:
   return { root: packageRoot, version: await version() };
 }
 
-export { installedUi, planSync, sync, syncProblems, syncWrite };
+export { driftProblems, installedUi, planSync, sync, syncedApp, syncProblems, syncWrite };
 export type { SyncPlan, Wanted };

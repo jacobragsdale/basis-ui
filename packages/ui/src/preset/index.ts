@@ -94,6 +94,13 @@ function budgetTask(budget: Budget): Task {
   };
 }
 
+/** `vp run verify`, every check of the app in one verdict (verify.ts), which weighs the routes of `budget`; or
+ * `check-full`, its former name, which says so and runs it. Whatever follows `vp run verify` is appended. */
+function verifyTask(name: "check-full" | "verify", budget: Budget): Task {
+  const routes = budgetArgs(budget).map((arg) => ` --budget "${arg}"`);
+  return { cache: false, command: `node "${tasksScript}" ${name}${routes.join("")}` };
+}
+
 /** The checks, formatting, staged-file checks and tasks every UI repo shares, and the proxy to a live API. */
 function basisPreset({ budget = {} }: BasisPresetOptions = {}): BasisPreset {
   return {
@@ -106,26 +113,7 @@ function basisPreset({ budget = {} }: BasisPresetOptions = {}): BasisPreset {
     run: {
       tasks: {
         budget: budgetTask(budget),
-        /* The framework's files first, then the client and the fixtures against `openapi.json`, then `tsc --noEmit`,
-         * which type-checks the whole app with the installed TypeScript, the generated client included, which
-         * `vp check` lints around; the comments that turn a check off, read as text, since one that turns off every
-         * rule would hide itself from the lint; then the tests and the build, which fails on what only the React
-         * Compiler or the bundler finds; last, the record `vp run review` reads. Screenshot comparison in WSL waits
-         * for the visual baselines. */
-        "check-full": {
-          cache: false,
-          command: [
-            `node "${tasksScript}" sync --check`,
-            "vp run client-check",
-            `node "${tasksScript}" fixtures`,
-            "tsc --noEmit",
-            `node "${tasksScript}" suppressions`,
-            "vp check",
-            "vp test",
-            "vp build",
-            `node "${tasksScript}" checked`,
-          ],
-        },
+        "check-full": verifyTask("check-full", budget),
         "client-check": clientTask("check"),
         "client-pull": clientTask("pull"),
         docs: frameworkTask("docs"),
@@ -135,6 +123,7 @@ function basisPreset({ budget = {} }: BasisPresetOptions = {}): BasisPreset {
         shot: { cache: false, command: `node "${shotScript}"` },
         sync: frameworkTask("sync"),
         upgrade: frameworkTask("upgrade"),
+        verify: verifyTask("verify", budget),
       },
     },
     staged: { "*": "vp check --fix" },
@@ -271,3 +260,4 @@ async function basisTest({
 export { basisPlugins, basisPreset, basisTest };
 export type { BasisPreset, BasisPresetOptions, BasisTestOptions };
 export type { Budget, RouteBudget } from "./budget-options.ts";
+export type { VerifyError, VerifyReport, VerifyStage } from "./verify-report.ts";

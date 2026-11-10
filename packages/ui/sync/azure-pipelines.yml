@@ -1,4 +1,4 @@
-# This file is managed by basis-ui: `vp run sync` rewrites it from the installed @basis/ui, and `vp run check-full` fails when it differs.
+# This file is managed by basis-ui: `vp run sync` rewrites it from the installed @basis/ui, and `vp run verify` fails when it differs.
 # Unverified: not yet run in Azure DevOps. The checks every change passes, then the build the image serves.
 trigger:
   branches:
@@ -13,7 +13,7 @@ pool:
 stages:
   - stage: check
     jobs:
-      - job: check_full
+      - job: verify
         steps:
           - script: curl -fsSL https://vite.plus | bash
             displayName: Install Vite+
@@ -22,6 +22,5 @@ stages:
               vp install --frozen-lockfile
               playwright=$(node -p "require(require('module').createRequire(require.resolve('@basis/ui/package.json')).resolve('playwright/package.json')).version")
               vp dlx "playwright@$playwright" install --with-deps chromium
-              vp run check-full
-              vp build
-            displayName: vp run check-full and vp build
+              vp run verify
+            displayName: vp run verify, which builds

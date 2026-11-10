@@ -1,4 +1,4 @@
-# This file is managed by basis-ui: `vp run sync` rewrites it from the installed @basis/ui, and `vp run check-full` fails when it differs.
-# The push hook: vp run check-full, every check, before git pushes. Never skip it with --no-verify: fix what each
-# ERROR line says, and push again.
-vp run check-full
+# This file is managed by basis-ui: `vp run sync` rewrites it from the installed @basis/ui, and `vp run verify` fails when it differs.
+# The push hook: vp run verify, every stage, the tests in the browser, the build and the budget among them, before git
+# pushes. Never skip it with --no-verify: fix what each ERROR line says, and push again.
+vp run verify

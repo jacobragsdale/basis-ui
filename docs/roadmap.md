@@ -580,10 +580,15 @@ flowchart TD
    `vp run docs NAME` and the tokens meant, with nothing after them that contradicts them.
    6.8.3 built on 2026-11-09: the doors probes found open fail, each with an `ERROR` line that ends in its fix, in app
    code only: comments that turn a check off, but `oxc/no-barrel-file` in `src/api`, refused by the lint and read as
-   text by `check-full`, and counted by `vp run review`; a plain element's `dark:`, `!`, selector variants, filters,
+   text by `check-full`, now `verify`, and counted by `vp run review`; a plain element's `dark:`, `!`, selector variants, filters,
    black and white and template-string classes; dates and rounding by hand; every network API, `fetch` in `src/api`
    among them; the libraries the design rejects; and, in the drift check, `src/styles.css`, `tsconfig.json`,
    `vite.config.ts`, `.gitignore`, now a framework file, and the dependencies an app may have.
+   6.8.4 built on 2026-11-09: `vp run verify` runs sync, client, fixtures, config, lint, types, tests, build, budget
+   and suppressions, each to its end, then prints one summary, each failure the stage's `ERROR` line with its file and
+   line, or with `--json` one line of `VerifyReport`, read from each tool's machine format; `--stage NAME` runs some.
+   The commit hook runs the fast stages, about 3 s in `packages/example`, and the push hook every stage, about 18 s;
+   `check-full` is an alias that says so, and `packages/consumer`, with a test now, passes it as a ctzd app.
 9. **6.9 The showcase** (`6.9-showcase`, then a branch per page). `packages/showcase`, made from the template, with ten
    pages: overview, blotter, positions, relative value, P&L explain, curves, a bond, booking a trade, import, and a
    probe of the desktop. An agent builds it with only the shipped tools, and logs in `BUILDING.md` each place they fell

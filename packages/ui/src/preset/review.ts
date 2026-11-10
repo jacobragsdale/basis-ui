@@ -1,11 +1,11 @@
 /* A pull request's summary, so a reviewer judges what changed rather than every line:
  *
- *   vp run review [BRANCH]   prints, as Markdown to paste into the pull request, the commit `vp run check-full` passed
+ *   vp run review [BRANCH]   prints, as Markdown to paste into the pull request, the commit `vp run verify` passed
  *                            on, the versions, the API's operations the change adds, removes or changes, the
  *                            client's diff, and the comments that turn a check off, against BRANCH, `origin/main`
  *                            unless named
  *
- * `vp run check-full` ends with the hidden task `checked`, which records, in the git folder the clone's worktrees share,
+ * `vp run verify`, when it runs every stage and each passes, records, in the git folder the clone's worktrees share,
  * each commit it passed on with nothing uncommitted. Screenshot diffs wait for the visual baselines (roadmap step 1.6). */
 
 import { mkdir, readFile, writeFile } from "node:fs/promises";
@@ -41,7 +41,7 @@ function recordFile(root: string, commit: string): string | undefined {
     : path.join(path.resolve(root, common), recordFolder, `${commit}.json`);
 }
 
-/** Writes the record that `vp run check-full` passed on `commit`, with the installed @basis/ui. */
+/** Writes the record that `vp run verify` passed on `commit`, with the installed @basis/ui. */
 async function writeRecord(file: string, commit: string): Promise<void> {
   const ui = await installedUi();
   const record: CheckRecord = {
@@ -53,9 +53,10 @@ async function writeRecord(file: string, commit: string): Promise<void> {
   await writeFile(file, `${JSON.stringify(record, null, 2)}\n`);
 }
 
-/** `vp run check-full`'s last step: records that it passed on HEAD, when the worktree holds nothing uncommitted. */
-async function recordCheck(root: string, args: readonly string[]): Promise<string> {
-  const commit = args.length === 0 ? git(root, ["rev-parse", "HEAD"]) : undefined;
+/** `vp run verify`'s last step, when every stage passed: records that it passed on HEAD, when the worktree holds
+ * nothing uncommitted. */
+async function recordCheck(root: string): Promise<string> {
+  const commit = git(root, ["rev-parse", "HEAD"]);
   const file = commit === undefined ? undefined : recordFile(root, commit);
   if (commit === undefined || file === undefined) {
     return "Not recorded for vp run review: this folder is not a git clone with a commit.";
@@ -64,7 +65,7 @@ async function recordCheck(root: string, args: readonly string[]): Promise<strin
     return "Not recorded for vp run review: the worktree has uncommitted changes, so no commit holds what passed.";
   }
   await writeRecord(file, commit);
-  return `Recorded for vp run review: vp run check-full passed on ${commit.slice(0, shortId)}.`;
+  return `Recorded for vp run review: vp run verify passed on ${commit.slice(0, shortId)}.`;
 }
 
 /** The record of `commit`'s check, or a failure saying to run it. */
@@ -74,7 +75,7 @@ async function recordOf(root: string, commit: string): Promise<CheckRecord> {
   const record = recordSchema.safeParse(text === null ? null : JSON.parse(text));
   if (!record.success) {
     throw new TaskError(
-      `ERROR vp run check-full has not passed on ${commit.slice(0, shortId)}, the commit to review: commit every change, run vp run check-full, then vp run review again.`,
+      `ERROR vp run verify has not passed on ${commit.slice(0, shortId)}, the commit to review: commit every change, run vp run verify, then vp run review again.`,
     );
   }
   return record.data;
@@ -191,7 +192,7 @@ function headSection(
   return [
     `## ${record.commit.slice(0, shortId)}: ${subject}`,
     "",
-    `- Checked: \`vp run check-full\` passed on this commit at ${record.checked_at}, with @basis/ui ${record.basis_ui}.`,
+    `- Checked: \`vp run verify\` passed on this commit at ${record.checked_at}, with @basis/ui ${record.basis_ui}.`,
     `- Compared with ${base} at ${mergeBase.slice(0, shortId)}: ${stat === "" ? "no changes" : stat.trim()}.`,
     ...dirty,
   ].join("\n");

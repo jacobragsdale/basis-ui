@@ -93,13 +93,13 @@ function readFixtures(
   };
 }
 
-/** `vp run check-full`'s check of the fixtures in git, `fixtures/`, as `vp dev` checks them, so one that a newer
+/** `vp run verify`'s check of the fixtures in git, `fixtures/`, as `vp dev` checks them, so one that a newer
  * `openapi.json` has left behind fails the push rather than only the next `vp dev`. The records in `.fixtures/`, which
  * git ignores and each desktop holds its own of, are `vp dev`'s to check. */
 async function checkFixtures(root: string, args: readonly string[]): Promise<string> {
   if (args.length > 0) {
     throw new TaskError(
-      "ERROR the fixture check takes no arguments: run it as vp run check-full does, with none.",
+      "ERROR the fixture check takes no arguments: run it as vp run verify does, with none.",
     );
   }
   const { fixtures, problems } = readFixtures(root, { records: false });

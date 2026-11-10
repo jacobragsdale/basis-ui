@@ -16,25 +16,32 @@ line that starts with `ERROR`, gives the reason and ends with the fix.
 
 ```sh
 vp install              # once per clone: installs dependencies and the hooks in .vite-hooks/
-vp run check-full       # the framework files, the client and fixtures against openapi.json, tsc, check, test, build
+vp run verify           # every check, then one summary; --stage NAME for one, --json for the report
 vp test                 # the tests in headless Chromium; BASIS_TEST_DOM=node vp test runs them in a Node DOM
 vp build                # dist/, with FILE.br and FILE.gz beside each built file over 1 KB
 vp run budget           # the build, then each route's JavaScript and CSS against its budget in vite.config.ts
 vp run doctor           # this machine's setup, and the fix for each problem
 ```
 
-The commit hook runs `vp staged`, `vp check` and `vp test`, and the push hook `vp run check-full`. Never skip either
-with `--no-verify`: fix what each `ERROR` line says, and commit or push again.
+`vp run verify` runs every stage to its end, whatever fails, then prints a line for each stage and, under it, one
+`ERROR` line for each failure, with its file and line where the tool gives them, and its fix. `vp run verify --stage
+lint --stage types` runs those stages alone, and `--json` prints the report as one line of JSON, the line that starts
+with `{`: `{ok, stages: [{name, ok, ms, errors: [{file, line, rule, message, fix}]}]}`, `file`, `line` and `rule`
+`null` where none is known.
+
+The commit hook runs `vp staged`, then the stages that take seconds: sync, config, lint, types and suppressions. The
+push hook runs `vp run verify`, every stage, the tests in the browser, the build and the budget among them. Never
+skip either with `--no-verify`: fix what each `ERROR` line says, and commit or push again.
 
 ### The framework's files
 
 `vp run sync` writes the files every basis-ui app shares from the installed `@basis/ui`: the `Dockerfile`, `Caddyfile`
 and `.dockerignore`, `azure-pipelines.yml`, `.gitattributes`, `pnpm-workspace.yaml`, the hooks in `.vite-hooks/`,
 `CLAUDE.md`, the skills in `.agents/skills/` and their copies in `.claude/skills/`, and this block of `AGENTS.md`. Each
-opens with a line saying basis-ui manages it, and `vp run check-full` fails when one differs, so never edit them: a
+opens with a line saying basis-ui manages it, and `vp run verify` fails when one differs, so never edit them: a
 change one needs belongs in `@basis/ui`. Write the repo's own notes in `AGENTS.md`, outside this block's markers. `vp run upgrade` moves
 `@basis/ui` and `@basis/parallax` to their latest release, or `vp run upgrade VERSION` to that one, then runs
-`vp run sync` and `vp run check-full`.
+`vp run sync` and `vp run verify`.
 
 ### The API and fixture mode
 
@@ -62,7 +69,7 @@ change one needs belongs in `@basis/ui`. Write the repo's own notes in `AGENTS.m
 
 ### Review
 
-`vp run review` prints a pull request's summary, to paste into it: the commit `vp run check-full` passed on, the
+`vp run review` prints a pull request's summary, to paste into it: the commit `vp run verify` passed on, the
 versions, the API's operations the change adds, removes or changes, and the client's diff. `vp run review BRANCH`
 compares with the branch the pull request merges into, `origin/main` unless named.
 
