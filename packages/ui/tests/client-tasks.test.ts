@@ -109,7 +109,11 @@ afterAll(() => {
   rmSync(apiRepo, { force: true, recursive: true });
 });
 
-describe("vp run client-pull", () => {
+/** What a test that generates the client more than once takes at most: orval, a Node each time, slows on a machine
+ * running the other test files, such as verify's, which build and test whole apps. */
+const generating = { timeout: 30_000 };
+
+describe("vp run client-pull", generating, () => {
   test("copies the document at a tag, marked with where it came from rather than as basis's", () => {
     const result = run("pull", apiRepo, "v1.4.0");
     expect(result.stderr).toBe("");
@@ -167,7 +171,7 @@ describe("vp run client-pull", () => {
   });
 });
 
-describe("vp run client-check", () => {
+describe("vp run client-check", generating, () => {
   test("passes while the client is what the document generates", () => {
     run("pull");
     const result = run("check");

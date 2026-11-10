@@ -29,8 +29,8 @@ const packageRoot = fileURLToPath(new URL("..", import.meta.url));
 const script = path.join(packageRoot, "src/preset/tasks.ts");
 const example = path.join(packageRoot, "../example");
 
-/** What a run of the whole app takes at most: the tests and the build, twice over, on a loaded machine. */
-const appTimeout = 180_000;
+/** What the runs of the whole app take at most, one after another, on a machine running the other test files. */
+const appTimeout = 240_000;
 
 /** The environment without git's variables, which a commit hook sets, or Vitest's, which would reach the app's own. */
 const environment = {
@@ -133,20 +133,19 @@ function ran(name: "brokenJson" | "brokenText" | "cleanJson" | "cleanText"): Run
   return run;
 }
 
-/** An app's run in words, then in JSON, one after the other, since both build into its dist/. */
-async function bothRuns(root: string): Promise<readonly [Run, Run]> {
-  return [await runIn(root, "verify", ...budget), await runIn(root, "verify", ...budget, "--json")];
-}
+/** The stages that take seconds, as the commit hook runs them. */
+const fastStages = ["sync", "config", "lint", "types", "suppressions"];
 
 beforeAll(async () => {
   [clean, broken] = await Promise.all([exampleApp(), exampleApp()]);
   breakEachStage(broken);
-  const [[cleanText, cleanJson], [brokenText, brokenJson]] = await Promise.all([
-    bothRuns(clean),
-    bothRuns(broken),
-  ]);
-  runs.set("cleanText", cleanText).set("cleanJson", cleanJson);
-  runs.set("brokenText", brokenText).set("brokenJson", brokenJson);
+  /* One run at a time, and the clean app's whole run once: each runs the app's tests and build, which take every core
+   * beside the other test files, and build into the app's dist/. */
+  runs.set("cleanJson", await runIn(clean, "verify", ...budget, "--json"));
+  const commitStages = fastStages.flatMap((name) => ["--stage", name]);
+  runs.set("cleanText", await runIn(clean, "verify", ...commitStages));
+  runs.set("brokenJson", await runIn(broken, "verify", ...budget, "--json"));
+  runs.set("brokenText", await runIn(broken, "verify", ...budget));
 }, appTimeout);
 
 afterAll(() => {
@@ -161,16 +160,14 @@ function reportOf(run: Run): VerifyReport {
 }
 
 describe("vp run verify", () => {
-  test("passes a clean app: every stage, in order, and a summary that says so", () => {
+  test("passes a clean app's commit-hook stages, a line each, and a summary that says so", () => {
     expect(ran("cleanText").status).toBe(0);
     const lines = ran("cleanText").stdout.trimEnd().split("\n");
-    expect(
-      lines.slice(0, stageNames.length).map((line) => line.split(/\s+/u).slice(0, 2)),
-    ).toStrictEqual(stageNames.map((name) => ["ok", name]));
-    expect(lines.at(-2)).toMatch(/^vp run verify passed 10 of 10 stages in \d+\.\d s\.$/u);
-    expect(lines.at(-1)).toBe(
-      "Not recorded for vp run review: this folder is not a git clone with a commit.",
+    expect(lines.slice(0, -1).map((line) => line.split(/\s+/u).slice(0, 2))).toStrictEqual(
+      fastStages.map((name) => ["ok", name]),
     );
+    // A run of some stages is not recorded for vp run review, so nothing follows the verdict.
+    expect(lines.at(-1)).toMatch(/^vp run verify passed 5 of 5 stages in \d+\.\d s\.$/u);
   });
 
   test("--json prints one line of the report, ok for a clean app", () => {
