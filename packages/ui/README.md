@@ -17,7 +17,10 @@ no styles of its own.
 Prerequisites: an app repo, in git, with `react` and `react-dom` 19.3, `@tanstack/react-query` 5, `@tanstack/react-router`
 1 and `zod` 4 as dependencies, and `vite-plus` 1.5.0, TypeScript 7.0, `msw` 3 and `@faker-js/faker` 10 as dev
 dependencies. Until `@basis/ui` is published to the internal feed, install it from a tarball made with `vp pm pack`
-in basis-ui's `packages/ui`.
+in basis-ui's `packages/ui`. Those, `@basis/parallax`, `@tanstack/react-form`, `apache-arrow`, `@types/react`,
+`@types/react-dom` and `vitest-browser-react` are the packages an app may depend on: `vp run sync --check` refuses any
+other, and names what replaces one basis-ui decided against, such as `recharts` or `react-hook-form`. A new one is
+added to `@basis/ui`'s list by basis-ui's maintainer.
 
 orval, which generates the client, brings TypeScript 6 with it, through `@orval/zod` and `@orval/hono`. Keep one
 TypeScript in the tree by overriding it in `pnpm-workspace.yaml`, then reinstall and check that `pnpm why typescript`
@@ -70,7 +73,10 @@ To set the app up:
    ```
 
    It brings Tailwind, the theme with its fonts, and the classes the components use, which Tailwind would otherwise
-   miss, since it does not scan `node_modules`.
+   miss, since it does not scan `node_modules`. An app that uses `@basis/parallax` adds
+   `@import "@basis/parallax/styles.css";` below it, and nothing else: an app declares no colour, utility, variant or
+   class, and `vp run sync --check` fails on a stylesheet, a `tsconfig.json` or a `vite.config.ts` that holds more than
+   the lines this list shows, a budget and `basisTest({ browser: false })` aside.
 
 4. Make `tsconfig.json` extend the strict tsconfig, which also sets JSX and Vite's client types:
 
@@ -88,7 +94,8 @@ To set the app up:
    ```
 
 6. Name `.fixtures/` in the app's `.gitignore`. It holds the records `basis records export` writes for fixture mode,
-   which hold client data and are never committed.
+   which hold client data and are never committed. In an app made from the template, `vp run sync` writes the
+   `.gitignore` and the drift check keeps it.
 
 `vp build` also writes `FILE.gz` and `FILE.br` beside each built file over 1 KB that compression helps (scripts,
 styles, HTML, JSON, SVG, wasm, Arrow), so the server sends the smaller one the browser accepts without compressing on
@@ -251,8 +258,16 @@ export * from "./generated/model/index.ts";
 export * from "./generated/client.msw.ts";
 ```
 
-The preset's lint keeps feature code on them: outside `src/api`, `fetch` (also as `globalThis.fetch`), `axios` and any
-import of `api/generated` fail with the import to use instead.
+The preset's lint keeps feature code on them: outside `src/api`, `axios` and any import of `api/generated` fail with the
+import to use instead, and everywhere, `src/api` included, so do `fetch` (also as `globalThis.fetch`),
+`XMLHttpRequest`, `WebSocket`, `EventSource` and `navigator.sendBeacon`; a value that changes is polled through the
+operation's hook with `refetchInterval`.
+
+Those two comments are the only ones an app may write to turn a check off. `basis/no-suppressions` refuses any other
+`oxlint-disable` or `eslint-disable` comment, which only `oxc/no-barrel-file` in `src/api` passes, and every
+`@ts-expect-error`, `@ts-ignore` and `@ts-nocheck`: fix what the rule or the compiler reports instead, and parse a
+value of unknown shape with a zod schema. A comment that turns off every rule hides from the lint as well, so
+`vp run check-full` reads `src/` as text for them, and `vp run review` counts them.
 
 A hook returns the response as `{ data, status, headers }`, so a component reads `query.data.data`, and its error is an
 `ApiError` holding the API's problem details. Show it with `ErrorAlert`, which renders nothing while there is no error:
@@ -491,6 +506,12 @@ focus-visible:outline-offset-(--focus-offset) focus-visible:outline-ring`. The s
 `duration-popup` and `duration-panel`, `z-raised` and `z-popup`, `rounded-pill`, `opacity-disabled`, and `shadow-sm`
 and `shadow-md`.
 
+On a plain element, `basis/theme-classes` refuses what would step outside the theme: a `dark:` variant, since every
+token follows the mode; `!` for `!important`; a selector variant such as `[&>*]:`, which styles elements no check sees;
+a filter such as `grayscale` or `brightness-50`; `black` and `white`, which are `foreground` and `background`; and a
+class built from a template string, which no check can read, so `cn("p-2", wide && "p-4")` chooses between whole
+classes.
+
 Text takes its look from the Typography components (`TypographyH1` to `TypographyH4`, `TypographyP`, `TypographyLead`,
 `TypographyMuted`, `TypographyInlineCode` and `TypographyList`), never from classes on a plain element. `render`
 changes a heading's level and keeps its look, as in `<TypographyH2 render={<h3>Risk</h3>} />`. In a `Table`, a column
@@ -676,9 +697,12 @@ reads the same in a card as in the grid. Pass `value` as the API sends it, a num
 or ISO 8601 text. `null` shows the formatter's null text, which is empty, and NaN its `—`. The formatter rounds once,
 for display: to 15 significant digits, half away from zero, then to the decimals shown, two for a double unless
 `decimals` says otherwise. For a number inside text, such as a toast's, `numberText(value, { decimals })` gives the same text. Never
-round a number yourself: the lint refuses `toFixed`, `toPrecision`, `toLocaleString`, `Math.round` and
-`Intl.NumberFormat` in an app, and each error names the component to use; an integer that is not shown, such as an
-index or a pixel count, takes `Math.floor` or `Math.trunc`.
+round a number yourself: the lint refuses `toFixed`, `toPrecision`, `toLocaleString`, `Math.round`,
+`Intl.NumberFormat` and `Math.ceil(n * 100) / 100` in an app, and each error names the component to use, or
+`roundToTick` from `@basis/ui/numbers` for a value rounded to a step; an integer that is not shown, such as an index or
+a pixel count, takes `Math.floor` or `Math.trunc`. Nor format a date: `toLocaleDateString`, `toLocaleTimeString`,
+`Intl.DateTimeFormat` and `Intl.RelativeTimeFormat` are refused for `DateTime`, `relativeTime` from `@basis/ui/dates`,
+or a Temporal value's `toString()` in text.
 
 ```tsx
 import { Bps, DateTime, Money, Num, Pct, Price32 } from "@basis/ui";

@@ -8,13 +8,17 @@
  * line that says basis-ui manages it, but `pnpm-workspace.yaml` in an app that is a package of a larger pnpm
  * workspace; `CLAUDE.md`, which holds only `@AGENTS.md`, as basis writes it; each skill in this package's `skills/`,
  * at `.agents/skills/NAME/` and its copy at `.claude/skills/NAME/`, the marker first in its front matter's
- * `metadata`; and basis-ui's block of `AGENTS.md`, between its markers, the rest of the file the app's own.
- * Every file is compared byte for byte, so a line ending other than LF is a difference too. */
+ * `metadata`; basis-ui's block of `AGENTS.md`, between its markers, the rest of the file the app's own; and the
+ * framework's lines in the app's own configuration (app-config.ts): `src/styles.css` and `tsconfig.json`, and
+ * `vite.config.ts` when it is missing. Every file is compared byte for byte, so a line ending other than LF is a
+ * difference too. `--check` also holds `vite.config.ts` to the framework's lines, and package.json's dependencies to
+ * the packages an app may use (dependencies.ts), which `vp run sync` cannot write for the app. */
 
 import { mkdir, readFile, readdir, rm, rmdir, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import path from "node:path";
 
+import { appProblems, configFileProblem, configFiles, isConfigFile } from "./app-config.ts";
 import { ignored } from "./installed.ts";
 import { TaskError } from "./shot-options.ts";
 import { inWorkspace, workspaceFile } from "./workspace.ts";
@@ -41,6 +45,7 @@ const framework: readonly { readonly path: string; readonly source: string }[] =
   { path: ".dockerignore", source: "dockerignore" },
   { path: "azure-pipelines.yml", source: "azure-pipelines.yml" },
   { path: ".gitattributes", source: "gitattributes" },
+  { path: ".gitignore", source: "gitignore" },
   { path: "pnpm-workspace.yaml", source: "pnpm-workspace.yaml" },
   { path: ".vite-hooks/pre-commit", source: "pre-commit" },
   { path: ".vite-hooks/pre-push", source: "pre-push" },
@@ -176,6 +181,7 @@ async function planSync(root: string, retired = retiredPaths): Promise<SyncPlan>
     { path: "CLAUDE.md", text: claudeText },
     ...(await skills()),
     { path: agentsFile, text: agents },
+    ...(await configFiles(root)),
   ];
   return { retired: await retiredFiles(root, retired), version: await version(), wanted };
 }
@@ -196,6 +202,9 @@ function problem(file: string, current: string | undefined, installed: string): 
   if (file === agentsFile) {
     return agentsProblem(current, installed);
   }
+  if (isConfigFile(file)) {
+    return configFileProblem(file, current);
+  }
   if (current === undefined) {
     return `ERROR ${file} is missing: run vp run sync to write it.`;
   }
@@ -215,7 +224,8 @@ async function stale(
   );
 }
 
-/** One ERROR line for each framework file that differs from what the installed version writes. */
+/** One ERROR line for each framework file that differs from what the installed version writes, and for each problem
+ * of `appProblems`. */
 async function syncProblems(root: string, plan: SyncPlan): Promise<readonly string[]> {
   const files = await stale(root, plan);
   const differing = files.map(({ current, file }) => problem(file.path, current, plan.version));
@@ -223,7 +233,7 @@ async function syncProblems(root: string, plan: SyncPlan): Promise<readonly stri
     (file) =>
       `ERROR ${file} carries basis-ui's header, and @basis/ui ${plan.version} no longer writes it: run vp run sync to remove it.`,
   );
-  return [...differing, ...retired];
+  return [...differing, ...retired, ...(await appProblems(root))];
 }
 
 /** Removes a retired file, and its skill's folder once it is empty. */
@@ -235,7 +245,8 @@ async function remove(root: string, file: string): Promise<void> {
   }
 }
 
-/** Writes each framework file that differs, removes each retired one, and says what it did. */
+/** Writes each framework file that differs, removes each retired one, and says what it did, or fails with what it
+ * cannot put right. */
 async function syncWrite(root: string, retired = retiredPaths): Promise<string> {
   const plan = await planSync(root, retired);
   const writing = await stale(root, plan);
@@ -247,6 +258,10 @@ async function syncWrite(root: string, retired = retiredPaths): Promise<string> 
     }),
   );
   await Promise.all(plan.retired.map(async (file) => remove(root, file)));
+  const left = await appProblems(root);
+  if (left.length > 0) {
+    throw new TaskError(left.join("\n"));
+  }
   const done = [
     ...writing.map(({ file }) => `Wrote ${file.path}.`),
     ...plan.retired.map((file) => `Removed ${file}.`),

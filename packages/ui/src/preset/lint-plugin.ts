@@ -1,14 +1,18 @@
-/* The preset's own lint rules, as the Oxlint JS plugin `basis`, for the two checks whose stock rules could not say
- * what an app should do (docs/design.md, The toolchain, at its strictest): `fetch` outside the client layer, which
- * `eslint/no-restricted-globals` followed with advice to shadow it, and a number with no name, which an app may write
- * inside JSX. Each message is one line that starts with `ERROR` and ends with its fix. lint.ts applies them. */
+/* The preset's own lint rules, as the Oxlint JS plugin `basis`, for the checks no stock rule makes or whose stock rule
+ * could not say what an app should do (docs/design.md, The toolchain, at its strictest): `fetch` and the browser's
+ * other network APIs, which `eslint/no-restricted-globals` followed with advice to shadow them; a number with no name,
+ * which an app may write inside JSX; rounding by hand to decimals; a comment that turns a check off; and a plain
+ * element's classes (lint-classes.ts). Each message is one line that starts with `ERROR` and ends with its fix. lint.ts
+ * applies them, to app code only. */
 
 import { definePlugin, defineRule } from "vite-plus/lint/plugins";
 import type { ESTree, SourceCode } from "vite-plus/lint/plugins";
 
-import { bannedFetch } from "./lint-bans.ts";
+import { bannedFetch, bannedNetwork, clientOnly, showWithComponents } from "./lint-bans.ts";
+import { themeClasses } from "./lint-classes.ts";
+import { refusal, suppressionIn } from "./suppressions.ts";
 
-// The objects `fetch` is reached through as a property, as `window.fetch`.
+// The objects a network API is reached through as a property, as `window.fetch`.
 const globalObjects = new Set(["globalThis", "self", "window"]);
 
 /** Whether `node` reads a global the module does not declare, such as the browser's `fetch`. Oxlint's
@@ -24,33 +28,69 @@ function readsGlobal(sourceCode: SourceCode, node: ESTree.Node): boolean {
   return resolved === null || (resolved.scope.type === "global" && resolved.defs.length === 0);
 }
 
-/** `fetch`, also as `globalThis.fetch` or `window.fetch`, unless the module declares a `fetch` of its own. */
+/** What a network API at `name` is refused with in `file`: `fetch` in the client layer, src/api, is its own case. */
+function networkMessage(name: string, file: string): string | undefined {
+  if (name === bannedFetch.name) {
+    return /[/\\]src[/\\]api[/\\]/u.test(file) ? clientOnly : bannedFetch.message;
+  }
+  return Object.hasOwn(bannedNetwork, name) ? bannedNetwork[name] : undefined;
+}
+
+/** `fetch`, `XMLHttpRequest`, `WebSocket` and `EventSource`, also as `window.fetch`, unless the module declares one of
+ * its own, and `navigator.sendBeacon`, in any file of the app, src/api's included. */
 const noFetch = defineRule({
   create(context) {
-    const { sourceCode } = context;
+    const { physicalFilename: file, sourceCode } = context;
     return {
       Identifier(node): void {
-        if (node.name === "fetch" && readsGlobal(sourceCode, node)) {
-          context.report({ message: bannedFetch.message, node });
+        const message = node.name === "sendBeacon" ? undefined : networkMessage(node.name, file);
+        if (message !== undefined && readsGlobal(sourceCode, node)) {
+          context.report({ message, node });
         }
       },
       MemberExpression(node): void {
         const { object, property } = node;
+        if (node.computed || property.type !== "Identifier") {
+          return;
+        }
+        const message = networkMessage(property.name, file);
+        const beacon = property.name === "sendBeacon";
         if (
-          !node.computed &&
-          property.type === "Identifier" &&
-          property.name === "fetch" &&
-          object.type === "Identifier" &&
-          globalObjects.has(object.name) &&
-          readsGlobal(sourceCode, object)
+          message !== undefined &&
+          (beacon ||
+            (object.type === "Identifier" &&
+              globalObjects.has(object.name) &&
+              readsGlobal(sourceCode, object)))
         ) {
-          context.report({ message: bannedFetch.message, node });
+          context.report({ message, node });
         }
       },
     };
   },
   meta: {
-    docs: { description: "Feature code calls the API only through the generated client." },
+    docs: { description: "An app calls its API only through the generated client." },
+    type: "problem",
+  },
+});
+
+/** A comment that turns a check off, but one the allowlist in suppressions.ts names, at the comment. */
+const noSuppressions = defineRule({
+  create(context) {
+    return {
+      Program(): void {
+        for (const comment of context.sourceCode.getAllComments()) {
+          const suppression = suppressionIn(comment.value);
+          const message =
+            suppression === undefined ? undefined : refusal(suppression, context.physicalFilename);
+          if (message !== undefined) {
+            context.report({ message, node: comment });
+          }
+        }
+      },
+    };
+  },
+  meta: {
+    docs: { description: "An app turns no check off, but where suppressions.ts allows." },
     type: "problem",
   },
 });
@@ -81,6 +121,45 @@ function sourceTextOf(callee: ESTree.Expression | ESTree.Super): string {
   }
   return "";
 }
+
+// How `roundToTick` names the rounding of each of Math's integer functions.
+const roundings: Readonly<Record<string, string>> = {
+  ceil: "ceiling",
+  floor: "floor",
+  trunc: "toward-zero",
+};
+
+/** `Math.ceil(n * 100) / 100`, and the same with `floor` or `trunc`: rounding to decimals by hand, which `Math.round`'s
+ * ban does not see. */
+const noHandRounding = defineRule({
+  create(context) {
+    return {
+      BinaryExpression(node): void {
+        const { left } = node;
+        if (node.operator !== "/" || left.type !== "CallExpression") {
+          return;
+        }
+        const [name = "", method = ""] = sourceTextOf(left.callee).split(".");
+        const rounding = roundings[method];
+        if (
+          name !== "Math" ||
+          rounding === undefined ||
+          left.arguments[0]?.type !== "BinaryExpression"
+        ) {
+          return;
+        }
+        context.report({
+          message: `ERROR Math.${method}(n * 100) / 100 rounds a number to decimals by hand, which an app never does: ${showWithComponents}, and round a value to a step, as a price to 0.01, with roundToTick(value, 0.01, "${rounding}") from @basis/ui/numbers.`,
+          node,
+        });
+      },
+    };
+  },
+  meta: {
+    docs: { description: "An app rounds no number to decimals by hand." },
+    type: "problem",
+  },
+});
 
 /** Whether a number at `node` is named or keyed where it stands, as `eslint/no-magic-numbers` allows: a variable's
  * value, an object's property, an assignment to a property, or `parseInt`'s radix. */
@@ -134,7 +213,13 @@ const noMagicNumbers = defineRule({
 
 const plugin = definePlugin({
   meta: { name: "basis" },
-  rules: { "no-fetch": noFetch, "no-magic-numbers": noMagicNumbers },
+  rules: {
+    "no-fetch": noFetch,
+    "no-hand-rounding": noHandRounding,
+    "no-magic-numbers": noMagicNumbers,
+    "no-suppressions": noSuppressions,
+    "theme-classes": themeClasses,
+  },
 });
 
 export default plugin;

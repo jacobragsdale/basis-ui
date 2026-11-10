@@ -3,15 +3,17 @@
  * layer, display rounding (docs/design.md, Numbers), and the classes that restyle a component or name a colour the
  * theme lacks. The probe runs `vp lint` in packages/consumer, the app configured exactly as the README says, on a file
  * of every banned import and call. The app's limits are held by its table page, which they pass. `vp run docs`'s
- * errors, for a name or a search it cannot answer, are held here by their text too, run in the same app. */
+ * errors, for a name or a search it cannot answer, are held here by their text too, run in the same app. The doors
+ * probes found open on 2026-11-09 are held beside it, in preset-errors-doors.test.ts. */
 
-import { execFileSync, spawnSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 
 import { afterAll, describe, expect, test } from "vite-plus/test";
-import { z } from "zod";
 
-const consumer = new URL("../../consumer/", import.meta.url);
+import { consumer, lintDiagnostics, rawColourText } from "./lint-probe.ts";
+import type { Diagnostic } from "./lint-probe.ts";
+
 const probeFolder = new URL(".lint-probe/", consumer);
 
 const probe = `import { groupBy } from "lodash";
@@ -28,45 +30,21 @@ export const format = new Intl.NumberFormat("en-US");
 export const whole = [Math.floor(price), Math.trunc(price)];
 `;
 
-const spanSchema = z.object({ line: z.number() });
-const labelSchema = z.object({ span: spanSchema });
-const diagnosticSchema = z.object({
-  code: z.string(),
-  help: z.string().optional(),
-  labels: z.array(labelSchema),
-  message: z.string(),
-});
-const reportSchema = z.object({ diagnostics: z.array(diagnosticSchema) });
-
 /** The probe's line holding `text`, counted from 1. */
 function lineOf(text: string): number {
   return probe.split("\n").findIndex((source) => source.includes(text)) + 1;
 }
 
-/** `vp lint`'s JSON report on the probe, run as the app runs it: JSON, so CI's annotations do not drop the help. */
-function lintReport(): string {
-  rmSync(probeFolder, { force: true, recursive: true });
-  mkdirSync(probeFolder, { recursive: true });
-  writeFileSync(new URL("probe.ts", probeFolder), probe);
-  const vp = new URL("node_modules/.bin/vp", consumer).pathname;
-  try {
-    return execFileSync(vp, ["lint", "--format", "json", ".lint-probe/probe.ts"], {
-      cwd: consumer,
-      encoding: "utf8",
-    });
-  } catch (error) {
-    return error instanceof Error && "stdout" in error ? String(error.stdout) : String(error);
-  }
-}
-
-const report = lintReport();
-const reportJson: unknown = JSON.parse(report.slice(report.indexOf("{")));
-const { diagnostics } = reportSchema.parse(reportJson);
+rmSync(probeFolder, { force: true, recursive: true });
+mkdirSync(probeFolder, { recursive: true });
+writeFileSync(new URL("probe.ts", probeFolder), probe);
+const diagnostics = lintDiagnostics(".lint-probe/probe.ts");
+const report = JSON.stringify(diagnostics, null, 2);
 
 /** What a rule reports at the probe's line holding `text`: its message and its help, on one line. */
 function findingFor(rule: string, text: string): string | undefined {
   const line = lineOf(text);
-  const atLine = (diagnostic: z.infer<typeof diagnosticSchema>): boolean =>
+  const atLine = (diagnostic: Diagnostic): boolean =>
     diagnostic.labels.some(({ span }) => span.line === line);
   const found = diagnostics.find(
     (diagnostic) => diagnostic.code.includes(rule) && atLine(diagnostic),
@@ -131,27 +109,16 @@ describe("the preset's lint against display rounding in an app", () => {
 
 /** What `vp lint` reports in packages/consumer of Vitest's browser API, on a test at `file` in the probe's folder that
  * imports vitest-browser-react and calls `expect.element`. */
-function browserApiFindings(file: string): z.infer<typeof diagnosticSchema>[] {
+function browserApiFindings(file: string): Diagnostic[] {
   const testProbe = new URL(file, probeFolder);
   mkdirSync(new URL(".", testProbe), { recursive: true });
   writeFileSync(
     testProbe,
     'import { render } from "vitest-browser-react";\nimport { expect, test } from "vite-plus/test";\n\ntest("x", async () => {\n  const screen = await render(null);\n  await expect.element(screen.container).toBeVisible();\n});\n',
   );
-  const vp = new URL("node_modules/.bin/vp", consumer).pathname;
-  let output = "";
-  try {
-    output = execFileSync(vp, ["lint", "--format", "json", `.lint-probe/${file}`], {
-      cwd: consumer,
-      encoding: "utf8",
-    });
-  } catch (error) {
-    output = error instanceof Error && "stdout" in error ? String(error.stdout) : String(error);
-  }
-  const parsed: unknown = JSON.parse(output.slice(output.indexOf("{")));
-  return reportSchema
-    .parse(parsed)
-    .diagnostics.filter(({ help }) => help?.includes("*.browser.test.tsx") === true);
+  return lintDiagnostics(`.lint-probe/${file}`).filter(
+    ({ help }) => help?.includes("*.browser.test.tsx") === true,
+  );
 }
 
 describe("the preset's lint against Vitest's browser API outside a browser-only test", () => {
@@ -167,22 +134,6 @@ describe("the preset's lint against Vitest's browser API outside a browser-only 
     },
   );
 });
-
-/** `vp lint`'s diagnostics in packages/consumer on `file`, a path in the app such as `src/positions.tsx`. */
-function lintDiagnostics(file: string): z.infer<typeof diagnosticSchema>[] {
-  const vp = new URL("node_modules/.bin/vp", consumer).pathname;
-  let output = "";
-  try {
-    output = execFileSync(vp, ["lint", "--format", "json", file], {
-      cwd: consumer,
-      encoding: "utf8",
-    });
-  } catch (error) {
-    output = error instanceof Error && "stdout" in error ? String(error.stdout) : String(error);
-  }
-  const parsed: unknown = JSON.parse(output.slice(output.indexOf("{")));
-  return reportSchema.parse(parsed).diagnostics;
-}
 
 describe("the app's limits, loosened for app code on 2026-11-09", () => {
   test("pass the table page that failed basis-ui's own six limits with no fault in it", () => {
@@ -204,11 +155,7 @@ export const rows = page * 25;
 `;
 
 /** What `rule` reports in packages/consumer on the classes probe, on the line holding `text`. */
-function classFinding(
-  found: z.infer<typeof diagnosticSchema>[],
-  rule: string,
-  text: string,
-): string[] {
+function classFinding(found: Diagnostic[], rule: string, text: string): string[] {
   const line = classes.split("\n").findIndex((source) => source.includes(text)) + 1;
   return found
     .filter(({ code, labels }) => code === rule && labels.some(({ span }) => span.line === line))
@@ -229,18 +176,15 @@ describe("the preset's lint against a class that restyles a component or names a
     ]);
   });
 
-  const rawColour =
-    "is not a colour or shadow of @basis/ui's theme, whose tokens follow the user's theme and mode: name a colour by what it means, as text-loss or bg-destructive for red, text-gain or bg-success for green, bg-warning for amber, bg-info or bg-primary for blue, and text-muted-foreground, bg-muted or border-edge for grey; a status is a Badge or Alert variant, and a shadow shadow-sm or shadow-md.";
-
   test("sends red to the tokens a person means by it, not the nearest chart colours", () => {
     expect(classFinding(found, "shadcn(no-raw-colors)", "bg-red-500")).toStrictEqual([
-      `ERROR "bg-red-500" ${rawColour}`,
+      `ERROR "bg-red-500" ${rawColourText}`,
     ]);
   });
 
   test("calls a drop shadow the theme lacks a shadow, and names the theme's", () => {
     expect(classFinding(found, "shadcn(no-raw-colors)", "drop-shadow-lg")).toStrictEqual([
-      `ERROR "drop-shadow-lg" ${rawColour}`,
+      `ERROR "drop-shadow-lg" ${rawColourText}`,
     ]);
   });
 

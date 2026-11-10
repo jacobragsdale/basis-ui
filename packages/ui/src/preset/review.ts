@@ -1,8 +1,9 @@
 /* A pull request's summary, so a reviewer judges what changed rather than every line:
  *
  *   vp run review [BRANCH]   prints, as Markdown to paste into the pull request, the commit `vp run check-full` passed
- *                            on, the versions, the API's operations the change adds, removes or changes, and the
- *                            client's diff, against BRANCH, `origin/main` unless named
+ *                            on, the versions, the API's operations the change adds, removes or changes, the
+ *                            client's diff, and the comments that turn a check off, against BRANCH, `origin/main`
+ *                            unless named
  *
  * `vp run check-full` ends with the hidden task `checked`, which records, in the git folder the clone's worktrees share,
  * each commit it passed on with nothing uncommitted. Screenshot diffs wait for the visual baselines (roadmap step 1.6). */
@@ -15,6 +16,8 @@ import { z } from "zod";
 import { git } from "./git.ts";
 import { ignored, manifestSchema } from "./installed.ts";
 import { TaskError } from "./shot-options.ts";
+import { suppressionInLine, turningOff } from "./suppressions.ts";
+import type { Found } from "./suppressions.ts";
 import { installedUi } from "./sync.ts";
 
 /** Where the records go, in the git folder, and how many characters of a commit's id a summary shows. */
@@ -194,6 +197,44 @@ function headSection(
   ].join("\n");
 }
 
+/** The comments that turn a check off in src/ at `commit`, but the generated client's, as `git grep` finds them. */
+function suppressionsAt(root: string, commit: string): readonly Found[] {
+  const lines = git(root, [
+    "grep",
+    "-n",
+    "-I",
+    "-E",
+    String.raw`(oxlint|eslint)-disable|@ts-(expect-error|ignore|nocheck)`,
+    commit,
+    "--",
+    "src",
+    ":(exclude)src/api/generated",
+  ]);
+  return (lines ?? "").split("\n").flatMap((entry) => {
+    const [file = "", line = "", ...text] = entry.slice(commit.length + 1).split(":");
+    return suppressionInLine(file, Number(line), text.join(":"));
+  });
+}
+
+/** How many comments turn a check off, on the branch and on the one it merges into, and where each is. */
+function suppressionsSection(
+  root: string,
+  base: string,
+  commits: readonly [string, string],
+): string {
+  const [before = [], after = []] = commits.map((commit) => suppressionsAt(root, commit));
+  const where = after.map(
+    ({ directive, file, line, refusal: refused }) =>
+      `- \`${file}:${String(line)}\` \`${directive}\`${refused === undefined ? "" : ", refused"}`,
+  );
+  return [
+    "### Suppressions",
+    "",
+    `${turningOff(after.length, "`src`")}, against ${String(before.length)} on ${base}.`,
+    ...(where.length === 0 ? [] : ["", ...where]),
+  ].join("\n");
+}
+
 const screenshotsSection = [
   "### Screenshots",
   "",
@@ -216,6 +257,7 @@ async function review(root: string, args: readonly string[]): Promise<string> {
     headSection(root, record, [base, mergeBase]),
     versionsSection(root, base, commits),
     clientSection(root, commits),
+    suppressionsSection(root, base, commits),
     screenshotsSection,
   ].join("\n\n");
 }

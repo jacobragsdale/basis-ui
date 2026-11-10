@@ -1,0 +1,8 @@
+# This file is managed by basis-ui: `vp run sync` rewrites it from the installed @basis/ui, and `vp run check-full` fails when it differs.
+node_modules/
+dist/
+# Records exported from an API's run store: they hold client data.
+.fixtures/
+# vp run shot's pictures of the app.
+.shots/
+.vite-hooks/_

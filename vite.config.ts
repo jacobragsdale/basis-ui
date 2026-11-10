@@ -89,6 +89,17 @@ export default defineConfig({
         rules: { "eslint/no-restricted-properties": "off" },
       },
       { files: nodeCode, rules: { "import/no-nodejs-modules": "off" } },
+      /* basis-ui's own client layers fetch what no generated client serves: @basis/ui's is the `apiFetch` the
+       * generated client calls, and the demo's and the charts' harness's read their datasets' files. An app's src/api
+       * may not. */
+      {
+        files: [
+          "packages/ui/src/api/**",
+          "packages/parallax-demo/src/api/**",
+          "packages/parallax/tests/e2e/charts/harness/src/api/**",
+        ],
+        rules: { "basis/no-fetch": "off" },
+      },
     ],
   },
   run: {

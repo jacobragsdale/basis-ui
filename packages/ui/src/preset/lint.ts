@@ -5,8 +5,9 @@
  * three rules for test files; and, the same day, five rules that obstructed basis-ui's own code without catching a
  * bug: `eslint/capitalized-comments`, `eslint/sort-keys`, `eslint/id-length`,
  * `unicorn/no-useless-promise-resolve-reject` and `eslint/max-lines-per-function` in tests; and on 2026-11-09 six limits
- * loosened in app code, which basis-ui's own code keeps as `libraryLimits`. Every rule turned off or loosened has its
- * reason on the line above it, because `eslint/no-inline-comments` rejects a comment at the end of a line. */
+ * loosened in app code, and the checks only app code has, which basis-ui's own code takes as `libraryLimits`. Every
+ * rule turned off or loosened has its reason on the line above it, because `eslint/no-inline-comments` rejects a
+ * comment at the end of a line. */
 
 import { fileURLToPath } from "node:url";
 import type { OxlintConfig } from "vite-plus/lint";
@@ -19,7 +20,14 @@ import {
   browserTestImports,
   generatedImports,
 } from "./lint-bans.ts";
-import { rawColour, restyleContracts, restyleFallback } from "./lint-messages.ts";
+import {
+  arbitraryValue,
+  inlineStyle,
+  rawColour,
+  restyleContracts,
+  restyleFallback,
+  unknownClass,
+} from "./lint-messages.ts";
 
 type Rules = NonNullable<OxlintConfig["rules"]>;
 
@@ -28,9 +36,14 @@ const shortNames = ["c", "h", "i", "l", "x", "y"];
 // -1, 0, 1, 2 and 100 read as themselves; other numbers still need a name.
 const plainNumbers = [-1, 0, 1, 2, 100];
 
-/** The six limits as basis-ui's own code keeps them: the root vite.config.ts sets them over `lint`'s for everything
- * but its two apps, packages/example and packages/consumer. */
+/** The six limits as basis-ui's own code keeps them, and the checks only an app has, off, since its code is what they
+ * send an app to: the root vite.config.ts sets them for all but its apps, packages/example and packages/consumer. */
 const libraryLimits: Rules = {
+  "basis/no-hand-rounding": "off",
+  "basis/no-suppressions": "off",
+  "basis/theme-classes": "off",
+  "typescript/ban-ts-comment": "error",
+  "typescript/prefer-ts-expect-error": "error",
   "basis/no-magic-numbers": "off",
   "eslint/complexity": "error",
   "eslint/id-length": ["error", { exceptions: shortNames }],
@@ -59,6 +72,17 @@ const appLimits: Rules = {
   "basis/no-magic-numbers": "error",
   // A handler's or a local helper's type is inferred; `explicit-module-boundary-types` still types every export.
   "typescript/explicit-function-return-type": "off",
+  /* The holes probes found open on 2026-11-09, closed in app code (lint-plugin.ts): every network API, src/api's
+   * `fetch` among them; rounding to decimals by hand; a comment that turns a check off, but one suppressions.ts
+   * allows; and a plain element's dark: variant, !important, selector, filter, black or white, or class built at run
+   * time. */
+  "basis/no-fetch": "error",
+  "basis/no-hand-rounding": "error",
+  "basis/no-suppressions": "error",
+  "basis/theme-classes": "error",
+  // `basis/no-suppressions` refuses every `@ts-` directive; these two would send an app from one to another.
+  "typescript/ban-ts-comment": "off",
+  "typescript/prefer-ts-expect-error": "off",
 };
 
 // Every built-in plugin the design names. `eslint` is implicit in Oxlint 1.91; listing it changes nothing.
@@ -110,13 +134,11 @@ const lint: OxlintConfig = {
   },
   overrides: [
     {
-      /* The client layer: the app's `src/api`, which imports the generated client to re-export it, and the place a
-       * `fetch` outside the API, if an app ever needs one, belongs. The libraries' bans still hold. It comes before
-       * the tests' overrides, since the last override that matches a file sets a rule, so a test in `src/api` keeps
-       * the tests' bans. */
+      /* The client layer: the app's `src/api`, which imports the generated client to re-export it. The libraries' bans
+       * still hold, and `basis/no-fetch` too. It comes before the tests' overrides, since the last override that
+       * matches a file sets a rule, so a test in `src/api` keeps the tests' bans. */
       files: ["**/src/api/**"],
       rules: {
-        "basis/no-fetch": "off",
         "eslint/no-restricted-imports": [
           "error",
           { paths: bannedImports, patterns: bannedPatterns },
@@ -179,15 +201,15 @@ const lint: OxlintConfig = {
     "eslint/func-style": "off",
     // With `import/consistent-type-specifier-style`, a module's types and values arrive in two imports.
     "eslint/no-duplicate-imports": ["error", { allowSeparateTypeImports: true }],
-    // Outside the client layer, `fetch` is banned, as are the generated files and the libraries @basis/ui replaces.
-    "basis/no-fetch": "error",
     // Its help for `fetch`, to use a local variable instead of the global, contradicts `basis/no-fetch`'s.
     "eslint/no-restricted-globals": "off",
+    /* Outside the client layer, the generated files are banned, as are the libraries @basis/ui replaces and those
+     * the design decided against. */
     "eslint/no-restricted-imports": [
       "error",
       { paths: bannedImports, patterns: [...bannedPatterns, generatedImports] },
     ],
-    // Only the number components and parallax round, once, for display.
+    // Only the number and date components and parallax round and format, once, for display.
     "eslint/no-restricted-properties": ["error", ...bannedRounding],
     // A ternary is often the clearest conditional render; `eslint/no-nested-ternary` still forbids nesting.
     "eslint/no-ternary": "off",
@@ -233,8 +255,8 @@ const lint: OxlintConfig = {
     "react/no-multi-comp": "off",
     // The automatic JSX runtime needs no React in scope, and `noUnusedLocals` rejects the unused import.
     "react/react-in-jsx-scope": "off",
-    "shadcn/no-arbitrary-values": "error",
-    "shadcn/no-inline-styles": "error",
+    "shadcn/no-arbitrary-values": ["error", { message: arbitraryValue }],
+    "shadcn/no-inline-styles": ["error", { message: inlineStyle }],
     "shadcn/no-raw-colors": ["error", { message: rawColour }],
     // Components take placement only; `dark:` on a component is an error, since every token switches with the mode.
     "shadcn/no-restyle": [
@@ -246,7 +268,7 @@ const lint: OxlintConfig = {
         message: restyleFallback,
       },
     ],
-    "shadcn/no-unknown-classes": "error",
+    "shadcn/no-unknown-classes": ["error", { message: unknownClass }],
     "shadcn/require-static-classes": "error",
     // React's props and DOM events are mutable library types that no annotation makes deeply readonly.
     "typescript/prefer-readonly-parameter-types": "off",

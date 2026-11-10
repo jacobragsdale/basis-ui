@@ -1,6 +1,7 @@
 /* The framework tasks, run as the preset runs them: Node on src/preset/tasks.ts, in an app's root. The app is a
  * temporary folder with this package linked in as `node_modules/@basis/ui`, as an installed app has it, and the
- * template in packages/create holds exactly what `vp run sync` writes. */
+ * template in packages/create holds exactly what `vp run sync` writes. The drift check's hold on an app's own
+ * configuration and dependencies, and check-full's suppressions step, are in drift-check.test.ts. */
 
 import { execFileSync, spawnSync } from "node:child_process";
 import {
@@ -92,7 +93,13 @@ describe("vp run sync", () => {
   test("writes the framework's files, each but CLAUDE.md opening with basis-ui's marker", () => {
     expect(run("sync").status).toBe(0);
     expect(read("CLAUDE.md")).toBe("@AGENTS.md\n");
-    for (const file of ["Dockerfile", "Caddyfile", ".gitattributes", ".vite-hooks/pre-commit"]) {
+    for (const file of [
+      "Dockerfile",
+      "Caddyfile",
+      ".gitattributes",
+      ".gitignore",
+      ".vite-hooks/pre-commit",
+    ]) {
       expect(read(file).split("\n", 1)[0]).toBe(header);
     }
     expect(read(".claude/skills/drive-the-app/SKILL.md")).toBe(
@@ -203,6 +210,20 @@ describe("vp run review", () => {
     expect(summary).toContain(": Books\n");
     expect(summary).toContain("| `@basis/ui` | 0.0.0 | 0.1.0 (changed) |");
     expect(summary).toContain("- Operations added: `books`; removed: none; changed: none.");
+    expect(summary).toContain(
+      "### Suppressions\n\n0 comments in `src` turn a check off, against 0 on main.",
+    );
+  });
+
+  test("counts the comments that turn a check off, on the branch and on the one it merges into", () => {
+    write("src/api/client.ts", "// oxlint-disable-next-line oxc/no-barrel-file -- the client.\n");
+    write("src/page.tsx", "// @ts-expect-error -- a reason\n");
+    git("add", "--all");
+    git("commit", "--quiet", "-m", "Suppressions");
+    run("checked");
+    expect(run("review", "main").stdout).toContain(
+      "### Suppressions\n\n2 comments in `src` turn a check off, against 0 on main.\n\n- `src/api/client.ts:1` `oxlint-disable-next-line`\n- `src/page.tsx:1` `@ts-expect-error`, refused\n",
+    );
   });
 
   test("records no check while the worktree has uncommitted changes", () => {
@@ -266,7 +287,7 @@ describe("vp run upgrade", () => {
 describe("a task @basis/ui does not have", () => {
   test("names the ones it has", () => {
     expect(run("deploy").stderr).toBe(
-      "ERROR deploy is no task of @basis/ui's: run one of budget, checked, docs, doctor, fixtures, review, sync, upgrade with vp run.\n",
+      "ERROR deploy is no task of @basis/ui's: run one of budget, checked, docs, doctor, fixtures, review, suppressions, sync, upgrade with vp run.\n",
     );
   });
 });

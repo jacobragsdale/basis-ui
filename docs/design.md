@@ -32,19 +32,19 @@ behaves alike, and a fix reaches all of them in one upgrade.
 
 ## What a developer sees
 
-| Command                         | What it does                                                                                                                                                             |
-| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `vp check`                      | Formatting, linting and type checking together                                                                                                                           |
-| `vp test`                       | The Vitest suites, in Vitest's browser mode with the Playwright provider                                                                                                 |
-| `vp dev`                        | The app in fixture mode, on a free port per git worktree, with no backend                                                                                                |
-| `vp run check-full`             | `sync --check`, `client-check`, the fixtures against `openapi.json`, `tsc --noEmit` on the whole app, `check`, `test` and `build`; screenshot comparison in WSL, not yet |
-| `vp run shot ROUTE`             | A screenshot of a page, its accessibility tree and its console errors                                                                                                    |
-| `vp run budget`                 | The build, then each route's JavaScript and CSS, gzipped, against the budget the app's `vite.config.ts` gives it                                                         |
-| `vp run client-pull`            | Copies the API's `openapi.json` from the API repo at a tag, or from a deployed API, and regenerates the client                                                           |
-| `vp run client-check`           | Whether the generated client still matches the repo's `openapi.json`: a task of its own, since an app cannot add a step to `vp check`                                    |
-| `vp run review`                 | A pull request's summary: the client's diff, the versions, and the commit that was checked; screenshot diffs, not yet                                                    |
-| `vp run sync`, `vp run upgrade` | Rewrite the framework's files from the installed version; update `@basis/ui`, sync and check in one step                                                                 |
-| `vp run doctor`, `vp run docs`  | Check the desktop's setup and print the fix for each problem; print the installed version's docs: one entry of the catalogue, a search by purpose, or a README section   |
+| Command                         | What it does                                                                                                                                                                                                 |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `vp check`                      | Formatting, linting and type checking together                                                                                                                                                               |
+| `vp test`                       | The Vitest suites, in Vitest's browser mode with the Playwright provider                                                                                                                                     |
+| `vp dev`                        | The app in fixture mode, on a free port per git worktree, with no backend                                                                                                                                    |
+| `vp run check-full`             | `sync --check`, `client-check`, the fixtures against `openapi.json`, `tsc --noEmit` on the whole app, the comments that turn a check off, `check`, `test` and `build`; screenshot comparison in WSL, not yet |
+| `vp run shot ROUTE`             | A screenshot of a page, its accessibility tree and its console errors                                                                                                                                        |
+| `vp run budget`                 | The build, then each route's JavaScript and CSS, gzipped, against the budget the app's `vite.config.ts` gives it                                                                                             |
+| `vp run client-pull`            | Copies the API's `openapi.json` from the API repo at a tag, or from a deployed API, and regenerates the client                                                                                               |
+| `vp run client-check`           | Whether the generated client still matches the repo's `openapi.json`: a task of its own, since an app cannot add a step to `vp check`                                                                        |
+| `vp run review`                 | A pull request's summary: the client's diff, the versions, the count of comments that turn a check off, and the commit that was checked; screenshot diffs, not yet                                           |
+| `vp run sync`, `vp run upgrade` | Rewrite the framework's files from the installed version; update `@basis/ui`, sync and check in one step                                                                                                     |
+| `vp run doctor`, `vp run docs`  | Check the desktop's setup and print the fix for each problem; print the installed version's docs: one entry of the catalogue, a search by purpose, or a README section                                       |
 
 Screenshot comparison in `check-full` and screenshot diffs in `review` wait for an app's baselines, step 6.8.5; the
 gallery's exist, as [Components](#components) says.
@@ -82,8 +82,16 @@ version line is its own, apart from basis's: the two meet at the contract, not a
 | `AGENTS.md`, `CLAUDE.md`, `.agents/skills/`, `.claude/skills/` | The agent files, as basis writes them: `AGENTS.md` a short map, `CLAUDE.md` containing `@AGENTS.md`, and the skills copied for Claude Code |
 | `.vite-hooks/`, `.gitattributes`, `.gitignore`                 | Vite+'s commit and push hooks, LF line endings on Windows and in WSL alike, and the ignored files, `.fixtures/` among them                 |
 
-The template writes `.gitignore`, but `vp run sync` does not keep it, so nothing stops an app dropping `.fixtures/`
-from it: not yet, step 6.8.3.
+`.gitignore` is a framework file, so no app drops `.fixtures/` from it. The app's own configuration is held to the
+framework's lines too, since a probe on 2026-11-09 declared a colour, a utility and a class in an app's stylesheet and
+the lint passed them: the drift check, `vp run sync --check`, fails when `src/styles.css` holds more than the import of
+`@basis/ui`'s stylesheet, and of `@basis/parallax`'s for an app that depends on it, when `tsconfig.json` is more than
+the lines that extend the strict tsconfig, and when `vite.config.ts` is more than the preset, its plugins and its
+tests, with the app's own budget and `basisTest({ browser: false })` allowed; `vp run sync` writes the first two, and
+the third when it is missing. It also holds `package.json` to the packages an app may use, a list in the preset that a
+new dependency joins with the maintainer's approval, and refuses by name, with what replaces each, the libraries
+[Decided against](#decided-against) names and those `@basis/ui`'s utilities replace. ctzd writes these files by hand
+and never runs `vp run sync`, so the lint's own checks are what bind its apps.
 
 ## Consumers
 
@@ -148,10 +156,22 @@ basis-ui adds one lint plugin, `@shadcn/lint`, described below:
   value) and `_` (an unused parameter); `eslint/no-magic-numbers` gives way to the preset's `basis/no-magic-numbers`,
   the same rule except that a number inside JSX may stand as itself; and `typescript/explicit-function-return-type` is
   off, since a handler's or a local helper's type is inferred and `typescript/explicit-module-boundary-types` still
-  types every export. The same choice closes the real holes that probes found open: an app's `src/styles.css`,
-  `vite.config.ts` and `tsconfig.json` held to the framework's lines, suppression comments refused outside a short
-  allowlist, and the classes, formatting calls, network APIs and dependencies the lint lets past today. Not yet: step
-  6.8.3 closes the holes.
+  types every export. The same choice closed, on 2026-11-09, the holes that probes found open, each with an `ERROR` line
+  that ends in its fix, in app code only, since basis-ui's own code is what they send an app to: an app's
+  `src/styles.css`, `vite.config.ts`, `tsconfig.json`, `.gitignore` and dependencies held by the drift check, as
+  [A UI repo](#a-ui-repo) says; `basis/no-suppressions`, which refuses every `oxlint-disable` and `eslint-disable`
+  comment but one naming `oxc/no-barrel-file` in `src/api`, the allowlist, a list of rule names with their folder in
+  the preset's `suppressions.ts`, and every `@ts-expect-error`, `@ts-ignore` and `@ts-nocheck`, in place of
+  `typescript/ban-ts-comment`, whose advice sent an app from one to another; `check-full`'s suppressions step, which
+  reads `src/` as text, since a comment that turns off every rule hides from the lint, and `vp run review`'s count;
+  `basis/theme-classes`, which refuses on a plain element a `dark:` variant, `!important`, a selector variant such as
+  `[&>*]:`, a filter such as `grayscale` or `brightness-50`, black and white, and a class built from a template
+  string; `basis/no-hand-rounding`, for `Math.ceil(n * 100) / 100` and its `floor` and `trunc` forms, and
+  `toLocaleDateString`, `toLocaleTimeString`, `Intl.DateTimeFormat` and `Intl.RelativeTimeFormat` beside the number
+  bans; `basis/no-fetch`, which also refuses `XMLHttpRequest`, `WebSocket`, `EventSource` and `navigator.sendBeacon`,
+  and `fetch` in `src/api`, and which basis-ui's own code keeps, its client layers aside; and imports of the libraries [Decided against](#decided-against) names. The messages that
+  sent an app to declare a class, a colour or a CSS rule in its stylesheet, `no-unknown-classes`',
+  `no-arbitrary-values`' and `no-inline-styles`', name the theme's classes and tokens instead.
 - Oxfmt with its defaults.
 
 Two guarantees need more than Oxlint's built-in rules. Components the React Compiler cannot optimize fail the build,
@@ -287,10 +307,10 @@ theme, the default, which still reads as shadcn's; the generator, `defineTheme`,
 6.5.5, and the default's identity with the two more themes, dense dark and high contrast, 6.5.7.
 
 Each theme has three layers, and no app can change it: apps declare no tokens, and use no `dark:` variants, since every
-token already switches with the mode. `no-restyle` rejects `dark:` on a component; on plain elements no built-in rule
-can, so the theme points `dark:` at the user's chosen mode, and the template's drift check is to reject tokens an app's
-stylesheet declares, since `@shadcn/lint` accepts them once it reads the package's theme. Not yet: no check reads an
-app's stylesheet today (step 6.8.3).
+token already switches with the mode. `no-restyle` rejects `dark:` on a component and the preset's `basis/theme-classes`
+on a plain element, while the theme still points `dark:` at the user's chosen mode, and the drift check rejects an
+app's stylesheet that declares anything, since `@shadcn/lint` accepts what it declares once it reads the package's
+theme.
 
 1. **Ramps.** Twelve-step OKLCH scales for a neutral, the brand, and four status hues (red, amber, green and blue). Each
    step has one job: steps 1 and 2 are page backgrounds, 3 to 5 control fills at rest, hovered and pressed, 6 to 8
@@ -396,8 +416,11 @@ both follow it, so a value reads the same in the grid, a chart, a card and a for
 - **Totals.** A total on screen comes from parallax's exact sums or from `sumPrecise`, never from adding rounded
   doubles.
 - **One formatter.** The preset rejects display rounding in app code (`toFixed`, `toPrecision`, `toLocaleString`,
-  `Math.round` and `Intl.NumberFormat`), and each error names the component to use instead, or `numberText` for a
-  number inside text such as a toast's; code that needs an integer for anything but display uses `Math.floor` or `Math.trunc`. The components and parallax
+  `Math.round`, `Intl.NumberFormat`, and `Math.ceil(n * 100) / 100` with its `floor` and `trunc` forms) and date
+  formatting (`toLocaleDateString`, `toLocaleTimeString`, `Intl.DateTimeFormat` and `Intl.RelativeTimeFormat`), and
+  each error names the component to use instead, or `numberText` for a number inside text such as a toast's,
+  `roundToTick` for a value rounded to a step, and `DateTime` or `relativeTime` for a date; code that needs an integer
+  for anything but display uses `Math.floor` or `Math.trunc`. The components and parallax
   are the only formatters.
 - **Display formats.** basis writes each number's display format, so a page never chooses decimals. A dataset column
   carries it in its Arrow field's metadata, under the key `basis.format` as a JSON string, and a property of the API's
@@ -435,8 +458,9 @@ yields, risk or returns over long series, is computed by the API, so the firm ha
 A date field names its calendar, SIFMA unless it says otherwise. Dates use Temporal, which the firm's Chrome has shipped
 since version 144, so no date library is needed; grouping uses `Object.groupBy`, cloning `structuredClone`, and set
 operations the Set methods. `AmountInput` parses its text exactly, by moving the decimal point by its suffix's power of ten, before it converts the result to a number, and the calendars are tested against the exchanges' published holidays. The preset's `no-restricted-imports` rejects `lodash`, `lodash-es`, `underscore`,
-`es-toolkit`, `moment`, `date-fns`, `dayjs`, `decimal.js` and `big.js` in apps, and each error names the module or the
-native API to use instead.
+`es-toolkit`, `moment`, `date-fns`, `dayjs`, `decimal.js` and `big.js` in apps, as it does `recharts`, `react-hook-form`,
+`sonner` and React Aria, which [Decided against](#decided-against) names, and each error names the module, the
+component or the native API to use instead.
 
 ## Dependencies and the supply chain
 
@@ -448,7 +472,8 @@ screenshots: Base UI and its eight dependencies, `cn`, `@shadcn/lint`, and the t
 owning keyboard, focus and screen-reader behaviour across browsers, and losing its fixes. The shadcn CLI, with its 32
 dependencies, is installed nowhere; its repository is read when porting a component. pnpm refuses package versions
 younger than its minimum release age and runs no dependency's install script without approval, which closes the two
-routes the 2025 npm worms used.
+routes the 2025 npm worms used. An app's own dependencies are held to a list in the preset, the template's and the example's, by the
+drift check since 2026-11-09, so a package joins any app only when the maintainer adds it there.
 
 ## Charts
 

@@ -5,6 +5,22 @@ What changed in `@basis/ui`, newest first, in the words an app's agent needs: wh
 
 ## Unreleased
 
+- The lint and the drift check close what probes found open, each with an `ERROR` line that ends in its fix. What an
+  app must change: remove every `oxlint-disable` and `eslint-disable` comment but `oxc/no-barrel-file`'s in
+  `src/api`, and every `@ts-expect-error`, `@ts-ignore` and `@ts-nocheck`, fixing what they hid (`basis/no-suppressions`,
+  and `vp run check-full`'s new suppressions step, which `vp run review` counts); on a plain element, drop `dark:`,
+  `!`, selector variants such as `[&>*]:`, filters such as `grayscale` and `brightness-50`, `black` and `white`, and
+  classes built from template strings (`basis/theme-classes`); show dates with `DateTime` or `relativeTime`, not
+  `toLocaleDateString`, `toLocaleTimeString`, `Intl.DateTimeFormat` or `Intl.RelativeTimeFormat`, and round to a step
+  with `roundToTick`, not `Math.ceil(n * 100) / 100` (`basis/no-hand-rounding`); call the API only through the
+  generated client, with no `fetch` in `src/api` and no `XMLHttpRequest`, `WebSocket`, `EventSource` or
+  `navigator.sendBeacon` (`basis/no-fetch`); and import none of `recharts`, `react-hook-form`, `sonner` or React Aria.
+  `vp run sync` now writes `.gitignore`, `src/styles.css` and `tsconfig.json`, and `vite.config.ts` when it is
+  missing, and `vp run sync --check` fails on a `vite.config.ts` beyond the preset, its plugins, its tests, a budget and
+  `basisTest({ browser: false })`, and on a dependency that is not on `@basis/ui`'s list: run `vp run sync`, then fix
+  what it still reports. `no-unknown-classes`, `no-arbitrary-values` and `no-inline-styles` no longer suggest declaring
+  anything in `src/styles.css`, and `typescript/ban-ts-comment` and `typescript/prefer-ts-expect-error` are off in app
+  code, since `basis/no-suppressions` refuses every `@ts-` comment.
 - The lint asks less of a page and says more when it refuses one. In app code a function may run to 200 lines,
   blanks and comments aside, with a complexity of 30 and 4 parameters; `a`, `b`, `e`, `k`, `v` and `_` are names; a
   number inside JSX needs no name; and only exported functions need a return type. A class that restyles a component
