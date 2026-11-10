@@ -1,9 +1,23 @@
 # Changelog
 
-What changed in `@basis/ui`, newest first, in the words an app's agent needs: what changed, and what to do about it.
-`vp run docs ui/changelog` prints it in an app. It starts with the version after 0.0.0; nothing before is listed.
+What changed in `@basis/ui` and `@basis/parallax`, which release together, newest first, in the words an app's agent
+needs: what changed, and what to do about it. `vp run docs ui/changelog` prints it in an app, and `vp run upgrade`
+prints the entries between the installed version and the new one. It starts with the version after 0.0.0; nothing
+before is listed. Each release is a heading, `## VERSION - YYYY-MM-DD`, below `## Unreleased`, what is merged and not
+yet released; each entry is a bullet, its other lines indented by two spaces, ending with "What to do:" when it asks
+anything of an app.
 
 ## Unreleased
+
+- `vp run upgrade [VERSION]` refuses a working tree with changes not committed, then installs `@basis/ui` and
+  `@basis/parallax` at the new version, the latest release or VERSION, prints this changelog's entries after the
+  installed version, runs `vp run sync`, then the codemods the releases in between ship, oldest first, and `vp run
+  verify`, and ends with a summary of what it changed and what the entries ask of the app. `--dry-run` prints the
+  entries, the steps and each codemod's change, line by line, and changes nothing. The first codemod,
+  `fetch-rule-name`, renames `eslint/no-restricted-globals` to `basis/no-fetch` in the comments that turn it off;
+  `basis/no-suppressions` still refuses such a comment, and its `ERROR` line says what replaces it. What to do: run
+  `vp run sync` for the new lines in `AGENTS.md`, and upgrade with `vp run upgrade`, after `vp run upgrade --dry-run`
+  to see what it will do.
 
 - `checkRoutes(routeTree)` from `@basis/ui/testing` makes one test per route. Each renders the route on the fixtures
   in `fixtures/`, answered as `vp dev`'s fixture mode answers them, with no browser. It fails with an `ERROR` line on

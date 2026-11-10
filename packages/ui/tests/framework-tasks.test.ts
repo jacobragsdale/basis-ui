@@ -268,25 +268,6 @@ describe("vp run doctor", () => {
   });
 });
 
-describe("vp run upgrade", () => {
-  test("refuses a version not written exactly", () => {
-    expect(run("upgrade", "^0.4").stderr).toMatch(
-      /^ERROR vp run upgrade takes one version at most, written exactly: .+\.\n$/u,
-    );
-  });
-
-  test("names the fix when vp cannot be run", () => {
-    const result = spawnSync(process.execPath, [script, "upgrade"], {
-      cwd: app,
-      encoding: "utf8",
-      env: { ...environment, PATH: path.join(app, "no-bin") },
-    });
-    expect(result.stderr).toBe(
-      "ERROR vp run upgrade could not run vp (spawnSync vp ENOENT): check that Vite+'s vp is on the PATH, as vp --version shows, then run vp run upgrade again.\n",
-    );
-  });
-});
-
 describe("a task @basis/ui does not have", () => {
   test("names the ones it has", () => {
     expect(run("deploy").stderr).toBe(

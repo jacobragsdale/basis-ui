@@ -32,8 +32,10 @@ and `.dockerignore`, `azure-pipelines.yml`, `.gitattributes`, `pnpm-workspace.ya
 `CLAUDE.md`, the skills in `.agents/skills/` and their copies in `.claude/skills/`, and this block of `AGENTS.md`. Each
 opens with a line saying basis-ui manages it, and `vp run verify` fails when one differs, so never edit them: a
 change one needs belongs in `@basis/ui`. Write the repo's own notes in `AGENTS.md`, outside this block's markers. `vp run upgrade` moves
-`@basis/ui` and `@basis/parallax` to their latest release, or `vp run upgrade VERSION` to that one, then runs
-`vp run sync` and `vp run verify`.
+`@basis/ui` and `@basis/parallax` to their latest release, or `vp run upgrade VERSION` to that one, on a tree with
+nothing uncommitted: it prints the changelog between the two, runs `vp run sync`, the releases' codemods and
+`vp run verify`, and ends with what is left to do by hand. `vp run upgrade --dry-run` shows all of it and changes
+nothing.
 
 ### The API and fixture mode
 

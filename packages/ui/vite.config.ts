@@ -28,6 +28,8 @@ export default defineConfig({
       "src/testing/index.ts",
       // basisTest() runs it by its path before each test file.
       "src/testing/fixtures-setup.ts",
+      // vp run upgrade imports each release's codemods by their paths (src/preset/codemods.ts).
+      "src/codemods/*/*.ts",
     ],
     // The fixture-mode plugin makes this module in an app's vp test; the package never holds it.
     deps: { neverBundle: [/^virtual:basis\//u] },

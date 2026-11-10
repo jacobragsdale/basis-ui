@@ -646,6 +646,18 @@ flowchart TD
    drawn page (`color-contrast`, `link-in-text-block`, `target-size`, `scrollable-region-focusable`) and those that read
    `index.html`, in Chromium as in happy-dom. `packages/example` and the template call it in `src/routes.test.ts`; on
    the example its three routes take 0.6 s in happy-dom, 1.7 s for the file.
+   6.8.8 built on 2026-11-10: `vp run upgrade [VERSION]` refuses a tree with changes not committed, or an app linked to
+   the workspace, says so when the installed version is the latest, refuses an older one, then installs `@basis/ui`
+   and `@basis/parallax` at one version, prints the new version's changelog entries after the installed one, runs
+   `vp run sync`, the codemods the releases in between ship, oldest first, and `vp run verify`, and ends with a
+   summary of what it did and each entry's "What to do:". `--dry-run` installs the release in a temporary folder with
+   the app's `.npmrc`, prints the same with each codemod's change line by line, and changes nothing. The changelog's
+   headings are `## Unreleased` and `## VERSION - YYYY-MM-DD`, read by `src/preset/changelog.ts` and held by a test; a
+   codemod is `src/codemods/VERSION/NAME.ts`, built to `dist/codemods/`, exporting a transform over the app's files
+   that git tracks, `unreleased/` until a release renames it. The first, `fetch-rule-name`, renames
+   `eslint/no-restricted-globals` to `basis/no-fetch` in disable comments, found by Oxc's parser from `vite-plus`. The
+   tests run the task against a fake `vp` and a feed of folders, on a temporary git clone. Not yet: an upgrade from a
+   version older than this one runs that version's `upgrade`, without codemods; none was released.
 9. **6.9 The showcase** (`6.9-showcase`, then a branch per page). `packages/showcase`, made from the template, with ten
    pages: overview, blotter, positions, relative value, P&L explain, curves, a bond, booking a trade, import, and a
    probe of the desktop. An agent builds it with only the shipped tools, and logs in `BUILDING.md` each place they fell

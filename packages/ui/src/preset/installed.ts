@@ -23,6 +23,58 @@ function ignored(): null {
 /** A version written exactly, as basis-ui's packages are pinned, such as `0.4.0` or `0.5.0-rc.1`. */
 const exactVersion = /^\d+\.\d+\.\d+(?:-[\w.]+)?$/u;
 
+/** How two prerelease identifiers compare, as semver orders them: numbers by value, before any word. */
+function compareIdentifiers(left: string, right: string): number {
+  const numeric = /^\d+$/u;
+  if (numeric.test(left) && numeric.test(right)) {
+    return Math.sign(Number(left) - Number(right));
+  }
+  if (numeric.test(left) !== numeric.test(right)) {
+    return numeric.test(left) ? -1 : 1;
+  }
+  return left.localeCompare(right, "en");
+}
+
+/** How two lists compare, item by item with `compare`, then a shorter list before a longer one it begins. */
+function compareLists(
+  left: readonly string[],
+  right: readonly string[],
+  compare: (one: string, other: string) => number,
+): number {
+  const index = left.findIndex(
+    (item, at) => at >= right.length || compare(item, right[at] ?? "") !== 0,
+  );
+  if (index === -1) {
+    return Math.sign(left.length - right.length);
+  }
+  const other = right[index];
+  return other === undefined ? 1 : compare(left[index] ?? "", other);
+}
+
+/** How two numbers of a version compare. */
+function compareNumbers(left: string, right: string): number {
+  return Math.sign(Number(left) - Number(right));
+}
+
+/** How two exact versions compare, as semver orders them: below zero when `left` is older, zero when they are one. A
+ * prerelease, such as `0.5.0-rc.1`, comes before its release. */
+function compareVersions(left: string, right: string): number {
+  const [leftCore = "", ...leftPre] = left.split("-");
+  const [rightCore = "", ...rightPre] = right.split("-");
+  const cores = compareLists(leftCore.split("."), rightCore.split("."), compareNumbers);
+  if (cores !== 0 || (leftPre.length === 0 && rightPre.length === 0)) {
+    return cores;
+  }
+  if (leftPre.length === 0 || rightPre.length === 0) {
+    return leftPre.length === 0 ? 1 : -1;
+  }
+  return compareLists(
+    leftPre.join("-").split("."),
+    rightPre.join("-").split("."),
+    compareIdentifiers,
+  );
+}
+
 /** The version of `name` installed for the app at `root`, or `undefined` when it is not installed. It reads the
  * package's folder in the app's node_modules first, as installed now, since Node caches what it resolved once, which
  * `vp run upgrade` changes mid-run. */
@@ -55,6 +107,7 @@ function chromiumInstall(version: string): string {
 export {
   appDependencies,
   chromiumInstall,
+  compareVersions,
   exactVersion,
   ignored,
   installedVersion,

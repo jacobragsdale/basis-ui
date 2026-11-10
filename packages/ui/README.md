@@ -650,6 +650,49 @@ suppressions`, and the push hook all of them. An app ctzd writes, which holds no
 nothing for the `sync` stage to check; its configuration is still checked. `vp run check-full`, verify's former
 name, says so and runs it.
 
+## Upgrading: `vp run upgrade`
+
+`vp run upgrade` moves `@basis/ui`, and `@basis/parallax` where the app has it, to the latest release, the one the
+feed tags `latest`; `vp run upgrade VERSION`, such as `vp run upgrade 0.4.0`, to that one. The two always move to one
+version. It refuses a working tree with changes not committed, so commit or stash them first, and then:
+
+1. installs the new version, pinned exactly, with `vp add`;
+2. prints the changelog's entries after the installed version;
+3. runs `vp run sync`, which writes the framework's files from the new version;
+4. runs the codemods the releases in between ship, oldest first, each a change to the app's own code that a program
+   can make, and prints each line it changes;
+5. runs `vp run verify`;
+6. prints a summary: what it did, and each "What to do:" of the entries, which is left to the app.
+
+`vp run upgrade --dry-run` prints all of it, the codemods' changes included, and changes nothing: it installs the new
+version in a temporary folder of its own, with the app's `.npmrc`, to read its changelog and codemods.
+
+```sh
+$ vp run upgrade --dry-run
+Dry run, which changes nothing: @basis/ui 0.1.0 is installed, and vp run upgrade 0.2.0 would move @basis/ui and @basis/parallax to 0.2.0.
+
+What changed, from @basis/ui 0.2.0's CHANGELOG.md:
+
+## 0.2.0 - 2026-12-01
+
+- ...
+
+What vp run upgrade 0.2.0 would do:
+  1. vp add --save-exact @basis/ui@0.2.0 @basis/parallax@0.2.0
+  2. vp run sync, which writes the framework's files from 0.2.0
+  3. codemod 0.2.0/fetch-rule-name, which renames eslint/no-restricted-globals to basis/no-fetch in the comments that turn it off, changes:
+          src/report.ts
+              1 - // oxlint-disable-next-line eslint/no-restricted-globals
+              1 + // oxlint-disable-next-line basis/no-fetch
+  4. vp run verify
+...
+Run vp run upgrade 0.2.0 to upgrade.
+```
+
+When verify fails after an upgrade, the new version is installed and its codemods have run: fix what verify reports,
+then commit `package.json`, the lockfile and the changed files together. `vp run upgrade` moves only forward; to go
+back, revert the upgrade's commit.
+
 ## Using the components
 
 A component's look comes from its props, `variant` and `size`, never from `className`. `className` places a component:

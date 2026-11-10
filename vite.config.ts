@@ -48,6 +48,7 @@ const nodeCode = [
   "packages/*/scripts/**",
   "packages/*/tests/**",
   "packages/ui/src/preset/**",
+  "packages/ui/src/codemods/**",
   "packages/ui/src/catalogue/**",
   "packages/*/vite.config.ts",
   "vite.config.ts",

@@ -11,10 +11,26 @@ Run `vp run @basis/ui#build` before the gallery's or the example's checks: they 
 
 ## The changelog
 
-`CHANGELOG.md` ships in the package, and `vp run docs ui/changelog` prints it in an app. A change an app or ctzd sees,
-in a component's props, a task, an error's text, the catalogue or the configuration the README shows, adds a line
-under `## Unreleased`, in the words an app's agent needs: what changed and what to do about it. A release renames
-`Unreleased` to its version and date.
+`CHANGELOG.md` ships in the package, `vp run docs ui/changelog` prints it in an app, and `vp run upgrade` prints the
+entries between the installed version and the new one. A change an app or ctzd sees, in a component's props, a task,
+an error's text, the catalogue or the configuration the README shows, adds an entry under `## Unreleased`, in the
+words an app's agent needs: what changed, then "What to do:" and what an app does about it, which the upgrade's
+summary repeats. An entry is a bullet, `- `, its other lines indented by two spaces; a release is a heading,
+`## VERSION - YYYY-MM-DD`, newest first, below Unreleased. `src/preset/changelog.ts` reads it, and
+`tests/changelog.test.ts` fails on a line written otherwise. A release renames `## Unreleased` to its version and
+date, and `src/codemods/unreleased/` to `src/codemods/VERSION/`.
+
+## Shipping a codemod
+
+A change an app must make in its own code, and a program can make, ships a codemod, which `vp run upgrade` runs once
+the new version is installed and synced: a module `src/codemods/unreleased/NAME.ts` exporting `codemod`, a `Codemod`
+from `src/preset/codemods.ts`, with a `description` in a line, the `extensions` of the files it reads, and a
+`transform` from a file's path and text to its new text. It is given every file git tracks in the app, so it reads
+code with Oxc's parser, `parseSync` from `vite-plus`, rather than by pattern, and throws, saying why, on a file it
+cannot read. The build makes it `dist/codemods/VERSION/NAME.mjs`. An upgrade from one version to another runs every
+codemod after the first up to the second, oldest release first, and a release's own in the order of their names; a
+dry run runs each on the files as the ones before it left them, and writes nothing. Its changelog entry says what it
+does, and what is left to do by hand. Test it on a fixture app, as `tests/codemods.test.ts` tests `fetch-rule-name`.
 
 ## Adding a component
 
