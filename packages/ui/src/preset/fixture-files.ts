@@ -9,7 +9,7 @@ import path from "node:path";
 import { fixtureFolders, fixtureProblem, loadFixtureFiles } from "#fixtures/load.ts";
 import type { FixtureSource, LoadedFixture } from "#fixtures/record.ts";
 
-import { documentProblems, operationsOf } from "./fixture-document.ts";
+import { documentProblems, operationsOf, pathParameters } from "./fixture-document.ts";
 import { ignored } from "./installed.ts";
 import { documentFile } from "./orval-options.ts";
 import { TaskError } from "./task-error.ts";
@@ -75,6 +75,22 @@ function problemsByDocument(root: string, fixtures: readonly LoadedFixture[]): s
   return fixtures.flatMap((fixture) => documentProblems(fixture, operations));
 }
 
+/** The values each fixture's path gives its operation's path parameters, by the fixture's file, from the app's
+ * `openapi.json`, so `checkRoutes` can open a route whose parameter shares a name with one. */
+function fixtureParameters(
+  root: string,
+  fixtures: readonly LoadedFixture[],
+): Readonly<Record<string, Readonly<Record<string, string>>>> {
+  const file = path.join(root, documentFile);
+  const operations = existsSync(file) ? operationsOf(readJson(file)) : undefined;
+  if (operations === undefined) {
+    return {};
+  }
+  return Object.fromEntries(
+    fixtures.map((fixture) => [fixture.file, pathParameters(fixture, operations)]),
+  );
+}
+
 /** The app's fixtures, records first unless `records` is false, and every problem with them. */
 function readFixtures(
   root: string,
@@ -116,5 +132,5 @@ async function checkFixtures(root: string, args: readonly string[]): Promise<str
     : `${counted} ${documentFile} answers.`;
 }
 
-export { checkFixtures, readFixtures };
+export { checkFixtures, fixtureParameters, readFixtures };
 export type { ReadFixtures };

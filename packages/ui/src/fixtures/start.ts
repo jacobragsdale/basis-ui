@@ -4,17 +4,13 @@
  * no code for it. */
 
 import { setupWorker } from "msw/browser";
-import type { RequestHandler } from "msw";
 
 import { consoleTelemetry } from "#shell/telemetry.ts";
 import type { Telemetry } from "#shell/telemetry.ts";
 
+import { generatedHandlers } from "./generated.ts";
 import { fixtureHandlers } from "./handlers.ts";
 import type { LoadedFixture } from "./record.ts";
-
-/** orval's handler for an operation, `get<Operation>MockHandler`, which answers with generated data when called with no
- * argument. Its siblings that end in a status, such as `getBondMockHandler404`, answer that status, and are left out. */
-const generatedHandlerName = /^get\w+MockHandler$/u;
 
 interface FixtureModeOptions {
   /** The records exported into `.fixtures/`, in the order to try them. */
@@ -25,24 +21,6 @@ interface FixtureModeOptions {
   readonly generated: Readonly<Record<string, unknown>>;
   /** Where each answer is reported; the console by default. */
   readonly telemetry?: Telemetry;
-}
-
-function isRequestHandler(value: unknown): value is RequestHandler {
-  return (
-    typeof value === "object" && value !== null && "run" in value && typeof value.run === "function"
-  );
-}
-
-/** One handler for each operation in the app's generated MSW module, each answering with orval's generated data. */
-function generatedHandlers(generated: Readonly<Record<string, unknown>>): RequestHandler[] {
-  return Object.entries(generated)
-    .filter(([name]) => generatedHandlerName.test(name))
-    .toSorted(([left], [right]) => left.localeCompare(right))
-    .flatMap(([, factory]) => {
-      const handler: unknown =
-        typeof factory === "function" ? Reflect.apply(factory, undefined, []) : undefined;
-      return isRequestHandler(handler) ? [handler] : [];
-    });
 }
 
 /** Starts MSW's service worker with fixture mode's handler, and reports what it answers from. */
@@ -64,5 +42,5 @@ async function startFixtureMode({
   });
 }
 
-export { generatedHandlers, startFixtureMode };
+export { startFixtureMode };
 export type { FixtureModeOptions };

@@ -18,6 +18,7 @@ import { withCompilerFixes } from "./compiler-fixes.ts";
 import { headScriptPlugin } from "./head-script.ts";
 import { precompressPlugin } from "./precompress.ts";
 import { lint } from "./lint.ts";
+import { fixturesSetup } from "./test-setup.ts";
 
 type Task = NonNullable<NonNullable<ViteUserConfig["run"]>["tasks"]>[string];
 
@@ -238,16 +239,23 @@ interface BasisTestOptions {
 }
 
 /** Vitest in a real browser, headless Chromium through Playwright, or, with `browser: false` or `BASIS_TEST_DOM=node`,
- * in a Node DOM, for a machine with no Chromium. */
+ * in a Node DOM, for a machine with no Chromium. Either way each test file first runs the setup that gives
+ * `checkRoutes` the app's fixtures. */
 async function basisTest({
   browser = process.env["BASIS_TEST_DOM"] !== "node",
 }: BasisTestOptions = {}): Promise<NonNullable<ViteUserConfig["test"]>> {
+  const setupFiles = [fixturesSetup];
   if (!browser) {
     const { configDefaults } = await import("vite-plus/test/config");
-    return { environment: "happy-dom", exclude: [...configDefaults.exclude, browserOnlyTests] };
+    return {
+      environment: "happy-dom",
+      exclude: [...configDefaults.exclude, browserOnlyTests],
+      setupFiles,
+    };
   }
   const { playwright } = await import("vite-plus/test/browser-playwright");
   return {
+    setupFiles,
     browser: {
       enabled: true,
       headless: true,

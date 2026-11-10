@@ -482,7 +482,7 @@ fixtures, generated, telemetry })`, the handler that answers in fixture mode's o
 An app's tests run in headless Chromium (`vp test`), and on a machine with no browser in a Node DOM, happy-dom
 (`BASIS_TEST_DOM=node vp test`, or `test: await basisTest({ browser: false })`). Write them with `@basis/ui/testing`,
 which works in both: Testing Library's `render`, `screen`, `within`, `waitFor` and `userEvent`, `renderApp` for the app
-at an address, `workbookFile` for an Excel workbook to upload, and `mockApi` for the API, which starts MSW's service worker in Chromium and its Node server otherwise.
+at an address, `workbookFile` for an Excel workbook to upload, `mockApi` for the API, which starts MSW's service worker in Chromium and its Node server otherwise, `checkRoutes` for every route on the app's fixtures, and `expectAccessible` for axe's check of what a test rendered.
 
 ```ts
 import { mockApi, renderApp, screen } from "@basis/ui/testing";
@@ -509,6 +509,74 @@ A test that needs a real browser, for layout, focus or pixels, goes in a file na
 Vitest's browser API (`vitest-browser-react`, `expect.element`) and which the Node run leaves out. The lint refuses that
 API in every other test, with the fix in its message. Under a Node DOM, parallax's charts and grids render their text
 alternative, not pixels.
+
+### Every route on its fixtures: `checkRoutes`
+
+`checkRoutes(routeTree)` makes one test for each route of the router. Each test renders the route in `BasisApp`, its
+requests answered from `fixtures/` as `vp dev`'s fixture mode answers them, then by the generated client's handlers.
+It needs no browser. The template's `src/routes.test.ts` is the whole file:
+
+```ts
+import { checkRoutes } from "@basis/ui/testing";
+
+import { routeTree } from "#routes.ts";
+
+checkRoutes(routeTree);
+```
+
+A route's test fails with one `ERROR` line, naming the page and ending with the fix, for each of these:
+
+```text
+ERROR /trades: No fixture or generated handler answers GET /trades: add a fixture of it to fixtures/, or run vp run client-pull if the API has gained the route.
+ERROR /bonds/US0000000000: reported an error from its query /bonds/US0000000000, the API answered 404 No bond has that ISIN (No bond has the ISIN US0000000000.): answer the request with a fixture that succeeds, or name another sample in checkRoutes' params.
+ERROR /boom: reported an error from its route, whose error component caught it, Error: The page broke.: fix the code that threw.
+ERROR /toast: raised an error toast as it opened, "Something went wrong: The save failed.": a page opens without one, so answer what it asks with a fixture that succeeds, or fix the code that raised it.
+ERROR /logs: wrote an error to the console, "The widget Positions failed to draw.": fix what logged it, since a page that works logs none.
+ERROR /forever: was still loading after 10 s, with the query /forever in flight: answer each request the page makes with a fixture, or end what keeps it loading.
+ERROR /list: axe list at ul, <ul><p>Positions</p></ul>: <ul> and <ol> must only directly contain <li>, <script> or <template> elements (…): fix all of the following: List element has direct children that are not allowed: p
+```
+
+The first is a request nothing answers, in fixture mode's words. The next two are errors reported to telemetry: a
+failed query or mutation, or what a route's error component or the error boundary caught. Then come an error toast
+raised with `toastError`, an error written to the console, a page still loading after 10 seconds, and an axe
+violation. A page counts as loaded once its route has resolved and no query or mutation has been in flight for 100 ms.
+A file in `fixtures/` that fixture mode cannot read fails a test of its own, with the fixtures check's lines.
+
+A route with a parameter, such as `/bonds/$security`, opens at a sample taken from a fixture of a `GET` that answers
+with a 2xx, the first in file order. That is the first fixture whose path the route matches, such as
+`GET /bonds/US91282CRF04`. Failing that, it is the first whose operation in `openapi.json` takes path parameters with
+the route's names: `vp run new` names a route's parameters after its operation's, so its
+`/bond-terms/$security` opens at the `security` of `GET /bonds/{security}`. Name a sample where no fixture gives one,
+or to choose another:
+
+```ts
+checkRoutes(routeTree, { params: { "/books/$book": { book: "RATES" } } });
+```
+
+A route with no sample is skipped, and the skipped test's name says how to give it one. `signIn` sets the user, as
+`renderApp`'s does.
+
+`expectAccessible(container?)` runs the same axe check in any test. With no argument it checks the whole document, as
+after `renderApp`. With an element, such as the `container` that `render` returns, it checks only what is inside it,
+and leaves out `region`, since a component rendered alone sits in no landmark.
+
+```tsx
+const { container } = render(<TradeForm />);
+await expectAccessible(container);
+```
+
+The check is `vp run shot`'s: WCAG 2.2 at A and AA and axe's best practices, with Base UI's four exceptions. Some
+rules are left out in a test, in Chromium as in a Node DOM, so a test gives the same verdict with or without a
+browser:
+
+- **Rules that measure the drawn page**, which needs its layout and the app's stylesheet: `color-contrast`,
+  `link-in-text-block`, `target-size` and `scrollable-region-focusable`.
+- **Rules that read index.html**, which a test does not load: `document-title`, `html-has-lang`, `html-lang-valid`,
+  `html-xml-lang-mismatch`, `meta-refresh`, `meta-viewport` and `meta-viewport-large`.
+
+What a test does check is names, labels, roles, ARIA, landmarks, headings, lists, tables, ids and focus. A Node DOM
+also has no stylesheet, so it reads an element that a class such as `hidden` would hide as shown. `vp run shot` checks
+the rest on the page as drawn.
 
 ## Checking the app: `vp run verify`
 

@@ -10,7 +10,7 @@ import { arrowStream } from "#api/fetch.ts";
 import { fixtureProblem } from "#fixtures/load.ts";
 import type { LoadedFixture } from "#fixtures/record.ts";
 
-import { objectOf } from "./api-operations.ts";
+import { camel, objectOf } from "./api-operations.ts";
 import { schemaIssues } from "./schema-check.ts";
 
 /** What fixture mode reads of an operation in the document: its id, and the media types of each status. */
@@ -180,5 +180,41 @@ function documentProblems(
   return misfit === undefined ? bodyProblems(fixture, operation) : [problem(misfit)];
 }
 
-export { documentProblems, operationsOf };
+/** A path segment's value, as the route's parameter takes it. */
+function decodedSegment(segment: string): string {
+  try {
+    return decodeURIComponent(segment);
+  } catch {
+    return segment;
+  }
+}
+
+/** The values a fixture's path gives its operation's path parameters, each under its name in the API, as `book_id`,
+ * and the name orval and `vp run new` give it, as `bookId`: `{ security: "US91282CRF04" }` for
+ * `GET /bonds/US91282CRF04` of `/bonds/{security}`. Empty for a fixture of no operation in the document. */
+function pathParameters(
+  fixture: LoadedFixture,
+  operations: ReadonlyMap<string, Operation>,
+): Readonly<Record<string, string>> {
+  const { operation_id: id, request } = fixture.record;
+  const operation = operations.get(id);
+  if (operation === undefined || !operation.pattern.test(request.path)) {
+    return {};
+  }
+  const names = operation.template.split("/");
+  const values = request.path.split("/");
+  return Object.fromEntries(
+    names.flatMap((segment, index) => {
+      const name = /^\{(?<name>[^}]+)\}$/u.exec(segment)?.groups?.["name"];
+      const value = values[index];
+      if (name === undefined || value === undefined) {
+        return [];
+      }
+      const decoded = decodedSegment(value);
+      return [...new Set([name, camel(name)])].map((key) => [key, decoded]);
+    }),
+  );
+}
+
+export { documentProblems, operationsOf, pathParameters };
 export type { Operation };

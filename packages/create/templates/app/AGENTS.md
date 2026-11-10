@@ -81,6 +81,11 @@ change one needs belongs in `@basis/ui`. Write the repo's own notes in `AGENTS.m
   component that shows it, which formats it with `@basis/ui`'s display formats.
 - Tests are written with `@basis/ui/testing`, so they run in Chromium and in a Node DOM. A test that needs a real
   browser, such as one of layout or canvas, is named `*.browser.test.tsx`, and runs only in Chromium.
+- `src/routes.test.ts` calls `checkRoutes(routeTree)`: one test for each route, rendered on the fixtures in
+  `fixtures/` as `vp dev` answers them, failing with an `ERROR` line on a request nothing answers, an error the page
+  reports, raises as a toast or logs, and what axe finds. A route with a parameter opens at a fixture's value for it,
+  or at the sample `checkRoutes(routeTree, { params })` names, and is skipped without one. `expectAccessible()` runs
+  the same axe check in any test. Colour contrast and target sizes need the page drawn: `vp run shot` checks them.
 - `.fixtures/` holds records exported from an API's run store, which hold client data: it is never committed.
 
 ### Review

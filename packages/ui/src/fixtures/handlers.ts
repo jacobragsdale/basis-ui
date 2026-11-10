@@ -7,7 +7,8 @@
  * Within the first two, the first fixture whose method, path and query match the request answers, in the order of
  * the files' names. A request for Arrow that no fixture answers gets a problem rather than orval's random bytes, which
  * are not Arrow, and so does a request nothing answers. Each answer is reported through telemetry, as the event
- * `fixture.answered`, with the source that gave it, and named on the response, in the headers answered-by.ts names. */
+ * `fixture.answered`, with the source that gave it and, when nothing answered, the problem's detail as `problem`, and
+ * named on the response, in the headers answered-by.ts names. */
 
 import { HttpResponse, getResponse, http, passthrough } from "msw";
 import type { RequestHandler } from "msw";
@@ -89,8 +90,15 @@ function responseOf(response: FixtureResponse): Response {
   return new HttpResponse(null, { headers, status: response.status });
 }
 
-/** The problem fixture mode answers when nothing it holds answers the request, saying what to add. */
-function missing(detail: string): Response {
+/** What fixture mode gives for a request: the response, what answered it, and, when nothing did, what to add. */
+interface Answer {
+  readonly response: Response;
+  readonly source: AnswerSource;
+  readonly problem?: string;
+}
+
+/** The problem response that says no fixture answers the request, with `detail` saying what to add. */
+function missingResponse(detail: string): Response {
   const problem = {
     detail,
     status: notImplemented,
@@ -101,6 +109,11 @@ function missing(detail: string): Response {
     headers: { "content-type": "application/problem+json" },
     status: notImplemented,
   });
+}
+
+/** The problem fixture mode answers when nothing it holds answers the request, saying what to add. */
+function missing(detail: string): Answer {
+  return { problem: detail, response: missingResponse(detail), source: "none" };
 }
 
 /** The request's key, or `undefined` for one outside `/api`. */
@@ -128,25 +141,19 @@ async function generatedAnswer(
   request: Request,
   key: RequestKey,
   generated: readonly RequestHandler[],
-): Promise<{ readonly response: Response; readonly source: AnswerSource }> {
+): Promise<Answer> {
   if (request.headers.get("accept")?.includes(arrowStream) === true) {
-    return {
-      response: missing(
-        `${described(key)} asks for Arrow, which orval's generated handlers cannot make: add a fixture of it to fixtures/, with its Arrow bytes as body_base64.`,
-      ),
-      source: "none",
-    };
+    return missing(
+      `${described(key)} asks for Arrow, which orval's generated handlers cannot make: add a fixture of it to fixtures/, with its Arrow bytes as body_base64.`,
+    );
   }
   const response = await getResponse([...generated], request);
   if (response !== undefined) {
     return { response, source: "generated" };
   }
-  return {
-    response: missing(
-      `No fixture or generated handler answers ${described(key)}: add a fixture of it to fixtures/, or run vp run client-pull if the API has gained the route.`,
-    ),
-    source: "none",
-  };
+  return missing(
+    `No fixture or generated handler answers ${described(key)}: add a fixture of it to fixtures/, or run vp run client-pull if the API has gained the route.`,
+  );
 }
 
 /** `response`, with headers naming its source and the file that holds it, if any. A generated handler's response can
@@ -177,7 +184,7 @@ function fixtureHandlers({
         return passthrough();
       }
       const fixture = held.find(({ record }) => matches(record, key));
-      const answer =
+      const answer: Answer =
         fixture === undefined
           ? await generatedAnswer(request, key, generated)
           : { response: responseOf(fixture.record.response), source: fixture.source };
@@ -186,6 +193,7 @@ function fixtureHandlers({
         source: answer.source,
         status: answer.response.status,
         ...(fixture === undefined ? {} : { file: fixture.file }),
+        ...(answer.problem === undefined ? {} : { problem: answer.problem }),
       };
       telemetry.event("fixture.answered", attributes);
       return named(answer.response, answer.source, fixture?.file);

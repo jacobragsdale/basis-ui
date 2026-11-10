@@ -630,6 +630,17 @@ flowchart TD
    types and tests as written, then prints `vp run verify` and `vp run shot /NAME`. An unknown operation fails with the
    closest ids, and an existing file with `--force`. `vp run fixtures check` checks each fixture's body against its
    schema as the client reads it, and `vp run fixtures new OPERATION [--status N]` writes one the schema accepts.
+   6.8.7 built on 2026-11-09: `checkRoutes(routeTree, { params, signIn })` in `@basis/ui/testing` makes one test per
+   route, rendered in `BasisApp` in happy-dom on `fixtures/`, matched as fixture mode matches them, then the generated
+   handlers. Through a setup file `basisTest()` adds, the fixture-mode plugin gives it the fixtures and the values each
+   one's path gives its operation's path parameters. It fails with an `ERROR` line for each request nothing answers,
+   in fixture mode's words; each error reported to telemetry, raised by `toastError` or written to the console; a page
+   still loading after 10 s; and each axe violation. A route with a parameter opens at a fixture's value, by path or by
+   the parameter's name, as `vp run new` names it, or is skipped with a line. `expectAccessible(container?)` runs the
+   same check anywhere. axe in a test runs `vp run shot`'s rules and Base UI's exceptions, less those that measure the
+   drawn page (`color-contrast`, `link-in-text-block`, `target-size`, `scrollable-region-focusable`) and those that read
+   `index.html`, in Chromium as in happy-dom. `packages/example` and the template call it in `src/routes.test.ts`; on
+   the example its three routes take 0.6 s in happy-dom, 1.7 s for the file.
 9. **6.9 The showcase** (`6.9-showcase`, then a branch per page). `packages/showcase`, made from the template, with ten
    pages: overview, blotter, positions, relative value, P&L explain, curves, a bond, booking a trade, import, and a
    probe of the desktop. An agent builds it with only the shipped tools, and logs in `BUILDING.md` each place they fell

@@ -18,6 +18,18 @@ interface Raised {
   readonly at: number;
 }
 
+/** Who hears of each error as its toast is raised: `checkRoutes` in `@basis/ui/testing`, which fails a route that
+ * raises one. */
+const errorToastListeners = new Set<(error: unknown) => void>();
+
+/** Hears of each error `toastError` raises a toast for, until the returned function is called. */
+function onErrorToast(listener: (error: unknown) => void): () => void {
+  errorToastListeners.add(listener);
+  return () => {
+    errorToastListeners.delete(listener);
+  };
+}
+
 /** The open error toasts, by what they say. */
 const raised = new Map<string, Raised>();
 
@@ -41,15 +53,8 @@ function describe(lines: readonly string[], count: number): ReactElement {
   );
 }
 
-/** Raises a toast for `error`, such as a failed save, and returns its id: the problem's title, then its detail, each
- * field a 422 names and the request's reference, a line each. `BasisApp` raises one for every failed mutation unless
- * the mutation's `meta` says `{ errorToast: false }`. The toast stays until the user closes it, and a screen reader
- * announces it at once.
- *
- * The same error, its title, detail and fields alike, raised again within 10 seconds of the last while its toast is
- * open, raises no new toast: that one shows the latest reference and how many times it happened, and its id is
- * returned. Once the toast is closed, the error raises a new one. */
-function toastError(error: unknown): string {
+/** Raises the toast `toastError` describes. */
+function raiseToast(error: unknown): string {
   const { title, detail, fields, reference } = describeError(error);
   const said = [
     ...(detail === undefined ? [] : [detail]),
@@ -78,4 +83,19 @@ function toastError(error: unknown): string {
   return id;
 }
 
-export { toastError };
+/** Raises a toast for `error`, such as a failed save, and returns its id: the problem's title, then its detail, each
+ * field a 422 names and the request's reference, a line each. `BasisApp` raises one for every failed mutation unless
+ * the mutation's `meta` says `{ errorToast: false }`. The toast stays until the user closes it, and a screen reader
+ * announces it at once.
+ *
+ * The same error, its title, detail and fields alike, raised again within 10 seconds of the last while its toast is
+ * open, raises no new toast: that one shows the latest reference and how many times it happened, and its id is
+ * returned. Once the toast is closed, the error raises a new one. */
+function toastError(error: unknown): string {
+  for (const listener of errorToastListeners) {
+    listener(error);
+  }
+  return raiseToast(error);
+}
+
+export { onErrorToast, toastError };

@@ -26,7 +26,11 @@ export default defineConfig({
       "src/dates/index.ts",
       "src/securities/index.ts",
       "src/testing/index.ts",
+      // basisTest() runs it by its path before each test file.
+      "src/testing/fixtures-setup.ts",
     ],
+    // The fixture-mode plugin makes this module in an app's vp test; the package never holds it.
+    deps: { neverBundle: [/^virtual:basis\//u] },
     /* The React Compiler, as `basisPlugins()` applies it to an app: a component that breaks the rules of React fails
      * the package's build rather than shipping unoptimized. `vp pack` runs with NODE_ENV=development, which would
      * otherwise add the compiler's hot-reload checks to the published code. */

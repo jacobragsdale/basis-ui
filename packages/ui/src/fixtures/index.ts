@@ -14,4 +14,5 @@ export {
   type JsonValue,
   type LoadedFixture,
 } from "./record.ts";
-export { generatedHandlers, startFixtureMode, type FixtureModeOptions } from "./start.ts";
+export { generatedHandlers } from "./generated.ts";
+export { startFixtureMode, type FixtureModeOptions } from "./start.ts";

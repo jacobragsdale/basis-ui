@@ -5,6 +5,16 @@ What changed in `@basis/ui`, newest first, in the words an app's agent needs: wh
 
 ## Unreleased
 
+- `checkRoutes(routeTree)` from `@basis/ui/testing` makes one test per route. Each renders the route on the fixtures
+  in `fixtures/`, answered as `vp dev`'s fixture mode answers them, with no browser. It fails with an `ERROR` line on
+  a request nothing answers, an error reported to telemetry, an error toast, a console error, a page still loading
+  after 10 s, or an axe violation. A route with a parameter opens at a fixture's value for it, or at
+  `checkRoutes(routeTree, { params })`, and is skipped without one. `expectAccessible(container?)` runs the same axe
+  check in any test. A test leaves out the rules that need the page drawn with its stylesheet, colour contrast and
+  target size among them, which `vp run shot` still checks. `basisTest()` adds a setup file that gives `checkRoutes`
+  the fixtures. What to do: add `src/routes.test.ts` with `checkRoutes(routeTree)`, as the template has it, and fix
+  each line it prints; run `vp run sync` for the new line in `AGENTS.md`. Fixture mode's `fixture.answered` event now
+  carries `problem`, the detail of its answer when nothing answers.
 - New: `FilterBar`, a page's filters over its rows, kept in its search parameters. Declare the filters with
   `defineFilters` (kinds `text`, `choice`, `multiChoice`, `dateRange`, `numberRange`), give the route
   `validateSearch: filterSearchSchema(filters)`, pass `useFilters(filters)` to the bar, and keep the rows with

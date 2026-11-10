@@ -6,26 +6,47 @@
  *   collide and each keeps its address from one run to the next, and names the app's root at `rootPath`;
  * - reads and checks the fixture files, prints an `ERROR` line for each one wrong, and reloads the page when one
  *   changes;
- * - starts fixture mode from index.html before the app's entry module runs, so an app writes no code for it.
+ * - starts fixture mode from index.html before the app's entry module runs, so an app writes no code for it;
+ * - in `vp test`, gives `checkRoutes` the fixtures in `fixtures/` and the generated handlers, so a test of every route
+ *   is one line.
  *
  * With `BASIS_API_URL` set, `vp dev` calls that API instead, and fixture mode is off. Tests never see `.fixtures/`,
- * whose records differ from one desktop to the next, and build their own handlers with `@basis/ui/fixtures`. */
+ * whose records differ from one desktop to the next, and build their own handlers with `@basis/ui/fixtures`, or check
+ * every route on `fixtures/` with `checkRoutes`. */
 
 import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
 import path from "node:path";
 
+import { searchForWorkspaceRoot } from "vite-plus";
 import type { Logger, Plugin, UserConfig, ViteDevServer } from "vite-plus";
 
 import { fixtureFolders } from "#fixtures/load.ts";
 
-import { readFixtures } from "./fixture-files.ts";
+import { fixtureParameters, readFixtures } from "./fixture-files.ts";
 import type { ReadFixtures } from "./fixture-files.ts";
 import { documentFile, generatedFolder } from "./orval-options.ts";
+import { fixturesSetup } from "./test-setup.ts";
 
 /** The module the page imports the fixtures from, which the plugin makes from the files. */
 const fixturesModule = "virtual:basis/fixtures";
 const resolvedFixturesModule = `\0${fixturesModule}`;
+
+/** The module `checkRoutes` in `@basis/ui/testing` loads the app's fixtures from in `vp test`, through the setup file
+ * `basisTest()` adds (src/testing/fixtures-setup.ts): the synthetic ones, every problem with them, and a loader of the
+ * generated handlers, which the test imports only when it checks a route. */
+const testFixturesModule = "virtual:basis/test-fixtures";
+const resolvedTestFixturesModule = `\0${testFixturesModule}`;
+
+/** The plugin's part of the configuration in `vp test`: Vite serves a test only the files of the app's workspace, and
+ * `@basis/ui` may be linked in from outside it, as basis-ui's own tests of an app link it, so the setup file's folder
+ * joins them. */
+function testConfig(config: UserConfig): UserConfig {
+  const root = path.resolve(config.root ?? process.cwd());
+  return {
+    server: { fs: { allow: [searchForWorkspaceRoot(root), path.dirname(fixturesSetup)] } },
+  };
+}
 
 /** orval's MSW handlers in an app, from its root. */
 const generatedHandlersFile = `${generatedFolder}/client.msw.ts`;
@@ -171,6 +192,22 @@ function fixturesModuleCode(root: string, test: boolean): string {
   return `export default ${JSON.stringify({ fixtures, records })};`;
 }
 
+/** The test fixtures module: as `vp test` reads them, the synthetic fixtures alone, with the values each one's path
+ * gives its operation's parameters, and each problem rather than failing, so `checkRoutes` can report them as a test's
+ * failure. */
+function testFixturesModuleCode(root: string): string {
+  const { fixtures, problems } = readFixtures(root, { records: false });
+  const generated = existsSync(path.join(root, generatedHandlersFile))
+    ? `export const generated = async () => import("/${generatedHandlersFile}");`
+    : "export const generated = async () => ({});";
+  return [
+    `export const fixtures = ${JSON.stringify(fixtures)};`,
+    `export const parameters = ${JSON.stringify(fixtureParameters(root, fixtures))};`,
+    `export const problems = ${JSON.stringify(problems)};`,
+    generated,
+  ].join("\n");
+}
+
 /** The page in fixture mode, or as it was, with an `ERROR` line, when it loads no module of the app's own. */
 function pageFor(html: string, root: string, logger: Logger | undefined): string {
   const page = withFixtureMode(html, root);
@@ -181,6 +218,23 @@ function pageFor(html: string, root: string, logger: Logger | undefined): string
     return html;
   }
   return page;
+}
+
+/** The plugin's modules, by the ids the page and the setup file import them by. */
+const resolvedModules = new Map([
+  [fixturesModule, resolvedFixturesModule],
+  [testFixturesModule, resolvedTestFixturesModule],
+]);
+
+/** The code of the plugin's module `id`, or `null` for a module that is not the plugin's. */
+function moduleCode(
+  id: string,
+  { root, test }: { readonly root: string; readonly test: boolean },
+): string | null {
+  if (id === resolvedFixturesModule) {
+    return fixturesModuleCode(root, test);
+  }
+  return id === resolvedTestFixturesModule ? testFixturesModuleCode(root) : null;
 }
 
 interface FixtureModePluginOptions {
@@ -196,7 +250,8 @@ function fixtureModePlugin({ liveApi }: FixtureModePluginOptions): Plugin {
   };
   return {
     apply: "serve",
-    config: (config, { mode }) => (mode === "test" ? null : devConfig(config, liveApi)),
+    config: (config, { mode }) =>
+      mode === "test" ? testConfig(config) : devConfig(config, liveApi),
     configResolved: (config) => {
       state.root = config.root;
       state.test = config.mode === "test";
@@ -223,10 +278,9 @@ function fixtureModePlugin({ liveApi }: FixtureModePluginOptions): Plugin {
         watchFixtures(server, state.root, server.config.logger);
       }
     },
-    load: (id) =>
-      id === resolvedFixturesModule ? fixturesModuleCode(state.root, state.test) : null,
+    load: (id) => moduleCode(id, state),
     name: "basis:fixture-mode",
-    resolveId: (id) => (id === fixturesModule ? resolvedFixturesModule : null),
+    resolveId: (id) => resolvedModules.get(id) ?? null,
     // Before Vite's own work on the page, so the script below has its imports resolved and Vite's client is no entry.
     transformIndexHtml: {
       handler: (html) =>

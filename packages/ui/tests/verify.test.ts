@@ -96,7 +96,14 @@ const breaks: Readonly<Record<string, (text: string) => string>> = {
   "src/styles.css": (text) => `${text}.mine {\n  color: red;\n}\n`,
 };
 
+/** The files the broken copy leaves out: checkRoutes, in the tests stage, fails on the stale fixture too, which only
+ * the fixtures stage is to report here. */
+const removed = ["src/routes.test.ts"];
+
 function breakEachStage(root: string): void {
+  for (const file of removed) {
+    rmSync(path.join(root, file));
+  }
   for (const [file, change] of Object.entries(breaks)) {
     const target = path.join(root, file);
     writeFileSync(target, change(existsSync(target) ? readFileSync(target, "utf8") : ""));

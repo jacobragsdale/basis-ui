@@ -16437,6 +16437,22 @@
     {
       "kind": "function",
       "module": "@basis/ui/testing",
+      "name": "checkRoutes",
+      "purpose": "One test for every route of `routeTree`: each renders the route in BasisApp, in a Node DOM, with its requests answered from the app's `fixtures/` as `vp dev`'s fixture mode answers them, then orval's generated handlers, and fails with an `ERROR` line, ending with its fix, for each request nothing answers, each error the page reports to telemetry, raises as a toast or writes to the console, a page that never finishes loading, and each rule of axe's it breaks. A route with a parameter, such as `/bonds/$security`, opens at the sample `params` gives it, or else at a fixture's value for it: one whose path it matches, as `GET /bonds/US91282CRF04` does, or whose operation takes a path parameter of the same name. Without either it is skipped, the test's name saying how to give one. Call it once, at the top of a test file.",
+      "signature": "checkRoutes(routeTree: AnyRoute, options: CheckRoutesOptions = {}): void",
+      "example": "import { checkRoutes } from \"@basis/ui/testing\";\n\nimport { routeTree } from \"#routes.ts\";\n\ncheckRoutes(routeTree);\n"
+    },
+    {
+      "kind": "function",
+      "module": "@basis/ui/testing",
+      "name": "expectAccessible",
+      "purpose": "Fails, with one `ERROR` line for each element at fault, when axe finds `container` breaks a rule the firm's apps are held to: WCAG 2.2 at A and AA and axe's best practices, less Base UI's known exceptions, as `vp run shot` runs them. Without `container` it checks the whole document, landmarks included, as after `renderApp`; with one, such as the `container` `render` returns, only what is inside it. It checks what needs no layout or stylesheet, in a Node DOM and in Chromium alike: names, labels, roles, ARIA, landmarks, headings, lists, tables, ids and focus. Colour contrast and the size of a target need the page drawn with its styles, and `vp run shot` checks them.",
+      "signature": "expectAccessible(container?: Document | Element): Promise<void>",
+      "example": "const { container } = render(<Button>Save</Button>);\nawait expectAccessible(container);\n"
+    },
+    {
+      "kind": "function",
+      "module": "@basis/ui/testing",
       "name": "mockApi",
       "purpose": "The API, answered by `handlers` (such as the generated client's mocks) in whichever run the test is in: MSW's service worker in Chromium, its Node server in a Node DOM. Start it once per file, `reset` it after each test.",
       "signature": "mockApi(...handlers: RequestHandler[]): Promise<MockApi>"
@@ -16529,7 +16545,7 @@
       "kind": "function",
       "module": "@basis/ui/preset",
       "name": "basisTest",
-      "purpose": "Vitest in a real browser, headless Chromium through Playwright, or, with `browser: false` or `BASIS_TEST_DOM=node`, in a Node DOM, for a machine with no Chromium.",
+      "purpose": "Vitest in a real browser, headless Chromium through Playwright, or, with `browser: false` or `BASIS_TEST_DOM=node`, in a Node DOM, for a machine with no Chromium. Either way each test file first runs the setup that gives `checkRoutes` the app's fixtures.",
       "signature": "basisTest({ browser = process.env[\"BASIS_TEST_DOM\"] !== \"node\", }: BasisTestOptions = {}): Promise<NonNullable<ViteUserConfig[\"test\"]>>"
     },
     {
@@ -17069,7 +17085,7 @@
     },
     {
       "name": "@basis/ui/testing",
-      "purpose": "`@basis/ui/testing`: what an app's tests are written with, so one test runs both in Chromium and in a Node DOM, on a laptop with no browser (docs/design.md, Consumers). It is Testing Library's API, `renderApp` for the app at an address, `mockApi` for the API, and `workbookFile` for an Excel workbook an import reads. A test that needs a real browser, for layout, focus or pixels, is named `*.browser.test.tsx` and may use Vitest's browser API instead; the preset's lint keeps that API out of every other test, and `basisTest({ browser: false })` runs every test but those."
+      "purpose": "`@basis/ui/testing`: what an app's tests are written with, so one test runs both in Chromium and in a Node DOM, on a laptop with no browser (docs/design.md, Consumers). It is Testing Library's API, `renderApp` for the app at an address, `mockApi` for the API, `workbookFile` for an Excel workbook an import reads, `checkRoutes` for every route on the app's fixtures at once, and `expectAccessible` for axe's check of what a test rendered. A test that needs a real browser, for layout, focus or pixels, is named `*.browser.test.tsx` and may use Vitest's browser API instead; the preset's lint keeps that API out of every other test, and `basisTest({ browser: false })` runs every test but those."
     },
     {
       "name": "@basis/ui/fixtures",
@@ -26303,6 +26319,26 @@
     {
       "fields": [
         {
+          "description": "A sample for each route with a parameter that no fixture gives, such as `{ \"/bonds/$security\": { security: \"US91282CRF04\" } }`. A route without one is skipped, with a line that says so.",
+          "name": "params",
+          "optional": true,
+          "type": "RouteParams"
+        },
+        {
+          "description": "The sign-in adapter: `anonymousSignIn()` unless set, or `fakeSignIn()` for a signed-in user.",
+          "name": "signIn",
+          "optional": true,
+          "type": "SignIn"
+        }
+      ],
+      "exported": true,
+      "module": "@basis/ui/testing",
+      "name": "CheckRoutesOptions",
+      "purpose": ""
+    },
+    {
+      "fields": [
+        {
           "description": "",
           "name": "use",
           "optional": false,
@@ -26356,6 +26392,13 @@
       "module": "@basis/ui/testing",
       "name": "RenderedApp",
       "purpose": ""
+    },
+    {
+      "definition": "Readonly<Record<string, Readonly<Record<string, string>>>>",
+      "exported": true,
+      "module": "@basis/ui/testing",
+      "name": "RouteParams",
+      "purpose": "Each route's sample, by its path as the router writes it, such as `{ \"/bonds/$security\": { security: \"US91282CRF04\" } }`. A splat, `$`, takes its value as `_splat`."
     },
     {
       "definition": "string | number | boolean | Temporal.PlainDate | null | undefined",

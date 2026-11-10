@@ -126,7 +126,9 @@ It also needs four things built for it (roadmap steps 1.14 to 1.16):
 
 - a test setup that runs without a browser, beside `basisTest()`'s Playwright one, since citizen developers' laptops
   have no Chromium: `basisTest({ browser: false })` in happy-dom, with tests written through `@basis/ui/testing` and
-  Vitest's browser API kept to `*.browser.test.tsx` files;
+  Vitest's browser API kept to `*.browser.test.tsx` files. `checkRoutes(routeTree)` there is ctzd's agents' look at
+  every page, since they take no screenshots: one test per route, on the app's fixtures as fixture mode answers them,
+  failing on a request nothing answers, an error the page reports, raises or logs, and axe's check;
 - a machine-readable catalogue, `@basis/ui/catalogue.json`, which a test keeps current, of everything both packages export: each component's name,
   purpose, when to use it and what goes with it, its props, those it takes from Base UI among them, with their docs and defaults, its variants and one
   example per family; each hook and function with its signature; each type an entry names, with its fields, `LayoutInput`'s among them; and each
@@ -668,6 +670,21 @@ violation failing it. It sets the mode, density and theme through the preference
 the page; it takes steps, a click, a hover, typing, a key or a wait, so an agent sees a page after an action without a
 second tool; `--all` pictures every route of the router; and `--json` prints one line an agent reads. Agents drive the
 browser further with Playwright CLI, which Microsoft built for coding agents.
+
+A test sees a page without a browser: `checkRoutes(routeTree)` in `@basis/ui/testing` renders every route of the
+router in `BasisApp`, in happy-dom, its requests answered as `vp dev` answers them. The fixture-mode plugin gives a
+test the fixtures in `fixtures/`, never `.fixtures/`, through a setup file `basisTest()` adds, so the app's test is
+one line. A route's test fails with an `ERROR` line for each request nothing answers, in fixture mode's words; each
+error reported to telemetry, raised as an error toast or written to the console; a page that never finishes
+loading; and each axe violation. A route with a parameter opens at a value a fixture gives it: one whose path the
+route matches, or one whose operation's path parameter shares the route's parameter's name, as `vp run new` names
+them. `params` names a sample where none does, and a route without one is skipped with a line that says how to give
+it one. `expectAccessible()` runs the same axe check in any test. A test leaves out the rules that measure the page as
+drawn, which need its layout and its stylesheet: colour contrast, a link told apart by colour, target size and
+scrolling regions. It also leaves out those that read `index.html`. It does so in Chromium as in happy-dom, so a test
+gives the same verdict with a browser or without; `vp run shot` checks those rules on the page as drawn. What a test
+checks is the most of WCAG an agent breaks: names, labels, roles, ARIA, landmarks, headings, lists, tables, ids and
+focus.
 
 Screenshots differ between operating systems, as Playwright's docs warn, and the desktops run no Docker to pin a Linux
 image in. So visual baselines are made and compared only in WSL, with the Chromium build Playwright pins and the fonts
