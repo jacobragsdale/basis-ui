@@ -1340,6 +1340,7 @@ version = "0.1.0"
 dependencies = [
  "arrow-array",
  "arrow-buffer",
+ "arrow-ipc",
  "arrow-schema",
  "arrow-select",
  "duckdb",
@@ -1347,6 +1348,7 @@ dependencies = [
  "libm",
  "num-bigint 0.4.8",
  "parallax-datagen",
+ "parallax-protocol",
  "proptest",
  "rayon",
  "rustc-hash",

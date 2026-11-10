@@ -48,6 +48,10 @@ export default defineConfig({
   plugins: basisPlugins(),
   run: {
     tasks: {
+      /* The scale harness (tests/perf/bench.ts): trades and positions at 150,000, 1,000,000 and 2,000,000 rows in
+       * headless Chromium, plain and under a CPU quota, against tests/perf/budgets.json. Arguments go to the bench,
+       * such as --sizes 150000 --modes plain. Never cached: it measures this machine as it is now. */
+      bench: { cache: false, command: "node tests/perf/bench.ts", dependsOn: ["build"] },
       build: { command: "vp pack", dependsOn: ["wasm"] },
       // The charts' end-to-end specs, in the pinned Playwright image (tests/e2e/charts/run.ts); never cached, as they drive
       // a browser against a build of the harness.

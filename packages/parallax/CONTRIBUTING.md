@@ -54,6 +54,7 @@ vp run @basis/parallax#charts-e2e  # the charts' end-to-end specs and screenshot
 vp run @basis/parallax#grid-e2e    # the grid's
 vp run @basis/parallax#pivot-e2e   # the pivot's
 vp run @basis/parallax#proto  # buf generate: the protocol's TypeScript, src/proto
+vp run @basis/parallax#bench  # the scale harness: 150,000 to 2,000,000 rows, against tests/perf/budgets.json
 ```
 
 `wasm` builds `parallax-wasm` for `wasm32-unknown-unknown` in release and runs
@@ -117,6 +118,44 @@ bash tests/e2e/pivot/in-image.sh screenshots --update-snapshots   # from package
 Its parity spec compares the pivot's canvas pixel for pixel with the Angular
 pivot's, recorded from the Angular demo in the same image before step 2.7
 deleted it, and kept in `tests/e2e/pivot/angular/`.
+
+## The scale harness
+
+`bench` measures the package's build at scale, as `docs/spikes/scale-1m.md`
+reports it. It writes trades and positions at 150,000, 1,000,000 and 2,000,000
+rows with `parallax-datagen`, seed 42, into `tests/perf/data`, which git ignores
+and which takes 2.4 GB; builds the page in `tests/perf/harness` on the package's
+build, with the engine's load limits raised for that page alone; and drives
+headless Chromium with the end-to-end flags, plain and with the whole browser
+under `systemd-run --user --scope -p CPUQuota=40% -p CPUQuotaPeriodSec=10ms`,
+spike 0.3's proxy for a Citrix desktop. For each dataset, size and mode it
+records first rows, fully loaded, the WebAssembly memory after the load and at
+its peak, the browser's resident memory at rest and at its peak, sorts, toggles,
+a filter and a search on the trades, three pivots, expand all and collapse all
+on the positions, and the drawing time per frame while scrolling at device pixel
+ratios 1, 1.25 and 1.5. Each figure is the median of its samples. It writes
+`test-results/perf/bench.json` and fails with one line for each figure over its
+budget in `tests/perf/budgets.json`: `host` for the build host, which pull
+requests quote, and `nightly` for the scheduled job on a shared runner, its
+memory and generous ceilings on time. A full run takes about 15 minutes on the
+build host, and its largest page needs about 4.3 GB of memory; flags make it
+shorter:
+
+```sh
+vp run @basis/parallax#bench --sizes 150000 --modes plain --ratios 1 --rounds 1
+node tests/perf/bench.ts --prebuilt --sizes 1000000   # from packages/parallax: the data and the page as built
+node tests/perf/bench.ts --check test-results/perf/bench.json --budgets host
+```
+
+`tests/perf/flags.ts` lists every flag. The engine's phase profile says where
+the time goes: the load split into counting, decoding, staging and appending,
+and the reference pivot into aggregating, sorting the leaves, building the tree,
+merging it and showing its first window, on one thread as in WebAssembly:
+
+```sh
+cargo run --release -p parallax-engine --features profile --example measure -- \
+  tests/perf/data/trades-1000000.arrows tests/perf/data/positions-1000000.arrows
+```
 
 ## The demo
 

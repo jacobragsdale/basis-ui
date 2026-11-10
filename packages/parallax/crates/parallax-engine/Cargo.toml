@@ -19,12 +19,20 @@ thiserror.workspace = true
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 rayon.workspace = true
 
+[features]
+# Times the load's and a grouped view's phases for examples/measure.rs; never in
+# an app's build, and never in WebAssembly, which has no clock.
+profile = []
+
 [dev-dependencies]
 duckdb = { version = "=1.20000.1", features = ["download-lib", "appender-arrow"] }
 arrow-select.workspace = true
 num-bigint = "0.4.8"
 # Path only, so that publishing drops it: the generator depends on the engine.
 parallax-datagen = { path = "../parallax-datagen" }
+# Path only, for the example's decode of a stream as the browser's worker does it.
+parallax-protocol = { path = "../parallax-protocol" }
+arrow-ipc.workspace = true
 proptest = "1.12"
 serde_json.workspace = true
 

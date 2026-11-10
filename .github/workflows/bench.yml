@@ -1,0 +1,50 @@
+name: bench
+
+# Parallax's scale harness, nightly: trades and positions at 150,000, 1,000,000 and 2,000,000 rows in headless
+# Chromium, against the nightly budgets in packages/parallax/tests/perf/budgets.json. Timings on a shared runner vary,
+# so those budgets are the memory figures and generous ceilings on time; the build host's figures, the host budgets,
+# are the ones pull requests quote. The runner cannot put the browser under the CPU quota, so the run is plain.
+on:
+  schedule:
+    - cron: "17 4 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  bench:
+    name: parallax / Scale harness (nightly)
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      CARGO_BUILD_JOBS: 4
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: voidzero-dev/setup-vp@v1.22.0
+        with:
+          node-version-file: .node-version
+          cache: true
+      - run: rustup toolchain install
+        working-directory: packages/parallax
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: packages/parallax -> target
+      - name: Install wasm-bindgen
+        working-directory: packages/parallax
+        run: |
+          version=$(cargo metadata --format-version 1 --locked | jq -r '.packages[] | select(.name == "wasm-bindgen") | .version')
+          curl -sSL "https://github.com/wasm-bindgen/wasm-bindgen/releases/download/${version}/wasm-bindgen-${version}-x86_64-unknown-linux-musl.tar.gz" | tar xz
+          sudo install -m 755 "wasm-bindgen-${version}-x86_64-unknown-linux-musl/wasm-bindgen" /usr/local/bin/
+      - run: vp run @basis/ui#build
+      - run: vp exec --filter @basis/ui playwright install --with-deps chromium
+      # Builds the package, writes the datasets, builds the harness and measures, failing on a figure over its budget.
+      - run: vp run @basis/parallax#bench --modes plain --rounds 1 --budgets nightly
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: parallax-bench
+          path: packages/parallax/test-results/perf

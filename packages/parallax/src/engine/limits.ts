@@ -23,6 +23,41 @@ const maxRows = 150_000;
  */
 const maxXlsxCells = 1_000_000;
 
+/** The limits a load is checked against. */
+interface LoadLimits {
+  readonly maxArrowBytes: number;
+  readonly maxRows: number;
+}
+
+/**
+ * Where a measuring page, such as `tests/perf`'s scale harness, raises the load limits for itself before the engine
+ * starts: `globalThis[Symbol.for("@basis/parallax/load-limits")] = { maxArrowBytes, maxRows }`. It is not part of the
+ * package's API, which no app may rely on: the documented limits are the ones above.
+ */
+const liftedLimitsKey = Symbol.for("@basis/parallax/load-limits");
+
+/** The largest row limit the engine takes, as a u32. */
+const mostRows = 4_294_967_295;
+
+function isLimit(value: unknown, most: number): value is number {
+  return typeof value === "number" && Number.isSafeInteger(value) && value > 0 && value <= most;
+}
+
+/** The limits a load is checked against: {@link maxArrowBytes} and {@link maxRows}, unless the page has raised them
+ * at {@link liftedLimitsKey}. */
+function loadLimits(): LoadLimits {
+  const lifted: unknown = Reflect.get(globalThis, liftedLimitsKey);
+  if (typeof lifted !== "object" || lifted === null) {
+    return { maxArrowBytes, maxRows };
+  }
+  const bytes: unknown = Reflect.get(lifted, "maxArrowBytes");
+  const rows: unknown = Reflect.get(lifted, "maxRows");
+  return {
+    maxArrowBytes: isLimit(bytes, Number.MAX_SAFE_INTEGER) ? bytes : maxArrowBytes,
+    maxRows: isLimit(rows, mostRows) ? rows : maxRows,
+  };
+}
+
 /** The media type of each export format. */
 const exportTypes: Readonly<Record<ExportFormat, string>> = {
   csv: "text/csv;charset=utf-8",
@@ -58,12 +93,21 @@ function trapReason(trap: string): string {
   return `The engine in this page stopped after a fatal error (${trap}), most likely because it ran out of memory. It has started again without its tables: load the data again.`;
 }
 
-/** The refusal of bytes past {@link maxArrowBytes}, which never leave the page. */
-function tooManyBytes(dataset: string, bytes: number): Error {
+/** The refusal of bytes past the byte limit, {@link maxArrowBytes} unless lifted, which never leave the page. */
+function tooManyBytes(dataset: string, bytes: number, limit = maxArrowBytes): Error {
   return new Error(
-    `${dataset} is ${String(bytes)} bytes of Arrow, more than the ${String(maxArrowBytes)} a table in the browser holds; have its API filter or aggregate the data to fit.`,
+    `${dataset} is ${String(bytes)} bytes of Arrow, more than the ${String(limit)} a table in the browser holds; have its API filter or aggregate the data to fit.`,
   );
 }
 
-export { exportTypes, maxArrowBytes, maxRows, maxXlsxCells, tooManyBytes, trapReason };
-export type { LoadOptions, Loaded };
+export {
+  exportTypes,
+  liftedLimitsKey,
+  loadLimits,
+  maxArrowBytes,
+  maxRows,
+  maxXlsxCells,
+  tooManyBytes,
+  trapReason,
+};
+export type { LoadLimits, LoadOptions, Loaded };

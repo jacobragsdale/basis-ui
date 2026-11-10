@@ -1,7 +1,13 @@
 {
   "extends": "../../../tsconfig.base.json",
   "compilerOptions": {
-    "types": ["node", "vite-plus/client"]
+    "types": ["node", "vite-plus/client"],
+    /* The scale harness, tests/perf/harness, runs the package's build, as an app does, but is checked against its
+     * source, as the demo is, so that `vp check` needs no build of the engine first. */
+    "paths": {
+      "@basis/parallax": ["../src/index.ts"],
+      "@basis/parallax/worker": ["../src/worker.ts"]
+    }
   },
   "include": [".", "../src"]
 }

@@ -302,7 +302,11 @@ impl Table {
         batches: &[RecordBatch],
         replace: bool,
     ) -> Result<(LoadReport, ChangeSet), LoadError> {
-        let (staged, nans_to_null) = self.stage(batches)?;
+        let (staged, nans_to_null) = {
+            let _phase = crate::profile::span("load: stage");
+            self.stage(batches)?
+        };
+        let _phase = crate::profile::span("load: append");
         let rows = staged.first().map_or(0, Column::len);
         let mut report = LoadReport {
             rows,

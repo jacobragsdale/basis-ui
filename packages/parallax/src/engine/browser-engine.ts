@@ -10,14 +10,7 @@
 import { Answers } from "./answers.ts";
 import type { Answered } from "./answers.ts";
 import { Connection } from "./connection.ts";
-import {
-  exportTypes,
-  maxArrowBytes,
-  maxRows,
-  maxXlsxCells,
-  tooManyBytes,
-  trapReason,
-} from "./limits.ts";
+import { exportTypes, loadLimits, maxXlsxCells, tooManyBytes, trapReason } from "./limits.ts";
 import type { LoadOptions, Loaded } from "./limits.ts";
 import type { ExportFormat, ToWorker } from "./messages.ts";
 import { arriving, listen } from "./port.ts";
@@ -73,8 +66,8 @@ class BrowserEngine {
    * call, so a view that opens before the bytes arrive waits for them, and a fetch that fails fails its views with the
    * reason.
    *
-   * Bytes past {@link maxArrowBytes} are refused before they leave the page, and the buffer stays the app's; a stream
-   * of more than {@link maxRows} rows is refused by the engine before it decodes any data. The stream's schema metadata
+   * Bytes past `maxArrowBytes` are refused before they leave the page, and the buffer stays the app's; a stream
+   * of more than `maxRows` rows is refused by the engine before it decodes any data. The stream's schema metadata
    * may carry the load's status, as `parallax.load`: when the source was read, and NaNs the API turned blank. A refused
    * reload leaves the dataset's previous rows in place.
    */
@@ -194,8 +187,9 @@ class BrowserEngine {
 
   /** Checks the bytes against the byte limit and moves them to the worker to load as `dataset`. */
   async #send(dataset: string, bytes: ArrayBuffer, options: LoadOptions): Promise<Loaded> {
-    if (bytes.byteLength > maxArrowBytes) {
-      throw tooManyBytes(dataset, bytes.byteLength);
+    const { maxArrowBytes: mostBytes, maxRows } = loadLimits();
+    if (bytes.byteLength > mostBytes) {
+      throw tooManyBytes(dataset, bytes.byteLength, mostBytes);
     }
     const answer = await this.#request(
       (id) => ({

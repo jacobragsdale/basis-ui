@@ -1948,6 +1948,7 @@ fn leaf_cells(
         table,
         passes,
     };
+    let aggregating = crate::profile::span("pivot: aggregate");
     // WebAssembly runs on one thread, so one pass over the rows does it.
     #[cfg(target_arch = "wasm32")]
     let maps = {
@@ -1969,6 +1970,8 @@ fn leaf_cells(
         }
     };
     let mut cells: Vec<(Box<[Key]>, Cell)> = maps.into_iter().flatten().collect();
+    drop(aggregating);
+    let _phase = crate::profile::span("pivot: leaf sort");
     let order = |a: &(Box<[Key]>, Cell), b: &(Box<[Key]>, Cell)| {
         a.0.iter().map(arrangement).cmp(b.0.iter().map(arrangement))
     };
@@ -2106,7 +2109,9 @@ impl Grouped {
         // levels that change from one leaf to the next need looking up.
         let mut path: Vec<u32> = vec![0];
         let mut previous: Option<Box<[Key]>> = None;
-        for (keys, cell) in leaf_cells(&self.measures, &columns, table, passes) {
+        let leaves = leaf_cells(&self.measures, &columns, table, passes);
+        let building = crate::profile::span("pivot: tree build");
+        for (keys, cell) in leaves {
             let (group, split) = keys.split_at(levels);
             let shared = previous.as_ref().map_or(0, |p| {
                 p.iter().zip(group).take_while(|(a, b)| a == b).count()
@@ -2129,6 +2134,8 @@ impl Grouped {
             }
             previous = Some(keys);
         }
+        drop(building);
+        let _phase = crate::profile::span("pivot: merge");
         // A child is always allocated after its parent, so going down the ids
         // reaches every child before its parent.
         let measures = &self.measures;

@@ -22,6 +22,7 @@ pub mod filter;
 pub mod format;
 pub mod indicator;
 pub mod order;
+pub mod profile;
 pub mod sifma;
 pub mod table;
 pub mod types;

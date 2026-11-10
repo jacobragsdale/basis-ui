@@ -520,7 +520,10 @@ flowchart TD
      compact, against 336 baselines, with axe on each, `axe-core` pinned with the maintainer's approval;
    - **6.2b** (`6.2b-scale-harness`): `vp run @basis/parallax#bench`, a harness that measures load, sort, filter,
      search, pivots and drawing at 150,000, 1,000,000 and 2,000,000 rows against budgets, with a phase profile of the
-     engine, written up in `docs/spikes/scale-1m.md`;
+     engine, written up in `docs/spikes/scale-1m.md`. Built on 2026-11-09: the harness runs the package's build with
+     its limits raised outside the API, plain and throttled, against host and nightly budgets, and the engine's
+     `profile` feature splits the load and the reference pivot into phases; today's figures agree with the review's
+     within the shared host's noise;
    - **6.2c** (`6.2c-bundles-and-motion`): `@basis/ui` that tree-shakes, `vp run budget` for each route's bundle, lazy
      routes, and motion that suits a desktop drawn on the CPU, with a `motion` preference beside mode and density.
      6.2c built on 2026-11-09: an app bundles only the components it imports, `vp run budget` holds each route to its
