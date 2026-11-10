@@ -19,6 +19,7 @@ import {
 import type { ReactElement } from "react";
 
 import { Section } from "#pages/section.tsx";
+import { focused } from "#pages/shot.ts";
 import { Demo } from "./demo.tsx";
 
 function InputSection(): ReactElement {
@@ -35,6 +36,10 @@ function InputSection(): ReactElement {
         <Demo label="with a value">
           <Label htmlFor="input-book">Book</Label>
           <Input id="input-book" defaultValue="RATES-NY" />
+        </Demo>
+        <Demo label="focused">
+          <Label htmlFor="input-focused">Counterparty</Label>
+          <Input id="input-focused" defaultValue="Northwind" {...focused} />
         </Demo>
         <Demo label="disabled">
           <Label htmlFor="input-desk">Desk</Label>
@@ -62,10 +67,14 @@ function InputSection(): ReactElement {
 function TextareaSection(): ReactElement {
   return (
     <Section title="Textarea" description="A multi-line text input that grows with its text.">
-      <div className="grid gap-6 sm:grid-cols-3">
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
         <Demo label="at rest">
           <Label htmlFor="textarea-notes">Notes</Label>
           <Textarea id="textarea-notes" placeholder="Context for the desk" />
+        </Demo>
+        <Demo label="focused">
+          <Label htmlFor="textarea-focused">Desk note</Label>
+          <Textarea id="textarea-focused" defaultValue="Hedge before the auction." {...focused} />
         </Demo>
         <Demo label="disabled">
           <Label htmlFor="textarea-locked">Approval note</Label>
@@ -115,9 +124,9 @@ function AddonGroups(): ReactElement {
           </InputGroupAddon>
         </InputGroup>
       </Demo>
-      <Demo label="button sizes: icon-xs, icon-sm">
+      <Demo label="button sizes: icon-xs, icon-sm; focused">
         <InputGroup>
-          <InputGroupInput aria-label="Account" defaultValue="ACCT-7731" />
+          <InputGroupInput aria-label="Account" defaultValue="ACCT-7731" {...focused} />
           <InputGroupAddon align="inline-end">
             <InputGroupButton size="icon-xs" aria-label="Copy account">
               <CopyIcon />

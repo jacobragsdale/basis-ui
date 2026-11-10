@@ -27,6 +27,7 @@ import { useState } from "react";
 import type { ReactElement } from "react";
 
 import { Section } from "#pages/section.tsx";
+import { usePictured } from "#pages/shot.ts";
 
 const position = [
   ["Security", "UST 4.25% 11/15/2034"],
@@ -38,7 +39,7 @@ const position = [
 /** A dialog that edits a position's target weight. */
 function DialogExample(): ReactElement {
   return (
-    <Dialog>
+    <Dialog defaultOpen={usePictured()}>
       <DialogTrigger render={<Button variant="outline" />}>Edit position</DialogTrigger>
       <DialogContent>
         <DialogHeader>
@@ -64,7 +65,7 @@ function DialogExample(): ReactElement {
 
 /** An alert dialog that confirms deleting a saved view. Its action closes it once it has run. */
 function AlertDialogExample(): ReactElement {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(usePictured());
   return (
     <AlertDialog open={open} onOpenChange={setOpen}>
       <AlertDialogTrigger render={<Button variant="destructive" />}>Delete view</AlertDialogTrigger>

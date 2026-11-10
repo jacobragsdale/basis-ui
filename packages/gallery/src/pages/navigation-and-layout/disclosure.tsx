@@ -14,6 +14,7 @@ import {
 import type { ReactElement } from "react";
 
 import { Section } from "#pages/section.tsx";
+import { usePictured } from "#pages/shot.ts";
 
 import { Demo } from "./demo.tsx";
 
@@ -23,18 +24,29 @@ const fills = [
   "11:15  2 million at 99-18",
 ];
 
+interface TradeAccordionProps {
+  readonly multiple?: boolean;
+  /** What the questions ask about, "it" unless set. Two accordions on one page ask about different things, so their
+   * sections, which are regions named by their headings, have names of their own. */
+  readonly subject?: string;
+}
+
 /** Three questions about a trade, the first open and the last disabled. */
-function TradeAccordion({ multiple = false }: { readonly multiple?: boolean }): ReactElement {
+function TradeAccordion({ multiple = false, subject = "it" }: TradeAccordionProps): ReactElement {
+  const accrued =
+    subject === "it"
+      ? "Who computes accrued interest?"
+      : `Who computes ${subject}'s accrued interest?`;
   return (
     <Accordion defaultValue={["settlement"]} multiple={multiple} className="max-w-md">
       <AccordionItem value="settlement">
-        <AccordionTrigger>When does it settle?</AccordionTrigger>
+        <AccordionTrigger>When does {subject} settle?</AccordionTrigger>
         <AccordionContent>
           <p>T+1 on SIFMA&apos;s calendar, so a Friday trade settles on Monday.</p>
         </AccordionContent>
       </AccordionItem>
       <AccordionItem value="accrued">
-        <AccordionTrigger>Who computes accrued interest?</AccordionTrigger>
+        <AccordionTrigger>{accrued}</AccordionTrigger>
         <AccordionContent>
           <p>
             The API, which holds the one day-count implementation.{" "}
@@ -43,7 +55,7 @@ function TradeAccordion({ multiple = false }: { readonly multiple?: boolean }): 
         </AccordionContent>
       </AccordionItem>
       <AccordionItem value="allocation" disabled>
-        <AccordionTrigger>How is it allocated?</AccordionTrigger>
+        <AccordionTrigger>How is {subject} allocated?</AccordionTrigger>
         <AccordionContent>
           <p>By the order&apos;s accounts, once it is filled.</p>
         </AccordionContent>
@@ -56,7 +68,7 @@ function TradeAccordion({ multiple = false }: { readonly multiple?: boolean }): 
 function FillsCollapsible(): ReactElement {
   const [first, ...rest] = fills;
   return (
-    <Collapsible className="w-80">
+    <Collapsible className="w-80" defaultOpen={usePictured()}>
       <div className="flex items-center justify-between gap-4">
         <p className="text-sm font-medium">Fills</p>
         <CollapsibleTrigger render={<Button variant="ghost" size="icon-sm" />}>
@@ -87,7 +99,7 @@ function AccordionSection(): ReactElement {
           <TradeAccordion />
         </Demo>
         <Demo label="multiple">
-          <TradeAccordion multiple />
+          <TradeAccordion multiple subject="the block trade" />
         </Demo>
       </div>
     </Section>

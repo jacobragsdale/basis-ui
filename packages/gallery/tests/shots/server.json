@@ -1,0 +1,4 @@
+{
+  "command": "vp preview --port 8797 --strictPort --host 127.0.0.1",
+  "url": "http://127.0.0.1:8797"
+}

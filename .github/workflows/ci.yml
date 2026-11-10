@@ -84,6 +84,8 @@ jobs:
       # preset's Playwright version pins.
       - run: vp exec --filter @basis/ui playwright install --with-deps chromium
       - run: vp run @basis/gallery#test
+      # The gallery's render matrix again, in a Node DOM, as on a machine with no browser.
+      - run: vp run @basis/gallery#test-node
       - run: vp run @basis/gallery#build
       # The example app proves the app shell: its client must match its openapi.json, and its tests run in Chromium.
       - run: vp run @basis/example#client-check
@@ -93,6 +95,27 @@ jobs:
       - run: vp run @basis/example#build
       # The consumer app is configured by hand with the README's lines, as ctzd writes its apps, and must build.
       - run: vp run @basis/consumer#build
+
+  # Every gallery section's screenshot, in light and dark, comfortable and compact, and its axe check, in the pinned
+  # Playwright image, against the gallery built here on @basis/ui's build. A change to either runs them.
+  gallery-shots:
+    name: ui / Gallery screenshots and axe (Playwright image)
+    needs: changes
+    if: needs.changes.outputs.ui == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: voidzero-dev/setup-vp@v1.22.0
+        with:
+          node-version-file: .node-version
+          cache: true
+      # Builds @basis/ui and the gallery, and runs every section's screenshot and axe check in the image.
+      - run: vp run @basis/gallery#shots
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: gallery-shots-results
+          path: packages/gallery/test-results/shots
 
   # @basis/parallax: the protocol's generated code, the engine built for the browser, the package built around it, and
   # its tests, in Node and in Chromium, then the demo's tests and build on it. It depends on @basis/ui, so it runs when

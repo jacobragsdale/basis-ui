@@ -23,6 +23,7 @@ import {
 import type { ReactElement } from "react";
 
 import { Section } from "#pages/section.tsx";
+import { usePictured } from "#pages/shot.ts";
 
 const sides = ["top", "right", "bottom", "left"] as const;
 
@@ -48,8 +49,9 @@ function TradeDetails(): ReactElement {
 
 /** A sheet of a trade's details from the edge `side` names. */
 function SheetExample({ side }: { readonly side: (typeof sides)[number] }): ReactElement {
+  const pictured = usePictured();
   return (
-    <Sheet>
+    <Sheet defaultOpen={pictured && side === "right"}>
       <SheetTrigger render={<Button variant="outline" />}>Trade details, {side}</SheetTrigger>
       <SheetContent side={side}>
         <SheetHeader>
@@ -71,8 +73,13 @@ function DrawerExample({
 }: {
   readonly direction?: "down" | "right";
 }): ReactElement {
+  const pictured = usePictured();
   return (
-    <Drawer swipeDirection={direction} showSwipeHandle={direction === "down"}>
+    <Drawer
+      swipeDirection={direction}
+      showSwipeHandle={direction === "down"}
+      defaultOpen={pictured && direction === "down"}
+    >
       <DrawerTrigger render={<Button variant="outline" />}>Drawer, {direction}</DrawerTrigger>
       <DrawerContent>
         <DrawerHeader>

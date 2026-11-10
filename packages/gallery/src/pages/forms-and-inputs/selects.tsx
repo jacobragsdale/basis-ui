@@ -20,6 +20,7 @@ import {
 import type { ReactElement } from "react";
 
 import { Section } from "#pages/section.tsx";
+import { usePictured } from "#pages/shot.ts";
 import { Demo } from "./demo.tsx";
 
 const tenors = [
@@ -52,6 +53,7 @@ function TenorItems(): ReactElement {
 
 /** Selects at both sizes, with a placeholder, a choice, and groups. */
 function SelectSizes(): ReactElement {
+  const pictured = usePictured();
   return (
     <>
       <Demo label="placeholder">
@@ -74,7 +76,7 @@ function SelectSizes(): ReactElement {
       </Demo>
       <Demo label="groups">
         <Label htmlFor="select-desk">Desk</Label>
-        <Select items={desks} defaultValue="ig">
+        <Select items={desks} defaultValue="ig" defaultOpen={pictured}>
           <SelectTrigger id="select-desk" className="w-48">
             <SelectValue />
           </SelectTrigger>

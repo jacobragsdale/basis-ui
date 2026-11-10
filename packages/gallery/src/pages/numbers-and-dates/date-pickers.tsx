@@ -13,6 +13,7 @@ import { nyse } from "@basis/ui/dates";
 import type { ReactElement } from "react";
 
 import { Section } from "#pages/section.tsx";
+import { openedByKeyboard } from "#pages/shot.ts";
 
 import { exampleToday } from "./example-today.ts";
 
@@ -23,7 +24,7 @@ function AsOfDatePickerSection(): ReactElement {
       description="An as-of date: typed, or picked from a month grid that marks closed days and early closes. It takes business days on its calendar, SIFMA's by default, and starts at the last business day before today."
     >
       <FieldGroup className="max-w-sm">
-        <Field>
+        <Field {...openedByKeyboard()}>
           <FieldLabel htmlFor="as-of-sifma">As of</FieldLabel>
           <AsOfDatePicker id="as-of-sifma" today={exampleToday} />
           <FieldDescription>
@@ -53,7 +54,7 @@ function DateRangePickerSection(): ReactElement {
       description="A range of business days, with presets for month, quarter and year to date and the period before, each ending on a business day."
     >
       <FieldGroup className="max-w-sm">
-        <Field>
+        <Field {...openedByKeyboard()}>
           <FieldLabel htmlFor="range-empty">Period</FieldLabel>
           <DateRangePicker id="range-empty" today={exampleToday} />
         </Field>

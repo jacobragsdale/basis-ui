@@ -20,6 +20,7 @@ import { useState } from "react";
 import type { ReactElement } from "react";
 
 import { Section } from "#pages/section.tsx";
+import { usePictured } from "#pages/shot.ts";
 
 const pages = ["Positions", "Trades", "Risk"] as const;
 
@@ -75,7 +76,7 @@ function CommandExample({ onRun }: CommandsProps): ReactElement {
 
 /** The command palette, which closes when a command runs. */
 function CommandDialogExample({ onRun }: CommandsProps): ReactElement {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(usePictured());
   function run(value: string): void {
     setOpen(false);
     onRun(value);

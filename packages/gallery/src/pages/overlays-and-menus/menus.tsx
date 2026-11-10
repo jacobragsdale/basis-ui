@@ -40,13 +40,14 @@ import {
 import type { ReactElement } from "react";
 
 import { Section } from "#pages/section.tsx";
+import { focused, openedByKeyboard, usePictured } from "#pages/shot.ts";
 
 /** The position's actions, with icons and shortcuts, and a submenu that moves it to another model. */
 function DropdownMenuActions(): ReactElement {
   return (
     <DropdownMenuGroup>
       <DropdownMenuLabel>Position</DropdownMenuLabel>
-      <DropdownMenuItem>
+      <DropdownMenuItem {...focused}>
         <PencilIcon />
         Edit
         <DropdownMenuShortcut>Ctrl+E</DropdownMenuShortcut>
@@ -92,7 +93,7 @@ function DropdownMenuOptions(): ReactElement {
 
 function DropdownMenuExample(): ReactElement {
   return (
-    <DropdownMenu>
+    <DropdownMenu defaultOpen={usePictured()}>
       <DropdownMenuTrigger render={<Button variant="outline" />}>
         Actions
         <ChevronDownIcon data-icon="inline-end" />
@@ -115,7 +116,7 @@ function DropdownMenuExample(): ReactElement {
 function ContextMenuExample(): ReactElement {
   return (
     <ContextMenu>
-      <ContextMenuTrigger className="block">
+      <ContextMenuTrigger className="block" {...openedByKeyboard("Shift+F10")}>
         <button
           type="button"
           className="flex h-24 w-full items-center justify-center rounded-lg border border-dashed text-sm text-muted-foreground"
@@ -131,7 +132,7 @@ function ContextMenuExample(): ReactElement {
             Copy
             <ContextMenuShortcut>Ctrl+C</ContextMenuShortcut>
           </ContextMenuItem>
-          <ContextMenuItem>
+          <ContextMenuItem {...focused}>
             <PencilIcon />
             Edit
           </ContextMenuItem>

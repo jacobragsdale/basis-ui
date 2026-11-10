@@ -1,8 +1,10 @@
-/* The gallery's pages, one per component family in the design's order, then the app shell's and the icons. A
- * family's agent owns its page and the page's test, so families built at once never edit the same file. */
+/* The gallery's pages, one per component family in the design's order, then the app shell's, the icons and the
+ * theme's tokens. A family's agent owns its page and the page's test, so families built at once never edit the same
+ * file. */
 
 import type { ReactElement } from "react";
 
+import type { PageId } from "./manifest.ts";
 import { AppInShell } from "./pages/app-in-shell.tsx";
 import { AppShell } from "./pages/app-shell.tsx";
 import { Data } from "./pages/data.tsx";
@@ -13,10 +15,11 @@ import { NavigationAndLayout } from "./pages/navigation-and-layout.tsx";
 import { NumbersAndDates } from "./pages/numbers-and-dates.tsx";
 import { OverlaysAndMenus } from "./pages/overlays-and-menus.tsx";
 import { SmallChartsAndStates } from "./pages/small-charts-and-states.tsx";
+import { Tokens } from "./pages/tokens.tsx";
 
 interface GalleryPage {
   /** The page's value in the `page` query parameter. */
-  readonly id: string;
+  readonly id: PageId;
   readonly title: string;
   readonly Content: () => ReactElement;
 }
@@ -36,6 +39,7 @@ const pages: readonly [GalleryPage, ...GalleryPage[]] = [
   { Content: AppShell, id: "app-shell", title: "App shell" },
   { Content: AppInShell, id: "app-in-shell", title: "An app in the shell" },
   { Content: Icons, id: "icons", title: "Icons" },
+  { Content: Tokens, id: "tokens", title: "Tokens" },
 ];
 
 /** The page a query asks for with `?page=`, or the first page. */
@@ -44,5 +48,10 @@ function pageFor(search: string): GalleryPage {
   return pages.find((page) => page.id === id) ?? pages[0];
 }
 
-export { pageFor, pages };
+/** The section a query shows alone with `?section=`, or `null` for the whole page. */
+function sectionFor(search: string): string | null {
+  return new URLSearchParams(search).get("section");
+}
+
+export { pageFor, pages, sectionFor };
 export type { GalleryPage };

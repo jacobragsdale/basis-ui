@@ -14,6 +14,7 @@ import {
 import type { ReactElement } from "react";
 
 import { Section } from "#pages/section.tsx";
+import { usePictured } from "#pages/shot.ts";
 
 const markets = [
   { description: "Treasuries, swaps and the curve", href: "#rates", title: "Rates" },
@@ -46,10 +47,11 @@ function MarketsMenu(): ReactElement {
 }
 
 function DeskNavigation(): ReactElement {
+  const pictured = usePictured();
   return (
-    <NavigationMenu aria-label="Desk">
+    <NavigationMenu aria-label="Desk" defaultValue={pictured ? "markets" : null}>
       <NavigationMenuList>
-        <NavigationMenuItem>
+        <NavigationMenuItem value="markets">
           <NavigationMenuTrigger>Markets</NavigationMenuTrigger>
           <NavigationMenuContent>
             <MarketsMenu />

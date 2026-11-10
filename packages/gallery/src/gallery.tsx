@@ -1,11 +1,13 @@
 /* The gallery's frame: links to each family's page and to each mode and density, and the current page. Every link is
  * a plain query, so a screenshot can open any page in any combination directly. The links are ButtonLinks, links drawn
- * as buttons. */
+ * as buttons. A query that names a section, as `&section=button` does, shows that section alone, with no frame, as its
+ * screenshot pictures it (pages/shot.ts). */
 
 import { ButtonLink } from "@basis/ui";
 import type { Density, ResolvedMode } from "@basis/ui";
 import type { ReactElement } from "react";
 
+import { ShownSection } from "./pages/shot.ts";
 import { pages } from "./pages.ts";
 import type { GalleryPage } from "./pages.ts";
 
@@ -15,6 +17,8 @@ interface GalleryProps {
   readonly search: string;
   readonly mode: ResolvedMode;
   readonly density: Density;
+  /** The section shown alone, or `null` for the whole page. */
+  readonly section?: string | null;
 }
 
 /** The query `search` with one parameter set. */
@@ -52,8 +56,30 @@ function Choice({ label, parameter, options, current, search }: ChoiceProps): Re
   );
 }
 
-function Gallery({ page, search, mode, density }: GalleryProps): ReactElement {
+/** One section of `page` alone, with no frame, as its screenshot shows it. */
+function SectionAlone({
+  page,
+  section,
+}: {
+  readonly page: GalleryPage;
+  readonly section: string;
+}): ReactElement {
   const { Content } = page;
+  return (
+    <ShownSection value={section}>
+      <main className="mx-auto flex max-w-6xl flex-col gap-8 p-6">
+        <h1 className="text-2xl font-semibold">{page.title}</h1>
+        <Content />
+      </main>
+    </ShownSection>
+  );
+}
+
+function Gallery({ page, search, mode, density, section = null }: GalleryProps): ReactElement {
+  const { Content } = page;
+  if (section !== null) {
+    return <SectionAlone page={page} section={section} />;
+  }
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-8 p-6">
       <header className="flex flex-col gap-4 border-b pb-4">

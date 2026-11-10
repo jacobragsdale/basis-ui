@@ -45,8 +45,8 @@ behaves alike, and a fix reaches all of them in one upgrade.
 | `vp run sync`, `vp run upgrade` | Rewrite the framework's files from the installed version; update `@basis/ui`, sync and check in one step                                                                 |
 | `vp run doctor`, `vp run docs`  | Check the desktop's setup and print the fix for each problem; print the docs for the installed version                                                                   |
 
-Screenshot comparison in `check-full` and screenshot diffs in `review` wait for baselines: the gallery's in roadmap
-step 6.2a, an app's in step 6.8.5.
+Screenshot comparison in `check-full` and screenshot diffs in `review` wait for an app's baselines, step 6.8.5; the
+gallery's exist, as [Components](#components) says.
 
 The `vp run` tasks come from `@basis/ui`'s preset, which an app's `vite.config.ts` spreads in, so every UI repo has the
 same ones. `check-full`'s `tsc --noEmit`, from the app's installed TypeScript, is what type-checks the generated client:
@@ -160,8 +160,7 @@ which variant, size or token to use instead, from the components and the theme t
 | `require-static-classes` | Classes built at run time, which no check can read                                                                                   |
 
 It is pinned to an exact version, since it is at 0.2 and Oxlint still calls its JS plugins alpha. If it breaks, its
-rules are turned off until it is fixed, and the gallery's screenshot tests catch what they would have, once step 6.2a
-builds them (not yet).
+rules are turned off until it is fixed, and the gallery's screenshots catch what they would have.
 
 ## The stack
 
@@ -247,10 +246,18 @@ The firm's own components cover what shadcn does not:
 - **Small charts.** `Sparkline` and an in-cell bar, drawn as SVG, for KPI cards and table cells, which are too small to
   load parallax for.
 
-A gallery in this repo shows every component in both modes and both densities. Its screenshots are to be the
-components' visual tests, and every screenshot, in the gallery or through `vp run shot` in an app, is to run an axe
-accessibility check that a violation fails. Neither is built yet: no gallery screenshot has a baseline, and no axe check
-runs (steps 6.2a and 6.8.5, the axe check waiting for the maintainer to approve `axe-core`).
+A gallery in this repo shows every component in both modes and both densities, and a page of the theme's tokens read
+from the generated stylesheet: each colour with its contrast against the surfaces it sits on, the type scale, the
+radii, the shadows, the motion and the chart palettes. Its screenshots are the components' visual tests. `vp run
+@basis/gallery#shots` opens each section alone, its menus, dialogs, popovers, tooltips and toasts open and its hovered,
+focused and pressed examples forced through Chromium's DevTools protocol, so no pointer moves, and compares a
+screenshot of it in light and dark, comfortable and compact, with its baseline pixel for pixel, in the pinned Playwright
+image; CI runs it when `@basis/ui` or the gallery changes. A screenshot is named by its section, so a diff names the
+component. Every shot runs an axe accessibility check, WCAG 2.2's levels A and AA and axe's best practices, that a
+violation fails, naming the section, the rule and the element; a rule off for a section is listed with its reason
+beside the spec. The maintainer approved `axe-core` for it on 2026-11-09. A render matrix renders every section, on its
+page and alone, in Chromium and in a Node DOM, in both modes and densities, with no console error. Not yet: `vp run
+shot` in an app runs no axe check (step 6.8.5).
 
 ## The theme
 
@@ -321,8 +328,7 @@ ring as drawn, and every pair of chart colours (not yet):
 - `chart-1` to `chart-8` stay distinct under simulated protanopia, deuteranopia and tritanopia;
 - `gain` and `loss` differ in lightness;
 - in the compact density, controls stay at least 24 pixels tall, WCAG 2.2's minimum target size;
-- the gallery's screenshots, in every theme, light and dark, comfortable and compact, match their baselines. Not yet:
-  no baseline exists outside parallax (step 6.2a).
+- the gallery's screenshots, in every theme, light and dark, comfortable and compact, match their baselines.
 
 Apps' routes are screenshotted in light and dark, at the compact density, with `vp run shot`; comparing them with
 baselines is step 6.8.5 (not yet).
@@ -482,7 +488,7 @@ Screenshots differ between operating systems, as Playwright's docs warn, and the
 image in. So visual baselines are made and compared only in WSL, with the Chromium build Playwright pins and the fonts
 `@basis/ui` bundles, and on Windows `vp run check-full` says it skipped the comparison and to run it in WSL. An agent on
 Windows still takes screenshots to look at. Not yet: an app has no baselines and `check-full` compares none (step
-6.8.5); this repo's gallery gets its baselines in step 6.2a, made in the pinned Playwright image as parallax's are.
+6.8.5). This repo's gallery has its baselines, made and compared in the pinned Playwright image as parallax's are.
 
 ## Serving the build
 

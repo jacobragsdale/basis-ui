@@ -24,6 +24,7 @@ import {
 import type { ReactElement } from "react";
 
 import { Section } from "#pages/section.tsx";
+import { usePictured } from "#pages/shot.ts";
 import { Demo } from "./demo.tsx";
 
 const issuers = [
@@ -89,6 +90,7 @@ function IssuerChips(): ReactElement {
 
 /** Single comboboxes at rest, chosen with a clear button, and in groups. */
 function SingleComboboxes(): ReactElement {
+  const pictured = usePictured();
   return (
     <>
       <Demo label="at rest">
@@ -107,7 +109,7 @@ function SingleComboboxes(): ReactElement {
       </Demo>
       <Demo label="groups">
         <Label htmlFor="combobox-sector">Sector</Label>
-        <Combobox items={sectors}>
+        <Combobox items={sectors} defaultOpen={pictured}>
           <ComboboxInput id="combobox-sector" placeholder="Search sectors" />
           <ComboboxContent>
             <ComboboxEmpty>No sector matches.</ComboboxEmpty>

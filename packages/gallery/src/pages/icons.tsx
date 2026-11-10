@@ -74,6 +74,8 @@ import {
 } from "@basis/ui";
 import type { ReactElement } from "react";
 
+import { Section } from "./section.tsx";
+
 // Each icon by its current lucide name, which the shorthand keeps through minification.
 const icons = {
   ArrowDownIcon,
@@ -149,11 +151,10 @@ const icons = {
 
 function Icons(): ReactElement {
   return (
-    <div className="flex flex-col gap-4">
-      <p className="text-sm text-muted-foreground">
-        lucide&apos;s icons, copied in. Each is also exported under lucide&apos;s older names, such
-        as AlertTriangleIcon for TriangleExclamationPointIcon.
-      </p>
+    <Section
+      title="Icons"
+      description="lucide's icons, copied in. Each is also exported under lucide's older names, such as AlertTriangleIcon for TriangleExclamationPointIcon."
+    >
       <ul className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-6">
         {Object.entries(icons).map(([name, Glyph]) => (
           <li
@@ -165,7 +166,7 @@ function Icons(): ReactElement {
           </li>
         ))}
       </ul>
-    </div>
+    </Section>
   );
 }
 

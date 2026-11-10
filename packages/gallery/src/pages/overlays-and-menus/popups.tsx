@@ -24,11 +24,12 @@ import {
 import type { ReactElement } from "react";
 
 import { Section } from "#pages/section.tsx";
+import { usePictured } from "#pages/shot.ts";
 
 /** A popover of filters, which moves focus into itself. */
 function PopoverExample(): ReactElement {
   return (
-    <Popover>
+    <Popover defaultOpen={usePictured()}>
       <PopoverTrigger render={<Button variant="outline" />}>Filters</PopoverTrigger>
       <PopoverContent>
         <PopoverHeader>
@@ -55,7 +56,7 @@ const bond = [
 /** A link to a bond, previewed by a hover card while the pointer rests on it or it has focus. */
 function HoverCardExample(): ReactElement {
   return (
-    <HoverCard>
+    <HoverCard defaultOpen={usePictured()}>
       <HoverCardTrigger render={<ButtonLink variant="link" href="#hover-card" />}>
         UST 4.25% 2034
       </HoverCardTrigger>
@@ -82,11 +83,12 @@ const tools = [
 
 /** A toolbar of icon buttons, each named by its `aria-label` and labelled on sight by its tooltip. */
 function TooltipExample(): ReactElement {
+  const pictured = usePictured();
   return (
     <TooltipProvider>
       <div className="flex gap-1">
         {tools.map(([name, Icon]) => (
-          <Tooltip key={name}>
+          <Tooltip key={name} defaultOpen={pictured && name === "Refresh"}>
             <TooltipTrigger render={<Button variant="ghost" size="icon" aria-label={name} />}>
               <Icon />
             </TooltipTrigger>

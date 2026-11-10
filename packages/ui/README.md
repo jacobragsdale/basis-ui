@@ -1119,6 +1119,10 @@ parseSecurityIdentifier("91282CRF1", ["cusip"]); // { ok: false, reason: '"91282
    test file: its role and accessible name, its variants, and, for a control, its 24 px target in the compact density.
    Leave no popup open on the page: an open Base UI Select or Combobox hides the rest of the page from assistive
    technology, and an open Select takes the focus, so the page would load scrolled to it. The tests open them instead.
+   The screenshots open them: give an overlay `defaultOpen={usePictured()}`, true when the page shows its section
+   alone, and spread `hovered`, `focused` or `pressed` from `pages/shot.ts` onto an example of that state. Then run `vp
+   run @basis/gallery#shots --update`, look at the section's new screenshots, and commit them; `vp run
+   @basis/gallery#shots` compares every section's with them, in both modes and densities, and runs axe on it.
 8. Give each exported component a doc comment saying what it is for, and give the family's main component an
    `@example`: a module that imports from `@basis/ui` and ends in the component's JSX, with `//` comments only, since
    `*/` would end the doc comment. Then run `vp run @basis/ui#catalogue` and commit `catalogue.json`.

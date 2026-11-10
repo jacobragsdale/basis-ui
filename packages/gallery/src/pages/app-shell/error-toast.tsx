@@ -1,13 +1,30 @@
 /* The error toast on the app shell page: what BasisApp raises for a failed mutation, here raised by hand. */
 
-import { Button, Toaster, toastError } from "@basis/ui";
+import { Button, Toaster, toast, toastError } from "@basis/ui";
+import { useEffect } from "react";
 import type { ReactElement } from "react";
 
 import { Section } from "#pages/section.tsx";
+import { usePictured } from "#pages/shot.ts";
 
 import { invalidOrder, unreachable } from "./failures.ts";
 
+/** Raises the refused order's toast while the section is shown alone, so its screenshot pictures it; closes it when
+ * it unmounts. */
+function usePicturedToast(): void {
+  const pictured = usePictured();
+  useEffect(() => {
+    const ids = pictured ? [toastError(invalidOrder)] : [];
+    return (): void => {
+      for (const id of ids) {
+        toast.close(id);
+      }
+    };
+  }, [pictured]);
+}
+
 function ErrorToastSection(): ReactElement {
+  usePicturedToast();
   return (
     <Section
       title="Error toast"

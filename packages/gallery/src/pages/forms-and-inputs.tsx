@@ -2,7 +2,7 @@
  * it in, and ButtonLink, a link drawn as a Button, here; every other component in its section's module under
  * forms-and-inputs/, each in every variant, size and state; and a form on TanStack Form. */
 
-import { ArrowRightIcon, Button, ButtonLink, DownloadIcon, PlusIcon } from "@basis/ui";
+import { ArrowRightIcon, Button, ButtonLink, DownloadIcon, PlusIcon, Spinner } from "@basis/ui";
 import type { ReactElement } from "react";
 
 import { ButtonGroupSection } from "./forms-and-inputs/button-group.tsx";
@@ -15,6 +15,7 @@ import { NativeSelectSection, SelectSection } from "./forms-and-inputs/selects.t
 import { SliderSection } from "./forms-and-inputs/slider.tsx";
 import { ToggleGroupSection, ToggleSection } from "./forms-and-inputs/toggles.tsx";
 import { Section } from "./section.tsx";
+import { focused, hovered, pressed } from "./shot.ts";
 
 const variants = ["default", "secondary", "outline", "ghost", "destructive", "link"] as const;
 const textSizes = ["xs", "sm", "default", "lg"] as const;
@@ -65,7 +66,8 @@ function ButtonMatrix(): ReactElement {
   );
 }
 
-/** Icons at either end, disabled and invalid. */
+/** Icons at either end; hovered, focused and pressed, as the screenshots picture them; disabled, invalid and
+ * loading. */
 function ButtonStates(): ReactElement {
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -77,9 +79,22 @@ function ButtonStates(): ReactElement {
         Next
         <ArrowRightIcon data-icon="inline-end" />
       </Button>
+      <Button {...hovered}>Hovered</Button>
+      <Button variant="outline" {...hovered}>
+        Hovered
+      </Button>
+      <Button {...focused}>Focused</Button>
+      <Button variant="outline" {...focused}>
+        Focused
+      </Button>
+      <Button {...pressed}>Pressed</Button>
       <Button disabled>Disabled</Button>
       <Button variant="outline" aria-invalid>
         Invalid
+      </Button>
+      <Button disabled aria-busy>
+        <Spinner data-icon="inline-start" />
+        Saving
       </Button>
     </div>
   );
@@ -113,6 +128,15 @@ function ButtonLinkSection(): ReactElement {
         <ButtonLink href="#button" variant="outline">
           View trades
           <ArrowRightIcon data-icon="inline-end" />
+        </ButtonLink>
+        <ButtonLink href="#button" variant="outline" {...hovered}>
+          Hovered
+        </ButtonLink>
+        <ButtonLink href="#button" variant="link" {...hovered}>
+          Hovered link
+        </ButtonLink>
+        <ButtonLink href="#button" variant="outline" {...focused}>
+          Focused
         </ButtonLink>
       </div>
     </Section>

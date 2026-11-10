@@ -9,7 +9,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
 import { Gallery } from "./gallery.tsx";
-import { pageFor } from "./pages.ts";
+import { pageFor, sectionFor } from "./pages.ts";
 import { queryPreferences } from "./preferences.ts";
 
 const { search } = globalThis.location;
@@ -31,6 +31,7 @@ createRoot(root).render(
   <StrictMode>
     <Gallery
       page={pageFor(search)}
+      section={sectionFor(search)}
       search={search}
       mode={resolveMode(shown.mode, systemDark)}
       density={shown.density}

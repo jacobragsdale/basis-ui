@@ -14,7 +14,35 @@ import {
 import type { ReactElement } from "react";
 
 import { Section } from "#pages/section.tsx";
+import { focused } from "#pages/shot.ts";
 import { Demo } from "./demo.tsx";
+
+/** Checkboxes disabled, unticked and ticked, and invalid with the error in words. */
+function CheckboxStates(): ReactElement {
+  return (
+    <>
+      <Demo label="disabled">
+        <Field orientation="horizontal">
+          <Checkbox id="checkbox-disabled" disabled />
+          <FieldLabel htmlFor="checkbox-disabled">Short sales</FieldLabel>
+        </Field>
+      </Demo>
+      <Demo label="disabled, checked">
+        <Field orientation="horizontal">
+          <Checkbox id="checkbox-disabled-checked" disabled defaultChecked />
+          <FieldLabel htmlFor="checkbox-disabled-checked">Best execution</FieldLabel>
+        </Field>
+      </Demo>
+      <Demo label="invalid">
+        <Field orientation="horizontal" data-invalid>
+          <Checkbox id="checkbox-invalid" aria-invalid aria-describedby="checkbox-invalid-error" />
+          <FieldLabel htmlFor="checkbox-invalid">I have read the term sheet</FieldLabel>
+        </Field>
+        <FieldError id="checkbox-invalid-error">Confirm the term sheet to continue.</FieldError>
+      </Demo>
+    </>
+  );
+}
 
 function CheckboxSection(): ReactElement {
   return (
@@ -35,29 +63,13 @@ function CheckboxSection(): ReactElement {
             <FieldLabel htmlFor="checkbox-checked">Net by counterparty</FieldLabel>
           </Field>
         </Demo>
-        <Demo label="disabled">
+        <Demo label="focused">
           <Field orientation="horizontal">
-            <Checkbox id="checkbox-disabled" disabled />
-            <FieldLabel htmlFor="checkbox-disabled">Short sales</FieldLabel>
+            <Checkbox id="checkbox-focused" defaultChecked {...focused} />
+            <FieldLabel htmlFor="checkbox-focused">Show accrued</FieldLabel>
           </Field>
         </Demo>
-        <Demo label="disabled, checked">
-          <Field orientation="horizontal">
-            <Checkbox id="checkbox-disabled-checked" disabled defaultChecked />
-            <FieldLabel htmlFor="checkbox-disabled-checked">Best execution</FieldLabel>
-          </Field>
-        </Demo>
-        <Demo label="invalid">
-          <Field orientation="horizontal" data-invalid>
-            <Checkbox
-              id="checkbox-invalid"
-              aria-invalid
-              aria-describedby="checkbox-invalid-error"
-            />
-            <FieldLabel htmlFor="checkbox-invalid">I have read the term sheet</FieldLabel>
-          </Field>
-          <FieldError id="checkbox-invalid-error">Confirm the term sheet to continue.</FieldError>
-        </Demo>
+        <CheckboxStates />
       </div>
     </Section>
   );
@@ -67,7 +79,7 @@ function CheckboxSection(): ReactElement {
 function RadioGroups(): ReactElement {
   return (
     <>
-      <Demo label="one chosen, one disabled">
+      <Demo label="one chosen and focused, one disabled">
         <RadioGroup defaultValue="t1" aria-labelledby="radio-settlement-label">
           <Label id="radio-settlement-label">Settlement</Label>
           <Field orientation="horizontal">
@@ -75,7 +87,7 @@ function RadioGroups(): ReactElement {
             <FieldLabel htmlFor="radio-t0">Same day</FieldLabel>
           </Field>
           <Field orientation="horizontal">
-            <RadioGroupItem value="t1" id="radio-t1" />
+            <RadioGroupItem value="t1" id="radio-t1" {...focused} />
             <FieldLabel htmlFor="radio-t1">T+1</FieldLabel>
           </Field>
           <Field orientation="horizontal" data-disabled="true">
@@ -133,6 +145,27 @@ function RadioGroupSection(): ReactElement {
   );
 }
 
+/** A switch disabled, and one invalid with the error in words. */
+function SwitchStates(): ReactElement {
+  return (
+    <>
+      <Demo label="disabled">
+        <Field orientation="horizontal">
+          <Switch id="switch-disabled" disabled defaultChecked />
+          <FieldLabel htmlFor="switch-disabled">Auto-hedge</FieldLabel>
+        </Field>
+      </Demo>
+      <Demo label="invalid">
+        <Field orientation="horizontal" data-invalid>
+          <Switch id="switch-invalid" aria-invalid aria-describedby="switch-invalid-error" />
+          <FieldLabel htmlFor="switch-invalid">Accept the risk limits</FieldLabel>
+        </Field>
+        <FieldError id="switch-invalid-error">Accept the limits to trade.</FieldError>
+      </Demo>
+    </>
+  );
+}
+
 function SwitchSection(): ReactElement {
   return (
     <Section
@@ -162,19 +195,13 @@ function SwitchSection(): ReactElement {
             <FieldLabel htmlFor="switch-sm-on">Totals row</FieldLabel>
           </Field>
         </Demo>
-        <Demo label="disabled">
+        <Demo label="focused">
           <Field orientation="horizontal">
-            <Switch id="switch-disabled" disabled defaultChecked />
-            <FieldLabel htmlFor="switch-disabled">Auto-hedge</FieldLabel>
+            <Switch id="switch-focused" defaultChecked {...focused} />
+            <FieldLabel htmlFor="switch-focused">Live P&amp;L</FieldLabel>
           </Field>
         </Demo>
-        <Demo label="invalid">
-          <Field orientation="horizontal" data-invalid>
-            <Switch id="switch-invalid" aria-invalid aria-describedby="switch-invalid-error" />
-            <FieldLabel htmlFor="switch-invalid">Accept the risk limits</FieldLabel>
-          </Field>
-          <FieldError id="switch-invalid-error">Accept the limits to trade.</FieldError>
-        </Demo>
+        <SwitchStates />
       </div>
     </Section>
   );

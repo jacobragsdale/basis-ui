@@ -13,6 +13,7 @@ import {
 import type { ReactElement } from "react";
 
 import { Section } from "#pages/section.tsx";
+import { focused, hovered } from "#pages/shot.ts";
 import { Demo } from "./demo.tsx";
 
 const variants = ["default", "outline"] as const;
@@ -39,6 +40,12 @@ function ToggleSection(): ReactElement {
                 Watched
               </Toggle>
             ))}
+            <Toggle variant={variant} {...hovered}>
+              Hovered
+            </Toggle>
+            <Toggle variant={variant} {...focused}>
+              Focused
+            </Toggle>
             <Toggle variant={variant} disabled>
               Locked
             </Toggle>

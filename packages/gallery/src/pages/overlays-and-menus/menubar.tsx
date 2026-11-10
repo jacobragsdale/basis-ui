@@ -20,10 +20,11 @@ import {
 import type { ReactElement } from "react";
 
 import { Section } from "#pages/section.tsx";
+import { usePictured } from "#pages/shot.ts";
 
 function FileMenu(): ReactElement {
   return (
-    <MenubarMenu>
+    <MenubarMenu defaultOpen={usePictured()}>
       <MenubarTrigger>File</MenubarTrigger>
       <MenubarContent>
         <MenubarItem>

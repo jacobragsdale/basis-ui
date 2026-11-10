@@ -3,9 +3,11 @@
  * itself, so the gallery's other pages carry none. */
 
 import { Button, Toaster, toast } from "@basis/ui";
+import { useEffect } from "react";
 import type { ReactElement } from "react";
 
 import { Section } from "#pages/section.tsx";
+import { usePictured } from "#pages/shot.ts";
 
 type ToastOptions = Parameters<typeof toast.add>[0];
 
@@ -81,7 +83,24 @@ function raisePromiseToast(): void {
     });
 }
 
+/** Raises every example, kept until closed, while the section is shown alone, so its screenshot pictures the stack;
+ * closes them when it unmounts. */
+function usePicturedToasts(): void {
+  const pictured = usePictured();
+  useEffect(() => {
+    const ids = pictured
+      ? examples.map(([, options]) => toast.add({ ...options, timeout: 0 }))
+      : [];
+    return (): void => {
+      for (const id of ids) {
+        toast.close(id);
+      }
+    };
+  }, [pictured]);
+}
+
 function ToastSection(): ReactElement {
+  usePicturedToasts();
   return (
     <Section
       title="Toast"

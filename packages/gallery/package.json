@@ -2,7 +2,7 @@
   "name": "@basis/gallery",
   "version": "0.0.0",
   "private": true,
-  "description": "Every @basis/ui component, in both modes and both densities. Its screenshots are the components' visual tests.",
+  "description": "Every @basis/ui component, in both modes and both densities, and the theme's tokens. Its screenshots and axe check are the components' visual and accessibility tests.",
   "license": "MIT",
   "type": "module",
   "imports": {
@@ -22,8 +22,11 @@
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@playwright/test": "catalog:",
+    "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
+    "axe-core": "catalog:",
     "typescript": "catalog:",
     "vite-plus": "catalog:",
     "vitest-browser-react": "catalog:"

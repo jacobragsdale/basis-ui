@@ -48,7 +48,8 @@ engine for the browser, which needs the Rust toolchain and the `wasm-bindgen` co
 Vite+ replays that build from its cache until the Rust changes, and the first one in a fresh clone takes minutes. Its
 charts' end-to-end specs and screenshots run with `vp run @basis/parallax#charts-e2e`, its grid's with
 `vp run @basis/parallax#grid-e2e`, and its pivot's with `vp run @basis/parallax#pivot-e2e`, in Docker, as its
-`CONTRIBUTING.md` says. The demo runs the package's build, as an app does: its datasets come from
+`CONTRIBUTING.md` says. The gallery's screenshots and axe check run in the same Docker image with `vp run
+@basis/gallery#shots`, and `--update` records them again. The demo runs the package's build, as an app does: its datasets come from
 `vp run @basis/parallax-demo#data`, and its end-to-end specs and screenshots from `vp run @basis/parallax-demo#e2e`.
 
 Parallax's Rust keeps its own checks, and the root checks skip it. Its `CONTRIBUTING.md` has them; in short:

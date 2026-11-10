@@ -124,7 +124,7 @@ second consumer on 2026-11-07: 1.12 and 1.13 wait on basis's contract, and 1.14 
    densities and the axe check. Then shadcn's components on Base UI, one family per agent at once (forms and inputs,
    overlays and menus, navigation and layout, feedback and display), each with its `no-restyle` contract and its gallery
    page. They set the patterns the library port follows. Needs 1.2. The gallery is built in both modes and densities;
-   its screenshots' baselines and the axe check are not yet, and come in step 6.2a.
+   its screenshots' baselines and the axe check came in step 6.2a.
 5. **1.5 Fixture mode.** Fixture mode answers from the records in `.fixtures/`, then the synthetic responses in
    `fixtures/`, then orval's MSW handlers. Records and fixtures share basis-ui's record format, which `@basis/ui` ships
    as a JSON Schema for basis's `basis records export` (its step 4.2) to write. `vp dev` starts the app on fixtures on
@@ -514,8 +514,10 @@ flowchart TD
    and labels read the theme's OKLCH colours.
 2. **6.2 Gates that see.** Three branches at once, so that every later step is judged by them:
    - **6.2a** (`6.2a-gallery-shots`): a screenshot of each gallery section in every theme, mode and density, compared
-     with baselines in the pinned Playwright image by `vp run @basis/gallery#shots`, an axe check on each, which waits
-     for the maintainer to approve `axe-core`, a render matrix test, and a gallery page of the tokens;
+     with baselines in the pinned Playwright image by `vp run @basis/gallery#shots`, an axe check on each, a render
+     matrix test, and a gallery page of the tokens. Built on 2026-11-09: each of the gallery's 84 sections is shot
+     alone, its overlays open and its hovered, focused and pressed examples forced, in light and dark, comfortable and
+     compact, against 336 baselines, with axe on each, `axe-core` pinned with the maintainer's approval;
    - **6.2b** (`6.2b-scale-harness`): `vp run @basis/parallax#bench`, a harness that measures load, sort, filter,
      search, pivots and drawing at 150,000, 1,000,000 and 2,000,000 rows against budgets, with a phase profile of the
      engine, written up in `docs/spikes/scale-1m.md`;
