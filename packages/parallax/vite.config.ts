@@ -20,7 +20,7 @@ const rust = [
 const browserTest = await basisTest();
 
 /**
- * The canvas's device-pixel tests again at the ratios of a Windows desktop scaled to 125 % and 150 %, as the firm's
+ * The canvas's device-pixel tests, and the scroll's copy that needs whole device pixels, again at the ratios of a Windows desktop scaled to 125 % and 150 %, as the firm's
  * Citrix desktops are. Chromium starts at the ratio: emulating one, as Playwright's `deviceScaleFactor` or CDP's
  * `Emulation.setDeviceMetricsOverride` does alone, changes `devicePixelRatio` but not the device pixels a box covers,
  * so `devicePixelContentBoxSize` still reports CSS pixels. The context's `deviceScaleFactor` is set to the same ratio,
@@ -40,7 +40,7 @@ const scaledTests = [windows125, windows150].map((ratio) => ({
         launchOptions: { args: [`--force-device-scale-factor=${String(ratio)}`] },
       }),
     },
-    include: ["tests/browser/device-pixels.test.tsx"],
+    include: ["tests/browser/device-pixels.test.tsx", "tests/browser/scroll-copy.test.ts"],
     name: `browser at ${String(ratio)}`,
   },
 }));

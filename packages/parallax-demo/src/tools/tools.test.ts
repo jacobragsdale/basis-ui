@@ -10,11 +10,13 @@ import { settingsCss, settingsTypescript, withSetting } from "./studio-settings.
 const stats = (frames: number, drawMs: number): DrawStats => ({
   cellDraws: 0,
   changes: [],
+  copies: 0,
   drawMs,
   firstRows: null,
   frames,
   fullDraws: 0,
   latencyMs: [],
+  paintedPx: 0,
 });
 
 describe("the performance overlay's figures", () => {

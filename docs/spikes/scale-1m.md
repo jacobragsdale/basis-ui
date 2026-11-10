@@ -15,7 +15,8 @@ at real ones, as [its section](#step-643-one-draw-per-frame) says. Step 6.3.2 ma
 section](#step-632-a-progressive-load) says. Step 6.3.3 sorted on integer keys and kept each order: a first sort of
 a text or decimal column of 1,000,000 trades takes 73 to 130 ms throttled, from 2.1 to 2.2 s, and its toggle 39 to 49 ms, from 1.3 to 2.1 s, while a
 filter under a sort, 98 to 119 ms, misses its 50 ms target by the filter's own cost, as [its
-section](#step-633-sorts-on-keys) says.
+section](#step-633-sorts-on-keys) says. Step 6.4.4 made a scroll copy the pixels that stay, so scrolling 1,000,000 trades repaints 9 % of the
+canvas a frame, from all of it, as [its section](#step-644-a-scroll-that-moves-pixels) says.
 
 ## Versions
 
@@ -66,6 +67,11 @@ How each figure is taken:
   scrolled 240 animation frames of 3 rows, as the grid's performance spec scrolls. The page loads again in a context of
   its own at each ratio, which adds two samples of the load. Since step 6.4.3 each ratio has a browser started at it,
   as [its section](#step-643-one-draw-per-frame) says; before, a context emulated it.
+- **Area repainted per frame**, since step 6.4.4, is the grid's own count of the device pixels it repainted,
+  `drawStats().paintedPx`, over the frames it drew in the same scroll; for a build without the count, each full
+  redraw's whole canvas. **Main thread per frame** is DevTools' `TaskDuration` over the scroll, through a CDP
+  session, for the frames drawn: it counts the canvas's raster, which a canvas without a GPU does on the main thread
+  after the painter's calls, and which the drawing counter does not.
 - Each figure is the median of its samples: three rounds of changes, three loads, one at each ratio, and three scrolls
   at each ratio. A single scroll proved too noisy to budget: one throttled scroll of 150,000 positions drew at 6.0 ms
   a frame at ratio 1, and the next at 1.9 ms.
@@ -450,3 +456,39 @@ order costs a few milliseconds; the rest is the filter itself, which alone takes
 for each row and tested, and which step 6.3.4's typed filters are for. WebAssembly's peak rises by 4 to 8 MB, the kept
 orders and the sort's scratch. The host budgets for these runs' sorts, toggles and filter under a sort are now twice
 the slowest time or 20 ms more, whichever is greater.
+
+## Step 6.4.4: a scroll that moves pixels
+
+Step 6.4.4 made a scroll by rows, or across, copy the pixels that stay and paint only the band or strip it exposed,
+and measured trades at 1,000,000 rows with this harness before and after, on 2026-11-10 (`--datasets trades --sizes
+1000000`, three rounds), three runs of each, before and after alternating, at load averages of 1.3 to 9.1; each
+figure is the median of nine scrolls. Before is `main` at `2b75cab` with this step's harness. What changed:
+
+- A scroll by rows copies the body's band, between the header and the totals row, by those rows; a scroll across
+  copies the scrolling columns, header and totals with them, by the distance. The copy goes to a scratch canvas and
+  back, in whole device pixels, then the rows or strip exposed are painted under a clip to them, and the cells beside
+  it whose text or rows changed. Anything that is not a pure scroll, a distance that is not whole device pixels, one
+  as large as the area, and a scroll to or from the left edge where the pinned columns' edge shows, paint everything.
+- The grid counts the device pixels it repaints and the copies it makes, in `drawStats()`, and the bench reads them,
+  and the main thread's busy time.
+
+| Trades at 1,000,000 rows, 3 rows a frame | Before, 1, 1.25 and 1.5         | After, 1, 1.25 and 1.5   |
+| ---------------------------------------- | ------------------------------- | ------------------------ |
+| Area repainted per frame, device pixels  | 1,081,338, 1,691,245, 2,437,284 | 98,928, 153,886, 225,145 |
+| The same, of the canvas                  | 100 %                           | 9.1 to 9.2 %             |
+| Drawing per frame, throttled             | 1.80, 2.31 and 2.84 ms          | 1.81, 1.94 and 3.11 ms   |
+| Main thread per frame, throttled         | 4.52, 6.15 and 8.52 ms          | 3.94, 5.24 and 7.93 ms   |
+| Drawing per frame, plain                 | 1.47, 1.53 and 1.54 ms          | 1.15, 1.41 and 1.62 ms   |
+| Main thread per frame, plain             | 3.11, 3.56 and 4.11 ms          | 2.39, 3.01 and 3.62 ms   |
+| 95th-percentile frame, throttled         | 17 ms at each                   | 17 ms at each            |
+
+The area falls elevenfold: three rows of the thirty-three in view. The time falls less, because copying is not free.
+The drawing counter times the painter's calls, and a canvas drawn without a GPU is rasterized later, on the main thread,
+so the main thread's busy time is the figure that counts the copy. A first build drew the canvas onto itself: its
+drawing counter read 1.5, 1.3 and 1.8 ms throttled, but in a page of its own, at 1.5, a copy of the canvas onto itself
+and three rows took 2.5 ms against 1.1 ms for painting a simple grid whole, since Chromium snapshots the whole canvas
+and copies it again before the next drawing; through a scratch canvas the copy and three rows took 1.15 ms, so the
+painter copies through one. What is left of the time is the copy, which moves every pixel that stays, out and back:
+about 1 ms a frame at 1.5 on the build host. Every ratio is within the throttled drawing target of 8 ms, before and
+after. Whether a remote desktop sends a copied scroll as less than a repainted one is step 6.10's to measure: every
+pixel of the body changes on screen either way, and the area here is what the browser rasterizes.

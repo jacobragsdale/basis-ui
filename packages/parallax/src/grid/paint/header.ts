@@ -115,12 +115,19 @@ function titleOf(pass: Pass, column: number): string {
   return (frame === null ? undefined : frame.columns[column - frame.firstColumn])?.title ?? "";
 }
 
+/** Data column `column`'s title, remembered as the title its header is drawn with. */
+function titled(pass: Pass, column: number): string {
+  const title = titleOf(pass, column);
+  pass.titles.set(column, title);
+  return title;
+}
+
 /** Draws data column `column`'s header: its title, sort mark, and for a column with a menu, its funnel and pin. */
 function columnHeader(pass: Pass, column: number): void {
   const { context, theme, metrics, geometry, scene } = pass;
   const at = {
     mark: scene.sortMark(column),
-    title: titleOf(pass, column),
+    title: titled(pass, column),
     width: geometry.width(column),
     x: screenX(geometry, column, pass.scrollLeft),
   };
@@ -164,21 +171,30 @@ function dropMark(pass: Pass): void {
   fillRect(pass, theme.accent, [x - 1, 0, dropLine, metrics.headerPx]);
 }
 
+/** Draws the checkboxes' header and the group column's, but not in a strip of the scrolling columns that a scroll
+ * exposed, which holds neither. */
+function frozenHeaders(pass: Pass): void {
+  if (pass.only?.axis !== "columns") {
+    selectHeader(pass);
+    if (pass.geometry.treePx > 0) {
+      treeHeader(pass);
+    }
+  }
+}
+
 /** Draws the whole header row. */
 function drawHeader(pass: Pass): void {
-  const { context, theme, metrics, geometry, pen } = pass;
+  const { context, theme, metrics, pen } = pass;
   fillRect(pass, theme.headerBackground, [0, 0, pass.width, metrics.headerPx]);
   pen.widths.use(context, pass.fonts.header);
-  selectHeader(pass);
-  if (geometry.treePx > 0) {
-    treeHeader(pass);
-  }
+  frozenHeaders(pass);
   columnsInView(pass, { height: metrics.headerPx, top: 0 }, (column) => {
     columnHeader(pass, column);
+    return true;
   });
   pen.widths.use(context, pass.fonts.body);
   dropMark(pass);
   fillRect(pass, theme.headerBorder, [0, metrics.headerPx - 1, pass.width, 1]);
 }
 
-export { drawHeader, markWidth };
+export { drawHeader, markWidth, titleOf };

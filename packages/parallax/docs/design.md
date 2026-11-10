@@ -682,9 +682,8 @@ M4's guarantee is tested directly: for random series with gaps and repeated x
 values, the line through the reduced points reaches exactly the same lowest and
 highest value in every pixel column as the line through every point.
 
-The client draws with Canvas 2D, in the regions that changed, though a scroll
-repaints the whole grid until basis-ui's roadmap step 6.4.4 copies the rows
-that stay. The grid, the pivot and the charts draw on animation frames: every
+The client draws with Canvas 2D, in the regions that changed, and a scroll
+moves the pixels that stay rather than painting them again, as below. The grid, the pivot and the charts draw on animation frames: every
 event, frame from the engine and change that arrives before the next frame
 marks the canvas stale, and the frame draws it once, as the model then is. So
 pointer moves, a scroll and the rows it asked for, arriving in one frame, paint
@@ -733,6 +732,36 @@ as Playwright's `deviceScaleFactor` or CDP's device metrics do, changes
 `devicePixelRatio` but not the device pixels a box covers; the grid's, the
 pivot's and the charts' end-to-end suites take a few screenshots at those
 ratios too.
+
+A scroll of the grid or the pivot moves the pixels that stay (basis-ui's step
+6.4.4, 2026-11-10). A scroll by rows copies the body's band, between the header
+and the totals row, up or down by those rows; a scroll across copies the
+scrolling columns, their header and totals with them, by the distance. The copy
+goes out to a scratch canvas of the painter's own and back, in whole device
+pixels: drawing a canvas onto itself makes Chromium snapshot the whole canvas and
+copy it again, which costs twice as much. Then only what the scroll exposed is
+painted, under a clip to it, and beside it the cells whose text or rows changed,
+as when the rows the scroll asked for arrive in the same frame or the pointer's
+row moved. The checkboxes, the group column, the pinned columns, the header and
+the totals row stay where they are, and a header is drawn again when a column in
+view gets its title, as when the frame that holds it arrives. A copy is what
+painting would draw only on whole device pixels, so everything is painted when a
+row's height is not a whole number of them, or a distance across is not; when
+the scroll moves by rows and across at once, or as far as the area it moves;
+when it reaches or leaves the left edge, where the pinned columns' edge appears
+or goes; and on any change that is not a scroll: data, layout, tokens, size,
+ratio, and rows that arrive for a table still loading. A checkbox is drawn from
+its own device pixel, since a path drawn at another offset rasterizes a level
+of grey differently at 1.25 and 1.5. A browser test holds a copied canvas to a
+painted one, pixel for pixel, at 1, 1.25 and 1.5, by rows, across, with pinned
+columns and totals, in a grouped grid with rows chosen and a cell selected, and
+with a late frame. `drawStats()` counts the copies and the device pixels
+repainted, `paintedPx`: scrolling 1,000,000 trades three rows a frame repaints
+9 % of the canvas a frame, from all of it, and the page's main thread, which
+rasterizes a canvas drawn without a GPU, is busy 7 to 23 % less a frame. The
+copy is most of what is left: it moves every pixel that stays, twice, about 1 ms
+a frame at 1.5 on the build host. The code is in `src/grid/paint/scroll.ts` and
+`passes.ts`.
 
 Renderers, hit-testing and interaction are TypeScript inside `@basis/parallax`.
 Drawing from Rust would cross the WebAssembly boundary on every text call and

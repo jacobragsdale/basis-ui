@@ -557,7 +557,11 @@ flowchart TD
    screenshots run in Chromium at 1.25 and 1.5. 6.4.3 built on 2026-11-09: the grid and the pivot draw once an animation frame however many
    events arrive in it, a mouse's notch moves three rows at once and paints once, a trackpad's pixels stay smooth, and
    the bench starts Chromium at each ratio, since an emulated ratio, not the painter, made the throttled drawing at 1.25
-   and 1.5 cost 5.5 ms.
+   and 1.5 cost 5.5 ms. 6.4.4 built on 2026-11-10: a scroll by rows or across copies the pixels that stay through a
+   scratch canvas and paints only what it exposed, so scrolling 1,000,000 trades three rows a frame repaints 9 % of the
+   canvas, from all of it, at every ratio; throttled, the drawing is 1.8, 1.9 and 3.1 ms a frame at 1, 1.25 and 1.5,
+   from 1.8, 2.3 and 2.8, within the 8 ms target, and the main thread is busy 3.9, 5.2 and 7.9 ms a frame, from 4.5,
+   6.2 and 8.5, since the copy moves every pixel that stays.
 5. **6.5 Themes.** Lane Theme, one branch per item in order: tokens for what opacity fakes (`6.5.1-tokens`), density
    in whole pixels (`6.5.2-density`), `defineTheme` (`6.5.3-define-theme`), `checkTheme` (`6.5.4-check-theme`), the
    choice of theme in the cookie (`6.5.5-theme-preference`), parallax on the same theme (`6.5.6-parallax-theme`), the

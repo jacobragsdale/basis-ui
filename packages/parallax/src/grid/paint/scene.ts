@@ -9,6 +9,7 @@ import type { CellRange, CellRef, Selection } from "#grid/selection.ts";
 import type { Layout } from "#layout/layout.ts";
 import type { Theme } from "#theme/read.ts";
 
+import type { Exposed, Tally } from "./damage.ts";
 import type { Metrics } from "./metrics.ts";
 import type { Pen } from "./text.ts";
 
@@ -102,8 +103,17 @@ interface Pass extends Searched {
   readonly detail: boolean;
   /** The fonts of the body, of group rows and of the header. */
   readonly fonts: { readonly body: string; readonly group: string; readonly header: string };
-  /** Whether the pass redraws everything, rather than only the cells whose text or selection changed. */
+  /** Whether the pass redraws everything it draws over, rather than only the cells whose text or selection changed. */
   readonly full: boolean;
+  /** Where the body's rows end, above the totals row if there is one, in CSS pixels; they start below the header. */
+  readonly bodyBottom: number;
+  /** The rows or columns a scroll exposed, when this pass paints them alone: it draws only the rows or columns that
+   * meet them, under a clip to them. */
+  readonly only: Exposed | null;
+  /** The rows or columns a scroll exposed, when another pass paints them: this one leaves the cells wholly within. */
+  readonly besides: Exposed | null;
+  /** Counts the device pixels the pass repaints. */
+  readonly tally: Tally;
   readonly range: CellRange | null;
   readonly focus: CellRef | null;
   /** Rows to redraw even if their text has not changed, because the selection or the pointer moved over them. */
@@ -114,6 +124,8 @@ interface Pass extends Searched {
   readonly drawnRows: Set<number>;
   /** The full text of cells drawn cut short, and notes for flagged cells, by cell key, for their tooltips. */
   readonly notes: Map<string, string>;
+  /** The title each data column's header was drawn with, which the frame's columns give, by data column. */
+  readonly titles: Map<number, string>;
 }
 
 /** Counts as the export writes them. */

@@ -108,6 +108,31 @@ async function frameIntervals(
   return intervals;
 }
 
+/** The device pixels the grid repainted between two readings of its counters: its own count, or for a grid that keeps
+ * none, the whole canvas for each full redraw. */
+function paintedBetween(
+  before: Partial<DrawStats>,
+  after: Partial<DrawStats>,
+  canvasPx: number,
+): number {
+  if (after.paintedPx !== undefined && before.paintedPx !== undefined) {
+    return after.paintedPx - before.paintedPx;
+  }
+  return ((after.fullDraws ?? 0) - (before.fullDraws ?? 0)) * canvasPx;
+}
+
+/** The draws that moved a scroll's pixels between two readings of the grid's counters, none for a grid that keeps no
+ * count of them. */
+function copiesBetween(before: Partial<DrawStats>, after: Partial<DrawStats>): number {
+  return (after.copies ?? 0) - (before.copies ?? 0);
+}
+
+/** The grid's canvas's device pixels. */
+function canvasPixels(): number {
+  const canvas = document.querySelector<HTMLCanvasElement>("[role=grid] canvas");
+  return canvas === null ? 0 : canvas.width * canvas.height;
+}
+
 /** A scroll's figures, from its frames' intervals and the grid's counters before and after it. */
 function scrollFigures(
   intervals: readonly number[],
@@ -119,10 +144,15 @@ function scrollFigures(
 ): ScrollFigures {
   const frames = after.frames - before.frames;
   const sorted = intervals.toSorted((first, second) => first - second);
+  const canvasPx = canvasPixels();
   return {
+    canvasPx,
+    copies: copiesBetween(before, after),
     drawMsPerFrame: frames === 0 ? 0 : (after.drawMs - before.drawMs) / frames,
     frames,
+    fullDraws: after.fullDraws - before.fullDraws,
     longFrames,
+    paintedPxPerFrame: frames === 0 ? 0 : paintedBetween(before, after, canvasPx) / frames,
     maxFrameMs: sorted.at(-1) ?? 0,
     meanFrameMs: intervals.reduce((sum, interval) => sum + interval, 0) / intervals.length,
     p95FrameMs: sorted[Math.floor(ninetyFifth * (sorted.length - 1))] ?? 0,

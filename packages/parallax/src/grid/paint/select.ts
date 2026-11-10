@@ -5,7 +5,7 @@
 import { hairline } from "#canvas/device-pixels.ts";
 import { selectColumn } from "#grid/geometry.ts";
 
-import { cellBackground, cellLines, rowMark, unchanged } from "./cells.ts";
+import { cellBackground, cellLines, keepCell, rowMark, unchanged } from "./cells.ts";
 import type { RowAt } from "./cells.ts";
 import { fillRect } from "./canvas.ts";
 import { cellKey } from "./scene.ts";
@@ -27,10 +27,12 @@ const tick = {
 } as const;
 const dash = { fromX: 0.26, toX: 0.74, y: 0.5 } as const;
 
-/** Where a checkbox's outline goes, centred in the column's cell whose top is `y` and height `height`: the middle of
- * its left and top lines, the distance to the middle of its right and bottom ones, and their width, so that each line
- * covers whole device pixels. */
+/** Where a checkbox's outline goes, centred in the column's cell whose top is `y` and height `height`: the device pixel
+ * its box starts at, and from there, in CSS pixels, the middle of its left and top lines, the distance to the middle of
+ * its right and bottom ones, and their width, so that each line covers whole device pixels. The box is drawn from its
+ * device pixel, so that it draws the same pixels in every row, and a row a scroll copies is the row it would paint. */
 interface BoxAt {
+  readonly origin: readonly [x: number, y: number];
   readonly left: number;
   readonly top: number;
   readonly width: number;
@@ -44,14 +46,16 @@ function boxAt(pass: Pass, y: number, height: number): BoxAt {
     Math.round((pass.geometry.selectPx - box.size) / 2),
     Math.round(y + (height - box.size) / 2),
   ];
-  const [left, upper] = [hairline(x, ratio), hairline(top, ratio)];
+  const device = (css: number): number => Math.round(css * ratio);
+  const line = hairline(x, ratio).width;
   const far = box.size - 1;
   return {
-    height: hairline(top + far, ratio).at - upper.at,
-    left: left.at,
-    line: left.width,
-    top: upper.at,
-    width: hairline(x + far, ratio).at - left.at,
+    height: (device(top + far) - device(top)) / ratio,
+    left: line / 2,
+    line,
+    origin: [device(x), device(top)],
+    top: line / 2,
+    width: (device(x + far) - device(x)) / ratio,
   };
 }
 
@@ -82,13 +86,9 @@ function mark(pass: Pass, at: BoxAt, state: CheckState): void {
   context.stroke(markPath(at, state));
 }
 
-/** Draws a checkbox in the column's cell whose top is `y` and height `height`. */
-function checkbox(
-  pass: Pass,
-  { y, height, state }: { readonly y: number; readonly height: number; readonly state: CheckState },
-): void {
+/** Fills and strokes a checkbox's box: in the accent when checked or mixed. */
+function outline(pass: Pass, at: BoxAt, state: CheckState): void {
   const { context, theme } = pass;
-  const at = boxAt(pass, y, height);
   const on = state !== "unchecked";
   context.beginPath();
   context.roundRect(at.left, at.top, at.width, at.height, box.radius);
@@ -99,9 +99,22 @@ function checkbox(
   });
   context.fill();
   context.stroke();
-  if (on) {
+}
+
+/** Draws a checkbox in the column's cell whose top is `y` and height `height`. */
+function checkbox(
+  pass: Pass,
+  { y, height, state }: { readonly y: number; readonly height: number; readonly state: CheckState },
+): void {
+  const { context, ratio } = pass;
+  const at = boxAt(pass, y, height);
+  context.save();
+  context.setTransform(ratio, 0, 0, ratio, ...at.origin);
+  outline(pass, at, state);
+  if (state !== "unchecked") {
     mark(pass, at, state);
   }
+  context.restore();
 }
 
 /** What a row's checkbox cell shows, to tell when it changes: whether it has a checkbox, and whether it is checked. */
@@ -132,7 +145,7 @@ function selectCell(pass: Pass, at: RowAt): number {
   cellBackground(pass, at, cell);
   rowCheckbox(pass, at, selectable);
   cellLines(pass, at, cell);
-  pass.drawn.set(drawn.key, drawn.text);
+  keepCell(pass, { at, cell, drawn });
   return 1;
 }
 

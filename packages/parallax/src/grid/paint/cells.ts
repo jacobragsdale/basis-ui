@@ -182,6 +182,39 @@ function cellText(
   noteCell(pass, key, flagNotes[shown.flag] ?? (cut ? text : null));
 }
 
+/** Where a cell shows, across: the checkboxes and the group column anywhere, a pinned column beside the group column,
+ * and a scrolling column past the pinned ones. */
+function columnArea(pass: Pass, column: number): readonly [number, number] {
+  const { geometry } = pass;
+  if (column < 0) {
+    return [0, pass.width];
+  }
+  return column < geometry.pinned
+    ? [geometry.selectPx + geometry.treePx, geometry.frozenPx]
+    : [geometry.frozenPx, pass.width];
+}
+
+/** Remembers what a cell drawn showed, and counts its pixels as far as it shows: within the body and its columns'
+ * area. */
+function keepCell(
+  pass: Pass,
+  {
+    at,
+    cell,
+    drawn,
+  }: {
+    readonly at: RowAt;
+    readonly cell: CellAt;
+    readonly drawn: { readonly key: string; readonly text: string };
+  },
+): void {
+  const { metrics } = pass;
+  pass.drawn.set(drawn.key, drawn.text);
+  const [left, right] = columnArea(pass, cell.column);
+  const body = [left, metrics.headerPx, right - left, pass.bodyBottom - metrics.headerPx] as const;
+  pass.tally.cell([cell.x, at.y, cell.width, metrics.rowPx], body);
+}
+
 /** Draws data column `column`'s cell in a row, if its text or its row changed. Returns whether it drew it. */
 function dataCell(pass: Pass, at: RowAt, column: number): boolean {
   const data = at.frame.columns[column - at.frame.firstColumn];
@@ -200,9 +233,9 @@ function dataCell(pass: Pass, at: RowAt, column: number): boolean {
   cellBackground(pass, at, cell);
   cellText(pass, at, { cell, data, key: drawn.key });
   cellLines(pass, at, cell);
-  pass.drawn.set(drawn.key, drawn.text);
+  keepCell(pass, { at, cell, drawn });
   return true;
 }
 
-export { cellBackground, cellLines, dataCell, rowMark, unchanged };
+export { cellBackground, cellLines, dataCell, keepCell, rowMark, unchanged };
 export type { CellAt, RowAt };

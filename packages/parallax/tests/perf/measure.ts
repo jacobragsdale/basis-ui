@@ -100,6 +100,10 @@ async function scrollPage(
     samples.add(`drawMsPerFrame@${String(ratio)}`, scrolled.drawMsPerFrame);
     samples.add(`p95FrameMs@${String(ratio)}`, scrolled.p95FrameMs);
     samples.add(`longFrames@${String(ratio)}`, scrolled.longFrames);
+    samples.add(`busyMsPerFrame@${String(ratio)}`, scrolled.busyMsPerFrame);
+    samples.add(`paintedPxPerFrame@${String(ratio)}`, scrolled.paintedPxPerFrame);
+    samples.add(`paintedShare@${String(ratio)}`, scrolled.paintedPxPerFrame / scrolled.canvasPx);
+    samples.add(`copiesPerFrame@${String(ratio)}`, scrolled.copies / Math.max(1, scrolled.frames));
   }
 }
 

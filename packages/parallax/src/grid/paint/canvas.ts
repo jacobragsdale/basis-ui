@@ -1,5 +1,5 @@
 /* Small steps of drawing on a canvas that the grid repeats: a rectangle filled in a colour, and a clip, both on whole
- * device pixels. */
+ * device pixels, and drawing under a clip. */
 
 import { snap, snapRect } from "#canvas/device-pixels.ts";
 
@@ -35,5 +35,16 @@ function clipRect({ context, ratio }: Brush, [x, y, width, height]: Rect): void 
   context.clip();
 }
 
-export { clipRect, fillFromStart, fillRect };
+/** Runs `work` with the context clipped to `rect`, as `clipRect` clips it, and returns what it returns. */
+function withClip<TResult>(brush: Brush, rect: Rect, work: () => TResult): TResult {
+  brush.context.save();
+  clipRect(brush, rect);
+  try {
+    return work();
+  } finally {
+    brush.context.restore();
+  }
+}
+
+export { clipRect, fillFromStart, fillRect, withClip };
 export type { Brush, Rect };

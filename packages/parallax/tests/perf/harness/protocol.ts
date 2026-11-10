@@ -31,6 +31,15 @@ interface ScrollFigures {
   readonly maxFrameMs: number;
   /** Animation frames longer than 50 ms, by the Long Animation Frames API. */
   readonly longFrames: number;
+  /** The device pixels the grid repainted per frame it drew, by its own counters: the cost a remote desktop such as
+   * Citrix's sees, which sends what changed. A grid whose counters do not count them, before step 6.4.4, repainted
+   * the whole canvas in each full redraw, which is counted instead. */
+  readonly paintedPxPerFrame: number;
+  /** The canvas's device pixels, which a full redraw repaints. */
+  readonly canvasPx: number;
+  /** The draws that repainted everything, and those that moved a scroll's pixels. */
+  readonly fullDraws: number;
+  readonly copies: number;
 }
 
 /** The page's handle for the bench. */

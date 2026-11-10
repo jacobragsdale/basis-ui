@@ -7,7 +7,7 @@ import path from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 
 import { chromium } from "@playwright/test";
-import type { Browser, Page, Worker } from "@playwright/test";
+import type { Browser, CDPSession, Page, Worker } from "@playwright/test";
 
 import type { Run } from "./budgets.ts";
 import type { BenchState, ScrollFigures, Step } from "./harness/protocol.ts";
@@ -120,9 +120,19 @@ async function change(page: Page, step: Step): Promise<number> {
   }, step.layout);
 }
 
-/** Scrolls the page's grid and returns what it measured. */
-async function scroll(page: Page): Promise<ScrollFigures> {
-  return page.evaluate(
+/** The page's main thread's busy time so far, in ms: DevTools' `TaskDuration`, which counts the canvas's raster as
+ * well as the painter's calls, since a canvas drawn without a GPU is rasterized on the main thread. */
+async function busyMs(session: CDPSession): Promise<number> {
+  const { metrics } = await session.send("Performance.getMetrics");
+  return (metrics.find((metric) => metric.name === "TaskDuration")?.value ?? 0) * msPerSecond;
+}
+
+/** Scrolls the page's grid and returns what it measured, with the main thread's busy time per frame drawn. */
+async function scroll(page: Page): Promise<ScrollFigures & { readonly busyMsPerFrame: number }> {
+  const session = await page.context().newCDPSession(page);
+  await session.send("Performance.enable");
+  const before = await busyMs(session);
+  const figures = await page.evaluate(
     async ({ steps, rows }) => {
       const bench = globalThis.parallaxBench;
       if (bench === undefined) {
@@ -132,6 +142,9 @@ async function scroll(page: Page): Promise<ScrollFigures> {
     },
     { rows: scrollRows, steps: scrollSteps },
   );
+  const busy = (await busyMs(session)) - before;
+  await session.detach();
+  return { ...figures, busyMsPerFrame: busy / Math.max(1, figures.frames) };
 }
 
 /** The page's engine worker. */

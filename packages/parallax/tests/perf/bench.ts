@@ -3,8 +3,8 @@
  * serves both; and drives headless Chromium with the end-to-end suites' flags, plain and with the whole browser under
  * spike 0.3's CPU quota, a Citrix desktop's proxy. For each dataset, size and mode it records the time to first rows
  * and to fully loaded, the engine's WebAssembly memory after the load and at its peak, the browser's resident memory
- * at rest and at its peak, each change of `harness/protocol.ts`'s rounds, and the grid's drawing time per frame while
- * scrolling at each device pixel ratio (`measure.ts`).
+ * at rest and at its peak, each change of `harness/protocol.ts`'s rounds, and, while scrolling at each device pixel
+ * ratio, the grid's drawing time, the main thread's busy time and the device pixels repainted per frame (`measure.ts`).
  *
  * It writes one JSON file and checks it against tests/perf/budgets.json, failing with a line for each figure over its
  * budget. `flags.ts` lists the flags, which can make a run short: `--sizes 150000 --modes plain`. */

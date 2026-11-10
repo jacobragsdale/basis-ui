@@ -1,5 +1,5 @@
-/* Counters for measuring a grid's drawing: how often it draws, how much, and how long the engine's answers take to
- * reach the screen. */
+/* Counters for measuring a grid's drawing: how often it draws, how much, how much of the canvas it repaints, and how
+ * long the engine's answers take to reach the screen. */
 
 import type { FrameData } from "#frame/frame.ts";
 
@@ -17,6 +17,12 @@ interface DrawStats {
   readonly frames: number;
   readonly fullDraws: number;
   readonly cellDraws: number;
+  /** Draws that moved the pixels of a scroll rather than repainting them, which `fullDraws` does not count. */
+  readonly copies: number;
+  /** The device pixels repainted, in all: the whole canvas for a full redraw, and for any other draw the rows or
+   * columns a scroll exposed and the cells drawn again. A remote desktop, such as Citrix's, sends what changed, so
+   * this is the cost it sees. Pixels a scroll moves are not counted. */
+  readonly paintedPx: number;
   readonly drawMs: number;
   /** For the most recent frames that answered a request, the time from asking for the rows to drawing them, in ms. */
   readonly latencyMs: readonly number[];
@@ -30,11 +36,13 @@ interface DrawStats {
 const none: DrawStats = {
   cellDraws: 0,
   changes: [],
+  copies: 0,
   drawMs: 0,
   firstRows: null,
   frames: 0,
   fullDraws: 0,
   latencyMs: [],
+  paintedPx: 0,
 };
 
 /** The newest of `values` with `value` added, at most {@link kept} of them. */
@@ -59,26 +67,38 @@ class DrawCounter {
     this.#openedAtMs = atMs;
   }
 
-  /** Counts a full redraw. */
-  public full(): void {
-    this.#stats = { ...this.#stats, fullDraws: this.#stats.fullDraws + 1 };
+  /** Counts a draw that repainted everything, or that moved a scroll's pixels. */
+  public began(kind: "full" | "copy" | "partial"): void {
+    const stats = this.#stats;
+    this.#stats = {
+      ...stats,
+      copies: stats.copies + (kind === "copy" ? 1 : 0),
+      fullDraws: stats.fullDraws + (kind === "full" ? 1 : 0),
+    };
   }
 
-  /** Counts a frame drawn: its cells, the time it took, and how long its rows and its change took to arrive. */
+  /** Counts a frame drawn: its cells, the device pixels it repainted, the time it took, and how long its rows and its
+   * change took to arrive. */
   public drew(
     frame: FrameData,
-    { cells, started }: { readonly cells: number; readonly started: number },
+    {
+      cells,
+      painted,
+      started,
+    }: { readonly cells: number; readonly painted: number; readonly started: number },
   ): void {
     const now = performance.now();
     const stats = this.#stats;
     this.#stats = {
       cellDraws: stats.cellDraws + cells,
       changes: this.#changes(frame, now),
+      copies: stats.copies,
       drawMs: stats.drawMs + now - started,
       firstRows: this.#firstRows(now),
       frames: stats.frames + 1,
       fullDraws: stats.fullDraws,
       latencyMs: this.#latencies(frame, now),
+      paintedPx: stats.paintedPx + painted,
     };
   }
 

@@ -4,7 +4,7 @@ import type { TreeRows } from "#frame/tree.ts";
 import { highlightRanges } from "#grid/filters.ts";
 import type { Ranges } from "#grid/filters.ts";
 
-import { cellBackground, cellLines, rowMark, unchanged } from "./cells.ts";
+import { cellBackground, cellLines, keepCell, rowMark, unchanged } from "./cells.ts";
 import type { RowAt } from "./cells.ts";
 import { closedPath, drawIcon, openPath } from "./icons.ts";
 import { cellKey, groupText } from "./scene.ts";
@@ -70,7 +70,7 @@ function treeCell(pass: Pass, tree: TreeRows, at: RowAt): number {
   cellBackground(pass, at, cell);
   treeContent(pass, tree, { ...at, label });
   cellLines(pass, at, cell);
-  pass.drawn.set(drawn.key, drawn.text);
+  keepCell(pass, { at, cell, drawn });
   return 1;
 }
 
