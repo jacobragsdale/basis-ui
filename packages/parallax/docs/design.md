@@ -52,26 +52,65 @@ tests: the comparisons with DuckDB run natively, and a fixed protocol
 conversation must produce byte-identical replies from both builds, so what the
 native tests prove holds in the browser.
 
-The app loads its own data: Arrow IPC stream bytes it fetched from its API move
-to the worker in the message's transfer list, so they are never copied between
-threads, and stay in the worker's memory, outside WebAssembly's. The engine
-reads them one record batch at a time: it copies the batch in, decodes it in
-place and converts it into its own columns, sized once for the rows the stream's
-headers counted, then frees it before the next. A first load keeps those
+The app loads its own data: Arrow IPC stream bytes it fetched from its API, or
+the response itself, whose body the page posts to the worker chunk by chunk as
+the network delivers it. Either way the buffers move in the messages' transfer
+lists, so they are never copied between threads, and stay in the worker's
+memory, outside WebAssembly's. The page pushes the chunks rather than moving the
+body's stream to the worker, which would wait for the worker to ask for each
+chunk: on a throttled desktop those round trips made the transfer of 1,000,000
+trades take 5 s. The engine reads them one record batch
+at a time, as soon as each has all arrived: it copies the batch in, decodes it
+in place and converts it into its own columns, sized once for the rows the
+stream's headers counted, or the response's length lets it estimate, then frees
+it and the pieces it read past before the next. A first load keeps those
 columns as its table, so each row is copied once, and WebAssembly holds the
-table and one batch rather than the stream, a staged copy and the table. A
-reload is converted whole before the table changes, so a refused one keeps the
-table as it was. A view of a dataset waits for its load,
+table and one batch rather than the stream, a staged copy and the table.
+
+A first load shows as it arrives. The engine reads a record batch a slice of at
+most 16,384 rows at a time, and between slices the worker answers the page's
+other messages. The table joins the engine with its first slice, and its views
+open on those rows; each time the rows read have grown fourfold since, the
+engine publishes them, as one load that every open view catches up with, so a
+view rebuilds, and the page draws it, a few times rather than once for each
+batch: 1,000,000 rows publish at 16,384, 65,536 and 262,144 rows and at the end.
+Each publish costs the page a draw, which on a throttled desktop shares the CPU
+with the load, so there a whole table takes longer to arrive than it did shown
+all at once: 4.1 s against 3.5 s for 1,000,000 trades, whose first rows show in
+1.7 s. The table's key is
+checked as rows come: while the keys only rise, as ids issued in order do, no
+index is built, and once they stop rising they are indexed and a repeated key
+refuses the load. Sorts, filters, searches and pivots apply to the rows so far
+and update as more arrive; nothing reads as the whole table until it is,
+because the grid's status bar says how many rows are still to come, `useDataset`
+reports the rows read of the rows expected, a chart, which has nowhere to say
+so, waits for the whole load before it opens, and an export, whose file would
+say nothing of the rows to come, is refused until the load ends. A first load
+refused part of the way, by a repeated key or a broken stream, leaves no table:
+its views fail with the reason, as a load refused at the start does.
+
+A reload is read and converted whole before the table changes, so a refused one
+keeps the table as it was, and its views show the table before it until it
+applies whole, as a diff for a keyed table; `useDataset` reports how far it has
+read, and the status bar says so beside the rows it still shows. A view of a
+dataset waits for its load's first rows, or for the whole load for a chart,
 which the app may start before the bytes arrive, and fails with the reason if
 the load does; the worker's welcome is sent before any load, so it lists no
-datasets. Spike 0.3 set the limit of one such table at 150,000 rows and 70 MB of
+datasets.
+
+Spike 0.3 set the limit of one such table at 150,000 rows and 70 MB of
 Arrow, where the reference pivot meets its 500 ms budget on a slow desktop;
-`MAX_ROWS` and `MAX_ARROW_BYTES` in the browser engine hold them. The bytes are
-checked before they leave the page, and the rows are counted from the stream's
-batch headers before any data is decoded, so a larger load fails with a message
-naming the limit and the size before it costs memory. The load's status is the
-app's to give: its API writes when it read the source, and the NaNs it turned
-blank, in the schema metadata under `parallax.load`.
+`MAX_ROWS` and `MAX_ARROW_BYTES` in the browser engine hold them. Bytes the app
+holds are checked before they leave the page, and a response whose length says
+it is past the limit before its body is read; a response that does not say is
+refused as soon as its bytes pass the limit, so it costs no more memory than a
+load at the limit would. The rows of a stream whose bytes came whole are counted
+from its batch headers before any data is decoded; a stream that arrives is
+refused at the batch whose header takes it past the limit, before that batch is
+copied. Either way a larger load fails with a message naming the limit before it
+costs more memory than the limit allows. The load's status is the app's to
+give: its API writes when it read the source, and the NaNs it turned blank, in
+the schema metadata under `parallax.load`.
 
 WebAssembly memory grows and never shrinks, and a load or export past it ends
 in a trap that says only `unreachable`. A trap leaves the engine half-changed
@@ -890,8 +929,11 @@ when the data is from: the date the page says it is for, `asOf`, such as
 neither it says nothing of when, rather than the time the browser loaded the
 table, which would make data days old read as current; that time is in the
 load details. An `asOf` that is not a date shows an `ERROR` line with the fix
-in its place, as a refused layout shows its reason. It also flags NaN values the load turned blank, and a failed
-refresh with its time. An info button lists the load details: when the table
+in its place, as a refused layout shows its reason. While a first load arrives
+it says how many rows are still to come, `about` them when the response's length
+is all it has to go on, so the rows so far, and what they add up to, never read
+as the table; while a reload arrives, how far it has read. It also flags NaN
+values the load turned blank, and a failed refresh with its time. An info button lists the load details: when the table
 loaded, and when the source was read.
 
 A grid, a pivot or a chart can fill the window, for a closer look at a view

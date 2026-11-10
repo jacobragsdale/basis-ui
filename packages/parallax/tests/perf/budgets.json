@@ -1,9 +1,9 @@
 {
-  "$comment": "Budgets for tests/perf/bench.ts, by profile, run and figure, in ms or MB as each name says. host: the build host's, which pull requests quote, set on 2026-11-09 at about twice the slowest of three full runs that day, under load averages of 1 to 10, and 1.25 times the last run's memory (docs/spikes/scale-1m.md); steps 6.3 and 6.4 tighten them toward their targets: 6.3.1 set the trades' loads and memory at 150,000 and 1,000,000 rows the same way, from its runs of 2026-11-09. nightly: the scheduled job's on a shared runner, plain only, its memory at 1.5 times and its times at 5 times.",
+  "$comment": "Budgets for tests/perf/bench.ts, by profile, run and figure, in ms or MB as each name says. host: the build host's, which pull requests quote, set on 2026-11-09 at about twice the slowest of three full runs that day, under load averages of 1 to 10, and 1.25 times the last run's memory (docs/spikes/scale-1m.md); steps 6.3 and 6.4 tighten them toward their targets: 6.3.1 set the trades' loads and memory at 150,000 and 1,000,000 rows the same way, from its runs of 2026-11-09; 6.3.2 set the trades' first rows the same way, and the plain loads, from its runs of 2026-11-09, leaving the throttled loads, which it does not shorten. nightly: the scheduled job's on a shared runner, plain only, its memory at 1.5 times and its times at 5 times.",
   "host": {
     "trades 150000 plain": {
-      "firstRowsMs": 700,
-      "loadedMs": 700,
+      "firstRowsMs": 500,
+      "loadedMs": 600,
       "sortTextMs": 150,
       "toggleTextMs": 150,
       "sortNumberMs": 150,
@@ -74,8 +74,8 @@
       "rssPeakMB": 1200
     },
     "trades 1000000 plain": {
-      "firstRowsMs": 1900,
-      "loadedMs": 1900,
+      "firstRowsMs": 500,
+      "loadedMs": 1500,
       "sortTextMs": 1800,
       "toggleTextMs": 1800,
       "sortNumberMs": 1700,
@@ -94,7 +94,7 @@
       "rssPeakMB": 1420
     },
     "trades 1000000 throttled": {
-      "firstRowsMs": 6800,
+      "firstRowsMs": 3700,
       "loadedMs": 6800,
       "sortTextMs": 4400,
       "toggleTextMs": 4200,

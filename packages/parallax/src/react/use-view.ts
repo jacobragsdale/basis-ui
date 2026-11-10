@@ -36,6 +36,9 @@ interface ViewOptions {
    * takes each frame; a new one reopens nothing.
    */
   readonly onFrame?: (frame: FrameData) => void;
+  /** Waits for the dataset's first load whole before the view opens, as a chart does, which has nowhere to say that
+   * more rows are coming. Without it, a view opens on a first load's first rows and sees more as they arrive. */
+  readonly whole?: boolean;
 }
 
 /** A view as `useView` returns it. */
@@ -117,6 +120,7 @@ function openingOf(checked: ReturnType<typeof checkLayout>, options: ViewOptions
     chartWindow: options.chartWindow ?? null,
     layoutJson: JSON.stringify(checked.layout),
     viewport: options.viewport === undefined ? defaultViewport : options.viewport,
+    whole: options.whole ?? false,
   };
 }
 

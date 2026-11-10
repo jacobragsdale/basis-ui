@@ -537,7 +537,10 @@ flowchart TD
    (`6.3.8-storage-and-flags`), and the new limit in bytes (`6.3.9-limit`). 6.3.1 built on 2026-11-09: the engine
    reads the page's stream a batch at a time into columns sized once and keeps them as a first load's table, so
    1,000,000 trades load fully in 3.2 s throttled, from 7.9 s, missing 3 s, and 0.87 s plain, from 2.8 s, in 242 MB of
-   WebAssembly, from 995 MB.
+   WebAssembly, from 995 MB. 6.3.2 built on 2026-11-09: a response's body reaches the engine chunk by chunk, a first
+   load publishes its rows as they arrive, and `useDataset` reports `progress`, so 1,000,000 trades show their first
+   rows in 1.7 s throttled, from 3.5 s, missing 1 s, and 0.24 s plain, from 0.97 s; fully loaded they take 0.72 s plain,
+   from 0.97 s, and 4.1 s throttled, from 3.5 s, as the download, the load and the drawing share the quota.
 4. **6.4 The canvas on a Citrix desktop.** Lane Grid, one branch per item in order: digits that line up
    (`6.4.1-tabular-digits`), whole device pixels (`6.4.2-device-pixels`), one draw per frame and one row step per notch
    (`6.4.3-frame-aligned`), a scroll that moves pixels (`6.4.4-scroll-blit`), rows past the scrollbar's reach

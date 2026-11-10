@@ -8,6 +8,37 @@ export class Worker {
     free(): void;
     [Symbol.dispose](): void;
     /**
+     * Gives up a load, as [`Worker::abandon`] does.
+     */
+    abandonLoad(name: string): void;
+    /**
+     * Adds the next piece of a load's stream, which stays in the page's memory
+     * until a step reads past it.
+     *
+     * # Errors
+     *
+     * Returns an error if no load of `name` is under way.
+     */
+    addLoadBytes(name: string, piece: Uint8Array): void;
+    /**
+     * Starts loading or reloading dataset `name` from a stream whose bytes
+     * follow with [`Worker::add_load_bytes`], as [`Worker::begin`] does.
+     * `expected_bytes` is the stream's length, if the page knows it.
+     *
+     * # Errors
+     *
+     * Returns the reason the load cannot start.
+     */
+    beginLoad(name: string, primary_key: string | null | undefined, now_micros: number, source_as_of_micros: number | null | undefined, max_rows: number, expected_bytes?: number | null): void;
+    /**
+     * Says that every piece of a load's stream has come.
+     *
+     * # Errors
+     *
+     * Returns an error if no load of `name` is under way.
+     */
+    endLoadBytes(name: string): void;
+    /**
      * Writes the layout's view as CSV, handing `sink` the bytes in chunks of about
      * [`CSV_CHUNK_BYTES`] as a `Uint8Array` each, and returns how many bytes it
      * wrote. The layout and `load_version` work as in [`Worker::export_xlsx`].
@@ -30,14 +61,23 @@ export class Worker {
      */
     exportXlsx(layout_json: string, load_version: number | null | undefined, max_cells: number): Uint8Array;
     /**
+     * Ends a load whose stream has ended, as [`Worker::finish`] does, and
+     * returns the table's rows.
+     *
+     * # Errors
+     *
+     * Returns the reason the load is refused; it is then over.
+     */
+    finishLoad(name: string): bigint;
+    /**
      * Handles one encoded client message and returns the encoded replies.
      */
     handle(message: Uint8Array | number[]): Array<any>;
     /**
-     * Loads or reloads dataset `name` from an app's Arrow IPC stream, as
-     * [`Worker::load`] does. Returns the table's rows. The stream stays in the
-     * page's memory: the load copies its headers to count its rows, then one
-     * message at a time into WebAssembly's.
+     * Loads or reloads dataset `name` from an app's Arrow IPC stream, all of it
+     * at once, as [`Worker::load`] does. Returns the table's rows. The stream
+     * stays in the page's memory: the load copies its headers to count its rows,
+     * then one message at a time into WebAssembly's.
      *
      * # Errors
      *
@@ -53,6 +93,15 @@ export class Worker {
      * messages.
      */
     refresh(): Array<any>;
+    /**
+     * Reads the next record batch of a load, as [`Worker::step`] does, and
+     * returns where the load stands, as an object of [`Progress`]'s fields.
+     *
+     * # Errors
+     *
+     * Returns the reason the load is refused; it is then over.
+     */
+    stepLoad(name: string): any;
 }
 
 export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembly.Module;
@@ -60,12 +109,18 @@ export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembl
 export interface InitOutput {
     readonly memory: WebAssembly.Memory;
     readonly __wbg_worker_free: (a: number, b: number) => void;
+    readonly worker_abandonLoad: (a: number, b: number, c: number) => void;
+    readonly worker_addLoadBytes: (a: number, b: number, c: number, d: any) => [number, number];
+    readonly worker_beginLoad: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => [number, number];
+    readonly worker_endLoadBytes: (a: number, b: number, c: number) => [number, number];
     readonly worker_exportCsv: (a: number, b: number, c: number, d: number, e: number, f: any) => [number, number, number];
     readonly worker_exportXlsx: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number, number, number];
+    readonly worker_finishLoad: (a: number, b: number, c: number) => [bigint, number, number];
     readonly worker_handle: (a: number, b: number, c: number) => any;
     readonly worker_loadTable: (a: number, b: number, c: number, d: any, e: number, f: number, g: number, h: number, i: number, j: number) => [bigint, number, number];
     readonly worker_new: () => number;
     readonly worker_refresh: (a: number) => any;
+    readonly worker_stepLoad: (a: number, b: number, c: number) => [number, number, number];
     readonly __wbindgen_malloc: (a: number, b: number) => number;
     readonly __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;
     readonly __wbindgen_free: (a: number, b: number, c: number) => void;

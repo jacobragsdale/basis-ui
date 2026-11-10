@@ -5,7 +5,7 @@
 import { create } from "@bufbuild/protobuf";
 import { describe, expect, test } from "vite-plus/test";
 
-import { asOfDate, asOfOf, asOfText, detailsOf } from "#grid/status.ts";
+import { asOfDate, asOfOf, asOfText, detailsOf, loadingText } from "#grid/status.ts";
 import { TableStatusSchema } from "#proto/parallax_pb.ts";
 
 const microsPerMilli = 1000n;
@@ -81,5 +81,23 @@ describe("asOf, the date the page gives", () => {
       /: pass the date the data is for as YYYY-MM-DD, such as "2026-11-06", or leave asOf out\.$/u,
     );
     expect(said).not.toContain("\n");
+  });
+});
+
+describe("the status bar's load under way", () => {
+  const first = { estimated: false, expectedRows: 1_000_000, rows: 65_536, shown: true };
+
+  test.each([
+    [null, null],
+    [first, "934,464 to come"],
+    [{ ...first, estimated: true, expectedRows: 1_003_217 }, "about 938,000 to come"],
+    // Rows past an estimate, or with none, are still to come until the load ends.
+    [{ ...first, estimated: true, expectedRows: 60_000 }, "more to come"],
+    [{ ...first, expectedRows: null }, "more to come"],
+    [{ ...first, shown: false }, "reloading: 65,536 of 1,000,000 read"],
+    [{ ...first, estimated: true, shown: false }, "reloading: 65,536 of about 1,000,000 read"],
+    [{ ...first, expectedRows: null, shown: false }, "reloading: 65,536 read"],
+  ])("says of %j: %s", (progress, said) => {
+    expect(loadingText(progress)).toBe(said);
   });
 });

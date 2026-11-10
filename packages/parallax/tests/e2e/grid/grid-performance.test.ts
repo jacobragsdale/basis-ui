@@ -109,14 +109,23 @@ async function measure(
   return resultOf({ ...run, intervals }, before, await metrics(cdp));
 }
 
+/** Opens a preset and waits for its rows, all of them: they show as they arrive, and the scroll is measured once the
+ * last have. */
+async function openWhole(page: Page, preset: string): Promise<void> {
+  await page.goto(`/?preset=${preset}`);
+  await expect(page.getByRole("grid")).toHaveAttribute("aria-rowcount", /^[1-9]\d*$/u, {
+    timeout: 120_000,
+  });
+  await expect(page.locator('[data-slot="grid-status-loading"]')).toHaveCount(0, {
+    timeout: 120_000,
+  });
+}
+
 for (const preset of ["trades", "pivot"] as const) {
   test(`scrolling ${preset}`, async ({ page }) => {
     const cdp = await page.context().newCDPSession(page);
     await cdp.send("Performance.enable");
-    await page.goto(`/?preset=${preset}`);
-    await expect(page.getByRole("grid")).toHaveAttribute("aria-rowcount", /^[1-9]\d*$/u, {
-      timeout: 120_000,
-    });
+    await openWhole(page, preset);
     await page.waitForTimeout(settleMs);
     await cdp.send("Emulation.setCPUThrottlingRate", { rate: throttle });
     const smooth = await measure(page, cdp, { mode: modes[0][0], preset, rows: modes[0][1] });

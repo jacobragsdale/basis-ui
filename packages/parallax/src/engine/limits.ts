@@ -81,11 +81,30 @@ interface LoadOptions {
   readonly sourceAsOfMicros?: number;
 }
 
+/** A load's options, with who hears where it stands while the engine reads its rows. */
+interface LoadCall extends LoadOptions {
+  readonly onProgress?: ((progress: LoadProgress) => void) | undefined;
+}
+
 /** What a load of Arrow bytes reports. */
 interface Loaded {
   readonly dataset: string;
   /** The rows the table holds. */
   readonly rows: number;
+}
+
+/** Where a load stands while the engine reads its rows. */
+interface LoadProgress {
+  /** The rows read so far. */
+  readonly rows: number;
+  /** The rows the load brings: counted from the stream's headers when its bytes came whole, estimated from the
+   * response's `Content-Length` while they stream, or null when neither is known. */
+  readonly expectedRows: number | null;
+  /** Whether `expectedRows` is an estimate. */
+  readonly estimated: boolean;
+  /** Whether the rows read so far show in the dataset's views: a first load's do, as they arrive, while a reload's views
+   * keep the rows before it until it has all arrived and applies whole. */
+  readonly shown: boolean;
 }
 
 /** The reason every view and request is given after the engine traps. */
@@ -100,6 +119,13 @@ function tooManyBytes(dataset: string, bytes: number, limit = maxArrowBytes): Er
   );
 }
 
+/** The refusal of a response whose body passed the byte limit as it streamed, without saying its length first. */
+function streamedTooManyBytes(dataset: string, limit = maxArrowBytes): Error {
+  return new Error(
+    `${dataset} is more than the ${String(limit)} bytes of Arrow a table in the browser holds; have its API filter or aggregate the data to fit.`,
+  );
+}
+
 export {
   exportTypes,
   liftedLimitsKey,
@@ -107,7 +133,8 @@ export {
   maxArrowBytes,
   maxRows,
   maxXlsxCells,
+  streamedTooManyBytes,
   tooManyBytes,
   trapReason,
 };
-export type { LoadLimits, LoadOptions, Loaded };
+export type { LoadCall, LoadLimits, LoadOptions, LoadProgress, Loaded };

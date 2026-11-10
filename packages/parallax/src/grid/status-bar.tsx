@@ -2,7 +2,8 @@
  * values the load turned blank, and a failed refresh. Stale data is wrong data, so the bar never makes data look newer
  * than it is: it shows the date the page says the data is for, or else when the source was read and how long ago, and
  * with neither it shows no "as of" at all, never the time the browser loaded the table, which About this data lists
- * apart. While numbers are selected it reads them as a spreadsheet's status bar does: their mean, smallest, largest,
+ * apart. While a first load arrives it says how many rows are still to come, so the rows so far, and what they sum
+ * to, never read as the whole table; while a reload arrives, how far it has read. While numbers are selected it reads them as a spreadsheet's status bar does: their mean, smallest, largest,
  * sum and count. */
 
 import { Badge, Button, InfoIcon, Popover, PopoverContent, PopoverTrigger } from "@basis/ui";
@@ -10,9 +11,20 @@ import { cn } from "cn";
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 
+import type { LoadProgress } from "#engine/limits.ts";
 import type { TableStatus } from "#proto/parallax_pb.ts";
+import type { Dataset } from "#react/use-dataset.ts";
 
-import { asOfDate, asOfOf, asOfText, detailsOf, failedOf, nansOf, rowsText } from "./status.ts";
+import {
+  asOfDate,
+  asOfOf,
+  asOfText,
+  detailsOf,
+  failedOf,
+  loadingText,
+  nansOf,
+  rowsText,
+} from "./status.ts";
 import type { AsOf } from "./status.ts";
 import type { Figure } from "./summary.ts";
 
@@ -20,7 +32,8 @@ import type { Figure } from "./summary.ts";
 const tickMs = 15_000;
 
 interface StatusBarProps {
-  readonly dataset: string;
+  /** The dataset: its name, and where its load stands while one is under way. */
+  readonly dataset: Pick<Dataset, "name" | "progress">;
   /** Rows in the view, or null while it opens. */
   readonly viewRows: number | null;
   /** When the source was read, in microseconds since the epoch; 0 when the source gave no time. */
@@ -152,9 +165,32 @@ function DataTime({
   );
 }
 
+/** The rows the view shows, and, while a load arrives, the rows still to come or how far a reload has read. */
+function Rows({
+  rows,
+  progress,
+}: {
+  readonly rows: string;
+  readonly progress: LoadProgress | null;
+}): ReactNode {
+  const loading = loadingText(progress);
+  return (
+    <>
+      <span data-slot="grid-status-rows" className="tabular-nums">
+        {rows}
+      </span>
+      {loading === null ? null : (
+        <span data-slot="grid-status-loading" className="tabular-nums">
+          {loading}
+        </span>
+      )}
+    </>
+  );
+}
+
 /** The grid's status bar. */
 function StatusBar({
-  dataset,
+  dataset: { name: dataset, progress },
   viewRows,
   sourceAsOf,
   asOf: date,
@@ -174,9 +210,7 @@ function StatusBar({
       className="@container flex min-h-6 items-center gap-3 border-t bg-muted px-2 text-xs whitespace-nowrap text-muted-foreground"
     >
       <span data-slot="grid-status-dataset">{dataset}</span>
-      <span data-slot="grid-status-rows" className="tabular-nums">
-        {rows}
-      </span>
+      <Rows rows={rows} progress={progress} />
       <Chosen count={selectedRows} />
       <DataTime date={date} read={asOf} now={now} />
       {nans === null ? null : (

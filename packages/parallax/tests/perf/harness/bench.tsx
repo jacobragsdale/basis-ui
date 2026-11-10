@@ -26,7 +26,8 @@ function chosen(): { readonly dataset: BenchDataset; readonly rows: string } {
 
 const { dataset, rows } = chosen();
 
-/** The dataset's Arrow stream, as the bench wrote it beside the page. */
+/** The dataset's Arrow stream, as the bench wrote it beside the page: the response itself, whose body the engine reads
+ * as it arrives, as an app's source streams. */
 const source: DatasetSource = async () => {
   const url = `data/${dataset}-${rows}.arrows`;
   // oxlint-disable-next-line basis/no-fetch -- the harness reads files the bench wrote beside it; it calls no API, so there is no generated client to go through.
@@ -34,7 +35,7 @@ const source: DatasetSource = async () => {
   if (!response.ok) {
     throw new Error(`${url} answered ${String(response.status)}; run vp run @basis/parallax#bench`);
   }
-  return response.arrayBuffer();
+  return response;
 };
 
 async function pause(ms: number): Promise<void> {

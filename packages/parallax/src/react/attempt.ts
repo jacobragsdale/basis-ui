@@ -20,6 +20,8 @@ interface Opened {
 /** What a view opens with. */
 interface Opening {
   readonly layoutJson: string;
+  /** Whether the view waits for its dataset's first load whole, rather than opening on its first rows. */
+  readonly whole: boolean;
   /** Null for a chart the engine reduces, which has no rows to ask for. */
   readonly viewport: Viewport | null;
   readonly chartWindow: ChartWindow | null;
@@ -69,7 +71,7 @@ class ViewAttempt {
       if (!this.#live) {
         return;
       }
-      const connection = await client.connectionFor(dataset);
+      const connection = await client.connectionFor(dataset, first.whole);
       // A run that ended while the dataset loaded opens nothing.
       if (this.#live) {
         this.#opened(connection.open(dataset, first.layoutJson, this.#listener()), first);

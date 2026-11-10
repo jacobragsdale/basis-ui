@@ -1,6 +1,7 @@
 /* What a grid's status bar says: the rows shown, the date the data is for, or else when the source was read and how
  * long ago, NaNs the load turned blank, a failed refresh, and the details of the table's load. Times are New York's. */
 
+import type { LoadProgress } from "#engine/limits.ts";
 import type { TableStatus } from "#proto/parallax_pb.ts";
 
 const time = new Intl.DateTimeFormat("en-US", {
@@ -51,6 +52,31 @@ function ageText(ms: number): string {
 /** The rows shown, or that they are loading. */
 function rowsText(rows: number | null): string {
   return rows === null ? "loading…" : `${grouped.format(rows)} rows`;
+}
+
+/** The significant digits an estimate of rows is told to. */
+const estimateDigits = 3;
+
+/** A count of rows as the bar tells it: whole, or to a few significant digits when it is an estimate. */
+function countText(rows: number, estimated: boolean): string {
+  return estimated
+    ? `about ${grouped.format(Number(rows.toPrecision(estimateDigits)))}`
+    : grouped.format(rows);
+}
+
+/** What the bar says of a load under way, or null for none: a first load's rows still to come, which the grid's rows
+ * do not yet hold, or how far a reload has read, while the grid shows the rows before it. */
+function loadingText(progress: LoadProgress | null): string | null {
+  if (progress === null) {
+    return null;
+  }
+  const { rows, expectedRows, estimated, shown } = progress;
+  if (shown) {
+    const left = expectedRows === null ? 0 : expectedRows - rows;
+    return left > 0 ? `${countText(left, estimated)} to come` : "more to come";
+  }
+  const of = expectedRows === null ? "" : ` of ${countText(expectedRows, estimated)}`;
+  return `reloading: ${grouped.format(rows)}${of} read`;
 }
 
 /** A badge's text and the explanation it shows on hover. */
@@ -177,5 +203,16 @@ function detailsOf({
     : [...items, { term: "Last refresh", value: status.refreshError }];
 }
 
-export { ageText, asOfDate, asOfOf, asOfText, detailsOf, failedOf, nansOf, rowsText, statusTime };
+export {
+  ageText,
+  asOfDate,
+  asOfOf,
+  asOfText,
+  detailsOf,
+  failedOf,
+  loadingText,
+  nansOf,
+  rowsText,
+  statusTime,
+};
 export type { AsOf, DateCheck };

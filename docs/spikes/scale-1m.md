@@ -10,7 +10,9 @@ and the tree, the leaf sort and the merge share the rest. Run on 2026-11-09 in t
 last at a load average of 1.4 to 5.2. Step 6.3.1 then made the load of 1,000,000 trades 2.4 times as fast throttled,
 3.2 s, and its WebAssembly memory a quarter, 0.8 times the Arrow, as [its section](#step-631-a-load-that-copies-once)
 says. Step 6.4.3 found the throttled drawing at 1.25 and 1.5 to be mostly the harness's emulated ratio, and measures
-at real ones, as [its section](#step-643-one-draw-per-frame) says.
+at real ones, as [its section](#step-643-one-draw-per-frame) says. Step 6.3.2 made the load progressive: 1,000,000 trades show their first rows in 0.24 s plain, from 0.97 s, and
+1.7 s throttled, from 3.5 s, missing its 1 s target, while the whole table takes longer throttled, 4.1 s, as [its
+section](#step-632-a-progressive-load) says.
 
 ## Versions
 
@@ -316,3 +318,78 @@ rows arrived between frames, which leaves each remaining draw's average a little
 desktop's: several paints for a notch and for the events of one frame. Every ratio is within the throttled budget of
 8 ms; the frame at 1.5 that waits for the quota is the main thread's raster of the canvas, which step 6.4.4, copying
 the rows that stay, is meant to reduce.
+
+## Step 6.3.2: a progressive load
+
+Step 6.3.2 broke the 3.2 s of 6.3.1 down, made the load show its rows as they arrive, and measured it with this harness
+before and after, on trades at 150,000 and 1,000,000 rows, plain and throttled, one round, on 2026-11-09 (`--datasets
+trades --sizes 150000,1000000 --rounds 1`), each figure the median of three loads, one at each ratio. The final pair
+of runs is on `main` at `1af39dc` and on this step rebased onto it, with step 6.4.3's browser started at each ratio,
+one after the other at load averages of 5 to 15.
+
+Where the throttled load of 1,000,000 trades went before, from marks in the page and the worker, three runs:
+
+| From the navigation                     | Time           | What it is                                                            |
+| --------------------------------------- | -------------- | --------------------------------------------------------------------- |
+| To the fetch                            | 0.41 to 0.62 s | The page's script and its first render                                |
+| The download and `arrayBuffer()`        | 1.26 to 1.79 s | 304 MB from the server to the page, whole, before the engine sees any |
+| The worker's start, beside the download | 0.29 to 0.44 s | Its script, then compiling the WebAssembly; never the longest         |
+| The engine's load                       | 1.14 to 1.19 s | One call, every batch                                                 |
+| The view's opening and the first draw   | 0.23 to 0.29 s | Opening the view on the whole table, its first window, the canvas     |
+| First rows, which were the whole table  | 3.07 to 3.89 s |                                                                       |
+
+The transfer was the largest part and came before any row could show, so the step streams it. What changed:
+
+- `useDataset`'s source may return the response itself, `() => fetch(url)`. The page checks its status and its
+  `Content-Length` against the byte limit before reading the body, then posts each chunk to the worker as the network
+  delivers it, the chunk's own buffer moved; a body without a length is refused as soon as it passes the limit.
+- The engine reads a stream that is still arriving: the batches whose bytes have all come, a slice of at most 16,384
+  rows a step, with the worker answering the page between steps. A first load's table joins the catalog with its first
+  slice and publishes its rows to its views then, and again each time they have grown fourfold. Its key is checked as
+  rows come, and indexed only once the keys stop rising. Its columns are sized from the response's length, with a 3%
+  margin, once.
+- `useDataset` reports `progress`, the rows read of the rows expected; the grid's status bar says how many are still
+  to come. A reload is still staged whole and checked before the table changes.
+
+| Trades, first rows and fully loaded | Before             | After                       |
+| ----------------------------------- | ------------------ | --------------------------- |
+| 150,000, plain                      | 330 and 330 ms     | 240 and 297 ms              |
+| 150,000, throttled                  | 1,370 and 1,370 ms | 1,315 and 1,605 ms          |
+| 1,000,000, plain                    | 973 and 973 ms     | 242 and 718 ms              |
+| 1,000,000, throttled                | 3,520 and 3,520 ms | 1,657 and 4,107 ms          |
+| WebAssembly, 150,000                | 53 MB              | 63 MB                       |
+| WebAssembly, 1,000,000              | 242 MB             | 269 MB, 0.9 times the Arrow |
+| Browser at rest, 1,000,000          | 760 MB             | 774 MB                      |
+
+An earlier pair, before the rebase and with the ratios emulated, at load averages of 1 to 5, agrees: 291 and 291 ms
+against 208 and 258 ms, 1,345 and 1,345 ms against 1,557 and 1,938 ms, 832 and 832 ms against 233 and 675 ms, and
+3,382 and 3,382 ms against 1,785 and 4,519 ms. The same build with the harness's source reading the bytes whole,
+`response.arrayBuffer()`, one run: 258 and 314 ms and 1,587 and 1,978 ms at 150,000 rows, 503 and 873 ms and 2,756 and
+4,378 ms at 1,000,000, plain and throttled. Natively the progressive load of 1,000,000 trades takes 0.26 s with a view
+open and refreshed at each publish, against 0.22 s for the engine's load alone.
+
+**The 1 s target for the first rows of 1,000,000 trades, throttled, is missed: 1.7 s, from 3.5 s.** Under the CPU
+quota the page reaches its fetch at about 0.55 s, and the worker, which starts with the load, has its engine ready at
+about 0.95 s; the first slice is published at about 1.18 s and the view opens at about 1.29 s, but the page's thread,
+which the quota shares with the download and the worker, draws the first rows 0.1 to 0.5 s later. The page's start and
+the worker's are before any row can show; `ParallaxProvider`'s `prewarm` starts the worker no sooner on this page,
+whose provider and load mount together.
+
+**The 3 s target for 1,000,000 trades fully loaded, throttled, is missed further: 4.1 s, from 3.5 s, and 150,000 trades
+fully loaded throttled take 1.6 s, from 1.4 s.** The quota is the whole browser's, so the download and the load that
+now overlap share one budget and finish no sooner, and the grid that now shows rows during the load draws them each
+time they are published: with the publishes only at the first slice and at the end, one load took 3.9 s, against 4.3
+to 4.5 s publishing each time the rows doubled, which is why they now publish each time the rows grow fourfold. Plain,
+where the download and the engine run on cores of their own, the whole table arrives sooner than before. Steps 6.3.8's
+narrower storage, 6.4's cheaper drawing, and 6.10's measurement on a real desktop, whose cores the quota does not share
+out, are the next to act on it.
+
+Two designs were measured and dropped on the way. Moving the body's `ReadableStream` to the worker, so that the page's
+thread did nothing for each chunk, took 5.4 s throttled to load 1,000,000 trades: a moved stream sends a chunk only when
+the worker asks for it, and under the quota each of its 186 round trips is slow. Copying the chunks into pieces of
+4 MiB on the page, to post fewer messages, moved them at about 110 MB/s throttled, against the network's 270, since the
+copying is the page thread's. The page now posts each chunk as it came, its buffer moved, about 450 messages for
+1,000,000 trades.
+
+The generated client's Arrow calls answer with a `Blob`, which has already arrived whole, so an app that wants its first
+rows sooner fetches the route itself until `@basis/ui`'s fetcher can hand back the response.

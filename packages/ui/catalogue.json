@@ -16431,7 +16431,7 @@
       "kind": "hook",
       "module": "@basis/parallax",
       "name": "useDataset",
-      "purpose": "Loads a table into the page's engine as `name`, from `source`, and reports the load's state. It loads again when `name`, `source` or the options change, so give it a stable source: bytes held in state or a query, or a function the React Compiler keeps. A null source waits, as `idle`. Views of the dataset, opened with `useView`, may open while it loads: they wait for it. When the engine runs out of memory it starts again empty and fails every view; a dataset that was loaded then loads its source again, and its views reopen. A dataset whose load was under way, most likely the one that ran the engine out of memory, fails with the reason until `reload` is called or the source changes, as does every dataset once the engine keeps stopping.",
+      "purpose": "Loads a table into the page's engine as `name`, from `source`, and reports the load's state. It loads again when `name`, `source` or the options change, so give it a stable source: bytes held in state or a query, or a function the React Compiler keeps. A null source waits, as `idle`. Views of the dataset, opened with `useView`, may open while it loads: they wait for its first rows. A first load shows as it arrives, from a source that streams: its views open on its first rows and see more each time the rows read have grown fourfold, while `progress` says how many have been read of how many are expected, and a grid's status bar how many are still to come. Sorts, filters and pivots apply to the rows so far and update as more arrive; a chart waits for the whole load, and an export is refused until it is done. A reload is read whole and checked before anything changes: its views keep the rows before it until it applies, and a refused reload leaves them so, while `progress` says how far it has read. When the engine runs out of memory it starts again empty and fails every view; a dataset that was loaded then loads its source again, and its views reopen. A dataset whose load was under way, most likely the one that ran the engine out of memory, fails with the reason until `reload` is called or the source changes, as does every dataset once the engine keeps stopping.",
       "signature": "useDataset(name: string, source: DatasetSource | null, options: LoadOptions = {}): Dataset",
       "use": "Once for each table a page shows, inside a ParallaxProvider; give the dataset to a Grid, a Pivot or a Chart.",
       "with": [
@@ -19790,6 +19790,12 @@
           "type": "string | null"
         },
         {
+          "description": "Where a load under way stands, once the engine has read rows of it: the rows read of the rows expected, and whether they show yet. Null when no load is under way, or before its first rows.",
+          "name": "progress",
+          "optional": false,
+          "type": "LoadProgress | null"
+        },
+        {
           "description": "",
           "name": "name",
           "optional": false,
@@ -19882,11 +19888,11 @@
       "purpose": "`<Chart>` over a dataset that `useDataset` loads."
     },
     {
-      "definition": "ArrayBuffer | (() => ArrayBuffer | PromiseLike<ArrayBuffer>)",
+      "definition": "| ArrayBuffer | (() => ArrayBuffer | Response | PromiseLike<ArrayBuffer | Response>)",
       "exported": true,
       "module": "@basis/parallax",
       "name": "DatasetSource",
-      "purpose": "Where a dataset's Arrow IPC stream comes from: bytes the app holds, or a function that fetches them, such as `() => fetch(url).then((response) => response.arrayBuffer())`. Bytes are copied before they move to the engine, so the app's copy, such as a query cache's, stays readable; a function's bytes move without a copy, so it returns fresh ones each call. After the engine restarts, the hook loads the source again."
+      "purpose": "Where a dataset's Arrow IPC stream comes from: bytes the app holds, or a function that fetches them. A function that returns the response itself, such as `() => fetch(url)`, streams it: its body moves to the engine as it arrives, and a first load's rows show batch by batch, the first long before the last has come. One that returns bytes, such as `() => fetch(url).then((response) => response.arrayBuffer())`, shows them once they have all come. Bytes the app holds are copied before they move to the engine, so the app's copy, such as a query cache's, stays readable; a function's bytes or body move without a copy, so it returns fresh ones each call. After the engine restarts, the hook loads the source again."
     },
     {
       "definition": "\"idle\" | \"loading\" | \"loaded\" | \"failed\"",
@@ -21530,6 +21536,64 @@
       "fields": [
         {
           "description": "",
+          "name": "kind",
+          "optional": false,
+          "type": "\"load-bytes\""
+        },
+        {
+          "description": "",
+          "name": "id",
+          "optional": false,
+          "type": "number"
+        },
+        {
+          "description": "",
+          "name": "bytes",
+          "optional": false,
+          "type": "ArrayBuffer"
+        }
+      ],
+      "exported": false,
+      "module": "@basis/parallax",
+      "name": "LoadBytes",
+      "purpose": "The next chunk of a load's body, as the network delivered it, the buffer moved to the worker with the message."
+    },
+    {
+      "fields": [
+        {
+          "description": "The primary key column of a new table, so that reloads apply as diffs; none by default. A reload keeps the table's.",
+          "name": "primaryKey",
+          "optional": true,
+          "type": "string | null"
+        },
+        {
+          "description": "When the app received the bytes, in microseconds since the Unix epoch, which the status shows as the load's time; now by default.",
+          "name": "receivedAtMicros",
+          "optional": true,
+          "type": "number"
+        },
+        {
+          "description": "When the data's source was read, in microseconds since the Unix epoch. By default the stream says, in its schema metadata's `parallax.load`, as the app's API sets it. Without either the table has no source time, and a grid's status bar says nothing of when the data is from unless the page gives the grid an `asOf` date: never the time the app received the bytes, which would make data days old read as current.",
+          "name": "sourceAsOfMicros",
+          "optional": true,
+          "type": "number"
+        },
+        {
+          "description": "",
+          "name": "onProgress",
+          "optional": true,
+          "type": "((progress: LoadProgress) => void) | undefined"
+        }
+      ],
+      "exported": true,
+      "module": "@basis/parallax",
+      "name": "LoadCall",
+      "purpose": "A load's options, with who hears where it stands while the engine reads its rows."
+    },
+    {
+      "fields": [
+        {
+          "description": "",
           "name": "dataset",
           "optional": false,
           "type": "string"
@@ -21545,6 +21609,32 @@
       "module": "@basis/parallax",
       "name": "Loaded",
       "purpose": "What a load of Arrow bytes reports."
+    },
+    {
+      "fields": [
+        {
+          "description": "",
+          "name": "kind",
+          "optional": false,
+          "type": "\"load-end\""
+        },
+        {
+          "description": "",
+          "name": "id",
+          "optional": false,
+          "type": "number"
+        },
+        {
+          "description": "",
+          "name": "error",
+          "optional": false,
+          "type": "string | null"
+        }
+      ],
+      "exported": false,
+      "module": "@basis/parallax",
+      "name": "LoadEnd",
+      "purpose": "A load's body has ended, or failed on its way to the page, as `error` says; the worker then gives the load up and answers `failed` with the reason."
     },
     {
       "fields": [
@@ -21575,6 +21665,38 @@
     {
       "fields": [
         {
+          "description": "The rows read so far.",
+          "name": "rows",
+          "optional": false,
+          "type": "number"
+        },
+        {
+          "description": "The rows the load brings: counted from the stream's headers when its bytes came whole, estimated from the response's `Content-Length` while they stream, or null when neither is known.",
+          "name": "expectedRows",
+          "optional": false,
+          "type": "number | null"
+        },
+        {
+          "description": "Whether `expectedRows` is an estimate.",
+          "name": "estimated",
+          "optional": false,
+          "type": "boolean"
+        },
+        {
+          "description": "Whether the rows read so far show in the dataset's views: a first load's do, as they arrive, while a reload's views keep the rows before it until it has all arrived and applies whole.",
+          "name": "shown",
+          "optional": false,
+          "type": "boolean"
+        }
+      ],
+      "exported": true,
+      "module": "@basis/parallax",
+      "name": "LoadProgress",
+      "purpose": "Where a load stands while the engine reads its rows."
+    },
+    {
+      "fields": [
+        {
           "description": "",
           "name": "kind",
           "optional": false,
@@ -21596,7 +21718,13 @@
           "description": "",
           "name": "bytes",
           "optional": false,
-          "type": "ArrayBuffer"
+          "type": "ArrayBuffer | null"
+        },
+        {
+          "description": "The body's length, when it follows and the response said it, from which the rows are estimated.",
+          "name": "expectedBytes",
+          "optional": false,
+          "type": "number | null"
         },
         {
           "description": "",
@@ -21626,7 +21754,7 @@
       "exported": false,
       "module": "@basis/parallax",
       "name": "LoadRequest",
-      "purpose": "Arrow IPC stream bytes to load as a dataset; the buffer moved to the worker with the message."
+      "purpose": "Arrow IPC stream bytes to load as a dataset: whole, the buffer moved to the worker with the message, or null when a response's body follows in `load-bytes` as it arrives."
     },
     {
       "extends": [
@@ -22435,19 +22563,19 @@
       "purpose": "Which parts of the toolbar show. A grid in a small tile can turn some, or the whole toolbar, off."
     },
     {
-      "definition": "ProtocolMessage | LoadRequest | ExportRequest",
+      "definition": "ProtocolMessage | LoadRequest | LoadBytes | LoadEnd | ExportRequest",
       "fields": [
         {
           "description": "",
           "name": "kind",
           "optional": false,
-          "type": "\"message\" | \"load\" | \"export\""
+          "type": "\"message\" | \"load\" | \"load-bytes\" | \"load-end\" | \"export\""
         },
         {
           "description": "",
           "name": "bytes",
           "optional": true,
-          "type": "Uint8Array | ArrayBuffer"
+          "type": "Uint8Array | ArrayBuffer | null | ArrayBuffer"
         },
         {
           "description": "",
@@ -22460,6 +22588,12 @@
           "name": "dataset",
           "optional": true,
           "type": "string"
+        },
+        {
+          "description": "The body's length, when it follows and the response said it, from which the rows are estimated.",
+          "name": "expectedBytes",
+          "optional": true,
+          "type": "number | null"
         },
         {
           "description": "",
@@ -22484,6 +22618,12 @@
           "name": "maxRows",
           "optional": true,
           "type": "number"
+        },
+        {
+          "description": "",
+          "name": "error",
+          "optional": true,
+          "type": "string | null"
         },
         {
           "description": "",
@@ -22727,6 +22867,12 @@
           "name": "onFrame",
           "optional": true,
           "type": "(frame: FrameData) => void"
+        },
+        {
+          "description": "Waits for the dataset's first load whole before the view opens, as a chart does, which has nowhere to say that more rows are coming. Without it, a view opens on a first load's first rows and sees more as they arrive.",
+          "name": "whole",
+          "optional": true,
+          "type": "boolean"
         }
       ],
       "exported": true,

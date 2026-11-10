@@ -201,17 +201,7 @@ impl TableState {
     ) -> Result<LoadReport, LoadError> {
         match self.table.load_staged(staging) {
             Ok((report, change)) => {
-                let change = Arc::new(change);
-                let slots = self.table.num_slots();
-                self.views
-                    .get_mut()
-                    .unwrap_or_else(PoisonError::into_inner)
-                    .retain(|view| {
-                        view.upgrade().is_some_and(|inbox| {
-                            lock(&inbox).push(&change, slots);
-                            true
-                        })
-                    });
+                self.hand_out(change);
                 self.loaded_at_micros = now_micros;
                 self.source_as_of_micros = source_as_of_micros;
                 self.nans_to_null.clone_from(&report.nans_to_null);
@@ -223,6 +213,51 @@ impl TableState {
                 Err(error)
             }
         }
+    }
+
+    /// Adds a record batch to a first load that the table's views see as it
+    /// arrives, as [`Table::extend`] does: its rows reach the views at the next
+    /// [`TableState::publish`]. The state starts empty, from [`TableState::new`]
+    /// with a table that holds no load.
+    ///
+    /// # Errors
+    ///
+    /// Returns the load error; the table is then dropped.
+    pub fn extend(&mut self, batch: &RecordBatch) -> Result<(), LoadError> {
+        self.table.extend(batch)
+    }
+
+    /// Hands the rows extended since the last publish to the table's views, as
+    /// one load each catches up with at its next refresh. Returns `false` if there
+    /// were none.
+    pub fn publish(&mut self) -> bool {
+        let Some(change) = self.table.publish() else {
+            return false;
+        };
+        self.hand_out(change);
+        self.nans_to_null = self.table.grown_nans();
+        true
+    }
+
+    /// Ends a first load that grew the table, publishing its last rows.
+    pub fn finish_growth(&mut self) {
+        self.publish();
+        self.table.finish_growth();
+    }
+
+    /// Hands a load's change set to every open view, dropping closed views.
+    fn hand_out(&mut self, change: ChangeSet) {
+        let change = Arc::new(change);
+        let slots = self.table.num_slots();
+        self.views
+            .get_mut()
+            .unwrap_or_else(PoisonError::into_inner)
+            .retain(|view| {
+                view.upgrade().is_some_and(|inbox| {
+                    lock(&inbox).push(&change, slots);
+                    true
+                })
+            });
     }
 
     /// Records a refused reload, which the table's views show beside the last
@@ -344,6 +379,16 @@ impl MemoryCatalog {
             .write()
             .unwrap_or_else(std::sync::PoisonError::into_inner)
             .insert((name.to_owned(), parameters), table);
+    }
+
+    /// Removes a dataset without parameters, such as one whose first load
+    /// failed part of the way through; views already open on it keep it until
+    /// they close.
+    pub fn remove(&self, name: &str) -> Option<SharedTable> {
+        self.tables
+            .write()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .remove(&(name.to_owned(), BTreeMap::new()))
     }
 
     /// Returns a dataset's table without parameters.

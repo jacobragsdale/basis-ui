@@ -109,9 +109,10 @@ fn input(arg: &str) -> Input {
     }
 }
 
-/// Loads a stream as the browser's worker does: counts its rows, then decodes
-/// it a message at a time, staging each batch before the next, into a table
-/// keyed as the demo keys it.
+/// Loads a stream as the browser's worker does a first load: counts its rows,
+/// then decodes it a message at a time, adding each batch to the table before
+/// the next and publishing it each time its rows double, into a table keyed as
+/// the demo keys it.
 fn load(input: Input) -> Table {
     let arrow_mb = input.bytes.len() as f64 / 1e6;
     let bytes = input.bytes.as_slice();
@@ -124,17 +125,26 @@ fn load(input: Input) -> Table {
             let _phase = parallax_engine::profile::span("load: decode");
             parallax_protocol::ipc::StreamBatches::new(bytes).expect("a stream")
         };
-        let mut table = keyed_table(&batches.schema());
-        let mut staging = table.staging(usize::try_from(rows).expect("rows"));
+        let mut table = keyed_table(&batches.schema().expect("a schema"));
+        table.reserve(usize::try_from(rows).expect("rows"));
+        let (mut read, mut shown) = (0, 0);
         loop {
             let batch = {
                 let _phase = parallax_engine::profile::span("load: decode");
                 batches.next()
             };
             let Some(batch) = batch else { break };
-            staging.push(&batch.expect("a batch")).expect("a batch");
+            let batch = batch.expect("a batch");
+            read += batch.num_rows();
+            table.extend(&batch).expect("a batch");
+            if read >= shown * 2 {
+                let _phase = parallax_engine::profile::span("load: append");
+                table.publish();
+                shown = read;
+            }
         }
-        table.load_staged(staging).expect("a load");
+        table.publish();
+        table.finish_growth();
         table
     });
     report(

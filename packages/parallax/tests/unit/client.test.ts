@@ -83,6 +83,7 @@ describe(parseToWorker, () => {
     const load = {
       bytes,
       dataset: "x",
+      expectedBytes: null,
       id: 1,
       kind: "load",
       maxRows: 10,
@@ -105,6 +106,29 @@ describe(parseToWorker, () => {
     expect(parseToWorker({ bytes: new Uint8Array(2), kind: "message" })).toMatchObject({
       kind: "message",
     });
+  });
+
+  test("reads a load of a response's body, and the body's chunks and end", () => {
+    const streamed = {
+      bytes: null,
+      dataset: "x",
+      expectedBytes: 64,
+      id: 1,
+      kind: "load",
+      maxRows: 10,
+      nowMicros: 5,
+      primaryKey: null,
+      sourceAsOfMicros: null,
+    };
+    expect(parseToWorker(streamed)).toStrictEqual(streamed);
+    const chunk = { bytes: new ArrayBuffer(4), id: 1, kind: "load-bytes" };
+    expect(parseToWorker(chunk)).toStrictEqual(chunk);
+    for (const error of [null, "the network dropped"]) {
+      const end = { error, id: 1, kind: "load-end" };
+      expect(parseToWorker(end)).toStrictEqual(end);
+    }
+    expect(parseToWorker({ bytes: "not bytes", id: 1, kind: "load-bytes" })).toBeNull();
+    expect(parseToWorker({ error: 5, id: 1, kind: "load-end" })).toBeNull();
   });
 
   test.each([

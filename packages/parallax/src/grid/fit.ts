@@ -1,6 +1,7 @@
 /* Column widths fitted to their values. A column the user has not sized fits its header and its values: every row of
- * a small view, else the first rows loaded. Widths only grow, so a column never narrows under the pointer, up to a
- * limit past which a column is cut and can be widened by hand. */
+ * a small view, else the first rows loaded, and again when a later load brings values of its own, as a load that shows
+ * as it arrives does each time it publishes more rows. Widths only grow, so a column never narrows under the pointer,
+ * up to a limit past which a column is cut and can be widened by hand. */
 
 import type { FrameColumn } from "#frame/columns.ts";
 import type { FrameData } from "#frame/frame.ts";
@@ -150,10 +151,16 @@ function widthToFit(ruler: Ruler, frame: FrameData, column: number): number | nu
   return Math.max(titleWidth(ruler, data.title), values) + 2 * ruler.metrics.padding + 2;
 }
 
-/** The widths fitted to a view's loaded values, and how many rows each was measured over. */
+/** The rows a width was measured over, and the load they were of. */
+interface Measured {
+  readonly rows: number;
+  readonly load: bigint;
+}
+
+/** The widths fitted to a view's loaded values, and what each was measured over. */
 class ColumnFitter {
   #fitted: Widths = {};
-  #over = new Map<string, number>();
+  #over = new Map<string, Measured>();
 
   /** The widths fitted so far, by `column_widths` key. */
   public get fitted(): Widths {
@@ -170,10 +177,10 @@ class ColumnFitter {
 
   /**
    * Fits the columns of `frame` the user has not sized to their header and values. A column is measured on the first
-   * frame of a view, and again on a frame that holds more of the whole view. Returns whether any width grew.
+   * frame of a view, and again on a frame that holds more of the whole view, or that is of a later load. Returns
+   * whether any width grew.
    */
   public fit(ruler: Ruler, frame: FrameData, layout: Layout): boolean {
-    const whole = frame.firstRow === 0 && frame.rowCount >= frame.totalRows;
     // A pivot's columns are fitted by measure: every column of one measure shares a width.
     const pivot = isPivotLayout(layout);
     const period = Math.max(1, layout.measures.length);
@@ -181,9 +188,12 @@ class ColumnFitter {
       data,
       key: pivot ? measureWidthKey((frame.firstColumn + index) % period) : data.name,
     }));
-    const fitting = keyed.filter(({ key }) =>
-      this.#due(layout, key, { rows: frame.rowCount, whole }),
-    );
+    const measuring = {
+      load: frame.loadVersion,
+      rows: frame.rowCount,
+      whole: frame.firstRow === 0 && frame.rowCount >= frame.totalRows,
+    };
+    const fitting = keyed.filter(({ key }) => this.#due(layout, key, measuring));
     const view = { pinned: pivot ? null : layout.pinned, rows: frame.rowCount, tree: frame.tree };
     const widths = fittedWidths(
       ruler,
@@ -191,7 +201,7 @@ class ColumnFitter {
       view,
     );
     for (const { key } of fitting) {
-      this.#over.set(key, frame.rowCount);
+      this.#over.set(key, { load: measuring.load, rows: measuring.rows });
     }
     return this.#grow(fitting.map(({ key }, index) => [key, widths[index] ?? 0] as const));
   }
@@ -211,19 +221,20 @@ class ColumnFitter {
   }
 
   /**
-   * Whether column `key` should be fitted to a frame of `rows` rows: never once the user sized it; otherwise when it
-   * was never measured, or the frame holds more of the whole view than the last measurement did.
+   * Whether column `key` should be fitted to a frame of `rows` rows of load `load`: never once the user sized it;
+   * otherwise when it was never measured, the frame holds more of the whole view than the last measurement did, or
+   * the frame is of a later load, whose values may be wider.
    */
   #due(
     layout: Layout,
     key: string,
-    { rows, whole }: { readonly rows: number; readonly whole: boolean },
+    { rows, load, whole }: Measured & { readonly whole: boolean },
   ): boolean {
     if (layout.column_widths[key] !== undefined) {
       return false;
     }
     const over = this.#over.get(key);
-    return over === undefined || (whole && over < rows);
+    return over === undefined || (whole && over.rows < rows) || over.load < load;
   }
 }
 

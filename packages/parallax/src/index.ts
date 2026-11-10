@@ -67,7 +67,9 @@ export {
   maxRows,
   maxXlsxCells,
   trapReason,
+  type LoadCall,
   type LoadOptions,
+  type LoadProgress,
   type Loaded,
 } from "./engine/limits.ts";
 export type { ExportFormat } from "./engine/messages.ts";

@@ -8,7 +8,7 @@
 
 import { BrowserEngine } from "./browser-engine.ts";
 import type { Connection } from "./connection.ts";
-import type { LoadOptions, Loaded } from "./limits.ts";
+import type { LoadCall, Loaded } from "./limits.ts";
 import type { ExportFormat } from "./messages.ts";
 import type { WorkerPort } from "./port.ts";
 
@@ -83,20 +83,23 @@ class ParallaxClient {
   /**
    * Loads Arrow IPC stream bytes the app fetched, such as its API's response, into the engine as `dataset`; views of
    * it then run there. The buffer moves to the engine's worker, so the app can no longer read it. `bytes` may be a
-   * promise of them, such as a fetch still on its way: views that open meanwhile wait for the load rather than fail.
-   * See `BrowserEngine.load` for the limits and the load's status.
+   * `Response`, whose body moves to the worker as it arrives, so that a first load's views show its first rows before
+   * the rest has come, or a promise of either, such as a fetch still on its way: views that open meanwhile wait for the
+   * first rows rather than fail. The options' `onProgress` hears where the load stands. See `BrowserEngine.load` for the limits and
+   * the load's status.
    */
   public async load(
     dataset: string,
-    bytes: ArrayBuffer | PromiseLike<ArrayBuffer>,
-    options: LoadOptions = {},
+    bytes: ArrayBuffer | Response | PromiseLike<ArrayBuffer | Response>,
+    options: LoadCall = {},
   ): Promise<Loaded> {
     return this.#current().load(dataset, bytes, options);
   }
 
-  /** The connection for views of `dataset`, once its load has succeeded; see `BrowserEngine.connectionFor`. */
-  public async connectionFor(dataset: string): Promise<Connection> {
-    return this.#current().connectionFor(dataset);
+  /** The connection for views of `dataset`, once its load has succeeded or its first rows show, or, `whole`, once it
+   * has all loaded; see `BrowserEngine.connectionFor`. */
+  public async connectionFor(dataset: string, whole = false): Promise<Connection> {
+    return this.#current().connectionFor(dataset, whole);
   }
 
   /** Writes a view of a table the app loaded as xlsx or CSV in the engine; see `BrowserEngine.export`. */

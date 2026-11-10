@@ -60,6 +60,10 @@ async function gridsDrawn(
       await expect(grid).toHaveAttribute("aria-rowcount", count, { timeout: drawnWithinMs });
     }),
   );
+  // A first load shows its rows as they arrive; its status bar says rows are to come until the last have.
+  await expect(page.locator('[data-slot="grid-status-loading"]')).toHaveCount(0, {
+    timeout: drawnWithinMs,
+  });
 }
 
 /** Waits until `count` charts on the page have described what they draw, which they do once drawn, and every status

@@ -77,6 +77,7 @@ function dataset(status: Dataset["status"], rows: number | null = null): Dataset
     engine: 0,
     error: null,
     name: "",
+    progress: null,
     reload: () => {
       // A test's dataset never loads again.
     },

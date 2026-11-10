@@ -2,6 +2,9 @@
  * native build does. `serve()` makes this worker answer the page, through the messages in `messages.ts`; the
  * package's worker entry, `src/worker.ts`, calls it.
  *
+ * Loads read their streams a record batch at a time, answering the page's other messages in between, as
+ * `worker-loads.ts` says.
+ *
  * A WebAssembly trap, such as running out of memory, leaves the engine unusable: its state may be half-changed and
  * its object stays borrowed. The worker then sends `trapped` and answers nothing more, and the page ends it, which
  * frees all its memory, and starts another. */
@@ -9,7 +12,8 @@
 import init, { Worker as Engine } from "#wasm/parallax_wasm.js";
 
 import { parseToWorker } from "./messages.ts";
-import type { ExportRequest, FromWorker, LoadRequest } from "./messages.ts";
+import type { ExportRequest, FromWorker } from "./messages.ts";
+import { WorkerLoads } from "./worker-loads.ts";
 
 /** Sends the page a message, moving the buffers in `transfer` rather than copying them. */
 function post(message: FromWorker, transfer: Transferable[] = []): void {
@@ -32,21 +36,22 @@ function isTrap(error: unknown): error is Error {
 /** Set once the engine has trapped; nothing more is answered. */
 let trapped = false;
 
-/** Runs `work` on the engine. A trap ends this worker's use, and is reported once; the engine's own errors go to
- * `failed`, for the request they belong to. */
-function run(work: () => void, failed: (message: string) => void): void {
+/** Runs `work` on the engine and returns what it returns, or null. A trap ends this worker's use, and is reported
+ * once; the engine's own errors go to `failed`, for the request they belong to. */
+function run<TResult>(work: () => TResult, failed: (message: string) => void): TResult | null {
   if (trapped) {
-    return;
+    return null;
   }
   try {
-    work();
+    return work();
   } catch (error: unknown) {
     if (isTrap(error)) {
       trapped = true;
       post({ kind: "trapped", message: `${error.name}: ${error.message}` });
-      return;
+      return null;
     }
     failed(describe(error));
+    return null;
   }
 }
 
@@ -59,27 +64,15 @@ function reply(replies: readonly unknown[]): void {
   }
 }
 
-/** Loads bytes the page moved here, decoded in place, brings open views up to date, and answers with the rows. */
-function load(engine: Engine, request: LoadRequest): void {
-  run(
-    () => {
-      const rows = engine.loadTable(
-        request.dataset,
-        new Uint8Array(request.bytes),
-        request.primaryKey ?? undefined,
-        request.nowMicros,
-        request.sourceAsOfMicros ?? undefined,
-        request.maxRows,
-      );
-      const pushed: readonly unknown[] = engine.refresh();
-      reply(pushed);
-      post({ id: request.id, kind: "loaded", rows: Number(rows) });
-    },
-    (message) => {
-      post({ id: request.id, kind: "failed", message });
-    },
-  );
-}
+/** The loads the page asks for, one after another. */
+const loads = new WorkerLoads({
+  post: (message): void => {
+    post(message);
+  },
+  reply,
+  run,
+  trapped: (): boolean => trapped,
+});
 
 /** Writes an export: an xlsx's bytes move to the page whole, a CSV's in chunks as they are written. */
 function exportView(engine: Engine, request: ExportRequest): void {
@@ -123,7 +116,11 @@ function handle(engine: Engine, data: unknown): void {
   } else if (message.kind === "message") {
     protocol(engine, message.bytes);
   } else if (message.kind === "load") {
-    load(engine, message);
+    loads.start(engine, message);
+  } else if (message.kind === "load-bytes") {
+    loads.bytes(message);
+  } else if (message.kind === "load-end") {
+    loads.end(message);
   } else {
     exportView(engine, message);
   }

@@ -14,6 +14,14 @@ const id = z.int();
 /** Messages the worker sends; see `messages.ts`. */
 const fromWorkerSchema = z.discriminatedUnion("kind", [
   z.strictObject({ bytes, kind: z.literal("reply") }),
+  z.strictObject({
+    estimated: z.boolean(),
+    expectedRows: z.int().nonnegative().nullable(),
+    id,
+    kind: z.literal("progress"),
+    rows: z.int().nonnegative(),
+    shown: z.boolean(),
+  }),
   z.strictObject({ id, kind: z.literal("loaded"), rows: z.int().nonnegative() }),
   z.strictObject({ bytes, id, kind: z.literal("chunk") }),
   z.strictObject({ bytes: bytes.nullable(), id, kind: z.literal("exported") }),

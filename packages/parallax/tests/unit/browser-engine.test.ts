@@ -65,6 +65,7 @@ describe("the engine's loads", () => {
     expect(message).toStrictEqual({
       bytes,
       dataset: "positions",
+      expectedBytes: null,
       id: 1,
       kind: "load",
       maxRows,

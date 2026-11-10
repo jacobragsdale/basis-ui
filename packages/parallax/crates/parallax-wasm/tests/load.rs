@@ -97,7 +97,7 @@ fn csv_reaches_the_page_in_chunks_that_make_the_whole_file() {
         received.borrow_mut().push(chunk.to_vec());
     });
     let written = worker
-        .export_csv(layout, Some(1.0), sink.as_ref().unchecked_ref())
+        .export_csv(layout, None, sink.as_ref().unchecked_ref())
         .unwrap();
     let chunks = chunks.borrow();
     assert_eq!(written, whole.len() as f64);
@@ -154,7 +154,7 @@ fn a_stream_the_page_holds_loads_as_the_same_bytes_do_in_webassembly() {
     from_memory
         .load(
             "positions",
-            &stream_bytes(70_000),
+            stream_bytes(70_000),
             &parallax_wasm::Load {
                 primary_key: Some("id".into()),
                 now_micros: 1_000,

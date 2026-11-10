@@ -122,21 +122,9 @@ impl Staging {
     }
 
     fn push_columns(&mut self, batch: &RecordBatch) -> Result<(), LoadError> {
-        for field in batch.schema().fields() {
-            if self.schema.index_of(field.name()).is_err() {
-                return Err(LoadError::UnexpectedColumn {
-                    column: field.name().clone(),
-                });
-            }
-        }
-        for (i, field) in self.schema.fields().iter().enumerate() {
-            let array =
-                batch
-                    .column_by_name(field.name())
-                    .ok_or_else(|| LoadError::MissingColumn {
-                        column: field.name().clone(),
-                    })?;
-            self.nans[i] += self.columns[i].extend_from_arrow(field.name(), array.as_ref())?;
+        for (i, array) in arrays_of(&self.schema, batch)?.into_iter().enumerate() {
+            let name = self.schema.field(i).name();
+            self.nans[i] += self.columns[i].extend_from_arrow(name, array.as_ref())?;
         }
         Ok(())
     }
@@ -159,6 +147,48 @@ impl Staging {
             .collect();
         (self.columns, report)
     }
+}
+
+/// A batch's arrays in the order of `schema`'s columns, which the batch must
+/// have exactly, in any order.
+fn arrays_of<'b>(
+    schema: &Schema,
+    batch: &'b RecordBatch,
+) -> Result<Vec<&'b arrow_array::ArrayRef>, LoadError> {
+    for field in batch.schema().fields() {
+        if schema.index_of(field.name()).is_err() {
+            return Err(LoadError::UnexpectedColumn {
+                column: field.name().clone(),
+            });
+        }
+    }
+    schema
+        .fields()
+        .iter()
+        .map(|field| {
+            batch
+                .column_by_name(field.name())
+                .ok_or_else(|| LoadError::MissingColumn {
+                    column: field.name().clone(),
+                })
+        })
+        .collect()
+}
+
+/// A first load that the table shows as it arrives, a batch at a time: what
+/// [`Table::extend`] has learned of its keys and counted of its NaNs.
+#[derive(Clone, Debug)]
+struct Growth {
+    /// Whether each key so far came after the one before, so that none can
+    /// repeat and no index is needed yet.
+    rising: bool,
+    /// The last key, while they rise.
+    last: Key,
+    /// Per column, how many NaNs became nulls.
+    nans: Vec<usize>,
+    /// Whether a batch was refused part of the way through its columns, which
+    /// leaves them of different lengths.
+    refused: bool,
 }
 
 /// A first load's key index: built while its keys were checked, or left for
@@ -200,6 +230,8 @@ pub struct Table {
     options: TableOptions,
     next_seq: u64,
     load_version: u64,
+    /// The first load, while it grows the table a batch at a time.
+    growth: Option<Growth>,
 }
 
 impl Table {
@@ -246,6 +278,7 @@ impl Table {
             options,
             next_seq: 0,
             load_version: 0,
+            growth: None,
         })
     }
 
@@ -393,6 +426,211 @@ impl Table {
         staging: Staging,
     ) -> Result<(LoadReport, ChangeSet), LoadError> {
         self.apply_staged(staging, false)
+    }
+
+    /// Makes room in each column for `rows` rows in all, those it holds
+    /// included, as a first load that grows the table does once it knows, or can
+    /// estimate, its size. A column that has room already is left as it is.
+    pub fn reserve(&mut self, rows: usize) {
+        for column in &mut self.columns {
+            column.reserve(rows.saturating_sub(column.len()));
+        }
+        self.seq.reserve_exact(rows.saturating_sub(self.seq.len()));
+    }
+
+    /// Adds a record batch to a first load that the table shows as it arrives.
+    ///
+    /// The rows go straight into the table's columns, copied once, and are
+    /// checked as they come: a null key, or a key that repeats one before it, is
+    /// refused. While the keys only rise, as ids issued in order do, none can
+    /// repeat, so no index is built until they stop rising, or until the next
+    /// load needs one. The rows are not live until [`Table::publish`], so views
+    /// see a batch only once it is published, all of it at once. A table whose
+    /// repeated keys last-win loads whole, with [`Table::load`]: this refuses a
+    /// repeated key whatever the policy.
+    ///
+    /// # Errors
+    ///
+    /// Returns the errors [`Table::load`] does. The first load is then broken:
+    /// the table refuses every batch and publish, and is dropped.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the table holds a load that did not grow it this way, or
+    /// refused a batch before.
+    pub fn extend(&mut self, batch: &RecordBatch) -> Result<(), LoadError> {
+        let _phase = crate::profile::span("load: stage");
+        if self.growth.is_none() {
+            assert!(
+                self.load_version == 0 && self.columns.first().is_none_or(Column::is_empty),
+                "only a first load grows a table"
+            );
+            self.growth = Some(Growth {
+                rising: true,
+                last: Key::Null,
+                nans: vec![0; self.columns.len()],
+                refused: false,
+            });
+        }
+        let growth = self.growth.as_ref().expect("a growing table");
+        assert!(!growth.refused, "a table that refused a batch is dropped");
+        let start = self.columns.first().map_or(0, Column::len);
+        let extended = self.extend_columns(batch, start);
+        if let Some(growth) = &mut self.growth {
+            growth.refused = extended.is_err();
+        }
+        extended
+    }
+
+    fn extend_columns(&mut self, batch: &RecordBatch, start: usize) -> Result<(), LoadError> {
+        let growth = self.growth.as_mut().expect("a growing table");
+        for (i, array) in arrays_of(&self.schema, batch)?.into_iter().enumerate() {
+            let name = self.schema.field(i).name();
+            growth.nans[i] += self.columns[i].extend_from_arrow(name, array.as_ref())?;
+        }
+        // Ranks of the codes the published rows use stay as they were, so views
+        // that read the table before the next publish sort as they did.
+        for column in &mut self.columns {
+            column.refresh_ranks();
+        }
+        self.check_grown_keys(start)
+    }
+
+    /// Checks the keys of the rows from `start` on, which a growing load added.
+    fn check_grown_keys(&mut self, start: usize) -> Result<(), LoadError> {
+        let Some(k) = self.key_column else {
+            return Ok(());
+        };
+        let Self {
+            columns,
+            index,
+            growth,
+            schema,
+            ..
+        } = self;
+        let growth = growth.as_mut().expect("a growing table");
+        let column = &columns[k];
+        let end = column.len();
+        let null = |row| LoadError::NullKey {
+            column: schema.field(k).name().clone(),
+            row,
+        };
+        let mut row = start;
+        if growth.rising {
+            while row < end {
+                let key = column.key(row);
+                if key == Key::Null {
+                    return Err(null(row));
+                }
+                if row > 0 && !rises(growth.last, key) {
+                    break;
+                }
+                growth.last = key;
+                row += 1;
+            }
+            if row == end {
+                return Ok(());
+            }
+            // The keys stopped rising: index the rows before, which cannot repeat,
+            // and check the rest against them.
+            growth.rising = false;
+            index.reserve(column.len());
+            for before in 0..row {
+                index.insert(column.key(before), before);
+            }
+        }
+        let mut duplicates = 0;
+        let mut examples = Vec::new();
+        for row in row..end {
+            let key = column.key(row);
+            if key == Key::Null {
+                return Err(null(row));
+            }
+            if index.insert(key, row).is_some() {
+                duplicates += 1;
+                if examples.len() < 5 {
+                    examples.push(format!("{:?}", column.scalar(row)));
+                }
+            }
+        }
+        if duplicates > 0 {
+            return Err(LoadError::DuplicateKeys {
+                column: schema.field(k).name().clone(),
+                count: duplicates,
+                examples,
+            });
+        }
+        Ok(())
+    }
+
+    /// Makes the rows [`Table::extend`] added since the last publish live, as the
+    /// table's next load, and returns what changed: those rows, added. A first
+    /// publish makes the table's first load even with no rows. Returns `None` if
+    /// the table is not growing, or nothing was added since.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the growing load refused a batch.
+    pub fn publish(&mut self) -> Option<ChangeSet> {
+        let growth = self.growth.as_ref()?;
+        assert!(!growth.refused, "a table that refused a batch is dropped");
+        let rows = self.columns.first().map_or(0, Column::len);
+        let before = self.live.len();
+        if rows == before && self.load_version > 0 {
+            return None;
+        }
+        self.live.extend_ones(rows - before);
+        let first = self.next_seq;
+        self.next_seq += (rows - before) as u64;
+        self.seq.extend(first..self.next_seq);
+        // While the keys rise the index waits for the next load that needs it.
+        self.indexed = self.key_column.is_none() || !growth.rising;
+        if !self.indexed {
+            self.index.clear();
+        }
+        self.load_version += 1;
+        Some(ChangeSet {
+            load_version: self.load_version,
+            removed: RemovedRows {
+                columns: self
+                    .columns
+                    .iter()
+                    .map(|c| Column::new(c.ty.clone()))
+                    .collect(),
+                seq: Vec::new(),
+            },
+            added: (before..rows).collect(),
+        })
+    }
+
+    /// Per column, how many NaNs a growing load has turned to nulls so far.
+    #[must_use]
+    pub fn grown_nans(&self) -> Vec<(String, usize)> {
+        self.growth.as_ref().map_or_else(Vec::new, |growth| {
+            self.schema
+                .fields()
+                .iter()
+                .zip(&growth.nans)
+                .filter(|(_, n)| **n > 0)
+                .map(|(f, n)| (f.name().clone(), *n))
+                .collect()
+        })
+    }
+
+    /// Ends a first load that grew the table, once its last rows are published:
+    /// later loads apply as diffs.
+    ///
+    /// # Panics
+    ///
+    /// Panics if rows are left unpublished.
+    pub fn finish_growth(&mut self) {
+        let rows = self.columns.first().map_or(0, Column::len);
+        assert_eq!(
+            rows,
+            self.live.len(),
+            "a growing load's last rows are published first"
+        );
+        self.growth = None;
     }
 
     fn stage(&self, batches: &[RecordBatch]) -> Result<Staging, LoadError> {
@@ -551,6 +789,10 @@ impl Table {
         assert!(
             !staging.refused,
             "a staging that refused a batch is dropped"
+        );
+        assert!(
+            self.growth.is_none(),
+            "a first load that grows the table finishes before the next load"
         );
         let (staged, nans_to_null) = staging.finish();
         let _phase = crate::profile::span("load: append");
@@ -858,6 +1100,145 @@ mod tests {
         assert!(!table.indexed);
         let (report, _) = table.upsert(&[batch(&[Some(1)], &[Some("a")])]).unwrap();
         assert_eq!((report.updated, report.inserted), (1, 0));
+    }
+
+    /// Grows `table` by `batches`, publishing after the batches at `publish_after`
+    /// and at the end, and returns each change's added slots.
+    fn grow(
+        table: &mut Table,
+        batches: &[RecordBatch],
+        publish_after: &[usize],
+    ) -> Vec<Vec<usize>> {
+        let mut added = Vec::new();
+        for (i, batch) in batches.iter().enumerate() {
+            table.extend(batch).unwrap();
+            if publish_after.contains(&i) {
+                added.extend(table.publish().map(|c| c.added));
+            }
+        }
+        added.extend(table.publish().map(|c| c.added));
+        table.finish_growth();
+        added
+    }
+
+    #[test]
+    fn a_first_load_that_grows_a_batch_at_a_time_ends_as_one_loaded_whole() {
+        let batches = [
+            batch(&[Some(3), Some(1)], &[Some("c"), None]),
+            batch(&[], &[]),
+            batch(&[Some(2), Some(7)], &[Some("a"), Some("B")]),
+            batch(&[Some(8)], &[Some("b")]),
+        ];
+        let mut whole = keyed();
+        whole.load(&batches).unwrap();
+        let mut grown = keyed();
+        grown.reserve(5);
+        assert_eq!(
+            grow(&mut grown, &batches, &[0, 1]),
+            vec![vec![0, 1], vec![2, 3, 4]]
+        );
+        assert_eq!(rows(&grown), rows(&whole));
+        assert_eq!(grown.load_version(), 2);
+        // The keys do not rise, so they were indexed as they came, and a reload
+        // applies as a diff.
+        assert!(grown.indexed);
+        let (report, _) = grown.load(&batches).unwrap();
+        assert_eq!((report.unchanged, report.inserted), (5, 0));
+        // Text sorts by ranks refreshed as each batch came.
+        let names = grown.column(1);
+        let mut by_name: Vec<usize> = grown.live_slots().collect();
+        by_name.sort_by(|&a, &b| names.cmp_keys(names.key(a), names.key(b)));
+        let text: Vec<Scalar> = by_name.iter().map(|&s| names.scalar(s)).collect();
+        let t = |x: &str| Scalar::Utf8(x.into());
+        assert_eq!(text, vec![t("a"), t("B"), t("b"), t("c"), Scalar::Null]);
+    }
+
+    #[test]
+    fn rows_a_growing_load_adds_are_not_live_until_published() {
+        let mut table = keyed();
+        table
+            .extend(&batch(&[Some(1), Some(2)], &[Some("a"), Some("b")]))
+            .unwrap();
+        assert_eq!((table.num_rows(), table.load_version()), (0, 0));
+        let change = table.publish().unwrap();
+        assert_eq!((change.added, change.load_version), (vec![0, 1], 1));
+        assert!(table.publish().is_none());
+        table.extend(&batch(&[Some(3)], &[Some("z")])).unwrap();
+        assert_eq!(table.num_rows(), 2);
+        assert_eq!(table.publish().unwrap().added, vec![2]);
+        assert_eq!(table.num_rows(), 3);
+        // Ids that only rise across batches build no index.
+        assert!(!table.indexed);
+        table.finish_growth();
+        let (report, _) = table
+            .load(&[batch(&[Some(2), Some(4)], &[Some("b"), Some("d")])])
+            .unwrap();
+        assert_eq!(
+            (report.unchanged, report.inserted, report.deleted),
+            (1, 1, 2)
+        );
+        // An empty first load publishes the table's first load.
+        let mut empty = keyed();
+        assert!(empty.publish().is_none());
+        empty.extend(&batch(&[], &[])).unwrap();
+        assert_eq!(empty.publish().map(|c| c.load_version), Some(1));
+    }
+
+    #[test]
+    fn a_growing_load_refuses_a_key_that_repeats_one_from_an_earlier_batch() {
+        let mut table = keyed();
+        table
+            .extend(&batch(&[Some(1), Some(5)], &[None, None]))
+            .unwrap();
+        table.publish();
+        // Rising until 3, then indexed, and 5 repeats.
+        let error = table
+            .extend(&batch(&[Some(9), Some(3), Some(5), Some(5)], &[None; 4]))
+            .unwrap_err();
+        assert_eq!(
+            error,
+            LoadError::DuplicateKeys {
+                column: "id".into(),
+                count: 2,
+                examples: vec!["Int64(5)".into(), "Int64(5)".into()],
+            }
+        );
+        let mut nulls = keyed();
+        nulls.extend(&batch(&[Some(1)], &[None])).unwrap();
+        let error = nulls
+            .extend(&batch(&[Some(2), None], &[None, None]))
+            .unwrap_err();
+        assert_eq!(
+            error,
+            LoadError::NullKey {
+                column: "id".into(),
+                row: 2
+            }
+        );
+        // Text keys rise while each row's text is new.
+        let mut text = Table::new(
+            &schema(),
+            TableOptions {
+                primary_key: Some("name".into()),
+                ..TableOptions::default()
+            },
+        )
+        .unwrap();
+        text.extend(&batch(&[None, None], &[Some("b"), Some("a")]))
+            .unwrap();
+        let error = text.extend(&batch(&[None], &[Some("b")])).unwrap_err();
+        assert!(
+            matches!(error, LoadError::DuplicateKeys { count: 1, .. }),
+            "{error:?}"
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "a table that refused a batch is dropped")]
+    fn a_growing_load_that_refused_a_batch_takes_no_more() {
+        let mut table = keyed();
+        let _ = table.extend(&batch(&[None], &[None]));
+        let _ = table.extend(&batch(&[Some(1)], &[None]));
     }
 
     #[test]

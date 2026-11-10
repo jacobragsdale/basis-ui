@@ -472,7 +472,7 @@ them.
 | Export                           | What it does                                                                                                                                                                                                                                       |
 | -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `<ParallaxProvider>`             | Starts the engine's worker for the tree inside it (`worker`, `prewarm`), and gives parallax its theme (`theme`, `basisTheme` by default) and scheme (`scheme`, the page's mode by default)                                                         |
-| `useDataset(name, source, opts)` | Loads Arrow IPC stream bytes, or a function that returns them, as `name`, and returns the load's `status` (`idle`, `loading`, `loaded` or `failed`), `rows`, `error` and `reload()`. `opts` are the load's primary key and times                  |
+| `useDataset(name, source, opts)` | Loads Arrow IPC stream bytes, or a function that returns them or the response itself, as `name`, and returns the load's `status` (`idle`, `loading`, `loaded` or `failed`), `rows`, `error`, `progress` and `reload()`. `opts` are the load's primary key and times |
 | `useView(dataset, layout, opts)` | Opens a view of the dataset as the layout describes it, and returns its `status` (`waiting`, `opening`, `open` or `failed`), its latest `frame` and `chart`, its table's status, its `error`, and its `handle`. `opts` are the viewport (null for a chart the engine reduces, which has no rows), the chart window, `onFrame`, which takes each frame in place of `frame`, and `onChart`, which takes each reduction in place of `chart`, so a canvas can paint them without a React render |
 | `<Grid>` | A data grid and pivot table of a dataset as a layout describes it; see [Show a grid](#show-a-grid) |
 | `<Pivot>` | A pivot table with its settings beside it, and the rows behind a value; see [Pivot a table](#pivot-a-table) |
@@ -482,7 +482,44 @@ them.
 A changed layout updates the open view in place, and a changed viewport or chart
 window asks for that window; neither reopens it. Bytes given to `useDataset`
 are copied before they move to the worker, so the app's copy, such as a query
-cache's, stays readable; a function's bytes move without a copy.
+cache's, stays readable; a function's bytes or response move without a copy.
+
+### A large table, as it arrives
+
+A source that returns the response itself, such as `() => fetch(url)`, streams
+it: the engine reads each record batch as soon as it has arrived, and a first
+load's rows show batch by batch, the first long before the last has come.
+On the build host, 1,000,000 trades show their first rows in about a third of
+the time the whole table takes. A source that returns bytes shows them once they have all
+come. The generated client's Arrow calls answer with a `Blob`, which has
+already arrived whole, so a page that wants the first rows sooner fetches the
+route itself for now.
+
+```tsx
+const trades = useDataset("trades", async () => fetch("/api/trades"), {
+  primaryKey: "trade_id",
+});
+```
+
+While a load is under way, `progress` says where it stands:
+
+| Field          | What it says                                                                                                                         |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `rows`         | The rows read so far                                                                                                                 |
+| `expectedRows` | The rows the load brings: counted when its bytes came whole, estimated from the response's `Content-Length` while it streams, or null |
+| `estimated`    | Whether `expectedRows` is an estimate                                                                                                |
+| `shown`        | Whether the rows so far show: a first load's do; a reload's views keep the rows before it until it has all arrived and applies whole |
+
+`progress` is null before the first rows and once the load is done. While a
+first load arrives, a grid's or pivot's sorts, filters and groups apply to the
+rows so far and update as more arrive, and its status bar says how many rows
+are still to come, so a total never reads as the whole table's until it is. A
+chart waits for the whole load, and an export is refused until it is done. A
+reload is checked whole before anything changes, as before: its views show the
+rows before it, the status bar says how far it has read, and a refused reload
+leaves the rows as they were. A first load refused part of the way, such as by
+a key that repeats one in an earlier batch, fails its views with the reason and
+leaves no table.
 
 The theme follows `@basis/ui`'s: `basisTheme` gives every token one of
 `@basis/ui`'s, and charts take `chart-1` to `chart-8`, the sequential scale and

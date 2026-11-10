@@ -46,9 +46,9 @@ function listen(worker: WorkerPort, current: () => boolean, listener: PortListen
 }
 
 /** Whether `bytes` are still on their way, rather than in hand. */
-function arriving(
-  bytes: ArrayBuffer | PromiseLike<ArrayBuffer>,
-): bytes is PromiseLike<ArrayBuffer> {
+function arriving<TBytes extends object>(
+  bytes: TBytes | PromiseLike<TBytes>,
+): bytes is PromiseLike<TBytes> {
   return "then" in bytes && typeof bytes.then === "function";
 }
 

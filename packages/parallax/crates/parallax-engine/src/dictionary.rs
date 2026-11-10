@@ -14,6 +14,8 @@ pub struct Dictionary {
     values: Vec<Box<str>>,
     folded: Vec<Box<str>>,
     lookup: FxHashMap<Box<str>, u32>,
+    /// The codes ranked so far, in text order.
+    sorted: Vec<u32>,
     ranks: Vec<u32>,
     ranks_stale: bool,
 }
@@ -80,21 +82,38 @@ impl Dictionary {
         &self.folded[code as usize]
     }
 
-    /// Recomputes ranks after new strings were interned.
+    /// Recomputes ranks after new strings were interned. Only the new strings
+    /// are sorted, then merged into the order of those ranked before, so a load
+    /// that arrives a batch at a time ranks each string once.
     pub fn refresh_ranks(&mut self) {
         if !self.ranks_stale && self.ranks.len() == self.values.len() {
             return;
         }
-        let mut order: Vec<u32> = (0..self.values.len() as u32).collect();
-        order.sort_unstable_by(|&a, &b| {
+        let order = |a: u32, b: u32| {
             self.folded[a as usize]
                 .cmp(&self.folded[b as usize])
                 .then_with(|| self.values[a as usize].cmp(&self.values[b as usize]))
-        });
+        };
+        let mut new: Vec<u32> = (self.sorted.len() as u32..self.values.len() as u32).collect();
+        new.sort_unstable_by(|&a, &b| order(a, b));
+        let mut sorted = Vec::with_capacity(self.values.len());
+        let (mut old, mut new) = (self.sorted.iter().peekable(), new.into_iter().peekable());
+        while let (Some(&&a), Some(&b)) = (old.peek(), new.peek()) {
+            if order(a, b) == Ordering::Greater {
+                sorted.push(b);
+                new.next();
+            } else {
+                sorted.push(a);
+                old.next();
+            }
+        }
+        sorted.extend(old.copied());
+        sorted.extend(new);
         self.ranks = vec![0; self.values.len()];
-        for (rank, &code) in order.iter().enumerate() {
+        for (rank, &code) in sorted.iter().enumerate() {
             self.ranks[code as usize] = rank as u32;
         }
+        self.sorted = sorted;
         self.ranks_stale = false;
     }
 
@@ -136,6 +155,26 @@ mod tests {
         let ranked: Vec<&str> = by_rank.into_iter().map(|(_, s)| s).collect();
         assert_eq!(ranked, sorted);
         assert_eq!(&sorted[..4], &["", "ALPHA", "Alpha", "alpha"]);
+    }
+
+    #[test]
+    fn ranks_refreshed_as_strings_arrive_match_ranks_refreshed_once() {
+        let words: Vec<String> = (0..500)
+            .map(|i| format!("{}{}", ["b", "A", "a", "C", ""][i % 5], (i * 7919) % 211))
+            .collect();
+        let mut once = Dictionary::new();
+        let mut arriving = Dictionary::new();
+        for (i, word) in words.iter().enumerate() {
+            once.intern(word);
+            arriving.intern(word);
+            if i % 37 == 0 {
+                arriving.refresh_ranks();
+            }
+        }
+        once.refresh_ranks();
+        arriving.refresh_ranks();
+        let ranks = |d: &Dictionary| (0..d.len() as u32).map(|c| d.rank(c)).collect::<Vec<_>>();
+        assert_eq!(ranks(&arriving), ranks(&once));
     }
 
     #[test]

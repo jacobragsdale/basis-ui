@@ -265,7 +265,7 @@ function GridFrame(props: GridFrameProps): ReactNode {
         groupPanel={groupPanel}
       />
       <StatusBar
-        dataset={dataset.name}
+        dataset={dataset}
         viewRows={snapshot.totalRows}
         sourceAsOf={snapshot.sourceAsOf}
         asOf={props.asOf}

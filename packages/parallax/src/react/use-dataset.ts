@@ -7,27 +7,8 @@ import type { ParallaxClient, Restart } from "#engine/client.ts";
 import type { LoadOptions } from "#engine/limits.ts";
 
 import { useParallaxClient } from "./context.ts";
-import { applyWhenCurrent } from "./current.ts";
-
-/**
- * Where a dataset's Arrow IPC stream comes from: bytes the app holds, or a function that fetches them, such as
- * `() => fetch(url).then((response) => response.arrayBuffer())`. Bytes are copied before they move to the engine, so
- * the app's copy, such as a query cache's, stays readable; a function's bytes move without a copy, so it returns fresh
- * ones each call. After the engine restarts, the hook loads the source again.
- */
-type DatasetSource = ArrayBuffer | (() => ArrayBuffer | PromiseLike<ArrayBuffer>);
-
-/** Where a dataset's load stands. `idle` has no source yet. */
-type DatasetStatus = "idle" | "loading" | "loaded" | "failed";
-
-/** A load's state. */
-interface LoadState {
-  readonly status: DatasetStatus;
-  /** The rows the table holds, once loaded. */
-  readonly rows: number | null;
-  /** Why the load failed, as the engine or the source said. */
-  readonly error: string | null;
-}
+import { idle, loading, start } from "./dataset-load.ts";
+import type { DatasetSource, LoadRequest, LoadState, Settled } from "./dataset-load.ts";
 
 /** A dataset as `useDataset` returns it, for `useView`. */
 interface Dataset extends LoadState {
@@ -36,23 +17,6 @@ interface Dataset extends LoadState {
   readonly engine: number;
   /** Loads the data again from the source: a function source fetches anew. */
   readonly reload: () => void;
-}
-
-/** What one load is for: when any of it changes, the dataset loads again. */
-interface LoadRequest {
-  readonly name: string;
-  readonly source: DatasetSource;
-  readonly reloads: number;
-  readonly engine: number;
-  readonly primaryKey: string | null;
-  readonly receivedAtMicros: number | undefined;
-  readonly sourceAsOfMicros: number | undefined;
-}
-
-/** A load's outcome, with the request it answered. */
-interface Settled {
-  readonly request: LoadRequest;
-  readonly state: LoadState;
 }
 
 /** What the hook tracks across renders: the engine's restarts it has heard of, why the dataset stopped, if it did, and
@@ -67,13 +31,6 @@ interface Tracked {
 interface Stopped {
   readonly reason: string;
   readonly request: LoadRequest;
-}
-
-const idle: LoadState = { error: null, rows: null, status: "idle" };
-const loading: LoadState = { error: null, rows: null, status: "loading" };
-
-function describe(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }
 
 /** Whether two requests ask for the same data, on whichever engine. */
@@ -97,50 +54,12 @@ function stoppedFor(stopped: Stopped | null, request: LoadRequest): string | nul
   return stopped !== null && sameData(stopped.request, request) ? stopped.reason : null;
 }
 
-/** The options a request loads with. */
-function optionsOf({ primaryKey, receivedAtMicros, sourceAsOfMicros }: LoadRequest): LoadOptions {
-  return {
-    primaryKey,
-    ...(receivedAtMicros === undefined ? {} : { receivedAtMicros }),
-    ...(sourceAsOfMicros === undefined ? {} : { sourceAsOfMicros }),
-  };
-}
-
-/** Loads a request's source, settling to the load's state. */
-async function load(client: ParallaxClient, request: LoadRequest): Promise<LoadState> {
-  const { name, source } = request;
-  try {
-    // A copy of the app's bytes, or what its function returns.
-    const bytes = typeof source === "function" ? source() : structuredClone(source);
-    const { rows } = await client.load(name, bytes, optionsOf(request));
-    return { error: null, rows, status: "loaded" };
-  } catch (error: unknown) {
-    return { error: describe(error), rows: null, status: "failed" };
-  }
-}
-
 /** The dataset's state now: what its latest load came to, if that load was for the request now. */
 function stateOf(request: LoadRequest, settled: Settled | null, stopped: string | null): LoadState {
   if (stopped !== null) {
-    return { error: stopped, rows: null, status: "failed" };
+    return { error: stopped, progress: null, rows: null, status: "failed" };
   }
   return settled !== null && sameRequest(settled.request, request) ? settled.state : loading;
-}
-
-/** Starts a request's load, applying its outcome while the effect that started it holds. */
-function start(
-  client: ParallaxClient,
-  request: LoadRequest,
-  settle: (settled: Settled) => void,
-): () => void {
-  let live = true;
-  const apply = (state: LoadState): void => {
-    settle({ request, state });
-  };
-  applyWhenCurrent(load(client, request), () => live, apply).catch(reportError);
-  return () => {
-    live = false;
-  };
 }
 
 /**
@@ -239,7 +158,13 @@ function useLoad(client: ParallaxClient, wanted: Wanted, settle: (settled: Settl
  * `name`, `source` or the options change, so give it a stable source: bytes held in state or a query, or a function
  * the React Compiler keeps. A null source waits, as `idle`.
  *
- * Views of the dataset, opened with `useView`, may open while it loads: they wait for it. When the engine runs out of
+ * Views of the dataset, opened with `useView`, may open while it loads: they wait for its first rows. A first load
+ * shows as it arrives, from a source that streams: its views open on its first rows and see more each time the rows
+ * read have grown fourfold, while `progress` says how many have been read of how many are expected, and a grid's status
+ * bar how many are still to come. Sorts, filters and pivots apply to the rows so far and update as more arrive; a
+ * chart waits for the whole load, and an export is refused until it is done. A reload is read whole and checked before
+ * anything changes: its views keep the rows before it until it applies, and a refused reload leaves them so, while
+ * `progress` says how far it has read. When the engine runs out of
  * memory it starts again empty and fails every view; a dataset that was loaded then loads its source again, and its
  * views reopen. A dataset whose load was under way, most likely the one that ran the engine out of memory, fails with
  * the reason until `reload` is called or the source changes, as does every dataset once the engine keeps stopping.
@@ -291,4 +216,5 @@ function useDataset(
 }
 
 export { useDataset };
-export type { Dataset, DatasetSource, DatasetStatus };
+export type { Dataset };
+export type { DatasetSource, DatasetStatus } from "./dataset-load.ts";

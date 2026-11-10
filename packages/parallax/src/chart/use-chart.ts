@@ -124,6 +124,8 @@ function useChartView(
       scene.setFrame(frame, handle);
     },
     viewport: reduced ? null : groupsViewport,
+    // A chart has no status bar to say more rows are coming, so it waits for the whole load.
+    whole: true,
   });
 }
 
