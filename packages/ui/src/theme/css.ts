@@ -229,4 +229,18 @@ function themeCss(themes: readonly [ThemeInputs, ...ThemeInputs[]]): string {
   return `${[header, fontsAndVariant, themeBlocks(themes), scales(first), reducedMotion].join("\n\n")}\n`;
 }
 
-export { tabularFace, themeBlocks, themeCss };
+/** The module of the themes' names, `src/theme/theme-names.ts`, in their order, the default first: what the
+ * preferences, the user menu and `vp run shot` know of the themes, without the inputs, which no app needs at run time. */
+function themeNamesModule(themes: readonly [ThemeInputs, ...ThemeInputs[]]): string {
+  const names = themes.map(({ name }) => JSON.stringify(name)).join(", ");
+  return `// Written by \`vp run @basis/ui#theme\` from the themes in ./themes/index.ts: their names, in their order, the default
+// first. The preferences, the user menu and \`vp run shot\` read these, so that no app ships the themes' inputs.
+
+/** Every shipped theme's name, the default first. */
+const themeNames = [${names}] as const;
+
+export { themeNames };
+`;
+}
+
+export { tabularFace, themeBlocks, themeCss, themeNamesModule };

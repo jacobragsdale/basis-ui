@@ -573,7 +573,9 @@ export {
   type Preferences,
   type PreferencesRoot,
   type ResolvedMode,
+  type ThemeName,
 } from "./theme/preferences.ts";
+export { themeNames } from "./theme/theme-names.ts";
 export { tokenNames } from "./theme/tokens.ts";
 export {
   ApiError,

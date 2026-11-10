@@ -118,7 +118,12 @@ function CappedTable(): ReactElement {
   );
 }
 
-const light: Preferences = { density: "comfortable", mode: "light", motion: "full" };
+const light: Preferences = {
+  density: "comfortable",
+  mode: "light",
+  motion: "full",
+  theme: "default",
+};
 
 /** `spent`, with each figure over its budget replaced by a line that names the figure and the budget, so a failure
  * says which budget it broke. */

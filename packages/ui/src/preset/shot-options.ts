@@ -1,6 +1,9 @@
 /* The shot task's arguments, read without starting anything, so that tests can check them: the routes and the
  * options, and the name each shot's files take. The steps' grammar is shot-steps.ts's. */
 
+import { themeNames } from "#theme/theme-names.ts";
+import type { ThemeName } from "#theme/preferences.ts";
+
 import { stepOf } from "./shot-steps.ts";
 import type { Step } from "./shot-steps.ts";
 import { TaskError } from "./task-error.ts";
@@ -19,8 +22,8 @@ interface ShotOptions {
   readonly routes: readonly string[];
   /** Every route of the app's router as well, with `--all`. */
   readonly all: boolean;
-  /** The theme, the only one `@basis/ui` has until the cookie carries a choice of theme. */
-  readonly theme: "default";
+  /** The theme, one `@basis/ui` ships; the default unless `--theme` names another. */
+  readonly theme: ThemeName;
   readonly mode: Mode;
   /** Compact, the default, or comfortable. */
   readonly density: Density;
@@ -41,6 +44,9 @@ interface ShotOptions {
 const optionNames =
   "--all, --mode, --density, --theme, --width, --height, --wait, --selector, --step, --compare and --json";
 
+/** The shipped themes' names, as a sentence lists them: `a`, `a or b`, `a, b or c`. */
+const themeList = themeNames.join(", ").replace(/, (?=[^,]*$)/u, " or ");
+
 /** Each option that takes a value: the line it fails with when the value is missing or wrong. */
 const valueErrors: Readonly<Record<string, string>> = {
   compare: "ERROR --compare takes the folder of baselines, such as --compare baselines.",
@@ -50,8 +56,7 @@ const valueErrors: Readonly<Record<string, string>> = {
   selector:
     "ERROR --selector takes the CSS selector of the element to picture, such as --selector main or --selector '#coupons'.",
   step: "ERROR --step takes a step, such as --step 'click:Save', --step 'type:#amount=100' or --step 'press:Enter'.",
-  theme:
-    "ERROR --theme takes only default until @basis/ui lets the user choose a theme, which roadmap step 6.5.5 adds: leave --theme out, or give --theme default.",
+  theme: `ERROR --theme takes the name of a theme @basis/ui ships (${themeList}), such as --theme ${themeNames[0]}.`,
   wait: "ERROR --wait takes a whole number of milliseconds, 0 or more, such as --wait 2000.",
   width: "ERROR --width takes a whole number of pixels, 1 or more, such as --width 390.",
 };
@@ -94,7 +99,7 @@ function set(read: Read, name: string, value: string): void {
 const choices: Readonly<Record<string, readonly string[]>> = {
   density: ["compact", "comfortable"],
   mode: ["light", "dark"],
-  theme: ["default"],
+  theme: themeNames,
 };
 
 /** The least each number may be. */
@@ -148,7 +153,7 @@ function optionsFrom({ settings, routes, steps }: Read): ShotOptions {
     routes,
     selector: settings.get("selector"),
     steps,
-    theme: "default",
+    theme: themeNames.find((name) => name === settings.get("theme")) ?? themeNames[0],
     wait: number("wait", settleMs),
     width: number("width", defaultWidth),
   };
@@ -204,18 +209,20 @@ function slug(text: string): string {
 
 /** The files' name for `route`: the route's words joined by dashes, or by an underscore where a slash parts them, so
  * /a/b and /a-b differ; `home` for /. Given the options, it adds a part for each that differs from the default, as
- * `-dark` and `-comfortable`, and `--SELECTOR` for one element. The default theme, the only one, adds none. */
+ * `-dark` and `-comfortable`, `-THEME` for a theme other than the default, and `--SELECTOR` for one element. */
 function nameOf(
   route: string,
-  options?: Pick<ShotOptions, "density" | "mode" | "selector">,
+  options?: Pick<ShotOptions, "density" | "mode" | "selector"> & { readonly theme?: string },
 ): string {
   const base = slug(route) === "" ? "home" : slug(route);
   if (options === undefined) {
     return base;
   }
   const selector = options.selector === undefined ? "" : `--${slug(options.selector) || "element"}`;
+  const theme = options.theme ?? themeNames[0];
   return [
     base,
+    theme === themeNames[0] ? "" : `-${theme}`,
     options.mode === "dark" ? "-dark" : "",
     options.density === "comfortable" ? "-comfortable" : "",
     selector,

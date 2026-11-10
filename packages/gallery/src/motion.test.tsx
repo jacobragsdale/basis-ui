@@ -30,7 +30,12 @@ import { render } from "vitest-browser-react";
  * drawn in one frame, and the `motion` preference stops what `prefers-reduced-motion` stops. */
 
 const root = document.documentElement;
-const shown: Preferences = { density: "comfortable", mode: "light", motion: "full" };
+const shown: Preferences = {
+  density: "comfortable",
+  mode: "light",
+  motion: "full",
+  theme: "default",
+};
 
 afterEach(() => {
   applyPreferences(root, shown, false);

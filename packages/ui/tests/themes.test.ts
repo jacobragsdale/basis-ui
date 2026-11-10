@@ -7,7 +7,7 @@ import { createRequire } from "node:module";
 
 import { describe, expect, test } from "vite-plus/test";
 
-import { tabularFace, themeBlocks, themeCss } from "#theme/css.ts";
+import { tabularFace, themeBlocks, themeCss, themeNamesModule } from "#theme/css.ts";
 import { defineTheme } from "#theme/inputs.ts";
 import { startTheme } from "#theme/start-theme.ts";
 import { defaultTheme, themes } from "#theme/themes/index.ts";
@@ -31,6 +31,15 @@ test("the tabular face's file, and its licence, are the package's (run `vp run @
 });
 
 const sea = dummy("sea", 200);
+
+test("the committed theme-names.ts names the shipped themes in their order (run `vp run @basis/ui#theme` after changing them)", () => {
+  expect(readFileSync(new URL("../src/theme/theme-names.ts", import.meta.url), "utf8")).toBe(
+    themeNamesModule(themes),
+  );
+  expect(themeNamesModule([defaultTheme, sea])).toContain(
+    'const themeNames = ["default", "sea"] as const;',
+  );
+});
 
 /** The variables the stylesheet's `@theme` block declares, other than those that clear a namespace and the library's
  * own, which are the same in every theme. */

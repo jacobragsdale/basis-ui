@@ -5,6 +5,16 @@ What changed in `@basis/ui`, newest first, in the words an app's agent needs: wh
 
 ## Unreleased
 
+- The preferences carry a theme. `Preferences` has a `theme`, one of `themeNames` (only `default` ships yet), which
+  the cookie stores as a fourth part, `dark.compact.full.default`, and the head script puts on the root as
+  `data-theme`; an older cookie, or one naming a theme no longer shipped, reads as the default theme. The user menu
+  offers the themes once more than one ships. `BasisApp` takes `preferencesDomain`, such as `apps.example.com`, which
+  puts the cookie on the parent domain the firm's apps share, so a choice made in one is every app's; on `localhost`
+  the cookie stays the app's alone. A page follows another app's change at once over HTTPS, and otherwise when the
+  user comes back to it. `vp run shot --theme NAME` takes any shipped theme, and a theme other than the default joins
+  the files' names. What to do: add `theme` where you build a `Preferences`, such as `theme: "default"` or
+  `defaultPreferences.theme`; and give every app on the firm's parent domain the same `preferencesDomain` once it is
+  known.
 - `vp run new table|page|form NAME --operation ID` starts a page from an operation in `openapi.json`: a DataTable of
   the rows a GET answers, a card of the fields a GET answers, or a form for the body an operation takes, bound to the
   generated Zod schema, each number by its display format; with its test, a fixture whose body the schema accepts and

@@ -33,22 +33,23 @@ async function launch(task = "shot"): Promise<Browser> {
   }
 }
 
-/** A page at the options' size and scheme, with the mode and density the app's head script reads from its cookie, as
- * a user's choice in the user menu sets them; the page is never edited. The default theme needs nothing set. */
+/** A page at the options' size and scheme, with the mode, density and theme the app's head script reads from its
+ * cookie, as a user's choice in the user menu sets them; the page is never edited. */
 async function pageFor(
   browser: Browser,
   origin: string,
-  options: Pick<ShotOptions, "density" | "height" | "mode" | "width">,
+  options: Pick<ShotOptions, "density" | "height" | "mode" | "theme" | "width">,
 ): Promise<Page> {
   const context = await browser.newContext({
     colorScheme: options.mode,
     viewport: { height: options.height, width: options.width },
   });
-  // The cookie as the user menu writes it, `dark.compact.full`, without its attributes.
+  // The cookie as the user menu writes it, `dark.compact.full.default`, without its attributes.
   const [cookie = ""] = serializePreferences({
     density: options.density,
     mode: options.mode,
     motion: defaultPreferences.motion,
+    theme: options.theme,
   }).split(";");
   const value = cookie.slice(cookie.indexOf("=") + 1);
   await context.addCookies([{ name: preferencesCookie, url: origin, value }]);

@@ -286,7 +286,7 @@ The firm's own components cover what shadcn does not:
   with dates in ISO 8601, and a workbook with several sheets of the schema's columns offers a choice of sheet. An .xls,
   .xlsb or .ods is refused with how to save it as .xlsx ([the reader's spike](spikes/xlsx-reader.md)).
 - **The shell's parts.** A sidebar built from the route tree, its pages in their groups, breadcrumbs that a page's data
-  can title, a user menu holding the mode, density and motion, a banner naming the environment, a command palette
+  can title, a user menu holding the mode, density, motion and theme, a banner naming the environment, a command palette
   (Ctrl+K) filled from the routes and the app's commands, each with its keywords, group, icon and shortcut, a shortcut
   registry with a `?` overlay, and one tooltip delay. `AppShell` takes slots for its header and the sidebar's header
   and footer, so an app adds its own parts without leaving the shell, and each page is a `Page`, a header of its title
@@ -324,8 +324,9 @@ library's and not an app's. The default theme gets a look of its own, decided th
 shadcn's defaults: status colours with their own lightness, a neutral whose tint shows, elevation that reads, a dark
 primary that is not pastel, and a considered look for numbers. The firm's brand is ported onto the generator's inputs
 later, when the maintainer has its guidelines, and its values stay out of this public repo. Not yet: the generator is
-built (step 6.5.3, 2026-11-09), but it ships one theme, the default, which still reads as shadcn's; the choice of theme
-is step 6.5.5, and the default's identity with the two more themes, dense dark and high contrast, 6.5.7.
+built (step 6.5.3, 2026-11-09), and so is the choice of theme (step 6.5.5, 2026-11-09), but it ships one theme, the
+default, which still reads as shadcn's; the default's identity with the two more themes, dense dark and high contrast,
+is step 6.5.7.
 
 A theme is one file of values and no code: `packages/ui/src/theme/themes/NAME.ts` exports a typed `ThemeInputs`
 through `defineTheme`, which checks what the type cannot, and the generator, pure functions of those inputs, writes
@@ -426,13 +427,31 @@ theme.
    `--font-num` names Inter declared again with them on, which parallax's canvases draw in.
 
 The user chooses a mode (system, light or dark), a density (compact, the default by the maintainer's choice of
-2026-11-07, or comfortable), a motion (full, the default, or reduced), and once step 6.5.5 is built a theme. Reduced
+2026-11-07, or comfortable), a motion (full, the default, or reduced), and a theme (step 6.5.5, 2026-11-09). Reduced
 motion stops every transition and animation as `prefers-reduced-motion` does, for a desktop whose Windows setting is
-not the user's to change; either one stops them. They live in one cookie, meant to sit on the parent
-domain the firm's apps share, so that every app follows one choice, and a page left open changes when another app
-changes it. A script in the page's head applies them before the first paint, and sets `color-scheme` to match, so
-scrollbars and native controls follow. If the apps share no parent domain, each app keeps its own choice. Not yet: the
-cookie can take a domain, but the user menu passes none, so today each app keeps its own choice (step 6.5.5).
+not the user's to change; either one stops them. They live in one cookie, `basis-ui-preferences`, whose value is the
+four joined by dots, as `dark.compact.full.default`; a value written before the motion or the theme was, or naming a
+theme no longer shipped, since a cookie can outlive a theme, reads the missing or unknown part as the default's. The
+cookie sits on the parent domain the firm's apps share, which an app names in `BasisApp`'s `preferencesDomain`, so
+that every app follows one choice, and a page left open changes when another app changes it. A page on a host outside
+that domain, such as `localhost` in development, keeps the cookie for itself, since a browser refuses it otherwise,
+and without the option every app keeps its own choice. A choice an app kept for itself before is moved onto the
+domain when the app starts, since a browser lists the older cookie first and it would hide the shared one.
+
+No event tells a page that another origin changed a cookie they share: `storage` and `BroadcastChannel` stay within
+one origin. The cookie store's change event does cross: in Chromium 158, over HTTPS, a page on one subdomain received
+the event when a sibling subdomain set the cookie on their parent domain, even with the page in a window left in view,
+which gets no focus event. The cookie store exists only on a secure page, so a page served over plain HTTP, or in a
+browser without it, reads the cookie again when its window takes the focus or the page is shown again. The user menu
+reads the cookie again as it opens, and a change there keeps what is stored for the rest, so it never writes back a
+choice another app has since changed. A script in the page's head applies them before the first paint, and sets
+`color-scheme` to match, so scrollbars and native controls follow; a test holds it to the same answers as its
+TypeScript twin for every value and for cookies older, garbled or among others. It puts the theme's name in
+`data-theme` on the root, the default's too, as `data-density` always names the density, so that whatever reads it
+need not know which theme sits at `:root`. The names come from the generator: `vp run @basis/ui#theme` writes them
+into `theme-names.ts`, which a test compares with the themes, so the head script, the user menu and `vp run shot
+--theme` know the themes without an app shipping their inputs. The user menu offers the themes only once more than one
+ships, since a choice of one is no choice and would lengthen every app's menu.
 
 No app can change the theme, so this repo holds every shipped theme to `checkTheme` (step 6.5.4, 2026-11-09), a pure
 function of a theme's inputs with no Node API, so that the studio of step 6.5.8 can run it in the page. Vite+'s
@@ -640,7 +659,7 @@ before the app's entry runs, and reports each answer and its source through the 
 the browser's console, and in the `x-basis-fixture-source` and `x-basis-fixture-file` headers of the answer. `BASIS_API_URL` sends `/api` to a live API instead. The app runs on a port derived from its
 folder, the same on every run and another in another git worktree, and `vp run shot ROUTE` writes a screenshot, the
 page's accessibility tree, its console errors, each request to `/api` with its status and source, and axe's check, a
-violation failing it. It sets the mode and density through the preferences cookie, as a user does, never by editing
+violation failing it. It sets the mode, density and theme through the preferences cookie, as a user does, never by editing
 the page; it takes steps, a click, a hover, typing, a key or a wait, so an agent sees a page after an action without a
 second tool; `--all` pictures every route of the router; and `--json` prints one line an agent reads. Agents drive the
 browser further with Playwright CLI, which Microsoft built for coding agents.

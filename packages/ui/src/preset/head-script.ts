@@ -1,5 +1,6 @@
 /* The Vite plugin that writes @basis/ui's head script into an app's index.html, in `vp dev` and `vp build` alike, so
- * the stored mode, density and motion apply before the first paint and no app keeps a copy of the script to drift. */
+ * the stored mode, density, motion and theme apply before the first paint and no app keeps a copy of the script to
+ * drift. */
 
 import type { Plugin } from "vite-plus";
 

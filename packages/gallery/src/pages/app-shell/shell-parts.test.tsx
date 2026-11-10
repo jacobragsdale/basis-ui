@@ -7,12 +7,19 @@ import { render } from "vitest-browser-react";
 
 import { AppShellSection, EnvironmentBannerSection } from "./shell-parts.tsx";
 
+/** The preferences cookie's value, as the browser holds it. */
+async function storedValue(): Promise<string | undefined> {
+  const cookie = await cookieStore.get(preferencesCookie);
+  return cookie?.value;
+}
+
 /** Puts the page's root back as the tests found it: light, comfortable, and no stored choice. */
 afterEach(async () => {
   const root = document.documentElement;
   root.classList.remove("dark");
   root.style.colorScheme = "";
   root.dataset["density"] = "comfortable";
+  delete root.dataset["theme"];
   await cookieStore.delete(preferencesCookie);
 });
 
@@ -54,7 +61,9 @@ describe("the app shell's parts", () => {
   test("the framed app shows the mode and density it is told, over the stored choice", async () => {
     await cookieStore.set(preferencesCookie, "light.comfortable");
     const screen = await render(
-      <AppShellSection preferences={{ density: "compact", mode: "dark", motion: "full" }} />,
+      <AppShellSection
+        preferences={{ density: "compact", mode: "dark", motion: "full", theme: "default" }}
+      />,
     );
     const app = screen.getByRole("region", { name: "An app on the shell" });
     await expect.element(app.getByRole("heading", { level: 1 })).toBeVisible();
@@ -63,6 +72,27 @@ describe("the app shell's parts", () => {
       true,
       "compact",
     ]);
+  });
+
+  test("the user menu reads the stored choice as it opens, so a change there keeps another app's", async () => {
+    const screen = await render(<AppShellSection />);
+    const app = screen.getByRole("region", { name: "An app on the shell" });
+    await expect.element(app.getByRole("heading", { level: 1 })).toBeVisible();
+    // Another app on the shared domain changes the mode after this page has rendered its menu.
+    await cookieStore.set(preferencesCookie, "dark.comfortable.full.default");
+    await app.getByRole("button", { name: "Dev User" }).click();
+    await expect.element(page.getByRole("menuitemradio", { name: "Dark" })).toBeChecked();
+    await page.getByRole("menuitemradio", { name: "Compact" }).click();
+    await expect.poll(storedValue).toBe("dark.compact.full.default");
+    expect(document.documentElement.dataset["theme"]).toBe("default");
+  });
+
+  test("the user menu offers no choice of theme while one ships", async () => {
+    const screen = await render(<AppShellSection />);
+    const app = screen.getByRole("region", { name: "An app on the shell" });
+    await app.getByRole("button", { name: "Dev User" }).click();
+    await expect.element(page.getByRole("group", { name: "Motion" })).toBeVisible();
+    expect(page.getByRole("group", { name: "Theme" }).query()).toBeNull();
   });
 
   test("the banner names each environment", async () => {

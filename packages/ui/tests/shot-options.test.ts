@@ -114,7 +114,7 @@ describe(optionsOf, () => {
       ],
       [
         ["/", "--theme", "ocean"],
-        "ERROR --theme takes only default until @basis/ui lets the user choose a theme, which roadmap step 6.5.5 adds: leave --theme out, or give --theme default.",
+        "ERROR --theme takes the name of a theme @basis/ui ships (default), such as --theme default.",
       ],
       [
         ["/", "--selector"],
@@ -169,5 +169,13 @@ describe(nameOf, () => {
       nameOf("/positions", { density: "comfortable", mode: "dark", selector: "#coupons" }),
     ).toBe("positions-dark-comfortable--coupons");
     expect(nameOf("/", { ...options, selector: "[data-slot=card]" })).toBe("home--data-slot-card");
+  });
+
+  test("adds a theme other than the default after the route, and the default adds none", () => {
+    const options = { density: "compact", mode: "dark", selector: undefined } as const;
+    expect(nameOf("/positions", { ...options, theme: "default" })).toBe("positions-dark");
+    expect(nameOf("/positions", { ...options, theme: "high-contrast" })).toBe(
+      "positions-high-contrast-dark",
+    );
   });
 });

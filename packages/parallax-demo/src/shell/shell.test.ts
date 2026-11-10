@@ -6,7 +6,7 @@ import { afterEach, describe, expect, test } from "vite-plus/test";
 import { renderDemo } from "#test-support.tsx";
 
 afterEach(() => {
-  writePreferences({ density: "comfortable", mode: "light", motion: "full" });
+  writePreferences({ density: "comfortable", mode: "light", motion: "full", theme: "default" });
   document.body.removeAttribute("style");
   localStorage.clear();
 });
@@ -49,7 +49,12 @@ describe("the sidebar", () => {
     // A choice leaves the menu open, as a radio item's does.
     await screen.getByRole("menuitemradio", { name: "Compact" }).click();
     await expect.poll(() => document.documentElement.dataset["density"]).toBe("compact");
-    expect(readPreferences()).toStrictEqual({ density: "compact", mode: "dark", motion: "full" });
+    expect(readPreferences()).toStrictEqual({
+      density: "compact",
+      mode: "dark",
+      motion: "full",
+      theme: "default",
+    });
   });
 });
 

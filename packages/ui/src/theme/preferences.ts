@@ -1,23 +1,24 @@
-/* The user's mode, density and motion. They live in one cookie, on the parent domain the firm's apps share when the
- * app names it, so every app follows one choice and a page left open follows a change made in another app. */
+/* The user's mode, density, motion and theme on the page. They live in one cookie (preferences-cookie.ts), on the
+ * parent domain the firm's apps share when the app names it, so every app follows one choice and a page left open
+ * follows a change made in another app. */
 
-type ModePreference = "system" | "light" | "dark";
-type Density = "comfortable" | "compact";
-/** `full` moves as the operating system allows; `reduced` stops every transition and animation as
- * `prefers-reduced-motion` does, for a desktop whose Windows setting is not the user's to change. */
-type Motion = "full" | "reduced";
+import {
+  cookieDomain,
+  hostOnlyRemoval,
+  parsePreferences,
+  preferencesCookie,
+  serializePreferences,
+} from "./preferences-cookie.ts";
+import type {
+  CookieOptions,
+  Density,
+  ModePreference,
+  Preferences,
+  ThemeName,
+} from "./preferences-cookie.ts";
+import { themeNames } from "./theme-names.ts";
+
 type ResolvedMode = "light" | "dark";
-
-interface Preferences {
-  readonly mode: ModePreference;
-  readonly density: Density;
-  readonly motion: Motion;
-}
-
-interface CookieOptions {
-  /** The parent domain the firm's apps share, such as `apps.example.com`. Without it, the choice is this app's alone. */
-  readonly domain?: string;
-}
 
 /** The parts of the page's root element that the preferences set. An `HTMLElement` has them all; its document's
  * window, when there is one, lets a change hold transitions off until it is drawn. */
@@ -30,59 +31,28 @@ interface PreferencesRoot {
     | undefined;
 }
 
-/** Compact is the default density, the maintainer's choice on 2026-11-07. The stylesheet's base is compact too, and
- * `data-density="comfortable"` widens it, so a page shows the default before the head script or `followPreferences`
- * has run, and without either, as in a test. */
-const defaultPreferences: Preferences = { density: "compact", mode: "system", motion: "full" };
-
-/** The cookie's name. Its value is the mode, the density and the motion joined by dots, such as `dark.compact.full`; a
- * value of two, written before the motion was, reads as `full`. */
-const preferencesCookie = "basis-ui-preferences";
-
 const darkQuery = "(prefers-color-scheme: dark)";
-const secondsPerDay = 86_400;
-const daysPerYear = 365;
-const oneYear = secondsPerDay * daysPerYear;
 
-function isMode(value: string | undefined): value is ModePreference {
-  return value === "system" || value === "light" || value === "dark";
+/** Whether the page has the cookie, of this app's or the shared domain's. */
+function hasCookie(): boolean {
+  return document.cookie.includes(`${preferencesCookie}=`);
 }
 
-function isDensity(value: string | undefined): value is Density {
-  return value === "comfortable" || value === "compact";
-}
-
-function isMotion(value: string | undefined): value is Motion {
-  return value === "full" || value === "reduced";
-}
-
-/** Reads the preferences from a `document.cookie` string. Anything missing or unknown falls back to the default. */
-function parsePreferences(cookies: string): Preferences {
-  for (const part of cookies.split(";")) {
-    const separator = part.indexOf("=");
-    if (separator !== -1 && part.slice(0, separator).trim() === preferencesCookie) {
-      const [mode, density, motion] = part
-        .slice(separator + 1)
-        .trim()
-        .split(".");
-      return {
-        density: isDensity(density) ? density : defaultPreferences.density,
-        mode: isMode(mode) ? mode : defaultPreferences.mode,
-        motion: isMotion(motion) ? motion : defaultPreferences.motion,
-      };
-    }
+/** Moves the choice onto the shared domain, when the page is on it: the cookie this app kept for itself is removed,
+ * and its value, when it was the only one, stored on the shared domain in its place. */
+function shareCookie(options: CookieOptions): void {
+  const domain = cookieDomain(options.domain, location.hostname);
+  if (domain === undefined) {
+    return;
   }
-  return defaultPreferences;
-}
-
-/** The `document.cookie` assignment that stores the preferences for a year. */
-function serializePreferences(preferences: Preferences, options: CookieOptions = {}): string {
-  const attributes = [`Path=/`, `Max-Age=${String(oneYear)}`, "SameSite=Lax"];
-  if (options.domain !== undefined) {
-    attributes.push(`Domain=${options.domain}`);
+  const had = parsePreferences(document.cookie);
+  const hadAny = hasCookie();
+  // oxlint-disable-next-line unicorn/no-document-cookie -- the cookie is what carries the choice between apps.
+  document.cookie = hostOnlyRemoval;
+  if (hadAny && !hasCookie()) {
+    // oxlint-disable-next-line unicorn/no-document-cookie -- as above.
+    document.cookie = serializePreferences(had, { domain });
   }
-  const value = `${preferences.mode}.${preferences.density}.${preferences.motion}`;
-  return `${preferencesCookie}=${value}; ${attributes.join("; ")}`;
 }
 
 /** The mode a page shows, given the preference and whether the operating system is in dark mode. */
@@ -114,6 +84,7 @@ interface Shown {
   readonly mode: ResolvedMode;
   readonly density: Density;
   readonly motion: "reduced" | undefined;
+  readonly theme: ThemeName;
 }
 
 /** Whether the root element shows something other than `shown`. */
@@ -121,15 +92,17 @@ function differs(root: PreferencesRoot, shown: Shown): boolean {
   return (
     root.style.colorScheme !== shown.mode ||
     root.dataset["density"] !== shown.density ||
-    root.dataset["motion"] !== shown.motion
+    root.dataset["motion"] !== shown.motion ||
+    root.dataset["theme"] !== shown.theme
   );
 }
 
 /** Puts `shown` on the root element. */
-function show(root: PreferencesRoot, { mode, density, motion }: Shown): void {
+function show(root: PreferencesRoot, { mode, density, motion, theme }: Shown): void {
   root.classList.toggle("dark", mode === "dark");
   root.style.colorScheme = mode;
   root.dataset["density"] = density;
+  root.dataset["theme"] = theme;
   if (motion === undefined) {
     delete root.dataset["motion"];
   } else {
@@ -137,9 +110,10 @@ function show(root: PreferencesRoot, { mode, density, motion }: Shown): void {
   }
 }
 
-/** Puts the preferences on the page's root element: the `dark` class, `color-scheme`, `data-density` and
- * `data-motion`. `data-density` always names the density, so that whatever reads it, such as parallax's canvases, need
- * not know the stylesheet's base. A change to any of them holds every transition off until it is drawn, so the page changes in one
+/** Puts the preferences on the page's root element: the `dark` class, `color-scheme`, `data-density`, `data-motion`
+ * and `data-theme`. `data-density` and `data-theme` always name the density and the theme, so that whatever reads them,
+ * such as parallax's canvases, need not know the stylesheet's base; the default theme's rules sit at `:root` and hold
+ * whatever `data-theme` says, and every other theme's under its `[data-theme="NAME"]`. A change to any of them holds every transition off until it is drawn, so the page changes in one
  * frame, as its canvases do, where some sixty controls' colours would otherwise cross-fade and a density change lay
  * the page out frame by frame. */
 function applyPreferences(
@@ -151,6 +125,7 @@ function applyPreferences(
     density: preferences.density,
     mode: resolveMode(preferences.mode, systemDark),
     motion: preferences.motion === "reduced" ? "reduced" : undefined,
+    theme: preferences.theme,
   };
   const view = root.ownerDocument?.defaultView ?? null;
   if (view !== null && differs(root, shown)) {
@@ -164,32 +139,59 @@ function readPreferences(): Preferences {
   return parsePreferences(document.cookie);
 }
 
-/** Stores the preferences and applies them to this page at once. Other pages follow through `followPreferences`. */
+/** Stores the preferences, on the shared domain when `options` names one and the page is on it, and applies them to
+ * this page at once. Other pages follow through `followPreferences`. */
 function writePreferences(preferences: Preferences, options: CookieOptions = {}): void {
-  // oxlint-disable-next-line unicorn/no-document-cookie -- the cookie is what carries the choice between apps.
-  document.cookie = serializePreferences(preferences, options);
+  const domain = cookieDomain(options.domain, location.hostname);
+  if (domain !== undefined) {
+    // oxlint-disable-next-line unicorn/no-document-cookie -- the cookie is what carries the choice between apps.
+    document.cookie = hostOnlyRemoval;
+  }
+  // oxlint-disable-next-line unicorn/no-document-cookie -- as above.
+  document.cookie = serializePreferences(preferences, { domain });
   applyPreferences(document.documentElement, preferences, matchMedia(darkQuery).matches);
 }
 
-/** Applies the stored preferences now, and again whenever the cookie or the operating system's mode changes. Given
- * `shown`, it applies those in place of the stored ones and follows only the operating system's mode, which a
- * `system` mode reads: for a page told its preferences another way, as the gallery is by its query. Returns a
- * function that stops following them. */
-function followPreferences(shown?: Preferences): () => void {
+/* No event tells a page that another app, on another origin, changed a cookie they share: `storage` and
+ * `BroadcastChannel` reach only the same origin. The cookie store's change event does, in Chromium, for every cookie the
+ * page would be sent, a sibling subdomain's on the parent domain included, and it reaches a window left open in view,
+ * which gets no other event. But the cookie store exists only on a secure page, so a page served over plain HTTP, or in
+ * a browser without one, reads the cookie again whenever the user comes back to it, on focus or on being shown. Returns
+ * a function that stops following it. */
+function followCookie(apply: () => void): () => void {
+  const store = (globalThis as { cookieStore?: EventTarget }).cookieStore;
+  const shownAgain = (): void => {
+    if (document.visibilityState === "visible") {
+      apply();
+    }
+  };
+  store?.addEventListener("change", apply);
+  globalThis.addEventListener("focus", apply);
+  document.addEventListener("visibilitychange", shownAgain);
+  return () => {
+    store?.removeEventListener("change", apply);
+    globalThis.removeEventListener("focus", apply);
+    document.removeEventListener("visibilitychange", shownAgain);
+  };
+}
+
+/** Applies the stored preferences now, and again whenever the cookie or the operating system's mode changes, the
+ * cookie changed by this app or by another on the shared domain. Given `options.domain`, it first moves a choice this
+ * app kept for itself onto the shared domain. Given `shown`, it applies those in place of the stored ones and follows
+ * only the operating system's mode, which a `system` mode reads: for a page told its preferences another way, as the
+ * gallery is by its query. Returns a function that stops following them. */
+function followPreferences(shown?: Preferences, options: CookieOptions = {}): () => void {
+  shareCookie(options);
   const media = matchMedia(darkQuery);
   const apply = (): void => {
     applyPreferences(document.documentElement, shown ?? readPreferences(), media.matches);
   };
   apply();
   media.addEventListener("change", apply);
-  /* A window left open in view gets no focus or visibility event when another app changes the cookie; only the
-   * cookie store's change event reaches it. Browsers without a cookie store pick the change up on the next load. */
-  const store =
-    shown === undefined ? (globalThis as { cookieStore?: EventTarget }).cookieStore : undefined;
-  store?.addEventListener("change", apply);
+  const stopCookie = shown === undefined ? followCookie(apply) : undefined;
   return () => {
     media.removeEventListener("change", apply);
-    store?.removeEventListener("change", apply);
+    stopCookie?.();
   };
 }
 
@@ -198,39 +200,44 @@ function followPreferences(shown?: Preferences): () => void {
  * two to the same answers. */
 const headScript = `(() => {
   try {
-    const match = /(?:^|;\\s*)${preferencesCookie}=([a-z]+)\\.([a-z]+)(?:\\.([a-z]+))?/.exec(document.cookie);
-    const stored = match === null ? "system" : match[1];
+    const themes = ${JSON.stringify(themeNames)};
+    const match = /(?:^|;\\s*)${preferencesCookie}=([^;]*)/.exec(document.cookie);
+    const [stored, density, motion, theme] = match === null ? [] : match[1].trim().split(".");
     const mode = stored === "light" || stored === "dark" ? stored : matchMedia("${darkQuery}").matches ? "dark" : "light";
     const root = document.documentElement;
     root.classList.toggle("dark", mode === "dark");
     root.style.colorScheme = mode;
-    root.dataset.density = match !== null && match[2] === "comfortable" ? "comfortable" : "compact";
-    if (match !== null && match[3] === "reduced") {
+    root.dataset.density = density === "comfortable" ? "comfortable" : "compact";
+    if (motion === "reduced") {
       root.dataset.motion = "reduced";
     }
+    root.dataset.theme = themes.includes(theme) ? theme : themes[0];
   } catch {
-    // Without cookies or matchMedia the page keeps the stylesheet's light, compact base.
+    // Without cookies or matchMedia the page keeps the stylesheet's light, compact base, the default theme's.
   }
 })();`;
 
 export {
   applyPreferences,
-  defaultPreferences,
   followPreferences,
   headScript,
-  parsePreferences,
-  preferencesCookie,
   readPreferences,
   resolveMode,
-  serializePreferences,
   writePreferences,
 };
+export type { PreferencesRoot, ResolvedMode };
+export {
+  cookieDomain,
+  defaultPreferences,
+  parsePreferences,
+  preferencesCookie,
+  serializePreferences,
+} from "./preferences-cookie.ts";
 export type {
   CookieOptions,
   Density,
   ModePreference,
   Motion,
   Preferences,
-  PreferencesRoot,
-  ResolvedMode,
-};
+  ThemeName,
+} from "./preferences-cookie.ts";

@@ -27,6 +27,7 @@ import { Toaster } from "#components/toast.tsx";
 import { followPreferences } from "#theme/preferences.ts";
 import type { Preferences } from "#theme/preferences.ts";
 
+import { PreferencesDomainContext } from "./preferences-domain.ts";
 import { toastError } from "./toast-error.tsx";
 import { createQueryClient } from "./query-client.ts";
 import { useSessionState } from "./session-state.ts";
@@ -48,9 +49,15 @@ interface BasisAppProps {
   readonly telemetry?: Telemetry;
   /** The query client, for a test that reads its cache; one from `createQueryClient()` by default. */
   readonly queryClient?: QueryClient;
-  /** The mode, density and motion to show in place of the stored choice, which it otherwise follows: for a page told them
-   * another way, as the gallery is by its query. A choice made in the user menu is still stored, and shown at once. */
+  /** The mode, density, motion and theme to show in place of the stored choice, which it otherwise follows: for a page
+   * told them another way, as the gallery is by its query. A choice made in the user menu is still stored, and shown at
+   * once. */
   readonly preferences?: Preferences | undefined;
+  /** The parent domain the firm's apps share, such as `apps.example.com`, for the cookie that holds the user's mode,
+   * density, motion and theme, so that a choice made in one app is every app's, and a page left open follows it. On a
+   * host that is neither the domain nor under it, such as `localhost` in development, the choice is this app's alone,
+   * as it is without this. */
+  readonly preferencesDomain?: string | undefined;
 }
 
 /** Reports every failed query and mutation to telemetry, once its retries are spent, and raises a toast for each
@@ -182,9 +189,28 @@ function Routes({ router }: { readonly router: AnyRouter }): ReactElement {
   );
 }
 
+/** Keeps the page in the stored preferences, on `domain` when it names one, or in `shown` when given, following each
+ * value rather than the object, which a caller may make anew on every render. */
+function useFollowPreferences(shown: Preferences | undefined, domain: string | undefined): void {
+  const mode = shown?.mode;
+  const density = shown?.density;
+  const motion = shown?.motion;
+  const theme = shown?.theme;
+  useEffect(
+    () =>
+      followPreferences(
+        mode === undefined || density === undefined || motion === undefined || theme === undefined
+          ? undefined
+          : { density, mode, motion, theme },
+        { domain },
+      ),
+    [mode, density, motion, theme, domain],
+  );
+}
+
 /** The app's providers: telemetry, the query client, the toasts, an error boundary round everything, the signed-in
- * session, and the router. It also keeps the page in the user's mode, density and motion as they change them, or in the
- * `preferences` it is given, signs the user out when the API says their session has ended, and asks them to sign in
+ * session, and the router. It also keeps the page in the user's mode, density, motion and theme as they change them, in
+ * this app or another on the `preferencesDomain` it is given, or in the `preferences` it is given, signs the user out when the API says their session has ended, and asks them to sign in
  * when it says a request needs them to.
  *
  * @use For an app's entry point: render it once at the root, with the router and the sign-in adapter. A test renders
@@ -207,22 +233,12 @@ function BasisApp({
   telemetry = consoleTelemetry,
   queryClient: givenClient,
   preferences,
+  preferencesDomain,
 }: BasisAppProps): ReactElement {
   // oxlint-disable-next-line react/hook-use-state -- one query client for the app's life, made once; nothing sets it.
   const [queryClient] = useState(() => givenClient ?? createQueryClient());
   const { state, retry, session } = useSessionState(signIn, queryClient, telemetry);
-  const shownMode = preferences?.mode;
-  const shownDensity = preferences?.density;
-  const shownMotion = preferences?.motion;
-  useEffect(
-    () =>
-      followPreferences(
-        shownMode === undefined || shownDensity === undefined || shownMotion === undefined
-          ? undefined
-          : { density: shownDensity, mode: shownMode, motion: shownMotion },
-      ),
-    [shownMode, shownDensity, shownMotion],
-  );
+  useFollowPreferences(preferences, preferencesDomain);
   useEffect(() => reportRequests(queryClient, telemetry), [queryClient, telemetry]);
   useEffect(() => reportNavigations(router, telemetry), [router, telemetry]);
   const report = (error: unknown): void => {
@@ -237,7 +253,9 @@ function BasisApp({
             {state.status === "failed" ? <PageError error={state.error} reset={retry} /> : null}
             {session === null ? null : (
               <SessionContext value={session}>
-                <Routes router={router} />
+                <PreferencesDomainContext value={preferencesDomain}>
+                  <Routes router={router} />
+                </PreferencesDomainContext>
               </SessionContext>
             )}
           </CatchBoundary>

@@ -2,6 +2,7 @@ import { runInNewContext } from "node:vm";
 
 import { describe, expect, test } from "vite-plus/test";
 
+import { themeChoices } from "#components/theme-choices.ts";
 import {
   applyPreferences,
   defaultPreferences,
@@ -10,42 +11,13 @@ import {
   preferencesCookie,
   resolveMode,
   serializePreferences,
+  themeNames,
 } from "#index.ts";
-import type { Density, ModePreference, Motion, Preferences, PreferencesRoot } from "#index.ts";
+import type { Density, ModePreference, Motion, Preferences, ThemeName } from "#index.ts";
+import { cookieDomain } from "#theme/preferences.ts";
 
-// A stand-in for the page's root element: just the parts the preferences touch.
-interface FakeRoot extends PreferencesRoot {
-  readonly classes: Set<string>;
-}
-
-function fakeRoot(): FakeRoot {
-  const classes = new Set<string>();
-  return {
-    classList: {
-      toggle: (token: string, force?: boolean): boolean => {
-        const on = force ?? !classes.has(token);
-        if (on) {
-          classes.add(token);
-        } else {
-          classes.delete(token);
-        }
-        return on;
-      },
-    },
-    classes,
-    dataset: {},
-    style: { colorScheme: "" },
-  };
-}
-
-function state(root: FakeRoot): unknown {
-  return {
-    colorScheme: root.style.colorScheme,
-    dark: root.classes.has("dark"),
-    density: root.dataset["density"],
-    motion: root.dataset["motion"],
-  };
-}
+import { fakeRoot, state } from "./preferences-fakes.ts";
+import type { FakeRoot } from "./preferences-fakes.ts";
 
 /** The globals the head script reads: the page's cookie and root element, and the operating system's mode. */
 function page(cookie: string, root: FakeRoot, systemDark: boolean): object {
@@ -58,14 +30,20 @@ function page(cookie: string, root: FakeRoot, systemDark: boolean): object {
 const modes: readonly ModePreference[] = ["system", "light", "dark"];
 const densities: readonly Density[] = ["comfortable", "compact"];
 const motions: readonly Motion[] = ["full", "reduced"];
+const themes: readonly ThemeName[] = themeNames;
 const every: readonly Preferences[] = modes.flatMap((mode) =>
-  densities.flatMap((density) => motions.map((motion) => ({ density, mode, motion }))),
+  densities.flatMap((density) =>
+    motions.flatMap((motion) => themes.map((theme) => ({ density, mode, motion, theme }))),
+  ),
 );
 
-/** Each preferences' name in a test title: the cookie's value, such as `dark.compact.full`. */
+/** Each preferences' name in a test title: the cookie's value, such as `dark.compact.full.default`. */
 const named = every.map(
   (preferences) =>
-    [`${preferences.mode}.${preferences.density}.${preferences.motion}`, preferences] as const,
+    [
+      [preferences.mode, preferences.density, preferences.motion, preferences.theme].join("."),
+      preferences,
+    ] as const,
 );
 
 describe("the cookie", () => {
@@ -76,22 +54,47 @@ describe("the cookie", () => {
 
   test("falls back to the default when it is missing or holds unknown values", () => {
     expect(parsePreferences("")).toEqual(defaultPreferences);
-    expect(parsePreferences(`${preferencesCookie}=sepia.huge.still`)).toEqual(defaultPreferences);
+    expect(parsePreferences(`${preferencesCookie}=sepia.huge.still.neon`)).toEqual(
+      defaultPreferences,
+    );
     expect(parsePreferences(`${preferencesCookie}=dark`)).toEqual({
-      density: "compact",
+      ...defaultPreferences,
       mode: "dark",
-      motion: "full",
     });
-    expect(defaultPreferences.density).toBe("compact");
-    expect(defaultPreferences.motion).toBe("full");
+    expect(defaultPreferences).toStrictEqual({
+      density: "compact",
+      mode: "system",
+      motion: "full",
+      theme: "default",
+    });
   });
 
-  test("reads a cookie written before the motion was, of the mode and density alone, as full motion", () => {
+  test("reads a cookie written before the motion or the theme was as full motion and the default theme", () => {
     expect(parsePreferences(`${preferencesCookie}=light.comfortable`)).toEqual({
       density: "comfortable",
       mode: "light",
       motion: "full",
+      theme: "default",
     });
+    expect(parsePreferences(`${preferencesCookie}=dark.compact.reduced`)).toEqual({
+      density: "compact",
+      mode: "dark",
+      motion: "reduced",
+      theme: "default",
+    });
+  });
+
+  test("reads a theme no longer shipped as the default, keeping the rest", () => {
+    expect(parsePreferences(`${preferencesCookie}=dark.comfortable.reduced.retired`)).toEqual({
+      density: "comfortable",
+      mode: "dark",
+      motion: "reduced",
+      theme: "default",
+    });
+  });
+
+  test("the default theme is the generator's first", () => {
+    expect(defaultPreferences.theme).toBe(themeNames[0]);
   });
 
   test("names the shared parent domain only when the app gives one", () => {
@@ -99,6 +102,17 @@ describe("the cookie", () => {
     expect(serializePreferences(defaultPreferences, { domain: "apps.example.com" })).toContain(
       "Domain=apps.example.com",
     );
+  });
+
+  test("takes the shared domain only on a host that is it or under it, where a browser accepts it", () => {
+    expect(cookieDomain("apps.example.com", "positions.apps.example.com")).toBe("apps.example.com");
+    expect(cookieDomain("apps.example.com", "apps.example.com")).toBe("apps.example.com");
+    expect(cookieDomain(".Apps.Example.com", "Positions.apps.example.com")).toBe(
+      "apps.example.com",
+    );
+    expect(cookieDomain("apps.example.com", "localhost")).toBeUndefined();
+    expect(cookieDomain("apps.example.com", "badapps.example.com")).toBeUndefined();
+    expect(cookieDomain(undefined, "positions.apps.example.com")).toBeUndefined();
   });
 });
 
@@ -133,20 +147,40 @@ describe("the head script agrees with applyPreferences", () => {
       dark: false,
       density: "compact",
       motion: undefined,
+      theme: "default",
     });
   });
 
-  test.each([true, false])(
-    "and with a cookie written before the motion was, as full motion, with a dark system: %s",
-    (systemDark) => {
-      const cookie = `${preferencesCookie}=dark.comfortable`;
-      const expected = fakeRoot();
-      applyPreferences(expected, parsePreferences(cookie), systemDark);
-      const actual = fakeRoot();
-      runInNewContext(headScript, page(cookie, actual, systemDark));
-      expect(state(actual)).toEqual(state(expected));
-    },
+  /* Cookies that are not the user menu's latest: older, shorter values, a theme no longer shipped, values no build
+   * wrote, and the cookie among others, one with a name that ends in the cookie's. */
+  const odd = [
+    `${preferencesCookie}=dark.comfortable`,
+    `${preferencesCookie}=light.compact.reduced`,
+    `${preferencesCookie}=dark.comfortable.reduced.retired`,
+    `${preferencesCookie}=dark.compact.full.Default`,
+    `${preferencesCookie}=dark`,
+    `${preferencesCookie}=sepia.huge.still.neon`,
+    `${preferencesCookie}=`,
+    `${preferencesCookie}=..reduced.default`,
+    `x${preferencesCookie}=dark.comfortable; other=1`,
+    `other=1; ${preferencesCookie}=dark.comfortable.reduced.default; more=2`,
+    `${preferencesCookie}=light.comfortable; ${preferencesCookie}=dark.compact`,
+  ];
+  const oddCases = odd.flatMap((cookie) =>
+    [true, false].map((systemDark) => [cookie, systemDark] as const),
   );
+
+  test.each(oddCases)("and for the cookies %j with a dark system: %s", (cookie, systemDark) => {
+    const expected = fakeRoot();
+    applyPreferences(expected, parsePreferences(cookie), systemDark);
+    const actual = fakeRoot();
+    runInNewContext(headScript, page(cookie, actual, systemDark));
+    expect(state(actual)).toEqual(state(expected));
+  });
+
+  test("and names every shipped theme, in the generator's order", () => {
+    expect(headScript).toContain(`const themes = ${JSON.stringify(themeNames)};`);
+  });
 });
 
 /** A root element whose window runs its animation frames when the test calls `frame`. */
@@ -185,7 +219,12 @@ function holdsAcrossFrames(from: Preferences, to: Preferences): (string | undefi
   });
 }
 
-const light: Preferences = { density: "comfortable", mode: "light", motion: "full" };
+const light: Preferences = {
+  density: "comfortable",
+  mode: "light",
+  motion: "full",
+  theme: "default",
+};
 
 describe("a change of preferences holds transitions off until it is drawn", () => {
   test.each([
@@ -194,6 +233,17 @@ describe("a change of preferences holds transitions off until it is drawn", () =
     ["motion", { ...light, motion: "reduced" }],
   ] as const)("a change of %s sets data-switching for two frames", (_name, changed) => {
     expect(holdsAcrossFrames(light, changed)).toStrictEqual(["1", "1", undefined]);
+  });
+
+  test("a change of theme, from one the page shows, sets data-switching for two frames", () => {
+    const { root, frame } = rootInWindow();
+    root.dataset["theme"] = "high-contrast";
+    applyPreferences(root, light, false);
+    const held = [root.dataset["switching"]];
+    frame();
+    frame();
+    held.push(root.dataset["switching"]);
+    expect([held, root.dataset["theme"]]).toStrictEqual([["1", undefined], "default"]);
   });
 
   test("applying what is already shown holds nothing, so a running transition, such as the sidebar's, carries on", () => {
@@ -217,5 +267,27 @@ describe("a change of preferences holds transitions off until it is drawn", () =
     expect(root.dataset["motion"]).toBe("reduced");
     applyPreferences(root, light, false);
     expect(root.dataset["motion"]).toBeUndefined();
+  });
+});
+
+describe("the theme on the page", () => {
+  test("data-theme always names the theme, the default's too, as data-density names the density", () => {
+    const root = fakeRoot();
+    applyPreferences(root, light, false);
+    expect(root.dataset["theme"]).toBe("default");
+  });
+});
+
+describe("the user menu's themes", () => {
+  test("hides the choice while one theme ships, since a choice of one is no choice", () => {
+    expect(themeChoices(["default"])).toStrictEqual([]);
+  });
+
+  test("offers every theme in the generator's order, by its name in words", () => {
+    expect(themeChoices(["default", "dense-dark", "high-contrast"])).toStrictEqual([
+      ["default", "Default"],
+      ["dense-dark", "Dense dark"],
+      ["high-contrast", "High contrast"],
+    ]);
   });
 });

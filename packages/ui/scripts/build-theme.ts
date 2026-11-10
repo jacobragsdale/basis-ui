@@ -1,10 +1,10 @@
-// Writes src/styles/theme.css from every shipped theme in src/theme/themes, and copies beside it the font file its
-// tabular face names. Run it with `vp run @basis/ui#theme` after changing a theme's inputs or updating
+// Writes src/styles/theme.css from every shipped theme in src/theme/themes, and src/theme/theme-names.ts with their
+// names, and copies beside the stylesheet the font file its tabular face names. Run it with `vp run @basis/ui#theme` after changing a theme's inputs or updating
 // @fontsource-variable/inter. `vp run @basis/ui#theme new NAME` starts a theme's inputs file from the default's.
 import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 
-import { tabularFace, themeCss } from "#theme/css.ts";
+import { tabularFace, themeCss, themeNamesModule } from "#theme/css.ts";
 import { defineTheme } from "#theme/inputs.ts";
 import { startTheme } from "#theme/start-theme.ts";
 import { defaultTheme, themes } from "#theme/themes/index.ts";
@@ -29,13 +29,21 @@ function startThemeFile(name: string | undefined): void {
   );
 }
 
-/** Writes the stylesheet, and copies the tabular face's file and its licence beside it. */
+/** Writes the themes' names, for the code that needs only those. */
+function writeNames(): void {
+  const target = new URL("../src/theme/theme-names.ts", import.meta.url);
+  writeFileSync(target, themeNamesModule(themes));
+  process.stdout.write(`Wrote ${target.pathname}\n`);
+}
+
+/** Writes the stylesheet and the themes' names, and copies the tabular face's file and its licence beside it. */
 function writeThemes(): void {
   const target = new URL("../src/styles/theme.css", import.meta.url);
   writeFileSync(target, themeCss(themes));
   process.stdout.write(
     `Wrote ${target.pathname} with ${themes.map((theme) => theme.name).join(", ")}\n`,
   );
+  writeNames();
 
   /* The tabular face is a second @font-face of Inter's own file, which a stylesheet can name only by a relative URL: an
      app's bundler resolves none into a package. So the file, and its licence, are copied from the package. */

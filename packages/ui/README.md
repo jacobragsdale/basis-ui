@@ -53,7 +53,7 @@ To set the app up:
    and the `vp run` tasks. Its `budget` is what each route may load, which `vp run budget` checks, as
    [Weighing the build](#weighing-the-build-vp-run-budget) says. `basisPlugins()` adds React with the React Compiler, which fails the build on a component
    that breaks the rules of React with an `ERROR` line naming the fix above the compiler's own text, Tailwind, and the head script: an inline `<script>` that `vp dev` and `vp build`
-   write at the end of `index.html`'s `<head>`, which applies the stored mode, density and motion before the first paint. Its
+   write at the end of `index.html`'s `<head>`, which applies the stored mode, density, motion and theme before the first paint. Its
    text is `headScript`, exported from `@basis/ui`; the app keeps no copy of it. In `vp test` it also has Vite
    pre-bundle what every module under `src/` imports before the tests start, so no dependency that only app code
    imports is found mid-run, which would reload the test pages under the tests. In `vp dev` it serves the app on a
@@ -172,16 +172,25 @@ createRoot(root).render(
 
 `BasisApp` takes:
 
-| Prop          | What it is                                                                                                                                     |
-| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| `router`      | The app's TanStack Router. Its routes render once the user is known.                                                                           |
-| `signIn`      | The sign-in adapter: the firm's, when it is built, `anonymousSignIn()` for an app with no sign-in, or `fakeSignIn()` in tests and development. |
-| `telemetry`   | Where errors, events and timings go; `consoleTelemetry` by default.                                                                            |
-| `queryClient` | The TanStack Query client, for a test that reads its cache; one from `createQueryClient()` by default.                                         |
+| Prop                | What it is                                                                                                                                     |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `router`            | The app's TanStack Router. Its routes render once the user is known.                                                                           |
+| `signIn`            | The sign-in adapter: the firm's, when it is built, `anonymousSignIn()` for an app with no sign-in, or `fakeSignIn()` in tests and development. |
+| `telemetry`         | Where errors, events and timings go; `consoleTelemetry` by default.                                                                            |
+| `queryClient`       | The TanStack Query client, for a test that reads its cache; one from `createQueryClient()` by default.                                         |
+| `preferencesDomain` | The parent domain the firm's apps share, such as `apps.example.com`. None by default, so the user's choice is this app's alone.                |
 
 Inside it, in order: the telemetry, the query client, the toasts (`Toaster`), an error boundary round the whole app,
-the signed-in session, and the router. It keeps the page in the user's mode, density and motion as they change them
-(`followPreferences`), and gives `apiFetch` the adapter's token, so every request carries the user's JWT.
+the signed-in session, and the router. It keeps the page in the user's mode, density, motion and theme as they change
+them (`followPreferences`), and gives `apiFetch` the adapter's token, so every request carries the user's JWT.
+
+- **Preferences.** The user's mode, density, motion and theme live in the `basis-ui-preferences` cookie, which the user
+  menu writes and the head script reads before the first paint. Without `preferencesDomain` the cookie is the app's
+  alone. With it, as `<BasisApp preferencesDomain="apps.example.com" ...>`, the cookie sits on that domain, so a choice
+  made in one app holds in every app under it, and a page left open in another app follows: at once through the cookie
+  store's change event on a page served over HTTPS, and otherwise when the user comes back to the page. A choice the
+  app kept for itself before is moved onto the domain. On a host outside the domain, such as `localhost` in
+  development, the cookie stays the app's alone, since the browser would refuse it. Give the same domain in every app.
 
 - **Queries.** `createQueryClient()` keeps data fresh for 30 seconds and retries a query twice, but only after a
   network failure or a 502, 503 or 504, which basis's contract says may pass; a 4xx, a 500 or a response its schema
@@ -737,10 +746,10 @@ needs a little padding inside it.
 `icon` and, optionally, a `group` in its `staticData`. It builds the sidebar of the app's pages (`AppSidebar`), each
 under its group's heading, the groups in the order of their first pages, the breadcrumbs (`RouteBreadcrumbs`) and
 Ctrl+K's command palette (`CommandPalette`) from them, names the environment in a banner (`EnvironmentBanner`), puts the
-user menu (`UserMenu`: mode, density, motion, sign in and out) in the sidebar's footer, and keeps the keyboard
-shortcuts, which a component declares with `useShortcut(keys, description, run)` and `?` lists. A route with path
-parameters, such as `/bonds/$security`, keeps its breadcrumb but stays out of the sidebar and the palette;
-`inNavigation: false` leaves any route out.
+user menu (`UserMenu`: mode, density, motion, the theme once more than one ships, sign in and out) in the sidebar's
+footer, and keeps the keyboard shortcuts, which a component declares with `useShortcut(keys, description, run)` and
+`?` lists. A route with path parameters, such as `/bonds/$security`, keeps its breadcrumb but stays out of the sidebar
+and the palette; `inNavigation: false` leaves any route out.
 
 ```tsx
 const commands: readonly PaletteCommand[] = [
@@ -1192,7 +1201,7 @@ vp run shot /bonds/US91282CRF04 --all --compare baselines --json
 | `--all`                          | Every route of the app's router as well; a route with a parameter only through a ROUTE of it |
 | `--mode light\|dark`             | The mode, light by default; `--dark` is the same as `--mode dark`                            |
 | `--density compact\|comfortable` | The density, compact by default; `--comfortable` is the same as `--density comfortable`      |
-| `--theme default`                | The theme: only `default` until a user can choose one                                        |
+| `--theme NAME`                   | The theme, one of `themeNames`; `default` by default                                         |
 | `--width N`, `--height N`        | The viewport, 1280 by 800 by default                                                         |
 | `--wait MS`                      | How long to let the page settle, after it loads and its network is quiet, 500 by default     |
 | `--selector CSS`                 | Picture the one element the selector picks, rather than the whole page                       |
@@ -1200,8 +1209,9 @@ vp run shot /bonds/US91282CRF04 --all --compare baselines --json
 | `--compare DIR`                  | Compare each picture with DIR's of the same name, pixel for pixel                            |
 | `--json`                         | Print one line of JSON, the type `ShotReport` from `@basis/ui/preset`                        |
 
-- **The mode and density** are set through the preferences cookie the head script reads, as the user menu sets them,
-  so the page is never edited. Their names join the files', as `positions-dark-comfortable.png`, and a selector's
+- **The mode, density and theme** are set through the preferences cookie the head script reads, as the user menu sets
+  them, so the page is never edited. Their names join the files', as `positions-dark-comfortable.png`, a theme other
+  than the default's before them, as `positions-high-contrast-dark.png`, and a selector's
   joins after two dashes, as `positions--exposure.png`.
 - **The network file** has a line for each request to `/api`, with its status and what answered it, which fixture mode
   names in the `x-basis-fixture-source` and `x-basis-fixture-file` headers: `record` from `.fixtures/`, `fixture` from

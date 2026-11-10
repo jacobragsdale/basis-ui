@@ -14223,7 +14223,7 @@
       "module": "@basis/ui",
       "name": "UserMenu",
       "props": [],
-      "purpose": "The signed-in user's menu: the mode (system, light or dark), density (comfortable or compact) and motion (full, or reduced, which stops every transition as the operating system's setting does) every app shows, and signing in or out. Inside `BasisApp`, which keeps the session; `AppShell` puts it in the sidebar's footer.",
+      "purpose": "The signed-in user's menu: the mode (system, light or dark), density (comfortable or compact), motion (full, or reduced, which stops every transition as the operating system's setting does) and, once more than one ships, the theme every app shows, and signing in or out. A choice is stored on `BasisApp`'s `preferencesDomain`, when it names one. Inside `BasisApp`, which keeps the session; `AppShell` puts it in the sidebar's footer.",
       "use": "AppShell puts one in its sidebar's footer; use it alone only in a layout of the app's own, under BasisApp.",
       "with": [
         "AppShell",
@@ -14954,13 +14954,19 @@
           "type": "QueryClient"
         },
         {
-          "description": "The mode, density and motion to show in place of the stored choice, which it otherwise follows: for a page told them another way, as the gallery is by its query. A choice made in the user menu is still stored, and shown at once.",
+          "description": "The mode, density, motion and theme to show in place of the stored choice, which it otherwise follows: for a page told them another way, as the gallery is by its query. A choice made in the user menu is still stored, and shown at once.",
           "name": "preferences",
           "optional": true,
           "type": "Preferences | undefined"
+        },
+        {
+          "description": "The parent domain the firm's apps share, such as `apps.example.com`, for the cookie that holds the user's mode, density, motion and theme, so that a choice made in one app is every app's, and a page left open follows it. On a host that is neither the domain nor under it, such as `localhost` in development, the choice is this app's alone, as it is without this.",
+          "name": "preferencesDomain",
+          "optional": true,
+          "type": "string | undefined"
         }
       ],
-      "purpose": "The app's providers: telemetry, the query client, the toasts, an error boundary round everything, the signed-in session, and the router. It also keeps the page in the user's mode, density and motion as they change them, or in the `preferences` it is given, signs the user out when the API says their session has ended, and asks them to sign in when it says a request needs them to.",
+      "purpose": "The app's providers: telemetry, the query client, the toasts, an error boundary round everything, the signed-in session, and the router. It also keeps the page in the user's mode, density, motion and theme as they change them, in this app or another on the `preferencesDomain` it is given, or in the `preferences` it is given, signs the user out when the API says their session has ended, and asks them to sign in when it says a request needs them to.",
       "use": "For an app's entry point: render it once at the root, with the router and the sign-in adapter. A test renders the app at an address with renderApp from `@basis/ui/testing`.",
       "with": [
         "AppShell",
@@ -15528,7 +15534,7 @@
       "kind": "function",
       "module": "@basis/ui",
       "name": "applyPreferences",
-      "purpose": "Puts the preferences on the page's root element: the `dark` class, `color-scheme`, `data-density` and `data-motion`. `data-density` always names the density, so that whatever reads it, such as parallax's canvases, need not know the stylesheet's base. A change to any of them holds every transition off until it is drawn, so the page changes in one frame, as its canvases do, where some sixty controls' colours would otherwise cross-fade and a density change lay the page out frame by frame.",
+      "purpose": "Puts the preferences on the page's root element: the `dark` class, `color-scheme`, `data-density`, `data-motion` and `data-theme`. `data-density` and `data-theme` always name the density and the theme, so that whatever reads them, such as parallax's canvases, need not know the stylesheet's base; the default theme's rules sit at `:root` and hold whatever `data-theme` says, and every other theme's under its `[data-theme=\"NAME\"]`. A change to any of them holds every transition off until it is drawn, so the page changes in one frame, as its canvases do, where some sixty controls' colours would otherwise cross-fade and a density change lay the page out frame by frame.",
       "signature": "applyPreferences(root: PreferencesRoot, preferences: Preferences, systemDark: boolean): void"
     },
     {
@@ -15542,15 +15548,15 @@
       "kind": "function",
       "module": "@basis/ui",
       "name": "followPreferences",
-      "purpose": "Applies the stored preferences now, and again whenever the cookie or the operating system's mode changes. Given `shown`, it applies those in place of the stored ones and follows only the operating system's mode, which a `system` mode reads: for a page told its preferences another way, as the gallery is by its query. Returns a function that stops following them.",
-      "signature": "followPreferences(shown?: Preferences): () => void"
+      "purpose": "Applies the stored preferences now, and again whenever the cookie or the operating system's mode changes, the cookie changed by this app or by another on the shared domain. Given `options.domain`, it first moves a choice this app kept for itself onto the shared domain. Given `shown`, it applies those in place of the stored ones and follows only the operating system's mode, which a `system` mode reads: for a page told its preferences another way, as the gallery is by its query. Returns a function that stops following them.",
+      "signature": "followPreferences(shown?: Preferences, options: CookieOptions = {}): () => void"
     },
     {
       "kind": "constant",
       "module": "@basis/ui",
       "name": "headScript",
       "purpose": "A script for the page's `<head>` that applies the stored preferences before the first paint, so the page never flashes the wrong mode. It repeats `parsePreferences` and `applyPreferences` in plain JavaScript; a test holds the two to the same answers.",
-      "signature": "const headScript = `(() => { try { const match = /(?:^|;\\\\s*)${preferencesCookie}=([a-z]+)\\\\.([a-z]+)(?:\\\\.([a-z]+))?/…"
+      "signature": "const headScript = `(() => { try { const themes = ${JSON.stringify(themeNames)}; const match = /(?:^|;\\\\s*)${preferenc…"
     },
     {
       "kind": "function",
@@ -15563,7 +15569,7 @@
       "kind": "constant",
       "module": "@basis/ui",
       "name": "preferencesCookie",
-      "purpose": "The cookie's name. Its value is the mode, the density and the motion joined by dots, such as `dark.compact.full`; a value of two, written before the motion was, reads as `full`.",
+      "purpose": "The cookie's name. Its value is the mode, the density, the motion and the theme joined by dots, such as `dark.compact.full.default`. A value written before the motion or the theme was reads them as the default's, and so does a theme no longer shipped, since a user's cookie can outlive a theme.",
       "signature": "const preferencesCookie = \"basis-ui-preferences\""
     },
     {
@@ -15591,8 +15597,15 @@
       "kind": "function",
       "module": "@basis/ui",
       "name": "writePreferences",
-      "purpose": "Stores the preferences and applies them to this page at once. Other pages follow through `followPreferences`.",
+      "purpose": "Stores the preferences, on the shared domain when `options` names one and the page is on it, and applies them to this page at once. Other pages follow through `followPreferences`.",
       "signature": "writePreferences(preferences: Preferences, options: CookieOptions = {}): void"
+    },
+    {
+      "kind": "constant",
+      "module": "@basis/ui",
+      "name": "themeNames",
+      "purpose": "Every shipped theme's name, the default first.",
+      "signature": "const themeNames = [\"default\"] as const"
     },
     {
       "kind": "constant",
@@ -16403,7 +16416,7 @@
       "kind": "function",
       "module": "@basis/ui/preset",
       "name": "basisPlugins",
-      "purpose": "React with the React Compiler, which fails the build on any component it cannot optimize, Tailwind, the head script that applies the stored mode, density and motion before the first paint, written into the app's index.html, and, in `vp dev` and `vp test` only, MSW's service worker at `/mockServiceWorker.js`, so tests serve the generated client's handlers; in `vp dev`, a port of the app's own and fixture mode (fixture-mode.ts); in `vp test`, every dependency of the app's modules is pre-bundled before the tests start. They load only when a command needs them, so `vp lint` and `vp fmt` stay fast.",
+      "purpose": "React with the React Compiler, which fails the build on any component it cannot optimize, Tailwind, the head script that applies the stored mode, density, motion and theme before the first paint, written into the app's index.html, and, in `vp dev` and `vp test` only, MSW's service worker at `/mockServiceWorker.js`, so tests serve the generated client's handlers; in `vp dev`, a port of the app's own and fixture mode (fixture-mode.ts); in `vp test`, every dependency of the app's modules is pre-bundled before the tests start. They load only when a command needs them, so `vp lint` and `vp fmt` stay fast.",
       "signature": "basisPlugins(): PluginOption[]"
     },
     {
@@ -23077,10 +23090,10 @@
     {
       "fields": [
         {
-          "description": "The parent domain the firm's apps share, such as `apps.example.com`. Without it, the choice is this app's alone.",
+          "description": "The parent domain the firm's apps share, such as `apps.example.com`. Without it, the choice is this app's alone. A page whose host is neither the domain nor under it, such as `localhost` in development, stores the choice for itself alone, since a browser refuses a cookie for another domain.",
           "name": "domain",
           "optional": true,
-          "type": "string"
+          "type": "string | undefined"
         }
       ],
       "exported": true,
@@ -23972,6 +23985,12 @@
           "name": "motion",
           "optional": false,
           "type": "Motion"
+        },
+        {
+          "description": "The theme, by its name, which the page's root carries as `data-theme`.",
+          "name": "theme",
+          "optional": false,
+          "type": "ThemeName"
         }
       ],
       "exported": true,
@@ -24564,6 +24583,13 @@
       "module": "@basis/ui",
       "name": "TelemetryAttributes",
       "purpose": "What a report says about itself, such as `{ source: \"query\", query: \"/positions\" }`. Values stay flat, so any collector can index them."
+    },
+    {
+      "definition": "(typeof themeNames)[number]",
+      "exported": true,
+      "module": "@basis/ui",
+      "name": "ThemeName",
+      "purpose": "A theme `@basis/ui` ships, by its name: `default`, until more ship."
     },
     {
       "definition": "\"seconds\" | \"milliseconds\" | \"microseconds\"",

@@ -1,11 +1,11 @@
 /* The shot task the preset gives every app, run by Node in the app's root:
  *
- *   vp run shot ROUTE... [--all] [--mode light|dark] [--density compact|comfortable] [--theme default]
+ *   vp run shot ROUTE... [--all] [--mode light|dark] [--density compact|comfortable] [--theme NAME]
  *               [--width N] [--height N] [--wait MS] [--selector CSS] [--step STEP]... [--compare DIR] [--json]
  *
  * It opens each ROUTE, such as / or /positions?book=rates, and with `--all` every route of the app's router as well, in
  * headless Chromium against the app's `vp dev`, the one already running on the app's own port or one it starts in
- * fixture mode and stops after (dev-server.ts). It sets the mode and density through the cookie the head script reads,
+ * fixture mode and stops after (dev-server.ts). It sets the mode, density and theme through the cookie the head script reads,
  * takes the steps (shot-steps.ts), and writes five files into `.shots/` for each route, named after it and the options
  * (shot-options.ts):
  *

@@ -67,7 +67,11 @@ interface View {
 /** Renders a page in a mode and density, whole or with one section alone, and returns the ids of the sections it
  * shows. */
 async function shown({ page, mode, density, section = null }: View): Promise<string[]> {
-  applyPreferences(document.documentElement, { density, mode, motion: "full" }, false);
+  applyPreferences(
+    document.documentElement,
+    { density, mode, motion: "full", theme: "default" },
+    false,
+  );
   const query = new URLSearchParams({ density, mode, page: page.id });
   const { container } = render(
     <Gallery

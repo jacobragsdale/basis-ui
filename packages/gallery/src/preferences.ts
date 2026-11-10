@@ -24,6 +24,7 @@ function queryPreferences(search: string, stored: Preferences): Preferences | nu
     density: isDensity(density) ? density : stored.density,
     mode: isMode(mode) ? mode : stored.mode,
     motion: stored.motion,
+    theme: stored.theme,
   };
 }
 
