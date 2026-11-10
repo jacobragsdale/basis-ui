@@ -262,6 +262,15 @@ impl Orders {
         }
     }
 
+    /// The order the view gives text column `column`, if not the engine's text
+    /// order, with each of its dictionary codes' places in it.
+    pub(crate) fn ranked(&self, column: usize) -> Option<(&Order, &[u32])> {
+        self.0
+            .iter()
+            .find(|o| o.column == column)
+            .map(|o| (&o.order, o.ranks.as_slice()))
+    }
+
     /// Compares two keys of table column `column` in its order: the engine's text
     /// order, or the order the view gives it. Nulls sort last.
     pub(crate) fn cmp(&self, table: &Table, column: usize, a: Key, b: Key) -> Ordering {

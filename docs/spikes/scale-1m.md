@@ -12,7 +12,10 @@ last at a load average of 1.4 to 5.2. Step 6.3.1 then made the load of 1,000,000
 says. Step 6.4.3 found the throttled drawing at 1.25 and 1.5 to be mostly the harness's emulated ratio, and measures
 at real ones, as [its section](#step-643-one-draw-per-frame) says. Step 6.3.2 made the load progressive: 1,000,000 trades show their first rows in 0.24 s plain, from 0.97 s, and
 1.7 s throttled, from 3.5 s, missing its 1 s target, while the whole table takes longer throttled, 4.1 s, as [its
-section](#step-632-a-progressive-load) says.
+section](#step-632-a-progressive-load) says. Step 6.3.3 sorted on integer keys and kept each order: a first sort of
+a text or decimal column of 1,000,000 trades takes 73 to 130 ms throttled, from 2.1 to 2.2 s, and its toggle 39 to 49 ms, from 1.3 to 2.1 s, while a
+filter under a sort, 98 to 119 ms, misses its 50 ms target by the filter's own cost, as [its
+section](#step-633-sorts-on-keys) says.
 
 ## Versions
 
@@ -393,3 +396,57 @@ copying is the page thread's. The page now posts each chunk as it came, its buff
 
 The generated client's Arrow calls answer with a `Blob`, which has already arrived whole, so an app that wants its first
 rows sooner fetches the route itself until `@basis/ui`'s fetcher can hand back the response.
+
+## Step 6.3.3: sorts on keys
+
+Step 6.3.3 changed the flat sort and measured it with this harness before and after, on trades at 1,000,000 rows,
+plain and throttled, three rounds, on 2026-11-09 and 2026-11-10 (`--datasets trades --sizes 1000000`): one run before,
+at a load average of 0.8 to 1.8, and two after, at 0.6 to 2.9, the second with 150,000 trades too. What changed:
+
+- Before, each comparison of the sort built two keys for each sort column and compared them through the column's
+  order, and every rebuild sorted again: a toggle, a filter, a publish of more rows. Natively, one thread, the ticker
+  sorted in 0.34 s, the quantity in 0.41 s, and the trade date in 0.015 s, the trades being in date order, but its
+  toggle in 0.22 s; the filter under the sort spent 0.09 s of its 0.10 s sorting again.
+- Each sort column's value is now an integer that sorts as it does: a text code's rank in the view's order or the
+  dictionary's, an integer, date or timestamp with its sign flipped, a float's bits in `f64::total_cmp`'s order with
+  negative zero as zero, a decimal less the column's least value, and on two words only when its range passes 2^64.
+  The rows, in the tie order of the table's key or of insertion, are sorted stably by it a byte at a time, as `u32`s
+  when the range fits, skipping the bytes all share, and not at all when they are already in order. Natively a radix
+  sort of 1,000,000 such keys took 4 to 12 ms, a pattern-defeating sort of the keys packed with each row's place 20 ms,
+  and a stable merge sort of pairs 14 to 23 ms, so the radix stays.
+- The table keeps the tie order and the last four orders it sorted, each four bytes a row, and forgets them whenever
+  its rows change: a batch added, a publish, a load or an upsert, and a kept order also carries the load version and
+  slot count it was sorted at. An order on one column records where each run of equal values starts, so its toggle is
+  its runs taken backwards, each run's rows in tie order and the nulls still last, as the comparison sort ordered them;
+  a sort on several columns is a stable counting pass for each column, last first, on ranks read from each column's
+  kept order. A filter walks the kept order, keeping the rows a mask of the passing rows holds.
+- The comparison sort stays for a detail view's groups, which sort each the first time they show, and as the
+  reference: a property test sorts random tables with nulls, ties, negative zero, infinities, decimals past a word,
+  each type, the view's text orders and up to three columns, through a progressive load, a keyed reload and an upsert,
+  and checks every order, kept or not, against it. `tests/oracle.rs`, `tests/incremental.rs`, the transcript's
+  fingerprint and the WebAssembly tests pass unchanged.
+
+| Trades at 1,000,000 rows   | Before, plain | After, plain | Before, throttled | After, throttled |
+| -------------------------- | ------------- | ------------ | ----------------- | ---------------- |
+| Sort the ticker, text      | 505 ms        | 31 ms        | 2,117 ms          | 73 and 90 ms     |
+| Its toggle                 | 500 ms        | 11 and 14 ms | 2,089 ms          | 41 and 44 ms     |
+| Sort the quantity, decimal | 525 ms        | 29 and 30 ms | 2,181 ms          | 123 and 130 ms   |
+| Its toggle                 | 533 ms        | 11 and 15 ms | 2,149 ms          | 39 and 44 ms     |
+| Sort the trade date        | 34 ms         | 14 and 24 ms | 127 ms            | 58 and 61 ms     |
+| Its toggle                 | 440 ms        | 9 and 15 ms  | 1,319 ms          | 41 and 49 ms     |
+| A filter under the date    | 203 ms        | 30 ms        | 682 ms            | 98 and 119 ms    |
+| The filter alone           | 27 ms         | 28 and 29 ms | 112 ms            | 101 and 110 ms   |
+| WebAssembly at its peak    | 269 MB        | 273, 277 MB  | 269 MB            | 273, 277 MB      |
+
+At 150,000 trades, after, one run: the sorts take 12 to 16 ms plain and 40 to 60 ms throttled, the toggles 8.5 to 14
+and 11 to 32 ms. Natively, one thread, the profile of `examples/measure.rs`, which now times each toggle and the filter
+under the date's: the ticker sorts in 13 ms, 5 of them the tie order, the quantity in 15 ms, the trade date in 4 ms,
+each toggle in 2 ms, and the filter under the date in 17 ms, all of it the filter. A no-op change, the harness's reset,
+costs 27 to 32 ms throttled, the frame and its drawing, so a toggle is mostly that.
+
+**The 250 ms target for a first sort is met, at 73 to 130 ms throttled, and the 50 ms target for a toggle, at 39 to
+49 ms. The 50 ms target for a filter under a sort is missed: 98 to 119 ms throttled, from 682 ms.** Walking the kept
+order costs a few milliseconds; the rest is the filter itself, which alone takes 101 to 110 ms throttled, a key built
+for each row and tested, and which step 6.3.4's typed filters are for. WebAssembly's peak rises by 4 to 8 MB, the kept
+orders and the sort's scratch. The host budgets for these runs' sorts, toggles and filter under a sort are now twice
+the slowest time or 20 ms more, whichever is greater.

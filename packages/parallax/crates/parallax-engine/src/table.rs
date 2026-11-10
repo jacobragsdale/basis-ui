@@ -10,6 +10,7 @@ use rustc_hash::FxHashMap;
 use crate::bitmap::Bitmap;
 use crate::column::Column;
 use crate::error::LoadError;
+use crate::sort::SortCache;
 use crate::types::{ColumnType, Key};
 
 /// What to do when a load repeats a primary key.
@@ -232,6 +233,8 @@ pub struct Table {
     load_version: u64,
     /// The first load, while it grows the table a batch at a time.
     growth: Option<Growth>,
+    /// The orders flat views sorted the current rows in.
+    sorts: SortCache,
 }
 
 impl Table {
@@ -279,6 +282,7 @@ impl Table {
             next_seq: 0,
             load_version: 0,
             growth: None,
+            sorts: SortCache::default(),
         })
     }
 
@@ -338,6 +342,11 @@ impl Table {
     /// Iterates over live slots within `range`, in order.
     pub fn live_slots_in(&self, range: Range<usize>) -> impl Iterator<Item = usize> + '_ {
         self.live.ones_in(range)
+    }
+
+    /// The orders flat views sorted the current rows in.
+    pub(crate) fn sorts(&self) -> &SortCache {
+        &self.sorts
     }
 
     /// Returns the insertion sequence number of `slot`. Rows that are updated keep
@@ -474,6 +483,7 @@ impl Table {
         }
         let growth = self.growth.as_ref().expect("a growing table");
         assert!(!growth.refused, "a table that refused a batch is dropped");
+        self.sorts.clear();
         let start = self.columns.first().map_or(0, Column::len);
         let extended = self.extend_columns(batch, start);
         if let Some(growth) = &mut self.growth {
@@ -579,6 +589,7 @@ impl Table {
         if rows == before && self.load_version > 0 {
             return None;
         }
+        self.sorts.clear();
         self.live.extend_ones(rows - before);
         let first = self.next_seq;
         self.next_seq += (rows - before) as u64;
@@ -749,6 +760,7 @@ impl Table {
                 .collect(),
             seq: Vec::new(),
         };
+        self.sorts.clear();
         self.columns = staged;
         for column in &mut self.columns {
             column.refresh_ranks();
@@ -863,6 +875,7 @@ impl Table {
         }
 
         // From here on nothing can fail.
+        self.sorts.clear();
         let mut removed = RemovedRows {
             columns: self
                 .columns

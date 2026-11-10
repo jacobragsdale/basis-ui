@@ -28,6 +28,7 @@ use crate::error::ConfigError;
 use crate::filter::{CompiledFilter, Filter};
 use crate::format::{self, Format, Formatter};
 use crate::order::{Order, Orders};
+use crate::sort::Sorted;
 use crate::table::{ChangeSet, RemovedRows, Table};
 use crate::types::{ColumnType, Key, Scalar};
 
@@ -568,9 +569,26 @@ struct Flat {
     sort: Vec<(usize, bool)>,
     /// The orders of its text columns, which its sort follows.
     orders: Orders,
-    order: Vec<usize>,
+    order: FlatOrder,
     /// The totals, as a grouped view with no levels, whose root is its one leaf.
     totals: Option<Box<Grouped>>,
+}
+
+/// A flat view's rows, in order: the table's kept order of every live row
+/// when no filter applies, or the rows that pass, walked from it.
+#[derive(Clone, Debug)]
+enum FlatOrder {
+    All(Arc<Sorted>),
+    Passing(Vec<u32>),
+}
+
+impl FlatOrder {
+    fn slots(&self) -> &[u32] {
+        match self {
+            Self::All(sorted) => &sorted.slots,
+            Self::Passing(slots) => slots,
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -953,7 +971,7 @@ impl View {
                 columns: flat_columns(table, &config)?,
                 sort,
                 orders: Orders::compile(table, &config.orders)?,
-                order: Vec::new(),
+                order: FlatOrder::Passing(Vec::new()),
                 totals: compile_totals(table, &config)?,
             })
         };
@@ -1161,8 +1179,27 @@ impl View {
         match &mut self.kind {
             Kind::Flat(flat) => {
                 flat.orders.refresh(table);
-                flat.order = passing_slots(table, &passes);
-                sort_flat(table, flat);
+                let sorted = {
+                    let _phase = crate::profile::span("flat: sort");
+                    crate::sort::sorted(table, &flat.sort, &flat.orders)
+                };
+                flat.order = if filters.is_empty() {
+                    FlatOrder::All(sorted)
+                } else {
+                    let _phase = crate::profile::span("flat: filter");
+                    let mut pass = vec![false; table.num_slots()];
+                    for slot in passing_slots(table, &passes) {
+                        pass[slot] = true;
+                    }
+                    FlatOrder::Passing(
+                        sorted
+                            .slots
+                            .iter()
+                            .copied()
+                            .filter(|&s| pass[s as usize])
+                            .collect(),
+                    )
+                };
                 if let Some(totals) = &mut flat.totals {
                     totals.build(table, &passes);
                     totals.invalidate();
@@ -1224,7 +1261,7 @@ impl View {
     /// The number of visible rows.
     pub fn num_rows(&mut self, table: &Table) -> usize {
         match &mut self.kind {
-            Kind::Flat(flat) => flat.order.len(),
+            Kind::Flat(flat) => flat.order.slots().len(),
             Kind::Grouped(g) => g.visible(table, &self.config).len(),
         }
     }
@@ -1376,8 +1413,10 @@ impl View {
 }
 
 /// Orders two table rows by `sort`, in each column's order, nulls last whichever
-/// the direction, then by the table's key, or failing that by insertion.
-fn compare_slots(
+/// the direction, then by the table's key, or failing that by insertion. A flat
+/// view sorts on keys instead, in the same order (`sort.rs`); this sorts a
+/// detail view's groups, each the first time it shows.
+pub(crate) fn compare_slots(
     table: &Table,
     (sort, orders): (&[(usize, bool)], &Orders),
     a: usize,
@@ -1405,24 +1444,6 @@ fn compare_slots(
     }
 }
 
-fn sort_flat(table: &Table, flat: &mut Flat) {
-    let by = (flat.sort.as_slice(), &flat.orders);
-    let cmp = |&a: &usize, &b: &usize| compare_slots(table, by, a, b);
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        use rayon::slice::ParallelSliceMut;
-        let mut order = std::mem::take(&mut flat.order);
-        order.par_sort_unstable_by(cmp);
-        flat.order = order;
-    }
-    #[cfg(target_arch = "wasm32")]
-    {
-        let mut order = std::mem::take(&mut flat.order);
-        order.sort_unstable_by(cmp);
-        flat.order = order;
-    }
-}
-
 fn flat_window(
     table: &Table,
     config: &ViewConfig,
@@ -1431,9 +1452,11 @@ fn flat_window(
     rows: Range<usize>,
     columns: Range<usize>,
 ) -> (RecordBatch, usize, usize) {
-    let start = rows.start.min(flat.order.len());
-    let end = rows.end.min(flat.order.len()).max(start);
-    let slots = &flat.order[start..end];
+    let order = flat.order.slots();
+    let start = rows.start.min(order.len());
+    let end = rows.end.min(order.len()).max(start);
+    let slots: Vec<usize> = order[start..end].iter().map(|&s| s as usize).collect();
+    let slots = slots.as_slice();
     let cols = columns.start.min(flat.columns.len())..columns.end.min(flat.columns.len());
     let mut out = FrameBuilder::default();
     out.push(
@@ -1456,7 +1479,7 @@ fn flat_window(
             None,
         );
     }
-    (out.finish(), flat.order.len(), flat.columns.len())
+    (out.finish(), order.len(), flat.columns.len())
 }
 
 /// A field with a role and other frame metadata.

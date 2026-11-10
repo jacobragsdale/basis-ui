@@ -29,7 +29,9 @@ use arrow_schema::SchemaRef;
 use parallax_datagen::Dataset;
 use parallax_datagen::positions::{Positions, PositionsOptions};
 use parallax_engine::view::{GroupOrder, GroupSort, Sort};
-use parallax_engine::{Aggregate, Measure, Table, TableOptions, View, ViewConfig};
+use parallax_engine::{
+    Aggregate, Filter, FilterOp, Measure, Scalar, Table, TableOptions, View, ViewConfig,
+};
 
 /// A stream to load: its name, for the report, and its bytes.
 struct Input {
@@ -192,10 +194,14 @@ fn view(table: &Table, what: &str, config: ViewConfig) {
 }
 
 fn sorted(column: &str) -> ViewConfig {
+    sorted_by(column, false)
+}
+
+fn sorted_by(column: &str, descending: bool) -> ViewConfig {
     ViewConfig {
         sort: vec![Sort {
             column: column.into(),
-            descending: false,
+            descending,
         }],
         ..ViewConfig::default()
     }
@@ -236,9 +242,22 @@ fn measure_views(table: &Table) {
         );
     }
     if has("trade_id") {
-        view(table, "flat sorted by ticker", sorted("ticker"));
-        view(table, "flat sorted by quantity", sorted("quantity"));
-        view(table, "flat sorted by trade date", sorted("trade_date"));
+        // The scale harness's rounds: each sort, then its toggle, then a filter
+        // under the last.
+        for column in ["ticker", "quantity", "trade_date"] {
+            view(table, &format!("flat sorted by {column}"), sorted(column));
+            view(
+                table,
+                &format!("flat sorted by {column}, toggled"),
+                sorted_by(column, true),
+            );
+        }
+        let mut buys = sorted_by("trade_date", true);
+        buys.filters = vec![Filter::new(
+            "side",
+            FilterOp::Eq(Scalar::Utf8("Buy".into())),
+        )];
+        view(table, "flat sorted by trade date, toggled, buys", buys);
     }
 }
 

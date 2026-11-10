@@ -540,7 +540,12 @@ flowchart TD
    WebAssembly, from 995 MB. 6.3.2 built on 2026-11-09: a response's body reaches the engine chunk by chunk, a first
    load publishes its rows as they arrive, and `useDataset` reports `progress`, so 1,000,000 trades show their first
    rows in 1.7 s throttled, from 3.5 s, missing 1 s, and 0.24 s plain, from 0.97 s; fully loaded they take 0.72 s plain,
-   from 0.97 s, and 4.1 s throttled, from 3.5 s, as the download, the load and the drawing share the quota.
+   from 0.97 s, and 4.1 s throttled, from 3.5 s, as the download, the load and the drawing share the quota. 6.3.3 built
+   on 2026-11-10: a flat view sorts on an integer key for each row, a radix sort, and the table keeps each order for its
+   current rows, so a toggle takes its runs backwards and a filter walks it: a first sort of a text or decimal column of
+   1,000,000 trades takes 73 to 130 ms throttled, from 2.1 to 2.2 s, and 29 to 31 ms plain, from 0.5 s; a toggle 39 to
+   49 ms throttled, from 1.3 to 2.1 s; a filter under a sort 98 to 119 ms, from 682 ms, missing 50 ms by the filter's
+   own cost, which 6.3.4 takes on.
 4. **6.4 The canvas on a Citrix desktop.** Lane Grid, one branch per item in order: digits that line up
    (`6.4.1-tabular-digits`), whole device pixels (`6.4.2-device-pixels`), one draw per frame and one row step per notch
    (`6.4.3-frame-aligned`), a scroll that moves pixels (`6.4.4-scroll-blit`), rows past the scrollbar's reach
