@@ -11,7 +11,7 @@ import type { WorkerPort } from "#engine/port.ts";
 import type { LayoutInput } from "#layout/layout.ts";
 import { ParallaxProvider } from "#react/provider.tsx";
 
-import { countedBytes, hugeBytes, startWorker } from "./data.ts";
+import { countedBytes, hugeBytes, pairedBytes, startWorker } from "./data.ts";
 import { gatedWorker } from "./gated-worker.ts";
 import type { GatedWorker } from "./gated-worker.ts";
 import { canvasOf } from "./grid-helpers.tsx";
@@ -74,7 +74,9 @@ async function frames(): Promise<void> {
 const compactRowPx = 24;
 const compactHeaderPx = 30;
 const hundredRows = (): ArrayBuffer => countedBytes(100);
-const manyRows = (): ArrayBuffer => countedBytes(30_000);
+/** Rows past the far scroll's, of a view too large to fetch whole, which load in one step and show at once, so the grid
+ * is at rest once they show. */
+const manyRows = (): ArrayBuffer => pairedBytes(12_000);
 const summed: LayoutInput = { totals: [{ aggregate: "sum", column: "value" }] };
 
 /** Renders a grid of `source` on `worker`, waiting for its `rows` rows; returns its scrolling element. */
@@ -93,6 +95,16 @@ async function renderRows(
   );
   const grid = screen.getByRole("grid");
   await expect.element(grid).toHaveAttribute("aria-rowcount", rows);
+  // A load shows its first rows before the rest: the grid is at rest once the last have come.
+  await expect
+    .poll(() =>
+      grid
+        .element()
+        .closest('[data-slot="grid"]')
+        ?.querySelector('[data-slot="grid-status-loading"]'),
+    )
+    .toBeNull();
+  await frames();
   return { grid, screen };
 }
 
@@ -134,7 +146,7 @@ async function scrollAwayAndBack(gate: GatedWorker, scroll: Element): Promise<nu
 
 test("keeps the rows on screen when a frame arrives late for rows the user has left", async () => {
   const gate = gatedWorker();
-  const { grid } = await renderRows(gate.start, { rows: "30000", source: manyRows });
+  const { grid } = await renderRows(gate.start, { rows: "12000", source: manyRows });
   await frames();
   const top = canvasOf(grid).toDataURL();
   expect(await scrollAwayAndBack(gate, grid.element())).toBe(1);

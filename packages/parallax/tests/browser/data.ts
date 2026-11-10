@@ -38,6 +38,14 @@ function countedBytes(count: number): ArrayBuffer {
   return new Uint8Array(tableToIPC(new Table({ value }), "stream")).buffer;
 }
 
+/** `count` rows of two columns of doubles, `value` numbered from 0 and `double` twice it: past the cells a grid fetches
+ * whole at 10,000 rows, and few enough rows that the engine reads them in one step and publishes them once. */
+function pairedBytes(count: number): ArrayBuffer {
+  const value = makeVector(Float64Array.from({ length: count }, (_value, row) => row));
+  const double = makeVector(Float64Array.from({ length: count }, (_value, row) => 2 * row));
+  return new Uint8Array(tableToIPC(new Table({ double, value }), "stream")).buffer;
+}
+
 /** Starts the engine's real worker, from the package's source. */
 function startWorker(): Worker {
   return new Worker(new URL("../../src/worker.ts", import.meta.url), {
@@ -60,4 +68,12 @@ const byFund = {
   measures: [{ aggregate: "sum", column: "market_value" }],
 } satisfies LayoutInput;
 
-export { byFund, countedBytes, hugeBytes, positionsBytes, startCappedWorker, startWorker };
+export {
+  byFund,
+  countedBytes,
+  hugeBytes,
+  pairedBytes,
+  positionsBytes,
+  startCappedWorker,
+  startWorker,
+};

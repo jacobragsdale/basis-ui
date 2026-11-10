@@ -28,10 +28,14 @@ function canvasOf(page: Page): Locator {
   return pivotGrid(page).locator("canvas");
 }
 
-/** Opens a page of the harness and waits for its table's rows. */
+/** Opens a page of the harness and waits for its table's rows, all of them: a first load shows its rows as they
+ * arrive, and its status bar says how many are still to come until the last have. */
 async function open(page: Page, query = "preset=pivot"): Promise<void> {
   await page.goto(`/?${query}`);
   await expect(pivotGrid(page)).toHaveAttribute("aria-rowcount", /^[1-9]\d*$/u, {
+    timeout: firstRowsMs,
+  });
+  await expect(page.locator('[data-slot="grid-status-loading"]')).toHaveCount(0, {
     timeout: firstRowsMs,
   });
 }
