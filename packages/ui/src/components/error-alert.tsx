@@ -24,6 +24,10 @@ interface ErrorAlertProps {
 
 /** A destructive Alert describing `error`, announced at once to a screen reader and named by its title.
  *
+ * @use For a query's or an API's error on the page, with a retry. A failed mutation raises a toast through toastError
+ * instead, and QueryState shows every state of a query.
+ * @see describeError, toastError, QueryState, ApiError, Alert
+ *
  * @example
  * ```tsx
  * import { ErrorAlert } from "@basis/ui";

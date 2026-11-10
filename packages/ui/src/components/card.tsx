@@ -7,6 +7,10 @@ import type { ComponentProps, ReactElement } from "react";
 
 /** A card: a raised panel on the `card` surface. `size="sm"` tightens its spacing.
  *
+ * @use For a panel that holds one subject on a page, such as a KPI or a form. For a row in a list, use Item; for a
+ * message, Alert.
+ * @see Item, Alert, Sparkline, Num, Button
+ *
  * @example
  * ```tsx
  * import { Card, CardContent, CardDescription, CardHeader, CardTitle, Money } from "@basis/ui";
@@ -26,7 +30,10 @@ function Card({
   className,
   size = "default",
   ...props
-}: ComponentProps<"div"> & { readonly size?: "default" | "sm" }): ReactElement {
+}: ComponentProps<"div"> & {
+  /** How much space the card leaves round and between its parts; the small one tightens it. */
+  readonly size?: "default" | "sm";
+}): ReactElement {
   return (
     <div
       data-slot="card"

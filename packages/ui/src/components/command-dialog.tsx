@@ -21,11 +21,14 @@ function CommandDialog({
   showCloseButton = false,
   ...props
 }: Omit<DialogPrimitive.Root.Props, "children"> & {
+  /** The palette's name for assistive technology, which is not shown: "Command Palette" by default. */
   readonly title?: string;
+  /** The palette's description for assistive technology, which is not shown. */
   readonly description?: string;
   readonly className?: string;
   /** Adds a close button for assistive technology, which is hidden, since Escape closes the palette. */
   readonly showCloseButton?: boolean;
+  /** What the palette holds: a Command. */
   readonly children: ReactNode;
 }): ReactElement {
   return (

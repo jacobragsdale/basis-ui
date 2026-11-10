@@ -9,6 +9,10 @@ import { separatorVariants } from "./separator-variants.ts";
 
 /** A line between groups of content, horizontal by default. Screen readers announce it as a separator.
  *
+ * @use For a line between groups of content, such as in a toolbar or a card. A menu takes its own separator part, such
+ * as DropdownMenuSeparator, and a form FieldSeparator.
+ * @see DropdownMenuSeparator, FieldSeparator, ButtonGroupSeparator
+ *
  * @example
  * ```tsx
  * import { Separator } from "@basis/ui";

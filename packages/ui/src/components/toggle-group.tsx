@@ -40,6 +40,10 @@ const ToggleGroupContext = createContext<ToggleGroupSettings>({
 /** A group of toggles in one look and size. `spacing` is the gap between them in steps of the spacing scale; at 0 they
  * join into one control. Name the group with `aria-label`.
  *
+ * @use For a set of toggles of which one, or several with `multiple`, are on, such as a chart's period. For a choice a
+ * form submits, use RadioGroup; for actions, ButtonGroup.
+ * @see Toggle, RadioGroup, ButtonGroup, Tabs
+ *
  * @example
  * ```tsx
  * import { ToggleGroup, ToggleGroupItem } from "@basis/ui";
@@ -62,7 +66,9 @@ function ToggleGroup({
 }: ToggleGroupPrimitive.Props &
   VariantProps<typeof toggleGroupVariants> & {
     readonly className?: string;
+    /** The gap between the toggles, in steps of the spacing scale: 2 by default, and 0 joins them into one control. */
     readonly spacing?: number;
+    /** Whether the toggles run in a row or a column, which the arrow keys follow: a row by default. */
     readonly orientation?: Orientation;
   }): ReactElement {
   const settings = useMemo(

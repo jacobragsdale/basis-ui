@@ -1,142 +1,190 @@
 /* The docs of the installed version, which an agent reads rather than a page on the web that may describe another:
  *
- *   vp run docs          lists the pages: each installed package's README whole, as `ui` or `parallax`, and each of
- *                        its sections, as `ui/SLUG`, such as `ui/calling-the-api`
- *   vp run docs PAGE     prints one, named in full or by its section's slug alone when one package has it */
+ *   vp run docs                  the pages, the modules, and each family's main component
+ *   vp run docs NAME             one component, hook, function, type or module from the installed catalogue,
+ *                                @basis/ui/catalogue.json, such as `Select`, `numberText`, `DataTableColumn` or `dates`;
+ *                                or a page: a README whole, as `ui` or `parallax`, one of its sections, as `ui/SLUG` or
+ *                                SLUG alone, or the changelog, as `ui/changelog`
+ *   vp run docs --search WORDS   the entries and pages whose name or purpose holds every word, best first
+ *
+ * `--json` prints any of them as JSON. */
 
-import { readFile } from "node:fs/promises";
-import { createRequire } from "node:module";
-import path from "node:path";
+import type { Catalogue } from "#catalogue/format.ts";
 
-import { z } from "zod";
-
+import { cut, entryJson, entryText, width, wrap } from "./docs-entry.ts";
+import { docsOf } from "./docs-read.ts";
+import type { Docs, Page } from "./docs-read.ts";
+import { entryNamed, search, suggestions } from "./docs-search.ts";
 import { TaskError } from "./shot-options.ts";
 
-/** The packages whose README is the docs, by the short name a page starts with. */
-const documented = [
-  { name: "@basis/ui", short: "ui" },
-  { name: "@basis/parallax", short: "parallax" },
-];
-
-const fence = "```";
-const sectionHeading = /^## (?<title>.+)$/u;
-
-/** A page: a README whole, or one of its sections. */
-interface Page {
-  readonly id: string;
-  readonly title: string;
-  readonly text: string;
-}
-
-/** An installed package's README, with its version and where it is. */
-interface Readme {
-  readonly short: string;
-  readonly label: string;
-  readonly text: string;
-}
-
-/** A section's heading as the last part of its page's id: `Calling the API` as `calling-the-api`. */
-function slugOf(title: string): string {
-  return title
-    .toLowerCase()
-    .replaceAll(/[^a-z0-9]+/gu, "-")
-    .replaceAll(/^-|-$/gu, "");
-}
-
-/** The README of the package `name`, installed for the app at `root`, or `undefined` when it is not installed. */
-async function readmeOf(root: string, name: string, short: string): Promise<Readme | undefined> {
-  try {
-    const manifest = createRequire(path.join(root, "package.json")).resolve(`${name}/package.json`);
-    const { version } = z
-      .object({ version: z.string() })
-      .parse(JSON.parse(await readFile(manifest, "utf8")));
-    const file = path.join(path.dirname(manifest), "README.md");
-    return {
-      label: `${name} ${version}, node_modules/${name}/README.md`,
-      short,
-      text: await readFile(file, "utf8"),
-    };
-  } catch {
-    return undefined;
-  }
-}
-
-/** Each `## ` section of a README, a heading inside a code block left alone, as a page. */
-function sectionsOf(readme: Readme): readonly Page[] {
-  const pages: { id: string; title: string; lines: string[] }[] = [];
-  let inCode = false;
-  for (const line of readme.text.split("\n")) {
-    inCode = line.trimStart().startsWith(fence) ? !inCode : inCode;
-    const title = inCode ? undefined : sectionHeading.exec(line)?.groups?.["title"];
-    if (title !== undefined) {
-      pages.push({ id: `${readme.short}/${slugOf(title)}`, lines: [], title });
-    }
-    pages.at(-1)?.lines.push(line);
-  }
-  return pages.map(({ id, lines, title }) => ({ id, text: lines.join("\n").trimEnd(), title }));
-}
-
-/** Every page of the installed packages' docs, each package's README first, with what to print beside it. */
-async function pagesOf(
-  root: string,
-): Promise<{ readonly readmes: readonly Readme[]; readonly pages: readonly Page[] }> {
-  const found = await Promise.all(
-    documented.map(async ({ name, short }) => readmeOf(root, name, short)),
+/** Each family's main component, the one its example is on, with what it is for. */
+function familyLines(catalogue: Catalogue): string[] {
+  const mains = catalogue.components.filter((component) => component.example !== undefined);
+  const nameWidth = Math.max(...mains.map((component) => component.name.length));
+  return mains.map((component) =>
+    cut(`  ${component.name.padEnd(nameWidth)}  ${component.purpose}`, width),
   );
-  const readmes = found.filter((readme) => readme !== undefined);
-  const pages = readmes.flatMap((readme) => [
-    { id: readme.short, text: readme.text.trimEnd(), title: "The whole README" },
-    ...sectionsOf(readme),
-  ]);
-  return { pages, readmes };
 }
 
 /** The list `vp run docs` prints. */
-function listing(readmes: readonly Readme[], pages: readonly Page[]): string {
-  const width = Math.max(...pages.map((page) => page.id.length));
-  const lines = readmes.flatMap((readme) => [
+function listing({ catalogue, pages, readmes }: Docs): string {
+  const idWidth = Math.max(...pages.map((page) => page.id.length));
+  const pageLines = readmes.flatMap((readme) => [
     "",
     `${readme.label}:`,
     ...pages
       .filter((page) => page.id === readme.short || page.id.startsWith(`${readme.short}/`))
-      .map((page) => `  ${page.id.padEnd(width)}  ${page.title}`),
+      .map((page) => `  ${page.id.padEnd(idWidth)}  ${page.title}`),
   ]);
   return [
-    ...lines.slice(1),
+    ...pageLines.slice(1),
     "",
-    "Print one with vp run docs PAGE, such as vp run docs ui/calling-the-api, or vp run docs calling-the-api.",
+    ...wrap(`Modules: ${catalogue.modules.map((module) => module.name).join(", ")}.`),
+    "",
+    "Components, each family's main one:",
+    ...familyLines(catalogue),
+    "",
+    ...wrap(
+      "Print one with vp run docs NAME: a component, hook, function, type, module or page, such as vp run docs Select, vp run docs numberText or vp run docs ui/calling-the-api. Find one by what it does with vp run docs --search WORDS, such as vp run docs --search date range. Add --json for JSON.",
+    ),
   ].join("\n");
 }
 
-/** The page `name` names: by its id, or by its section's slug when only one package has that section. */
-function pageNamed(pages: readonly Page[], name: string): Page {
-  const exact = pages.find((page) => page.id === name);
-  const bySlug = pages.filter((page) => page.id.endsWith(`/${name}`));
-  const [only] = bySlug;
-  const page = exact ?? (bySlug.length === 1 ? only : undefined);
-  if (page === undefined) {
-    throw new TaskError(
-      `ERROR there is no docs page ${name}${bySlug.length > 1 ? " in one package alone" : ""}: run vp run docs to list the pages, then vp run docs PAGE with one of them.`,
-    );
-  }
-  return page;
+function listingJson({ catalogue, pages }: Docs): string {
+  const families = Map.groupBy(
+    catalogue.components,
+    (component) => `${component.module} ${component.family}`,
+  );
+  return JSON.stringify(
+    {
+      families: [...families.values()].map((members) => ({
+        members: members.map((member) => member.name),
+        module: members[0]?.module,
+        name: members[0]?.family,
+      })),
+      modules: catalogue.modules,
+      pages: pages.map(({ id, title }) => ({ id, title })),
+    },
+    undefined,
+    2,
+  );
 }
 
-/** `vp run docs [PAGE]`. */
+/** The width of a search result's kind, the longest being `component`. */
+const kindWidth = 9;
+
+/** The error for a name the docs do not have, with the closest names they do. */
+function unknownName(known: Docs, name: string): TaskError {
+  const close = suggestions(known.catalogue, known.pages, name);
+  const offer =
+    close.length === 0
+      ? "run vp run docs --search WORDS to find one by what it does, or vp run docs to list the pages and components"
+      : `did you mean ${close.join(", ")}? Run vp run docs NAME with one, or vp run docs --search WORDS to find one by what it does`;
+  return new TaskError(`ERROR there is no ${name} in the installed catalogue or docs: ${offer}.`);
+}
+
+/** An entry from a package the app has not installed says so first. */
+function notInstalled(known: Docs, module: string): string {
+  const pkg = module.startsWith("@basis/parallax") ? "@basis/parallax" : "@basis/ui";
+  return known.installed.has(pkg)
+    ? ""
+    : `${pkg} is not installed in this app: add it with vp add ${pkg} to use this.\n\n`;
+}
+
+/** The page `name` names: by its id, or by its section's slug when only one package has that section. */
+function pageNamed(pages: readonly Page[], name: string): Page | undefined {
+  const bySlug = pages.filter((page) => page.id.endsWith(`/${name}`));
+  return bySlug.length === 1 ? bySlug[0] : undefined;
+}
+
+/** `vp run docs NAME`. */
+function lookUp(known: Docs, name: string, json: boolean): string {
+  const exactPage = known.pages.find((page) => page.id === name);
+  const entry = exactPage === undefined ? entryNamed(known.catalogue, name) : undefined;
+  if (entry !== undefined) {
+    const module = entry.kind === "module" ? entry.entry.name : entry.entry.module;
+    return json
+      ? entryJson(known.catalogue, entry)
+      : `${notInstalled(known, module)}${entryText(known.catalogue, entry)}`;
+  }
+  const page = exactPage ?? pageNamed(known.pages, name);
+  if (page === undefined) {
+    throw unknownName(known, name);
+  }
+  return json ? JSON.stringify({ kind: "page", ...page }, undefined, 2) : page.text;
+}
+
+/** `vp run docs --search WORDS`. */
+function searchFor(known: Docs, text: string, json: boolean): string {
+  const found = search(known.catalogue, known.pages, text);
+  if (found.length === 0) {
+    throw new TaskError(
+      `ERROR nothing in the installed catalogue or docs matches every word of "${text}": search with fewer or other words, or run vp run docs to list the pages and components.`,
+    );
+  }
+  if (json) {
+    const results = found.map(({ item, score }) => ({
+      kind: item.kind,
+      module: item.module,
+      name: item.name,
+      purpose: item.purpose,
+      score,
+    }));
+    return JSON.stringify({ query: text, results }, undefined, 2);
+  }
+  const nameWidth = Math.max(...found.map(({ item }) => item.name.length));
+  return [
+    ...found.map(({ item }) =>
+      cut(
+        `  ${item.name.padEnd(nameWidth)}  ${item.kind.padEnd(kindWidth)}  ${item.purpose}`,
+        width,
+      ),
+    ),
+    "",
+    "Print one with vp run docs NAME.",
+  ].join("\n");
+}
+
+const usage =
+  "run vp run docs, vp run docs NAME or vp run docs --search WORDS, each with --json if wanted";
+
+/** The words after `--search`, which a search needs at least one of. */
+function searchWords(words: readonly string[]): string {
+  const text = words.join(" ").trim();
+  if (text === "") {
+    throw new TaskError(`ERROR vp run docs --search needs the words to find: ${usage}.`);
+  }
+  return text;
+}
+
+/** What the arguments ask for: the listing, a name, or a search, and whether as JSON. */
+function parse(args: readonly string[]): { json: boolean; name?: string; search?: string } {
+  const json = args.includes("--json");
+  const rest = args.filter((arg) => arg !== "--json");
+  const [first, ...more] = rest;
+  if (first === "--search") {
+    return { json, search: searchWords(more) };
+  }
+  const flag = rest.find((arg) => arg.startsWith("--"));
+  if (flag !== undefined || more.length > 0) {
+    throw new TaskError(
+      `ERROR vp run docs takes one name at most${flag === undefined ? "" : ` and no ${flag}`}: ${usage}.`,
+    );
+  }
+  return first === undefined ? { json } : { json, name: first };
+}
+
+/** `vp run docs [NAME | --search WORDS] [--json]`. */
 async function docs(root: string, args: readonly string[]): Promise<string> {
-  const { pages, readmes } = await pagesOf(root);
-  if (readmes.length === 0) {
-    throw new TaskError(
-      "ERROR @basis/ui is not installed, and its README is the docs: run vp install.",
-    );
+  const asked = parse(args);
+  const found = await docsOf(root);
+  if (asked.search !== undefined) {
+    return searchFor(found, asked.search, asked.json);
   }
-  const [name, ...extra] = args;
-  if (extra.length > 0) {
-    throw new TaskError(
-      "ERROR vp run docs takes one page at most: run vp run docs to list them, then vp run docs PAGE.",
-    );
+  if (asked.name !== undefined) {
+    return lookUp(found, asked.name, asked.json);
   }
-  return name === undefined ? listing(readmes, pages) : pageNamed(pages, name).text;
+  return asked.json ? listingJson(found) : listing(found);
 }
 
 export { docs };

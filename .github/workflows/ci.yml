@@ -50,6 +50,8 @@ jobs:
               - "packages/example/**"
               # The app ctzd-style hand-written configuration is checked on.
               - "packages/consumer/**"
+              # The catalogue reads parallax's components, hooks and types from its source, and a test fails while stale.
+              - "packages/parallax/src/**"
               # The formatter's tests read the fixtures parallax's Rust formatter writes.
               - "packages/parallax/crates/parallax-engine/tests/fixtures/format.json"
               # The dates tests check the SIFMA calendar against each year parallax's Rust calendar writes.

@@ -19,6 +19,10 @@ type NativeSelectProps = Omit<ComponentProps<"select">, "size"> &
 
 /** A native `<select>`. `className` places its wrapper; name it with a `Label` whose `htmlFor` is its `id`.
  *
+ * @use For a short list of options where the browser's own control serves, such as on a touch screen. For the theme's
+ * popup, or items with icons or descriptions, use Select.
+ * @see Select, Field, FieldLabel, Label
+ *
  * @example
  * ```tsx
  * import { NativeSelect, NativeSelectOption } from "@basis/ui";

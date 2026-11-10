@@ -19,6 +19,10 @@ import { Button } from "./button.tsx";
 /** A dialog: a window over the page that holds the user until it closes. Escape, a click outside and its close
  * button close it, and focus returns to the trigger.
  *
+ * @use For a short task that holds the user before they go back to the page, such as editing a position. For a
+ * confirmation, use AlertDialog; for a panel beside the page, Sheet; for a few fields by their button, Popover.
+ * @see AlertDialog, Sheet, Drawer, Popover, Button, Field
+ *
  * @example
  * ```tsx
  * import {
@@ -84,7 +88,10 @@ function DialogContent({
   children,
   showCloseButton = true,
   ...props
-}: DialogPrimitive.Popup.Props & { readonly showCloseButton?: boolean }): ReactElement {
+}: DialogPrimitive.Popup.Props & {
+  /** Whether the window has a close button in its corner; true by default. */
+  readonly showCloseButton?: boolean;
+}): ReactElement {
   return (
     <DialogPortal>
       <DialogOverlay />
@@ -130,7 +137,10 @@ function DialogFooter({
   showCloseButton = false,
   children,
   ...props
-}: ComponentProps<"div"> & { readonly showCloseButton?: boolean }): ReactElement {
+}: ComponentProps<"div"> & {
+  /** Whether the footer ends in a Close button that closes the dialog; false by default. */
+  readonly showCloseButton?: boolean;
+}): ReactElement {
   return (
     <div
       data-slot="dialog-footer"

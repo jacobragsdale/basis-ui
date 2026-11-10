@@ -34,6 +34,7 @@ interface ParallaxProviderProps {
   /** The scheme it draws in: by default the page's mode, as `@basis/ui`'s preferences set it; `auto` follows the
    * system's. */
   readonly scheme?: Scheme;
+  /** The part of the app that shows parallax: every grid, pivot and chart inside it uses the one engine. */
   readonly children?: ReactNode;
 }
 
@@ -51,6 +52,19 @@ function resolveScheme(scheme: Scheme | undefined, page: PageState): ResolvedSch
  * Starts parallax's engine for the tree inside it, in a Web Worker, and ends it, freeing its memory, when it unmounts.
  * It installs the theme's stylesheets, and follows the page's mode and density, so that every grid, pivot and chart
  * inside repaints when they change.
+ *
+ * @use Once, around the part of the app that shows a Grid, a Pivot or a Chart, since it starts the engine's worker. Put
+ * it around only the pages that use parallax: with `prewarm`, every page under it downloads the engine.
+ * @see Grid, Pivot, Chart, useDataset, useView, useParallaxTheme, basisTheme
+ *
+ * @example
+ * ```tsx
+ * import { ParallaxProvider } from "@basis/parallax";
+ *
+ * <ParallaxProvider prewarm>
+ *   <p>The pages that show a grid, a pivot or a chart.</p>
+ * </ParallaxProvider>;
+ * ```
  */
 function ParallaxProvider({
   worker = packagedWorker,

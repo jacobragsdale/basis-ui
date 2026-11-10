@@ -15,6 +15,10 @@ import { UserMenu } from "./user-menu.tsx";
 
 /** The sidebar of an app's pages, from the titles its routes set in `staticData`. `AppShell` holds one.
  *
+ * @use AppShell holds one; use it alone only in a layout of the app's own. For a sidebar of links built by hand, use
+ * SidebarMenu.
+ * @see AppShell, SidebarProvider, SidebarInset, SidebarMenu, UserMenu, useRouteEntries
+ *
  * @example
  * ```tsx
  * import { AppSidebar, SidebarInset, SidebarProvider } from "@basis/ui";
@@ -25,7 +29,12 @@ import { UserMenu } from "./user-menu.tsx";
  * </SidebarProvider>;
  * ```
  */
-function AppSidebar({ appName }: { readonly appName: string }): ReactElement {
+function AppSidebar({
+  appName,
+}: {
+  /** The app's name, at the top of the sidebar. */
+  readonly appName: string;
+}): ReactElement {
   const entries = useRouteEntries();
   const path = useRouterState({ select: (state) => state.location.pathname });
   const current = currentEntry(entries, path);

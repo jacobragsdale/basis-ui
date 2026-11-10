@@ -36,10 +36,12 @@ interface QueryStateProps<TData> {
   readonly isEmpty?: ((data: TData) => boolean) | undefined;
   /** What the empty state says, such as "No trades today", and what may change that. */
   readonly emptyTitle?: string | undefined;
+  /** The empty state's line under its title, such as what may change that. */
   readonly emptyDescription?: string | undefined;
   /** What the idle state says, while a disabled query waits for what it needs, such as "Choose a book", and what will
    * show once it has it. */
   readonly idleTitle?: string | undefined;
+  /** The idle state's line under its title, such as what will show once the query has what it needs. */
   readonly idleDescription?: string | undefined;
   /** What stands in while the data first loads; three lines of skeleton by default. */
   readonly loading?: ReactNode;
@@ -162,6 +164,10 @@ function Unloaded({
 }
 
 /** A query's data, or what stands in for it: loading, failed, empty, and how old it is.
+ *
+ * @use For every state of a query's data in one place: loading, waiting, failed, empty and stale. For an error alone,
+ * use ErrorAlert; a DataTable takes its query's `loading` and `error` itself.
+ * @see ErrorAlert, Empty, Skeleton, DataTable
  *
  * @example
  * ```tsx

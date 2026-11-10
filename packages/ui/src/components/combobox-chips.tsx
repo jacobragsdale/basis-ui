@@ -45,6 +45,7 @@ function ComboboxChip({
   ...props
 }: ComboboxPrimitive.Chip.Props & {
   readonly className?: string;
+  /** Whether the chip ends in a button that removes it from the value; true by default. */
   readonly showRemove?: boolean;
 }): ReactElement {
   return (

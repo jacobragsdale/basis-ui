@@ -20,6 +20,7 @@ interface Telemetry {
 }
 
 /* The console is the whole of this implementation's job, so each method's one call is allowed. */
+/** The telemetry `BasisApp` reports to unless given another: each error, event and timing written to the console. */
 const consoleTelemetry: Telemetry = {
   error: (error, attributes = {}) => {
     // oxlint-disable-next-line eslint/no-console -- consoleTelemetry reports to the console by design.

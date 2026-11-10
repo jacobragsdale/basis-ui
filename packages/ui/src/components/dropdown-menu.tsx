@@ -21,13 +21,14 @@ import { ChevronRightIcon } from "#vendor/lucide/chevron-right.tsx";
 
 /** shadcn's gap, in pixels, between the popup and its trigger. */
 const sideGap = 4;
-/** shadcn's shift, in pixels, of a submenu up so that its first item lines up with its trigger: the popup's padding
- * and ring. */
+/** shadcn's upward shift, in pixels, of a submenu, so its first item lines up with its trigger: padding and ring. */
 const submenuShift = -3;
 
 /** A dropdown menu: a list of actions or options behind a button. Arrow keys move through its items, typing jumps
  * to one, Enter or a click runs it, and Escape closes the menu and returns focus to the trigger.
  *
+ * @use For actions behind a button, such as a row's. For a form's value, use Select; for a right click, ContextMenu.
+ * @see Button, ContextMenu, Menubar, Select
  * @example
  * ```tsx
  * import { Button, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@basis/ui";
@@ -111,8 +112,7 @@ function DropdownMenuLabel({
   );
 }
 
-/** An action. `variant="destructive"` marks one that deletes or cannot be undone; `inset` lines it up with items that
- * have an icon. */
+/** An action. `variant="destructive"` marks one that deletes or cannot be undone; `inset` indents it. */
 function DropdownMenuItem({
   className,
   inset,

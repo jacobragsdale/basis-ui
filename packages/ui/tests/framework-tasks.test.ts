@@ -175,22 +175,6 @@ describe("vp run sync", () => {
   });
 });
 
-describe("vp run docs", () => {
-  test("lists the installed README's sections, and prints one by its slug", () => {
-    const listing = run("docs");
-    expect(listing.stdout).toContain("ui/calling-the-api");
-    const page = run("docs", "calling-the-api");
-    expect(page.stdout.startsWith("## Calling the API\n")).toBe(true);
-    expect(page.stdout).not.toContain("\n## ");
-  });
-
-  test("names the fix for a page it does not have", () => {
-    expect(run("docs", "no-such-page").stderr).toBe(
-      "ERROR there is no docs page no-such-page: run vp run docs to list the pages, then vp run docs PAGE with one of them.\n",
-    );
-  });
-});
-
 describe("vp run review", () => {
   beforeEach(() => {
     git("init", "--quiet", "--initial-branch=main");

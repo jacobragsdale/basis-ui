@@ -21,6 +21,10 @@ import { textareaVariants } from "./textarea-variants.ts";
 
 /** An input's outline holding the input and its addons. Name the input itself, with a `<label>` or `aria-label`.
  *
+ * @use For an input with an icon, a unit, text or a button inside its outline, such as a search box with its icon. For
+ * a plain input, use Input; for controls side by side, ButtonGroup.
+ * @see Input, Textarea, Button, Kbd, Spinner, ButtonGroup
+ *
  * @example
  * ```tsx
  * import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from "@basis/ui";
@@ -88,6 +92,7 @@ function InputGroupButton({
   Pick<VariantProps<typeof buttonVariants>, "variant"> &
   VariantProps<typeof inputGroupButtonVariants> & {
     readonly className?: string;
+    /** The button's type: `button` by default, so it never submits the form it is in. */
     readonly type?: ComponentProps<"button">["type"];
   }): ReactElement {
   return (

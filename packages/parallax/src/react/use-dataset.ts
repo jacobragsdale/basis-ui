@@ -243,6 +243,25 @@ function useLoad(client: ParallaxClient, wanted: Wanted, settle: (settled: Settl
  * memory it starts again empty and fails every view; a dataset that was loaded then loads its source again, and its
  * views reopen. A dataset whose load was under way, most likely the one that ran the engine out of memory, fails with
  * the reason until `reload` is called or the source changes, as does every dataset once the engine keeps stopping.
+ *
+ * @use Once for each table a page shows, inside a ParallaxProvider; give the dataset to a Grid, a Pivot or a Chart.
+ * @see ParallaxProvider, Grid, Pivot, Chart, useView, LayoutInput
+ * @example
+ * ```tsx
+ * import { Grid, useDataset } from "@basis/parallax";
+ * import type { LayoutInput } from "@basis/parallax";
+ * import { useState } from "react";
+ * import type { ReactNode } from "react";
+ *
+ * // The generated client's call for an Arrow route, as in `(await listPositions()).data.arrayBuffer()`.
+ * declare const positionsBytes: () => Promise<ArrayBuffer>;
+ *
+ * export function Positions(): ReactNode {
+ *   const positions = useDataset("positions", positionsBytes, { primaryKey: "position_id" });
+ *   const [layout, setLayout] = useState<LayoutInput>({ pinned: ["ticker"] });
+ *   return <Grid dataset={positions} layout={layout} onLayoutChange={setLayout} />;
+ * }
+ * ```
  */
 function useDataset(
   name: string,

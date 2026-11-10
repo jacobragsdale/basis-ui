@@ -44,7 +44,7 @@ behaves alike, and a fix reaches all of them in one upgrade.
 | `vp run client-check`           | Whether the generated client still matches the repo's `openapi.json`: a task of its own, since an app cannot add a step to `vp check`                                    |
 | `vp run review`                 | A pull request's summary: the client's diff, the versions, and the commit that was checked; screenshot diffs, not yet                                                    |
 | `vp run sync`, `vp run upgrade` | Rewrite the framework's files from the installed version; update `@basis/ui`, sync and check in one step                                                                 |
-| `vp run doctor`, `vp run docs`  | Check the desktop's setup and print the fix for each problem; print the docs for the installed version                                                                   |
+| `vp run doctor`, `vp run docs`  | Check the desktop's setup and print the fix for each problem; print the installed version's docs: one entry of the catalogue, a search by purpose, or a README section   |
 
 Screenshot comparison in `check-full` and screenshot diffs in `review` wait for an app's baselines, step 6.8.5; the
 gallery's exist, as [Components](#components) says.
@@ -105,8 +105,13 @@ It also needs four things built for it (roadmap steps 1.14 to 1.16):
 - a test setup that runs without a browser, beside `basisTest()`'s Playwright one, since citizen developers' laptops
   have no Chromium: `basisTest({ browser: false })` in happy-dom, with tests written through `@basis/ui/testing` and
   Vitest's browser API kept to `*.browser.test.tsx` files;
-- a machine-readable catalogue of the components, `@basis/ui/catalogue.json`, which a test keeps current, with each one's name, purpose, props, variants and
-  one example, which ctzd turns into its agents' reference;
+- a machine-readable catalogue, `@basis/ui/catalogue.json`, which a test keeps current, of everything both packages export: each component's name,
+  purpose, when to use it and what goes with it, its props, those it takes from Base UI among them, with their docs and defaults, its variants and one
+  example per family; each hook and function with its signature; each type an entry names, with its fields, `LayoutInput`'s among them; and each
+  module. Every example compiles in an app, and every prop listed is checked against the component's own type. Parallax's entries are read from its
+  source when the catalogue is built, so `@basis/ui` never depends on parallax; the two release together, so they match. ctzd turns it into its agents'
+  reference, and `vp run docs NAME` prints one entry, as `vp run docs --search WORDS` finds one by purpose, so an agent reads 60 lines rather than the
+  whole file;
 - a check in this repo that configuration written by hand from the README keeps working;
 - lint and compiler errors that name the fix in their message, since in a ctzd app nobody reads the code.
 

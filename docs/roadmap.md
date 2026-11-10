@@ -563,6 +563,11 @@ flowchart TD
    that are open (`6.8.3-closed-doors`), one verdict, `vp run verify` (`6.8.4-verify`), a shot that explains itself
    (`6.8.5-shot`), scaffolds, `vp run new` (`6.8.6-new`), checks that read code, for ctzd (`6.8.7-check-routes`),
    upgrades (`6.8.8-upgrade`), the template proven in CI (`6.8.9-template-ci`), and skills (`6.8.10-skills`).
+   6.8.1 built on 2026-11-09: `vp run docs NAME` prints a component, hook, function, type or module from the catalogue
+   in about 60 lines, `--search` finds one by purpose and `--json` prints either, the catalogue lists the props each
+   component takes from Base UI, every type an entry names, the hooks and functions, the subpath modules and parallax's
+   components, hooks and `LayoutInput` fields, each prop held to the component by a type-checked probe, and the README
+   keeps what an app needs, with a changelog, while `CONTRIBUTING.md` holds the rest.
 9. **6.9 The showcase** (`6.9-showcase`, then a branch per page). `packages/showcase`, made from the template, with ten
    pages: overview, blotter, positions, relative value, P&L explain, curves, a bond, booking a trade, import, and a
    probe of the desktop. An agent builds it with only the shipped tools, and logs in `BUILDING.md` each place they fell

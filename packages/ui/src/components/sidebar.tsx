@@ -43,6 +43,7 @@ interface SidebarProviderProps extends ComponentProps<"div"> {
   readonly defaultOpen?: boolean | undefined;
   /** Whether the sidebar is open, when the app controls it. */
   readonly open?: boolean | undefined;
+  /** Called with whether the sidebar is open each time the user opens or closes it, controlled or not. */
   readonly onOpenChange?: ((open: boolean) => void) | undefined;
 }
 
@@ -81,6 +82,7 @@ function SidebarProvider({
 }
 
 interface SidebarProps extends ComponentProps<"div"> {
+  /** The edge of the page the sidebar sits against: the left by default. */
   readonly side?: SidebarSide | undefined;
   /** `sidebar` sits against the page's edge, `floating` is a raised panel, `inset` sets the page in a panel. */
   readonly variant?: SidebarVariant | undefined;
@@ -175,8 +177,7 @@ function SidebarDesktop({
   );
 }
 
-/** The app's sidebar, for its navigation. It folds by `collapsible`, and is a sheet below the `md` breakpoint.
- */
+/** The app's sidebar, for its navigation. It folds by `collapsible`, and is a sheet below the `md` breakpoint. */
 function Sidebar({
   side = "left",
   variant = "sidebar",
@@ -278,8 +279,7 @@ function SidebarRail({ className, ...props }: ComponentProps<"button">): ReactEl
   );
 }
 
-/** The page beside the sidebar, its `<main>`, or the element `render` names where the page already has one. With
- * the inset variant it sits in a raised panel. */
+/** The page beside the sidebar, its `<main>` or the element `render` names; with the inset variant, a raised panel. */
 function SidebarInset({
   className,
   render,

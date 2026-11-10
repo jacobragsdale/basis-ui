@@ -39,6 +39,10 @@ function trendClass(values: readonly SparkValue[], rising: "gain" | "loss"): str
 
 /** A small line of `values`, 96 by 24 pixels unless className sizes it, such as `h-8 w-full`.
  *
+ * @use For a series too small to load parallax for, such as a KPI card's last 30 days. For axes, tooltips or more than
+ * a line, use parallax's Chart.
+ * @see Card, CellBar, Chart
+ *
  * @example
  * ```tsx
  * import { Sparkline } from "@basis/ui";

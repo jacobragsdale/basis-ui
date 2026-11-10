@@ -239,6 +239,10 @@ function RangeTrigger({
 
 /** A date range field. Name it with a FieldLabel's `htmlFor` and this `id`, or with `aria-label`.
  *
+ * @use For a period of business days, such as month to date or a range the user picks. For one date, use
+ * AsOfDatePicker.
+ * @see Field, FieldLabel, AsOfDatePicker, dateRangePresets, rangeForPreset, DateRange
+ *
  * @example
  * ```tsx
  * import { DateRangePicker, Field, FieldLabel } from "@basis/ui";

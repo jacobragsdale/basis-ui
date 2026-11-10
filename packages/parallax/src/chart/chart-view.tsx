@@ -45,6 +45,7 @@ interface ChartOptions {
 
 /** `<Chart>` over a dataset that `useDataset` loads. */
 interface ChartViewProps extends ChartOptions {
+  /** The dataset to draw, from `useDataset`. */
   readonly dataset: Dataset;
   /** The view and its chart, as a layout: its `chart` section says what to draw. */
   readonly layout: LayoutInput;

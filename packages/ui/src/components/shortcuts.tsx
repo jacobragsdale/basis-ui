@@ -100,6 +100,10 @@ function OverlayShortcut({ onOpen }: { readonly onOpen: (open: boolean) => void 
 /** Keeps the page's keyboard shortcuts: one listener answers them, and `?` opens a list of every one. `AppShell`
  * holds one; an app without the shell wraps its routes in one to use `useShortcut`.
  *
+ * @use AppShell holds one; wrap the routes in one only in an app without the shell. A component declares its shortcuts
+ * with useShortcut.
+ * @see useShortcut, AppShell, Kbd
+ *
  * @example
  * ```tsx
  * import { Button, ShortcutProvider, useShortcut } from "@basis/ui";
@@ -114,7 +118,12 @@ function OverlayShortcut({ onOpen }: { readonly onOpen: (open: boolean) => void 
  * </ShortcutProvider>;
  * ```
  */
-function ShortcutProvider({ children }: { readonly children?: ReactNode }): ReactElement {
+function ShortcutProvider({
+  children,
+}: {
+  /** The part of the app whose components declare shortcuts with `useShortcut`. */
+  readonly children?: ReactNode;
+}): ReactElement {
   const registry = useRegistry();
   const [open, setOpen] = useState(false);
   useKeyListener(registry);

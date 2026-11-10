@@ -189,6 +189,10 @@ function Choosing({
 
 /** A CSV or Excel import, checked against `schema`, that hands the app the valid rows once the user confirms.
  *
+ * @use For rows the user has in a CSV file or an Excel workbook, checked against a schema before the app takes them. To
+ * read a file in code, use parseCsv or readWorkbook from `@basis/ui/utils`.
+ * @see amountSchema, parSuffixes, isCusip, parseCsv, readWorkbook, workbookFile
+ *
  * @example
  * ```tsx
  * import { FileImport, amountSchema, parSuffixes } from "@basis/ui";

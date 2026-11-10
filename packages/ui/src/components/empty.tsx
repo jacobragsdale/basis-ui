@@ -12,6 +12,10 @@ import { emptyMediaVariants, emptyVariants } from "./empty-variants.ts";
 /** An empty state, centred in the space it fills: EmptyHeader, then EmptyContent for what to do next. `outline` draws
  * a dashed border round it.
  *
+ * @use For a page or a panel with nothing to show yet, saying why and what to do next. For a query, QueryState shows
+ * one itself.
+ * @see QueryState, Button, ButtonLink
+ *
  * @example
  * ```tsx
  * import { Button, Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from "@basis/ui";

@@ -73,6 +73,10 @@ function PaletteList({
 
 /** Opens with Ctrl+K and goes to any page of the app, or runs one of `commands`. `AppShell` holds one.
  *
+ * @use AppShell holds one, and takes its `commands`; use it alone only in a layout of the app's own. For a searchable
+ * list inside a page, use Command.
+ * @see AppShell, Command, CommandDialog, useShortcut
+ *
  * @example
  * ```tsx
  * import { CommandPalette, ShortcutProvider } from "@basis/ui";
@@ -85,6 +89,7 @@ function PaletteList({
 function CommandPalette({
   commands = noCommands,
 }: {
+  /** The app's own commands, each with its label and what it runs, listed after the app's pages. */
   readonly commands?: readonly PaletteCommand[] | undefined;
 }): ReactElement {
   const [open, setOpen] = useState(false);

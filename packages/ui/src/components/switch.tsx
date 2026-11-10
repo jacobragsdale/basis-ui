@@ -15,6 +15,10 @@ import type { ReactElement } from "react";
 /** A switch that turns a setting on or off at once. Name it with a `<label>` around it or a `Label` whose `htmlFor`
  * is its `id`. `size="sm"` draws a smaller track.
  *
+ * @use For a setting that takes effect at once, such as showing closed positions. For a choice a form submits, use
+ * Checkbox.
+ * @see Label, Field, FieldLabel, Checkbox
+ *
  * @example
  * ```tsx
  * import { Field, FieldLabel, Switch } from "@basis/ui";
@@ -31,6 +35,7 @@ function Switch({
   ...props
 }: SwitchPrimitive.Root.Props & {
   readonly className?: string;
+  /** How large the track and its thumb are drawn. */
   readonly size?: "sm" | "default";
 }): ReactElement {
   return (

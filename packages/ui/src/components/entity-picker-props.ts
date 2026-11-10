@@ -33,10 +33,16 @@ interface EntityPickerBaseProps<TItem> {
   readonly queryKey?: QueryKey | undefined;
   /** The input's id, which a `FieldLabel`'s `htmlFor` names. */
   readonly id?: string | undefined;
+  /** The input's text while it is empty, such as "Search issuers". */
   readonly placeholder?: string | undefined;
+  /** Whether the picker is disabled, so its input takes no text. */
   readonly disabled?: boolean | undefined;
+  /** The input's name for assistive technology, where no `FieldLabel` names it. */
   readonly "aria-label"?: string | undefined;
+  /** The ids of the elements that describe the input, such as its field's description. */
   readonly "aria-describedby"?: string | undefined;
+  /** Marks the input invalid, as its field's validation finds it; the picker also marks it while the text cannot be
+   * searched. */
   readonly "aria-invalid"?: boolean | undefined;
   /** Places the picker, as with `w-80`; its look is fixed. */
   readonly className?: string | undefined;
@@ -44,17 +50,25 @@ interface EntityPickerBaseProps<TItem> {
 
 /** A picker that chooses one item, or none. */
 interface SingleEntityPickerProps<TItem> extends EntityPickerBaseProps<TItem> {
+  /** Whether the picker chooses several items, shown as chips, in place of one. */
   readonly multiple?: false | undefined;
+  /** The item chosen, or `null` for none, when the app controls it. */
   readonly value?: TItem | null | undefined;
+  /** The item an uncontrolled picker starts with, or `null` for none. */
   readonly defaultValue?: TItem | null | undefined;
+  /** Called with the item chosen, or `null`, each time the user chooses or clears it. */
   readonly onValueChange?: ((value: TItem | null) => void) | undefined;
 }
 
 /** A picker that chooses several items, shown as chips. */
 interface MultipleEntityPickerProps<TItem> extends EntityPickerBaseProps<TItem> {
+  /** Chooses several items, shown as chips, each with a button that removes it. */
   readonly multiple: true;
+  /** The items chosen, when the app controls them. */
   readonly value?: readonly TItem[] | undefined;
+  /** The items an uncontrolled picker starts with. */
   readonly defaultValue?: readonly TItem[] | undefined;
+  /** Called with the items chosen, in their order, each time the user adds or removes one. */
   readonly onValueChange?: ((value: readonly TItem[]) => void) | undefined;
 }
 

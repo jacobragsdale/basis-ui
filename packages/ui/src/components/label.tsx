@@ -9,6 +9,10 @@ import { labelVariants } from "./label-variants.ts";
 
 /** A label. Point `htmlFor` at the control's `id`, or wrap the control in it.
  *
+ * @use For naming a control outside a Field, such as a Checkbox or a Switch beside its text. Inside a Field, use
+ * FieldLabel.
+ * @see FieldLabel, Checkbox, Switch, RadioGroup, NativeSelect
+ *
  * @example
  * ```tsx
  * import { Input, Label } from "@basis/ui";

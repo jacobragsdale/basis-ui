@@ -18,6 +18,10 @@ import { buttonVariants as buttonLinkVariants } from "./button-variants.ts";
 /** A link that looks like a Button: an `<a>`, or the element `render` names, with `data-slot="button"` so that it
  * sits in a button group as a Button does, and its variant and size as `data-variant` and `data-size`.
  *
+ * @use For a link that looks like a button, such as "View trades": it stays a link, so it opens in a new tab and reads
+ * as one. For an action that stays on the page, use Button.
+ * @see Button, ButtonGroup
+ *
  * @example
  * ```tsx
  * import { ButtonLink } from "@basis/ui";

@@ -11,6 +11,10 @@ import { skeletonVariants } from "./skeleton-variants.ts";
 /** A placeholder block. `className` gives it the size of what it stands for, such as `h-4 w-32`, or `size-8` with
  * `variant="circle"` for an avatar.
  *
+ * @use For content still loading, in the shape of what will show. For a query, QueryState shows one itself; for an
+ * action under way, use Spinner.
+ * @see QueryState, Spinner, Card
+ *
  * @example
  * ```tsx
  * import { Skeleton } from "@basis/ui";

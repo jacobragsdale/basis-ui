@@ -50,6 +50,7 @@ type GridRowSelection =
       readonly onSelectionChange?: undefined;
     }
   | {
+      /** Chooses rows: by checkbox, any number (`true`), or the focused cell's row alone (`"single"`). */
       readonly selectable: true | "single";
       /** The column whose value names a row, such as a trade id or a CUSIP: one of the view's columns, with a
        * different value on every row. A row's key is the column's text as a copy writes it, every digit of a number. */
@@ -90,6 +91,7 @@ interface GridBaseProps {
   /** Takes the dataset's columns when the view opens, and again whenever they change, as the pivot's field list
    * reads them. */
   readonly onFieldsChange?: ((fields: readonly SourceField[]) => void) | undefined;
+  /** The grid's handle: `drawStats()`, `export(format)` as `xlsx` or `csv`, and `distinctValues(column, search)`. */
   readonly ref?: Ref<GridHandle> | undefined;
 }
 
@@ -276,7 +278,9 @@ function GridFrame(props: GridFrameProps): ReactNode {
   );
 }
 
-/** A data grid and pivot table on a canvas, which can fill the window: a grid of `height` `auto` fills it too. */
+/** A data grid and pivot table on a canvas, which can fill the window: a grid of `height` `auto` fills it too.
+ * @use For many rows the user groups, filters, pivots and exports. For a few hundred with links, use DataTable.
+ * @see ParallaxProvider, useDataset, Pivot, Chart, LayoutInput, encodeLayout, DataTable */
 function Grid(props: GridProps): ReactNode {
   return (
     <Maximizable label={props.label ?? props.dataset.name}>

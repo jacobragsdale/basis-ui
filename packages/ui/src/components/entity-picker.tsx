@@ -125,6 +125,10 @@ function MultipleEntityPicker<TItem>({
 /** A combobox that searches as the user types. Label it with a `FieldLabel` whose `htmlFor` is its `id`, or with
  * `aria-label`.
  *
+ * @use For choosing an entity an API searches for, such as an issuer or a counterparty. For a security by its
+ * identifier, use SecurityPicker; for a list the page holds, Combobox or Select.
+ * @see SecurityPicker, Combobox, Select, Field, FieldLabel
+ *
  * @example
  * ```tsx
  * import { EntityPicker, Field, FieldLabel } from "@basis/ui";

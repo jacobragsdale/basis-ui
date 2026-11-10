@@ -58,6 +58,7 @@ class ApiError<TProblem = AnyProblem> extends Error {
 /** The error type orval reads from this module: each hook's error is `ErrorType<the operation's problem types>`. */
 type ErrorType<TProblem> = ApiError<TProblem>;
 
+/** Whether `error` is the `ApiError` a generated hook fails with, holding the API's status and problem details. */
 function isApiError(error: unknown): error is ApiError {
   return error instanceof ApiError;
 }

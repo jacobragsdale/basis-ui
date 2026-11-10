@@ -54,6 +54,10 @@ const either = new Intl.ListFormat("en-US", { type: "disjunction" });
 /** A picker that searches for securities by CUSIP, ISIN or SEDOL. It waits for as many characters as the shortest
  * identifier it takes has, saying which it takes, then checks each text before searching.
  *
+ * @use For choosing a security by its CUSIP, ISIN or SEDOL from an API's search. For any other entity, use
+ * EntityPicker; to read an identifier without a search, parseSecurityIdentifier.
+ * @see EntityPicker, parseSecurityIdentifier, SecurityIdentifier, Field, FieldLabel
+ *
  * @example
  * ```tsx
  * import { Field, FieldLabel, SecurityPicker } from "@basis/ui";

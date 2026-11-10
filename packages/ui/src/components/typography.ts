@@ -15,6 +15,10 @@ import type { ReactElement } from "react";
 
 /** A page's title, in an `<h1>`.
  *
+ * @use For a page's title. The text below it takes its look from TypographyH2 to TypographyH4, TypographyP and the
+ * rest, never from classes on a plain element; a number in it, from Num.
+ * @see Num, DateTime
+ *
  * @example
  * ```tsx
  * import { TypographyH1, TypographyMuted, TypographyP } from "@basis/ui";

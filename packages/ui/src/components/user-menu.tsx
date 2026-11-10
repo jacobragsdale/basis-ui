@@ -110,6 +110,9 @@ function SessionItem(): ReactElement | null {
  * reduced, which stops every transition as the operating system's setting does) every app shows, and signing in or
  * out. Inside `BasisApp`, which keeps the session; `AppShell` puts it in the sidebar's footer.
  *
+ * @use AppShell puts one in its sidebar's footer; use it alone only in a layout of the app's own, under BasisApp.
+ * @see AppShell, BasisApp, useSession, Preferences
+ *
  * @example
  * ```tsx
  * import { UserMenu } from "@basis/ui";

@@ -15,6 +15,10 @@ const alignShift = 4;
 /** A hover card: a preview of what a link leads to, shown while the pointer rests on the link or the link has
  * keyboard focus. It is for sighted pointer users; what it shows must also be reachable by following the link.
  *
+ * @use For a preview of what a link leads to, such as an issuer's summary on its name. For a short label, use Tooltip;
+ * for content a touch or keyboard user must reach, Popover.
+ * @see Tooltip, Popover, Avatar
+ *
  * @example
  * ```tsx
  * import { HoverCard, HoverCardContent, HoverCardTrigger } from "@basis/ui";

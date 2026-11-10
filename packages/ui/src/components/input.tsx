@@ -9,6 +9,10 @@ import { inputVariants } from "./input-variants.ts";
 
 /** A text input. With `aria-invalid` its outline turns the destructive colour; a `FieldError` beside it says why.
  *
+ * @use For a line of text, such as a name or a CUSIP. For an amount or a rate, use AmountInput; for a date,
+ * AsOfDatePicker; for several lines, Textarea; for a search an API answers, EntityPicker.
+ * @see Field, FieldLabel, FieldError, InputGroup, AmountInput, Textarea
+ *
  * @example
  * ```tsx
  * import { Field, FieldLabel, Input } from "@basis/ui";

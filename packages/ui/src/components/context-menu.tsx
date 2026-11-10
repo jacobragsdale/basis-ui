@@ -26,6 +26,10 @@ const alignShift = 4;
  * by the keyboard's context-menu key or Shift+F10. Arrow keys move through its items, Enter or a click runs one, and
  * Escape closes the menu.
  *
+ * @use For actions on what is under the pointer, such as a row, as a shortcut. Each action must also be reachable
+ * another way, such as the row's DropdownMenu, since few users find a right click.
+ * @see DropdownMenu, Menubar
+ *
  * @example
  * ```tsx
  * import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from "@basis/ui";

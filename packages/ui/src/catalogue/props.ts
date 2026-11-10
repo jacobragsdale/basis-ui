@@ -1,228 +1,279 @@
-/* A component's props, as the component catalogue lists them: the ones it declares itself, with their types and docs;
- * the types whose props it also takes, such as Base UI's; and its variants, read from the `cva` call that styles it. */
+/* A component's props, as the component catalogue lists them: the ones it declares itself and the ones it takes from
+ * the types it is built on, Base UI's among them, each with its type, its docs and its default; the types left as
+ * written, such as a `<div>`'s props; and its variants, read from the `cva` call that styles it. */
 
-import { child, children, docComment, nameOf, summary, text } from "./ast.ts";
+import { child, children, nameOf, text } from "./ast.ts";
 import type { Node, ParsedFile } from "./ast.ts";
-import { lookup } from "./modules.ts";
-import type { Found } from "./modules.ts";
+import { resolveName, typeDeclaration, valueDeclaration } from "./modules.ts";
+import type { Entity } from "./modules.ts";
+import type { References } from "./references.ts";
+import { addMembers, addProps, deeper, emptyShape, maxDepth, typeText } from "./shape.ts";
+import type { PropsShape, Walk } from "./shape.ts";
+import { collectUtility, collectZod, typeReference } from "./utilities.ts";
+import type { TypeReference } from "./utilities.ts";
+import { addVariants } from "./variants.ts";
 
-/** One prop a component declares itself. */
-interface CatalogueProp {
-  readonly name: string;
-  readonly type: string;
-  readonly optional: boolean;
-  readonly description: string;
-}
-
-/** One variant: its options, and the one used when it is not set. */
-interface CatalogueVariant {
-  readonly options: readonly string[];
-  readonly default: string | null;
-}
-
-interface PropsShape {
-  readonly props: CatalogueProp[];
-  readonly extends: string[];
-  readonly variants: Record<string, CatalogueVariant>;
-}
-
-/** How deep a type's references are followed before it is listed as written. */
-const maxDepth = 8;
-
-function emptyShape(): PropsShape {
-  return { extends: [], props: [], variants: {} };
-}
-
-function propOf(file: ParsedFile, member: Node): CatalogueProp | undefined {
-  const name = nameOf(child(member, "key"));
-  const annotation = child(member, "typeAnnotation");
-  const type = annotation === undefined ? undefined : child(annotation, "typeAnnotation");
-  if (member.type !== "TSPropertySignature" || name === undefined) {
-    return undefined;
-  }
-  return {
-    description: summary(docComment(file, member)),
-    name,
-    optional: member["optional"] === true,
-    type: type === undefined ? "unknown" : text(file, type),
-  };
-}
-
-function addProps(shape: PropsShape, props: readonly CatalogueProp[]): void {
-  for (const prop of props) {
-    if (!shape.props.some((known) => known.name === prop.name)) {
-      shape.props.push(prop);
-    }
-  }
-}
-
-function addMembers(file: ParsedFile, members: readonly Node[], shape: PropsShape): void {
-  addProps(
-    shape,
-    members.flatMap((member) => propOf(file, member) ?? []),
-  );
-}
-
-function property(object: Node | undefined, key: string): Node | undefined {
-  const entry =
-    object === undefined
-      ? undefined
-      : children(object, "properties").find((candidate) => nameOf(child(candidate, "key")) === key);
-  return entry === undefined ? undefined : child(entry, "value");
-}
-
-/** The `cva` call's options, `{ variants, defaultVariants }`, that the variable `found` holds. */
-function cvaOptions(found: Found | undefined): Node | undefined {
-  const declarator =
-    found?.node.type === "VariableDeclaration"
-      ? children(found.node, "declarations")[0]
-      : undefined;
-  const init = declarator === undefined ? undefined : child(declarator, "init");
-  const options = init?.type === "CallExpression" ? children(init, "arguments")[1] : undefined;
-  return options?.type === "ObjectExpression" ? options : undefined;
-}
-
-/** A `cva` call's variant: its options, and the default `defaults` names for it. */
-function variantOf(
-  variant: Node,
-  defaults: Node | undefined,
-): [string, CatalogueVariant] | undefined {
-  const key = nameOf(child(variant, "key"));
-  const value = child(variant, "value");
-  if (key === undefined || value === undefined) {
-    return undefined;
-  }
-  const options = children(value, "properties").flatMap(
-    (option) => nameOf(child(option, "key")) ?? [],
-  );
-  return [key, { default: nameOf(property(defaults, key)) ?? null, options }];
-}
-
-/** Adds the variants of the `cva` call `name` holds, as `file` sees it, or returns `false` if it is not one. */
-function addVariants(file: ParsedFile, name: string, shape: PropsShape): boolean {
-  const options = cvaOptions(lookup(file, name));
-  if (options === undefined) {
-    return false;
-  }
-  const defaults = property(options, "defaultVariants");
-  const variants = children(property(options, "variants") ?? options, "properties");
-  Object.assign(
-    shape.variants,
-    Object.fromEntries(
-      variants.flatMap((variant) => {
-        const entry = variantOf(variant, defaults);
-        return entry === undefined ? [] : [entry];
-      }),
-    ),
-  );
-  return true;
-}
-
-interface Walk {
-  readonly file: ParsedFile;
-  readonly shape: PropsShape;
-  readonly depth: number;
-}
-
-type Collect = (node: Node, walk: Walk) => void;
-
-/** A union's props, as modes such as a single or a multiple picker: every member's, optional unless each requires it. */
-function collectUnion(node: Node, walk: Walk, recurse: Collect): void {
+/** A union's props, as modes such as a single or a multiple picker: every member's, optional unless each requires it,
+ * and typed as any member types it, as `selectable?: false` in one and `selectable: true | "single"` in another. */
+function collectUnion(node: Node, walk: Walk): void {
   const shapes = children(node, "types").map((part) => {
     const partShape = emptyShape();
-    recurse(part, { ...walk, depth: walk.depth + 1, shape: partShape });
+    walk.collect(part, deeper(walk, { shape: partShape }));
     return partShape;
   });
+  const each = (name: string): PropsShape["props"] =>
+    shapes.flatMap((other) => other.props.filter((prop) => prop.name === name));
   const required = (name: string): boolean =>
     shapes.every((other) => other.props.some((prop) => prop.name === name && !prop.optional));
+  const typeOf = (name: string): string => {
+    const kept = [...new Set(each(name).map((prop) => prop.type))].filter(
+      (type) => type !== "undefined",
+    );
+    return kept.length === 0 ? "undefined" : kept.join(" | ");
+  };
   for (const partShape of shapes) {
     walk.shape.extends.push(...partShape.extends);
     Object.assign(walk.shape.variants, partShape.variants);
-    addProps(
-      walk.shape,
-      partShape.props.map((prop) =>
-        Object.assign(structuredClone(prop), { optional: !required(prop.name) }),
-      ),
+    const merged = partShape.props.map((prop) =>
+      Object.assign(structuredClone(prop), {
+        optional: !required(prop.name),
+        type: typeOf(prop.name),
+      }),
     );
+    addProps(walk.shape, merged);
   }
+}
+
+/** The arguments of a reference to `declaration`, by its type parameters, defaults filled in. */
+function argumentsOf(declaration: Node, reference: Node, walk: Walk): Map<string, string> {
+  const given = children(child(reference, "typeArguments"), "params");
+  const entries = children(child(declaration, "typeParameters"), "params").flatMap(
+    (parameter, index): [string, string][] => {
+      const name = nameOf(child(parameter, "name")) ?? "";
+      const argument = given[index];
+      const fallback = child(parameter, "default");
+      if (argument !== undefined) {
+        return [[name, typeText(walk, argument)]];
+      }
+      return fallback === undefined ? [] : [[name, text(walk.file, fallback)]];
+    },
+  );
+  return new Map(entries);
 }
 
 /** An interface's props: the types it extends, then its own members. */
-function collectInterface(found: Found, walk: Walk, recurse: Collect): void {
-  const next = { ...walk, depth: walk.depth + 1, file: found.file };
-  for (const heritage of children(found.node, "extends")) {
-    recurse(
-      { ...heritage, type: "TSTypeReference", typeName: child(heritage, "expression") },
-      next,
-    );
+function collectInterface(declaration: Node, walk: Walk): void {
+  for (const heritage of children(declaration, "extends")) {
+    const reference = {
+      ...heritage,
+      type: "TSTypeReference",
+      typeName: child(heritage, "expression"),
+    };
+    walk.collect(reference, deeper(walk));
   }
-  addMembers(found.file, children(child(found.node, "body") ?? found.node, "body"), walk.shape);
+  addMembers(children(child(declaration, "body"), "body"), walk);
 }
 
-/** A declaration's props: an interface's, or a type alias's type's. */
-function collectDeclaration(found: Found, walk: Walk, recurse: Collect): void {
-  if (found.node.type === "TSInterfaceDeclaration") {
-    collectInterface(found, walk, recurse);
-    return;
+/** The props of the type `reference` names, declared as `declaration` in its file. */
+function collectDeclaration(
+  declared: { readonly declaration: Node; readonly file: ParsedFile },
+  reference: Node,
+  walk: Walk,
+): void {
+  const { declaration, file } = declared;
+  const inner = deeper(walk, { arguments: argumentsOf(declaration, reference, walk), file });
+  const type = child(declaration, "typeAnnotation");
+  if (declaration.type === "TSInterfaceDeclaration") {
+    collectInterface(declaration, inner);
+  } else if (type === undefined) {
+    walk.shape.extends.push(typeText(walk, reference));
+  } else {
+    walk.collect(type, inner);
   }
-  const type =
-    found.node.type === "TSTypeAliasDeclaration" ? child(found.node, "typeAnnotation") : undefined;
-  if (type === undefined) {
-    walk.shape.extends.push(text(found.file, found.node));
-    return;
-  }
-  recurse(type, { ...walk, depth: walk.depth + 1, file: found.file });
 }
 
-/** A type reference's props: a `cva` call's variants, a package type's props, or the type as written. */
-function collectReference(node: Node, walk: Walk, recurse: Collect): void {
-  const reference = text(walk.file, node);
-  const variants = /^VariantProps<typeof (?<name>\w+)>$/u.exec(reference)?.groups?.["name"];
-  if (variants !== undefined && addVariants(walk.file, variants, walk.shape)) {
-    return;
-  }
-  const name = nameOf(child(node, "typeName"));
-  const found = variants === undefined && name !== undefined ? lookup(walk.file, name) : undefined;
-  if (found === undefined) {
-    walk.shape.extends.push(reference);
-    return;
-  }
-  collectDeclaration(found, walk, recurse);
+const functionTypes = new Set([
+  "ArrowFunctionExpression",
+  "FunctionDeclaration",
+  "FunctionExpression",
+  "TSDeclareFunction",
+]);
+
+/** The first parameter's type of a function, an arrow or a declared function. */
+function parameterType(fn: Node | undefined): Node | undefined {
+  const [parameter] = children(fn, "params");
+  return child(child(parameter, "typeAnnotation"), "typeAnnotation");
 }
+
+/** What a component's declaration holds: its function, or a variable's value. */
+function valueOf(declaration: Node): Node | undefined {
+  return declaration.type === "VariableDeclaration"
+    ? child(children(declaration, "declarations")[0], "init")
+    : declaration;
+}
+
+/** The props of a component typed as React's, such as Base UI's `ForwardRefExoticComponent<Props>`. */
+function annotatedProps(declaration: Node): Node | undefined {
+  if (declaration.type !== "VariableDeclaration") {
+    return undefined;
+  }
+  const id = child(children(declaration, "declarations")[0], "id");
+  const type = child(child(id, "typeAnnotation"), "typeAnnotation");
+  return children(child(type, "typeArguments"), "params")[0];
+}
+
+/** Adds the props of a function component, from its first parameter's type, or from a React type it is declared
+ * with, and returns whether it is a function: one with no props is a component too, such as `<Toaster />`. */
+function collectFunction(declaration: Node, init: Node | undefined, walk: Walk): boolean {
+  const type = parameterType(init) ?? annotatedProps(declaration);
+  if (type !== undefined) {
+    walk.collect(type, walk);
+  }
+  return type !== undefined || (init !== undefined && functionTypes.has(init.type));
+}
+
+/** Adds the props of the component `entity` declares, and returns whether it found a component to read them from:
+ * a function, or another component it is, as `Select` is Base UI's `Select.Root`. */
+function collectValue(entity: Entity, walk: Walk): boolean {
+  const declaration = valueDeclaration(entity);
+  if (declaration === undefined || entity.kind !== "declarations" || walk.depth > maxDepth) {
+    return false;
+  }
+  const inner = deeper(walk, { arguments: new Map(), file: entity.file });
+  const init = valueOf(declaration);
+  if (init?.type === "MemberExpression" || init?.type === "Identifier") {
+    const target = resolveName(entity.file, init);
+    return target !== undefined && collectValue(target, inner);
+  }
+  return collectFunction(declaration, init, inner);
+}
+
+const elementProps =
+  /^(?:React\.)?(?:ComponentProps|ComponentPropsWithRef|ComponentPropsWithoutRef)$/u;
+/** Base UI's wrappers of an element's props, whose props are the element's. */
+const passThrough = new Set(["WithBaseUIEvent"]);
+
+/** Base UI's wrapper of an element's props, whose props are the element's. */
+function collectPassThrough({ args, name }: TypeReference, walk: Walk): boolean {
+  const [argument] = args;
+  if (!passThrough.has(name) || argument === undefined) {
+    return false;
+  }
+  walk.collect(argument, deeper(walk));
+  return true;
+}
+
+/** `ComponentProps<"div">`, written as a `<div>`'s props, and `ComponentProps<typeof X>`, which are X's. */
+function collectElement({ args, name, node }: TypeReference, walk: Walk): boolean {
+  const [argument] = args;
+  if (!elementProps.test(name)) {
+    return false;
+  }
+  const component =
+    argument?.type === "TSTypeQuery"
+      ? resolveName(walk.file, child(argument, "exprName"))
+      : undefined;
+  if (component === undefined || !collectValue(component, walk)) {
+    // An element's props, as `ComponentProps<"div">` whichever way it is written, or of any of several elements.
+    const written = argument === undefined ? "" : typeText(walk, argument);
+    const tags = /^["']\w+["'](?:\s*\|\s*["']\w+["'])*$/u.test(written)
+      ? written.replaceAll("'", '"')
+      : undefined;
+    walk.shape.extends.push(tags === undefined ? typeText(walk, node) : `ComponentProps<${tags}>`);
+  }
+  return true;
+}
+
+/** `VariantProps<typeof xVariants>`: the `cva` call's variants, or the type as written. */
+function collectVariants({ node }: TypeReference, walk: Walk): boolean {
+  const name = /^VariantProps<typeof (?<name>\w+)>$/u.exec(text(walk.file, node))?.groups?.["name"];
+  if (name !== undefined && !addVariants(walk.file, name, walk.shape)) {
+    walk.shape.extends.push(typeText(walk, node));
+  }
+  return name !== undefined;
+}
+
+/** A type this repo or Base UI declares: its props. */
+function collectDeclared({ node }: TypeReference, walk: Walk): boolean {
+  const entity = resolveName(walk.file, child(node, "typeName"));
+  const declaration = typeDeclaration(entity);
+  if (entity === undefined || declaration === undefined) {
+    return false;
+  }
+  collectDeclaration({ declaration, file: entity.file }, node, walk);
+  return true;
+}
+
+/** How a type reference's props are read, in order; one that reads none leaves the type as written. */
+const referenceReaders = [
+  collectVariants,
+  collectZod,
+  collectUtility,
+  collectPassThrough,
+  collectElement,
+  collectDeclared,
+];
+
+/** How each kind of type adds its props to the walk's shape; any other kind is listed as written. */
+const typeReaders: Readonly<Record<string, (node: Node, walk: Walk) => void>> = {
+  TSIntersectionType: (node, walk) => {
+    for (const part of children(node, "types")) {
+      walk.collect(part, deeper(walk));
+    }
+  },
+  TSParenthesizedType: (node, walk) => {
+    const inner = child(node, "typeAnnotation");
+    if (inner !== undefined) {
+      walk.collect(inner, deeper(walk));
+    }
+  },
+  TSTypeLiteral: (node, walk) => {
+    addMembers(children(node, "members"), walk);
+  },
+  TSTypeReference: (node, walk) => {
+    const reference = typeReference(walk, node);
+    if (!referenceReaders.some((read) => read(reference, walk))) {
+      walk.shape.extends.push(typeText(walk, node));
+    }
+  },
+  TSUnionType: collectUnion,
+};
 
 /** Adds what the type `node` holds to the walk's shape. */
 function collect(node: Node, walk: Walk): void {
-  const inner = child(node, "typeAnnotation");
-  if (walk.depth > maxDepth) {
-    walk.shape.extends.push(text(walk.file, node));
-  } else if (node.type === "TSIntersectionType") {
-    for (const part of children(node, "types")) {
-      collect(part, { ...walk, depth: walk.depth + 1 });
-    }
-  } else if (node.type === "TSUnionType") {
-    collectUnion(node, walk, collect);
-  } else if (node.type === "TSTypeLiteral") {
-    addMembers(walk.file, children(node, "members"), walk.shape);
-  } else if (node.type === "TSParenthesizedType" && inner !== undefined) {
-    collect(inner, { ...walk, depth: walk.depth + 1 });
-  } else if (node.type === "TSTypeReference") {
-    collectReference(node, walk, collect);
+  const read = walk.depth > maxDepth ? undefined : typeReaders[node.type];
+  if (read === undefined) {
+    walk.shape.extends.push(typeText(walk, node));
   } else {
-    walk.shape.extends.push(text(walk.file, node));
+    read(node, walk);
   }
 }
 
-/** The props of the function `fn` declares in `file`, read from its first parameter's type. */
-function propsOf(file: ParsedFile, fn: Node): PropsShape {
-  const shape = emptyShape();
-  const [parameter] = children(fn, "params");
-  const annotation = parameter === undefined ? undefined : child(parameter, "typeAnnotation");
-  const type = annotation === undefined ? undefined : child(annotation, "typeAnnotation");
-  if (type !== undefined) {
-    collect(type, { depth: 0, file, shape });
-  }
-  return shape;
+function startWalk(file: ParsedFile, references: References): Walk {
+  return { arguments: new Map(), collect, depth: 0, file, references, shape: emptyShape() };
 }
 
-export { emptyShape, propsOf };
-export type { CatalogueProp, CatalogueVariant, PropsShape };
+/** The props of the component `entity` declares, or `undefined` when it is no component the catalogue can read. */
+function componentProps(entity: Entity, references: References): PropsShape | undefined {
+  const walk = startWalk(entity.file, references);
+  return collectValue(entity, walk) ? walk.shape : undefined;
+}
+
+/** The fields of the interface or type alias `declaration` in `file`, as a type's entry lists them. */
+function declarationFields(
+  file: ParsedFile,
+  declaration: Node,
+  references: References,
+): PropsShape {
+  const walk = startWalk(file, references);
+  const type = child(declaration, "typeAnnotation");
+  if (declaration.type === "TSInterfaceDeclaration") {
+    collectInterface(declaration, walk);
+  } else if (type !== undefined) {
+    collect(type, walk);
+  }
+  return walk.shape;
+}
+
+export { componentProps, declarationFields };
+export type { PropsShape } from "./shape.ts";

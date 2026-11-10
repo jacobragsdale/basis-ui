@@ -62,7 +62,26 @@ function RowsChart(props: RowsChartProps): ReactNode {
   );
 }
 
-/** A chart of a dataset, as a layout describes it, or of rows the page holds. */
+/** A chart of a dataset, as a layout describes it, or of rows the page holds.
+ *
+ * @use For every chart of a dataset, or of rows the page holds, from a line to a candlestick or a waterfall. For a
+ * series too small to load parallax for, use `@basis/ui`'s Sparkline; for a bar behind a table cell's text, CellBar.
+ * @see ParallaxProvider, useDataset, Grid, LayoutInput, LayoutChart, Sparkline, CellBar
+ *
+ * @example
+ * ```tsx
+ * import { Chart } from "@basis/parallax";
+ *
+ * const curve = [
+ *   { tenor: "2Y", yield: 0.0412 },
+ *   { tenor: "10Y", yield: 0.0438 },
+ * ];
+ *
+ * <div className="h-80">
+ *   <Chart rows={curve} kind="line" x="tenor" y="yield" name="Treasury yields" />
+ * </div>;
+ * ```
+ */
 function Chart(props: ChartProps): ReactNode {
   return "rows" in props ? <RowsChart {...props} /> : <ChartView {...props} />;
 }

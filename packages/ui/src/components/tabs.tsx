@@ -14,6 +14,10 @@ import { tabsListVariants } from "./tabs-variants.ts";
 
 /** A set of panels shown one at a time, horizontal by default. `defaultValue` or `value` names the open tab.
  *
+ * @use For panels of one subject shown one at a time, such as a security's summary, cash flows and history. For the
+ * app's pages, use routes; for a choice that changes one view, ToggleGroup.
+ * @see ToggleGroup, Card, Accordion
+ *
  * @example
  * ```tsx
  * import { Tabs, TabsContent, TabsList, TabsTrigger } from "@basis/ui";

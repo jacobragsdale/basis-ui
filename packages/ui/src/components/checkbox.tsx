@@ -17,6 +17,10 @@ import { MinusIcon } from "#vendor/lucide/minus.tsx";
 /** A checkbox. Name it with a `<label>` around it or a `Label` whose `htmlFor` is its `id`. `indeterminate`, for a
  * checkbox over others of which some are checked, fills the box and draws a dash in place of the check.
  *
+ * @use For a choice a form submits, or for choosing items in a list. For a setting that takes effect at once, use
+ * Switch; for one choice of a few, RadioGroup.
+ * @see Field, FieldLabel, Label, Switch, RadioGroup
+ *
  * @example
  * ```tsx
  * import { Checkbox, Field, FieldLabel } from "@basis/ui";

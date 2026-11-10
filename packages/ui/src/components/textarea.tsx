@@ -8,6 +8,9 @@ import { textareaVariants } from "./textarea-variants.ts";
 
 /** A multi-line text input, at least 16 steps of the spacing scale tall, growing with its content.
  *
+ * @use For text of several lines, such as a trade's comment. For one line, use Input.
+ * @see Field, FieldLabel, FieldError, Input, InputGroup
+ *
  * @example
  * ```tsx
  * import { Field, FieldLabel, Textarea } from "@basis/ui";

@@ -31,6 +31,10 @@ function barClass(value: number, signed: boolean, rising: "gain" | "loss"): stri
 
 /** A table cell's text over a bar of its value.
  *
+ * @use For a value's size against its column's largest, behind its text in a table cell, such as P&L. For a series, use
+ * Sparkline or parallax's Chart.
+ * @see DataTable, Table, Money, Num, Sparkline
+ *
  * @example
  * ```tsx
  * import { CellBar, Num } from "@basis/ui";

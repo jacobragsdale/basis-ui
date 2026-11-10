@@ -13,6 +13,9 @@ import { EllipsisIcon } from "#vendor/lucide/ellipsis.tsx";
 
 /** The trail of links to the current page: a navigation landmark named "breadcrumb".
  *
+ * @use For a trail to the page built by hand. In an app on AppShell, RouteBreadcrumbs builds it from the routes.
+ * @see RouteBreadcrumbs, DropdownMenu
+ *
  * @example
  * ```tsx
  * import {

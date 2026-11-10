@@ -14,6 +14,9 @@ import { Skeleton } from "./skeleton.tsx";
 
 /** A list of the sidebar's menu items.
  *
+ * @use For a sidebar of links built by hand. In an app on AppShell, AppSidebar builds it from the routes.
+ * @see AppSidebar, AppShell, Collapsible
+ *
  * @example
  * ```tsx
  * import {
@@ -188,6 +191,7 @@ function SidebarMenuSubItem({ className, ...props }: ComponentProps<"li">): Reac
 }
 
 type SidebarMenuSubButtonProps = useRender.ComponentProps<"a"> & {
+  /** How large the link's text is drawn. */
   readonly size?: "sm" | "md" | undefined;
   /** Marks the link as the current page's, with `data-active`. */
   readonly isActive?: boolean | undefined;

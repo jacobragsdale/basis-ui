@@ -9,6 +9,9 @@ import type { ComponentProps, ReactElement } from "react";
 
 /** A person's picture or initials in a circle: 32 px, or 24 px at `size="sm"` and 40 px at `size="lg"`.
  *
+ * @use For a person's picture, or their initials while it loads or when there is none, such as a trade's trader.
+ * @see Item, HoverCard
+ *
  * @example
  * ```tsx
  * import { Avatar, AvatarFallback, AvatarImage } from "@basis/ui";
@@ -23,7 +26,10 @@ function Avatar({
   className,
   size = "default",
   ...props
-}: AvatarPrimitive.Root.Props & { readonly size?: "default" | "sm" | "lg" }): ReactElement {
+}: AvatarPrimitive.Root.Props & {
+  /** How large the circle is drawn. */
+  readonly size?: "default" | "sm" | "lg";
+}): ReactElement {
   return (
     <AvatarPrimitive.Root
       data-slot="avatar"

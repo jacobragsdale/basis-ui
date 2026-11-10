@@ -12,6 +12,10 @@ import { badgeVariants } from "./badge-variants.ts";
 
 /** A badge: a `<span>`, or the element `render` names, with `data-slot="badge"` and its variant as `data-variant`.
  *
+ * @use For a short status or count beside text, such as a trade's state in a table. For something the user turns on,
+ * use Toggle; for a message, Alert.
+ * @see Table, Item, Alert
+ *
  * @example
  * ```tsx
  * import { Badge } from "@basis/ui";

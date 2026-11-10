@@ -12,6 +12,10 @@ import type { ReactElement } from "react";
 
 /** A set of radio items, one of which is chosen. Name it with `aria-labelledby` pointing at its legend or label.
  *
+ * @use For one choice of a few, about two to five, that should all show at once. For more, use Select; for a choice
+ * that changes a view at once, ToggleGroup.
+ * @see FieldSet, FieldLegend, FieldLabel, Label, Select, ToggleGroup
+ *
  * @example
  * ```tsx
  * import { Field, FieldLabel, RadioGroup, RadioGroupItem } from "@basis/ui";

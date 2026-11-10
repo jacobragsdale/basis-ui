@@ -14,6 +14,10 @@ import { ChevronUpIcon } from "#vendor/lucide/chevron-up.tsx";
 
 /** A stack of sections, each opened by its trigger. One opens at a time unless `multiple` is set.
  *
+ * @use For several sections the user opens one or a few at a time, such as a form's advanced settings. For one section,
+ * use Collapsible; for panels shown one at a time under a row of names, Tabs.
+ * @see Collapsible, Tabs
+ *
  * @example
  * ```tsx
  * import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@basis/ui";

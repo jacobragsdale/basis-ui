@@ -9,6 +9,9 @@ import type { ReactElement } from "react";
 
 /** A section that shows and hides its content. `open` and `onOpenChange` control it, or `defaultOpen` starts it.
  *
+ * @use For one section the user shows and hides, such as a filter panel. For several, use Accordion.
+ * @see Accordion, Button
+ *
  * @example
  * ```tsx
  * import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@basis/ui";

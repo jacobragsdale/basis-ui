@@ -23,6 +23,7 @@ import type { NumberFormat, NumericValue, PriceFormat, Shown } from "./num-text.
 /** What every number component takes. */
 interface NumberProps
   extends Omit<ComponentProps<"span">, "children">, VariantProps<typeof numVariants> {
+  /** The number as the API sends it, a double; `null` shows the formatter's null text, which is empty, and NaN `—`. */
   readonly value: NumericValue;
   /** Colour a gain `gain` and a loss `loss`, and write a plus sign before a gain. */
   readonly signed?: boolean | undefined;
@@ -61,6 +62,10 @@ function NumberText({
 type NumProps = NumberProps & NumberFormat;
 
 /** A number, by the formatter's defaults: a decimal at its own scale, an integer with none, a double with two.
+ *
+ * @use For a number on a page, rounded once by the formatter. For money, use Money; for a rate, Pct or Bps; for a
+ * Treasury price, Price32; for a number whose API declares its format, Formatted.
+ * @see Formatted, DateTime, CellBar, numberText
  *
  * @example
  * ```tsx

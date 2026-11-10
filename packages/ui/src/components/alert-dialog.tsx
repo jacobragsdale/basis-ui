@@ -22,6 +22,10 @@ import {
 /** An alert dialog: a dialog that asks the user to confirm or cancel an action. Unlike Dialog, a click outside does
  * not close it; Escape and its cancel button do, and focus returns to the trigger.
  *
+ * @use For confirming an action that cannot be undone, such as cancelling an order, which the user must answer before
+ * going on. For a form or details, use Dialog.
+ * @see Dialog, Button
+ *
  * @example
  * ```tsx
  * import {
@@ -87,7 +91,10 @@ function AlertDialogContent({
   className,
   size = "default",
   ...props
-}: AlertDialogPrimitive.Popup.Props & { readonly size?: "default" | "sm" }): ReactElement {
+}: AlertDialogPrimitive.Popup.Props & {
+  /** How wide the window is; the small one centres its text and sets its two actions side by side. */
+  readonly size?: "default" | "sm";
+}): ReactElement {
   return (
     <AlertDialogPortal>
       <AlertDialogOverlay />

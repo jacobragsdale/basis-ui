@@ -33,6 +33,7 @@ interface AmountInputProps extends Omit<
   /** The number, `null` for an empty field, or the text while it reads as no number. Leave it out for
    * an uncontrolled field. */
   readonly value?: number | string | null | undefined;
+  /** The value an uncontrolled field starts with, as `value` takes it. */
   readonly defaultValue?: number | string | null | undefined;
   /** Called with the new value as the person types, once each time it changes. */
   readonly onValueChange?: ((value: number | string | null) => void) | undefined;
@@ -178,6 +179,10 @@ function useAmountField({
 
 /** An amount or rate field. Label it with a FieldLabel's `htmlFor` and this `id`, and put it in a `Field`; it draws the
  * line under the input that echoes the number and the error line.
+ *
+ * @use For an amount, a par or a rate the user types, such as `1.5MM` or `25bp`. For text, use Input; for a value on a
+ * scale, Slider.
+ * @see Field, FieldLabel, amountSchema, parSuffixes, rateSuffixes, amountSuffixes, parseAmount
  *
  * @example
  * ```tsx

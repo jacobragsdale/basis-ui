@@ -32,6 +32,12 @@ interface FormattedProps extends Pick<
 
 /** A number shown by its API's display format, through `Num`, `Money`, `Pct`, `Bps` or `Price32` as its kind says.
  *
+ * @use For a number whose API declares its display format, through the generated client's `displayFormats`. For a
+ * number with no format, use Num or one of its kinds, such as Money.
+ * @prop {string} id The element's id, which a label's `htmlFor` or an `aria-describedby` names.
+ * @prop {string} title The text a pointer's tooltip shows, such as the number in full.
+ * @see Num, Money, Pct, Bps, Price32, readDisplayFormat, DisplayFormat
+ *
  * @example
  * ```tsx
  * import { Formatted } from "@basis/ui";

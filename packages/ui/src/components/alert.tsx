@@ -33,6 +33,10 @@ const TitleIdContext = createContext<Dispatch<SetStateAction<string | undefined>
 /** A callout: an optional icon first, then an AlertTitle, an AlertDescription and an AlertAction. A status variant
  * pairs its colour with an icon, such as `CircleCheckIcon` for `success`.
  *
+ * @use For a message that stays on the page, such as a warning about late data. For an API's error, use ErrorAlert; for
+ * a passing message, a toast; for a confirmation, AlertDialog.
+ * @see ErrorAlert, toast, AlertDialog, CircleCheckIcon
+ *
  * @example
  * ```tsx
  * import { Alert, AlertDescription, AlertTitle } from "@basis/ui";

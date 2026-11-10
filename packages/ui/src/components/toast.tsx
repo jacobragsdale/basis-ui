@@ -215,6 +215,10 @@ function ToastList(): ReactElement[] {
  * another. Render it once, around the app or beside it. `limit` (3 by default) caps how many show at once, and
  * `timeout` (5000 ms) how long each stays.
  *
+ * @use Render it once, as BasisApp does, and raise a toast with `toast` for a passing message, such as "Trade booked".
+ * For a message that stays, use Alert; for a query's error on the page, ErrorAlert.
+ * @see toast, toastError, BasisApp, Alert
+ *
  * @example
  * ```tsx
  * import { Button, Toaster, toast } from "@basis/ui";

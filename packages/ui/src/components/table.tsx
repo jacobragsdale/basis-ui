@@ -12,6 +12,10 @@ import { tableCellVariants, tableHeadVariants } from "./table-variants.ts";
 
 /** A table in a container that scrolls sideways when the table is wider than its place.
  *
+ * @use For a table drawn by hand, of a few rows with no sorting or selection. For sorting, selection and export, use
+ * DataTable; for thousands of rows or a pivot, parallax's Grid.
+ * @see DataTable, Grid, Num, Money, CellBar
+ *
  * @example
  * ```tsx
  * import { Money, Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@basis/ui";

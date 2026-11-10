@@ -1,9 +1,10 @@
 /* Every error the preset adds to an app's lint names its fix, since in an app agents write nobody reads the code
  * (docs/design.md, The idea): the libraries @basis/ui replaces, `fetch` and the generated files outside the client
  * layer, and display rounding (docs/design.md, Numbers). The probe runs `vp lint` in packages/consumer, the app
- * configured exactly as the README says, on a file of every banned import and call. */
+ * configured exactly as the README says, on a file of every banned import and call. `vp run docs`'s errors, for a name
+ * or a search it cannot answer, are held here by their text too, run in the same app. */
 
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 
 import { afterAll, describe, expect, test } from "vite-plus/test";
@@ -161,4 +162,46 @@ describe("the preset's lint against Vitest's browser API outside a browser-only 
       expect(found[0]?.help).toContain("render, screen and userEvent from @basis/ui/testing");
     },
   );
+});
+
+/** What `vp run docs` prints to its error stream in packages/consumer, which has `@basis/ui` installed. */
+function docsError(...args: string[]): string {
+  const tasks = new URL("../src/preset/tasks.ts", import.meta.url).pathname;
+  const result = spawnSync(process.execPath, [tasks, "docs", ...args], {
+    cwd: consumer,
+    encoding: "utf8",
+  });
+  return result.stderr;
+}
+
+describe("vp run docs, for a name or a search it cannot answer", () => {
+  test("suggests the closest names for one it does not have", () => {
+    expect(docsError("Selekt")).toBe(
+      "ERROR there is no Selekt in the installed catalogue or docs: did you mean Select? Run vp run docs NAME with one, or vp run docs --search WORDS to find one by what it does.\n",
+    );
+  });
+
+  test("says how to find one when no name is close", () => {
+    expect(docsError("Xyzzyplugh")).toBe(
+      "ERROR there is no Xyzzyplugh in the installed catalogue or docs: run vp run docs --search WORDS to find one by what it does, or vp run docs to list the pages and components.\n",
+    );
+  });
+
+  test("names the fix for a search nothing matches, and for a search with no words", () => {
+    expect(docsError("--search", "xyzzy plugh")).toBe(
+      'ERROR nothing in the installed catalogue or docs matches every word of "xyzzy plugh": search with fewer or other words, or run vp run docs to list the pages and components.\n',
+    );
+    expect(docsError("--search")).toBe(
+      "ERROR vp run docs --search needs the words to find: run vp run docs, vp run docs NAME or vp run docs --search WORDS, each with --json if wanted.\n",
+    );
+  });
+
+  test("refuses a second name or a flag it does not know", () => {
+    expect(docsError("Select", "Input")).toBe(
+      "ERROR vp run docs takes one name at most: run vp run docs, vp run docs NAME or vp run docs --search WORDS, each with --json if wanted.\n",
+    );
+    expect(docsError("Select", "--full")).toBe(
+      "ERROR vp run docs takes one name at most and no --full: run vp run docs, vp run docs NAME or vp run docs --search WORDS, each with --json if wanted.\n",
+    );
+  });
 });

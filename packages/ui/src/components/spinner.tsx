@@ -12,6 +12,10 @@ import { LoaderCircleIcon } from "#vendor/lucide/loader-circle.tsx";
 /** A loading indicator, 16 px square unless `className` sizes it, as with `size-6`. It is a status named "Loading";
  * give it an `aria-label` that says what is loading, such as "Loading positions", when the page shows more than one.
  *
+ * @use For an action or a load under way whose length is unknown, such as a Button's while it submits. For content
+ * still loading, use Skeleton; for a known share done, Progress.
+ * @see Button, Skeleton, Progress, InputGroup
+ *
  * @example
  * ```tsx
  * import { Spinner } from "@basis/ui";

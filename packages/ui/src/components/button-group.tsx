@@ -17,6 +17,10 @@ import { buttonGroupVariants } from "./button-group-variants.ts";
 /** A group of buttons, inputs or selects drawn as one control. Name it with `aria-label` when its purpose is not plain
  * from its buttons. Groups nest, with a gap between them.
  *
+ * @use For buttons, inputs or selects that act together and read as one control, such as a split button or a pager. For
+ * options of which one or several are on, use ToggleGroup.
+ * @see Button, ButtonLink, Input, InputGroup, Select, ToggleGroup
+ *
  * @example
  * ```tsx
  * import { Button, ButtonGroup, ButtonGroupSeparator } from "@basis/ui";

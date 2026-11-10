@@ -17,11 +17,16 @@ interface DateTimeProps
     Omit<ComponentProps<"time">, "children" | "dateTime">,
     VariantProps<typeof dateTimeVariants>,
     DateTimeFormat {
+  /** The time as the API sends it, ISO 8601 text, or as Temporal holds it; `null` shows the formatter's null text. */
   readonly value: DateTimeValue;
 }
 
 /** A time: `2026-11-06 09:30:00` for the instant 14:30 UTC, in tabular figures. `show` picks the date or the time
  * alone, and `precision` adds milliseconds or microseconds.
+ *
+ * @use For a date, a time or an instant as the API sends it, in New York time unless `zone` names another. For how long
+ * ago it was, use relativeTime from `@basis/ui/dates`.
+ * @see Num, Formatted, relativeTime
  *
  * @example
  * ```tsx

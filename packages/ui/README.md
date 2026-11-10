@@ -2,19 +2,22 @@
 
 The firm's React design system and toolchain: the theme, the components and their icons, the Vite+ preset, the app
 shell (`BasisApp`, sign-in, telemetry and error display), the generated API client's configuration and tasks, and the
-numbers, dates, securities and utils modules. [The basis-ui design](../../docs/design.md) holds the decisions behind
-them.
+numbers, dates, securities and utils modules.
+
+This README is for an app built on `@basis/ui` and the agent that writes it. `vp run docs` prints it, a section at a
+time, and every component, hook, function and type the package exports, as [Looking things up](#looking-things-up-vp-run-docs)
+says. What changed in each version is in `CHANGELOG.md`, which `vp run docs ui/changelog` prints. How the package
+itself is built, and how a component is added to it, is in basis-ui's repo, in `packages/ui/CONTRIBUTING.md`.
 
 ## How to build an app on @basis/ui
 
 An app takes its checks, its plugins, its stylesheet, its components and its icons from this one package, and declares
-no styles of its own. basis-ui's `packages/gallery` is an app built this way, and `packages/example` is one that also
-calls an API, through the app shell and a generated client.
+no styles of its own.
 
 Prerequisites: an app repo, in git, with `react` and `react-dom` 19.3, `@tanstack/react-query` 5, `@tanstack/react-router`
 1 and `zod` 4 as dependencies, and `vite-plus` 1.5.0, TypeScript 7.0, `msw` 3 and `@faker-js/faker` 10 as dev
-dependencies. Until roadmap step 1.8 publishes `@basis/ui`, install it from a tarball made with `vp pm pack` in this
-package.
+dependencies. Until `@basis/ui` is published to the internal feed, install it from a tarball made with `vp pm pack`
+in basis-ui's `packages/ui`.
 
 orval, which generates the client, brings TypeScript 6 with it, through `@orval/zod` and `@orval/hono`. Keep one
 TypeScript in the tree by overriding it in `pnpm-workspace.yaml`, then reinstall and check that `pnpm why typescript`
@@ -96,6 +99,30 @@ public, max-age=31536000, immutable` for the hashed files in `assets/` and `no-c
 To confirm the setup, run `vp check`, `vp test` and `vp build`. The built `dist/index.html` holds the head script, in
 a `<script>` before `</head>`.
 
+## Looking things up: `vp run docs`
+
+`vp run docs` prints the docs of the `@basis/ui` and `@basis/parallax` the app has installed, so what it says is true of
+the code the app runs. They come from this README and from `@basis/ui/catalogue.json`, the catalogue of everything the
+two packages export, which is read from their source and checked against it in every release.
+
+```sh
+vp run docs                        # the pages, the modules, and each family's main component
+vp run docs Select                 # one component: what it is for, when to use it, what goes with it, its props and an example
+vp run docs numberText             # a hook or function, with its signature; a type, with its fields; or a module, such as dates
+vp run docs --search "date range"  # the components, functions, types and pages whose name or purpose holds the words
+vp run docs ui/calling-the-api     # a section of this README; calling-the-api alone finds it too
+vp run docs Select --json          # any of the above as JSON
+```
+
+A component lists the props it declares and the ones it takes from Base UI, with their defaults, and the element whose
+props it also takes, such as a `<div>`'s. A name the docs do not have fails with the names closest to it.
+
+The catalogue, as JSON, holds for each module what it is for; for each component its family, what it is for, when to
+use it (`use`) and what goes with it (`with`), its props with their types, docs and defaults, its variants, and one
+example for each family, which compiles in an app set up as this README says; each hook, function, class and constant
+with its signature; each type that any of those names, with its fields; and the icons, by name. An agent that cannot run
+the task reads the file.
+
 ## Starting the app
 
 `BasisApp` is the app: it signs the user in, then renders the router's routes inside the providers every app shares.
@@ -138,12 +165,12 @@ createRoot(root).render(
 
 `BasisApp` takes:
 
-| Prop          | What it is                                                                                                                                      |
-| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `router`      | The app's TanStack Router. Its routes render once the user is known.                                                                            |
-| `signIn`      | The sign-in adapter: the firm's (roadmap step 1.9), `anonymousSignIn()` for an app with no sign-in, or `fakeSignIn()` in tests and development. |
-| `telemetry`   | Where errors, events and timings go; `consoleTelemetry` by default.                                                                             |
-| `queryClient` | The TanStack Query client, for a test that reads its cache; one from `createQueryClient()` by default.                                          |
+| Prop          | What it is                                                                                                                                     |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `router`      | The app's TanStack Router. Its routes render once the user is known.                                                                           |
+| `signIn`      | The sign-in adapter: the firm's, when it is built, `anonymousSignIn()` for an app with no sign-in, or `fakeSignIn()` in tests and development. |
+| `telemetry`   | Where errors, events and timings go; `consoleTelemetry` by default.                                                                            |
+| `queryClient` | The TanStack Query client, for a test that reads its cache; one from `createQueryClient()` by default.                                         |
 
 Inside it, in order: the telemetry, the query client, the toasts (`Toaster`), an error boundary round the whole app,
 the signed-in session, and the router. It keeps the page in the user's mode, density and motion as they change them
@@ -260,8 +287,7 @@ Arrow IPC stream.
 
 In tests, MSW stands in for the API: `basisPlugins()` serves its service worker's script in `vp dev` and `vp test`
 only, and `mockApi` from `@basis/ui/testing` starts it, or MSW's Node server where there is no browser, as [Testing the
-app](#testing-the-app) shows. `packages/example`'s `src/test-support.tsx` starts `msw/browser`'s worker itself, which
-runs only in Chromium; an app uses `mockApi`, whose tests run in both setups.
+app](#testing-the-app) shows, in Chromium and in a Node DOM alike.
 
 ## Running the app in fixture mode
 
@@ -307,7 +333,7 @@ of its Zod schema, which is no value of it; `vp run client-pull` rewrites those 
 
 ### Writing a fixture
 
-A fixture is one JSON file holding one exchange. `packages/example/fixtures/` holds one for each route its pages use:
+A fixture is one JSON file holding one exchange, and an app commits one for each request its pages make:
 
 ```json
 {
@@ -334,8 +360,7 @@ A problem is a fixture too: a `404` with `"media_type": "application/problem+jso
 dataset route's fixture holds an Arrow IPC stream, in base64, as `body_base64`, with `"media_type":
 "application/vnd.apache.arrow.stream"`: write the table with apache-arrow's `tableToIPC(table, "stream")`, or pyarrow's
 `ipc.new_stream`, with the column types basis's contract gives a dataset (`date32` for a date, `float64` for a
-number, and so on), and encode the bytes in base64. `packages/example/fixtures/bond-US91282CRF04-coupons.json` is one,
-and `src/fixture-mode-arrow.browser.test.ts` reads it back.
+number, and so on), and encode the bytes in base64.
 
 When `vp dev` starts, and whenever a file in `fixtures/` or `.fixtures/`, or `openapi.json`, changes, every file is
 checked and the page reloads. Each problem is one `ERROR` line in the terminal, ending with its fix, and the page shows
@@ -374,19 +399,17 @@ transport's `content-length`, `content-encoding`, `transfer-encoding`, `connecti
 anywhere in a record may hold a JWT, nor may a key, the path, `operation_id`, or the bytes of `body_base64`. Every
 object refuses a member the table does not name.
 
-The format's JSON Schema ships as `@basis/ui/fixture-record.schema.json`, `schema/fixture-record.schema.json` in this
-package, and basis tests `basis records export` against it. `src/fixtures/record.ts` holds the format, as the Zod
-schema fixture mode parses with; after changing it, rewrite the JSON Schema with `vp run @basis/ui#fixture-schema` and
-commit both, since a test fails while they differ. A change that refuses a record the format accepted before is a new
-version, `basis-ui-fixture/2`.
+The format's JSON Schema ships as `@basis/ui/fixture-record.schema.json`, and basis tests `basis records export`
+against it. A change that refuses a record the format accepted before is a new version, `basis-ui-fixture/2`.
 
 ### Fixture mode in tests
 
 Tests never read `.fixtures/`, whose records differ from one desktop to the next. `@basis/ui/fixtures` exports what a
 test needs to run pages on the committed fixtures: `loadFixtureFiles(source, files)`, which parses files as fixture
 mode does, in the order of their names, with an `ERROR` line for each problem, and `fixtureHandlers({ records,
-fixtures, generated, telemetry })`, the handler that answers in fixture mode's order. `packages/example`'s
-`src/fixture-mode-support.ts` loads `fixtures/` with `import.meta.glob` and adds the handler to the tests' worker.
+fixtures, generated, telemetry })`, the handler that answers in fixture mode's order. A test support module loads
+`fixtures/` with `import.meta.glob("../fixtures/**/*.json", { eager: true, import: "default" })` and adds the handler to
+`mockApi`'s.
 
 ## Testing the app
 
@@ -425,8 +448,8 @@ alternative, not pixels.
 
 A component's look comes from its props, `variant` and `size`, never from `className`. `className` places a component:
 margin, width, and flex or grid placement. The lint rule `shadcn/no-restyle` rejects any other class, and its error
-says the component owns that look and to add a variant to `@basis/ui`; it does not yet list the component's variants
-and sizes, which basis-ui's roadmap step 6.8.2 adds. When no variant fits, the variant is added to `@basis/ui` in a basis-ui pull
+says the component owns that look and to add a variant to `@basis/ui`. `vp run docs NAME` lists the component's
+variants and sizes. When no variant fits, the variant is added to `@basis/ui` in a basis-ui pull
 request, never restyled in the app. `@basis/ui` exports no `*Variants` helpers, so no plain element can take a
 component's classes either.
 
@@ -524,7 +547,6 @@ const form = useForm({
 `FieldError` takes a schema's issues, the strings `fieldErrors` returns, and the lists TanStack Form types a form
 validator's field errors as. `fieldErrors` names each field as TanStack Form does, such as `legs[0].price` for the
 pointer `#/legs/0/price`, so its entries go straight to the fields; `fieldName` does the same for one path.
-The gallery's forms and inputs page holds a whole order ticket, with its tests.
 
 ## Using overlays and menus
 
@@ -563,7 +585,7 @@ Collapsible's content slides open and shut over 150 ms through the height Base U
 `prefers-reduced-motion` and under the user's `motion` preference set to reduced. The veil behind a Dialog, an Alert
 Dialog, a Sheet or a Drawer appears and goes at once, and only the popup over it moves, since a fade the size of the
 screen is the whole screen redrawn every frame on a desktop drawn on the CPU. A Collapsible's content clips what overflows it, as the motion needs, so a focus ring at its edge
-needs a little padding inside it. The gallery's overlays and menus page shows each one closed, with its tests beside it.
+needs a little padding inside it.
 
 ## Laying out an app
 
@@ -767,12 +789,12 @@ and year to date, and the prior month, quarter and year, each from its period's 
 counted from `asOf`, the last business day before today unless set. `presets` picks and orders them, and
 `rangeForPreset` gives the same ranges outside the picker. Two days picked in the grid, in either order, make a range.
 
-Pass `today` to fix the date both pickers count from, as the gallery and tests do.
+Pass `today` to fix the date both pickers count from, as a test does.
 
 ## Showing and taking data
 
 `DataTable`, `EntityPicker`, `SecurityPicker` and `FileImport` are the firm's components for small tables, searching
-for an entity, and importing a CSV file. The gallery's data page shows each, with its tests beside it.
+for an entity, and importing a CSV file.
 
 ### DataTable
 
@@ -926,7 +948,7 @@ const positionRow = z.object({
   over either, one that is neither CSV nor a workbook, or one that cannot be read is refused with the reason and what to
   do.
 - **Other spreadsheets.** An .xls of Excel 97-2003, a binary .xlsb, an OpenDocument .ods and a workbook protected with
-  a password are refused with how to save them as an .xlsx ([why](../../docs/spikes/xlsx-reader.md)). A CSV's text is
+  a password are refused with how to save them as an .xlsx, since reading them would take a dependency of megabytes. A CSV's text is
   read as UTF-8, as Excel's "CSV UTF-8" saves it, or as Windows-1252, as its plain "CSV" does.
 - **Importing.** While `onImport`'s promise is pending the button waits; if it rejects, its error shows over the
   preview, which stays for another try.
@@ -970,7 +992,7 @@ A route that its data never reaches still loads its code, since the task answers
 loads much of what it does not show at first, such as a chart behind a tab, through a lazy import; the template's
 routes load each page with `lazyRouteComponent`, so `@basis/parallax` loads only on the pages that use it. `@basis/ui`
 is built as one module for each of its own and declares only its stylesheets as side effects, so an app's bundle holds
-only the components it imports. Most of what is left is the libraries every app shares: of `packages/consumer`'s
+only the components it imports. Most of what is left is the libraries every app shares: of an app of one card's
 543 kB of JavaScript before gzip, React DOM is 207 kB, Zod 83 kB, the router 72 kB, Base UI and Floating UI 65 kB, and
 `@basis/ui` 47 kB. The task needs the same Chromium as `vp run shot`.
 
@@ -1004,8 +1026,7 @@ magnitude, growing both ways from the middle when `signed`:
 
 `@basis/ui` exports a set of lucide's icons under lucide-react's names with the `Icon` suffix: each icon's current
 name, such as `TriangleExclamationPointIcon`, and its older aliases, such as `TriangleAlertIcon` and
-`AlertTriangleIcon`. The gallery's Icons page shows every one, and `src/index.ts` lists them. An app installs no icon
-package.
+`AlertTriangleIcon`. `@basis/ui/catalogue.json` lists every one under `icons`. An app installs no icon package.
 
 - **Size.** A component sizes the icons inside it, as Button and Badge do. Beside text in a Button or Badge, an icon
   takes `data-icon="inline-start"` or `data-icon="inline-end"`, which adjusts the padding on that side. Outside a
@@ -1018,7 +1039,7 @@ package.
 - **Names.** An icon is hidden from assistive technology unless an `aria-*` prop or `role` is set. An icon that carries
   meaning on its own, with no text beside it, takes an `aria-label`; inside an icon-only Button, the Button takes it.
 
-An icon `@basis/ui` lacks is added to it, as [Adding an icon](#adding-an-icon) describes.
+An icon `@basis/ui` lacks is added to it, in a basis-ui pull request, never drawn in an app.
 
 ## Using the numbers and utils modules
 
@@ -1045,11 +1066,6 @@ import { debounce, sortBy, toCsv } from "@basis/ui/utils";
 - `readWorkbook` reads an Excel workbook's sheets with no dependency, from the bytes of an .xlsx, .xlsm, .xltx or
   .xltm, and gives a sheet's rows as text records with their row numbers, as `parseCsv` gives a CSV's. A workbook it
   cannot read, such as an .xls under another name or one protected with a password, is refused with the reason.
-
-The tests check `sumPrecise` against `tests/fixtures/numbers.json`, which `tests/fixtures/generate_numbers.py` writes
-with exact rational sums in Python. After changing the generator, rewrite the
-fixtures from this package with `uv run tests/fixtures/generate_numbers.py` and commit both: the tests fail while the
-fixtures are older than the generator.
 
 ## Dates and securities
 
@@ -1081,18 +1097,10 @@ sifma.day(Temporal.PlainDate.from("2026-11-27")); // an early close at 14:00, "A
 | `nyse`    | parallax's Rust   | the fixtures the Rust writes, 2000 to 2050, and nyse.com for 2016 to 2028 | 09:30 to 16:00, New York  |
 | `target2` | the ECB, Dec 2000 | the ECB's six closing days, 2000 to 2050                                  | 07:00 to 18:00, Frankfurt |
 
-Each calendar is its rules, stated at the top of its module in `src/dates/`, plus a dated list of exceptions, each with
-the notice behind it, since markets close on days no rule foresees. `publishedThrough` is the last year the publisher
+Each calendar is its rules plus a dated list of exceptions, each with the notice behind it, since markets close on days
+no rule foresees. `publishedThrough` is the last year the publisher
 had confirmed when the calendar was written; later years follow the rules. SIFMA publishes no regular session hours,
 only closes, so its 8 a.m. to 5 p.m. session is the US bond venues' convention, as the calendar's `session.source` says.
-
-To update a calendar when its publisher announces a year or an unscheduled close:
-
-1. Add the exception or change the rule in `src/dates/`, with the notice's address as its `source`.
-2. Add the published schedule to `tests/fixtures/calendars/sifma.json` or `nyse.json`, as one more source with its
-   address, the day it was fetched, and the years it lists in full; raise the calendar's `publishedThrough`.
-3. For the NYSE, change parallax's `calendar.rs` too, and rewrite its fixtures with
-   `PARALLAX_UPDATE_FIXTURES=1 cargo test -p parallax-engine --test calendar_fixtures`.
 
 `@basis/ui/securities` checks CUSIPs, ISINs and SEDOLs and their check digits. Its `Cusip`, `Isin` and `Sedol` types
 are made only by `parseCusip`, `parseIsin` and `parseSedol`, which return the identifier or the reason it is not one,
@@ -1116,108 +1124,3 @@ and returns the identifier with its kind, as `SecurityPicker` does:
 parseSecurityIdentifier("US91282CRF04"); // { ok: true, value: { kind: "isin", value: "US91282CRF04" } }
 parseSecurityIdentifier("91282CRF1", ["cusip"]); // { ok: false, reason: '"91282CRF1" is not a CUSIP: ...' }
 ```
-
-## Adding a component
-
-1. Port it from shadcn's Base UI source, keeping shadcn's names, props and parts, into
-   `src/components/NAME.tsx`, or `NAME.ts` when it renders through `useRender` and holds no JSX. Replace every
-   `dark:` class with a token and every arbitrary value with the theme's scales. Draw every colour whole from a token:
-   a test fails on an opacity modifier such as `hover:bg-primary/80`, so take the theme's token for it (see [The
-   theme's tokens](#the-themes-tokens)). Merge classes
-   with `cn` from the `cn` package, as shadcn does; take `cva` from `#vendor/cva/cva.ts`, and each icon from its file
-   in `src/vendor/lucide`, such as `#vendor/lucide/chevron-down.tsx`.
-
-   shadcn's source names its look in `cn-*` classes that its styles define; the components here take its nova style's,
-   as `@jacobragsdale/ui`'s do. shadcn's Tailwind setup also brings `tw-animate-css` and the variants in
-   `shadcn/tailwind.css`, and the theme has neither: write `data-[orientation=horizontal]:` for `data-horizontal:`,
-   since Tailwind still generates the latter and the lint passes it, but it never matches Base UI's attributes; and
-   fade or scale a popup with `transition` and Base UI's `data-starting-style` and `data-ending-style` in place of
-   `animate-in`, `fade-in-0` and `zoom-in-95`.
-
-2. Put its `cva` classes in `src/components/NAME-variants.ts`, each named after the component or part it styles, such
-   as `buttonVariants` for `Button` or `selectTriggerVariants` for `SelectTrigger`: `@shadcn/lint` finds a component's
-   variants by that name, and a component file exports only components (`react/only-export-components`). A part with
-   no `variant` or `size` needs no `cva`. Other `@basis/ui` components may import the variants; the package never
-   exports them, which `tests/exports.test.ts` checks.
-3. If the component takes another component's `variant` and `size`, as `ButtonLink` takes Button's, import that
-   component's variants under this one's name, so that `shadcn/no-restyle`'s errors list them:
-
-   ```ts
-   import { buttonVariants as buttonLinkVariants } from "./button-variants.ts";
-   ```
-
-4. Style the icons and other `@basis/ui` components it renders through its own elements' classes, such as
-   `[&_svg]:text-muted-foreground` on a Select's trigger. `shadcn/no-restyle` checks `@basis/ui`'s own code as it
-   checks an app's, so a colour, opacity or motion class on an icon, or a padding class on a Button, fails inside the
-   package too; a sizing class such as `size-4` may stay.
-5. Export it by name from its family's block of `src/index.ts`, such as
-   `export { Select, SelectContent, SelectItem } from "./components/select.tsx";` in the forms and inputs block. Each
-   family's agent edits only its family's block, so families built at once do not collide. The file uses no
-   `export *`: `oxc/no-barrel-file` fails a file whose `export *` lines load more than 100 modules, and one Base UI
-   component can load more than that.
-6. Run `vp run @basis/ui#build`, then `vp check`. The React Compiler fails the build on a component that breaks the
-   rules of React, and the gallery uses the build, not the source.
-7. Show every variant and size on its family's gallery page in `packages/gallery/src/pages`, and test it in the page's
-   test file: its role and accessible name, its variants, and, for a control, its 24 px target in the compact density.
-   Leave no popup open on the page: an open Base UI Select or Combobox hides the rest of the page from assistive
-   technology, and an open Select takes the focus, so the page would load scrolled to it. The tests open them instead.
-   The screenshots open them: give an overlay `defaultOpen={usePictured()}`, true when the page shows its section
-   alone, and spread `hovered`, `focused` or `pressed` from `pages/shot.ts` onto an example of that state. Then run `vp
-   run @basis/gallery#shots --update`, look at the section's new screenshots, and commit them; `vp run
-   @basis/gallery#shots` compares every section's with them, in both modes and densities, and runs axe on it.
-8. Give each exported component a doc comment saying what it is for, and give the family's main component an
-   `@example`: a module that imports from `@basis/ui` and ends in the component's JSX, with `//` comments only, since
-   `*/` would end the doc comment. Then run `vp run @basis/ui#catalogue` and commit `catalogue.json`.
-
-## The component catalogue
-
-`@basis/ui/catalogue.json` lists every component the package exports, for agents that write apps without reading the
-package's code: each one's name, its family, what it is for, the props it declares with their types and docs, the
-types whose props it also takes (such as Base UI's), its variants with their options and defaults, and one example per
-family. The package's icons are listed by name. `src/catalogue/` reads it all from the source with oxc's parser, and
-`vp run @basis/ui#catalogue` writes it. `tests/catalogue.test.ts` fails while the file is stale, when a component has no
-doc comment, when a family has no example, or when an example does not compile in `packages/consumer`, the app
-configured exactly as this README says.
-
-## Adding an icon
-
-An icon is copied from lucide-react 1.70.0, the version the other icons came from, under lucide's name.
-
-To add one:
-
-1. In a scratch folder outside the repo, download the package with `npm pack lucide-react@1.70.0` and unpack it with
-   `tar xzf lucide-react-1.70.0.tgz`. The icon is `package/dist/esm/icons/NAME.mjs`, where `NAME` is lucide's
-   kebab-case name, such as `ellipsis`: its shapes are the `node` array, and its older names the `aliases` array, such
-   as `more-horizontal`, if it has one.
-2. Copy `src/vendor/lucide/copy.tsx` to `src/vendor/lucide/NAME.tsx`, and change its header line's name, its JSDoc,
-   its component's name (lucide's current name with `Icon` after it, such as `CopyIcon`) and its shapes. Write each
-   shape as a JSX element with lucide's attributes, leaving out `key`. If `src/vendor/lucide/LICENSE` lists the icon,
-   or one of its older names, among those lucide took from Feather, its header says so, as `chevron-down.tsx`'s does.
-3. Export it from the icons block of `src/index.ts` under its current name and each older name, each in Pascal case
-   with `Icon` after it, as lucide-react exports them:
-
-   ```ts
-   export { EllipsisIcon, EllipsisIcon as MoreHorizontalIcon } from "./vendor/lucide/ellipsis.tsx";
-   ```
-
-4. Import it under its current name in `packages/gallery/src/pages/icons.tsx` and add that name to the page's `icons`
-   object; its older names need no entry. The page's test fails while an exported icon is missing from the page.
-5. Run `vp run @basis/ui#build`, then `vp run -r test`. `tests/icons.test.tsx` checks that every `*Icon` export renders
-   lucide's SVG.
-
-## Vendored code
-
-`src/vendor` holds small, stable code copied from upstream, which `@basis/ui` keeps instead of depending on it. Each
-folder holds the upstream license, which the published package carries, and each file opens with the upstream package,
-its version and its license.
-
-| Folder                   | Upstream                                                                   | License                                             | Changed                                                                                                                    |
-| ------------------------ | -------------------------------------------------------------------------- | --------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `src/vendor/clsx`        | `clsx` 2.1.1                                                               | MIT                                                 | Rewritten in strict TypeScript, giving the package's output                                                                |
-| `src/vendor/cva`         | `class-variance-authority` 0.7.1                                           | Apache-2.0                                          | Rewritten in strict TypeScript, giving the package's output; `cx` left out; still named `cva`, which `@shadcn/lint` reads  |
-| `src/vendor/lucide`      | `lucide-react` 1.70.0, some of its icons                                   | ISC, and MIT for the icons lucide took from Feather | One `Icon` base without lucide-react's `size`, `color` and stroke props, its context, its `lucide` classes or its children |
-| `src/vendor/sum-precise` | The `Math.sumPrecise` polyfill in `tc39/proposal-math-sum`, commit 77d52dc | BSD-3-Clause                                        | Rewritten in strict TypeScript, giving the polyfill's results; without its RangeError at 2^53 carries                      |
-
-`tests/vendor.test.ts` holds clsx's and cva's behaviour, `tests/icons.test.tsx` the icons', and
-`tests/sum-precise.test.ts` and `tests/numbers-oracle.test.ts` the sum's. To move to a newer upstream version, copy its
-changes in, update the headers' versions, and run the tests.

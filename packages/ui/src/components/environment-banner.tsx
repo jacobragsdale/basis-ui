@@ -21,6 +21,9 @@ interface EnvironmentBannerProps extends Omit<ComponentProps<"output">, "childre
 
 /** A thin bar across the top of the page naming the environment, in its own colour: development, QA or production.
  *
+ * @use AppShell shows one; use it alone only in a layout of the app's own, so no one takes QA for production.
+ * @see AppShell
+ *
  * @example
  * ```tsx
  * import { EnvironmentBanner } from "@basis/ui";

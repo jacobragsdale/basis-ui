@@ -35,6 +35,10 @@ function ScrollBar({
 /** A region that scrolls its content with a thin scrollbar of the theme's own, vertical by default. Give it a height,
  * such as `h-72`, and it scrolls what overflows. Add a horizontal `ScrollBar` for content wider than it.
  *
+ * @use For a region of fixed height that scrolls its content, such as a long list in a popover, with the theme's thin
+ * scrollbar. A Table scrolls sideways itself, and parallax's Grid scrolls its own rows.
+ * @see Table, Popover, Sheet
+ *
  * @example
  * ```tsx
  * import { ScrollArea } from "@basis/ui";

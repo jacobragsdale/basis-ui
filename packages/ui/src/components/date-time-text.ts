@@ -34,6 +34,7 @@ interface DateTimeFormat {
   readonly zone?: string | undefined;
   /** The sub-second digits shown; whole seconds unless set. */
   readonly precision?: TimePrecision | undefined;
+  /** The part shown: the date and time, the date in the display zone, or the time; both unless set. */
   readonly show?: DateTimePart | undefined;
 }
 

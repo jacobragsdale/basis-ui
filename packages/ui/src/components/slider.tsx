@@ -27,6 +27,10 @@ function thumbCount(value: SliderValue, defaultValue: SliderValue): number {
 /** A slider. Give it `value` and `onValueChange`, or `defaultValue`; an array of two values draws a range. Name it
  * with `aria-label`, which names each thumb.
  *
+ * @use For a value or a range on a scale where the position matters more than the exact figure, such as a threshold.
+ * For an exact amount, use AmountInput.
+ * @see Field, FieldLabel, AmountInput
+ *
  * @example
  * ```tsx
  * import { Slider } from "@basis/ui";

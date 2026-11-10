@@ -31,6 +31,10 @@ interface AppShellProps {
 /** The layout of an app's pages: the sidebar built from the routes, a header with the breadcrumbs, the environment
  * banner, Ctrl+K's command palette and `?`'s list of shortcuts. Make it the root route's component.
  *
+ * @use For the layout of an app's pages: make it the root route's component. An app that needs another layout builds
+ * one from the parts it holds, such as AppSidebar and RouteBreadcrumbs.
+ * @see BasisApp, AppSidebar, RouteBreadcrumbs, CommandPalette, EnvironmentBanner, UserMenu, useShortcut
+ *
  * @example
  * ```tsx
  * import { AppShell } from "@basis/ui";

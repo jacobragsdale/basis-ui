@@ -57,6 +57,7 @@ function CommandItem({
   onClick,
   ...props
 }: Omit<AutocompletePrimitive.Item.Props, "onSelect" | "value"> & {
+  /** The text the search matches and `onSelect` receives; the item's text, without its CommandShortcut, unless set. */
   readonly value?: string;
   /** More words the item matches, such as `["preferences"]` for Settings. */
   readonly keywords?: readonly string[];

@@ -22,9 +22,13 @@ type ChartSettings = Omit<NonNullable<LayoutInput["chart"]>, "kind" | "x" | "y" 
 
 /** What a small chart draws: its kind, its x column, its y column or columns, and a column that splits it. */
 interface SmallChart {
+  /** What to draw, such as `line`, `bar` or `scatter`, as a layout's `chart.kind` names it. */
   readonly kind: LayoutChart["kind"];
+  /** The column along the x axis, or of a bar chart's or a pie's categories. */
   readonly x: string;
+  /** The column of values, or the columns, each a series; a grouped chart sums each by `x`. */
   readonly y: string | readonly string[];
+  /** The column whose values split the rows into series, each in its own colour. */
   readonly series?: string;
 }
 

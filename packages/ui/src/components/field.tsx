@@ -65,6 +65,10 @@ function FieldGroup({ className, ...props }: ComponentProps<"div">): ReactElemen
 /** One field: a label, its control, and the field's description and error. Mark it `data-invalid` while its value is
  * invalid.
  *
+ * @use For every form control that has a label, a description or an error: it lays them out and marks the field
+ * invalid. A control that needs only a name takes a Label or an `aria-label`.
+ * @see Input, Textarea, Select, Checkbox, Switch, AmountInput, Label, fieldErrors
+ *
  * @example
  * ```tsx
  * import { Field, FieldDescription, FieldGroup, FieldLabel, FieldLegend, FieldSet, Input } from "@basis/ui";
@@ -161,7 +165,10 @@ function FieldSeparator({
   children,
   className,
   ...props
-}: ComponentProps<"div"> & { readonly children?: ReactNode }): ReactElement {
+}: ComponentProps<"div"> & {
+  /** Text on the line, such as "or"; without it, the line is drawn alone. */
+  readonly children?: ReactNode;
+}): ReactElement {
   return (
     <div
       data-slot="field-separator"
@@ -210,6 +217,8 @@ function FieldError({
   errors,
   ...props
 }: ComponentProps<"div"> & {
+  /** The field's errors: TanStack Form's `field.state.meta.errors`, the field's entry from `fieldErrors`, or a schema's
+   * issues. Nothing shows while there are none. */
   readonly errors?: FieldErrors | undefined;
 }): ReactElement | null {
   const messages = [

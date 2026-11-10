@@ -24,6 +24,10 @@ const popupOffset = 4;
 /** A select: its trigger and its content, which holds the items. Give it `items` to show an item's label as the
  * value, and `value` with `onValueChange`, or `defaultValue`.
  *
+ * @use For one choice from a list the page holds, short enough to scan. For a long list, use Combobox; for a search an
+ * API answers, EntityPicker; for the browser's own control, NativeSelect.
+ * @see Field, FieldLabel, Combobox, NativeSelect, EntityPicker
+ *
  * @example
  * ```tsx
  * import { Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@basis/ui";

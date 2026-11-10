@@ -57,6 +57,10 @@ function NavigationMenuPositioner({
 /** A site's top-level navigation: a navigation landmark holding a NavigationMenuList. `align` places the popup
  * against the list.
  *
+ * @use For a site's top-level navigation, with menus of links across the top. For an app's pages, AppShell builds the
+ * sidebar; for a row of action menus, Menubar.
+ * @see AppShell, Menubar, ButtonLink
+ *
  * @example
  * ```tsx
  * import {

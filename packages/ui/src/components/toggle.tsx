@@ -11,6 +11,10 @@ import { toggleVariants } from "./toggle-variants.ts";
 
 /** A toggle button, with `aria-pressed` while it is on. An icon-only toggle takes an `aria-label`.
  *
+ * @use For a button that turns one thing on or off where it stands, such as a filter in a toolbar. For a setting, use
+ * Switch; for several toggles side by side, ToggleGroup.
+ * @see ToggleGroup, Switch, Button, Tooltip
+ *
  * @example
  * ```tsx
  * import { Toggle } from "@basis/ui";

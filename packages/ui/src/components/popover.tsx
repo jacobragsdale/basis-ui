@@ -13,6 +13,10 @@ const sideGap = 4;
 /** A popover: a panel anchored to its trigger, for a short form or details. Escape and a click outside close it, and
  * focus moves into it and returns to the trigger.
  *
+ * @use For a short form or details anchored to their trigger, such as a filter's options. For a task that holds the
+ * user, use Dialog; for a label, Tooltip; for a list of actions, DropdownMenu.
+ * @see Button, Dialog, Tooltip, DropdownMenu, Field
+ *
  * @example
  * ```tsx
  * import { Button, Popover, PopoverContent, PopoverHeader, PopoverTitle, PopoverTrigger } from "@basis/ui";

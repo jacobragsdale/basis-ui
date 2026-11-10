@@ -29,6 +29,10 @@ function paramsOf(value: unknown): Readonly<Record<string, string>> {
 
 /** The trail to the page shown, from the titles its routes set in `staticData`. `AppShell` puts it in the header.
  *
+ * @use AppShell shows one in its header; use it alone only in a layout of the app's own. For a trail built by hand, use
+ * Breadcrumb.
+ * @see AppShell, Breadcrumb, useRouteEntries
+ *
  * @example
  * ```tsx
  * import { RouteBreadcrumbs } from "@basis/ui";

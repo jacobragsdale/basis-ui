@@ -42,6 +42,10 @@ function ItemSeparator({ className, ...props }: ComponentProps<typeof Separator>
 /** One item: a `<div>`, or the element `render` names, such as a link, with its variant and size as `data-variant`
  * and `data-size`.
  *
+ * @use For a row of a list that holds media, a title, a description and actions, such as a file or a notification. For
+ * tabular data, use Table or DataTable; for a panel on its own, Card.
+ * @see Card, Avatar, Button, Table, DataTable
+ *
  * @example
  * ```tsx
  * import { Button, Item, ItemActions, ItemContent, ItemDescription, ItemTitle } from "@basis/ui";

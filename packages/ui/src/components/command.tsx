@@ -42,6 +42,10 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from "./input-group.tsx"
  * keys move the highlight, and Enter or a click runs the highlighted item's `onSelect`. `label` names the menu for
  * assistive technology, and `shouldFilter={false}` shows every item, for a list the app filters itself.
  *
+ * @use For a searchable list of actions or pages inside a page or a popover. For the app's Ctrl+K palette, AppShell
+ * already holds a CommandPalette; for choosing a form's value, use Combobox.
+ * @see CommandPalette, Popover, Combobox, Kbd
+ *
  * @example
  * ```tsx
  * import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@basis/ui";
@@ -65,7 +69,10 @@ function Command({
   loop = true,
   ...props
 }: ComponentProps<"div"> & {
+  /** The menu's name for assistive technology: "Commands" by default. */
   readonly label?: string;
+  /** Whether the list narrows to the items that match the search; `false` shows every item, for a list the app filters
+   * itself. */
   readonly shouldFilter?: boolean;
   /** Whether the arrow keys wrap from the last item through the input to the first: true by default, as in Base UI,
    * where cmdk's is false. */
@@ -169,7 +176,10 @@ function CommandGroup({
   heading,
   children,
   ...props
-}: AutocompletePrimitive.Group.Props & { readonly heading?: ReactNode }): ReactElement {
+}: AutocompletePrimitive.Group.Props & {
+  /** The group's heading, shown above its items; the group has none unless set. */
+  readonly heading?: ReactNode;
+}): ReactElement {
   return (
     <AutocompletePrimitive.Group
       data-slot="command-group"
@@ -198,6 +208,7 @@ function CommandSeparator({
   alwaysRender = false,
   ...props
 }: AutocompletePrimitive.Separator.Props & {
+  /** Whether the line stays while the user searches; it hides then unless set. */
   readonly alwaysRender?: boolean;
 }): ReactElement | null {
   const { search } = useCommand("CommandSeparator");

@@ -35,16 +35,11 @@ const popupOffset = 6;
 /** A combobox: an input and the list it filters. Give it `items`, and render each in ComboboxList's child function;
  * `multiple` chooses several, shown as ComboboxChips.
  *
+ * @use For a list the page holds that is too long to scan. For a short list, use Select; for a search, EntityPicker.
+ * @see Field, FieldLabel, Select, EntityPicker
  * @example
  * ```tsx
- * import {
- *   Combobox,
- *   ComboboxContent,
- *   ComboboxEmpty,
- *   ComboboxInput,
- *   ComboboxItem,
- *   ComboboxList,
- * } from "@basis/ui";
+ * import { Combobox, ComboboxContent, ComboboxEmpty, ComboboxInput, ComboboxItem, ComboboxList } from "@basis/ui";
  *
  * const issuers = ["Treasury", "Fannie Mae", "Freddie Mac", "World Bank"];
  *
@@ -121,7 +116,9 @@ function ComboboxInput({
   ...props
 }: ComboboxPrimitive.Input.Props & {
   readonly className?: string;
+  /** Whether the input ends in a button that opens the list; true by default. */
   readonly showTrigger?: boolean;
+  /** Whether the input ends in a button that clears it; false by default. */
   readonly showClear?: boolean;
 }): ReactElement {
   return (

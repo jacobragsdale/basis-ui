@@ -46,6 +46,7 @@ import { Table, TableBody, TableHeader } from "./table.tsx";
 interface DataTableProps<TRow extends RowData> {
   /** The table's name, for assistive technology and the filter, and its CSV file's unless `exportName` is set. */
   readonly label: string;
+  /** The columns, in order: each one's `id`, `header` and `value`, and `cell` when its value's text is not enough. */
   readonly columns: readonly DataTableColumn<TRow>[];
   /** The rows, or `undefined` while there are none yet, as a query's `data` is before it loads. */
   readonly data: readonly TRow[] | undefined;
@@ -67,6 +68,7 @@ interface DataTableProps<TRow extends RowData> {
   readonly exportName?: string | undefined;
   /** Rows a page, for a table that pages; every row on one page unless set. */
   readonly pageSize?: number | undefined;
+  /** The sort it starts with, by column `id`, ascending unless `desc` is set; the data's order unless set. */
   readonly defaultSorting?: readonly DataTableSort[] | undefined;
   /** The most rows the table draws; 2,000 unless set. Past it the table shows an error in their place. */
   readonly rowCap?: number | undefined;
@@ -163,8 +165,7 @@ function EmptyContentFor<TRow extends RowData>({
   );
 }
 
-/** The table itself: its heading row, then placeholders while it loads, the page's rows, or the line that says it is
- * empty. */
+/** The table itself: its heading row, then placeholders while it loads, the page's rows, or a line that it is empty. */
 function TableFor<TRow extends RowData>({ table, props, columns }: ViewParts<TRow>): ReactElement {
   const selectable = props.selectable ?? false;
   const span = columns.length + Number(selectable) + Number(props.rowActions !== undefined);
@@ -265,13 +266,12 @@ function DataTableView<TRow extends RowData>({
 }
 
 /** A table of a few hundred rows, or up to its row cap, whose cells may hold links and buttons.
- *
+ * @use With sorting, selection, copying and export. Past its row cap, or to group or pivot, use parallax's Grid.
+ * @see Table, Grid, Num, Money, CellBar, ErrorAlert
  * @example
  * ```tsx
  * import { DataTable } from "@basis/ui";
- *
  * const rows = [{ cusip: "91282CRF0", id: "p1", par: 5_000_000 }];
- *
  * const columns = [{ header: "Par", id: "par", value: (row: (typeof rows)[number]) => row.par, variant: "numeric" as const }];
  *
  * <DataTable label="Positions" columns={columns} data={rows} getRowId={(row) => row.id} />;

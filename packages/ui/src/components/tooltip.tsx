@@ -21,6 +21,10 @@ function TooltipProvider({ delay = 0, ...props }: TooltipPrimitive.Provider.Prop
 /** A tooltip: a short label for its trigger, shown while the pointer rests on it or it has keyboard focus. It names
  * nothing for assistive technology, so an icon-only trigger still takes an `aria-label`.
  *
+ * @use For a short label of its trigger, such as an icon-only button's name and its shortcut. Touch and screen reader
+ * users never see it, so nothing may depend on it; for more than a label, use HoverCard or Popover.
+ * @see Button, Kbd, HoverCard, Popover
+ *
  * @example
  * ```tsx
  * import { Button, Tooltip, TooltipContent, TooltipTrigger } from "@basis/ui";

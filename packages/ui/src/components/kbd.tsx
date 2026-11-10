@@ -7,6 +7,10 @@ import type { ComponentProps, ReactElement } from "react";
 
 /** A key, such as `Ctrl` or `K`, in a `<kbd>` element. An icon inside it is sized to the key.
  *
+ * @use For a key or keys in text or a tooltip, such as Ctrl+K. A menu item's shortcut is its menu's own part, such as
+ * DropdownMenuShortcut.
+ * @see Tooltip, DropdownMenuShortcut, CommandShortcut, useShortcut
+ *
  * @example
  * ```tsx
  * import { Kbd, KbdGroup } from "@basis/ui";

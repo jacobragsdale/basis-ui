@@ -11,6 +11,10 @@ interface AspectRatioProps extends ComponentProps<"div"> {
 
 /** A box whose height follows its width at `ratio`. Its content, such as an image, fills it with `size-full`.
  *
+ * @use For an image or a video that keeps its shape as its width changes. A chart takes its parent's height instead, so
+ * give that parent a height.
+ * @see Card, Skeleton, Chart
+ *
  * @example
  * ```tsx
  * import { AspectRatio } from "@basis/ui";

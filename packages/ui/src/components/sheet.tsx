@@ -18,6 +18,10 @@ import { sheetContentVariants, sheetOverlayVariants } from "./sheet-variants.ts"
 /** A sheet: a panel over the page from one edge, for a form or details beside the current page. It is a dialog:
  * Escape, a click outside and its close button close it, and focus returns to the trigger.
  *
+ * @use For a form or details beside the current page, from one edge, such as a trade's detail. For a short task in the
+ * middle of the page, use Dialog; for a panel swiped away on a touch screen, Drawer.
+ * @see Dialog, Drawer, Button, Field
+ *
  * @example
  * ```tsx
  * import { Button, Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@basis/ui";
@@ -70,7 +74,9 @@ function SheetContent({
   showCloseButton = true,
   ...props
 }: SheetPrimitive.Popup.Props & {
+  /** The edge of the page the panel comes from: the right by default. */
   readonly side?: "top" | "right" | "bottom" | "left";
+  /** Whether the panel has a close button at its top right corner; true by default. */
   readonly showCloseButton?: boolean;
 }): ReactElement {
   return (

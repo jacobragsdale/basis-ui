@@ -187,6 +187,10 @@ function Routes({ router }: { readonly router: AnyRouter }): ReactElement {
  * `preferences` it is given, signs the user out when the API says their session has ended, and asks them to sign in
  * when it says a request needs them to.
  *
+ * @use For an app's entry point: render it once at the root, with the router and the sign-in adapter. A test renders
+ * the app at an address with renderApp from `@basis/ui/testing`.
+ * @see AppShell, fakeSignIn, anonymousSignIn, createQueryClient, consoleTelemetry, useSession, renderApp
+ *
  * @example
  * ```tsx
  * import { BasisApp, anonymousSignIn } from "@basis/ui";

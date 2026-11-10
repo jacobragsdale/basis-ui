@@ -252,6 +252,9 @@ function useAsOfField({
 
 /** An as-of date field. Label it with a FieldLabel's `htmlFor` and this `id`, and put it in a `Field`.
  *
+ * @use For the business day a page's data is as of. For a period, use DateRangePicker.
+ * @see Field, FieldLabel, DateRangePicker, defaultAsOfDate, sifma
+ *
  * @example
  * ```tsx
  * import { AsOfDatePicker, Field, FieldLabel } from "@basis/ui";

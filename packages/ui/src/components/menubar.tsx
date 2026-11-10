@@ -38,6 +38,10 @@ const menuGap = 8;
 /** A menubar: a row of menus, as at the top of a desktop application. The arrow keys move between its menus and
  * through each one's items, and Escape closes the open menu and returns focus to its trigger.
  *
+ * @use For a desktop application's row of menus, such as File, Edit and View over a workspace. For one menu behind a
+ * button, use DropdownMenu; for the app's pages, AppShell's sidebar.
+ * @see DropdownMenu, ContextMenu, AppShell
+ *
  * @example
  * ```tsx
  * import { Menubar, MenubarContent, MenubarItem, MenubarMenu, MenubarTrigger } from "@basis/ui";

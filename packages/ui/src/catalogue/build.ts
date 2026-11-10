@@ -1,35 +1,26 @@
-/* The component catalogue: a machine-readable list of every component @basis/ui exports, read from its source, for
- * agents that write apps without reading the package's code (ctzd turns it into its agents' reference). Each entry
- * holds the component's name, its family, what it is for, its props, the types whose props it also takes, its variants,
- * and, on one component of each family, an example. `vp run @basis/ui#catalogue` writes catalogue.json, which the
- * package ships, and a test fails when that file is stale, when a component says nothing of what it is for, when a
- * family has no example, or when an example does not compile. This module is a build tool: no entry point imports it. */
+/* The component catalogue: a machine-readable list of everything an app imports from `@basis/ui` and
+ * `@basis/parallax`, read from their source, for agents that write apps without reading the packages' code (ctzd turns
+ * it into its agents' reference, and `vp run docs NAME` prints one entry). It holds each module and what it is for;
+ * each component, with its family, what it is for, when to use it, what goes with it, its props, its own and those it
+ * takes from Base UI, with their docs and defaults, its variants and, on one component of each family, an example; each
+ * hook, function, class and constant, with its signature; and each named type those refer to, with its fields.
+ * `vp run @basis/ui#catalogue` writes catalogue.json, which the package ships, and a test fails when that file is
+ * stale, when an entry says nothing of what it is for, when a family has no example, when an example does not compile,
+ * or when a prop it lists is not one the component takes. This module is a build tool: no entry point imports it.
+ *
+ * `@basis/parallax`'s entries are read from its source here, at the catalogue's build, so `@basis/ui` never depends on
+ * parallax: the two release together at one version, so the entries match the parallax an app installs, and one file
+ * serves an agent that uses both. */
 
-import { child, children, docComment, exampleOf, nameOf, parseFile, summary, text } from "./ast.ts";
-import type { Node, ParsedFile } from "./ast.ts";
-import { lookup, resolveModule } from "./modules.ts";
-import { emptyShape, propsOf } from "./props.ts";
-import type { CatalogueProp, CatalogueVariant, PropsShape } from "./props.ts";
-
-interface CatalogueComponent {
-  readonly name: string;
-  /** The component's family: the file it lives in, or the file whose family a file of parts belongs to. */
-  readonly family: string;
-  readonly purpose: string;
-  readonly props: readonly CatalogueProp[];
-  /** Types whose props the component also takes, as written in the source, such as `ButtonPrimitive.Props`. */
-  readonly extends: readonly string[];
-  readonly variants: Readonly<Record<string, CatalogueVariant>>;
-  readonly example?: string;
-}
-
-interface Catalogue {
-  readonly format: "basis-ui-catalogue/1";
-  readonly package: "@basis/ui";
-  readonly components: readonly CatalogueComponent[];
-  /** The icons the package exports, each a component taking an SVG element's props. */
-  readonly icons: readonly string[];
-}
+import { docComment, exampleOf, propTagsOf, summary } from "./ast.ts";
+import { exportedNames, headerOf, publicModules } from "./exports.ts";
+import type { ExportedName, Listed, PublicModule } from "./exports.ts";
+import type { Catalogue, CatalogueComponent, CatalogueFunction, CatalogueProp } from "./format.ts";
+import { functionEntry, guidance } from "./functions.ts";
+import { valueDeclaration } from "./modules.ts";
+import { componentProps } from "./props.ts";
+import type { References } from "./references.ts";
+import { describeTypes } from "./types.ts";
 
 /** Files that hold parts of another file's family, which that family's one example covers. */
 const familyOfFile: Readonly<Record<string, string>> = {
@@ -47,93 +38,143 @@ function familyOf(path: string): string {
   return familyOfFile[file] ?? file;
 }
 
-/** Every value export of src/index.ts, with the file it comes from. */
-function packageExports(): { readonly name: string; readonly path: string }[] {
-  const index = parseFile("index.ts");
-  return children(index.program, "body")
-    .filter(
-      (statement) =>
-        statement.type === "ExportNamedDeclaration" && statement["exportKind"] !== "type",
-    )
-    .flatMap((statement) => {
-      const from = nameOf(child(statement, "source"));
-      const path = from === undefined ? undefined : resolveModule(index, from);
-      return path === undefined
-        ? []
-        : children(statement, "specifiers")
-            .filter((specifier) => specifier["exportKind"] !== "type")
-            .flatMap((specifier) => {
-              const name = nameOf(child(specifier, "exported"));
-              return name === undefined ? [] : [{ name, path }];
-            });
-    });
-}
+/** What a prop the source leaves undescribed does, where it does the same on every component. */
+const sharedDescriptions: Readonly<Record<string, string>> = {
+  children: "What it holds.",
+  className:
+    "Classes that place it: margin, width, and flex or grid placement. Its look comes from its props, never from classes.",
+  id: "The element's id, which a label's `htmlFor` names.",
+  inset: "Indents it to line up with the items beside it that start with an icon or a check.",
+  onClick: "Called when it is clicked.",
+  onSelect:
+    "Called with the item's value when the user chooses it, by Enter or a click; never for a disabled item.",
+};
 
-/** The function a component's declaration holds: itself, or a variable's arrow or function. */
-function componentFunction(node: Node): Node | undefined {
-  if (node.type === "FunctionDeclaration") {
-    return node;
+/** What a prop Base UI gives every part does in an app, which its own description, written for restyling, misleads. */
+const appDescriptions: Readonly<Record<string, string>> = {
+  className: sharedDescriptions["className"] ?? "",
+  render:
+    "Renders it as another element or component, such as a router's link, keeping its behaviour: a React element, or a function of its props and state.",
+  style:
+    'Inline styles: in an app, CSS variables only, which a class reads, as `style={{ "--fill": "40%" }}`.',
+};
+
+/** What a menu item's `variant` does, which every menu's items share. */
+const destructiveVariant =
+  "Marks an action that deletes or cannot be undone, in the destructive colour.";
+
+function described(prop: CatalogueProp): CatalogueProp {
+  const shared =
+    prop.name === "variant" && prop.type === '"default" | "destructive"'
+      ? destructiveVariant
+      : sharedDescriptions[prop.name];
+  const forApps = prop.from === undefined ? undefined : appDescriptions[prop.name];
+  if (forApps !== undefined) {
+    return { ...prop, description: forApps };
   }
-  const declarator =
-    node.type === "VariableDeclaration" ? children(node, "declarations")[0] : undefined;
-  const init = declarator === undefined ? undefined : child(declarator, "init");
-  return init?.type === "ArrowFunctionExpression" || init?.type === "FunctionExpression"
-    ? init
-    : undefined;
+  return prop.description === "" && shared !== undefined ? { ...prop, description: shared } : prop;
 }
 
-/** The props of a component exported as a Base UI part itself, such as `const Select = SelectPrimitive.Root`. */
-function primitiveProps(file: ParsedFile, node: Node): PropsShape | undefined {
-  const declarator =
-    node.type === "VariableDeclaration" ? children(node, "declarations")[0] : undefined;
-  const init = declarator === undefined ? undefined : child(declarator, "init");
-  return init?.type === "MemberExpression"
-    ? { ...emptyShape(), extends: [`${text(file, init)}.Props`] }
-    : undefined;
+/** A component's props, and those its doc comment names with `@prop` that its types do not give the catalogue. */
+function withNamedProps(props: readonly CatalogueProp[], doc: string): CatalogueProp[] {
+  const listed = new Set(props.map((prop) => prop.name));
+  const named = propTagsOf(doc).filter((tag) => !listed.has(tag.name));
+  return [...props, ...named.map((tag): CatalogueProp => Object.assign(tag, { optional: true }))];
 }
 
-/** A component's props: its function's, or a Base UI part's when it is exported as that part itself. */
-function shapeOf(file: ParsedFile, node: Node, fn: Node | undefined): PropsShape | undefined {
-  return fn === undefined ? primitiveProps(file, node) : propsOf(file, fn);
+/** Whether a `Pick` left as written now has each of its keys among the props and variants, some named in the doc
+ * comment; `className` is every component's. */
+function pickedAll(
+  type: string,
+  shape: { props: readonly CatalogueProp[]; variants: object },
+): boolean {
+  const keys = /^Pick<.*,(?<keys>[^,>]+)>$/u.exec(type)?.groups?.["keys"]?.match(/[\w-]+/gu) ?? [];
+  const listed = new Set([
+    "className",
+    ...shape.props.map((prop) => prop.name),
+    ...Object.keys(shape.variants),
+  ]);
+  return keys.length > 0 && keys.every((key) => listed.has(key));
 }
 
-/** The catalogue entry of the component `name`, which `path` exports, or `undefined` if it is no component. */
-function entryOf(name: string, path: string): CatalogueComponent | undefined {
-  const found = lookup(parseFile(path), name);
-  const fn = found === undefined ? undefined : componentFunction(found.node);
-  const shape = found === undefined ? undefined : shapeOf(found.file, found.node, fn);
-  if (found === undefined || shape === undefined) {
+/** The catalogue entry of the component `name`, or `undefined` if it is no component. */
+function componentEntry(
+  module: PublicModule,
+  { entity, name }: ExportedName,
+  references: References,
+): CatalogueComponent | undefined {
+  const declaration = valueDeclaration(entity);
+  const inFolder = module.componentFolders.some(
+    (folder) => entity?.file.path.startsWith(folder) === true,
+  );
+  const shape =
+    entity === undefined || !inFolder || !/^[A-Z]/u.test(name)
+      ? undefined
+      : componentProps(entity, references);
+  if (entity === undefined || declaration === undefined || shape === undefined) {
     return undefined;
   }
-  const doc = docComment(found.file, found.node);
+  const doc = docComment(entity.file, declaration);
   const example = exampleOf(doc);
+  const props = withNamedProps(shape.props, doc);
   return {
-    extends: [...new Set(shape.extends)],
-    family: familyOf(found.file.path),
+    extends: [...new Set(shape.extends)].filter(
+      (type) => !pickedAll(type, { props, variants: shape.variants }),
+    ),
+    family: familyOf(entity.file.path),
+    module: module.name,
     name,
-    props: shape.props,
+    props: props.map((prop) => described(prop)),
     purpose: summary(doc),
+    ...guidance(doc),
     variants: shape.variants,
     ...(example === undefined ? {} : { example }),
   };
 }
 
-const componentFolders = ["components/", "shell/"];
+function isIcon(entry: ExportedName): boolean {
+  return entry.entity?.file.path.startsWith("src/vendor/lucide/") === true;
+}
 
-/** The catalogue of the package as its source holds it now. */
+/** Each module's components and functions, in the order its entry exports them, its icons left out. */
+function entriesOf(
+  listed: readonly Listed[],
+  references: References,
+): { components: CatalogueComponent[]; functions: CatalogueFunction[] } {
+  const components: CatalogueComponent[] = [];
+  const functions: CatalogueFunction[] = [];
+  for (const { module, names } of listed) {
+    for (const entry of names.filter((name) => !name.isType && !isIcon(name))) {
+      const component = componentEntry(module, entry, references);
+      if (component === undefined) {
+        functions.push(functionEntry(module, entry, references));
+      } else {
+        components.push(component);
+      }
+    }
+  }
+  return { components, functions };
+}
+
+/** The catalogue of the packages as their source holds them now. */
 function buildCatalogue(): Catalogue {
-  const exported = packageExports().filter(({ name }) => /^[A-Z]/u.test(name));
-  const components = exported
-    .filter(({ path }) => componentFolders.some((folder) => path.startsWith(folder)))
-    .flatMap(({ name, path }) => entryOf(name, path) ?? []);
-  const icons = exported
-    .filter(({ path }) => path.startsWith("vendor/lucide/"))
-    .map(({ name }) => name);
+  const references: References = new Map();
+  const listed = publicModules.map((module) => ({ module, names: exportedNames(module) }));
+  const { components, functions } = entriesOf(listed, references);
+  const icons = listed.flatMap(({ names }) =>
+    names.filter((name) => isIcon(name)).map(({ name }) => name),
+  );
   return {
     components,
-    format: "basis-ui-catalogue/1",
+    format: "basis-ui-catalogue/2",
+    functions,
     icons: icons.toSorted(),
+    modules: publicModules.map((module) => ({
+      name: module.name,
+      purpose: module.purpose ?? headerOf(module),
+    })),
     package: "@basis/ui",
+    types: describeTypes(listed, components, references),
   };
 }
 
@@ -143,5 +184,10 @@ function catalogueText(): string {
 }
 
 export { buildCatalogue, catalogueText };
-export type { Catalogue, CatalogueComponent };
-export type { CatalogueProp, CatalogueVariant } from "./props.ts";
+export type {
+  Catalogue,
+  CatalogueComponent,
+  CatalogueFunction,
+  CatalogueProp,
+  CatalogueType,
+} from "./format.ts";

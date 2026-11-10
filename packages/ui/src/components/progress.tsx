@@ -38,6 +38,10 @@ function ProgressIndicator({
 /** A progress bar: its children, such as a label and the value, above a full-width track. `value` is out of `max`,
  * 100 by default, and `null` makes it indeterminate.
  *
+ * @use For a task whose share done is known, such as an upload. For a wait of unknown length, use Spinner; for content
+ * still loading, Skeleton.
+ * @see Spinner, Skeleton
+ *
  * @example
  * ```tsx
  * import { Progress, ProgressLabel, ProgressValue } from "@basis/ui";

@@ -53,6 +53,10 @@ interface ResizablePanelGroupProps extends Omit<ComponentProps<"div">, "ref"> {
 
 /** A group of panels split by handles, filling its parent. Give each panel an `id` when its layout is stored.
  *
+ * @use For panels the user resizes, such as a trade list beside its detail; give it `resizeOn="release"` when a panel
+ * holds a Grid or a Chart. For the app's sidebar, use AppShell's.
+ * @see Grid, Chart, ScrollArea
+ *
  * @example
  * ```tsx
  * import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@basis/ui";

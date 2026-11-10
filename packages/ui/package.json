@@ -16,6 +16,7 @@
     "config",
     "schema",
     "catalogue.json",
+    "CHANGELOG.md",
     "skills",
     "sync"
   ],

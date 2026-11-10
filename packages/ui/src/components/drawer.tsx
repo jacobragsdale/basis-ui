@@ -44,6 +44,10 @@ type DrawerProps = Omit<
 /** A drawer: a panel that slides in from an edge and can be swiped away, `down` by default. It is a dialog: Escape,
  * a click outside and a swipe in `swipeDirection` close it, and focus returns to the trigger.
  *
+ * @use For a panel the user can swipe away, on a touch screen. On a desktop, for a form or details beside the page, use
+ * Sheet; for a task in the page's middle, Dialog.
+ * @see Sheet, Dialog, Button
+ *
  * @example
  * ```tsx
  * import { Button, Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle, DrawerTrigger } from "@basis/ui";

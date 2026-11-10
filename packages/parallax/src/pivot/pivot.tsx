@@ -183,7 +183,33 @@ function PivotFrame(props: PivotFrameProps): ReactNode {
   );
 }
 
-/** A pivot table and its settings, which can fill the window together. */
+/** A pivot table and its settings, which can fill the window together.
+ *
+ * @use For a pivot table the user rearranges, with its field list beside it, as Excel's PivotTable. For a pivot the app
+ * fixes, give a Grid a layout with `group_by`, `split_by` and `measures`.
+ * @see ParallaxProvider, useDataset, Grid, drillLayout, LayoutInput, encodeLayout, decodeLayout
+ *
+ * @example
+ * ```tsx
+ * import { Pivot, useDataset } from "@basis/parallax";
+ * import type { LayoutInput } from "@basis/parallax";
+ * import { useState } from "react";
+ * import type { ReactNode } from "react";
+ *
+ * // The generated client's call for an Arrow route, as in `(await listPositions()).data.arrayBuffer()`.
+ * declare const positionsBytes: () => Promise<ArrayBuffer>;
+ *
+ * export function Exposure(): ReactNode {
+ *   const positions = useDataset("positions", positionsBytes, { primaryKey: "position_id" });
+ *   const [layout, setLayout] = useState<LayoutInput>({
+ *     group_by: ["fund"],
+ *     split_by: ["asset_class"],
+ *     measures: [{ aggregate: "sum", column: "market_value_usd" }],
+ *   });
+ *   return <Pivot dataset={positions} layout={layout} onLayoutChange={setLayout} />;
+ * }
+ * ```
+ */
 function Pivot(props: PivotProps): ReactNode {
   return (
     <Maximizable label={props.label ?? props.dataset.name}>

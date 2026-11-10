@@ -23,6 +23,10 @@ import { buttonVariants as paginationLinkVariants } from "./button-variants.ts";
 
 /** The pages' links: a navigation landmark named "pagination".
  *
+ * @use For links between the pages of a list that the API pages. DataTable pages its own rows, and parallax's Grid
+ * scrolls its rows instead.
+ * @see DataTable, ButtonLink, Grid
+ *
  * @example
  * ```tsx
  * import {
@@ -106,7 +110,10 @@ function PaginationLink({
 function PaginationPrevious({
   text = "Previous",
   ...props
-}: PaginationLinkProps & { readonly text?: string }): ReactElement {
+}: PaginationLinkProps & {
+  /** The link's text beside its arrow: "Previous" by default. */
+  readonly text?: string;
+}): ReactElement {
   return (
     <PaginationLink aria-label="Go to previous page" size="default" {...props}>
       <ChevronLeftIcon data-icon="inline-start" />
@@ -119,7 +126,10 @@ function PaginationPrevious({
 function PaginationNext({
   text = "Next",
   ...props
-}: PaginationLinkProps & { readonly text?: string }): ReactElement {
+}: PaginationLinkProps & {
+  /** The link's text beside its arrow: "Next" by default. */
+  readonly text?: string;
+}): ReactElement {
   return (
     <PaginationLink aria-label="Go to next page" size="default" {...props}>
       <span className="hidden sm:block">{text}</span>

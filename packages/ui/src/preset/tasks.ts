@@ -5,7 +5,7 @@
  *   vp run doctor              the desktop's setup (doctor.ts)
  *   vp run review [BRANCH]     a pull request's summary (review.ts), and `checked`, check-full's last step
  *   fixtures                   check-full's check of the fixtures in fixtures/ (fixture-files.ts)
- *   vp run docs [PAGE]         the installed version's docs (docs.ts)
+ *   vp run docs [NAME]         the installed version's docs and catalogue (docs.ts)
  *   vp run upgrade [VERSION]   a new @basis/ui, synced and checked (upgrade.ts)
  *
  * Every module is imported here, before any task runs, so `vp run upgrade` replacing the package mid-run cannot leave
