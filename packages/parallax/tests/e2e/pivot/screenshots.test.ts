@@ -43,13 +43,18 @@ async function twoFrames(page: Page): Promise<void> {
  * from one painted whole, so a screenshot taken straight away would depend on when the data arrived.
  */
 async function paintAfresh(page: Page): Promise<void> {
+  // A hidden page cannot hold the focus, so Chromium takes it from a menu's item; it is given back, as it was.
+  const focused = await page.evaluateHandle(() => document.activeElement);
   await page.evaluate(() => {
     document.body.style.visibility = "hidden";
   });
   await twoFrames(page);
-  await page.evaluate(() => {
+  await page.evaluate((element) => {
     document.body.style.visibility = "";
-  });
+    if (element instanceof HTMLElement) {
+      element.focus({ preventScroll: true });
+    }
+  }, focused);
   await twoFrames(page);
 }
 

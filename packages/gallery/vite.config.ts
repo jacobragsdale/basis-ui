@@ -31,6 +31,8 @@ export default defineConfig({
   test: {
     ...browserTests,
     include: inNode ? ["src/render-matrix.test.tsx"] : ["src/**/*.test.{ts,tsx}"],
+    // Whether the tests run in CI, whose shared runners the main thread's budgets were not measured on.
+    provide: { ci: process.env["CI"] === "true" },
     setupFiles: ["src/comfortable.setup.ts"],
   },
 });

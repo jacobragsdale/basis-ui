@@ -38,15 +38,24 @@ const keyTakingRoles = [
   .map((role) => `[role="${role}"]`)
   .join(",");
 
+/** An open dialog, which stands in front of the page before its focus arrives too: Base UI moves the focus into a
+ * popup a frame after it opens, and a key pressed in that frame, such as a fast typist's first letter after `mod+k`
+ * opens the command palette, lands on the page's body. A toast is a dialog that is not modal, and stands in front of
+ * nothing. */
+const openDialog = ["alertdialog", "dialog"]
+  .map((role) => `[role="${role}"][data-open]:not([aria-modal="false"])`)
+  .join(",");
+
 /** Whether a plain key, one without a modifier, belongs to what has focus rather than to the page's shortcuts: it was
- * typed into a field, or pressed on or inside a control or dialog that takes keys itself. */
+ * typed into a field, or pressed on or inside a control or dialog that takes keys itself, or while a dialog is open. */
 function typedIntoField(event: KeyboardEvent): boolean {
   const { target } = event;
   return (
     target instanceof HTMLElement &&
     (target.isContentEditable ||
       ["INPUT", "SELECT", "TEXTAREA"].includes(target.tagName) ||
-      target.closest(keyTakingRoles) !== null)
+      target.closest(keyTakingRoles) !== null ||
+      target.ownerDocument.querySelector(openDialog) !== null)
   );
 }
 

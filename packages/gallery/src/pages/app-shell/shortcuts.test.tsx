@@ -114,6 +114,8 @@ describe("ShortcutProvider", () => {
       </Page>,
     );
     await expect.element(screen.getByRole("dialog", { name: "Book a trade" })).toBeVisible();
+    // A key pressed in the frame before the dialog takes the focus lands on the page's body.
+    document.body.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "r" }));
     await userEvent.keyboard("r");
     expect(onRefresh).not.toHaveBeenCalled();
   });

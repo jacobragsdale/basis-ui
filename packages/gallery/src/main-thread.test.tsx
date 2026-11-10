@@ -3,7 +3,7 @@ import "#styles.css";
 import { DataTable, applyPreferences } from "@basis/ui";
 import type { Preferences } from "@basis/ui";
 import type { ReactElement } from "react";
-import { afterAll, beforeAll, describe, expect, test } from "vite-plus/test";
+import { afterAll, beforeAll, describe, expect, inject, test } from "vite-plus/test";
 import { cdp, page, userEvent } from "vite-plus/test/browser";
 import { render } from "vitest-browser-react";
 import { z } from "zod";
@@ -19,7 +19,23 @@ import { DialogExample } from "#pages/overlays-and-menus/dialogs.tsx";
  * on the build host, an 8-core Ryzen 7 8745HS, on 2026-11-09, alone and beside the rest of the gallery's suite, while
  * other agents' builds and tests shared the host (a load average of 6 to 8). The counts held steady; the longest
  * frames varied up to twice over, so their budgets are about twice the worst seen. A change that adds frames, or makes
- * one much longer, fails here. */
+ * one much longer, fails here.
+ *
+ * GitHub's runners are slower and shared, and the same commit's table there has taken from 9 to 39 s under the
+ * slowdown. In CI the counts hold as they are, and the longest frame meets a ceiling of `ciSlack` times its budget:
+ * these frames are a known cost of DataTable, for step 6.7.3, which a host's run measures and CI only bounds. */
+
+declare module "vite-plus/test" {
+  interface ProvidedContext {
+    /** Whether the tests run in CI: the gallery's config provides it. */
+    readonly ci: boolean;
+  }
+}
+
+/** How many times its budget a frame may take on a CI runner. */
+const ciSlack = 4;
+/** Each test's timeout: under the slowdown, a CI runner has spent 39 s rendering the table at its cap. */
+const slowTimeout = 120_000;
 
 const slowdown = 4;
 const rowCap = 2000;
@@ -107,14 +123,15 @@ const light: Preferences = { density: "comfortable", mode: "light", motion: "ful
 /** `spent`, with each figure over its budget replaced by a line that names the figure and the budget, so a failure
  * says which budget it broke. */
 function within(spent: Cost, budget: Cost): Record<keyof Cost, number | string> {
+  const ceiling: Cost = inject("ci") ? { ...budget, longest: budget.longest * ciSlack } : budget;
   const shown = (name: keyof Cost): number | string =>
-    spent[name] <= budget[name]
+    spent[name] <= ceiling[name]
       ? spent[name]
-      : `${String(spent[name])}, over its budget of ${String(budget[name])}`;
+      : `${String(spent[name])}, over its budget of ${String(ceiling[name])}`;
   return { longFrames: shown("longFrames"), longest: shown("longest") };
 }
 
-describe("the main thread, with the CPU slowed four times", () => {
+describe("the main thread, with the CPU slowed four times", { timeout: slowTimeout }, () => {
   beforeAll(async () => {
     await cdp().send("Emulation.setCPUThrottlingRate", { rate: slowdown });
   });

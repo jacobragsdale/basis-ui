@@ -35,8 +35,27 @@ const colouredSpread = 64;
 /** The channels of a pixel, with its alpha. */
 const rgba = 4;
 
-/** The bounds of the coloured pixels of `image`, in its pixels. */
-function colouredBounds({ width, height, data }: ImageData): {
+/** The colour of the most coloured pixels of `image`, as `r,g,b`: a scatter's one dot fills more pixels with its colour
+ * than anything else drawn colours. Text is coloured too where the browser draws it with subpixel antialiasing, on an
+ * opaque canvas under a fontconfig that asks for it, as GitHub's Ubuntu runners have; its fringes are of many colours,
+ * a few pixels each. */
+function commonestColour({ width, height, data }: ImageData): string {
+  const counts = new Map<string, number>();
+  for (let index = 0; index < width * height; index += 1) {
+    const [red = 0, green = 0, blue = 0] = data.subarray(index * rgba, index * rgba + channels);
+    if (Math.max(red, green, blue) - Math.min(red, green, blue) >= colouredSpread) {
+      const colour = `${String(red)},${String(green)},${String(blue)}`;
+      counts.set(colour, (counts.get(colour) ?? 0) + 1);
+    }
+  }
+  return [...counts].toSorted((first, second) => second[1] - first[1])[0]?.[0] ?? "";
+}
+
+/** The bounds of the pixels of `image` of `colour`, as `r,g,b`, in its pixels. */
+function boundsOf(
+  { width, height, data }: ImageData,
+  colour: string,
+): {
   readonly left: number;
   readonly right: number;
   readonly top: number;
@@ -44,8 +63,7 @@ function colouredBounds({ width, height, data }: ImageData): {
 } {
   const box = { bottom: 0, left: width, right: 0, top: height };
   for (let index = 0; index < width * height; index += 1) {
-    const [red = 0, green = 0, blue = 0] = data.subarray(index * rgba, index * rgba + channels);
-    if (Math.max(red, green, blue) - Math.min(red, green, blue) >= colouredSpread) {
+    if (data.subarray(index * rgba, index * rgba + channels).join(",") === colour) {
       const [x, y] = [index % width, Math.floor(index / width)];
       Object.assign(box, {
         bottom: Math.max(box.bottom, y),
@@ -58,15 +76,16 @@ function colouredBounds({ width, height, data }: ImageData): {
   return box;
 }
 
-/** The middle of the coloured pixels the canvas draws, such as a scatter's one dot, from the plot's top-left corner;
- * the plot's middle is not the dot's, since the axes' labels take room on one side. */
+/** The middle of the canvas's commonest colour, such as a scatter's one dot, from the plot's top-left corner; the
+ * plot's middle is not the dot's, since the axes' labels take room on one side. */
 function colouredMiddleOf(root: HTMLElement): { readonly x: number; readonly y: number } {
   const canvas = root.querySelector("canvas");
   const context = canvas?.getContext("2d");
   if (canvas === null || context === null || context === undefined) {
     throw new Error("the chart has no canvas");
   }
-  const box = colouredBounds(context.getImageData(0, 0, canvas.width, canvas.height));
+  const image = context.getImageData(0, 0, canvas.width, canvas.height);
+  const box = boundsOf(image, commonestColour(image));
   const scale = canvas.width / canvas.getBoundingClientRect().width;
   return { x: (box.left + box.right) / 2 / scale, y: (box.top + box.bottom) / 2 / scale };
 }
