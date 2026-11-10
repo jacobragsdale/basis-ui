@@ -20096,6 +20096,18 @@
           "type": "number"
         },
         {
+          "description": "Draws that moved the pixels of a scroll rather than repainting them, which `fullDraws` does not count.",
+          "name": "copies",
+          "optional": false,
+          "type": "number"
+        },
+        {
+          "description": "The device pixels repainted, in all: the whole canvas for a full redraw, and for any other draw the rows or columns a scroll exposed and the cells drawn again. A remote desktop, such as Citrix's, sends what changed, so this is the cost it sees. Pixels a scroll moves are not counted.",
+          "name": "paintedPx",
+          "optional": false,
+          "type": "number"
+        },
+        {
           "description": "",
           "name": "drawMs",
           "optional": false,
