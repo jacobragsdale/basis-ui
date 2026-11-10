@@ -644,4 +644,7 @@ Citrix repeat on the new engine:
 - how long parallax's wasm takes to download, compile and draw a first chart on a Citrix desktop (the same repeat);
 - whether a Citrix desktop's display scaling leaves the canvases' text and rules sharp, and whether Windows has its
   animations turned off there (step 6.10);
+- that the firm's Chrome and Edge are version 139 or later, which the canvas's tabular digits need: they come from a
+  `font-feature-settings` descriptor in `@font-face`, which Chromium honours from 139 (step 6.4.1; the probe page of
+  step 6.10 reports the version);
 - that the firm's apps share a parent domain, for the cookie that holds the mode, density and theme.
