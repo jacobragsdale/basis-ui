@@ -79,10 +79,10 @@ jobs:
           node-version-file: .node-version
           cache: true
       - run: vp run @basis/ui#build
-      - run: vp run @basis/ui#test
-      # The gallery and the example consume @basis/ui's build, and their browser tests run in the Chromium that the
-      # preset's Playwright version pins.
+      # Browser tests run in the Chromium that the preset's Playwright version pins: the gallery's and the example's,
+      # and @basis/ui's own test of shot, which pictures a page.
       - run: vp exec --filter @basis/ui playwright install --with-deps chromium
+      - run: vp run @basis/ui#test
       - run: vp run @basis/gallery#test
       # The gallery's render matrix again, in a Node DOM, as on a machine with no browser.
       - run: vp run @basis/gallery#test-node
