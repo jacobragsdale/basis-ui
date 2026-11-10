@@ -37,16 +37,17 @@ To set the app up:
    import { defineConfig } from "vite-plus";
 
    export default defineConfig({
-     ...basisPreset(),
+     ...basisPreset({ budget: { "/": { css: 25, js: 180 } } }),
      plugins: basisPlugins(),
      test: await basisTest(),
    });
    ```
 
    `basisPreset()` brings the lint, format and staged-file configuration, with `@shadcn/lint`'s design-system rules,
-   and the `vp run` tasks. `basisPlugins()` adds React with the React Compiler, which fails the build on a component
+   and the `vp run` tasks. Its `budget` is what each route may load, which `vp run budget` checks, as
+   [Weighing the build](#weighing-the-build-vp-run-budget) says. `basisPlugins()` adds React with the React Compiler, which fails the build on a component
    that breaks the rules of React with an `ERROR` line naming the fix above the compiler's own text, Tailwind, and the head script: an inline `<script>` that `vp dev` and `vp build`
-   write at the end of `index.html`'s `<head>`, which applies the stored mode and density before the first paint. Its
+   write at the end of `index.html`'s `<head>`, which applies the stored mode, density and motion before the first paint. Its
    text is `headScript`, exported from `@basis/ui`; the app keeps no copy of it. In `vp test` it also has Vite
    pre-bundle what every module under `src/` imports before the tests start, so no dependency that only app code
    imports is found mid-run, which would reload the test pages under the tests. In `vp dev` it serves the app on a
@@ -145,7 +146,7 @@ createRoot(root).render(
 | `queryClient` | The TanStack Query client, for a test that reads its cache; one from `createQueryClient()` by default.                                          |
 
 Inside it, in order: the telemetry, the query client, the toasts (`Toaster`), an error boundary round the whole app,
-the signed-in session, and the router. It keeps the page in the user's mode and density as they change them
+the signed-in session, and the router. It keeps the page in the user's mode, density and motion as they change them
 (`followPreferences`), and gives `apiFetch` the adapter's token, so every request carries the user's JWT.
 
 - **Queries.** `createQueryClient()` keeps data fresh for 30 seconds and retries a query twice, but only after a
@@ -547,7 +548,9 @@ Where these differ from what shadcn's documentation leads one to expect:
 
 Overlays animate with a short fade and scale, or a short slide for Sheet and Drawer, and an Accordion's or a
 Collapsible's content slides open and shut over 150 ms through the height Base UI measures, all of which stop under
-`prefers-reduced-motion`. A Collapsible's content clips what overflows it, as the motion needs, so a focus ring at its edge
+`prefers-reduced-motion` and under the user's `motion` preference set to reduced. The veil behind a Dialog, an Alert
+Dialog, a Sheet or a Drawer appears and goes at once, and only the popup over it moves, since a fade the size of the
+screen is the whole screen redrawn every frame on a desktop drawn on the CPU. A Collapsible's content clips what overflows it, as the motion needs, so a focus ring at its edge
 needs a little padding inside it. The gallery's overlays and menus page shows each one closed, with its tests beside it.
 
 ## Laying out an app
@@ -555,7 +558,7 @@ needs a little padding inside it. The gallery's overlays and menus page shows ea
 `AppShell` is the layout of an app's pages: make it the root route's component, and give each route a `title` (and an
 `icon`) in its `staticData`. It builds the sidebar of the app's pages (`AppSidebar`), the breadcrumbs
 (`RouteBreadcrumbs`) and Ctrl+K's command palette (`CommandPalette`) from those titles, names the environment in a
-banner (`EnvironmentBanner`), puts the user menu (`UserMenu`: mode, density, sign in and out) in the sidebar's footer,
+banner (`EnvironmentBanner`), puts the user menu (`UserMenu`: mode, density, motion, sign in and out) in the sidebar's footer,
 and keeps the keyboard shortcuts, which a component declares with `useShortcut(keys, description, run)` and `?` lists.
 A route with path parameters, such as `/bonds/$security`, keeps its breadcrumb but stays out of the sidebar and the
 palette; `inNavigation: false` leaves any route out.
@@ -598,6 +601,10 @@ The navigation and layout components keep shadcn's names, props and parts. Where
     </ResizablePanel>
   </ResizablePanelGroup>
   ```
+
+  Where a panel holds a grid or a chart, give the group `resizeOn="release"`: a drag then moves only the handle's
+  line, and the panels resize once, when the pointer lets go, so the canvas lays out and redraws once rather than on
+  every move. The keys resize at once either way.
 
 - **Navigation Menu.** A top-level link takes `variant="trigger"` to look like the triggers beside it, where shadcn
   puts `navigationMenuTriggerStyle()` on it; give the menu an `aria-label`.
@@ -933,6 +940,27 @@ It needs the Chromium that `@basis/ui`'s Playwright pins, which `vp dlx playwrig
 starts writes its output to the task's, so a fixture's `ERROR` line shows there. The skill in
 `skills/drive-the-app` says how an agent looks at its pages and clicks through them with Playwright CLI; the UI repo
 template copies it into each app.
+
+## Weighing the build: `vp run budget`
+
+`vp run budget` builds the app, serves `dist/`, opens each route that `basisPreset({ budget })` names in headless
+Chromium, and weighs the JavaScript and CSS the route loaded, gzipped: its lazy chunks and workers included, and nothing
+from a cache. A budget is two numbers of kilobytes per route, `js` and `css`, and a route with path parameters is named
+by an example, such as `"/bonds/US91282CRF04"`. It prints one line a route, and a route over its budget fails the task
+with an `ERROR` line that says what to load lazily:
+
+```sh
+$ vp run budget
+/  JS 174.0 of 180 kB, CSS 22.4 of 25 kB, gzipped
+```
+
+A route that its data never reaches still loads its code, since the task answers `/api` with 404. Split a page that
+loads much of what it does not show at first, such as a chart behind a tab, through a lazy import; the template's
+routes load each page with `lazyRouteComponent`, so `@basis/parallax` loads only on the pages that use it. `@basis/ui`
+is built as one module for each of its own and declares only its stylesheets as side effects, so an app's bundle holds
+only the components it imports. Most of what is left is the libraries every app shares: of `packages/consumer`'s
+543 kB of JavaScript before gzip, React DOM is 207 kB, Zod 83 kB, the router 72 kB, Base UI and Floating UI 65 kB, and
+`@basis/ui` 47 kB. The task needs the same Chromium as `vp run shot`.
 
 ## Showing a query's states and small charts
 

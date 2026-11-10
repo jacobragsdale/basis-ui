@@ -4,9 +4,10 @@
 import { cva } from "#vendor/cva/cva.ts";
 
 /** Skeleton's shape. shadcn draws a round placeholder, as for an avatar, with `className="rounded-full"`, which
- * `shadcn/no-restyle` rejects in an app, so the circle is a variant here. It pulses through opacity alone, which a
- * CPU-drawn Citrix desktop repaints cheaply, and holds still under `prefers-reduced-motion`. */
-const skeletonVariants = cva("animate-pulse bg-muted motion-reduce:animate-none", {
+ * `shadcn/no-restyle` rejects in an app, so the circle is a variant here. It holds still, where shadcn's pulses: a
+ * page of skeletons that pulse, such as a loading table, sends a Citrix desktop's screen changes for as long as it
+ * loads. */
+const skeletonVariants = cva("bg-muted", {
   variants: {
     variant: {
       default: "rounded-md",

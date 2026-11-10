@@ -54,7 +54,7 @@ describe("the app shell's parts", () => {
   test("the framed app shows the mode and density it is told, over the stored choice", async () => {
     await cookieStore.set(preferencesCookie, "light.comfortable");
     const screen = await render(
-      <AppShellSection preferences={{ density: "compact", mode: "dark" }} />,
+      <AppShellSection preferences={{ density: "compact", mode: "dark", motion: "full" }} />,
     );
     const app = screen.getByRole("region", { name: "An app on the shell" });
     await expect.element(app.getByRole("heading", { level: 1 })).toBeVisible();

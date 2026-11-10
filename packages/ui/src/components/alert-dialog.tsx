@@ -1,5 +1,5 @@
 /* Alert Dialog and its parts, from shadcn's Base UI source (its base-nova style), with Dialog's changes: the backdrop
- * veils the page in the theme's background with no blur, the popup fades and scales through Base UI's
+ * veils the page in the theme's background with no blur and no fade, the popup fades and scales through Base UI's
  * `data-starting-style` and `data-ending-style`, it sits in Base UI's viewport, and the title drops `font-heading`.
  * Two more:
  * - shadcn lays the header out on arbitrary grid templates so that, at the default size on a wide screen, the media
@@ -75,10 +75,7 @@ function AlertDialogOverlay({
   return (
     <AlertDialogPrimitive.Backdrop
       data-slot="alert-dialog-overlay"
-      className={cn(
-        "fixed inset-0 isolate z-50 bg-background/70 transition-opacity duration-100 data-ending-style:opacity-0 data-starting-style:opacity-0",
-        className,
-      )}
+      className={cn("fixed inset-0 isolate z-50 bg-background/70", className)}
       {...props}
     />
   );

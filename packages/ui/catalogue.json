@@ -3119,6 +3119,12 @@
           "name": "disabled",
           "optional": true,
           "type": "boolean | undefined"
+        },
+        {
+          "description": "`release` resizes the panels once, when a pointer drag lets go, with the handle's line following the pointer until then: for a group whose panes hold a grid or a chart, which redraw when they resize. `drag`, the default, resizes them as the pointer moves. The keys resize at once either way.",
+          "name": "resizeOn",
+          "optional": true,
+          "type": "ResizeOn | undefined"
         }
       ],
       "purpose": "A group of panels split by handles, filling its parent. Give each panel an `id` when its layout is stored.",
@@ -3950,7 +3956,7 @@
       "family": "table",
       "name": "TableRow",
       "props": [],
-      "purpose": "A row. `data-state=\"selected\"` marks it selected, in the theme's `selection` colour.",
+      "purpose": "A row. `data-state=\"selected\"` marks it selected, in the theme's `selection` colour. Its hover shows at once, with no fade, since the pointer crosses many rows and each fade is frames a Citrix desktop draws and sends.",
       "variants": {}
     },
     {
@@ -4763,7 +4769,7 @@
       "family": "user-menu",
       "name": "UserMenu",
       "props": [],
-      "purpose": "The signed-in user's menu: the mode (system, light or dark) and density (comfortable or compact) every app shows, and signing in or out. Inside `BasisApp`, which keeps the session; `AppShell` puts it in the sidebar's footer.",
+      "purpose": "The signed-in user's menu: the mode (system, light or dark), density (comfortable or compact) and motion (full, or reduced, which stops every transition as the operating system's setting does) every app shows, and signing in or out. Inside `BasisApp`, which keeps the session; `AppShell` puts it in the sidebar's footer.",
       "variants": {},
       "example": "import { UserMenu } from \"@basis/ui\";\n\n<UserMenu />;\n"
     },
@@ -5310,13 +5316,13 @@
           "type": "QueryClient"
         },
         {
-          "description": "The mode and density to show in place of the stored choice, which it otherwise follows: for a page told them another way, as the gallery is by its query. A choice made in the user menu is still stored, and shown at once.",
+          "description": "The mode, density and motion to show in place of the stored choice, which it otherwise follows: for a page told them another way, as the gallery is by its query. A choice made in the user menu is still stored, and shown at once.",
           "name": "preferences",
           "optional": true,
           "type": "Preferences | undefined"
         }
       ],
-      "purpose": "The app's providers: telemetry, the query client, the toasts, an error boundary round everything, the signed-in session, and the router. It also keeps the page in the user's mode and density as they change them, or in the `preferences` it is given, signs the user out when the API says their session has ended, and asks them to sign in when it says a request needs them to.",
+      "purpose": "The app's providers: telemetry, the query client, the toasts, an error boundary round everything, the signed-in session, and the router. It also keeps the page in the user's mode, density and motion as they change them, or in the `preferences` it is given, signs the user out when the API says their session has ended, and asks them to sign in when it says a request needs them to.",
       "variants": {},
       "example": "import { BasisApp, anonymousSignIn } from \"@basis/ui\";\nimport { createRootRoute, createRouter } from \"@tanstack/react-router\";\n\nconst router = createRouter({ routeTree: createRootRoute() });\n\n<BasisApp router={router} signIn={anonymousSignIn()} />;\n"
     }

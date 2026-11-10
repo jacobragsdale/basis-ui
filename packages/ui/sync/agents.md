@@ -11,6 +11,7 @@ vp install              # once per clone: installs dependencies and the hooks in
 vp run check-full       # the framework files, the client and fixtures against openapi.json, tsc, check, test, build
 vp test                 # the tests in headless Chromium; BASIS_TEST_DOM=node vp test runs them in a Node DOM
 vp build                # dist/, with FILE.br and FILE.gz beside each built file over 1 KB
+vp run budget           # the build, then each route's JavaScript and CSS against its budget in vite.config.ts
 vp run doctor           # this machine's setup, and the fix for each problem
 ```
 
@@ -43,7 +44,8 @@ change one needs belongs in `@basis/ui`. Write the repo's own notes in `AGENTS.m
 ### Writing the app
 
 - A page is a route in `src/routes.ts`; its `staticData` title and icon put it in the sidebar, the breadcrumbs and the
-  command palette.
+  command palette. Its component loads with `lazyRouteComponent`, so a page's code, and `@basis/parallax` with it,
+  loads only when the page opens; give a new route a budget in `vite.config.ts` for `vp run budget`.
 - Numbers stay as the API sends them until they are displayed: never round, scale or format a value before the
   component that shows it, which formats it with `@basis/ui`'s display formats.
 - Tests are written with `@basis/ui/testing`, so they run in Chromium and in a Node DOM. A test that needs a real

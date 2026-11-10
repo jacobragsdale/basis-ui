@@ -98,7 +98,26 @@ const fontsAndVariant = `@import "@fontsource-variable/inter";
 
 /* Tokens switch with the mode, so \`dark:\` variants have nothing to do. This keeps any that slip in on the user's
    chosen mode rather than the operating system's. */
-@custom-variant dark (&:where(.dark, .dark *));`;
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Motion stops where the operating system asks for less of it, and where the user's \`motion\` preference is
+   \`reduced\`, which the preferences put on the root element as \`data-motion\`, for a desktop whose Windows setting is
+   not the user's to change. \`motion-reduce:\` and \`motion-safe:\` follow both. */
+@custom-variant motion-reduce {
+  @media (prefers-reduced-motion: reduce) {
+    @slot;
+  }
+  &:where([data-motion="reduced"] *) {
+    @slot;
+  }
+}
+@custom-variant motion-safe {
+  @media (prefers-reduced-motion: no-preference) {
+    &:not(:where([data-motion="reduced"] *)) {
+      @slot;
+    }
+  }
+}`;
 
 /** The tokens in each mode, and the compact density's spacing. */
 function modes(): string {
@@ -155,6 +174,10 @@ ${colourMappings}
 }`;
 }
 
+/* Under reduced motion, from the operating system or the user's preference, nothing moves: every transition and
+ * animation ends at once, the sidebar's slide and an accordion's opening among them. While the theme, mode or
+ * density changes, nothing transitions at all: `applyPreferences` sets `data-switching` for the frame that shows the
+ * change, so the page changes in one frame, as its canvases do, rather than cross-fading every control. */
 const reducedMotion = `@media (prefers-reduced-motion: reduce) {
   *,
   ::before,
@@ -163,6 +186,20 @@ const reducedMotion = `@media (prefers-reduced-motion: reduce) {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+:root[data-motion="reduced"] *,
+:root[data-motion="reduced"] ::before,
+:root[data-motion="reduced"] ::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+}
+
+:root[data-switching] *,
+:root[data-switching] ::before,
+:root[data-switching] ::after {
+  transition: none !important;
 }`;
 
 /** The theme's whole stylesheet. */

@@ -19,15 +19,15 @@ function installCommand(): string {
   return chromiumInstall(versionSchema.parse(manifest).version);
 }
 
-/** Headless Chromium, or a failure that says how to install it. */
-async function launch(): Promise<Browser> {
+/** Headless Chromium, or a failure that says how to install it and run `task`, `shot` unless named, again. */
+async function launch(task = "shot"): Promise<Browser> {
   try {
     return await chromium.launch({ headless: true });
   } catch (error) {
     const missing = String(error).includes("Executable doesn't exist");
     throw new TaskError(
       missing
-        ? `ERROR Playwright's Chromium is not installed: run ${installCommand()}, then vp run shot again.`
+        ? `ERROR Playwright's Chromium is not installed: run ${installCommand()}, then vp run ${task} again.`
         : `ERROR Chromium did not start (${String(error).split("\n")[0] ?? ""}): run ${installCommand()}, and report the message if it repeats.`,
     );
   }

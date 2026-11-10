@@ -4,25 +4,18 @@ import { Skeleton } from "@basis/ui";
 import { describe, expect, test } from "vite-plus/test";
 import { render } from "vitest-browser-react";
 
-import { computedColour, pixels, withReducedMotion } from "./test-support.ts";
+import { computedColour, pixels } from "./test-support.ts";
 
 describe("Skeleton", () => {
-  test("is a muted block, as large as className makes it, that pulses", async () => {
+  test("is a muted block, as large as className makes it, that holds still, so a page loading sends no screen changes", async () => {
     const screen = await render(<Skeleton className="h-4 w-32" data-testid="skeleton" />);
     const skeleton = screen.getByTestId("skeleton").element();
     const style = getComputedStyle(skeleton);
     expect(style.backgroundColor).toBe(computedColour("var(--muted)"));
-    expect(style.animationName).toBe("pulse");
+    expect(style.animationName).toBe("none");
+    expect(skeleton.getAnimations()).toStrictEqual([]);
     const box = skeleton.getBoundingClientRect();
     expect([box.width, box.height]).toStrictEqual([128, 16]);
-  });
-
-  test("holds still under reduced motion", async () => {
-    const screen = await render(<Skeleton className="h-4 w-32" data-testid="skeleton" />);
-    const skeleton = screen.getByTestId("skeleton").element();
-    withReducedMotion(() => {
-      expect(getComputedStyle(skeleton).animationName).toBe("none");
-    });
   });
 
   test("the circle variant is round, and the default only rounds its corners", async () => {

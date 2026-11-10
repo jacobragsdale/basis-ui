@@ -3,6 +3,11 @@
 
 type Orientation = "horizontal" | "vertical";
 
+/** When a pointer drag resizes the panels: `drag` as the pointer moves, `release` once, when it lets go, with only the
+ * handle's line following the pointer until then, for a pane that holds a canvas, such as a grid or a chart, which
+ * would otherwise lay out and redraw on every move. */
+type ResizeOn = "drag" | "release";
+
 /** A group's layout: each panel's size, in percent of the group, by the panel's `id`. */
 type ResizableLayout = Readonly<Record<string, number>>;
 
@@ -165,4 +170,5 @@ export type {
   Pair,
   PanelEntry,
   ResizableLayout,
+  ResizeOn,
 };

@@ -5,8 +5,8 @@
  * - The panel follows the pointer through Base UI's swipe variables, as in shadcn, and opens with a fade and a slide of
  *   the spacing scale's `10` rather than from off the screen, on a short transition that the theme's reduced-motion rule
  *   stops; Citrix desktops draw on the CPU. Closed with a swipe, it fades where the swipe left it.
- * - The backdrop veils the page in the theme's background, where shadcn darkens it with black, blurs it, and fades it
- *   with the swipe.
+ * - The backdrop veils the page in the theme's background, at once, where shadcn darkens it with black, blurs it, and
+ *   fades it in and with the swipe: a full-screen fade repaints the whole screen every frame on a Citrix desktop.
  * - Snap points are left out of the props, since placing the panel at a snap point needs the swipe and snap offsets
  *   added in a `calc()`, and nested drawers stack without shadcn's scaling.
  * - A bottom or top drawer is at most four fifths of the screen's height, where shadcn leaves 6rem.
@@ -102,7 +102,7 @@ function DrawerOverlay({ className, ...props }: DrawerPrimitive.Backdrop.Props):
     <DrawerPrimitive.Backdrop
       data-slot="drawer-overlay"
       className={cn(
-        "fixed inset-0 z-50 bg-background/70 transition-opacity duration-150 select-none data-ending-style:pointer-events-none data-ending-style:opacity-0 data-starting-style:opacity-0",
+        "fixed inset-0 z-50 bg-background/70 select-none data-ending-style:pointer-events-none",
         className,
       )}
       {...props}

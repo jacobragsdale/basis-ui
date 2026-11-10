@@ -523,6 +523,10 @@ flowchart TD
      engine, written up in `docs/spikes/scale-1m.md`;
    - **6.2c** (`6.2c-bundles-and-motion`): `@basis/ui` that tree-shakes, `vp run budget` for each route's bundle, lazy
      routes, and motion that suits a desktop drawn on the CPU, with a `motion` preference beside mode and density.
+     6.2c built on 2026-11-09: an app bundles only the components it imports, `vp run budget` holds each route to its
+     budget, the template's pages load lazily, veils appear at once and a change of preferences in one frame, and the
+     user menu offers reduced motion; the 200 kB target for the consumer's one card is missed at 543 kB, as React DOM
+     alone is 207 kB.
 3. **6.3 The engine at 1,000,000 rows.** Lane Rust, one branch per sub-step in order, each starting and ending with the
    harness: a load that copies once (`6.3.1-load`), a progressive load (`6.3.2-progressive-load`), sorts on keys
    (`6.3.3-sort`), filters as kernels (`6.3.4-filter`), a typed group-by (`6.3.5-group-by`), no rebuild where the order

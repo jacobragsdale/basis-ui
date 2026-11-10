@@ -4,6 +4,10 @@ import { defineConfig } from "vite-plus";
 
 export default defineConfig({
   pack: {
+    /* One module out for each module in, so an app's bundler drops every component it does not import: the package's
+     * `sideEffects` names only its stylesheets, and `cva` is declared free of side effects. Bundled into one
+     * module, an app of one card paid for the whole library. */
+    unbundle: true,
     dts: {
       generator: "tsgo",
     },

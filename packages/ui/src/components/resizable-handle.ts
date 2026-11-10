@@ -64,8 +64,53 @@ function coordinateOf(group: GroupContextValue, event: PointerEvent): number {
   return group.orientation === "horizontal" ? event.clientX : event.clientY;
 }
 
+/** Where the handle's line is drawn while a `release` drag holds the panels still: moved along the group by the
+ * primary pane's change in size since the drag started, in pixels, and marked `data-dragging`; or put back. */
+function placeLine(element: HTMLElement, group: GroupContextValue, offset: number | null): void {
+  if (offset === null) {
+    element.style.removeProperty("translate");
+    delete element.dataset["dragging"];
+    return;
+  }
+  element.style.translate =
+    group.orientation === "horizontal" ? `${String(offset)}px 0` : `0 ${String(offset)}px`;
+  element.dataset["dragging"] = "";
+}
+
+/** What a drag that starts with `event` starts from. */
+function dragFrom(group: GroupContextValue, range: HandleRange, event: PointerEvent): Drag {
+  const { sizes } = group;
+  return {
+    extent: extentOf(group),
+    latest: sizes,
+    layout: sizes,
+    pointer: coordinateOf(group, event),
+    size: range.now,
+  };
+}
+
+/** Follows the pointer from `start`: resizes the panels, or in a `release` group moves only the handle's line, and
+ * returns the layout the drag has reached. */
+function follow(
+  event: PointerEvent<HTMLDivElement>,
+  { group, pair }: { readonly group: GroupContextValue; readonly pair: Pair },
+  start: Drag,
+): ResizableLayout {
+  const moved = ((coordinateOf(group, event) - start.pointer) / start.extent) * whole;
+  const latest = resize(start.layout, pair, start.size + moved);
+  if (group.resizeOn === "release") {
+    const { id } = pair.before;
+    const change = (latest[id] ?? 0) - (start.layout[id] ?? 0);
+    placeLine(event.currentTarget, group, (change / whole) * start.extent);
+  } else {
+    group.dispatch({ layout: latest, type: "set" });
+  }
+  return latest;
+}
+
 /** The handle's pointer handlers: a drag moves the primary pane by the pointer's travel as a share of the panels'
- * length, from where the drag started, and reports the layout once the pointer lets go. */
+ * length, from where the drag started, and reports the layout once the pointer lets go. In a `release` group the
+ * panels keep their sizes until then, and only the handle's line moves. */
 function usePointerDrag({ group, active, app }: HandleBinding): PointerHandlers {
   const drag = useRef<Drag | null>(null);
 
@@ -77,15 +122,7 @@ function usePointerDrag({ group, active, app }: HandleBinding): PointerHandlers 
     event.preventDefault();
     event.currentTarget.setPointerCapture(event.pointerId);
     event.currentTarget.focus();
-    const { sizes } = group;
-    const pointer = coordinateOf(group, event);
-    drag.current = {
-      extent: extentOf(group),
-      latest: sizes,
-      layout: sizes,
-      pointer,
-      size: active.range.now,
-    };
+    drag.current = dragFrom(group, active.range, event);
   };
 
   const onPointerMove = (event: PointerEvent<HTMLDivElement>): void => {
@@ -94,19 +131,21 @@ function usePointerDrag({ group, active, app }: HandleBinding): PointerHandlers 
     if (start === null || active === null || start.extent === 0) {
       return;
     }
-    const moved = ((coordinateOf(group, event) - start.pointer) / start.extent) * whole;
-    const latest = resize(start.layout, active.pair, start.size + moved);
-    drag.current = { ...start, latest };
-    group.dispatch({ layout: latest, type: "set" });
+    drag.current = { ...start, latest: follow(event, { group, pair: active.pair }, start) };
   };
 
   const onPointerEnd = (event: PointerEvent<HTMLDivElement>): void => {
     (event.type === "pointerup" ? app.onPointerUp : app.onLostPointerCapture)?.(event);
     const start = drag.current;
     drag.current = null;
-    if (start !== null) {
-      group.onLayoutChanged?.(start.latest);
+    if (start === null) {
+      return;
     }
+    if (group.resizeOn === "release") {
+      placeLine(event.currentTarget, group, null);
+      group.dispatch({ layout: start.latest, type: "set" });
+    }
+    group.onLayoutChanged?.(start.latest);
   };
 
   return {

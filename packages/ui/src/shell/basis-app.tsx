@@ -48,7 +48,7 @@ interface BasisAppProps {
   readonly telemetry?: Telemetry;
   /** The query client, for a test that reads its cache; one from `createQueryClient()` by default. */
   readonly queryClient?: QueryClient;
-  /** The mode and density to show in place of the stored choice, which it otherwise follows: for a page told them
+  /** The mode, density and motion to show in place of the stored choice, which it otherwise follows: for a page told them
    * another way, as the gallery is by its query. A choice made in the user menu is still stored, and shown at once. */
   readonly preferences?: Preferences | undefined;
 }
@@ -183,7 +183,7 @@ function Routes({ router }: { readonly router: AnyRouter }): ReactElement {
 }
 
 /** The app's providers: telemetry, the query client, the toasts, an error boundary round everything, the signed-in
- * session, and the router. It also keeps the page in the user's mode and density as they change them, or in the
+ * session, and the router. It also keeps the page in the user's mode, density and motion as they change them, or in the
  * `preferences` it is given, signs the user out when the API says their session has ended, and asks them to sign in
  * when it says a request needs them to.
  *
@@ -209,14 +209,15 @@ function BasisApp({
   const { state, retry, session } = useSessionState(signIn, queryClient, telemetry);
   const shownMode = preferences?.mode;
   const shownDensity = preferences?.density;
+  const shownMotion = preferences?.motion;
   useEffect(
     () =>
       followPreferences(
-        shownMode === undefined || shownDensity === undefined
+        shownMode === undefined || shownDensity === undefined || shownMotion === undefined
           ? undefined
-          : { density: shownDensity, mode: shownMode },
+          : { density: shownDensity, mode: shownMode, motion: shownMotion },
       ),
-    [shownMode, shownDensity],
+    [shownMode, shownDensity, shownMotion],
   );
   useEffect(() => reportRequests(queryClient, telemetry), [queryClient, telemetry]);
   useEffect(() => reportNavigations(router, telemetry), [router, telemetry]);

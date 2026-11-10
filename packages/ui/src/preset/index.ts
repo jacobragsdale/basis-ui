@@ -12,6 +12,8 @@ import { lazyPlugins } from "vite-plus";
 import type { Plugin, PluginOption, ViteUserConfig } from "vite-plus";
 import type { OxlintConfig } from "vite-plus/lint";
 
+import { budgetArgs } from "./budget-options.ts";
+import type { Budget } from "./budget-options.ts";
 import { withCompilerFixes } from "./compiler-fixes.ts";
 import { headScriptPlugin } from "./head-script.ts";
 import { precompressPlugin } from "./precompress.ts";
@@ -77,8 +79,23 @@ function apiProxy(): Pick<ViteUserConfig, "server"> {
   };
 }
 
+interface BasisPresetOptions {
+  /** What opening each route may load, in kilobytes gzipped, which `vp run budget` holds the build to, such as
+   * `{ "/": { css: 25, js: 180 } }`. */
+  readonly budget?: Budget | undefined;
+}
+
+/** `vp run budget`: the build, then each route's weight against its budget (budget.ts). */
+function budgetTask(budget: Budget): Task {
+  const routes = budgetArgs(budget).map((arg) => `"${arg}"`);
+  return {
+    cache: false,
+    command: ["vp build", `node "${tasksScript}" budget ${routes.join(" ")}`],
+  };
+}
+
 /** The checks, formatting, staged-file checks and tasks every UI repo shares, and the proxy to a live API. */
-function basisPreset(): BasisPreset {
+function basisPreset({ budget = {} }: BasisPresetOptions = {}): BasisPreset {
   return {
     ...apiProxy(),
     fmt: {
@@ -88,6 +105,7 @@ function basisPreset(): BasisPreset {
     lint,
     run: {
       tasks: {
+        budget: budgetTask(budget),
         /* The framework's files first, then the client and the fixtures against `openapi.json`, then `tsc --noEmit`,
          * which type-checks the whole app with the installed TypeScript, the generated client included, which
          * `vp check` lints around; then the tests and the build, which fails on what only the React Compiler or the
@@ -176,7 +194,7 @@ function parallaxWorkerPlugin(): Plugin {
 }
 
 /** React with the React Compiler, which fails the build on any component it cannot optimize, Tailwind, the head
- * script that applies the stored mode and density before the first paint, written into the app's index.html, and, in
+ * script that applies the stored mode, density and motion before the first paint, written into the app's index.html, and, in
  * `vp dev` and `vp test` only, MSW's service worker at `/mockServiceWorker.js`, so tests serve the generated client's
  * handlers; in `vp dev`, a port of the app's own and fixture mode (fixture-mode.ts); in `vp test`, every dependency of
  * the app's modules is pre-bundled before the tests start. They load only when a command needs them, so `vp lint` and
@@ -249,4 +267,5 @@ async function basisTest({
 }
 
 export { basisPlugins, basisPreset, basisTest };
-export type { BasisPreset, BasisTestOptions };
+export type { BasisPreset, BasisPresetOptions, BasisTestOptions };
+export type { Budget, RouteBudget } from "./budget-options.ts";

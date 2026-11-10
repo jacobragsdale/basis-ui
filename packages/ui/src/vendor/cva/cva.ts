@@ -118,8 +118,10 @@ function compoundClasses(config: AnyConfig, props: AnyProps | undefined): ClassV
 }
 
 /** A function from variant props to a class string: the base classes, each variant's classes, the compound variants'
- * classes, then the call's own `class` and `className`. */
+ * classes, then the call's own `class` and `className`. Calling it has no side effect, which the annotation tells an
+ * app's bundler, so a variant made at module scope and never used is dropped with its classes. */
 function cva<Schema>(base?: ClassValue, config?: Config<Schema>): (props?: Props<Schema>) => string;
+/* @__NO_SIDE_EFFECTS__ */
 function cva(base?: ClassValue, config?: AnyConfig): (props?: AnyProps) => string {
   return (props) => {
     if (config?.variants === undefined || config.variants === null) {

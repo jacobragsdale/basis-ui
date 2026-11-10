@@ -12,7 +12,11 @@
  * range is what both panels' limits allow that pane (resizable-handle.ts has its keys). For a finger, its 24 px hit
  * area reaches past the drawn line on both sides, over the panels' edges, as react-resizable-panels' own hit targets
  * do. For a mouse it is 4 px, 3 in the compact density, so a panel's scrollbar beside the line stays the panel's: the
- * arrow keys on the focused handle are its equivalent, WCAG 2.2's exception to the 24 px target, as SidebarRail's is. */
+ * arrow keys on the focused handle are its equivalent, WCAG 2.2's exception to the 24 px target, as SidebarRail's is.
+ *
+ * A group with `resizeOn="release"` moves only the handle's line while a pointer drags it, and resizes its panels once,
+ * when the pointer lets go: a pane that holds a grid or a chart then lays out and redraws once, where a live drag would
+ * redraw it on every move, which a Citrix desktop draws on the CPU and sends as screen changes. */
 
 import { mergeProps } from "@base-ui/react/merge-props";
 import { cn } from "cn";
@@ -30,7 +34,7 @@ import {
   resolveLayout,
   whole,
 } from "./resizable-layout.ts";
-import type { Orientation, PanelEntry, ResizableLayout } from "./resizable-layout.ts";
+import type { Orientation, PanelEntry, ResizableLayout, ResizeOn } from "./resizable-layout.ts";
 
 interface ResizablePanelGroupProps extends Omit<ComponentProps<"div">, "ref"> {
   /** `horizontal` puts the panels side by side, `vertical` stacks them. */
@@ -41,6 +45,10 @@ interface ResizablePanelGroupProps extends Omit<ComponentProps<"div">, "ref"> {
   readonly onLayoutChanged?: ((layout: ResizableLayout) => void) | undefined;
   /** Stops every handle in the group from resizing. */
   readonly disabled?: boolean | undefined;
+  /** `release` resizes the panels once, when a pointer drag lets go, with the handle's line following the pointer
+   * until then: for a group whose panes hold a grid or a chart, which redraw when they resize. `drag`, the default,
+   * resizes them as the pointer moves. The keys resize at once either way. */
+  readonly resizeOn?: ResizeOn | undefined;
 }
 
 /** A group of panels split by handles, filling its parent. Give each panel an `id` when its layout is stored.
@@ -61,6 +69,7 @@ function ResizablePanelGroup({
   defaultLayout,
   onLayoutChanged,
   disabled = false,
+  resizeOn = "drag",
   className,
   ...props
 }: ResizablePanelGroupProps): ReactElement {
@@ -75,9 +84,10 @@ function ResizablePanelGroup({
       entries: state.entries,
       onLayoutChanged,
       orientation,
+      resizeOn,
       sizes: resolveLayout(panelsOf(state.entries), state.layout),
     }),
-    [disabled, onLayoutChanged, orientation, state],
+    [disabled, onLayoutChanged, orientation, resizeOn, state],
   );
   return (
     <GroupContext value={group}>
@@ -171,7 +181,7 @@ function ResizableHandle({
       aria-disabled={active === null ? true : undefined}
       data-slot="resizable-handle"
       className={cn(
-        "relative z-10 flex shrink-0 touch-none items-center justify-center bg-border outline-none select-none after:absolute focus-visible:ring-1 focus-visible:ring-ring aria-disabled:cursor-default",
+        "relative z-10 flex shrink-0 touch-none items-center justify-center bg-border outline-none select-none after:absolute focus-visible:ring-1 focus-visible:ring-ring aria-disabled:cursor-default data-dragging:bg-ring",
         "aria-[orientation=vertical]:w-px aria-[orientation=vertical]:cursor-col-resize aria-[orientation=vertical]:after:inset-y-0 aria-[orientation=vertical]:after:left-1/2 aria-[orientation=vertical]:after:w-target aria-[orientation=vertical]:after:-translate-x-1/2 pointer-fine:aria-[orientation=vertical]:after:w-1",
         "aria-[orientation=horizontal]:h-px aria-[orientation=horizontal]:cursor-row-resize aria-[orientation=horizontal]:after:inset-x-0 aria-[orientation=horizontal]:after:top-1/2 aria-[orientation=horizontal]:after:h-target aria-[orientation=horizontal]:after:-translate-y-1/2 pointer-fine:aria-[orientation=horizontal]:after:h-1 [&[aria-orientation=horizontal]>div]:rotate-90",
         className,

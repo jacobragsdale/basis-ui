@@ -39,6 +39,7 @@ behaves alike, and a fix reaches all of them in one upgrade.
 | `vp dev`                        | The app in fixture mode, on a free port per git worktree, with no backend                                                                                                |
 | `vp run check-full`             | `sync --check`, `client-check`, the fixtures against `openapi.json`, `tsc --noEmit` on the whole app, `check`, `test` and `build`; screenshot comparison in WSL, not yet |
 | `vp run shot ROUTE`             | A screenshot of a page, its accessibility tree and its console errors                                                                                                    |
+| `vp run budget`                 | The build, then each route's JavaScript and CSS, gzipped, against the budget the app's `vite.config.ts` gives it                                                         |
 | `vp run client-pull`            | Copies the API's `openapi.json` from the API repo at a tag, or from a deployed API, and regenerates the client                                                           |
 | `vp run client-check`           | Whether the generated client still matches the repo's `openapi.json`: a task of its own, since an app cannot add a step to `vp check`                                    |
 | `vp run review`                 | A pull request's summary: the client's diff, the versions, and the commit that was checked; screenshot diffs, not yet                                                    |
@@ -237,7 +238,7 @@ The firm's own components cover what shadcn does not:
   the rows, and checks them against a schema before anything is sent; a workbook's cells read as the text Excel shows,
   with dates in ISO 8601, and a workbook with several sheets of the schema's columns offers a choice of sheet. An .xls,
   .xlsb or .ods is refused with how to save it as .xlsx ([the reader's spike](spikes/xlsx-reader.md)).
-- **The shell's parts.** A sidebar built from the route tree, breadcrumbs, a user menu holding the mode and density, a
+- **The shell's parts.** A sidebar built from the route tree, breadcrumbs, a user menu holding the mode, density and motion, a
   banner naming the environment, a command palette (Ctrl+K) filled from the routes, and a shortcut registry with a `?`
   overlay. Not yet: a filter bar whose state lives in the URL's search parameters (step 6.7.2), saved views (step
   6.6.3), and split panes for master and detail (step 6.7).
@@ -309,12 +310,24 @@ app's stylesheet today (step 6.8.3).
    `prefers-reduced-motion`: 100 ms for a popup's fade and scale, 150 ms for a panel that slides, such as the sidebar,
    a Sheet or an Accordion's content. Motion never lays the page out frame by frame where a grid or chart would resize
    with it: the sidebar's panel moves on its own while the space it holds changes at once, and canvases never animate.
-   The maintainer asked for this motion on 2026-11-08, where the sidebar had folded at once. Fonts are bundled, so screenshots match on every desktop: Inter for text and JetBrains Mono
-   for code, until the firm's fonts replace them. A canvas's font cannot ask for tabular figures, so `--font-num` names
-   Inter declared again with them on, which parallax's canvases draw in.
+   The maintainer asked for this motion on 2026-11-08, where the sidebar had folded at once. A Citrix desktop draws on
+   the CPU and sends each frame's changes as an image, so motion that touches much of the screen, or never stops,
+   costs it most, and since 2026-11-09 the components hold to five more rules (step 6.2c). The veil behind a Dialog,
+   Alert Dialog, Sheet or Drawer appears at once, and only the popup over it fades or slides. Controls such as Button,
+   Badge, Toggle, a tab, Switch and Progress fade their colours and nothing else, so no change of size is laid out
+   frame by frame. A table's rows and a date grid's days change on hover at once, since the pointer crosses many. The
+   skeleton holds still, where shadcn's pulses, so a page that loads sends nothing until it has loaded. And a change of
+   theme, mode, density or motion is drawn in one frame, with every transition held off until it is, as the canvases
+   change. `Resizable` resizes a pane that holds a canvas once, on release, with only its line following the pointer.
+   A gallery test holds `DataTable` at its row cap, a dialog opening and a change of mode to a budget of long animation
+   frames with the CPU slowed four times. Fonts are bundled, so screenshots match on every desktop: Inter for text and
+   JetBrains Mono for code, until the firm's fonts replace them. A canvas's font cannot ask for tabular figures, so
+   `--font-num` names Inter declared again with them on, which parallax's canvases draw in.
 
-The user chooses a mode (system, light or dark) and a density (compact, the default by the maintainer's choice of
-2026-11-07, or comfortable), and once step 6.5.5 is built a theme. They live in one cookie, meant to sit on the parent
+The user chooses a mode (system, light or dark), a density (compact, the default by the maintainer's choice of
+2026-11-07, or comfortable), a motion (full, the default, or reduced), and once step 6.5.5 is built a theme. Reduced
+motion stops every transition and animation as `prefers-reduced-motion` does, for a desktop whose Windows setting is
+not the user's to change; either one stops them. They live in one cookie, meant to sit on the parent
 domain the firm's apps share, so that every app follows one choice, and a page left open changes when another app
 changes it. A script in the page's head applies them before the first paint, and sets `color-scheme` to match, so
 scrollbars and native controls follow. If the apps share no parent domain, each app keeps its own choice. Not yet: the
@@ -499,6 +512,17 @@ with `Cache-Control: immutable` for the hashed assets and `no-cache` for `index.
 for files over 1 MB, where 11 took 7 s on parallax's wasm for 13% less; the step adds tenths of a second to a build.
 The maintainer asked for it on 2026-11-08, finding the demos slow when served uncompressed.
 
+An app loads only the parts of `@basis/ui` it uses. The package builds one module for each of its own, declares only
+its stylesheets as side effects, and declares `cva` free of them, so an app's bundler drops every component the app
+does not import. Built as one module, it had cost an app of one card all of it. Each app gives each route a budget, the
+kilobytes of JavaScript and of CSS, gzipped, that opening it may load, and `vp run budget` opens each route of the
+build in headless Chromium and fails the one that loads more, lazy chunks and workers included. The template loads
+each page with a lazy import, so a page's code, and `@basis/parallax` with it, loads only when the page opens. The
+review of 2026-11-09 asked for under 200 kB of JavaScript, before gzip, for `packages/consumer`'s one card, and it is
+not met: the card loads 543 kB, 176 kB gzipped, where it loaded 558 kB, 180 kB gzipped, as one module, because React
+DOM alone is 207 kB of it, and Zod, the router, Base UI and TanStack Query, which every app's shell uses, most of the
+rest; `@basis/ui`'s own part fell from 60 kB to 47 kB.
+
 ## Gates without CI
 
 Every UI repo has Node, so basis-ui uses Vite+'s own hooks: `vp config`, run from the repo's `prepare` script, installs
@@ -647,4 +671,4 @@ Citrix repeat on the new engine:
 - that the firm's Chrome and Edge are version 139 or later, which the canvas's tabular digits need: they come from a
   `font-feature-settings` descriptor in `@font-face`, which Chromium honours from 139 (step 6.4.1; the probe page of
   step 6.10 reports the version);
-- that the firm's apps share a parent domain, for the cookie that holds the mode, density and theme.
+- that the firm's apps share a parent domain, for the cookie that holds the mode, density, motion and theme.

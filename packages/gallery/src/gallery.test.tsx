@@ -8,7 +8,7 @@ import { Gallery } from "./gallery.tsx";
 import { pageFor, pages } from "./pages.ts";
 import { queryPreferences } from "./preferences.ts";
 
-const stored = { density: "compact", mode: "light" } as const;
+const stored = { density: "compact", mode: "light", motion: "full" } as const;
 
 describe(queryPreferences, () => {
   test("is null when the query names neither the mode nor the density", () => {
@@ -19,6 +19,7 @@ describe(queryPreferences, () => {
     expect(queryPreferences("?mode=dark&density=comfortable", stored)).toStrictEqual({
       density: "comfortable",
       mode: "dark",
+      motion: "full",
     });
   });
 
@@ -26,10 +27,12 @@ describe(queryPreferences, () => {
     expect(queryPreferences("?mode=dark", stored)).toStrictEqual({
       density: "compact",
       mode: "dark",
+      motion: "full",
     });
     expect(queryPreferences("?density=comfortable", defaultPreferences)).toStrictEqual({
       density: "comfortable",
       mode: "system",
+      motion: "full",
     });
   });
 

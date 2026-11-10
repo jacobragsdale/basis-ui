@@ -43,6 +43,17 @@ describe("Spinner", () => {
     });
   });
 
+  test("holds still when the user's motion preference is reduced, as the user menu sets it", async () => {
+    const screen = await render(<Spinner />);
+    const icon = iconOf(screen.getByRole("status", { name: "Loading" }).element());
+    document.documentElement.dataset["motion"] = "reduced";
+    try {
+      expect(getComputedStyle(icon).animationName).toBe("none");
+    } finally {
+      delete document.documentElement.dataset["motion"];
+    }
+  });
+
   test("is 16 px square, and className sizes it", async () => {
     const screen = await render(
       <>

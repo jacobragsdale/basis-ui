@@ -1,5 +1,8 @@
 import "#styles.css";
 
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@basis/ui";
+import type { ResizableLayout } from "@basis/ui";
+import type { ReactElement } from "react";
 import { describe, expect, test, vi } from "vite-plus/test";
 import { userEvent } from "vite-plus/test/browser";
 import { render } from "vitest-browser-react";
@@ -126,5 +129,78 @@ describe("Resizable", () => {
       (offset) => document.elementFromPoint(middle + offset, height) === handle,
     );
     expect(hits).toStrictEqual([false, true, true, false]);
+  });
+});
+
+/** What a chart beside its legend showed when a `release` drag let go, before the group took the new layout. */
+interface AtRelease {
+  readonly chart: number;
+  readonly dragging: string | undefined;
+  readonly moved: boolean;
+}
+
+/** A chart beside its legend in a `release` group, the chart at most 70 percent wide, recording each release. */
+function ChartSplit({
+  atRelease,
+  onLayoutChanged,
+}: {
+  readonly atRelease: AtRelease[];
+  readonly onLayoutChanged: (layout: ResizableLayout) => void;
+}): ReactElement {
+  return (
+    <div className="h-40">
+      <ResizablePanelGroup resizeOn="release" onLayoutChanged={onLayoutChanged}>
+        <ResizablePanel id="chart" defaultSize={50} maxSize={70}>
+          Chart
+        </ResizablePanel>
+        <ResizableHandle
+          aria-label="Resize the chart"
+          onPointerUp={(event) => {
+            atRelease.push({
+              chart: widthShare(document, "chart"),
+              dragging: event.currentTarget.dataset["dragging"],
+              moved: event.currentTarget.style.translate !== "",
+            });
+          }}
+        />
+        <ResizablePanel id="legend">Legend</ResizablePanel>
+      </ResizablePanelGroup>
+    </div>
+  );
+}
+
+describe("Resizable with resizeOn release", () => {
+  test("a drag moves only the line, and resizes the panels once, when it lets go", async () => {
+    const changed = vi.fn<(layout: ResizableLayout) => void>();
+    const atRelease: AtRelease[] = [];
+    const screen = await render(<ChartSplit atRelease={atRelease} onLayoutChanged={changed} />);
+    const handle = screen.getByRole("separator", { name: "Resize the chart" });
+    const legend = only(screen.container, "#legend");
+    await userEvent.dragAndDrop(handle, legend, {
+      targetPosition: { x: sizeOf(legend)[0] - 2, y: 10 },
+    });
+    expect(atRelease).toStrictEqual([{ chart: 50, dragging: "", moved: true }]);
+    await expect.element(handle).toHaveAttribute("aria-valuenow", "70");
+    const { dataset, style } = only(screen.container, '[data-slot="resizable-handle"]');
+    expect({
+      chart: widthShare(screen.container, "chart"),
+      dragging: dataset["dragging"],
+      reported: changed.mock.calls,
+      translate: style.translate,
+    }).toStrictEqual({
+      chart: 70,
+      dragging: undefined,
+      reported: [[{ chart: 70, legend: 30 }]],
+      translate: "",
+    });
+  });
+
+  test("the keys still resize at once", async () => {
+    const changed = vi.fn<(layout: ResizableLayout) => void>();
+    const screen = await render(<ChartSplit atRelease={[]} onLayoutChanged={changed} />);
+    screen.getByRole("separator", { name: "Resize the chart" }).element().focus();
+    await userEvent.keyboard("{ArrowRight}");
+    expect(changed).toHaveBeenCalledExactlyOnceWith({ chart: 55, legend: 45 });
+    expect(widthShare(screen.container, "chart")).toBe(55);
   });
 });

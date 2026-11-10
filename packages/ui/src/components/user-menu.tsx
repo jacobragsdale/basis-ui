@@ -1,5 +1,5 @@
-/* The user menu: who is signed in, the mode and the density they see every app in, and signing in or out. The mode and
- * density are the cookie every app of the firm's shares (docs/design.md, The theme), so a change here reaches them all. */
+/* The user menu: who is signed in, the mode, density and motion they see every app in, and signing in or out. The three
+ * are the cookie every app of the firm's shares (docs/design.md, The theme), so a change here reaches them all. */
 
 import { useState } from "react";
 import type { ReactElement } from "react";
@@ -7,7 +7,7 @@ import type { ReactElement } from "react";
 import { useSession } from "#shell/session.ts";
 import { useTelemetry } from "#shell/telemetry.ts";
 import { readPreferences, writePreferences } from "#theme/preferences.ts";
-import type { Density, ModePreference, Preferences } from "#theme/preferences.ts";
+import type { Density, ModePreference, Motion, Preferences } from "#theme/preferences.ts";
 import { ChevronDownIcon } from "#vendor/lucide/chevron-down.tsx";
 
 import { Button } from "./button.tsx";
@@ -32,6 +32,10 @@ const densities: readonly (readonly [Density, string])[] = [
   ["comfortable", "Comfortable"],
   ["compact", "Compact"],
 ];
+const motions: readonly (readonly [Motion, string])[] = [
+  ["full", "Full"],
+  ["reduced", "Reduced"],
+];
 
 /** The stored preferences, and a setter that stores and applies a change at once. */
 function usePreferences(): [Preferences, (change: Partial<Preferences>) => void] {
@@ -42,6 +46,39 @@ function usePreferences(): [Preferences, (change: Partial<Preferences>) => void]
     setPreferences(updated);
   };
   return [preferences, change];
+}
+
+interface ChoicesProps<Value extends string> {
+  readonly label: string;
+  readonly options: readonly (readonly [Value, string])[];
+  readonly value: Value;
+  readonly onChange: (value: Value) => void;
+}
+
+/** One preference's choices, under its label, the chosen one checked. */
+function Choices<Value extends string>({
+  label,
+  options,
+  value,
+  onChange,
+}: ChoicesProps<Value>): ReactElement {
+  return (
+    <DropdownMenuGroup>
+      <DropdownMenuLabel>{label}</DropdownMenuLabel>
+      <DropdownMenuRadioGroup
+        value={value}
+        onValueChange={(next: Value) => {
+          onChange(next);
+        }}
+      >
+        {options.map(([option, text]) => (
+          <DropdownMenuRadioItem key={option} value={option}>
+            {text}
+          </DropdownMenuRadioItem>
+        ))}
+      </DropdownMenuRadioGroup>
+    </DropdownMenuGroup>
+  );
 }
 
 /** Signing in or out, as the app's sign-in adapter offers it: nothing under `anonymousSignIn`. */
@@ -69,8 +106,9 @@ function SessionItem(): ReactElement | null {
   );
 }
 
-/** The signed-in user's menu: the mode (system, light or dark) and density (comfortable or compact) every app shows,
- * and signing in or out. Inside `BasisApp`, which keeps the session; `AppShell` puts it in the sidebar's footer.
+/** The signed-in user's menu: the mode (system, light or dark), density (comfortable or compact) and motion (full, or
+ * reduced, which stops every transition as the operating system's setting does) every app shows, and signing in or
+ * out. Inside `BasisApp`, which keeps the session; `AppShell` puts it in the sidebar's footer.
  *
  * @example
  * ```tsx
@@ -90,37 +128,32 @@ function UserMenu(): ReactElement {
         <ChevronDownIcon data-icon="inline-end" />
       </DropdownMenuTrigger>
       <DropdownMenuContent>
-        <DropdownMenuGroup>
-          <DropdownMenuLabel>Mode</DropdownMenuLabel>
-          <DropdownMenuRadioGroup
-            value={preferences.mode}
-            onValueChange={(mode: ModePreference) => {
-              change({ mode });
-            }}
-          >
-            {modes.map(([mode, label]) => (
-              <DropdownMenuRadioItem key={mode} value={mode}>
-                {label}
-              </DropdownMenuRadioItem>
-            ))}
-          </DropdownMenuRadioGroup>
-        </DropdownMenuGroup>
+        <Choices
+          label="Mode"
+          options={modes}
+          value={preferences.mode}
+          onChange={(mode) => {
+            change({ mode });
+          }}
+        />
         <DropdownMenuSeparator />
-        <DropdownMenuGroup>
-          <DropdownMenuLabel>Density</DropdownMenuLabel>
-          <DropdownMenuRadioGroup
-            value={preferences.density}
-            onValueChange={(density: Density) => {
-              change({ density });
-            }}
-          >
-            {densities.map(([density, label]) => (
-              <DropdownMenuRadioItem key={density} value={density}>
-                {label}
-              </DropdownMenuRadioItem>
-            ))}
-          </DropdownMenuRadioGroup>
-        </DropdownMenuGroup>
+        <Choices
+          label="Density"
+          options={densities}
+          value={preferences.density}
+          onChange={(density) => {
+            change({ density });
+          }}
+        />
+        <DropdownMenuSeparator />
+        <Choices
+          label="Motion"
+          options={motions}
+          value={preferences.motion}
+          onChange={(motion) => {
+            change({ motion });
+          }}
+        />
         <SessionItem />
       </DropdownMenuContent>
     </DropdownMenu>

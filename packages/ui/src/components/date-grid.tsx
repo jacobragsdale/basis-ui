@@ -6,7 +6,8 @@
  *
  * Each day is marked by the field's calendar: a day the market is closed is muted, a holiday also struck through, and
  * an early close carries a dot. Each day's name, and its title, give the reason, and the line under the grid gives
- * the focused day's, so the mark is never the only telling of it. */
+ * the focused day's, so the mark is never the only telling of it. A day's hover shows at once, as a table row's does,
+ * since the pointer crosses many of them. */
 
 import { useEffect, useId, useRef } from "react";
 import type { KeyboardEvent, ReactElement } from "react";
@@ -91,7 +92,7 @@ function Day({ date, grid, onKeyDown }: DayProps): ReactElement {
         data-market={marketOf(day)}
         data-selected={place === "edge"}
         data-in-range={place === "inside"}
-        className="relative flex size-8 items-center justify-center rounded-md text-sm tabular-nums outline-none transition-colors hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 aria-disabled:cursor-default aria-disabled:text-muted-foreground aria-disabled:hover:bg-transparent aria-[current=date]:font-semibold aria-[current=date]:underline aria-[current=date]:underline-offset-4 data-[in-range=true]:bg-accent data-[in-range=true]:text-accent-foreground data-[market=early-close]:after:absolute data-[market=early-close]:after:bottom-1 data-[market=early-close]:after:left-1/2 data-[market=early-close]:after:size-1 data-[market=early-close]:after:-translate-x-1/2 data-[market=early-close]:after:rounded-full data-[market=early-close]:after:bg-warning data-[market=holiday]:line-through data-[selected=true]:bg-primary data-[selected=true]:text-primary-foreground data-[selected=true]:hover:bg-primary/80"
+        className="relative flex size-8 items-center justify-center rounded-md text-sm tabular-nums outline-none hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 aria-disabled:cursor-default aria-disabled:text-muted-foreground aria-disabled:hover:bg-transparent aria-[current=date]:font-semibold aria-[current=date]:underline aria-[current=date]:underline-offset-4 data-[in-range=true]:bg-accent data-[in-range=true]:text-accent-foreground data-[market=early-close]:after:absolute data-[market=early-close]:after:bottom-1 data-[market=early-close]:after:left-1/2 data-[market=early-close]:after:size-1 data-[market=early-close]:after:-translate-x-1/2 data-[market=early-close]:after:rounded-full data-[market=early-close]:after:bg-warning data-[market=holiday]:line-through data-[selected=true]:bg-primary data-[selected=true]:text-primary-foreground data-[selected=true]:hover:bg-primary/80"
         onClick={() => {
           grid.onFocusedChange(date);
           if (pickable) {

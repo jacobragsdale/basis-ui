@@ -74,13 +74,14 @@ function TableFooter({ className, ...props }: ComponentProps<"tfoot">): ReactEle
   );
 }
 
-/** A row. `data-state="selected"` marks it selected, in the theme's `selection` colour. */
+/** A row. `data-state="selected"` marks it selected, in the theme's `selection` colour. Its hover shows at once, with
+ * no fade, since the pointer crosses many rows and each fade is frames a Citrix desktop draws and sends. */
 function TableRow({ className, ...props }: ComponentProps<"tr">): ReactElement {
   return (
     <tr
       data-slot="table-row"
       className={cn(
-        "border-b transition-colors hover:bg-muted/50 has-aria-expanded:bg-muted/50 data-[state=selected]:bg-selection",
+        "border-b hover:bg-muted/50 has-aria-expanded:bg-muted/50 data-[state=selected]:bg-selection",
         className,
       )}
       {...props}

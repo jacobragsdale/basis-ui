@@ -253,7 +253,7 @@ export {
   PaginationPrevious,
 } from "./components/pagination.tsx";
 export { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "./components/resizable.tsx";
-export type { ResizableLayout } from "./components/resizable-layout.ts";
+export type { ResizableLayout, ResizeOn } from "./components/resizable-layout.ts";
 export { ScrollArea, ScrollBar } from "./components/scroll-area.tsx";
 export { Separator } from "./components/separator.tsx";
 export {
@@ -568,6 +568,7 @@ export {
   type CookieOptions,
   type Density,
   type ModePreference,
+  type Motion,
   type Preferences,
   type PreferencesRoot,
   type ResolvedMode,

@@ -46,6 +46,12 @@ async function basisTokens(): Promise<Theme & { readonly host: HTMLElement }> {
   return { ...theme, host };
 }
 
+/* The test below finds Inter's file among the page's resource timings. `@basis/ui` is served as one module for each of
+ * its own, a few hundred requests in a test run, past the browser's buffer of 250 entries, which drops what comes after
+ * it: so the buffer is widened before the fonts load. */
+const resourceEntries = 10_000;
+performance.setResourceTimingBufferSize(resourceEntries);
+
 /** A face of a file the page has loaded, under a name nothing has asked for, added to the page's fonts. */
 function unrequestedFace(): FontFace {
   const file = performance

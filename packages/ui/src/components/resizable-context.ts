@@ -4,11 +4,19 @@
 import { createContext, use, useLayoutEffect } from "react";
 import type { Dispatch } from "react";
 
-import type { Entry, GroupAction, Orientation, ResizableLayout } from "./resizable-layout.ts";
+import type {
+  Entry,
+  GroupAction,
+  Orientation,
+  ResizableLayout,
+  ResizeOn,
+} from "./resizable-layout.ts";
 
 interface GroupContextValue {
   readonly orientation: Orientation;
   readonly disabled: boolean;
+  /** When a pointer drag resizes the panels: as it moves, or once, when it lets go. */
+  readonly resizeOn: ResizeOn;
   /** The group's panels and handles in their DOM order. */
   readonly entries: readonly Entry[];
   /** Every panel's size, resolved from the layout, the defaults and the limits. */

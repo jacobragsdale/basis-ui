@@ -20,6 +20,9 @@
     "sync"
   ],
   "type": "module",
+  "sideEffects": [
+    "**/*.css"
+  ],
   "imports": {
     "#*": "./src/*"
   },

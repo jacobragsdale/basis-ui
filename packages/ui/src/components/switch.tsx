@@ -45,7 +45,7 @@ function Switch({
     >
       <span
         data-slot="switch-track"
-        className="inline-flex shrink-0 items-center rounded-full p-0.25 transition-all group-focus-visible/switch:ring-3 group-focus-visible/switch:ring-ring/50 group-focus-visible/switch:inset-ring group-focus-visible/switch:inset-ring-ring group-has-[:focus-visible]/field-label:ring-0 group-has-[:focus-visible]/field-label:inset-ring-0 group-aria-invalid/switch:ring-3 group-aria-invalid/switch:ring-destructive/30 group-aria-invalid/switch:inset-ring group-aria-invalid/switch:inset-ring-destructive group-data-checked/switch:bg-primary group-data-unchecked/switch:bg-input group-data-[size=default]/switch:h-4.5 group-data-[size=default]/switch:w-8 group-data-[size=sm]/switch:h-3.5 group-data-[size=sm]/switch:w-6"
+        className="inline-flex shrink-0 items-center rounded-full p-0.25 transition-colors group-focus-visible/switch:ring-3 group-focus-visible/switch:ring-ring/50 group-focus-visible/switch:inset-ring group-focus-visible/switch:inset-ring-ring group-has-[:focus-visible]/field-label:ring-0 group-has-[:focus-visible]/field-label:inset-ring-0 group-aria-invalid/switch:ring-3 group-aria-invalid/switch:ring-destructive/30 group-aria-invalid/switch:inset-ring group-aria-invalid/switch:inset-ring-destructive group-data-checked/switch:bg-primary group-data-unchecked/switch:bg-input group-data-[size=default]/switch:h-4.5 group-data-[size=default]/switch:w-8 group-data-[size=sm]/switch:h-3.5 group-data-[size=sm]/switch:w-6"
       >
         <SwitchPrimitive.Thumb
           data-slot="switch-thumb"

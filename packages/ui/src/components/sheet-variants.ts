@@ -5,10 +5,9 @@
 
 import { cva } from "#vendor/cva/cva.ts";
 
-/** The veil over the page behind a sheet. */
-const sheetOverlayVariants = cva(
-  "fixed inset-0 z-50 bg-background/70 transition-opacity duration-150 data-ending-style:opacity-0 data-starting-style:opacity-0",
-);
+/** The veil over the page behind a sheet, which appears at once: a full-screen fade would repaint the whole screen
+ * every frame on a desktop drawn on the CPU. Only the panel moves. */
+const sheetOverlayVariants = cva("fixed inset-0 z-50 bg-background/70");
 
 /** The sheet's panel, against the edge its `data-side` names, sliding a step in from it. */
 const sheetContentVariants = cva(

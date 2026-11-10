@@ -80,7 +80,8 @@ jobs:
           cache: true
       - run: vp run @basis/ui#build
       # Browser tests run in the Chromium that the preset's Playwright version pins: the gallery's and the example's,
-      # and @basis/ui's own test of shot, which pictures a page.
+      # and @basis/ui's own tests of shot, which pictures a page, and of budget, which weighs one; its tree-shaking test
+      # bundles its build.
       - run: vp exec --filter @basis/ui playwright install --with-deps chromium
       - run: vp run @basis/ui#test
       - run: vp run @basis/gallery#test
@@ -93,8 +94,9 @@ jobs:
       # The same app on a machine with no browser: the tests written with @basis/ui/testing, in a Node DOM.
       - run: vp run @basis/example#test-node
       - run: vp run @basis/example#build
-      # The consumer app is configured by hand with the README's lines, as ctzd writes its apps, and must build.
-      - run: vp run @basis/consumer#build
+      # The consumer app is configured by hand with the README's lines, as ctzd writes its apps, and must build and meet
+      # its budget: `vp run budget` builds it, then weighs its route in Chromium.
+      - run: vp run @basis/consumer#budget
 
   # Every gallery section's screenshot, in light and dark, comfortable and compact, and its axe check, in the pinned
   # Playwright image, against the gallery built here on @basis/ui's build. A change to either runs them.

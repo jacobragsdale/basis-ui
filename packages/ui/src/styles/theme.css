@@ -25,6 +25,25 @@
    chosen mode rather than the operating system's. */
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* Motion stops where the operating system asks for less of it, and where the user's `motion` preference is
+   `reduced`, which the preferences put on the root element as `data-motion`, for a desktop whose Windows setting is
+   not the user's to change. `motion-reduce:` and `motion-safe:` follow both. */
+@custom-variant motion-reduce {
+  @media (prefers-reduced-motion: reduce) {
+    @slot;
+  }
+  &:where([data-motion="reduced"] *) {
+    @slot;
+  }
+}
+@custom-variant motion-safe {
+  @media (prefers-reduced-motion: no-preference) {
+    &:not(:where([data-motion="reduced"] *)) {
+      @slot;
+    }
+  }
+}
+
 :root {
   color-scheme: light;
   --radius: 0.375rem;
@@ -301,4 +320,18 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+:root[data-motion="reduced"] *,
+:root[data-motion="reduced"] ::before,
+:root[data-motion="reduced"] ::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+}
+
+:root[data-switching] *,
+:root[data-switching] ::before,
+:root[data-switching] ::after {
+  transition: none !important;
 }

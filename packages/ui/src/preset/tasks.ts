@@ -1,6 +1,7 @@
 /* The framework tasks the preset gives every app, run by Node in the app's root as `node tasks.mjs TASK ARGS`:
  *
  *   vp run sync [--check]      the framework's files (sync.ts)
+ *   vp run budget              each route's JavaScript and CSS against its budget, after vp build (budget.ts)
  *   vp run doctor              the desktop's setup (doctor.ts)
  *   vp run review [BRANCH]     a pull request's summary (review.ts), and `checked`, check-full's last step
  *   fixtures                   check-full's check of the fixtures in fixtures/ (fixture-files.ts)
@@ -11,6 +12,7 @@
  * this process loading a module of another version. Every failure is one line that starts with ERROR and ends with
  * the fix. */
 
+import { budgetTask } from "./budget.ts";
 import { docs } from "./docs.ts";
 import { doctor } from "./doctor.ts";
 import { checkFixtures } from "./fixture-files.ts";
@@ -22,6 +24,7 @@ import { upgrade } from "./upgrade.ts";
 type Task = (root: string, args: readonly string[]) => Promise<string>;
 
 const tasks: ReadonlyMap<string, Task> = new Map([
+  ["budget", budgetTask],
   ["checked", recordCheck],
   ["docs", docs],
   ["doctor", doctor],

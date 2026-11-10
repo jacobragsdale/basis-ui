@@ -1,6 +1,7 @@
 /* Dialog and its parts, from shadcn's Base UI source (its base-nova style), with these changes:
  * - The backdrop veils the page in the theme's background, where shadcn darkens it with black and blurs it. The theme
- *   has no black, and Citrix desktops draw blur on the CPU.
+ *   has no black, and Citrix desktops draw blur on the CPU. It appears and goes at once: a fade of a veil the size of
+ *   the screen repaints the whole screen every frame, which a Citrix desktop draws on the CPU and sends as an image.
  * - The popup fades and scales on a short transition through Base UI's `data-starting-style` and `data-ending-style`,
  *   which the theme's reduced-motion rule stops, in place of tw-animate-css's keyframes, which the theme lacks.
  * - The popup sits in Base UI's viewport, whose padding keeps it off the screen's edges in place of shadcn's arbitrary
@@ -70,10 +71,7 @@ function DialogOverlay({ className, ...props }: DialogPrimitive.Backdrop.Props):
   return (
     <DialogPrimitive.Backdrop
       data-slot="dialog-overlay"
-      className={cn(
-        "fixed inset-0 isolate z-50 bg-background/70 transition-opacity duration-100 data-ending-style:opacity-0 data-starting-style:opacity-0",
-        className,
-      )}
+      className={cn("fixed inset-0 isolate z-50 bg-background/70", className)}
       {...props}
     />
   );
