@@ -62,16 +62,26 @@ describe("checking keys", () => {
     expect(withKeys(new Set(["7", "3"]), ["3", "4", "5"])).toStrictEqual(["7", "3", "4", "5"]);
   });
 
-  test("shows none, some or all in the header, and forgets all once the keys change", () => {
+  test("shows none, some or all in the header, and some once the keys are not those it checked", () => {
     const choice = new RowChoice();
     expect(choice.header).toBe("none");
     expect(choice.replace(["1", "2"])).toBe(true);
     expect(choice.header).toBe("some");
-    choice.all = true;
+    choice.checkedAll(["1", "2"]);
     expect(choice.replace(["2", "1"])).toBe(false);
     expect(choice.header).toBe("all");
     choice.replace(["1"]);
     expect([choice.header, choice.has("1"), choice.has(null)]).toStrictEqual(["some", true, false]);
+  });
+
+  test("shows all in the header when the app gives back, a render later, the keys it checked", () => {
+    const choice = new RowChoice();
+    choice.checkedAll(["1", "2"]);
+    expect(choice.header).toBe("none");
+    choice.replace(["2", "1"]);
+    expect(choice.header).toBe("all");
+    choice.checkedAll(null);
+    expect(choice.header).toBe("some");
   });
 });
 

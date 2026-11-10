@@ -256,6 +256,8 @@ class ChartScene {
       unsubscribe();
       observer.disconnect();
       chartSync.release(this);
+      // A zoom waiting for its frame or for the wheel to rest would record itself in a chart that is gone.
+      this.zoom.dispose();
       this.#view.detach();
       if (this.#frameRequest !== null) {
         cancelAnimationFrame(this.#frameRequest);

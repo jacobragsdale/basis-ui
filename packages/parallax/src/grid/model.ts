@@ -120,9 +120,9 @@ class GridModel {
     return value;
   }
 
-  /** Where the rows sit, under the header, the totals row counted as one more. */
+  /** Where the rows sit, under the header, in the body's height, the totals row counted as one more. */
   public rows(metrics: Metrics): RowGeometry {
-    return rowGeometry(this.totalRows + (this.footer ? 1 : 0), metrics.rowPx, metrics.headerPx);
+    return rowGeometry(this.totalRows + (this.footer ? 1 : 0), metrics, this.area.height);
   }
 
   /** The view's extent, for moving the selection. */

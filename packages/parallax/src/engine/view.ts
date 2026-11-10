@@ -79,6 +79,11 @@ class ViewHandle {
     return this.#rows.requested();
   }
 
+  /** The newest window asked for, answered or not, which a layout update is answered with; null before the first. */
+  public latestViewport(): Viewport | null {
+    return this.#rows.latest();
+  }
+
   /** Asks for a window of rows and data columns. */
   public setViewport(viewport: Viewport): void {
     if (!this.#closed) {

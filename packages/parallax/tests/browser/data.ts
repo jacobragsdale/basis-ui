@@ -32,6 +32,12 @@ function hugeBytes(): ArrayBuffer {
   return new Uint8Array(tableToIPC(new Table(columns), "stream")).buffer;
 }
 
+/** `count` rows of one column of doubles, `value`, numbered from 0. */
+function countedBytes(count: number): ArrayBuffer {
+  const value = makeVector(Float64Array.from({ length: count }, (_value, row) => row));
+  return new Uint8Array(tableToIPC(new Table({ value }), "stream")).buffer;
+}
+
 /** Starts the engine's real worker, from the package's source. */
 function startWorker(): Worker {
   return new Worker(new URL("../../src/worker.ts", import.meta.url), {
@@ -54,4 +60,4 @@ const byFund = {
   measures: [{ aggregate: "sum", column: "market_value" }],
 } satisfies LayoutInput;
 
-export { byFund, hugeBytes, positionsBytes, startCappedWorker, startWorker };
+export { byFund, countedBytes, hugeBytes, positionsBytes, startCappedWorker, startWorker };

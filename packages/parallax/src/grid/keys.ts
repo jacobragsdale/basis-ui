@@ -63,7 +63,21 @@ class KeyInput {
       this.#host.toggleRow(selection.focus.row);
       return true;
     }
+    if (this.#selectAll(event, extent)) {
+      return true;
+    }
     return this.#move(this.#navigate(event, selection, extent));
+  }
+
+  /** Ctrl+A selects everything, whatever case its letter arrives in, as with Caps Lock or Shift, and leaves the view
+   * where it is. Returns whether it did. */
+  #selectAll(event: KeyboardEvent, extent: Extent): boolean {
+    const all =
+      (event.ctrlKey || event.metaKey) && !event.altKey && event.key.toLowerCase() === "a";
+    if (all) {
+      this.#host.select(selectAll(extent));
+    }
+    return all;
   }
 
   /** Escape selects nothing. Returns whether it dropped a selection: an Escape with none is left to the page. */
@@ -116,14 +130,9 @@ class KeyInput {
     const page = Math.max(1, Math.floor(this.#host.model.area.height / rowPx) - pageOverlap);
     const jump = event.ctrlKey || event.metaKey;
     const step = stepOf(event.key, { jump, page });
-    if (step !== null) {
-      return moveFocus(
-        selection,
-        { columns: step[1], extend: event.shiftKey, rows: step[0] },
-        extent,
-      );
-    }
-    return event.key === "a" && jump ? selectAll(extent) : null;
+    return step === null
+      ? null
+      : moveFocus(selection, { columns: step[1], extend: event.shiftKey, rows: step[0] }, extent);
   }
 }
 

@@ -86,8 +86,9 @@ function useWindows(handle: ViewHandle | null, opening: Opening | null): void {
   const [yFrom, yTo] = y ?? [];
   useEffect(() => {
     if (handle !== null && layoutJson !== null && handle.layoutJson !== layoutJson) {
-      // A view without rows is answered with its chart; any other with the window last asked for.
-      handle.update(layoutJson, rows ? (): Viewport | null => handle.requested() : null);
+      /* A view without rows is answered with its chart; any other with the window last asked for, answered or not,
+       * so that an update at rest is in flight until its answer comes, and those after it wait. */
+      handle.update(layoutJson, rows ? (): Viewport | null => handle.latestViewport() : null);
     }
   }, [handle, layoutJson, rows]);
   useEffect(() => {

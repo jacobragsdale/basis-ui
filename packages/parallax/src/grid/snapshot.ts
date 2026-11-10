@@ -40,6 +40,8 @@ interface GridSnapshot {
   readonly selectedRows: number | null;
   /** The status bar's reading of the numbers selected: their mean, extremes, sum and count; empty for none. */
   readonly reading: readonly Figure[];
+  /** Why the grid cannot show rows, such as a container that gives it no height, as one line; null when it can. */
+  readonly problem: string | null;
 }
 
 const first: GridSnapshot = {
@@ -50,6 +52,7 @@ const first: GridSnapshot = {
   message: "",
   opening: null,
   overPanel: false,
+  problem: null,
   reading: [],
   selectedRows: null,
   sourceAsOf: null,
@@ -80,11 +83,24 @@ function same(one: GridSnapshot, other: GridSnapshot): boolean {
   return keys(one).every((key) => one[key] === other[key]);
 }
 
-/** What a snapshot is published from: the model, the window the view would open with, and the id of its cells. */
+/** What a snapshot is published from: the model, the window the view would open with, the id of its cells, and
+ * whether the grid fills its container's height. */
 interface Published {
   readonly model: GridModel;
   readonly opening: Viewport | null;
   readonly id: string;
+  readonly fill: boolean;
+}
+
+/** Why a grid of `height` `fill` shows nothing in a container that gives it no height, and the fix. */
+const noHeight =
+  'ERROR The grid has no height, as its container gives it none: give the container a height, such as h-96 or flex-1 in a flex column, or pass the grid height="auto".';
+
+/** Why the grid cannot show rows: laid out with a width but no height, a grid that fills its container never opens
+ * its view. One not laid out, as in a hidden tab, has neither, and waits. */
+function problemOf(model: GridModel, fill: boolean): string | null {
+  const { width, height } = model.area;
+  return fill && width > 0 && height === 0 ? noHeight : null;
 }
 
 /** A grid's snapshots, and who listens for them. */
@@ -119,11 +135,8 @@ class Snapshots {
 
   /** Takes what the model now says, and the window the view would open with; the first such window stays. `id` names
    * the grid's cells for screen readers. */
-  public publish(
-    model: GridModel,
-    { opening, id }: { readonly opening: Viewport | null; readonly id: string },
-  ): void {
-    this.#last = { id, model, opening };
+  public publish(model: GridModel, { opening, id, fill }: Omit<Published, "model">): void {
+    this.#last = { fill, id, model, opening };
     const reading = this.#reading.figures(model);
     const { frame } = model;
     const { selection } = model.interaction;
@@ -141,6 +154,7 @@ class Snapshots {
       message: this.#current.message,
       opening: this.#current.opening ?? opening,
       overPanel: model.interaction.overPanel,
+      problem: problemOf(model, fill),
       reading,
       selectedRows,
       sourceAsOf: frame?.sourceAsOfMicros ?? null,

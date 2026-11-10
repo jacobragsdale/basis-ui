@@ -92,20 +92,32 @@ describe("groupedGeometry", () => {
 
 describe("rowGeometry", () => {
   test("maps rows to offsets and back under a header that never scrolls", () => {
-    const rows = rowGeometry(1000, 24, 30);
+    const rows = rowGeometry(1000, { headerPx: 30, rowPx: 24 });
     expect(rows.spacerPx).toBe(1000 * 24 + 30);
     expect(rows.firstRow(240, 600)).toBe(10);
     expect(rows.scrollTopFor(10, 600)).toBe(240);
   });
 
   test("scales when there are too many rows to scroll natively", () => {
-    const rows = rowGeometry(20_000_000, 24, 30);
+    const rows = rowGeometry(20_000_000, { headerPx: 30, rowPx: 24 });
     expect(rows.spacerPx).toBeLessThan(20_000_000 * 24);
     expect(
       [0, 1, 12_345, 10_000_000, 19_999_970].map((row) =>
         rows.firstRow(rows.scrollTopFor(row, 600), 600),
       ),
     ).toStrictEqual([0, 1, 12_345, 10_000_000, 19_999_970]);
+  });
+
+  test("shows the last row whole at the scroll's end when the body holds part of a row more", () => {
+    // Ten and a half rows of 24 px under a 30 px header.
+    const viewport = 30 + 10.5 * 24;
+    for (const count of [1000, 20_000_000]) {
+      const rows = rowGeometry(count, { headerPx: 30, rowPx: 24 }, viewport);
+      const first = rows.firstRow(rows.spacerPx - viewport, viewport);
+      // The rows draw from the first under the header, one every 24 px: the last ends inside the body.
+      expect(30 + (count - first) * 24).toBeLessThanOrEqual(viewport);
+      expect(count - first).toBe(10);
+    }
   });
 });
 

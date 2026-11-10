@@ -27,6 +27,8 @@ class WindowSlot<TWindow> {
   readonly #options: SlotOptions<TWindow>;
   #inFlight: InFlight<TWindow> | null = null;
   #waiting: Waiting<TWindow> | null = null;
+  /** The window last answered, which the view shows until it asks for another. */
+  #answered: TWindow | null = null;
 
   public constructor(options: SlotOptions<TWindow>) {
     this.#options = options;
@@ -35,6 +37,12 @@ class WindowSlot<TWindow> {
   /** The newest window asked for, whether answered yet or not. */
   public requested(): TWindow | null {
     return this.#waiting?.window ?? this.#inFlight?.window ?? null;
+  }
+
+  /** The newest window asked for, answered or not, so that a view at rest still has one: what a layout update is
+   * answered with. Null before the first. */
+  public latest(): TWindow | null {
+    return this.requested() ?? this.#answered;
   }
 
   /** Asks for `window`, at once unless one is in flight or `held` says an update is waiting; then it waits, replacing
@@ -70,7 +78,8 @@ class WindowSlot<TWindow> {
     if (this.#inFlight?.requestId !== requestId) {
       return undefined;
     }
-    const { askedAtMs } = this.#inFlight;
+    const { askedAtMs, window } = this.#inFlight;
+    this.#answered = window;
     this.#inFlight = null;
     if (!held) {
       this.flush();
@@ -91,6 +100,7 @@ class WindowSlot<TWindow> {
   public clear(): void {
     this.#inFlight = null;
     this.#waiting = null;
+    this.#answered = null;
   }
 
   #isWaiting(window: TWindow): boolean {

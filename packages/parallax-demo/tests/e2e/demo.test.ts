@@ -150,14 +150,15 @@ async function figuresShow(
   });
 }
 
-/** Clicks a grid's last row, just above its totals row, and copies it. */
+/** Scrolls a grid to its end, moves to its last row from a row in view with Ctrl+Down, and copies it. */
 async function copyLastRow(table: Locator): Promise<void> {
   await table.getByRole("grid").evaluate((grid) => {
     grid.scrollTo({ top: grid.scrollHeight });
   });
   const canvas = table.locator("canvas").first();
   const box = await canvas.boundingBox();
-  await canvas.click({ position: { x: 40, y: (box?.height ?? 0) - 36 } });
+  await canvas.click({ position: { x: 40, y: (box?.height ?? 0) / 2 } });
+  await table.page().keyboard.press("ControlOrMeta+ArrowDown");
   await table.page().keyboard.press("ControlOrMeta+c");
 }
 

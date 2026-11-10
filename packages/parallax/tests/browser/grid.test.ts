@@ -3,12 +3,14 @@ import "@basis/ui/styles.css";
 import { describe, expect, test } from "vite-plus/test";
 import { userEvent } from "vite-plus/test/browser";
 
+import { countedBytes } from "./data.ts";
 import { copyFrom, pressAt, renderGrid } from "./grid-helpers.tsx";
 
 /** The middle of the header, and of the first row, in the compact density, the default: a 24 px row under a 30 px
  * header. */
 const header = 15;
 const firstRow = 42;
+const thousandRows = (): ArrayBuffer => countedBytes(1000);
 
 describe("Grid", () => {
   test("shows a flat view's rows and columns, and the status bar says where they come from", async () => {
@@ -61,5 +63,17 @@ describe("Grid", () => {
     const lines = copyFrom(grid).split("\r\n");
     expect(lines).toHaveLength(6);
     expect(lines[0]).toBe("Rates\tAtlas\t100.5");
+  });
+
+  test.each([
+    ["Ctrl+A", "{Control>}a{/Control}"],
+    ["Ctrl+A with Caps Lock", "{Control>}A{/Control}"],
+    ["Ctrl+Shift+A", "{Control>}{Shift>}A{/Shift}{/Control}"],
+  ])("selects everything with %s, and stays where it is", async (_name, keys) => {
+    const { grid, screen } = await renderGrid({ source: thousandRows }, "1000");
+    await pressAt(grid, { x: 40, y: firstRow });
+    await userEvent.keyboard(keys);
+    await expect.element(screen.getByText("1,000 rows by 1 column selected")).toBeInTheDocument();
+    expect(grid.element().scrollTop).toBe(0);
   });
 });

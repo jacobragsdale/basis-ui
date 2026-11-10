@@ -25,7 +25,7 @@ import type { GridSnapshot } from "./snapshot.ts";
 import { GridSurface } from "./surface.ts";
 import type { RowSelectionInputs } from "./row-selection.ts";
 import type { GridInputs } from "./types.ts";
-import { missingWindow, windowFor } from "./window.ts";
+import { keepsShown, missingWindow, windowFor } from "./window.ts";
 
 /** A grid's controller. */
 class GridController {
@@ -57,10 +57,12 @@ class GridController {
   /** For `useSyncExternalStore`: what React shows, the same object until it changes. */
   public readonly getSnapshot = (): GridSnapshot => this.#snapshots.current;
 
-  /** Takes a frame from the view, as `useView`'s `onFrame`. */
+  /** Takes a frame from the view, as `useView`'s `onFrame`, unless it answers late for rows the user has left. */
   public readonly receiveFrame = (frame: FrameData): void => {
+    const { metrics, frame: shown } = this.#model;
     const before = this.#model.totalRows;
-    this.#model.frame = frame;
+    const wanted = metrics === null ? null : this.#model.visible(metrics);
+    this.#model.frame = shown !== null && keepsShown(shown, frame, wanted) ? shown : frame;
     this.#fit();
     this.#surface?.rowsChanged(before);
     this.#update();
@@ -278,7 +280,8 @@ class GridController {
   }
 
   #publish(opening: Viewport | null): void {
-    this.#snapshots.publish(this.#model, { id: this.#surface?.dom.parts.scroll.id ?? "", opening });
+    const id = this.#surface?.dom.parts.scroll.id ?? "";
+    this.#snapshots.publish(this.#model, { fill: this.#inputs?.maxHeight === null, id, opening });
   }
 
   /** Draws once the current task's changes are made, so several changes draw once. */

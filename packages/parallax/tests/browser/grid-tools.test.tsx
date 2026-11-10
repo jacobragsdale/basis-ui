@@ -63,7 +63,7 @@ describe("Grid's menus and tools", () => {
     await expect.element(reading).not.toBeInTheDocument();
   });
 
-  test("opens and closes a pivot's group with Enter, which the layout records", async () => {
+  test("opens and closes a pivot's group with Enter, which the layout records while it differs from the default", async () => {
     const { grid, changes } = await renderGrid({ layout: byFundAndDesk }, "3");
     await pressAt(grid, { x: 120, y: secondRow });
     await userEvent.keyboard("{Enter}");
@@ -71,6 +71,10 @@ describe("Grid's menus and tools", () => {
       .poll(() => changes.at(-1)?.expanded)
       .toStrictEqual([{ expanded: true, path: ["Atlas"] }]);
     await expect.element(grid).toHaveAttribute("aria-rowcount", "5");
+    // Closed again, as the layout's depth leaves it, the group needs no entry: a saved view stays as short as it was.
+    await userEvent.keyboard("{Enter}");
+    await expect.element(grid).toHaveAttribute("aria-rowcount", "3");
+    expect(changes.at(-1)?.expanded).toStrictEqual([]);
   });
 
   test("asks for the rows behind a pivot's value on a double click", async () => {

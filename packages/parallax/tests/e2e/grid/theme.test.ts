@@ -62,15 +62,23 @@ test("a row height set on :root sizes the grid's rows, and comfortable rows add 
 }) => {
   await open(page, "preset=pivot");
   const rows = await rowCount(page);
-  const contentHeight = async (): Promise<number> =>
-    page.getByRole("grid").evaluate((element) => element.scrollHeight);
+  /* The content's height less the part of a row the body holds beyond its whole rows, which the content adds so the
+   * last row shows whole at the scroll's end, for rows `rowPx` tall under a header `headerPx` tall. */
+  const contentHeight = async (rowPx: number, headerPx: number): Promise<number> =>
+    page
+      .getByRole("grid")
+      .evaluate(
+        (element, sizes) =>
+          element.scrollHeight - ((element.clientHeight - sizes.headerPx) % sizes.rowPx),
+        { headerPx, rowPx },
+      );
   // The header is 6 pixels taller than a row, and the rows are below it.
-  expect(await contentHeight()).toBe(rows * 24 + 30);
+  expect(await contentHeight(24, 30)).toBe(rows * 24 + 30);
   await page.addStyleTag({ content: ":root { --px-row-height: 40px; }" });
   await bodyClass(page, "tall", true);
-  await expect.poll(contentHeight).toBe(rows * 40 + 46);
+  await expect.poll(async () => contentHeight(40, 46)).toBe(rows * 40 + 46);
   await page.getByLabel("Row height", { exact: true }).selectOption("comfortable");
-  await expect.poll(contentHeight).toBe(rows * 46 + 52);
+  await expect.poll(async () => contentHeight(46, 52)).toBe(rows * 46 + 52);
 });
 
 test("light-dark() in a token follows the grid's scheme", async ({ page }) => {

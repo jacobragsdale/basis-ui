@@ -54,7 +54,7 @@ class RowChecks {
   public take({ rowSelection, layout, fields }: GridInputs, moved: boolean): void {
     const { choice } = this.#host.model;
     if (moved) {
-      Object.assign(choice, { all: false, anchor: null });
+      choice.moved();
     }
     const column = rowSelection === null ? null : keyColumn(layout, fields, rowSelection.key);
     const select = selectOf(rowSelection, column);
@@ -175,7 +175,8 @@ class RowChecks {
     if (inputs.selected === undefined) {
       choice.replace(keys);
     }
-    choice.all = all;
+    // Held by the app, the keys come back on its next render, and the header shows them all checked if they are these.
+    choice.checkedAll(all ? keys : null);
     inputs.onChange?.(keys);
     this.#host.update();
   }

@@ -85,6 +85,11 @@ interface RowSelect {
   readonly index: number;
 }
 
+/** Whether `keys` are the keys of `set`, in any order. */
+function sameKeys(set: ReadonlySet<string>, keys: readonly string[]): boolean {
+  return keys.length === set.size && keys.every((key) => set.has(key));
+}
+
 /** The rows chosen, by key, in the order they were chosen, with the row a Shift range starts from. */
 class RowChoice {
   #keys = new Set<string>();
@@ -92,8 +97,10 @@ class RowChoice {
   public select: RowSelect | null = null;
   /** The view row last checked or unchecked, which a Shift range starts from; null after a change of layout. */
   public anchor: number | null = null;
-  /** Whether the header's checkbox chose every row the view showed, and nothing has changed since. */
-  public all = false;
+  /** The keys the header's checkbox chose, every row the view showed, until the layout or the choice changes; null
+   * when it chose none. They are kept apart from the keys held, so that an app holding the keys, which gives them back
+   * a render later, still shows every row checked. */
+  #all: ReadonlySet<string> | null = null;
 
   public get keys(): ReadonlySet<string> {
     return this.#keys;
@@ -104,7 +111,13 @@ class RowChoice {
     if (this.#keys.size === 0) {
       return "none";
     }
-    return this.all ? "all" : "some";
+    return this.#all !== null && sameKeys(this.#all, [...this.#keys]) ? "all" : "some";
+  }
+
+  /** Records the keys of every row the view shows, as the header's checkbox chose them, or null for a choice of some
+   * rows, or after a change of layout, when they may no longer be every row. */
+  public checkedAll(keys: readonly string[] | null): void {
+    this.#all = keys === null ? null : new Set(keys);
   }
 
   public has(key: string | null): boolean {
@@ -121,12 +134,17 @@ class RowChoice {
     return this.has(this.keyAt(frame, row));
   }
 
+  /** Forgets where a Shift range starts and that every row is checked, after a change of layout moves the rows. */
+  public moved(): void {
+    this.anchor = null;
+    this.#all = null;
+  }
+
   /** Takes the keys the app holds; returns whether they differ from the grid's. */
   public replace(keys: readonly string[]): boolean {
-    const same = keys.length === this.#keys.size && keys.every((key) => this.#keys.has(key));
+    const same = sameKeys(this.#keys, keys);
     if (!same) {
       this.#keys = new Set(keys);
-      this.all = false;
     }
     return !same;
   }

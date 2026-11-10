@@ -1,18 +1,63 @@
 import { StrictMode } from "react";
+import type { ReactNode } from "react";
 import { describe, expect, test, vi } from "vite-plus/test";
 import { render } from "vitest-browser-react";
+import type { RenderResult } from "vitest-browser-react";
 
 import type { ViewHandle } from "#engine/view.ts";
 import type { LayoutInput } from "#layout/layout.ts";
 import { ParallaxProvider } from "#react/provider.tsx";
 
-import { hugeBytes, positionsBytes, startCappedWorker, startWorker } from "./data.ts";
+import { byFund, hugeBytes, positionsBytes, startCappedWorker, startWorker } from "./data.ts";
+import { gatedWorker } from "./gated-worker.ts";
+import type { GatedWorker } from "./gated-worker.ts";
 import { Pivot } from "./pivot.tsx";
 
 const byDesk = {
   group_by: ["desk"],
   measures: [{ aggregate: "sum", column: "market_value" }],
 } satisfies LayoutInput;
+
+/** The pivot by fund on `gate`'s engine, its market value at `decimals` places, or as the layout leaves it. */
+function pivotOn(gate: GatedWorker, handles: Set<ViewHandle>, decimals: number | null): ReactNode {
+  const layout =
+    decimals === null ? byFund : { ...byFund, formats: { market_value: { decimals } } };
+  return (
+    <ParallaxProvider worker={gate.start}>
+      <Pivot handles={handles} layout={layout} />
+    </ParallaxProvider>
+  );
+}
+
+/** Renders the pivot by fund on `gate`'s engine and waits until it is at rest, every window it asked for answered;
+ * `rerender` renders it again with its market value at a number of places. */
+async function pivotAtRest(gate: GatedWorker): Promise<{
+  readonly screen: RenderResult;
+  readonly rerender: (decimals: number) => Promise<void>;
+}> {
+  const handles = new Set<ViewHandle>();
+  const screen = await render(pivotOn(gate, handles, null));
+  await expect.element(screen.getByText("Atlas: 250.75")).toBeVisible();
+  await expect.poll(() => [...handles][0]?.requested()).toBeNull();
+  return {
+    rerender: async (decimals) => {
+      await screen.rerender(pivotOn(gate, handles, decimals));
+    },
+    screen,
+  };
+}
+
+/** Renders again with each number of places in turn, as fast as React commits. */
+async function changeLayouts(
+  rerender: (decimals: number) => Promise<void>,
+  places: readonly number[],
+): Promise<void> {
+  const [next, ...rest] = places;
+  if (next !== undefined) {
+    await rerender(next);
+    await changeLayouts(rerender, rest);
+  }
+}
 
 describe("useDataset and useView", () => {
   test("load a table the page fetched, open a pivot of it, and read its frame", async () => {
@@ -60,6 +105,18 @@ describe("useDataset and useView", () => {
     );
     await expect.element(screen.getByText("Credit: 202.25")).toBeVisible();
     expect(handles.size).toBe(1);
+  });
+
+  test("keep one layout update in flight at rest, so six quick changes send the first and the newest", async () => {
+    const gate = gatedWorker();
+    const { screen, rerender } = await pivotAtRest(gate);
+    gate.close();
+    await changeLayouts(rerender, [1, 2, 3, 4, 5, 6]);
+    // Changed as fast as this, the engine has answered none, so only the first has gone.
+    expect(gate.sent("updateView")).toHaveLength(1);
+    gate.open();
+    await expect.element(screen.getByText("Atlas: 250.750000")).toBeVisible();
+    expect(gate.sent("updateView")).toHaveLength(2);
   });
 
   test("work under StrictMode, whose effects run twice", async () => {

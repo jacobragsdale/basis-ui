@@ -232,6 +232,20 @@ describe("Chart over a dataset", () => {
     expect(renders() - settled).toBeLessThanOrEqual(1);
   });
 
+  test("records no zoom once it is gone, when the wheel would have rested after", async () => {
+    const onLayoutChange = vi.fn<(layout: Layout) => void>();
+    const screen = await render(
+      <ParallaxProvider worker={startWorker}>
+        <PricesChart layout={line} onLayoutChange={onLayoutChange} />
+      </ParallaxProvider>,
+    );
+    await expect.poll(() => summaryOf(screen.container)).toMatch(/points drawn$/u);
+    fire(screen.container, "wheel", { deltaY: -100, x: 300, y: 120 });
+    await screen.unmount();
+    await rest(600);
+    expect(onLayoutChange).not.toHaveBeenCalled();
+  });
+
   test("repaints in the page's mode when it changes", async () => {
     const screen = await render(
       <ParallaxProvider worker={startWorker}>

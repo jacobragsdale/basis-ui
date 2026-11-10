@@ -163,17 +163,31 @@ interface RowGeometry {
   readonly scrollTopFor: (row: number, viewportPx: number) => number;
 }
 
-/** Computes scroll geometry for `rows` rows of `rowPx` pixels, under a header `headerPx` tall that never scrolls. */
-function rowGeometry(rows: number, rowPx: number, headerPx = 0): RowGeometry {
+/** A row's height, and the header's above the rows, which never scrolls, in CSS pixels. */
+interface RowSizes {
+  readonly rowPx: number;
+  readonly headerPx?: number;
+}
+
+/**
+ * Computes scroll geometry for `rows` rows in a body `viewportPx` tall, header included. Rows are drawn whole from the
+ * first in view, so a body that holds part of a row more scrolls that part further, and the last row ends inside it
+ * at the scroll's end.
+ */
+function rowGeometry(rows: number, { rowPx, headerPx = 0 }: RowSizes, viewportPx = 0): RowGeometry {
   const natural = rows * rowPx + headerPx;
   if (natural <= maxScrollPx) {
+    // The part of a row the body holds beyond its whole rows.
+    const part = Math.max(0, viewportPx - headerPx) % rowPx;
     return {
       firstRow: (top) => Math.floor(top / rowPx),
       scrollTopFor: (row) => row * rowPx,
-      spacerPx: natural,
+      spacerPx: natural + part,
     };
   }
-  const span = (viewport: number): number => Math.max(0, rows - (viewport - headerPx) / rowPx);
+  // The rows that start past the scroll's end: all but those that fit whole in the body.
+  const span = (viewport: number): number =>
+    Math.max(0, rows - Math.floor(Math.max(0, viewport - headerPx) / rowPx));
   return {
     firstRow: (top, viewport) => {
       const fraction = top / Math.max(1, maxScrollPx - viewport);

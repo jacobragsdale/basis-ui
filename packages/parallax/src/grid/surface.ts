@@ -103,10 +103,7 @@ class GridSurface {
     if (metrics === null || rows >= before) {
       return;
     }
-    const first = rowGeometry(before, metrics.rowPx, metrics.headerPx).firstRow(
-      area.scrollTop,
-      area.height,
-    );
+    const first = rowGeometry(before, metrics).firstRow(area.scrollTop, area.height);
     if (rows <= first) {
       this.dom.parts.scroll.scrollTop = 0;
       model.area = { ...area, scrollTop: 0 };
@@ -180,9 +177,10 @@ class GridSurface {
     const { model } = this.#host;
     const { scroll } = this.dom.parts;
     const rows = model.rows(metrics);
+    // The rows that show whole between the header and the totals row, which covers the body's last row.
     const visibleRows = Math.max(
       1,
-      Math.floor((scroll.clientHeight - metrics.headerPx) / metrics.rowPx),
+      Math.floor((scroll.clientHeight - metrics.headerPx) / metrics.rowPx) - (model.footer ? 1 : 0),
     );
     const first = rows.firstRow(model.area.scrollTop, model.area.height);
     if (row < first) {

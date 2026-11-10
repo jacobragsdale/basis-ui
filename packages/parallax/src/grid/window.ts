@@ -111,6 +111,23 @@ function missingWindow(
   return windowFor(wanted, shown);
 }
 
+/**
+ * Whether the grid keeps the frame it shows rather than `arriving`: an answer, late, for rows the user has since left,
+ * of the same layout and table load, which lacks rows in view that the frame shown holds. A frame of a newer layout or
+ * load always replaces it.
+ */
+function keepsShown(shown: FrameData, arriving: FrameData, wanted: Viewport | null): boolean {
+  if (
+    wanted === null ||
+    shown.configVersion !== arriving.configVersion ||
+    shown.loadVersion !== arriving.loadVersion
+  ) {
+    return false;
+  }
+  const need = needed(wanted, shown);
+  return covers(held(shown), need, shown) && !covers(held(arriving), need, arriving);
+}
+
 /** A group the user expanded or collapsed, as the layout records it. */
 interface ExpandedEntry {
   readonly path: readonly LayoutScalar[];
@@ -134,10 +151,19 @@ function pathKey(path: readonly LayoutScalar[]): string {
   return JSON.stringify(path);
 }
 
-/** Records a group as expanded or collapsed, replacing any earlier entry for the same path. */
+/** Whether the engine opens a group at `path` by default: one as deep as the layout's `expand_depth`, or shallower. */
+function expandedByDefault(layout: Layout, path: readonly LayoutScalar[]): boolean {
+  return path.length <= layout.expand_depth;
+}
+
+/** Records a group as expanded or collapsed, replacing any earlier entry for the same path. A group back as the
+ * layout's depth leaves it needs no entry, so toggling groups open and shut never lengthens the layout. */
 function withExpanded(layout: Layout, entry: ExpandedEntry): Layout {
   const key = pathKey(entry.path);
   const others = layout.expanded.filter((earlier) => pathKey(earlier.path) !== key);
+  if (entry.expanded === expandedByDefault(layout, entry.path)) {
+    return { ...layout, expanded: others };
+  }
   return { ...layout, expanded: [...others, { expanded: entry.expanded, path: [...entry.path] }] };
 }
 
@@ -155,5 +181,14 @@ function searchIn(json: string): string {
   return "";
 }
 
-export { groupPath, missingWindow, searchIn, toggledEntry, wholeCells, windowFor, withExpanded };
+export {
+  groupPath,
+  keepsShown,
+  missingWindow,
+  searchIn,
+  toggledEntry,
+  wholeCells,
+  windowFor,
+  withExpanded,
+};
 export type { ExpandedEntry, Totals };

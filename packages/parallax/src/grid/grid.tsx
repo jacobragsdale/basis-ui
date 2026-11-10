@@ -231,7 +231,8 @@ function GridFrame(props: GridFrameProps): ReactNode {
   const { attributes } = useParallaxTheme();
   const id = useId();
   const error =
-    view.layout === null && view.error !== null ? `Invalid layout: ${view.error}` : view.error;
+    snapshot.problem ??
+    (view.layout === null && view.error !== null ? `Invalid layout: ${view.error}` : view.error);
   return (
     <div
       {...attributes}
