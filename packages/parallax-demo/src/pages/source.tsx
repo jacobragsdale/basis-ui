@@ -3,11 +3,10 @@
  * limits, and a load the engine cannot hold ends in a plain reason and a fresh engine. */
 
 import { Grid, maxArrowBytes, maxRows, useDataset } from "@basis/parallax";
-import { Input, Label, numberText } from "@basis/ui";
+import { Input, Label, numberText, Page } from "@basis/ui";
 import { useState } from "react";
 import type { ReactNode } from "react";
 
-import { Page } from "#shell/page.tsx";
 import { pages } from "#shell/pages.ts";
 import { trackGrid } from "#tools/grid-stats.ts";
 
@@ -29,7 +28,7 @@ function SourcePage(): ReactNode {
   ]);
   const shown = shownOf(loads);
   return (
-    <Page page={pages.source}>
+    <Page title={pages.source.title} description={pages.source.about} layout="fill">
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
         <div className="flex items-center gap-2">
           <Label htmlFor="source-file">Open an Arrow stream file</Label>

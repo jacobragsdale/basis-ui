@@ -3,12 +3,11 @@
 
 import { Chart, Grid } from "@basis/parallax";
 import type { Layout, LayoutFilter, LayoutInput } from "@basis/parallax";
-import { Card, CardContent } from "@basis/ui";
+import { Card, CardContent, Page } from "@basis/ui";
 import { useState } from "react";
 import type { ReactNode } from "react";
 
 import { useDemoDataset } from "#shell/datasets.ts";
-import { Page } from "#shell/page.tsx";
 import { pages } from "#shell/pages.ts";
 import { trackGrid } from "#tools/grid-stats.ts";
 
@@ -74,7 +73,7 @@ function TechnicalPage(): ReactNode {
   const prices = useDemoDataset("prices");
   const page = useTechnical();
   return (
-    <Page page={pages.technical}>
+    <Page title={pages.technical.title} description={pages.technical.about} layout="fill">
       <TechnicalControls settings={page.settings} apply={page.apply} />
       <Card size="sm" data-slot="technical-chart" className="min-h-0 flex-3">
         <CardContent className="flex min-h-0 flex-1 flex-col">

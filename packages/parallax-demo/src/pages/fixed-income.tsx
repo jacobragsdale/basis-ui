@@ -4,13 +4,12 @@
 
 import { Chart, Grid, Pivot } from "@basis/parallax";
 import type { ChartSelection, LayoutInput } from "@basis/parallax";
-import { Card, CardContent, CardHeader, CardTitle } from "@basis/ui";
+import { Card, CardContent, CardHeader, CardTitle, Page } from "@basis/ui";
 import { useState } from "react";
 import type { ReactNode } from "react";
 
 import { datasetDates } from "#api/datasets.ts";
 import { useDemoDataset } from "#shell/datasets.ts";
-import { Page } from "#shell/page.tsx";
 import { pages } from "#shell/pages.ts";
 
 import { pickedFilter } from "./layouts.ts";
@@ -271,7 +270,7 @@ function Explain(): ReactNode {
 
 function FixedIncomePage(): ReactNode {
   return (
-    <Page page={pages.fixedIncome} scrolls>
+    <Page title={pages.fixedIncome.title} description={pages.fixedIncome.about}>
       <RichCheap />
       <Explain />
       <TradingTime />

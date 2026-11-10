@@ -4,14 +4,13 @@
 
 import { Grid, Pivot, encodeLayout } from "@basis/parallax";
 import type { LayoutInput } from "@basis/parallax";
-import { Button, CopyIcon, Popover, PopoverContent, PopoverTrigger } from "@basis/ui";
+import { Button, CopyIcon, Page, Popover, PopoverContent, PopoverTrigger } from "@basis/ui";
 import { useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import type { ReactNode } from "react";
 
 import { datasetDates } from "#api/datasets.ts";
 import { useDemoDataset } from "#shell/datasets.ts";
-import { Page } from "#shell/page.tsx";
 import type { DemoPage } from "#shell/pages.ts";
 import { trackGrid } from "#tools/grid-stats.ts";
 
@@ -104,7 +103,9 @@ function ViewPage({
   );
   return (
     <Page
-      page={page}
+      title={page.title}
+      description={page.about}
+      layout="fill"
       actions={<ViewActions page={page} layout={layout} note={note} setNote={setNote} />}
     >
       {view}

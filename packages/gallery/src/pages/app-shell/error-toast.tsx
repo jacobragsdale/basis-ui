@@ -9,12 +9,12 @@ import { usePictured } from "#pages/shot.ts";
 
 import { invalidOrder, unreachable } from "./failures.ts";
 
-/** Raises the refused order's toast while the section is shown alone, so its screenshot pictures it; closes it when
- * it unmounts. */
+/** Raises the refused order's toast twice while the section is shown alone, so its screenshot pictures it with its
+ * count; closes it when it unmounts. */
 function usePicturedToast(): void {
   const pictured = usePictured();
   useEffect(() => {
-    const ids = pictured ? [toastError(invalidOrder)] : [];
+    const ids = pictured ? [toastError(invalidOrder), toastError(invalidOrder)] : [];
     return (): void => {
       for (const id of ids) {
         toast.close(id);
@@ -28,7 +28,7 @@ function ErrorToastSection(): ReactElement {
   return (
     <Section
       title="Error toast"
-      description="What BasisApp raises for every failed mutation, unless its meta says errorToast: false: the problem in a toast that stays until it is closed, announced at once."
+      description="What BasisApp raises for every failed mutation, unless its meta says errorToast: false: the problem in a toast that stays until it is closed, announced at once. The same error again within 10 seconds counts on the open toast rather than raising another."
     >
       <div className="flex flex-wrap gap-2">
         <Button

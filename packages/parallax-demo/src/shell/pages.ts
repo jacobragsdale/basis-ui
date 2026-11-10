@@ -1,4 +1,5 @@
-/* The demo's pages, in the sidebar's order: each page's address, title, what it shows off, and its icon. */
+/* The demo's pages, in the sidebar's order: each page's address, title, what it shows off, its group and its icon,
+ * which its route gives AppShell. */
 
 import {
   ArrowDownWideNarrowIcon,
@@ -15,6 +16,7 @@ import {
   UploadIcon,
 } from "@basis/ui";
 import type { IconProps } from "@basis/ui";
+import type { StaticDataRouteOption } from "@tanstack/react-router";
 import type { ReactElement } from "react";
 
 /** The rows of the large generated datasets, positions and trades. */
@@ -137,5 +139,11 @@ type PageName = keyof typeof pages;
 /** Every page, in the sidebar's order. */
 const pageList: readonly DemoPage[] = [...Object.values(tablePages), ...Object.values(chartPages)];
 
-export { pageList, pages };
+/** What AppShell reads of a page's route: its title, icon and group, for the sidebar, the breadcrumbs and the
+ * palette. */
+function navigation({ title, Icon, group }: DemoPage): StaticDataRouteOption {
+  return { group, icon: Icon, title };
+}
+
+export { navigation, pageList, pages };
 export type { DemoPage, PageGroup, PageName };

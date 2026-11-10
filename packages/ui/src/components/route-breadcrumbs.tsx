@@ -1,9 +1,9 @@
 /* The breadcrumbs of the page shown: one for each route matched on the way to it that has a title or a breadcrumb,
- * the last one the page itself. A route's `breadcrumb` titles it by its data, such as a bond's name, over its static
- * `title`. */
+ * the last one the page itself. A route's `breadcrumb` titles it by its loader's data, such as a bond's name, over its
+ * static `title`; inside AppShell, a Page's `breadcrumb`, from data a query fetched, titles the page's own over both. */
 
 import { Link, useMatches } from "@tanstack/react-router";
-import { Fragment } from "react";
+import { Fragment, use } from "react";
 import type { ReactElement } from "react";
 
 import {
@@ -14,6 +14,24 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "./breadcrumb.tsx";
+import { PageCrumbContext } from "./page-crumb.ts";
+
+/** One matched route's breadcrumb: its match, where it links, and its text, if it has any. */
+interface Crumb {
+  readonly id: string;
+  readonly path: string;
+  readonly title: string | undefined;
+}
+
+/** The trail with the page's own breadcrumb, when its Page gives one, as the last matched route's, the page shown's:
+ * in place of its title, or as its title when it has none. */
+function withPageCrumb(trail: readonly Crumb[], crumb: string | undefined): readonly Crumb[] {
+  const leaf = trail.at(-1);
+  if (crumb === undefined || leaf === undefined) {
+    return trail;
+  }
+  return [...trail.slice(0, -1), { ...leaf, title: crumb }];
+}
 
 /** A match's params, as text by name. */
 function paramsOf(value: unknown): Readonly<Record<string, string>> {
@@ -41,15 +59,22 @@ function paramsOf(value: unknown): Readonly<Record<string, string>> {
  * ```
  */
 function RouteBreadcrumbs(): ReactElement {
-  const trail = useMatches({
+  const pageCrumb = use(PageCrumbContext)?.crumb;
+  const matched = useMatches({
     select: (matches) =>
-      matches.flatMap((match) => {
+      matches.map((match): Crumb => {
         const { breadcrumb, title: staticTitle } = match.staticData;
         const params = paramsOf(match.params as unknown);
-        const title = breadcrumb?.({ loaderData: match.loaderData, params }) ?? staticTitle;
-        return title === undefined ? [] : [{ id: match.id, path: match.pathname, title }];
+        return {
+          id: match.id,
+          path: match.pathname,
+          title: breadcrumb?.({ loaderData: match.loaderData, params }) ?? staticTitle,
+        };
       }),
   });
+  const trail = withPageCrumb(matched, pageCrumb).flatMap(({ id, path, title }) =>
+    title === undefined ? [] : [{ id, path, title }],
+  );
   return (
     <Breadcrumb>
       <BreadcrumbList>

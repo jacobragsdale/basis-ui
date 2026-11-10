@@ -10,6 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
   ShortcutProvider,
+  ShortcutScope,
   Sidebar,
   SidebarContent,
   SidebarInset,
@@ -35,6 +36,17 @@ function Refresh({
   readonly description?: string;
 }): null {
   useShortcut("r", description, onRefresh);
+  return null;
+}
+
+/** Does nothing, in place of what a mocked function did. */
+function nothing(): void {
+  // Nothing to do.
+}
+
+/** Declares `shift+?`, the keys the `?` list takes, written another way. */
+function Help(): null {
+  useShortcut("shift+?", "Show the help", nothing);
   return null;
 }
 
@@ -121,7 +133,7 @@ describe("ShortcutProvider", () => {
   });
 
   test("lists each key once, with the shortcut it runs, when two declare the same key", async () => {
-    const error = vi.spyOn(console, "error");
+    vi.spyOn(console, "error").mockImplementation(nothing);
     await render(
       <Page>
         <Refresh onRefresh={vi.fn<() => void>()} />
@@ -132,10 +144,10 @@ describe("ShortcutProvider", () => {
     const list = page.getByRole("dialog", { name: "Keyboard shortcuts" });
     await expect.element(list.getByText("Refresh the positions")).toBeVisible();
     await expect.element(list.getByText("Refresh the trades")).not.toBeInTheDocument();
-    expect(error.mock.calls.flat().join(" ")).not.toMatch(/same key/u);
   });
 
   test("of two that declare the same key, the key runs the first", async () => {
+    vi.spyOn(console, "error").mockImplementation(nothing);
     const first = vi.fn<() => void>();
     const second = vi.fn<() => void>();
     await render(
@@ -148,6 +160,101 @@ describe("ShortcutProvider", () => {
     expect([first.mock.calls.length, second.mock.calls.length]).toStrictEqual([1, 0]);
   });
 
+  test("two that take the same keys in one scope log a conflict, as one ERROR line with its fix", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(nothing);
+    await render(
+      <Page>
+        <ShortcutScope name="Trades">
+          <Refresh onRefresh={vi.fn<() => void>()} />
+          <Refresh onRefresh={vi.fn<() => void>()} description="Refresh the trades" />
+        </ShortcutScope>
+      </Page>,
+    );
+    expect(error.mock.calls).toStrictEqual([
+      [
+        'ERROR two shortcuts take r on Trades: "Refresh the positions" runs and "Refresh the trades" never does. Give one of them other keys.',
+      ],
+    ]);
+  });
+
+  test("keys written two ways, such as shift+? and ?, are the same keys, and conflict", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(nothing);
+    await render(
+      <Page>
+        <Help />
+      </Page>,
+    );
+    expect(error.mock.calls).toStrictEqual([
+      [
+        'ERROR two shortcuts take shift+? everywhere: "Show the keyboard shortcuts" runs and "Show the help" never does. Give one of them other keys.',
+      ],
+    ]);
+  });
+});
+
+describe("ShortcutScope", () => {
+  test("a scope's shortcut wins over the app's for the same key, with no conflict", async () => {
+    const error = vi.spyOn(console, "error");
+    const app = vi.fn<() => void>();
+    const trades = vi.fn<() => void>();
+    await render(
+      <Page>
+        <Refresh onRefresh={app} />
+        <ShortcutScope name="Trades">
+          <Refresh onRefresh={trades} description="Refresh the trades" />
+        </ShortcutScope>
+      </Page>,
+    );
+    await userEvent.keyboard("r");
+    expect([app.mock.calls.length, trades.mock.calls.length, error.mock.calls]).toStrictEqual([
+      0,
+      1,
+      [],
+    ]);
+  });
+
+  test("the app's shortcut answers again once the scope that took its key has gone", async () => {
+    const app = vi.fn<() => void>();
+    const trades = vi.fn<() => void>();
+    function Shown({ scoped }: { readonly scoped: boolean }): ReactElement {
+      return (
+        <Page>
+          <Refresh onRefresh={app} />
+          {scoped ? (
+            <ShortcutScope name="Trades">
+              <Refresh onRefresh={trades} description="Refresh the trades" />
+            </ShortcutScope>
+          ) : null}
+        </Page>
+      );
+    }
+    const screen = await render(<Shown scoped />);
+    await screen.rerender(<Shown scoped={false} />);
+    await userEvent.keyboard("r");
+    expect([app.mock.calls.length, trades.mock.calls.length]).toStrictEqual([1, 0]);
+  });
+
+  test("the list heads each scope's shortcuts with its name, innermost first, and the app's Everywhere", async () => {
+    await render(
+      <Page>
+        <Refresh onRefresh={vi.fn<() => void>()} />
+        <ShortcutScope name="Trades">
+          <Refresh onRefresh={vi.fn<() => void>()} description="Refresh the trades" />
+        </ShortcutScope>
+      </Page>,
+    );
+    await userEvent.keyboard("?");
+    const list = page.getByRole("dialog", { name: "Keyboard shortcuts" });
+    await expect.element(list.getByText("Refresh the trades")).toBeVisible();
+    const headings = [...list.element().querySelectorAll("th")];
+    expect([
+      headings.map((heading) => heading.textContent),
+      list.getByText("Refresh the positions").query(),
+    ]).toStrictEqual([["Trades", "Everywhere"], null]);
+  });
+});
+
+describe("the sidebar's shortcut", () => {
   test("the sidebar's Ctrl+B is in the list, and works with Caps Lock on", async () => {
     const screen = await render(
       <Page>

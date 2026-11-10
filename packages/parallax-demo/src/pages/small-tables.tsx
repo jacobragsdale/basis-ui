@@ -3,13 +3,13 @@
  * book's market value and P&L, which add, and the blotter's count of trades. Every change should feel instant at this
  * size, and the performance overlay times each one. */
 
+import { Page } from "@basis/ui";
 import { Grid } from "@basis/parallax";
 import type { LayoutInput } from "@basis/parallax";
 import { useState } from "react";
 import type { ReactNode } from "react";
 
 import { useDemoDataset } from "#shell/datasets.ts";
-import { Page } from "#shell/page.tsx";
 import { pages } from "#shell/pages.ts";
 import { trackGrid } from "#tools/grid-stats.ts";
 
@@ -62,7 +62,7 @@ function SmallTable({
 
 function SmallTablesPage(): ReactNode {
   return (
-    <Page page={pages.smallTables} scrolls>
+    <Page title={pages.smallTables.title} description={pages.smallTables.about}>
       <div className="grid items-start gap-3 xl:grid-cols-2">
         <SmallTable name="book" first={book} holds="300 positions" />
         <SmallTable name="blotter" first={blotter} holds="500 trades" />

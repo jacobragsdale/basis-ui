@@ -4,12 +4,11 @@
 
 import { Chart } from "@basis/parallax";
 import type { ChartSelection } from "@basis/parallax";
-import { Button, Card, CardContent, CardHeader, CardTitle, XIcon } from "@basis/ui";
+import { Button, Card, CardContent, CardHeader, CardTitle, Page, XIcon } from "@basis/ui";
 import { useState } from "react";
 import type { ReactNode } from "react";
 
 import { useDemoDataset } from "#shell/datasets.ts";
-import { Page } from "#shell/page.tsx";
 import { pages } from "#shell/pages.ts";
 
 import { breakdowns, narrowed } from "./breakdown-layouts.ts";
@@ -131,7 +130,7 @@ function BreakdownsPage(): ReactNode {
     setPicks((was) => picking(was, of, picked));
   };
   return (
-    <Page page={pages.breakdowns} scrolls>
+    <Page title={pages.breakdowns.title} description={pages.breakdowns.about}>
       <div className="flex flex-col gap-5">
         <Part of="positions" picks={picks} pick={pick} />
         <Part of="trades" picks={picks} pick={pick} />

@@ -1,6 +1,7 @@
 /* The demo's routes, inside the layout: a page of one view at `/` and three more, each taking a shared link's layout
- * in `?layout=`, and a page of several views at each other address. Each route's loader asks for the datasets its
- * page shows before the page renders, so they start loading at once. */
+ * in `?layout=`, and a page of several views at each other address. Each route's `staticData` gives AppShell its
+ * page's title, icon and group. Each route's loader asks for the datasets its page shows before the page renders, so
+ * they start loading at once. */
 
 import { createRootRoute, createRoute } from "@tanstack/react-router";
 
@@ -17,13 +18,14 @@ import { allTrades, dailyPrices, largestTrades, positionsPivot } from "#pages/vi
 import { openView, viewSearch } from "#pages/view-link.ts";
 import { needDatasets } from "#shell/datasets.ts";
 import { Layout } from "#shell/layout.tsx";
-import { pages } from "#shell/pages.ts";
+import { navigation, pages } from "#shell/pages.ts";
 
 const rootRoute = createRootRoute({ component: Layout });
 
 const pivotRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: pages.pivot.path,
+  staticData: navigation(pages.pivot),
   // The search's type comes from validateSearch, so it is given before the loader's options that read it.
   validateSearch: viewSearch,
   loaderDeps: ({ search }) => ({ layout: search.layout }),
@@ -34,6 +36,7 @@ const pivotRoute = createRoute({
 const tradesRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: pages.trades.path,
+  staticData: navigation(pages.trades),
   // The search's type comes from validateSearch, so it is given before the loader's options that read it.
   validateSearch: viewSearch,
   loaderDeps: ({ search }) => ({ layout: search.layout }),
@@ -44,6 +47,7 @@ const tradesRoute = createRoute({
 const largestTradesRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: pages.largestTrades.path,
+  staticData: navigation(pages.largestTrades),
   // The search's type comes from validateSearch, so it is given before the loader's options that read it.
   validateSearch: viewSearch,
   loaderDeps: ({ search }) => ({ layout: search.layout }),
@@ -54,6 +58,7 @@ const largestTradesRoute = createRoute({
 const pricesRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: pages.prices.path,
+  staticData: navigation(pages.prices),
   // The search's type comes from validateSearch, so it is given before the loader's options that read it.
   validateSearch: viewSearch,
   loaderDeps: ({ search }) => ({ layout: search.layout }),
@@ -68,12 +73,14 @@ const smallTablesRoute = createRoute({
     needDatasets("book", "blotter");
   },
   path: pages.smallTables.path,
+  staticData: navigation(pages.smallTables),
 });
 
 const sourceRoute = createRoute({
   component: SourcePage,
   getParentRoute: () => rootRoute,
   path: pages.source.path,
+  staticData: navigation(pages.source),
 });
 
 const dashboardRoute = createRoute({
@@ -83,6 +90,7 @@ const dashboardRoute = createRoute({
     needDatasets("book", "blotter");
   },
   path: pages.dashboard.path,
+  staticData: navigation(pages.dashboard),
 });
 
 const breakdownsRoute = createRoute({
@@ -92,6 +100,7 @@ const breakdownsRoute = createRoute({
     needDatasets("positions", "trades");
   },
   path: pages.breakdowns.path,
+  staticData: navigation(pages.breakdowns),
 });
 
 const chartsRoute = createRoute({
@@ -101,6 +110,7 @@ const chartsRoute = createRoute({
     needDatasets("prices", "positions");
   },
   path: pages.charts.path,
+  staticData: navigation(pages.charts),
 });
 
 const technicalRoute = createRoute({
@@ -110,12 +120,14 @@ const technicalRoute = createRoute({
     needDatasets("prices");
   },
   path: pages.technical.path,
+  staticData: navigation(pages.technical),
 });
 
 const smallChartsRoute = createRoute({
   component: SmallChartsPage,
   getParentRoute: () => rootRoute,
   path: pages.smallCharts.path,
+  staticData: navigation(pages.smallCharts),
 });
 
 const fixedIncomeRoute = createRoute({
@@ -125,6 +137,7 @@ const fixedIncomeRoute = createRoute({
     needDatasets("bonds", "attribution", "curves", "yields");
   },
   path: pages.fixedIncome.path,
+  staticData: navigation(pages.fixedIncome),
 });
 
 const routeTree = rootRoute.addChildren([

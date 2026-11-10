@@ -3,13 +3,12 @@
 
 import { Chart, Grid } from "@basis/parallax";
 import type { ChartSelection, LayoutFilter, LayoutInput } from "@basis/parallax";
-import { Card, CardContent, CardHeader, CardTitle } from "@basis/ui";
+import { Card, CardContent, CardHeader, CardTitle, Page } from "@basis/ui";
 import { cn } from "cn";
 import { useState } from "react";
 import type { ReactNode } from "react";
 
 import { useDemoDataset } from "#shell/datasets.ts";
-import { Page } from "#shell/page.tsx";
 import { pages } from "#shell/pages.ts";
 
 import { cards, qye } from "./chart-cards.ts";
@@ -93,7 +92,7 @@ function ChartsPage(): ReactNode {
   const [brush, setBrush] = useState<readonly LayoutFilter[] | null>(null);
   const [selected, setSelected] = useState<ChartSelection | null>(null);
   return (
-    <Page page={pages.charts} scrolls>
+    <Page title={pages.charts.title} description={pages.charts.about}>
       <div className="grid gap-3 xl:grid-cols-2">
         {cards.map((card) => {
           if (card.id === "candles") {

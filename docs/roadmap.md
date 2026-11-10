@@ -571,6 +571,12 @@ flowchart TD
    (`6.7.1-shell`), the filter bar (`6.7.2-filter-bar`), `DataTable` (`6.7.3-data-table`), `StatCard`
    (`6.7.4-stat-card`), dates (`6.7.5-dates`), forms (`6.7.6-forms`), choosing (`6.7.7-choosing`), display
    (`6.7.8-display`), long lists (`6.7.9-long-lists`), and one vocabulary of props (`6.7.10-vocabulary`).
+   6.7.1 built on 2026-11-09: `AppShell` has slots for its header and the sidebar's header and footer, an icon rail,
+   groups in its navigation and one tooltip delay; each page is a `Page`, with its title, description and actions over
+   content that scrolls or fills the window, whose `breadcrumb` titles the last breadcrumb from a query's data; the
+   palette's commands take keywords, a group, an icon and a shortcut; the page shown is a shortcut scope, and a
+   conflict logs an `ERROR` line; a repeated `toastError` counts on its open toast; and parallax's demo runs on the
+   shell, with its palette, shortcuts and breadcrumbs.
 8. **6.8 The agent's toolbelt.** Lane Preset, in order, since preset changes land one at a time: a catalogue that
    answers, with `vp run docs NAME` (`6.8.1-catalogue`), lint that costs fewer rounds (`6.8.2-lint-limits`), the doors
    that are open (`6.8.3-closed-doors`), one verdict, `vp run verify` (`6.8.4-verify`), a shot that explains itself

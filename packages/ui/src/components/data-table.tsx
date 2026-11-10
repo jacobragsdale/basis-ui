@@ -29,7 +29,7 @@ import { DataTableHeadRow, DataTableRows } from "./data-table-body.tsx";
 import { cellOf, cellText, defaultRowCap } from "./data-table-columns.ts";
 import type { DataTableColumn, DataTableRowAction, DataTableSort } from "./data-table-columns.ts";
 import { copyRows, exportRows } from "./data-table-export.ts";
-import { DataTablePagination } from "./data-table-pagination.tsx";
+import { PaginationFor } from "./data-table-pagination.tsx";
 import { EmptyRow, LoadingRows } from "./data-table-parts.tsx";
 import {
   columnChoices,
@@ -198,38 +198,6 @@ function TableFor<TRow extends RowData>({ table, props, columns }: ViewParts<TRo
   );
 }
 
-/** The line under a paged table. */
-function PaginationFor<TRow extends RowData>({
-  table,
-  pageSize,
-}: {
-  readonly table: DataTableInstance<TRow>;
-  readonly pageSize: number;
-}): ReactElement {
-  return (
-    <DataTablePagination
-      pageIndex={table.state.pagination.pageIndex}
-      pageCount={table.getPageCount()}
-      pageSize={pageSize}
-      rows={table.getPrePaginatedRowModel().rows.length}
-      onPrevious={
-        table.getCanPreviousPage()
-          ? () => {
-              table.previousPage();
-            }
-          : undefined
-      }
-      onNext={
-        table.getCanNextPage()
-          ? () => {
-              table.nextPage();
-            }
-          : undefined
-      }
-    />
-  );
-}
-
 /** A DataTable within its row cap. */
 function DataTableView<TRow extends RowData>({
   className,
@@ -259,7 +227,7 @@ function DataTableView<TRow extends RowData>({
       <ToolbarFor table={table} props={props} columns={columns} />
       <TableFor table={table} props={props} columns={columns} />
       {pageSize === undefined || props.loading === true ? null : (
-        <PaginationFor table={table} pageSize={pageSize} />
+        <PaginationFor label={props.label} table={table} pageSize={pageSize} />
       )}
     </div>
   );

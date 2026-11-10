@@ -3,13 +3,12 @@
 
 import { Chart, Grid } from "@basis/parallax";
 import type { ChartSelection, LayoutInput } from "@basis/parallax";
-import { Card, CardContent, CardHeader, CardTitle } from "@basis/ui";
+import { Card, CardContent, CardHeader, CardTitle, Page } from "@basis/ui";
 import { useState } from "react";
 import type { ReactNode } from "react";
 
 import { datasetDates } from "#api/datasets.ts";
 import { useDemoDataset } from "#shell/datasets.ts";
-import { Page } from "#shell/page.tsx";
 import { pages } from "#shell/pages.ts";
 import { trackGrid } from "#tools/grid-stats.ts";
 
@@ -163,7 +162,7 @@ function DashboardPage(): ReactNode {
     }
   };
   return (
-    <Page page={pages.dashboard} scrolls>
+    <Page title={pages.dashboard.title} description={pages.dashboard.about}>
       <div className="grid gap-3 md:grid-cols-3 2xl:grid-cols-5">
         {tiles.map((tile) => (
           <DashboardTile key={tile.id} tile={tile} onSelect={select} />

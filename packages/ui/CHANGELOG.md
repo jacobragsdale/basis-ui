@@ -5,6 +5,20 @@ What changed in `@basis/ui`, newest first, in the words an app's agent needs: wh
 
 ## Unreleased
 
+- The shell grows for a data app. Give each route's content a `Page`, with its `title`, `description` and `actions`,
+  and `layout="fill"` for a grid, pivot or chart that fills the window; `layout="scroll"`, the default, scrolls the
+  content under the header, and content that is not a Page scrolls in the shell as before. A Page's `breadcrumb`, such
+  as a bond's name once its query has it, titles the page's breadcrumb. `AppShell` takes `header`, `sidebarHeader`,
+  `sidebarFooter` (in the user menu's place) and `collapsible="icon"`, and a route's `staticData.group` puts its page
+  under that heading in the sidebar. A `PaletteCommand` takes `keywords`, `group`, `icon` and `shortcut`; the shortcut
+  runs the command with the palette closed. The page shown is a `ShortcutScope`, so a page's `useShortcut` keys are
+  its own and win over the app's; `ShortcutScope` does the same for a part of a page. Two shortcuts with the same keys
+  in one scope now log an `ERROR` line naming both: give one other keys. The shell's tooltips open after 400 ms, and
+  a neighbour's at once. `toastError` raised again for the same error within 10 seconds counts on the open toast. On
+  the sidebar's icon rail, a group's last item now takes the pointer under the next group's hidden label. The shell
+  passes `vp run shot`'s axe check: it has one `main`, its header is the page's banner, and its sidebar is a
+  complementary landmark named by the app. A paged `DataTable`'s navigation is named by its `label`, as
+  "Coupons, pages", rather than "Pages", the sidebar's.
 - `vp run shot` explains what it pictured. Beside `NAME.png`, `NAME.aria.yml` and `NAME.console.txt` it writes
   `NAME.network.txt`, each request to `/api` with its status and what answered it (`record`, `fixture` with its file,
   `generated`, `none` or `live`), and `NAME.axe.txt`, axe's accessibility check, whose every violation fails the shot

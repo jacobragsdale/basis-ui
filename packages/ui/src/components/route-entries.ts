@@ -1,8 +1,8 @@
-/* What the shell's parts read from an app's routes: each route's title, icon and place in the navigation, set in its
- * `staticData`. The sidebar, the breadcrumbs and the command palette are built from them, so a page added to the route
- * tree appears in all three:
+/* What the shell's parts read from an app's routes: each route's title, icon, group and place in the navigation, set
+ * in its `staticData`. The sidebar, the breadcrumbs and the command palette are built from them, so a page added to
+ * the route tree appears in all three:
  *
- *   createRoute({ path: "/positions", staticData: { title: "Positions", icon: TableIcon }, ... })
+ *   createRoute({ path: "/positions", staticData: { title: "Positions", icon: TableIcon, group: "Books" }, ... })
  */
 
 import { useRouter } from "@tanstack/react-router";
@@ -15,6 +15,9 @@ declare module "@tanstack/react-router" {
     readonly title?: string;
     /** The icon beside it in the sidebar, one of `@basis/ui`'s. */
     readonly icon?: ComponentType<SVGProps<SVGSVGElement>>;
+    /** The heading the page sits under in the sidebar, such as "Charts", which the command palette also matches. The
+     * groups come in the order their first pages do; pages with none sit under no heading. */
+    readonly group?: string;
     /** Leave it out of the sidebar and the command palette, though it keeps its breadcrumb: `false`. */
     readonly inNavigation?: boolean;
     /** The page's breadcrumb from its data, such as a bond's name on `/bonds/$security`: given the route's params and
@@ -35,6 +38,8 @@ interface RouteEntry {
   readonly title: string;
   readonly to: string;
   readonly icon: ComponentType<SVGProps<SVGSVGElement>> | undefined;
+  /** The sidebar's heading it sits under, if any. */
+  readonly group: string | undefined;
 }
 
 /** What the navigation reads of a route. */
@@ -77,6 +82,13 @@ function currentEntry(entries: readonly RouteEntry[], path: string): RouteEntry 
   return under.find(({ to }) => to.length === longest);
 }
 
+/** The pages in their groups, each group where its first page is, its pages in their order. */
+function groupEntries(
+  entries: readonly RouteEntry[],
+): readonly (readonly [string | undefined, readonly RouteEntry[]])[] {
+  return [...Map.groupBy(entries, ({ group }) => group).entries()];
+}
+
 /** The app's pages, in the order its route tree declares them. */
 function useRouteEntries(): readonly RouteEntry[] {
   const routes: unknown = useRouter().routesById;
@@ -85,6 +97,7 @@ function useRouteEntries(): readonly RouteEntry[] {
     .filter((route) => isRouteLike(route))
     .filter((route) => isListed(route))
     .map((route) => ({
+      group: route.options.staticData?.group,
       icon: route.options.staticData?.icon,
       id: route.id,
       title: route.options.staticData?.title ?? route.fullPath,
@@ -92,5 +105,5 @@ function useRouteEntries(): readonly RouteEntry[] {
     }));
 }
 
-export { currentEntry, useRouteEntries };
+export { currentEntry, groupEntries, useRouteEntries };
 export type { RouteCrumbMatch, RouteEntry };

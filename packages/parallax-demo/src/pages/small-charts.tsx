@@ -4,10 +4,9 @@
 
 import { Chart } from "@basis/parallax";
 import type { ChartRow, RowsChartProps } from "@basis/parallax";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@basis/ui";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, Page } from "@basis/ui";
 import type { ReactNode } from "react";
 
-import { Page } from "#shell/page.tsx";
 import { pages } from "#shell/pages.ts";
 
 const exposures: readonly ChartRow[] = [
@@ -116,7 +115,7 @@ const smallCharts: readonly SmallChartCard[] = [
 
 function SmallChartsPage(): ReactNode {
   return (
-    <Page page={pages.smallCharts} scrolls>
+    <Page title={pages.smallCharts.title} description={pages.smallCharts.about}>
       <div className="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
         {smallCharts.map((card) => (
           <Card key={card.id} size="sm" data-small-chart={card.id} className="h-72">

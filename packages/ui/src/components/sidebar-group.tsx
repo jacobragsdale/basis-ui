@@ -1,7 +1,8 @@
 /* Sidebar's groups, from shadcn's Base UI source: a section of the sidebar with its label, an action beside the label,
  * and its content. The label and action render through Base UI's `useRender`, so `render` can make the label a
  * Collapsible's trigger. On the icon rail the label fades and moves away at once, where shadcn also animates its
- * margin. The action keeps the 24 px target in the compact density, centred on the label as shadcn's smaller one is. */
+ * margin, and lets the pointer through: shadcn's, invisible, lies over the last item of the group above, which then
+ * takes no click or hover. The action keeps the 24 px target in the compact density, centred on the label as shadcn's smaller one is. */
 
 import { mergeProps } from "@base-ui/react/merge-props";
 import { useRender } from "@base-ui/react/use-render";
@@ -27,7 +28,7 @@ function SidebarGroupLabel({
   ...props
 }: useRender.ComponentProps<"div">): ReactElement {
   const classes = cn(
-    "flex h-8 shrink-0 items-center rounded-md px-2 text-xs font-medium text-muted-foreground focus-visible:outline-sidebar-ring outline-hidden transition-opacity group-data-[collapsible=icon]:-mt-8 group-data-[collapsible=icon]:opacity-0 focus-visible:outline-solid focus-visible:outline focus-visible:outline-offset-(--focus-offset) [&>svg]:size-(--control-md-icon) [&>svg]:shrink-0",
+    "flex h-8 shrink-0 items-center rounded-md px-2 text-xs font-medium text-muted-foreground focus-visible:outline-sidebar-ring outline-hidden transition-opacity group-data-[collapsible=icon]:pointer-events-none group-data-[collapsible=icon]:-mt-8 group-data-[collapsible=icon]:opacity-0 focus-visible:outline-solid focus-visible:outline focus-visible:outline-offset-(--focus-offset) [&>svg]:size-(--control-md-icon) [&>svg]:shrink-0",
     className,
   );
   return useRender({

@@ -7,7 +7,9 @@ import type { RunOptions } from "axe-core";
 const tags = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22a", "wcag22aa", "best-practice"];
 
 /** The gallery frames a whole app in this section, as an app runs it: the app's own `main` sits inside the section's
- * region and the gallery's `main`. An app's page holds one `main`, at the top level, which these rules check. */
+ * region and the gallery's `main`, two mains with no names. An app's page holds one `main`, at the top level, which
+ * these rules check, and the gallery's test of the shell's landmarks (app-shell/landmarks.test.tsx) holds AppShell to
+ * them outside a frame. */
 const appInAFrame =
   "the section frames a whole app, whose main landmark sits inside the gallery's own";
 

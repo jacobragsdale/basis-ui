@@ -1,9 +1,11 @@
-/* The layout every page sits in: parallax's engine in its worker, started with the app, the demo's datasets in it, the
- * sidebar beside the page, and the tools the sidebar opens over it. */
+/* The layout every page sits in: parallax's engine in its worker, started with the app, the demo's datasets in it,
+ * and AppShell, which gives the demo its sidebar of pages in their groups, folding to an icon rail, the breadcrumbs,
+ * Ctrl+K's command palette and ?'s list of shortcuts. The sidebar's footer holds the demo's tools in the user menu's
+ * place, and the palette opens them too; the tools open over the page. */
 
 import { ParallaxProvider } from "@basis/parallax";
-import { SidebarInset, SidebarProvider } from "@basis/ui";
-import { Outlet } from "@tanstack/react-router";
+import { AppShell, GaugeIcon, PaletteIcon } from "@basis/ui";
+import type { PaletteCommand } from "@basis/ui";
 import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
 
@@ -11,9 +13,33 @@ import { PerformanceOverlay } from "#tools/performance.tsx";
 import { ThemeStudio } from "#tools/theme-studio.tsx";
 
 import { DemoDatasets } from "./demo-datasets.tsx";
-import { DemoSidebar } from "./sidebar.tsx";
+import { ToolButtons } from "./tool-buttons.tsx";
 import { ToolsContext } from "./tools.ts";
 import type { Tools } from "./tools.ts";
+
+/** The palette's commands for the tools. */
+function toolCommands(tools: Tools): readonly PaletteCommand[] {
+  return [
+    {
+      group: "Tools",
+      icon: GaugeIcon,
+      id: "performance",
+      keywords: ["frame time", "memory", "timing"],
+      label: tools.performance ? "Hide the performance overlay" : "Show the performance overlay",
+      run: tools.handlePerformance,
+    },
+    {
+      group: "Tools",
+      icon: PaletteIcon,
+      id: "theme-studio",
+      keywords: ["colours", "tokens", "css"],
+      label: "Open the theme studio",
+      run: () => {
+        tools.handleStudio(true);
+      },
+    },
+  ];
+}
 
 function Layout(): ReactNode {
   const [performance, setPerformance] = useState(false);
@@ -33,12 +59,12 @@ function Layout(): ReactNode {
     <ParallaxProvider prewarm>
       <DemoDatasets>
         <ToolsContext value={tools}>
-          <SidebarProvider className="h-svh min-h-0">
-            <DemoSidebar />
-            <SidebarInset className="min-w-0">
-              <Outlet />
-            </SidebarInset>
-          </SidebarProvider>
+          <AppShell
+            appName="parallax"
+            collapsible="icon"
+            commands={toolCommands(tools)}
+            sidebarFooter={<ToolButtons />}
+          />
           {performance ? <PerformanceOverlay /> : null}
           <ThemeStudio />
         </ToolsContext>

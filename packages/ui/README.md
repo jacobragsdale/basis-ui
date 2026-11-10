@@ -691,25 +691,90 @@ needs a little padding inside it.
 
 ## Laying out an app
 
-`AppShell` is the layout of an app's pages: make it the root route's component, and give each route a `title` (and an
-`icon`) in its `staticData`. It builds the sidebar of the app's pages (`AppSidebar`), the breadcrumbs
-(`RouteBreadcrumbs`) and Ctrl+K's command palette (`CommandPalette`) from those titles, names the environment in a
-banner (`EnvironmentBanner`), puts the user menu (`UserMenu`: mode, density, motion, sign in and out) in the sidebar's footer,
-and keeps the keyboard shortcuts, which a component declares with `useShortcut(keys, description, run)` and `?` lists.
-A route with path parameters, such as `/bonds/$security`, keeps its breadcrumb but stays out of the sidebar and the
-palette; `inNavigation: false` leaves any route out.
+`AppShell` is the layout of an app's pages: make it the root route's component, and give each route a `title`, an
+`icon` and, optionally, a `group` in its `staticData`. It builds the sidebar of the app's pages (`AppSidebar`), each
+under its group's heading, the groups in the order of their first pages, the breadcrumbs (`RouteBreadcrumbs`) and
+Ctrl+K's command palette (`CommandPalette`) from them, names the environment in a banner (`EnvironmentBanner`), puts the
+user menu (`UserMenu`: mode, density, motion, sign in and out) in the sidebar's footer, and keeps the keyboard
+shortcuts, which a component declares with `useShortcut(keys, description, run)` and `?` lists. A route with path
+parameters, such as `/bonds/$security`, keeps its breadcrumb but stays out of the sidebar and the palette;
+`inNavigation: false` leaves any route out.
 
 ```tsx
+const commands: readonly PaletteCommand[] = [
+  {
+    group: "Prices",
+    icon: RefreshCwIcon,
+    id: "refresh",
+    keywords: ["reload", "marks"],
+    label: "Refresh prices",
+    run: refreshPrices,
+    shortcut: "mod+shift+r",
+  },
+];
 const rootRoute = createRootRoute({
-  component: () => <AppShell appName="Positions" environment="qa" />,
+  component: () => (
+    <AppShell
+      appName="Positions"
+      environment="qa"
+      commands={commands}
+      header={<Badge variant="outline">Close of 6 Nov</Badge>}
+    />
+  ),
 });
 const positions = createRoute({
   component: PositionsPage,
   getParentRoute: () => rootRoute,
   path: "/positions",
-  staticData: { icon: TableIcon, title: "Positions" },
+  staticData: { group: "Books", icon: TableIcon, title: "Positions" },
 });
 ```
+
+`AppShell` takes:
+
+| Prop            | What it is                                                                                                                                                                                                          |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `appName`       | The app's name, at the top of the sidebar.                                                                                                                                                                          |
+| `environment`   | `dev`, `qa` or `prod`, which a banner names; none unless set.                                                                                                                                                       |
+| `commands`      | The palette's commands beside the pages: each `{ id, label, run }`, with `keywords`, `group`, `icon` and `shortcut`.                                                                                                |
+| `header`        | What the header holds after the breadcrumbs, such as the data's as-of date.                                                                                                                                         |
+| `sidebarHeader` | What the sidebar's header holds under the app's name, such as a choice of desk.                                                                                                                                     |
+| `sidebarFooter` | The sidebar's footer in place of the user menu; put `<UserMenu />` in it to keep the menu.                                                                                                                          |
+| `collapsible`   | `offcanvas` (the default) slides the sidebar away; `icon` folds it to a rail of icons, each named by a tooltip, and wants a `sidebarFooter` of `SidebarMenuButton`s, since the user menu needs the sidebar's width. |
+
+Each route's content is a `Page`: its `title`, the page's one level-1 heading, a `description` under it and its
+`actions` at the header's end, and below them its content. `layout="scroll"`, the default, scrolls the content under
+the header, for cards, forms and small tables; `layout="fill"` gives it the window's height and no more, for a grid, a
+pivot or a chart, which fills it and scrolls itself; other content takes the height with `flex-1`. Content that is not a `Page` scrolls in the shell's
+padded column, as before.
+
+```tsx
+<Page
+  title="Trades"
+  description="The desk's trades today, newest first."
+  actions={<Button variant="outline">Export</Button>}
+  layout="fill"
+>
+  <Grid dataset={trades} />
+</Page>
+```
+
+- **Breadcrumbs from data.** A route's `staticData.breadcrumb` titles its breadcrumb from its loader's data. A page
+  whose data a query fetches gives its `Page` a `breadcrumb`, such as the bond's name once it has arrived, which
+  titles the page's own breadcrumb, the last; the route's `title` shows until then.
+- **The palette's commands.** A command is found by its label or its `keywords`, listed under its `group` ("Commands"
+  unless set) with its `icon`, and its `shortcut`, such as `mod+shift+r`, shows beside it, is listed by `?`, and runs
+  it with the palette closed. A page is found by its title or its group.
+- **Shortcuts and scopes.** The page shown sits in a `ShortcutScope` named by its title, so a shortcut a page's
+  component declares is the page's: it goes when the page does, `?` lists it under the page's title, and it wins over
+  the app's for the same keys. `<ShortcutScope name="Quotes">` gives a part of a page keys of its own the same way. Two
+  shortcuts that take the same keys in the same scope, or in two as deep, conflict: the first declared runs, and the
+  second logs one line to the console, such as `ERROR two shortcuts take r on Trades: "Refresh the positions" runs
+  and "Refresh the trades" never does. Give one of them other keys.` It is logged, not thrown, so a conflict between
+  components that meet only in some state never takes the page down; the gallery's checks and `vp run shot` see the
+  console. `Mod+K` and `mod+k`, or `shift+?` and `?`, are the same keys.
+- **Tooltips.** One `TooltipProvider` holds every tooltip in the shell to a 400 ms delay: once one has opened, its
+  neighbours open at once, as on the sidebar's icon rail.
 
 The navigation and layout components keep shadcn's names, props and parts. Where they differ, it is here:
 
@@ -771,6 +836,11 @@ itself after five seconds unless `timeout` says otherwise; `timeout: 0` keeps it
 `actionProps`, such as `{ children: "Undo", onClick: restore }`, add a button. `priority: "high"` announces it to a
 screen reader at once, for what the user must act on now. F6 moves the keyboard into the toasts, and Escape closes the
 focused one.
+
+`toastError(error)` raises the toast `BasisApp` raises for a failed mutation: the problem's title, its detail, each
+field a 422 names and the request's reference. The same error again, its title, detail and fields alike, within 10
+seconds of the last while its toast is open, raises no new toast: that one shows the latest reference and "This
+happened 3 times.", and `toastError` returns its id. Once the toast is closed, the error raises a new one.
 
 ## Showing numbers and dates
 

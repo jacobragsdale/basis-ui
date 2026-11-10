@@ -11516,7 +11516,7 @@
           "from": "@base-ui/react",
           "name": "render",
           "optional": true,
-          "type": "React.ReactElement | ComponentRenderFn<, > | undefined"
+          "type": "React.ReactElement | ComponentRenderFn<ort { Sid, .p> | undefined"
         }
       ],
       "purpose": "A button beside the group's label, such as one that adds an item; name it with `aria-label` or `sr-only` text.",
@@ -11546,7 +11546,7 @@
           "from": "@base-ui/react",
           "name": "render",
           "optional": true,
-          "type": "React.ReactElement | ComponentRenderFn<, > | undefined"
+          "type": "React.ReactElement | ComponentRenderFn<ort { Sid, .p> | undefined"
         }
       ],
       "purpose": "The group's heading, hidden on the icon rail.",
@@ -13944,10 +13944,35 @@
           "type": "\"dev\" | \"qa\" | \"prod\" | undefined"
         },
         {
-          "description": "Commands the palette offers beside the app's pages.",
+          "description": "Commands the palette offers beside the app's pages, each with its label, keywords, group, icon and shortcut.",
           "name": "commands",
           "optional": true,
           "type": "readonly PaletteCommand[] | undefined"
+        },
+        {
+          "description": "What the header holds at its end, after the breadcrumbs, such as the data's as-of date or a search.",
+          "name": "header",
+          "optional": true,
+          "type": "ReactNode"
+        },
+        {
+          "description": "What the sidebar's header holds under the app's name, such as a choice of desk.",
+          "name": "sidebarHeader",
+          "optional": true,
+          "type": "ReactNode"
+        },
+        {
+          "description": "The sidebar's footer, the user menu unless set: an app that sets it and keeps the user menu puts `<UserMenu />` in it.",
+          "name": "sidebarFooter",
+          "optional": true,
+          "type": "ReactNode"
+        },
+        {
+          "default": "\"offcanvas\"",
+          "description": "How the sidebar folds: `offcanvas` slides it away, `icon` folds it to a rail of its pages' icons. The user menu needs the sidebar's width, so an app that folds to icons gives `sidebarFooter` SidebarMenuButtons of its own.",
+          "name": "collapsible",
+          "optional": true,
+          "type": "\"offcanvas\" | \"icon\""
         },
         {
           "description": "The page; the matched route's, through `<Outlet />`, unless set.",
@@ -13956,10 +13981,11 @@
           "type": "ReactNode"
         }
       ],
-      "purpose": "The layout of an app's pages: the sidebar built from the routes, a header with the breadcrumbs, the environment banner, Ctrl+K's command palette and `?`'s list of shortcuts. Make it the root route's component.",
-      "use": "For the layout of an app's pages: make it the root route's component. An app that needs another layout builds one from the parts it holds, such as AppSidebar and RouteBreadcrumbs.",
+      "purpose": "The layout of an app's pages: the sidebar built from the routes, in their groups, a header with the breadcrumbs, the environment banner, Ctrl+K's command palette and `?`'s list of shortcuts. Make it the root route's component, and put each route's content in a Page.",
+      "use": "For the layout of an app's pages: make it the root route's component, and give each page a Page. Put the app's own parts in its slots, `header`, `sidebarHeader` and `sidebarFooter`. An app that needs another layout builds one from the parts it holds, such as AppSidebar and RouteBreadcrumbs.",
       "with": [
         "BasisApp",
+        "Page",
         "AppSidebar",
         "RouteBreadcrumbs",
         "CommandPalette",
@@ -13968,7 +13994,7 @@
         "useShortcut"
       ],
       "variants": {},
-      "example": "import { AppShell } from \"@basis/ui\";\nimport { createRootRoute } from \"@tanstack/react-router\";\n\nexport const rootRoute = createRootRoute({\n  component: () => <AppShell appName=\"Positions\" environment=\"qa\" />,\n});\n"
+      "example": "import { AppShell, Badge, RefreshCwIcon } from \"@basis/ui\";\nimport { createRootRoute } from \"@tanstack/react-router\";\n\nconst commands = [\n  { icon: RefreshCwIcon, id: \"refresh\", label: \"Refresh prices\", run: () => undefined, shortcut: \"mod+shift+r\" },\n];\n\nexport const rootRoute = createRootRoute({\n  component: () => (\n    <AppShell\n      appName=\"Positions\"\n      environment=\"qa\"\n      commands={commands}\n      header={<Badge variant=\"outline\">Close of 6 Nov</Badge>}\n    />\n  ),\n});\n"
     },
     {
       "extends": [],
@@ -13981,9 +14007,28 @@
           "name": "appName",
           "optional": false,
           "type": "string"
+        },
+        {
+          "description": "What the sidebar's header holds under the app's name, such as a choice of desk.",
+          "name": "header",
+          "optional": true,
+          "type": "ReactNode"
+        },
+        {
+          "description": "The sidebar's footer, the user menu unless set: an app that sets it and keeps the user menu puts `<UserMenu />` in it.",
+          "name": "footer",
+          "optional": true,
+          "type": "ReactNode"
+        },
+        {
+          "default": "\"offcanvas\"",
+          "description": "How the sidebar folds, by its trigger, its rail or Ctrl+B: `offcanvas` slides it away, `icon` folds it to a rail of its pages' icons, each named by a tooltip. The user menu needs the sidebar's width, so a sidebar that folds to icons takes a `footer` of SidebarMenuButtons.",
+          "name": "collapsible",
+          "optional": true,
+          "type": "\"offcanvas\" | \"icon\""
         }
       ],
-      "purpose": "The sidebar of an app's pages, from the titles its routes set in `staticData`. `AppShell` holds one.",
+      "purpose": "The sidebar of an app's pages, from the titles and groups its routes set in `staticData`. `AppShell` holds one.",
       "use": "AppShell holds one; use it alone only in a layout of the app's own. For a sidebar of links built by hand, use SidebarMenu.",
       "with": [
         "AppShell",
@@ -14003,13 +14048,13 @@
       "name": "CommandPalette",
       "props": [
         {
-          "description": "The app's own commands, each with its label and what it runs, listed after the app's pages.",
+          "description": "The app's own commands, each with its label and what it runs, and its keywords, group, icon and shortcut if it has them, listed after the app's pages.",
           "name": "commands",
           "optional": true,
           "type": "readonly PaletteCommand[] | undefined"
         }
       ],
-      "purpose": "Opens with Ctrl+K and goes to any page of the app, or runs one of `commands`. `AppShell` holds one.",
+      "purpose": "Opens with Ctrl+K and goes to any page of the app, or runs one of `commands`, each under its group, with its icon and shortcut. `AppShell` holds one.",
       "use": "AppShell holds one, and takes its `commands`; use it alone only in a layout of the app's own. For a searchable list inside a page, use Command.",
       "with": [
         "AppShell",
@@ -14018,7 +14063,7 @@
         "useShortcut"
       ],
       "variants": {},
-      "example": "import { CommandPalette, ShortcutProvider } from \"@basis/ui\";\n\n<ShortcutProvider>\n  <CommandPalette commands={[{ id: \"refresh\", label: \"Refresh prices\", run: () => undefined }]} />\n</ShortcutProvider>;\n"
+      "example": "import { CommandPalette, RefreshCwIcon, ShortcutProvider } from \"@basis/ui\";\n\n<ShortcutProvider>\n  <CommandPalette\n    commands={[\n      {\n        group: \"Prices\",\n        icon: RefreshCwIcon,\n        id: \"refresh\",\n        keywords: [\"reload\"],\n        label: \"Refresh prices\",\n        run: () => undefined,\n        shortcut: \"mod+shift+r\",\n      },\n    ]}\n  />\n</ShortcutProvider>;\n"
     },
     {
       "extends": [
@@ -14048,6 +14093,61 @@
       ],
       "variants": {},
       "example": "import { EnvironmentBanner } from \"@basis/ui\";\n\n<EnvironmentBanner environment=\"qa\" detail=\"positions-api, QA cluster\" />;\n"
+    },
+    {
+      "extends": [],
+      "family": "page",
+      "module": "@basis/ui",
+      "name": "Page",
+      "props": [
+        {
+          "description": "The page's title, its one level-1 heading.",
+          "name": "title",
+          "optional": false,
+          "type": "string"
+        },
+        {
+          "description": "A line under the title on what the page shows.",
+          "name": "description",
+          "optional": true,
+          "type": "ReactNode"
+        },
+        {
+          "description": "The page's own buttons and menus, at the header's end, such as \"Export\" or \"Book a trade\".",
+          "name": "actions",
+          "optional": true,
+          "type": "ReactNode"
+        },
+        {
+          "default": "\"scroll\"",
+          "description": "How the content takes the height below the header: `scroll`, a column that scrolls, for cards, forms and small tables; or `fill`, the window's height and no more, for a grid, a pivot or a chart, which fills it and scrolls itself; other content takes the height with `flex-1`.",
+          "name": "layout",
+          "optional": true,
+          "type": "\"scroll\" | \"fill\""
+        },
+        {
+          "description": "The page's breadcrumb from its data, such as the bond's name on `/bonds/$security` once its query has it, in place of the route's title; the route's title while it is `undefined`.",
+          "name": "breadcrumb",
+          "optional": true,
+          "type": "string | undefined"
+        },
+        {
+          "description": "The page's content, in a column with the theme's gap.",
+          "name": "children",
+          "optional": true,
+          "type": "ReactNode"
+        }
+      ],
+      "purpose": "A page of the app in AppShell: a header with its title, description and actions, and its content, which scrolls or fills the window. Its `breadcrumb` titles the last breadcrumb from its data.",
+      "use": "For every page an app's route shows inside AppShell: the shell keeps the sidebar and breadcrumbs, the page its header and content. Give a grid's, pivot's or chart's page `layout=\"fill\"`. For a heading inside a page, use TypographyH2 or a Card's title.",
+      "with": [
+        "AppShell",
+        "RouteBreadcrumbs",
+        "useShortcut",
+        "Button"
+      ],
+      "variants": {},
+      "example": "import { Button, Card, CardContent, Page } from \"@basis/ui\";\n\n// A page that fills the window: its one child takes the height with flex-1, as a grid would.\n<Page\n  title=\"Trades\"\n  description=\"The desk's trades today, newest first.\"\n  actions={<Button variant=\"outline\">Export</Button>}\n  layout=\"fill\"\n>\n  <Card className=\"flex-1\">\n    <CardContent>The trades</CardContent>\n  </Card>\n</Page>;\n"
     },
     {
       "extends": [],
@@ -14087,6 +14187,35 @@
       ],
       "variants": {},
       "example": "import { Button, ShortcutProvider, useShortcut } from \"@basis/ui\";\n\nfunction Refresh({ onRefresh }: { readonly onRefresh: () => void }) {\n  useShortcut(\"r\", \"Refresh the positions\", onRefresh);\n  return <Button onClick={onRefresh}>Refresh</Button>;\n}\n\n<ShortcutProvider>\n  <Refresh onRefresh={() => undefined} />\n</ShortcutProvider>;\n"
+    },
+    {
+      "extends": [],
+      "family": "shortcuts",
+      "module": "@basis/ui",
+      "name": "ShortcutScope",
+      "props": [
+        {
+          "description": "What the `?` overlay heads its shortcuts with, such as the page's title.",
+          "name": "name",
+          "optional": false,
+          "type": "string"
+        },
+        {
+          "description": "The part of the app whose components declare the scope's shortcuts with `useShortcut`.",
+          "name": "children",
+          "optional": true,
+          "type": "ReactNode"
+        }
+      ],
+      "purpose": "A part of the app whose shortcuts win over the app's: a key that a shortcut inside it and one outside both take runs the one inside, while it is shown. The `?` overlay lists them under its `name`. AppShell holds one round the page shown, named by its title, so a page's shortcuts are its own.",
+      "use": "For a part of a page whose keys differ from the page's, such as a panel; AppShell already holds one round each page. Two shortcuts in the same scope, or in two scopes as deep, that take the same keys conflict: the first runs, and the second logs an ERROR line.",
+      "with": [
+        "useShortcut",
+        "ShortcutProvider",
+        "AppShell"
+      ],
+      "variants": {},
+      "example": "import { ShortcutProvider, ShortcutScope, useShortcut } from \"@basis/ui\";\n\nfunction Panel() {\n  // Inside the scope, r is the panel's, whatever the app's r does.\n  useShortcut(\"r\", \"Refresh the panel's quotes\", () => undefined);\n  return null;\n}\n\n<ShortcutProvider>\n  <ShortcutScope name=\"Quotes\">\n    <Panel />\n  </ShortcutScope>\n</ShortcutProvider>;\n"
     },
     {
       "extends": [],
@@ -15287,7 +15416,7 @@
       "kind": "hook",
       "module": "@basis/ui",
       "name": "useShortcut",
-      "purpose": "Declares a keyboard shortcut while the component is shown: `useShortcut(\"mod+k\", \"Open the command palette\", open)`. Inside a `ShortcutProvider`, which `AppShell` holds; it does nothing outside one.",
+      "purpose": "Declares a keyboard shortcut while the component is shown: `useShortcut(\"mod+k\", \"Open the command palette\", open)`. Inside a `ShortcutProvider`, which `AppShell` holds; it does nothing outside one. Inside a `ShortcutScope`, such as the one AppShell holds round the page shown, it belongs to that scope, and wins over a shortcut outside it that takes the same keys, so a page's shortcuts are its own.",
       "signature": "useShortcut(keys: string, description: string, run: () => void): void"
     },
     {
@@ -15581,7 +15710,7 @@
       "kind": "function",
       "module": "@basis/ui",
       "name": "toastError",
-      "purpose": "Raises a toast for `error`, such as a failed save, and returns its id: the problem's title, then its detail, each field a 422 names and the request's reference, a line each. `BasisApp` raises one for every failed mutation unless the mutation's `meta` says `{ errorToast: false }`. The toast stays until the user closes it, and a screen reader announces it at once.",
+      "purpose": "Raises a toast for `error`, such as a failed save, and returns its id: the problem's title, then its detail, each field a 422 names and the request's reference, a line each. `BasisApp` raises one for every failed mutation unless the mutation's `meta` says `{ errorToast: false }`. The toast stays until the user closes it, and a screen reader announces it at once. The same error, its title, detail and fields alike, raised again within 10 seconds of the last while its toast is open, raises no new toast: that one shows the latest reference and how many times it happened, and its id is returned. Once the toast is closed, the error raises a new one.",
       "signature": "toastError(error: unknown): string"
     },
     {
@@ -23605,22 +23734,46 @@
     {
       "fields": [
         {
-          "description": "",
+          "description": "What tells it from the others; unique among the commands.",
           "name": "id",
           "optional": false,
           "type": "string"
         },
         {
-          "description": "",
+          "description": "What the palette shows and the search matches, such as \"Refresh prices\".",
           "name": "label",
           "optional": false,
           "type": "string"
         },
         {
-          "description": "",
+          "description": "What choosing it, or pressing its shortcut, does.",
           "name": "run",
           "optional": false,
           "type": "() => void"
+        },
+        {
+          "description": "More words the search matches, such as `[\"reload\", \"update\"]`.",
+          "name": "keywords",
+          "optional": true,
+          "type": "readonly string[] | undefined"
+        },
+        {
+          "description": "The heading it is listed under, such as \"View\"; \"Commands\" unless set. The groups come in the order of their first commands.",
+          "name": "group",
+          "optional": true,
+          "type": "string | undefined"
+        },
+        {
+          "description": "The icon before its label, one of `@basis/ui`'s.",
+          "name": "icon",
+          "optional": true,
+          "type": "ComponentType<SVGProps<SVGSVGElement>> | undefined"
+        },
+        {
+          "description": "Its keys, such as `mod+shift+r`: shown beside it, listed by `?`, and bound to `run` while the palette is mounted.",
+          "name": "shortcut",
+          "optional": true,
+          "type": "string | undefined"
         }
       ],
       "exported": true,
@@ -23845,6 +23998,12 @@
           "name": "icon",
           "optional": false,
           "type": "ComponentType<SVGProps<SVGSVGElement>> | undefined"
+        },
+        {
+          "description": "The sidebar's heading it sits under, if any.",
+          "name": "group",
+          "optional": false,
+          "type": "string | undefined"
         }
       ],
       "exported": true,
