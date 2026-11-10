@@ -118,6 +118,8 @@ function basisPreset({ budget = {} }: BasisPresetOptions = {}): BasisPreset {
         "client-pull": clientTask("pull"),
         docs: frameworkTask("docs"),
         doctor: frameworkTask("doctor"),
+        fixtures: frameworkTask("fixtures"),
+        new: frameworkTask("new"),
         review: frameworkTask("review"),
         // Never cached: it pictures the app as it is now. src/preset/shot.ts says what it writes.
         shot: { cache: false, command: `node "${shotScript}"` },

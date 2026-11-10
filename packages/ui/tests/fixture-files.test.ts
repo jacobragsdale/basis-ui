@@ -6,7 +6,7 @@ import { afterAll, beforeAll, describe, expect, test } from "vite-plus/test";
 import { readFixtures } from "#preset/fixture-files.ts";
 import { devPort } from "#preset/fixture-mode.ts";
 
-import { example, makeApp, record, removeApp } from "./fixture-app.ts";
+import { bondAnswer, example, makeApp, record, removeApp } from "./fixture-app.ts";
 
 let app = "";
 
@@ -14,7 +14,7 @@ beforeAll(() => {
   app = makeApp({
     ".fixtures/conventions.json": record("conventions", "GET /conventions"),
     "fixtures/a.json": record("conventions", "GET /conventions"),
-    "fixtures/b/bond.json": record("bond", "GET /bonds/US91282CRF04"),
+    "fixtures/b/bond.json": record("bond", "GET /bonds/US91282CRF04", bondAnswer),
   });
 });
 

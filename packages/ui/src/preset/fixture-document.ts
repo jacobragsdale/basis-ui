@@ -1,5 +1,6 @@
 /* Whether each fixture fits the API it stands in for, by the app's `openapi.json`: its operation exists, its method and
- * path are that operation's, and its body's media type is one the operation answers that status with. A dataset
+ * path are that operation's, its body's media type is one the operation answers that status with, and a JSON body is
+ * one the status's schema accepts, read as the generated client reads it (schema-check.ts). A dataset
  * route's success must be Arrow, since basis-ui's client asks a dataset route only for Arrow. A fixture that a pull of
  * a newer document has left behind fails here, rather than serving answers the API no longer gives. */
 
@@ -8,6 +9,9 @@ import { z } from "zod";
 import { arrowStream } from "#api/fetch.ts";
 import { fixtureProblem } from "#fixtures/load.ts";
 import type { LoadedFixture } from "#fixtures/record.ts";
+
+import { objectOf } from "./api-operations.ts";
+import { schemaIssues } from "./schema-check.ts";
 
 /** What fixture mode reads of an operation in the document: its id, and the media types of each status. */
 const mediaTypesSchema = z.record(z.string(), z.unknown());
@@ -39,6 +43,10 @@ interface Operation {
   readonly responses: Readonly<Record<string, readonly string[]>>;
   /** Whether its success lists Arrow, so the generated client asks it for Arrow. */
   readonly dataset: boolean;
+  /** Each JSON body's schema, by its status and media type. */
+  readonly schemas: Readonly<Record<string, Readonly<Record<string, unknown>>>>;
+  /** The document the operation is in, whose components its schemas refer to. */
+  readonly document: Readonly<Record<string, unknown>>;
 }
 
 /** A path template as a pattern: each `{parameter}` one segment, the rest as written. */
@@ -47,6 +55,22 @@ function patternOf(template: string): RegExp {
     .split(/\{[^}]+\}/u)
     .map((part) => part.replaceAll(/[$()*+.?[\\\]^{|}]/gu, String.raw`\$&`));
   return new RegExp(`^${parts.join("[^/]+")}$`, "u");
+}
+
+/** Each response's schemas, by its status and media type. */
+function schemasOf(
+  responses: Readonly<
+    Record<string, { readonly content?: Readonly<Record<string, unknown>> | undefined }>
+  >,
+): Operation["schemas"] {
+  return Object.fromEntries(
+    Object.entries(responses).map(([status, { content = {} }]) => [
+      status,
+      Object.fromEntries(
+        Object.entries(content).map(([type, media]) => [type, objectOf(media)["schema"]]),
+      ),
+    ]),
+  );
 }
 
 /** The document's operations by their ids, or `undefined` when it is not an OpenAPI document. */
@@ -70,8 +94,19 @@ function operationsOf(document: unknown): ReadonlyMap<string, Operation> | undef
         ]),
       );
       const dataset = mediaTypes["200"]?.includes(arrowStream) === true;
+      const held = objectOf(document);
+      const schemas = schemasOf(responses);
       return [
-        { dataset, id, method, pattern: patternOf(template), responses: mediaTypes, template },
+        {
+          dataset,
+          document: held,
+          id,
+          method,
+          pattern: patternOf(template),
+          responses: mediaTypes,
+          schemas,
+          template,
+        },
       ];
     }),
   );
@@ -99,6 +134,25 @@ function bodyMisfit(fixture: LoadedFixture, operation: Operation): string | unde
   return undefined;
 }
 
+/** Why the fixture's JSON body is not one its status's schema accepts, one line for each field at fault. */
+function bodyProblems(fixture: LoadedFixture, operation: Operation): string[] {
+  const { response } = fixture.record;
+  const mediaType = mediaTypeOf(fixture);
+  const schema =
+    mediaType === undefined ? undefined : operation.schemas[String(response.status)]?.[mediaType];
+  if (!("body" in response) || schema === undefined) {
+    return [];
+  }
+  const status = String(response.status);
+  const reason = (issue: string): string =>
+    `response.body is not what operation ${operation.id} answers ${status} with in openapi.json: ${issue}`;
+  return schemaIssues(operation.document, objectOf(schema), response.body).map((issue) =>
+    fixture.source === "fixture"
+      ? `ERROR ${fixture.file}: ${reason(issue)}; correct the body, or replace the file with one vp run fixtures new ${operation.id} --status ${status} writes.`
+      : fixtureProblem(fixture.source, fixture.file, reason(issue)),
+  );
+}
+
 /** Why the fixture does not fit the document's operations, one line for each thing wrong. */
 function documentProblems(
   fixture: LoadedFixture,
@@ -123,7 +177,7 @@ function documentProblems(
     ];
   }
   const misfit = bodyMisfit(fixture, operation);
-  return misfit === undefined ? [] : [problem(misfit)];
+  return misfit === undefined ? bodyProblems(fixture, operation) : [problem(misfit)];
 }
 
 export { documentProblems, operationsOf };

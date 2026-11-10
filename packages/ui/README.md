@@ -304,6 +304,40 @@ In tests, MSW stands in for the API: `basisPlugins()` serves its service worker'
 only, and `mockApi` from `@basis/ui/testing` starts it, or MSW's Node server where there is no browser, as [Testing the
 app](#testing-the-app) shows, in Chromium and in a Node DOM alike.
 
+## Starting a page from an operation: `vp run new`
+
+`vp run new` writes a page from an operation in `openapi.json`, so an agent starts from code that passes the app's
+checks rather than from a blank file:
+
+```sh
+vp run new table positions --operation list_positions   # a DataTable of the rows a GET answers
+vp run new page bond --operation bond                   # a card of the fields a GET answers
+vp run new form new-trade --operation book_trade        # a form for the body an operation takes
+```
+
+Each writes four things: `src/pages/NAME.tsx`; its test, `src/pages/NAME.test.ts`, written with `@basis/ui/testing`
+and served the fixture's body by the generated client's handler; `fixtures/NAME.json`, whose body the schema accepts,
+unless a fixture in `fixtures/` answers that request already; and the route `/NAME` in `src/routes.ts`, with a segment
+for each path parameter, as `/bond/$security`, its page loaded with `lazyRouteComponent`. Each page is a `Page`, titled by
+NAME. A table has a column for
+each field of a row, and a page a line for each field, each number shown by the display format the API declares,
+through `displayFormats`. A form has a field for each one the body requires: an amount in `AmountInput`, a date in
+`AsOfDatePicker`, a choice in `NativeSelect`, a flag in `Checkbox`, text in `Input`; its schema is the generated one,
+a 422 lands on the fields it names, and a success raises a toast. A field that holds an object or a list is left out,
+and the page's opening comment names it. Then it prints what to run next:
+
+```text
+Wrote src/pages/positions.tsx, src/pages/positions.test.ts and fixtures/positions.json, and added the route /positions to src/routes.ts.
+Next, run:
+  vp run verify
+  vp run shot /positions
+```
+
+It never overwrites a file: run it again with `--force` to replace the page, its test and its fixture. An operation the
+document lacks fails with the closest ids it has, and one a scaffold cannot make that kind of page from, such as a
+table of one object, a dataset route, whose rows are parallax's grid's, or an operation that requires query parameters,
+fails with what to do instead. Give the new route a budget in `vite.config.ts` for `vp run budget`.
+
 ## Running the app in fixture mode
 
 `vp dev` runs the app with no API. MSW's service worker answers every request under `/api`, from three sources in this
@@ -371,6 +405,12 @@ A fixture is one JSON file holding one exchange, and an app commits one for each
 }
 ```
 
+`vp run fixtures new OPERATION` writes one, `fixtures/OPERATION.json`, with a body the schema accepts: the schema's
+examples where it gives them, and the smallest values of each field's type, format and pattern otherwise.
+`vp run fixtures new OPERATION --status 404` writes `fixtures/OPERATION-404.json`, a problem details body whose type and
+title come from the response's description, at another path parameter than the success's, so both answer. It never
+overwrites a file but with `--force`. Replace the made-up values with ones that look like the API's.
+
 A problem is a fixture too: a `404` with `"media_type": "application/problem+json"` and the problem as its body. A
 dataset route's fixture holds an Arrow IPC stream, in base64, as `body_base64`, with `"media_type":
 "application/vnd.apache.arrow.stream"`: write the table with apache-arrow's `tableToIPC(table, "stream")`, or pyarrow's
@@ -386,7 +426,9 @@ ERROR fixtures/bond.json: GET /api/bonds/US91282CRF04 is not operation bond, whi
 ```
 
 A file must be in the record format below, name an operation in `openapi.json`, have that operation's method and a
-path its template matches, and, when it has a body, a media type the operation declares for its status. A dataset
+path its template matches, and, when it has a body, a media type the operation declares for its status and a body
+that status's schema accepts, read as the generated client reads it: each field it declares checked, and a field it
+does not declare passing. `vp run fixtures check`, which `vp run verify` runs, checks every file in `fixtures/`. A dataset
 route's success must be Arrow, since the generated client asks a dataset route only for Arrow.
 
 ### The record format

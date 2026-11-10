@@ -614,6 +614,12 @@ flowchart TD
    `--selector`, several routes, `--all` from the router, steps (`click`, `hover`, `type`, `press`, `wait`), `--compare`
    with Playwright's comparator, and `--json`, one line of `ShotReport`. In `packages/example` it finds the shell's
    two `main` landmarks and its sidebar outside any landmark, left to the shell's step.
+   6.8.6 built on 2026-11-09: `vp run new table|page|form NAME --operation ID` writes a page from the operation's
+   schema, a DataTable with a column for each field of a row, a card of the fields, or a form bound to the generated
+   Zod schema, each number by its display format, with its test, a fixture and its route, which pass the app's lint,
+   types and tests as written, then prints `vp run verify` and `vp run shot /NAME`. An unknown operation fails with the
+   closest ids, and an existing file with `--force`. `vp run fixtures check` checks each fixture's body against its
+   schema as the client reads it, and `vp run fixtures new OPERATION [--status N]` writes one the schema accepts.
 9. **6.9 The showcase** (`6.9-showcase`, then a branch per page). `packages/showcase`, made from the template, with ten
    pages: overview, blotter, positions, relative value, P&L explain, curves, a bond, booking a trade, import, and a
    probe of the desktop. An agent builds it with only the shipped tools, and logs in `BUILDING.md` each place they fell

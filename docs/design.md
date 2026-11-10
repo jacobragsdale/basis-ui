@@ -39,6 +39,8 @@ behaves alike, and a fix reaches all of them in one upgrade.
 | `vp dev`                        | The app in fixture mode, on a free port per git worktree, with no backend                                                                                                                                                                    |
 | `vp run verify`                 | Every check, each stage to its end, then one summary, or with `--json` one line of JSON: sync, client, fixtures, config, lint, types, tests, build, budget and suppressions; `--stage NAME` runs some; screenshot comparison in WSL, not yet |
 | `vp run shot ROUTE`             | A screenshot of a page or of every route, its accessibility tree, console errors, requests to `/api` and their sources, and axe's check; steps before it, and a comparison with baselines                                                    |
+| `vp run new KIND NAME`          | A page made from an operation in `openapi.json`, `table`, `page` or `form` with `--operation ID`: the page, its test, a fixture and its route, which pass `vp run verify` as written                                                         |
+| `vp run fixtures`               | `check`: every fixture against `openapi.json`, as `verify` checks them; `new OPERATION [--status N]`: a fixture whose body the schema accepts                                                                                                |
 | `vp run budget`                 | The build, then each route's JavaScript and CSS, gzipped, against the budget the app's `vite.config.ts` gives it                                                                                                                             |
 | `vp run client-pull`            | Copies the API's `openapi.json` from the API repo at a tag, or from a deployed API, and regenerates the client                                                                                                                               |
 | `vp run client-check`           | Whether the generated client still matches the repo's `openapi.json`: a task of its own, since an app cannot add a step to `vp check`                                                                                                        |
@@ -618,7 +620,20 @@ as JSON or as base64 bytes with their media type. A record never holds the beare
 and a JWT anywhere in a record is refused. A request for Arrow is answered only by a fixture, since orval's handlers
 make random bytes, and a request no source answers gets a problem that says what to add. Every file is checked against
 `openapi.json` when `vp dev` starts and when one changes, and each in `fixtures/` by `vp run verify`, so a fixture a
-newer document has left behind fails with an `ERROR` line rather than serving an answer the API no longer gives.
+newer document has left behind fails with an `ERROR` line rather than serving an answer the API no longer gives. A JSON
+body is checked against its status's schema as the generated client reads it, by Zod's `fromJSONSchema` over the
+document's components: each field the schema declares is checked, and one it does not declare passes, since the
+client drops it. `vp run fixtures new OPERATION` writes a fixture whose body the schema accepts, from the schema's
+examples or the smallest values each field's type, format and pattern allow, and, with `--status`, an error's problem
+details at another path parameter than the success's.
+
+`vp run new table|page|form NAME --operation ID` starts a page from an operation, so an agent begins from code that
+passes the app's checks: the page, from the schema of the rows or the object a GET answers or of the body an operation
+takes, in a `Page`, with each number by its display format, a DataTable for a table, QueryState over a card for a page, and the
+generated Zod schema under TanStack Form for a form; its test, on `@basis/ui/testing`; a fixture, unless one answers the
+request already; and its route in `src/routes.ts`. It formats what it writes with `vp fmt`, never overwrites a file
+without `--force`, and refuses what it cannot make, a dataset route's rows, which are parallax's grid's, or an
+operation whose query a page would have to choose, with what to do instead.
 
 `vp dev` starts the app in fixture mode with no code in the app: the preset rewrites `index.html` to start the worker
 before the app's entry runs, and reports each answer and its source through the telemetry interface, which writes to

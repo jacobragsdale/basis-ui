@@ -5,6 +5,14 @@ What changed in `@basis/ui`, newest first, in the words an app's agent needs: wh
 
 ## Unreleased
 
+- `vp run new table|page|form NAME --operation ID` starts a page from an operation in `openapi.json`: a DataTable of
+  the rows a GET answers, a card of the fields a GET answers, or a form for the body an operation takes, bound to the
+  generated Zod schema, each number by its display format; with its test, a fixture whose body the schema accepts and
+  its route in `src/routes.ts`. It passes `vp run verify` as written, and prints `vp run verify` and `vp run shot
+  /NAME` to run next. `vp run fixtures new OPERATION [--status 404]` writes a fixture whose body the schema accepts,
+  and `vp run fixtures check` checks every fixture. What to do: fixture mode and `vp run verify` now check each
+  fixture's JSON body against its status's schema, so fix, or rewrite with `vp run fixtures new`, each one an `ERROR`
+  line names; run `vp run sync` for the new lines in `AGENTS.md`.
 - The shell grows for a data app. Give each route's content a `Page`, with its `title`, `description` and `actions`,
   and `layout="fill"` for a grid, pivot or chart that fills the window; `layout="scroll"`, the default, scrolls the
   content under the header, and content that is not a Page scrolls in the shell as before. A Page's `breadcrumb`, such

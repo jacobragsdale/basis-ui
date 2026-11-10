@@ -290,7 +290,7 @@ describe("vp run upgrade", () => {
 describe("a task @basis/ui does not have", () => {
   test("names the ones it has", () => {
     expect(run("deploy").stderr).toBe(
-      "ERROR deploy is no task of @basis/ui's: run one of budget, check-full, docs, doctor, fixtures, review, suppressions, sync, upgrade, verify with vp run.\n",
+      "ERROR deploy is no task of @basis/ui's: run one of budget, check-full, docs, doctor, fixtures, new, review, suppressions, sync, upgrade, verify with vp run.\n",
     );
   });
 });

@@ -5,7 +5,9 @@
  *   vp run doctor              the desktop's setup (doctor.ts)
  *   vp run verify [--stage NAME] [--json]   every check, one verdict (verify.ts); `check-full`, its former name
  *   vp run review [BRANCH]     a pull request's summary (review.ts)
- *   fixtures                   the check of the fixtures in fixtures/, verify's fixtures stage (fixture-files.ts)
+ *   vp run fixtures [check]    the check of the fixtures in fixtures/, verify's fixtures stage (fixture-files.ts)
+ *   vp run fixtures new OPERATION [--status N]   a fixture whose body the schema accepts (fixture-new.ts)
+ *   vp run new page|table|form NAME --operation ID   a page, its test, its fixture and its route (scaffold.ts)
  *   suppressions               the check of the comments that turn a check off, verify's stage (suppressions.ts)
  *   vp run docs [NAME]         the installed version's docs and catalogue (docs.ts)
  *   vp run upgrade [VERSION]   a new @basis/ui, synced and checked (upgrade.ts)
@@ -17,8 +19,9 @@
 import { budgetTask } from "./budget.ts";
 import { docs } from "./docs.ts";
 import { doctor } from "./doctor.ts";
-import { checkFixtures } from "./fixture-files.ts";
+import { fixturesTask } from "./fixture-new.ts";
 import { review } from "./review.ts";
+import { newTask } from "./scaffold.ts";
 import { TaskError } from "./task-error.ts";
 import { suppressionsTask } from "./suppressions.ts";
 import { sync } from "./sync.ts";
@@ -44,7 +47,8 @@ const tasks: ReadonlyMap<string, Task> = new Map<string, Task>([
   ["check-full", checkFull],
   ["docs", docs],
   ["doctor", doctor],
-  ["fixtures", checkFixtures],
+  ["fixtures", fixturesTask],
+  ["new", newTask],
   ["review", review],
   ["suppressions", suppressionsTask],
   ["sync", sync],

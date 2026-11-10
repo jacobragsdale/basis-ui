@@ -13,7 +13,7 @@ import { afterAll, beforeAll, describe, expect, test } from "vite-plus/test";
 
 import { devPort, fixtureModePlugin, rootPath, withFixtureMode } from "#preset/fixture-mode.ts";
 
-import { example, makeApp, record, removeApp, writeIn } from "./fixture-app.ts";
+import { bondAnswer, example, makeApp, record, removeApp, writeIn } from "./fixture-app.ts";
 
 const page = `<!doctype html>
 <html lang="en">
@@ -34,7 +34,7 @@ beforeAll(() => {
   app = makeApp({
     ".fixtures/conventions.json": record("conventions", "GET /conventions"),
     "fixtures/a.json": record("conventions", "GET /conventions"),
-    "fixtures/b/bond.json": record("bond", "GET /bonds/US91282CRF04"),
+    "fixtures/b/bond.json": record("bond", "GET /bonds/US91282CRF04", bondAnswer),
     "index.html": page,
     "src/main.tsx": 'document.title = "App";\n',
   });

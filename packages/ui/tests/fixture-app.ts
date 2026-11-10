@@ -12,6 +12,20 @@ const example = path.join(packageRoot, "../example");
 /** An empty JSON answer. */
 const emptyList = { body: [], media_type: "application/json", status: 200 };
 
+/** A bond, as the sample API answers `GET /bonds/{security}`, whose schema a fixture's body is checked against. */
+const bondAnswer = {
+  body: {
+    convention: "30/360",
+    coupon_rate: 0.04125,
+    frequency: 2,
+    issued: "2026-05-15",
+    maturity: "2036-05-15",
+    security_id: "US91282CRF04",
+  },
+  media_type: "application/json",
+  status: 200,
+};
+
 /** A record of the sample API's `operation`, asked as `request`, such as `GET /conventions`, answered by `response`. */
 function record(
   operation: string,
@@ -50,4 +64,4 @@ function removeApp(root: string): void {
   rmSync(root, { force: true, recursive: true });
 }
 
-export { emptyList, example, makeApp, record, removeApp, writeIn };
+export { bondAnswer, emptyList, example, makeApp, record, removeApp, writeIn };

@@ -229,5 +229,5 @@ function entryNamed(catalogue: Catalogue, name: string): Entry | undefined {
   return undefined;
 }
 
-export { entryNamed, search, suggestions };
+export { distance, entryNamed, search, suggestions };
 export type { Found, SearchPage };

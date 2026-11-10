@@ -53,6 +53,9 @@ change one needs belongs in `@basis/ui`. Write the repo's own notes in `AGENTS.m
 - A page is a route in `src/routes.ts`; its `staticData` title and icon put it in the sidebar, the breadcrumbs and the
   command palette. Its component loads with `lazyRouteComponent`, so a page's code, and `@basis/parallax` with it,
   loads only when the page opens; give a new route a budget in `vite.config.ts` for `vp run budget`.
+- `vp run new table|page|form NAME --operation ID` starts a page from an operation in `openapi.json`: the page, its
+  test, a fixture and its route, which pass `vp run verify` as written. `vp run fixtures new OPERATION [--status 404]`
+  writes a fixture whose body the schema accepts, and `vp run fixtures check` checks every fixture against it.
 - Numbers stay as the API sends them until they are displayed: never round, scale or format a value before the
   component that shows it, which formats it with `@basis/ui`'s display formats.
 - Tests are written with `@basis/ui/testing`, so they run in Chromium and in a Node DOM. A test that needs a real
