@@ -135,7 +135,12 @@ theme is `src/theme/themes/default.ts`, which sits at `:root`; every other theme
    takes is not a theme's to change: that is `src/theme/tokens.ts`, the same for every theme.
 4. Write the stylesheet: `vp run @basis/ui#theme`. Commit `src/styles/theme.css` with the inputs; a test fails when the
    two disagree.
-5. Run the theme's tests, `vp test tests/theme.test.ts tests/themes.test.ts tests/theme-selectors.test.ts
+5. Run `vp check`. It holds every shipped theme to `checkTheme` (`src/theme/check.ts`), through the repo's lint rule
+   `basis-ui/check-theme`, and reports each failure at the theme's `defineTheme` call as one line: the mode, the
+   token, what it sits on or stands beside, the figure, the floor, and the nearest value of one input that passes,
+   such as `set signed.loss.dark to 0.75 (5.51:1)`. Fix the first and run it again, since one input can fail
+   several pairs.
+6. Run the theme's tests, `vp test tests/theme.test.ts tests/themes.test.ts tests/theme-selectors.test.ts
    tests/controls.test.ts` in `packages/ui`, then `vp run @basis/ui#build` and the gallery's screenshots,
    `vp run @basis/gallery#shots`. A change to the default moves the baselines it touches: record them again with
    `--update` and show the before and after.

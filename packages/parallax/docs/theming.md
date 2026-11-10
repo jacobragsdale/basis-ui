@@ -201,8 +201,8 @@ parameter can be a number of pixels.
 
 | Property | Parameter | Light default | Dark default | Styles |
 |---|---|---|---|---|
-| `--px-series-1` to `--px-series-8` | `series`, a list | eight colours from `#2a78d6` | eight colours from `#3987e5` | Series and groups, in order; past the eighth, the muted colour. |
-| `--px-up`, `--px-down` | `up`, `down` | `oklch(0.47 0.1294 150)`, `oklch(0.36 0.1459 25)` | `oklch(0.84 0.16 150)`, `oklch(0.7 0.1908 25)` | Candles, OHLC bars and volume that close up or down. |
+| `--px-series-1` to `--px-series-8` | `series`, a list | eight colours from `#2a78d6` | eight colours from `#3c7dde` | Series and groups, in order; past the eighth, the muted colour. |
+| `--px-up`, `--px-down` | `up`, `down` | `oklch(0.46 0.1267 150)`, `oklch(0.36 0.1459 25)` | `oklch(0.86 0.16 150)`, `oklch(0.75 0.1505 25)` | Candles, OHLC bars and volume that close up or down. |
 | `--px-ramp-1` to `--px-ramp-9` | `ramp`, a list | nine OKLCH steps of hue 245, from `oklch(0.93 0.0361 245)` to `oklch(0.37 0.0931 245)` | nine steps from `oklch(0.27 0.0679 245)` to `oklch(0.83 0.091 245)` | Densities and heatmaps, from least to most. |
 | `--px-middle` | `middle` | `oklch(0.935 0.0034 255)` | `oklch(0.348 0.0056 255)` | A heatmap's zero when values take both signs. |
 | `--px-negative-ramp-1` to `--px-negative-ramp-5` | `negativeRamp`, a list | five OKLCH steps of hue 25, from `oklch(0.82 0.1008 25)` to `oklch(0.42 0.1703 25)` | five steps from `oklch(0.42 0.1703 25)` to `oklch(0.82 0.1008 25)` | A heatmap's negative values, from least to most. |

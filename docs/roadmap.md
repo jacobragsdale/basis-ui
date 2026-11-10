@@ -562,7 +562,11 @@ flowchart TD
    test measures on every control. 6.5.3 built on 2026-11-09: a theme is one file of `ThemeInputs`, from each hue's
    curve to the chart palettes, the generator is pure functions of it, the default sits at `:root` and any other under
    `[data-theme]` with its dark mode on, around or inside it, `vp run @basis/ui#theme new NAME` starts one, and the
-   default's stylesheet computes as it did.
+   default's stylesheet computes as it did. 6.5.4 built on 2026-11-09: `checkTheme` holds every shipped theme in `vp check`, through the
+   repo's lint rule `basis-ui/check-theme`, to text at 5.5:1 on every surface and fill it sits on, the focus ring as
+   drawn at 3:1, and every pair of chart series apart under each simulation, each failure ending with the nearest value
+   that passes; the default's light green solid and gain, dark red and amber solids, dark ring, gain and loss, and
+   chart colours moved to pass it.
 6. **6.6 Grid features.** Lane Grid, after 6.3, 6.4 and 6.5, one branch per item: rich cells (`6.6.1-rich-cells`), a
    context menu and events (`6.6.2-context-menu`), saved views (`6.6.3-saved-views`), layouts typed by the dataset's
    rows (`6.6.4-typed-layouts`), states on the canvas (`6.6.5-states`), and small charts that say what their marks are

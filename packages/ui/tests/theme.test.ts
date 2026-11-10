@@ -1,49 +1,21 @@
-import { readdirSync, readFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { compile } from "@tailwindcss/node";
-import {
-  converter,
-  differenceEuclidean,
-  filterDeficiencyDeuter,
-  filterDeficiencyProt,
-  filterDeficiencyTrit,
-  wcagContrast,
-} from "culori";
-import type { Color } from "culori";
 import { describe, expect, test } from "vite-plus/test";
 
-import { colourOf as colourIn } from "#theme/colours.ts";
-import type { Mode } from "#theme/inputs.ts";
-import { defaultTheme } from "#theme/themes/index.ts";
+import { checkTheme, themeFileProblems } from "#theme/check.ts";
+import { defineTheme } from "#theme/inputs.ts";
+import type { ChartColour, Charts, Hue, StepTone, ThemeInputs } from "#theme/inputs.ts";
+import { defaultTheme, themes } from "#theme/themes/index.ts";
 import { tokenNames } from "#theme/tokens.ts";
 
-const modes: readonly Mode[] = ["light", "dark"];
 const source = new URL("../src/", import.meta.url).pathname;
 const committed = readFileSync(path.join(source, "styles/theme.css"), "utf8");
-
-// OKLab distance scaled by 100, the scale the reference palette's thresholds use.
-const distance = differenceEuclidean("oklab");
-function delta(first: Color, second: Color): number {
-  return distance(first, second) * 100;
-}
-
-const deficiencies = {
-  deuteranopia: filterDeficiencyDeuter(1),
-  protanopia: filterDeficiencyProt(1),
-  tritanopia: filterDeficiencyTrit(1),
-} as const;
-
-const toOklch = converter("oklch");
-
-/** A token's colour in the default theme. */
-function colourOf(name: string, mode: Mode): Color {
-  return colourIn(defaultTheme, name, mode);
-}
-
-function lightness(colour: Color): number {
-  return toOklch(colour).l;
-}
+const root = fileURLToPath(new URL("../../../", import.meta.url));
+const vp = path.join(root, "node_modules/.bin/vp");
 
 /** The CSS Tailwind generates for `candidates` with the theme. */
 async function build(candidates: readonly string[]): Promise<string> {
@@ -68,149 +40,152 @@ test("every token is defined in both modes, and nothing outside theme.css define
   expect(others, "CSS files that declare custom properties").toEqual([]);
 });
 
-// Text pairs reach 5.5:1; control outlines and focus rings reach 3:1 against what they sit on.
-const textPairs: readonly (readonly [text: string, surface: string])[] = [
-  ...[
-    "background",
-    "card",
-    "popover",
-    "muted",
-    "secondary",
-    "accent",
-    "selection",
-    "highlight",
-  ].map((surface) => ["foreground", surface] as const),
-  ...["background", "card", "popover", "muted"].map(
-    (surface) => ["muted-foreground", surface] as const,
-  ),
-  ["card-foreground", "card"],
-  ["popover-foreground", "popover"],
-  ["secondary-foreground", "secondary"],
-  ["accent-foreground", "accent"],
-  ["primary-foreground", "primary"],
-  ["primary-foreground", "primary-hover"],
-  ["primary-foreground", "primary-active"],
-  ["secondary-foreground", "secondary-hover"],
-  ["secondary-foreground", "secondary-active"],
-  ["primary", "background"],
-  ["primary", "card"],
-  ["sidebar-foreground", "sidebar"],
-  // A sidebar group's label.
-  ["muted-foreground", "sidebar"],
-  // A key in a tooltip, which is drawn in `foreground` with `background` text.
-  ["background", "muted-foreground"],
-  ["sidebar-accent-foreground", "sidebar-accent"],
-  ["sidebar-primary-foreground", "sidebar-primary"],
-  ...["destructive", "success", "warning", "info"].flatMap((status) => [
-    [`${status}-foreground`, status] as const,
-    [status, "background"] as const,
-    [status, "card"] as const,
-    [status, `${status}-subtle`] as const,
-    [status, `${status}-subtle-hover`] as const,
-    ["foreground", `${status}-subtle`] as const,
-  ]),
-  ...["gain", "loss"].flatMap((signed) => [
-    [signed, "background"] as const,
-    [signed, "card"] as const,
-  ]),
-  ...["env-dev", "env-qa", "env-prod"].map((env) => [`${env}-foreground`, env] as const),
-];
-// The focus ring is drawn whole, outside the control, so it sits on the surface the control sits on. A switch that is
-// off shows its track on the page and its thumb, in `background`, on the track.
-const outlinePairs: readonly (readonly [outline: string, surface: string])[] = [
-  ["input", "background"],
-  ["input", "card"],
-  ...["background", "card", "popover", "muted"].map((surface) => ["ring", surface] as const),
-  ["sidebar-ring", "sidebar"],
-  ...["background", "card", "popover"].map((surface) => ["control-off", surface] as const),
-  ["background", "control-off"],
-];
+/** The default theme with one change, for a check to fail on. */
+function changed(change: (theme: ThemeInputs) => Partial<ThemeInputs>): ThemeInputs {
+  return defineTheme({ ...defaultTheme, ...change(defaultTheme), name: defaultTheme.name });
+}
 
-/* A fill hovered and pressed: each state must show against the one before it, as a fill against its surface. A status's
- * tint, pressed, returns to rest. */
-const states: readonly (readonly [rest: string, hover: string, active: string])[] = [
-  ...["primary", "secondary"].map((fill) => [fill, `${fill}-hover`, `${fill}-active`] as const),
-  ...["destructive", "success", "warning", "info"].map(
-    (status) => [`${status}-subtle`, `${status}-subtle-hover`, `${status}-subtle`] as const,
-  ),
-];
+/** A hue's curve with one step at another lightness. */
+function curveWith(hue: Hue, step: number, dark: number): readonly StepTone[] {
+  return hue.curve.map((row) => (row.step === step ? { ...row, dark } : row));
+}
 
-/* A fill must show on every surface it can sit on, or a muted band or a highlighted menu item vanishes in a popup.
- * 2 is about one just-noticeable difference in OKLab's scale; a quiet fill needs no more. */
-const fills = ["muted", "secondary", "accent"] as const;
-const surfaces = ["background", "card", "popover"] as const;
+/** The chart series with one colour changed. */
+function seriesWith(
+  charts: Charts,
+  index: number,
+  colour: Partial<ChartColour>,
+): Charts["categorical"] {
+  const categorical: [...Charts["categorical"]] = [...charts.categorical];
+  const old = categorical[index];
+  if (old !== undefined) {
+    categorical[index] = { ...old, ...colour };
+  }
+  return categorical;
+}
 
-describe.each(modes)("fills in %s mode", (mode) => {
-  test.each(fills.flatMap((fill) => surfaces.map((surface) => [fill, surface] as const)))(
-    "%s stands apart from %s",
-    (fill, surface) => {
-      expect(delta(colourOf(fill, mode), colourOf(surface, mode))).toBeGreaterThanOrEqual(2);
-    },
-  );
-});
+/** `checkTheme`'s lines for `theme`. */
+function messagesOf(theme: ThemeInputs): readonly string[] {
+  return checkTheme(theme).map(({ message }) => message);
+}
 
-describe.each(modes)("hovered and pressed fills in %s mode", (mode) => {
-  test.each(states)("%s, %s and %s each stand apart from the one before", (rest, hover, active) => {
-    expect(delta(colourOf(hover, mode), colourOf(rest, mode))).toBeGreaterThanOrEqual(2);
-    expect(delta(colourOf(active, mode), colourOf(hover, mode))).toBeGreaterThanOrEqual(2);
+describe("checkTheme", () => {
+  test.each(themes)("the $name theme passes", (theme) => {
+    expect(messagesOf(theme)).toStrictEqual([]);
+  });
+
+  test("text on every ground it sits on reaches 5.5:1, and a failure names the nearest lightness that passes", () => {
+    const theme = changed(({ signed }) => ({
+      signed: { ...signed, loss: { ...signed.loss, dark: 0.7 } },
+    }));
+    expect(messagesOf(theme)).toStrictEqual([
+      "ERROR the default theme's dark loss on popover is 5.46:1, under the 5.5:1 text needs: set signed.loss.dark to 0.702 (5.51:1).",
+      "ERROR the default theme's dark loss on muted is 4.96:1, under the 5.5:1 text needs: set signed.loss.dark to 0.725 (5.50:1).",
+      "ERROR the default theme's dark loss on accent is 4.48:1, under the 5.5:1 text needs: set signed.loss.dark to 0.75 (5.51:1).",
+      "ERROR the default theme's dark loss on secondary is 4.48:1, under the 5.5:1 text needs: set signed.loss.dark to 0.75 (5.51:1).",
+      "ERROR the default theme's dark loss on selection is 4.96:1, under the 5.5:1 text needs: set signed.loss.dark to 0.725 (5.51:1).",
+      "ERROR the default theme's dark loss on highlight is 5.00:1, under the 5.5:1 text needs: set signed.loss.dark to 0.723 (5.50:1).",
+      "ERROR the default theme's dark loss on sidebar-accent is 4.96:1, under the 5.5:1 text needs: set signed.loss.dark to 0.725 (5.50:1).",
+    ]);
+  });
+
+  test("the focus ring reaches 3:1 on what a focused control sits beside, and a failure names its hue's step", () => {
+    const theme = changed(({ hues }) => ({
+      hues: { ...hues, brand: { ...hues.brand, curve: curveWith(hues.brand, 8, 0.56) } },
+    }));
+    expect(messagesOf(theme)).toStrictEqual([
+      "ERROR the default theme's dark ring on accent is 2.78:1, under the 3:1 a focus ring needs: set hues.brand's step 8 dark to 0.578 (3.00:1).",
+    ]);
+  });
+
+  test("a chart series reaches 3:1 on what a chart sits on, and a failure names the nearest colour that passes", () => {
+    const theme = changed(({ charts }) => ({
+      charts: {
+        ...charts,
+        categorical: seriesWith(charts, 3, { light: "#eda100" }),
+      },
+    }));
+    expect(messagesOf(theme)).toStrictEqual([
+      "ERROR the default theme's light chart-4 on background is 2.05:1, under the 3:1 a chart's marks need: set charts.categorical[3].light to #c38400 (3.00:1).",
+      "ERROR the default theme's light chart-4 on card is 2.12:1, under the 3:1 a chart's marks need: set charts.categorical[3].light to #c78600 (3.00:1).",
+      "ERROR the default theme's light chart-4 on popover is 2.12:1, under the 3:1 a chart's marks need: set charts.categorical[3].light to #c78600 (3.00:1).",
+    ]);
+  });
+
+  test("any two chart series stay 6 apart under each simulation, not only neighbours", () => {
+    const theme = changed(({ charts }) => ({
+      charts: {
+        ...charts,
+        categorical: seriesWith(charts, 5, { dark: "#d55181" }),
+      },
+    }));
+    expect(messagesOf(theme)).toStrictEqual([
+      "ERROR the default theme's dark chart-2 and chart-6 are 5.6 apart in OKLab ×100 under tritanopia, under the 6 any two series need: set charts.categorical[5].dark to #d14e7e (6.0).",
+      "ERROR the default theme's dark chart-3 and chart-6 are 3.2 apart in OKLab ×100 under deuteranopia, under the 6 any two series need: set charts.categorical[5].dark to #cb4778 (6.1).",
+    ]);
+  });
+
+  test("gain and loss differ in lightness and stay apart under each simulation", () => {
+    const theme = changed(({ signed }) => ({
+      signed: { ...signed, gain: { ...signed.gain, dark: 0.8 } },
+    }));
+    expect(messagesOf(theme)).toStrictEqual([
+      "ERROR the default theme's dark gain and loss differ by 0.05 in lightness, under the 0.1 that tells them apart without hue: set signed.loss.dark to 0.699 (0.10).",
+      "ERROR the default theme's dark gain and loss are 4.8 apart in OKLab ×100 under deuteranopia, under the 8 signed values need: set signed.loss.dark to 0.727 (8.1).",
+    ]);
+  });
+
+  test("a fill hovered shows against its rest, and a failure names the surface's nearest step", () => {
+    const theme = changed(({ surfaces }) => ({
+      surfaces: { ...surfaces, light: { ...surfaces.light, secondaryHover: 4 } },
+    }));
+    expect(messagesOf(theme)).toStrictEqual([
+      "ERROR the default theme's light secondary-hover and secondary are 0.0 apart in OKLab ×100, under the 2 a hovered fill needs to show: set surfaces.light.secondaryHover to 3 (2.3).",
+    ]);
+  });
+
+  test("each problem names its theme, mode and the tokens it measured, the moved one first", () => {
+    const theme = changed(({ hues }) => ({
+      hues: { ...hues, brand: { ...hues.brand, curve: curveWith(hues.brand, 8, 0.56) } },
+    }));
+    expect(
+      checkTheme(theme).map(({ mode, theme: name, tokens }) => ({ mode, name, tokens })),
+    ).toStrictEqual([{ mode: "dark", name: "default", tokens: ["ring", "accent"] }]);
   });
 });
 
-describe.each(modes)("contrast in %s mode", (mode) => {
-  test.each(textPairs)("%s on %s reaches 5.5:1", (text, surface) => {
-    expect(wcagContrast(colourOf(text, mode), colourOf(surface, mode))).toBeGreaterThanOrEqual(5.5);
+describe("vp check holds every shipped theme to checkTheme", () => {
+  test("a theme's file reports checkTheme's lines, and a file `themes` does not list says so", () => {
+    const broken = changed(({ signed }) => ({
+      signed: { ...signed, loss: { ...signed.loss, dark: 0.7 } },
+    }));
+    expect(themeFileProblems("/themes/default.ts", [broken])).toStrictEqual(messagesOf(broken));
+    expect(themeFileProblems("/themes/default.ts", themes)).toStrictEqual([]);
+    expect(themeFileProblems(String.raw`C:\themes\sea.ts`, themes)).toStrictEqual([
+      "ERROR sea.ts defines a theme that `themes` in src/theme/themes/index.ts does not list, so it is in no stylesheet and no check: add it there, or name the theme after its file.",
+    ]);
   });
-  test.each(outlinePairs)("%s on %s reaches 3:1", (outline, surface) => {
-    expect(wcagContrast(colourOf(outline, mode), colourOf(surface, mode))).toBeGreaterThanOrEqual(
-      3,
+
+  test("the root config's lint runs the rule on the themes' files", () => {
+    const probe = new URL("../src/theme/themes/unlisted-probe.ts", import.meta.url);
+    writeFileSync(
+      probe,
+      'import { defineTheme } from "#theme/inputs.ts";\n\nimport { theme as base } from "./default.ts";\n\nexport const theme = defineTheme({ ...base, name: "unlisted-probe" });\n',
     );
-  });
-});
-
-describe.each(modes)("chart colours in %s mode", (mode) => {
-  const series = Array.from({ length: 8 }, (_slot, index) =>
-    colourOf(`chart-${String(index + 1)}`, mode),
-  );
-  const adjacent = series.slice(1).map((colour, index) => ({
-    first: series[index],
-    firstNumber: index + 1,
-    second: colour,
-    secondNumber: index + 2,
-  }));
-
-  test.each(adjacent)(
-    "chart-$firstNumber and chart-$secondNumber stay 15 apart to normal vision",
-    ({ first, second }) => {
-      if (first === undefined) {
-        throw new Error("The chart series list is shorter than eight.");
-      }
-      expect(delta(first, second)).toBeGreaterThanOrEqual(15);
-    },
-  );
-
-  test.each(Object.entries(deficiencies))(
-    "adjacent series stay 8 apart under %s",
-    (_name, simulate) => {
-      for (const { first, second } of adjacent) {
-        if (first === undefined) {
-          throw new Error("The chart series list is shorter than eight.");
-        }
-        expect(delta(simulate(first), simulate(second))).toBeGreaterThanOrEqual(8);
-      }
-    },
-  );
-});
-
-describe.each(modes)("gain and loss in %s mode", (mode) => {
-  const gain = colourOf("gain", mode);
-  const loss = colourOf("loss", mode);
-
-  test("they differ in lightness by at least 0.1", () => {
-    expect(Math.abs(lightness(gain) - lightness(loss))).toBeGreaterThanOrEqual(0.1);
-  });
-
-  test.each(Object.entries(deficiencies))("they stay 8 apart under %s", (_name, simulate) => {
-    expect(delta(simulate(gain), simulate(loss))).toBeGreaterThanOrEqual(8);
+    let output = "";
+    try {
+      output = execFileSync(vp, ["lint", "--format", "json", fileURLToPath(probe)], {
+        cwd: root,
+        encoding: "utf8",
+      });
+    } catch (error) {
+      output = error instanceof Error && "stdout" in error ? String(error.stdout) : String(error);
+    } finally {
+      rmSync(probe);
+    }
+    expect(output).toContain(
+      "ERROR unlisted-probe.ts defines a theme that `themes` in src/theme/themes/index.ts does not list",
+    );
   });
 });
 

@@ -1,3 +1,5 @@
+import { fileURLToPath } from "node:url";
+
 import { defineConfig } from "vite-plus";
 
 import { basisPreset } from "./packages/ui/src/preset/index.ts";
@@ -38,13 +40,17 @@ const generatedFixtures = "packages/*/tests/fixtures/*.json";
 const apps = ["packages/example/**", "packages/consumer/**"];
 // A spike's reference code runs in the spike's own throwaway project, whose dependencies this workspace lacks.
 const spikeCode = ["docs/spikes/**/*.ts", "docs/spikes/**/*.mjs"];
-// The repo's own scripts, package tests and the preset run in Node, unlike an app's code, which runs in a browser.
+/* Every shipped theme passes `checkTheme`, reported at its file by the repo's own rule (check-themes-plugin.ts): a lint
+ * rule is how a check runs in every `vp check`, the commit hook's and CI's, at no cost of a step of its own. */
+const themeFiles = "packages/ui/src/theme/themes/*.ts";
+// The repo's own scripts, package tests, the preset and this file run in Node, unlike an app's code, which runs in a browser.
 const nodeCode = [
   "packages/*/scripts/**",
   "packages/*/tests/**",
   "packages/ui/src/preset/**",
   "packages/ui/src/catalogue/**",
   "packages/*/vite.config.ts",
+  "vite.config.ts",
 ];
 
 export default defineConfig({
@@ -62,6 +68,15 @@ export default defineConfig({
   lint: {
     ...lint,
     rules: { ...lint.rules, ...libraryLimits },
+    jsPlugins: [
+      ...(lint.jsPlugins ?? []),
+      {
+        name: "basis-ui",
+        specifier: fileURLToPath(
+          new URL("packages/ui/scripts/check-themes-plugin.ts", import.meta.url),
+        ),
+      },
+    ],
     ignorePatterns: [
       ...(lint.ignorePatterns ?? []),
       ...parallax,
@@ -89,6 +104,12 @@ export default defineConfig({
         rules: { "eslint/no-restricted-properties": "off" },
       },
       { files: nodeCode, rules: { "import/no-nodejs-modules": "off" } },
+      { files: [themeFiles], rules: { "basis-ui/check-theme": "error" } },
+      // Oxlint loads a JS plugin from its module's default export.
+      {
+        files: ["packages/ui/scripts/check-themes-plugin.ts"],
+        rules: { "import/no-default-export": "off" },
+      },
       /* basis-ui's own client layers fetch what no generated client serves: @basis/ui's is the `apiFetch` the
        * generated client calls, and the demo's and the charts' harness's read their datasets' files. An app's src/api
        * may not. */

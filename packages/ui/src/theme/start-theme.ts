@@ -5,8 +5,8 @@ function headerOf(name: string): string {
   return `// The ${name} theme, under data-theme="${name}". It starts as a copy of the default's inputs: change what makes it
 // a theme of its own, such as the hues and their curves, the surfaces' steps, the fonts, the type scale, the radius,
 // the control lengths, the shadows, the motion and the chart palettes, and delete or rewrite the default's comments
-// that no longer hold. Add it to \`themes\` in ./index.ts, run \`vp run @basis/ui#theme\`, and let the theme's tests say
-// whether it passes.`;
+// that no longer hold. Add it to \`themes\` in ./index.ts and run \`vp run @basis/ui#theme\`; \`vp check\` then reports at
+// this file whatever fails \`checkTheme\`, each with the nearest value that passes.`;
 }
 
 /** The default's inputs file, `source`, as the start of the theme `name`: its opening comment replaced, and its name. */

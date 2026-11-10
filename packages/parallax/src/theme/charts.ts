@@ -22,7 +22,7 @@ interface ChartColors {
 /** Chart colours by scheme: a categorical order checked for colour-vision deficiency on each scheme's surface. */
 const chartColors: Readonly<Record<ResolvedScheme, ChartColors>> = {
   dark: {
-    down: "oklch(0.7 0.1908 25)",
+    down: "oklch(0.75 0.1505 25)",
     middle: "oklch(0.348 0.0056 255)",
     negativeRamp: [
       "oklch(0.42 0.1703 25)",
@@ -43,16 +43,16 @@ const chartColors: Readonly<Record<ResolvedScheme, ChartColors>> = {
       "oklch(0.83 0.091 245)",
     ],
     series: [
-      "#3987e5",
-      "#d95926",
-      "#199e70",
-      "#c98500",
+      "#3c7dde",
+      "#d54f00",
+      "#2fa172",
+      "#c68610",
       "#008300",
-      "#d55181",
-      "#9085e9",
-      "#e66767",
+      "#d04782",
+      "#9188eb",
+      "#e96865",
     ],
-    up: "oklch(0.84 0.16 150)",
+    up: "oklch(0.86 0.16 150)",
   },
   light: {
     down: "oklch(0.36 0.1459 25)",
@@ -77,15 +77,15 @@ const chartColors: Readonly<Record<ResolvedScheme, ChartColors>> = {
     ],
     series: [
       "#2a78d6",
-      "#eb6834",
-      "#1baf7a",
-      "#eda100",
-      "#008300",
-      "#e87ba4",
-      "#6250d6",
-      "#e34948",
+      "#f06350",
+      "#1ea471",
+      "#c88100",
+      "#018200",
+      "#cc74a4",
+      "#5d44d4",
+      "#db4848",
     ],
-    up: "oklch(0.47 0.1294 150)",
+    up: "oklch(0.46 0.1267 150)",
   },
 };
 

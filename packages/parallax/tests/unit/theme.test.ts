@@ -60,7 +60,7 @@ describe("the token stylesheet", () => {
       "--_px-background: var(--px-background, var(--_px-theme-background, #16181d));",
     );
     expect(dark).toContain(
-      "--_px-series-1: var(--px-series-1, var(--_px-theme-series-1, #3987e5));",
+      "--_px-series-1: var(--px-series-1, var(--_px-theme-series-1, #3c7dde));",
     );
     expect(dark).not.toContain("--_px-font-size:");
   });

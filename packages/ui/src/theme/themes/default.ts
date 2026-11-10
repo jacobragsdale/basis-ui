@@ -1,8 +1,9 @@
 // The default theme, which sits at `:root`. Change a value here, run `vp run @basis/ui#theme` to regenerate
-// `src/styles/theme.css`, and let the theme's tests say whether the result still passes.
+// `src/styles/theme.css`; `vp check` reports at this file whatever fails `checkTheme`, each with the nearest value that
+// passes.
 
 import { defineTheme } from "#theme/inputs.ts";
-import type { StepTone } from "#theme/inputs.ts";
+import type { Step, StepTone } from "#theme/inputs.ts";
 
 /** The twelve steps every hue shares here, so a step means the same thing on every ramp. Light solids are dark enough
  * for white text, and dark solids light enough for dark text, so a solid is also readable as text on its mode's
@@ -27,20 +28,31 @@ const curve: readonly StepTone[] = [
   { chromaShare: 0.45, dark: 0.95, light: 0.24, step: 12 },
 ];
 
+/** `curve` with some steps at other lightnesses, for a hue that WCAG's contrast weighs otherwise than OKLCH's
+ * lightness: at one lightness green reads lighter than blue, so its solid, which is also text, sits lower, and red and
+ * amber read darker on a dark fill, so theirs sit higher. */
+function curveWith(
+  changes: Readonly<Partial<Record<Step, Partial<Pick<StepTone, "dark" | "light">>>>>,
+): readonly StepTone[] {
+  return curve.map((row) => ({ ...row, ...changes[row.step] }));
+}
+
 const theme = defineTheme({
-  /** Chart series in their fixed order: blue, orange, aqua, yellow, green, magenta, violet, red. They are a validated
-   * reference palette with its fifth and sixth slots swapped, the order closest to it in which every adjacent pair
-   * stays apart under protanopia, deuteranopia and tritanopia alike, in both modes. */
+  /** Chart series in their fixed order: blue, orange, aqua, yellow, green, magenta, violet, red. They start from a
+   * validated reference palette with its fifth and sixth slots swapped, the order closest to it in which every adjacent
+   * pair stays apart under protanopia, deuteranopia and tritanopia alike, in both modes, each moved by the least that
+   * passes `checkTheme`: 3:1 on every surface a chart sits on, which takes light yellow to a dark gold, and any two
+   * series apart under each simulation, not only neighbours. */
   charts: {
     categorical: [
-      { dark: "#3987e5", light: "#2a78d6" },
-      { dark: "#d95926", light: "#eb6834" },
-      { dark: "#199e70", light: "#1baf7a" },
-      { dark: "#c98500", light: "#eda100" },
-      { dark: "#008300", light: "#008300" },
-      { dark: "#d55181", light: "#e87ba4" },
-      { dark: "#9085e9", light: "#6250d6" },
-      { dark: "#e66767", light: "#e34948" },
+      { dark: "#3c7dde", light: "#2a78d6" },
+      { dark: "#d54f00", light: "#f06350" },
+      { dark: "#2fa172", light: "#1ea471" },
+      { dark: "#c68610", light: "#c88100" },
+      { dark: "#008300", light: "#018200" },
+      { dark: "#d04782", light: "#cc74a4" },
+      { dark: "#9188eb", light: "#5d44d4" },
+      { dark: "#e96865", light: "#db4848" },
     ],
     diverging: {
       high: "red",
@@ -97,14 +109,14 @@ const theme = defineTheme({
     sans: '"Inter Variable", ui-sans-serif, system-ui, sans-serif',
   },
   hues: {
-    amber: { chroma: 0.17, curve, hue: 65 },
+    amber: { chroma: 0.17, curve: curveWith({ 9: { dark: 0.745 } }), hue: 65 },
     blue: { chroma: 0.16, curve, hue: 245 },
     /** The firm's brand: the main action, focus rings and selections. A sober blue until the firm's own replaces it. */
-    brand: { chroma: 0.17, curve, hue: 258 },
-    green: { chroma: 0.16, curve, hue: 150 },
+    brand: { chroma: 0.17, curve: curveWith({ 8: { dark: 0.58 } }), hue: 258 },
+    green: { chroma: 0.16, curve: curveWith({ 9: { light: 0.46 } }), hue: 150 },
     /** Surfaces, borders and text: a cool grey with a faint tint. */
     neutral: { chroma: 0.014, curve, hue: 255 },
-    red: { chroma: 0.2, curve, hue: 25 },
+    red: { chroma: 0.2, curve: curveWith({ 9: { dark: 0.75 } }), hue: 25 },
   },
   motion: { control: "120ms", panel: "150ms", popup: "100ms" },
   name: "default",
@@ -123,8 +135,8 @@ const theme = defineTheme({
     },
   },
   signed: {
-    gain: { dark: 0.84, hue: "green", light: 0.47 },
-    loss: { dark: 0.7, hue: "red", light: 0.36 },
+    gain: { dark: 0.86, hue: "green", light: 0.46 },
+    loss: { dark: 0.75, hue: "red", light: 0.36 },
   },
   /** The compact density shrinks the layout's gaps and paddings by a quarter; a control's own lengths are `controls`. */
   spacing: { comfortable: "0.25rem", compact: "0.1875rem" },

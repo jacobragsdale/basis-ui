@@ -432,14 +432,38 @@ changes it. A script in the page's head applies them before the first paint, and
 scrollbars and native controls follow. If the apps share no parent domain, each app keeps its own choice. Not yet: the
 cookie can take a domain, but the user menu passes none, so today each app keeps its own choice (step 6.5.5).
 
-This repo's `vp check` runs the theme's checks, since no app can change the theme. Step 6.5.4 lifts them into
-`checkTheme`, which every shipped theme must pass, and widens them to every text token on every surface, the focus
-ring as drawn, and every pair of chart colours (not yet):
+No app can change the theme, so this repo holds every shipped theme to `checkTheme` (step 6.5.4, 2026-11-09), a pure
+function of a theme's inputs with no Node API, so that the studio of step 6.5.8 can run it in the page. Vite+'s
+`vp check` runs formatting, lint and type checks and nothing else, so the repo's own lint rule, `basis-ui/check-theme`,
+runs it on each file in `src/theme/themes` and reports each failure at the file's `defineTheme` call, in every
+`vp check`, the commit hook's and CI's, for a few milliseconds. A failure is one line that names the mode, the token,
+what it sits on or the pair, the figure and the floor, and ends with the nearest value of one input that passes: a
+lightness on a hue's curve, a surface's step, `gain`'s or `loss`'s lightness, or a chart colour's hex. In both modes it
+holds:
+
+- text, `foreground`, `muted-foreground`, `primary`, each status's colour, `gain` and `loss`, at 5.5:1 on every surface
+  and fill it can sit on: the page's surfaces, the sidebar, and the fills under a row or an item that is hovered,
+  focused, in a range, selected or matched, `muted`, `accent`, `secondary`, `selection`, `highlight` and
+  `sidebar-accent`; each `-foreground` on its own fill, hovered and pressed; and each status on its tint, hovered.
+  5.5:1 is WCAG's 4.5:1 with room for a Citrix session's dimmed, compressed screen;
+- control outlines at 3:1, and the focus ring as drawn, whole, at 3:1 on what a focused control sits on and beside:
+  `ring` on the page's surfaces, `muted`, `accent` and `selection`, `sidebar-ring` on the sidebar and its item, and
+  `destructive` round an invalid field;
+- quiet fills apart from each surface, and each hovered and pressed state from the one before, by 2 in OKLab distance
+  times 100, about one just-noticeable difference;
+- `chart-1` to `chart-8` at 3:1 on the page's surfaces; neighbours 15 apart to normal vision and 8 under simulated
+  protanopia, deuteranopia and tritanopia; and any two series, not only neighbours, 6 apart to normal vision and under
+  each simulation. The distances are OKLab times 100 under Machado, Oliveira and Fernandes' 2009 simulation at
+  severity 1, as culori implements it, and the floors are those of the validator that came with the reference palette
+  the series start from, calibrated to that simulation; its 6 is the floor for series that something besides colour
+  tells apart, as parallax's legend and tooltip do, while a scatter or a heatmap puts any two side by side. That
+  validator finds no order of its eight colours that keeps every pair apart, so the default's are re-stepped: each
+  moved by the least that passes, which takes light yellow to a dark gold;
+- `gain` and `loss` 0.1 apart in lightness, and 8 apart under each simulation.
+
+Tests hold the rest:
 
 - every token is defined in both modes, and nothing outside the theme defines one;
-- text tokens reach 5.5:1 contrast on the surfaces they sit on, and control outlines and focus rings 3:1;
-- `chart-1` to `chart-8` stay distinct under simulated protanopia, deuteranopia and tritanopia;
-- `gain` and `loss` differ in lightness;
 - in either density, controls stay at least 24 pixels tall, WCAG 2.2's minimum target size, and their heights,
   paddings, gaps and icons are whole pixels, with icons no shorter than the capitals beside them;
 - the gallery's screenshots, in every theme, light and dark, comfortable and compact, match their baselines.
