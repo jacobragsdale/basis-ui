@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@basis/ui";
 import { useState } from "react";
 import type { ReactNode } from "react";
 
+import { datasetDates } from "#api/datasets.ts";
 import { useDemoDataset } from "#shell/datasets.ts";
 import { Page } from "#shell/page.tsx";
 import { pages } from "#shell/pages.ts";
@@ -224,7 +225,12 @@ function RichCheap(): ReactNode {
             ? "Bonds, richest to their curve first, until one is clicked"
             : `Bond ${selected.label}`}
         </h2>
-        <Grid dataset={bonds} layout={bondsLayout(selected)} toolbar={{ group: false }} />
+        <Grid
+          dataset={bonds}
+          layout={bondsLayout(selected)}
+          toolbar={{ group: false }}
+          asOf={datasetDates.bonds}
+        />
       </section>
     </>
   );

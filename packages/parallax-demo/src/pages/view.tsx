@@ -9,6 +9,7 @@ import { useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import type { ReactNode } from "react";
 
+import { datasetDates } from "#api/datasets.ts";
 import { useDemoDataset } from "#shell/datasets.ts";
 import { Page } from "#shell/page.tsx";
 import type { DemoPage } from "#shell/pages.ts";
@@ -90,6 +91,7 @@ function ViewPage({
       dataset={dataset}
       layout={layout}
       onLayoutChange={setLayout}
+      asOf={datasetDates[opened.dataset]}
     />
   ) : (
     <Grid
@@ -97,6 +99,7 @@ function ViewPage({
       dataset={dataset}
       layout={layout}
       onLayoutChange={setLayout}
+      asOf={datasetDates[opened.dataset]}
     />
   );
   return (

@@ -1,6 +1,8 @@
-/* The line under a grid that says where its numbers come from: the dataset, the rows shown, when the source was read
- * and how long ago, values the load turned blank, and a failed refresh. Stale data is wrong data, so the age is always
- * visible. While numbers are selected it reads them as a spreadsheet's status bar does: their mean, smallest, largest,
+/* The line under a grid that says where its numbers come from: the dataset, the rows shown, when the data is from,
+ * values the load turned blank, and a failed refresh. Stale data is wrong data, so the bar never makes data look newer
+ * than it is: it shows the date the page says the data is for, or else when the source was read and how long ago, and
+ * with neither it shows no "as of" at all, never the time the browser loaded the table, which About this data lists
+ * apart. While numbers are selected it reads them as a spreadsheet's status bar does: their mean, smallest, largest,
  * sum and count. */
 
 import { Badge, Button, InfoIcon, Popover, PopoverContent, PopoverTrigger } from "@basis/ui";
@@ -10,7 +12,8 @@ import type { ReactNode } from "react";
 
 import type { TableStatus } from "#proto/parallax_pb.ts";
 
-import { ageText, asOfOf, detailsOf, failedOf, nansOf, rowsText } from "./status.ts";
+import { asOfDate, asOfOf, asOfText, detailsOf, failedOf, nansOf, rowsText } from "./status.ts";
+import type { AsOf } from "./status.ts";
 import type { Figure } from "./summary.ts";
 
 /** How often the age is told again. */
@@ -22,6 +25,9 @@ interface StatusBarProps {
   readonly viewRows: number | null;
   /** When the source was read, in microseconds since the epoch; 0 when the source gave no time. */
   readonly sourceAsOf: bigint | null;
+  /** The date the data is for, as `YYYY-MM-DD`, as the page gives it; checked here, and one that is not a date shows
+   * why in its place. */
+  readonly asOf: string | undefined;
   readonly status: TableStatus | null;
   /** A short note, such as the result of a copy. */
   readonly message: string;
@@ -115,11 +121,43 @@ function Chosen({ count }: { readonly count: number | null }): ReactNode {
   );
 }
 
+/** When the data is from: the page's date, or else when the source was read and how long ago; or, for a date that is
+ * not one, why, in its place, as a layout the engine refuses shows its reason. */
+function DataTime({
+  date,
+  read,
+  now,
+}: {
+  readonly date: string | undefined;
+  readonly read: AsOf | null;
+  readonly now: number;
+}): ReactNode {
+  const checked = asOfDate(date);
+  if (!checked.ok) {
+    return (
+      <output
+        data-slot="grid-status-as-of-error"
+        title={checked.reason}
+        className="min-w-0 truncate text-destructive"
+      >
+        {checked.reason}
+      </output>
+    );
+  }
+  const dated = asOfText(checked.date, read, now);
+  return dated === null ? null : (
+    <span data-slot="grid-status-age" title={dated.title}>
+      {dated.text}
+    </span>
+  );
+}
+
 /** The grid's status bar. */
 function StatusBar({
   dataset,
   viewRows,
   sourceAsOf,
+  asOf: date,
   status,
   message,
   selectedRows,
@@ -127,7 +165,7 @@ function StatusBar({
 }: StatusBarProps): ReactNode {
   const now = useNow();
   const rows = rowsText(viewRows);
-  const asOf = asOfOf(sourceAsOf, status);
+  const asOf = asOfOf(sourceAsOf);
   const nans = nansOf(status);
   const failed = failedOf(status);
   return (
@@ -140,11 +178,7 @@ function StatusBar({
         {rows}
       </span>
       <Chosen count={selectedRows} />
-      {asOf === null ? null : (
-        <span data-slot="grid-status-age" title={`Source read at ${asOf.time} New York time`}>
-          as of {asOf.time} · {ageText(now - asOf.ms)}
-        </span>
-      )}
+      <DataTime date={date} read={asOf} now={now} />
       {nans === null ? null : (
         <Badge variant="warning" title={nans.title}>
           {nans.text}

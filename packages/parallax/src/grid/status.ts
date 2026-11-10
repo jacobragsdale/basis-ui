@@ -1,5 +1,5 @@
-/* What a grid's status bar says: the rows shown, when the source was read and how long ago, NaNs the load turned
- * blank, a failed refresh, and the details of the table's load. Times are New York's. */
+/* What a grid's status bar says: the rows shown, the date the data is for, or else when the source was read and how
+ * long ago, NaNs the load turned blank, a failed refresh, and the details of the table's load. Times are New York's. */
 
 import type { TableStatus } from "#proto/parallax_pb.ts";
 
@@ -53,25 +53,68 @@ function rowsText(rows: number | null): string {
   return rows === null ? "loading…" : `${grouped.format(rows)} rows`;
 }
 
-/** When the source was read: its own time, or failing that when the table loaded; null without either. */
+/** A badge's text and the explanation it shows on hover. */
+interface Note {
+  readonly text: string;
+  readonly title: string;
+}
+
+/** When the source was read, as the bar and About this data tell it. */
 interface AsOf {
   readonly time: string;
   readonly ms: number;
 }
 
-function asOfOf(sourceAsOf: bigint | null, status: TableStatus | null): AsOf | null {
-  // Zero means the source gave no time; fall back to when the table loaded.
-  const micros =
-    sourceAsOf !== null && sourceAsOf !== noTime ? sourceAsOf : (status?.loadedAtMicros ?? null);
-  return micros === null || micros === noTime
+/** When the source was read, or null when it gave no time. Never the time the table loaded: data days old would read
+ * as current. About this data lists that time apart, as Loaded at. */
+function asOfOf(sourceAsOf: bigint | null): AsOf | null {
+  // Zero means the source gave no time.
+  return sourceAsOf === null || sourceAsOf === noTime
     ? null
-    : { ms: Number(micros / microsPerMilli), time: statusTime(micros) };
+    : { ms: Number(sourceAsOf / microsPerMilli), time: statusTime(sourceAsOf) };
 }
 
-/** A badge's text and the explanation it shows on hover. */
-interface Note {
-  readonly text: string;
-  readonly title: string;
+const isoDate = /^\d{4}-\d{2}-\d{2}$/u;
+const asOfFix =
+  'pass the date the data is for as YYYY-MM-DD, such as "2026-11-06", or leave asOf out.';
+
+/** The `asOf` a page gives a grid, checked: its date, null for none, or why it is not a date, as an `ERROR` line that
+ * ends with the fix. */
+type DateCheck =
+  | { readonly ok: true; readonly date: string | null }
+  | { readonly ok: false; readonly reason: string };
+
+/** Checks the `asOf` a page gives a grid: a date in the calendar as `YYYY-MM-DD`, or none. */
+function asOfDate(value?: string): DateCheck {
+  if (value === undefined) {
+    return { date: null, ok: true };
+  }
+  if (!isoDate.test(value)) {
+    return { ok: false, reason: `ERROR asOf "${value}" is not a YYYY-MM-DD date: ${asOfFix}` };
+  }
+  // A day past its month's end rolls into the next month, so a date that reads back differently is none.
+  const [year = 0, month = 0, day = 0] = value.split("-").map(Number);
+  const at = new Date(0);
+  at.setUTCFullYear(year, month - 1, day);
+  return at.toISOString().startsWith(value)
+    ? { date: value, ok: true }
+    : { ok: false, reason: `ERROR asOf "${value}" is no day of the calendar: ${asOfFix}` };
+}
+
+/** What the bar says of when the data is from, and the explanation it shows on hover: the page's date alone, or else
+ * the source's time and its age at `nowMs`; null when there is neither. */
+function asOfText(date: string | null, read: AsOf | null, nowMs: number): Note | null {
+  const readAt = (at: AsOf): string => `Source read at ${at.time} New York time`;
+  if (date !== null) {
+    const forDate = `The data is for ${date}`;
+    return {
+      text: `as of ${date}`,
+      title: read === null ? forDate : `${forDate}. ${readAt(read)}`,
+    };
+  }
+  return read === null
+    ? null
+    : { text: `as of ${read.time} · ${ageText(nowMs - read.ms)}`, title: readAt(read) };
 }
 
 /** The NaNs the load turned blank, by column, or null for none. */
@@ -134,4 +177,5 @@ function detailsOf({
     : [...items, { term: "Last refresh", value: status.refreshError }];
 }
 
-export { ageText, asOfOf, detailsOf, failedOf, nansOf, rowsText, statusTime };
+export { ageText, asOfDate, asOfOf, asOfText, detailsOf, failedOf, nansOf, rowsText, statusTime };
+export type { AsOf, DateCheck };

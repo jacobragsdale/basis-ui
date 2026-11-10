@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@basis/ui";
 import { useState } from "react";
 import type { ReactNode } from "react";
 
+import { datasetDates } from "#api/datasets.ts";
 import { useDemoDataset } from "#shell/datasets.ts";
 import { Page } from "#shell/page.tsx";
 import { pages } from "#shell/pages.ts";
@@ -144,6 +145,7 @@ function DashboardGrid({
         layout={layout}
         onLayoutChange={onLayoutChange}
         toolbar={{ group: false }}
+        asOf={datasetDates[name]}
       />
     </section>
   );

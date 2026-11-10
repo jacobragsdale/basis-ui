@@ -835,9 +835,14 @@ parameter, and `decodeLayout` checks it against the schema, so an edited link
 fails loudly instead of opening a different view.
 
 Under every grid a status bar names the dataset and the rows shown, and says
-when the source was read and how long ago. It also flags NaN values the load
-turned blank, and a failed refresh with its time. An info button lists the load
-details.
+when the data is from: the date the page says it is for, `asOf`, such as
+`as of 2026-11-06`, or else when the source was read and how long ago. With
+neither it says nothing of when, rather than the time the browser loaded the
+table, which would make data days old read as current; that time is in the
+load details. An `asOf` that is not a date shows an `ERROR` line with the fix
+in its place, as a refused layout shows its reason. It also flags NaN values the load turned blank, and a failed
+refresh with its time. An info button lists the load details: when the table
+loaded, and when the source was read.
 
 A grid, a pivot or a chart can fill the window, for a closer look at a view
 that a dashboard shows small. Maximize, at the end of the grid's toolbar or the

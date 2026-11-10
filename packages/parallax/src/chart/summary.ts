@@ -188,5 +188,13 @@ function statusTime(micros: bigint): string {
   return `${part("year")}-${part("month")}-${part("day")} ${part("hour")}:${part("minute")}:${part("second")}`;
 }
 
-export { chartSummary, chartWords, statusTime };
+/** A time of zero means the source gave none. */
+const noTime = 0n;
+
+/** The status line's `as of`, when the source was read; empty when it gave no time, rather than another time. */
+function asOfLine(micros: bigint | null): string {
+  return micros === null || micros === noTime ? "" : `as of ${statusTime(micros)}`;
+}
+
+export { asOfLine, chartSummary, chartWords };
 export type { SummaryInput };

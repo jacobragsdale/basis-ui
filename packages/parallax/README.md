@@ -122,6 +122,7 @@ frame for rows already on screen redraws only the cells whose text changed.
 | `height`         | `fill`, the default, takes the container's height; `auto` sizes the grid to its rows up to `maxHeight` pixels (480 by default)               |
 | `onDrill`        | Takes a double click on a pivot's value: the group's path, the column's pivot values and a label, for the rows behind it                     |
 | `label`          | What screen readers call the grid; the dataset's name by default                                                                            |
+| `asOf`           | The date the data is for, as `YYYY-MM-DD`: the status bar shows `as of 2026-11-06`, with no age. Without it, the bar shows when the source was read and how long ago, when `useDataset`'s `sourceAsOfMicros` or the stream's `parallax.load` gives the time, and no "as of" otherwise, never the time the browser loaded the table. A string that is not a calendar date shows an `ERROR` line there, with the fix, in place of the date |
 | `measureMenu`    | The menu a pivot's measure header opens, which the pivot gives the grid; without it, a measure's header has none                            |
 | `onFieldsChange` | Takes the dataset's columns when the view opens, as the pivot's field list reads them                                                       |
 | `ref`            | `drawStats()`, the drawing counters; `export(format)`, `xlsx` or `csv`; and `distinctValues(column, search, limit)`                         |
@@ -221,6 +222,7 @@ function Exposure(): ReactNode {
 | `toolbar`             | The table's toolbar, as `<Grid>` takes it                                                          |
 | `defaultSettingsOpen` | Whether the settings start open; they do by default, and the user hides and shows them             |
 | `label`               | What screen readers call the table; the dataset's name by default                                  |
+| `asOf`                | The date the data is for, as `YYYY-MM-DD`, under the table and the rows behind a value, as `<Grid>` takes it |
 | `ref`                 | The table's `GridHandle`: `drawStats()`, `export(format)` and `distinctValues(column, search, limit)` |
 
 The settings list the dataset's fields, searchable, ticked when the pivot uses

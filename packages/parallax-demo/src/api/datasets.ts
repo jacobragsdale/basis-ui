@@ -31,6 +31,14 @@ const datasetNames = Object.keys(datasetKeys).filter((name): name is DemoDataset
   Object.hasOwn(datasetKeys, name),
 );
 
+/** The date each dataset of one day is for, its business date, which a grid of it shows as its status bar's "as of":
+ * the date parallax-datagen's positions and bonds are on. The others span many days, and show when they were read. */
+const datasetDates: Readonly<Partial<Record<DemoDataset, string>>> = {
+  bonds: "2026-10-30",
+  book: "2026-10-30",
+  positions: "2026-10-30",
+};
+
 /** Whether `name` is a dataset the demo serves, such as the one a shared link's layout names. */
 function isDemoDataset(name: string): name is DemoDataset {
   return Object.hasOwn(datasetKeys, name);
@@ -48,5 +56,5 @@ async function datasetBytes(name: DemoDataset): Promise<ArrayBuffer> {
   return response.arrayBuffer();
 }
 
-export { datasetBytes, datasetKeys, datasetNames, isDemoDataset };
+export { datasetBytes, datasetDates, datasetKeys, datasetNames, isDemoDataset };
 export type { DemoDataset };

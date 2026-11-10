@@ -22,6 +22,8 @@ const drillTools: Partial<ToolbarParts> = { chips: false, group: false, maximize
 
 interface DrillRowsProps {
   readonly dataset: Dataset;
+  /** The date the data is for, as the pivot takes it. */
+  readonly asOf: string | undefined;
   readonly drill: Drill;
   /** Takes the rows' view as the user changes it: a sort, a width, a search. */
   readonly onChange: (drill: Drill) => void;
@@ -29,7 +31,7 @@ interface DrillRowsProps {
 }
 
 /** The rows behind a value. */
-function DrillRows({ dataset, drill, onChange, onClose }: DrillRowsProps): ReactNode {
+function DrillRows({ dataset, asOf, drill, onChange, onClose }: DrillRowsProps): ReactNode {
   const title = `Rows behind ${drill.label}`;
   return (
     <section
@@ -49,6 +51,7 @@ function DrillRows({ dataset, drill, onChange, onClose }: DrillRowsProps): React
           layout={drill.layout}
           toolbar={drillTools}
           label={title}
+          asOf={asOf}
           onLayoutChange={(layout) => {
             onChange({ ...drill, layout });
           }}

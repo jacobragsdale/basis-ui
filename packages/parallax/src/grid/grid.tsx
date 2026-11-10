@@ -79,6 +79,12 @@ interface GridBaseProps {
   readonly onDrill?: ((request: DrillRequest) => void) | undefined;
   /** What screen readers call the grid; the dataset's name by default. */
   readonly label?: string | undefined;
+  /** The date the data is for, the business date, as `YYYY-MM-DD`, such as `"2026-11-06"`. The status bar shows
+   * `as of 2026-11-06`, with no age, and About this data keeps the time the source was read. Without it, the bar shows
+   * the time the source was read and how long ago, when `useDataset`'s `sourceAsOfMicros` gives one, and no "as of"
+   * otherwise: never the time the browser loaded the table. A string that is not a calendar date shows an `ERROR` line
+   * there, with the fix, in place of the date. */
+  readonly asOf?: string | undefined;
   /** A pivot measure header's menu, which the pivot gives the grid. Without it, a measure's header has no menu. */
   readonly measureMenu?: ((props: MeasureMenuProps) => ReactNode) | undefined;
   /** Takes the dataset's columns when the view opens, and again whenever they change, as the pivot's field list
@@ -260,6 +266,7 @@ function GridFrame(props: GridFrameProps): ReactNode {
         dataset={dataset.name}
         viewRows={snapshot.totalRows}
         sourceAsOf={snapshot.sourceAsOf}
+        asOf={props.asOf}
         status={view.table}
         message={snapshot.message}
         selectedRows={snapshot.selectedRows}

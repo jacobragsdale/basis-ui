@@ -39,7 +39,9 @@ interface LoadOptions {
   readonly receivedAtMicros?: number;
   /**
    * When the data's source was read, in microseconds since the Unix epoch. By default the stream says, in its schema
-   * metadata's `parallax.load`, as the app's API sets it; without either, the time the app received the bytes.
+   * metadata's `parallax.load`, as the app's API sets it. Without either the table has no source time, and a grid's
+   * status bar says nothing of when the data is from unless the page gives the grid an `asOf` date: never the time the
+   * app received the bytes, which would make data days old read as current.
    */
   readonly sourceAsOfMicros?: number;
 }

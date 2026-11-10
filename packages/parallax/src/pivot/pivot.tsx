@@ -41,6 +41,9 @@ interface PivotProps {
   readonly defaultSettingsOpen?: boolean | undefined;
   /** What screen readers call the table; the dataset's name by default. */
   readonly label?: string | undefined;
+  /** The date the data is for, as `YYYY-MM-DD`, which the table's status bar, and that of the rows behind a value,
+   * show as `as of 2026-11-06`; as `<Grid>` takes it. */
+  readonly asOf?: string | undefined;
   /** The table's grid: its drawing counters, export, and a column's values. */
   readonly ref?: Ref<GridHandle> | undefined;
 }
@@ -111,14 +114,17 @@ function Settings({ layout, fields, source, onChange, defaultOpen }: SettingsPro
 /** The rows behind the value double-clicked, below the table, until they are closed. */
 function Drilled({
   dataset,
+  asOf,
   drill,
   setDrill,
 }: Pick<ReturnType<typeof useDrill>, "drill" | "setDrill"> & {
   readonly dataset: Dataset;
+  readonly asOf: string | undefined;
 }): ReactNode {
   return drill === null ? null : (
     <DrillRows
       dataset={dataset}
+      asOf={asOf}
       drill={drill}
       onChange={setDrill}
       onClose={() => {
@@ -141,8 +147,7 @@ function PivotFrame(props: PivotFrameProps): ReactNode {
   const { drill, onChange, onDrill, setDrill } = useDrill(valid, change);
   const grid = useRef<GridHandle>(null);
   useHandle(ref, grid);
-  const source: ValueSource = async (column, search, limit) =>
-    handleOf(grid).distinctValues(column, search, limit);
+  const source: ValueSource = async (...args) => handleOf(grid).distinctValues(...args);
   return (
     <div
       {...maximizing.props}
@@ -166,12 +171,13 @@ function PivotFrame(props: PivotFrameProps): ReactNode {
             onLayoutChange={onChange}
             toolbar={toolbar}
             label={label}
+            asOf={props.asOf}
             onDrill={onDrill}
             onFieldsChange={setFields}
             measureMenu={HeaderMeasureMenu}
           />
         </div>
-        <Drilled dataset={dataset} drill={drill} setDrill={setDrill} />
+        <Drilled dataset={dataset} asOf={props.asOf} drill={drill} setDrill={setDrill} />
       </div>
     </div>
   );

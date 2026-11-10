@@ -27,6 +27,9 @@ use wasm_bindgen::prelude::*;
 /// holds the whole file in WebAssembly memory.
 pub const CSV_CHUNK_BYTES: usize = 1 << 20;
 
+/// The source time of a table whose source gave none, as frames carry it.
+const NO_SOURCE_TIME: i64 = 0;
+
 /// How a load of an app's Arrow bytes is keyed, stamped and limited.
 #[derive(Clone, Debug)]
 pub struct Load {
@@ -36,7 +39,9 @@ pub struct Load {
     /// When the app received the bytes, in microseconds since the Unix epoch.
     pub now_micros: i64,
     /// When the source was read, if the app says so outside the stream; it
-    /// overrides the stream's own status.
+    /// overrides the stream's own status. Without either the table has no
+    /// source time, 0, rather than the time the bytes arrived, which would make
+    /// data days old read as current.
     pub source_as_of_micros: Option<i64>,
     /// The most rows the table may hold; a stream of more is refused before it is
     /// decoded.
@@ -193,7 +198,7 @@ impl Worker {
         let as_of = load
             .source_as_of_micros
             .or(status.source_as_of_micros)
-            .unwrap_or(load.now_micros);
+            .unwrap_or(NO_SOURCE_TIME);
         if let Some(existing) = self.catalog.get(name) {
             let mut state = existing
                 .write()
@@ -270,10 +275,15 @@ impl Worker {
         let layout = Layout::from_json(layout_json).map_err(|e| e.to_string())?;
         let table = self.catalog.open(&layout.dataset, &layout.parameters)?;
         let as_of_micros = read_table(&table)?.source_as_of_micros();
-        let as_of = Formatter::default().timestamp(as_of_micros, true);
+        let as_of = if as_of_micros == NO_SOURCE_TIME {
+            "unknown".to_owned()
+        } else {
+            let time = Formatter::default().timestamp(as_of_micros, true);
+            format!("{time} New York")
+        };
         let source = ExportSource {
             dataset: layout.dataset.clone(),
-            as_of: format!("{as_of} New York"),
+            as_of,
             load_version,
         };
         Ok((Shared(table), layout, source))
@@ -537,10 +547,10 @@ mod tests {
             .map(|c| (c.column.clone(), c.count))
             .collect();
         assert_eq!(nans, vec![("price".to_owned(), 15)]);
-        // Without a status, the source time is when the app received the bytes,
-        // and a time the app passes wins over the stream's.
+        // Without a status the table has no source time, never the time the app
+        // received the bytes, and a time the app passes wins over the stream's.
         worker.load("plain", stream(10, None), &load(100)).unwrap();
-        assert_eq!(open(&mut worker, 2, "plain").1, 5_000);
+        assert_eq!(open(&mut worker, 2, "plain").1, 0);
         let passed = Load {
             source_as_of_micros: Some(900),
             ..load(100)

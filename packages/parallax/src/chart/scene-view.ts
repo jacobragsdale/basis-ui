@@ -12,7 +12,7 @@ import { isDrawable } from "./scene-inputs.ts";
 import type { SceneModel } from "./scene-model.ts";
 import { bandOf, flag, measuredOf, paintCanvas, writeText } from "./scene-paint.ts";
 import type { SceneElements } from "./scene.ts";
-import { chartSummary, chartWords, statusTime } from "./summary.ts";
+import { asOfLine, chartSummary, chartWords } from "./summary.ts";
 import { chartSync } from "./sync.ts";
 import type { ChartZoom } from "./zoom.ts";
 
@@ -155,8 +155,7 @@ class SceneView {
     };
     writeText(this.#elements?.summary ?? null, chartSummary(input));
     writeText(this.#elements?.words ?? null, chartWords(input));
-    const micros = scene.asOfMicros;
-    writeText(this.#elements?.asOf ?? null, micros === null ? "" : `as of ${statusTime(micros)}`);
+    writeText(this.#elements?.asOf ?? null, asOfLine(scene.asOfMicros));
   }
 
   /** The plot's cursor: grabbing while panning, a pointer over a bar or slice that a click selects. */
