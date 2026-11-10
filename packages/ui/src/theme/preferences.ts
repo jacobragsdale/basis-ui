@@ -30,9 +30,9 @@ interface PreferencesRoot {
     | undefined;
 }
 
-/** Compact is the default density, the maintainer's choice on 2026-11-07. The stylesheet's base is the comfortable
- * spacing, which `data-density="compact"` shrinks, so a page shows the default once the head script or
- * `followPreferences` has run; a component rendered without either, as in a test, is comfortable. */
+/** Compact is the default density, the maintainer's choice on 2026-11-07. The stylesheet's base is compact too, and
+ * `data-density="comfortable"` widens it, so a page shows the default before the head script or `followPreferences`
+ * has run, and without either, as in a test. */
 const defaultPreferences: Preferences = { density: "compact", mode: "system", motion: "full" };
 
 /** The cookie's name. Its value is the mode, the density and the motion joined by dots, such as `dark.compact.full`; a
@@ -112,7 +112,7 @@ function holdTransitions(root: PreferencesRoot, view: Pick<Window, "requestAnima
 /** What the preferences put on the page's root element. */
 interface Shown {
   readonly mode: ResolvedMode;
-  readonly density: "compact" | undefined;
+  readonly density: Density;
   readonly motion: "reduced" | undefined;
 }
 
@@ -129,11 +129,7 @@ function differs(root: PreferencesRoot, shown: Shown): boolean {
 function show(root: PreferencesRoot, { mode, density, motion }: Shown): void {
   root.classList.toggle("dark", mode === "dark");
   root.style.colorScheme = mode;
-  if (density === undefined) {
-    delete root.dataset["density"];
-  } else {
-    root.dataset["density"] = density;
-  }
+  root.dataset["density"] = density;
   if (motion === undefined) {
     delete root.dataset["motion"];
   } else {
@@ -142,7 +138,8 @@ function show(root: PreferencesRoot, { mode, density, motion }: Shown): void {
 }
 
 /** Puts the preferences on the page's root element: the `dark` class, `color-scheme`, `data-density` and
- * `data-motion`. A change to any of them holds every transition off until it is drawn, so the page changes in one
+ * `data-motion`. `data-density` always names the density, so that whatever reads it, such as parallax's canvases, need
+ * not know the stylesheet's base. A change to any of them holds every transition off until it is drawn, so the page changes in one
  * frame, as its canvases do, where some sixty controls' colours would otherwise cross-fade and a density change lay
  * the page out frame by frame. */
 function applyPreferences(
@@ -151,7 +148,7 @@ function applyPreferences(
   systemDark: boolean,
 ): void {
   const shown: Shown = {
-    density: preferences.density === "compact" ? "compact" : undefined,
+    density: preferences.density,
     mode: resolveMode(preferences.mode, systemDark),
     motion: preferences.motion === "reduced" ? "reduced" : undefined,
   };
@@ -207,14 +204,12 @@ const headScript = `(() => {
     const root = document.documentElement;
     root.classList.toggle("dark", mode === "dark");
     root.style.colorScheme = mode;
-    if (match === null || match[2] !== "comfortable") {
-      root.dataset.density = "compact";
-    }
+    root.dataset.density = match !== null && match[2] === "comfortable" ? "comfortable" : "compact";
     if (match !== null && match[3] === "reduced") {
       root.dataset.motion = "reduced";
     }
   } catch {
-    // Without cookies or matchMedia the page keeps the stylesheet's light, comfortable base.
+    // Without cookies or matchMedia the page keeps the stylesheet's light, compact base.
   }
 })();`;
 

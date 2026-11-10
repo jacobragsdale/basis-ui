@@ -7,7 +7,7 @@ import { cva } from "#vendor/cva/cva.ts";
 /** Badge's look. The status variants sit on their status's `-subtle` tint, with the status colour as text, a pair the
  * theme holds to 5.5:1; show the status with an icon or a word as well as the colour. */
 const badgeVariants = cva(
-  "group/badge inline-flex h-5 w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-pill border border-transparent px-2 py-0.5 text-xs font-medium whitespace-nowrap transition-colors focus-visible:border-ring focus-visible:outline-solid focus-visible:outline focus-visible:outline-offset-(--focus-offset) focus-visible:outline-ring has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 aria-invalid:border-destructive aria-invalid:outline-destructive [&>svg]:pointer-events-none [&>svg]:size-3!",
+  "group/badge inline-flex h-5 w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-pill border border-transparent px-2 py-0.5 text-xs font-medium whitespace-nowrap transition-colors focus-visible:border-ring focus-visible:outline-solid focus-visible:outline focus-visible:outline-offset-(--focus-offset) focus-visible:outline-ring has-data-[icon=inline-end]:pr-(--control-xs-inset-icon) has-data-[icon=inline-start]:pl-(--control-xs-inset-icon) aria-invalid:border-destructive aria-invalid:outline-destructive [&>svg]:pointer-events-none [&>svg]:size-(--control-xs-icon)!",
   {
     variants: {
       variant: {

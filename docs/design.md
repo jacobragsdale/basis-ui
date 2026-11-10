@@ -341,10 +341,22 @@ theme.
    | `env-dev`, `env-qa`, `env-prod`                                                              | The environment banner                                                                                                                                           |
    | `chart-1` to `chart-8`, a sequential scale and a diverging scale                             | Chart series in order, heatmaps and conditional formatting. Parallax's canvases read the same tokens.                                                            |
 
-3. **Scales.** Spacing derives from Tailwind's single `--spacing` variable, so the compact density sets it smaller and
-   every control's height follows. One spacing value stays fixed, `--spacing-target` at 24 pixels, whose `min-h-target`
-   and `min-w-target` every control shorter than `h-8` carries, so the compact density keeps WCAG 2.2's minimum target
-   size. Type runs down to `text-2xs`, for axes and dense labels, and number components use
+3. **Scales.** Layout spacing derives from Tailwind's single `--spacing` variable, 3 pixels in the compact density
+   and 4 in the comfortable, so a page's gaps and paddings shrink by a quarter. Controls do not follow it: a multiple
+   of 3 pixels gave half pixels of padding, icons and checks of 12 pixels beside 14-pixel text, and Button's `xs`,
+   `sm` and default all 24 pixels tall. So each density has control lengths of its own, in whole pixels, for four
+   sizes, `xs` to `lg`: a height, a horizontal padding, a smaller padding on an icon's side, an icon and a gap, from
+   which an item's indent past an icon follows (step 6.5.2, 2026-11-09). The heights are 24, 26, 28 and 30 pixels
+   compact and 24, 28, 32 and 36 comfortable; an icon is 12 pixels beside `text-xs` and 14 or 16 beside `text-sm`. The
+   rule for an icon or a check is that its glyph reaches the capitals beside it: lucide draws in 20 of its 24 units
+   and Inter's capitals are 0.727 em, so the box is at least 0.873 em. They are variables, read as
+   `h-(--control-md-height)` and `size-(--control-md-icon)`, rather than named utilities, because `cn` merges an app's
+   `h-9` over a variable and would keep both of two named classes; a gallery test measures every control in both
+   densities for whole pixels and the rule. The stylesheet's base is the compact density, the default, and
+   `data-density="comfortable"` widens it, so a page shows the default before the head script runs, or without it.
+   One spacing value stays fixed, `--spacing-target` at 24 pixels, WCAG 2.2's minimum target size: no control's
+   height is less, and `min-h-target` and `min-w-target` hold it on a control that could be shorter, such as Button's
+   `xs`, and on a control drawn smaller, such as Checkbox's box. Type runs down to `text-2xs`, for axes and dense labels, and number components use
    tabular figures. There are two shadows, both subtle, `shadow-sm` for a control raised off its surface and
    `shadow-md` for a popup, each a variable (`--shadow-raised`, `--shadow-floating`) rather than a value written into
    the utility, so a theme can change it. The focus ring is an outline in `ring`, drawn whole, whose width and gap
@@ -391,7 +403,8 @@ ring as drawn, and every pair of chart colours (not yet):
 - text tokens reach 5.5:1 contrast on the surfaces they sit on, and control outlines and focus rings 3:1;
 - `chart-1` to `chart-8` stay distinct under simulated protanopia, deuteranopia and tritanopia;
 - `gain` and `loss` differ in lightness;
-- in the compact density, controls stay at least 24 pixels tall, WCAG 2.2's minimum target size;
+- in either density, controls stay at least 24 pixels tall, WCAG 2.2's minimum target size, and their heights,
+  paddings, gaps and icons are whole pixels, with icons no shorter than the capitals beside them;
 - the gallery's screenshots, in every theme, light and dark, comfortable and compact, match their baselines.
 
 Apps' routes are screenshotted in light and dark, at the compact density, with `vp run shot`; comparing them with

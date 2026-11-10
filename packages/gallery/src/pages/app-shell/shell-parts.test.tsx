@@ -12,7 +12,7 @@ afterEach(async () => {
   const root = document.documentElement;
   root.classList.remove("dark");
   root.style.colorScheme = "";
-  delete root.dataset["density"];
+  root.dataset["density"] = "comfortable";
   await cookieStore.delete(preferencesCookie);
 });
 

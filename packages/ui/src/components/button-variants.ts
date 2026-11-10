@@ -5,10 +5,11 @@
 
 import { cva } from "#vendor/cva/cva.ts";
 
-/** Button's look (`variant`) and height (`size`). Every size shorter than `h-8` carries `min-h-target` and
- * `min-w-target`, so a button stays 24 px across in the compact density, WCAG 2.2's minimum target size. */
+/** Button's look (`variant`) and height (`size`). Each size takes the theme's control lengths for its density, in whole
+ * pixels; `xs` and `sm` also carry `min-h-target` and `min-w-target`, so a button stays at least 24 px across, WCAG
+ * 2.2's minimum target size, whatever a theme sets. */
 const buttonVariants = cva(
-  "group/button inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-colors outline-none select-none focus-visible:border-ring focus-visible:outline-solid focus-visible:outline focus-visible:outline-offset-(--focus-offset) focus-visible:outline-ring active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-disabled aria-invalid:border-destructive aria-invalid:outline-destructive [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "group/button inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-colors outline-none select-none focus-visible:border-ring focus-visible:outline-solid focus-visible:outline focus-visible:outline-offset-(--focus-offset) focus-visible:outline-ring active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-disabled aria-invalid:border-destructive aria-invalid:outline-destructive [&_svg]:pointer-events-none [&_svg]:shrink-0",
   {
     variants: {
       variant: {
@@ -26,16 +27,17 @@ const buttonVariants = cva(
       },
       size: {
         default:
-          "h-8 gap-1.5 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
-        xs: "h-6 min-h-target min-w-target gap-1 rounded-md px-2 text-xs in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3",
-        sm: "h-7 min-h-target min-w-target gap-1 rounded-md px-2.5 text-xs in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3.5",
-        lg: "h-9 gap-1.5 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
-        icon: "size-8",
+          "h-(--control-md-height) gap-(--control-md-gap) px-(--control-md-inset) has-data-[icon=inline-end]:pr-(--control-md-inset-icon) has-data-[icon=inline-start]:pl-(--control-md-inset-icon) [&_svg:not([class*='size-'])]:size-(--control-md-icon)",
+        xs: "h-(--control-xs-height) min-h-target min-w-target gap-(--control-xs-gap) rounded-md px-(--control-xs-inset) text-xs in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-(--control-xs-inset-icon) has-data-[icon=inline-start]:pl-(--control-xs-inset-icon) [&_svg:not([class*='size-'])]:size-(--control-xs-icon)",
+        sm: "h-(--control-sm-height) min-h-target min-w-target gap-(--control-sm-gap) rounded-md px-(--control-sm-inset) text-xs in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-(--control-sm-inset-icon) has-data-[icon=inline-start]:pl-(--control-sm-inset-icon) [&_svg:not([class*='size-'])]:size-(--control-sm-icon)",
+        lg: "h-(--control-lg-height) gap-(--control-lg-gap) px-(--control-lg-inset) has-data-[icon=inline-end]:pr-(--control-lg-inset-icon) has-data-[icon=inline-start]:pl-(--control-lg-inset-icon) [&_svg:not([class*='size-'])]:size-(--control-lg-icon)",
+        icon: "size-(--control-md-height) [&_svg:not([class*='size-'])]:size-(--control-md-icon)",
         "icon-xs":
-          "size-6 min-h-target min-w-target rounded-md in-data-[slot=button-group]:rounded-lg [&_svg:not([class*='size-'])]:size-3",
+          "size-(--control-xs-height) min-h-target min-w-target rounded-md in-data-[slot=button-group]:rounded-lg [&_svg:not([class*='size-'])]:size-(--control-xs-icon)",
         "icon-sm":
-          "size-7 min-h-target min-w-target rounded-md in-data-[slot=button-group]:rounded-lg",
-        "icon-lg": "size-9",
+          "size-(--control-sm-height) min-h-target min-w-target rounded-md in-data-[slot=button-group]:rounded-lg [&_svg:not([class*='size-'])]:size-(--control-md-icon)",
+        "icon-lg":
+          "size-(--control-lg-height) [&_svg:not([class*='size-'])]:size-(--control-lg-icon)",
       },
     },
     defaultVariants: {

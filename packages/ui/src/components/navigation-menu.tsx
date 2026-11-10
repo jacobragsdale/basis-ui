@@ -146,7 +146,7 @@ function NavigationMenuTrigger({
       data-slot="navigation-menu-trigger"
       className={cn(
         navigationMenuTriggerVariants(),
-        "group [&_svg]:relative [&_svg]:top-px [&_svg]:ml-1 [&_svg]:size-3 [&_svg]:transition-transform data-popup-open:[&_svg]:rotate-180",
+        "group [&_svg]:relative [&_svg]:top-px [&_svg]:ml-1 [&_svg]:size-(--control-md-icon) [&_svg]:transition-transform data-popup-open:[&_svg]:rotate-180",
         className,
       )}
       {...props}

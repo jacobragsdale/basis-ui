@@ -39,18 +39,18 @@ function Checkbox({
     <CheckboxPrimitive.Root
       data-slot="checkbox"
       className={cn(
-        "peer group/checkbox relative inline-flex size-4 min-h-target min-w-target shrink-0 items-center justify-center rounded-sm outline-none group-has-disabled/field:opacity-disabled data-disabled:cursor-not-allowed data-disabled:opacity-disabled",
+        "peer group/checkbox relative inline-flex size-(--control-md-icon) min-h-target min-w-target shrink-0 items-center justify-center rounded-sm outline-none group-has-disabled/field:opacity-disabled data-disabled:cursor-not-allowed data-disabled:opacity-disabled",
         className,
       )}
       {...props}
     >
       <span
         data-slot="checkbox-box"
-        className="flex size-4 items-center justify-center rounded-sm border border-input transition-colors group-focus-visible/checkbox:border-ring group-focus-visible/checkbox:outline-solid group-focus-visible/checkbox:outline group-focus-visible/checkbox:outline-offset-(--focus-offset) group-focus-visible/checkbox:outline-ring group-has-[:focus-visible]/field-label:outline-none group-aria-invalid/checkbox:border-destructive group-aria-invalid/checkbox:outline-destructive group-data-checked/checkbox:border-primary group-data-checked/checkbox:bg-primary group-data-checked/checkbox:text-primary-foreground group-data-indeterminate/checkbox:border-primary group-data-indeterminate/checkbox:bg-primary group-data-indeterminate/checkbox:text-primary-foreground group-has-[:focus-visible]/field-label:group-data-unchecked/checkbox:border-input"
+        className="flex size-(--control-md-icon) items-center justify-center rounded-sm border border-input transition-colors group-focus-visible/checkbox:border-ring group-focus-visible/checkbox:outline-solid group-focus-visible/checkbox:outline group-focus-visible/checkbox:outline-offset-(--focus-offset) group-focus-visible/checkbox:outline-ring group-has-[:focus-visible]/field-label:outline-none group-aria-invalid/checkbox:border-destructive group-aria-invalid/checkbox:outline-destructive group-data-checked/checkbox:border-primary group-data-checked/checkbox:bg-primary group-data-checked/checkbox:text-primary-foreground group-data-indeterminate/checkbox:border-primary group-data-indeterminate/checkbox:bg-primary group-data-indeterminate/checkbox:text-primary-foreground group-has-[:focus-visible]/field-label:group-data-unchecked/checkbox:border-input"
       >
         <CheckboxPrimitive.Indicator
           data-slot="checkbox-indicator"
-          className="grid place-content-center text-current transition-none [&>svg]:size-3.5"
+          className="grid place-content-center text-current transition-none [&>svg]:size-(--control-sm-icon)"
         >
           <CheckIcon className="group-data-indeterminate/checkbox:hidden" />
           <MinusIcon className="hidden group-data-indeterminate/checkbox:block" />

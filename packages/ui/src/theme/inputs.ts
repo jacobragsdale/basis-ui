@@ -34,15 +34,50 @@ const fonts = {
   sans: '"Inter Variable", ui-sans-serif, system-ui, sans-serif',
 } as const;
 
-/** The spacing unit at each density. Every Tailwind spacing utility and control height is a multiple of it. */
+/** The spacing unit at each density. Every Tailwind spacing utility is a multiple of it, so the layout's gaps and
+ * paddings shrink by a quarter in the compact density; a control's own lengths are `controls`, in whole pixels. */
 const spacing = {
   comfortable: "0.25rem",
   compact: "0.1875rem",
 } as const;
 
+/** A control size's lengths, in CSS pixels: its height, its horizontal padding, the padding on the side an icon sits,
+ * which is less so that the icon looks as far from the edge as the text does, its icons' size, and the gap between an
+ * icon and its text. */
+interface ControlSize {
+  readonly height: number;
+  readonly inset: number;
+  readonly insetBesideIcon: number;
+  readonly icon: number;
+  readonly gap: number;
+}
+
+/** The control sizes: `xs` and `sm` set their text at `text-xs`, `md` and `lg` at `text-sm`. */
+type ControlSizeName = "xs" | "sm" | "md" | "lg";
+
+/** Each density's control sizes, in whole pixels, where a multiple of the compact density's 3-pixel unit would fall
+ * between them, and where Button's sizes would meet at the 24-pixel target. Every height is at least `targetSize`, and
+ * each size is taller than the one before it. An icon is at least 0.873 em, the font size at which lucide's glyph,
+ * drawn in 20 of its 24 units, reaches Inter's capitals, 0.727 em tall: 12 pixels beside `text-xs`, 14 beside
+ * `text-sm`. */
+const controls = {
+  comfortable: {
+    xs: { gap: 4, height: 24, icon: 12, inset: 8, insetBesideIcon: 6 },
+    sm: { gap: 4, height: 28, icon: 14, inset: 10, insetBesideIcon: 6 },
+    md: { gap: 6, height: 32, icon: 16, inset: 10, insetBesideIcon: 8 },
+    lg: { gap: 6, height: 36, icon: 16, inset: 10, insetBesideIcon: 8 },
+  },
+  compact: {
+    xs: { gap: 4, height: 24, icon: 12, inset: 6, insetBesideIcon: 4 },
+    sm: { gap: 4, height: 26, icon: 12, inset: 8, insetBesideIcon: 6 },
+    md: { gap: 4, height: 28, icon: 14, inset: 8, insetBesideIcon: 6 },
+    lg: { gap: 6, height: 30, icon: 16, inset: 10, insetBesideIcon: 8 },
+  },
+} as const satisfies Record<"comfortable" | "compact", Record<ControlSizeName, ControlSize>>;
+
 /** The smallest a control may be, across and down: WCAG 2.2's minimum target size, 24 CSS pixels. It is a fixed length
  * rather than a multiple of the spacing unit, so the compact density cannot shrink it. It gives `min-h-target` and
- * `min-w-target`, which every control shorter than `h-8` carries. */
+ * `min-w-target`, which every control that could be shorter carries. */
 const targetSize = "1.5rem";
 
 /** The focus ring, an outline in the `ring` colour: its width, and its gap from the control's edge. An outline's gap
@@ -79,6 +114,7 @@ const pillRadius = "9999px";
 const disabledOpacity = "50%";
 
 export {
+  controls,
   disabledOpacity,
   durations,
   focusRing,
@@ -91,4 +127,4 @@ export {
   spacing,
   targetSize,
 };
-export type { Hue, HueName };
+export type { ControlSize, ControlSizeName, Hue, HueName };

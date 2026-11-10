@@ -70,12 +70,12 @@ describe("Checkbox", () => {
     expect(sizeOf(only(checkbox, '[data-slot="checkbox-box"]'))).toStrictEqual([16, 16]);
   });
 
-  test("stays a 24 px target in the compact density, WCAG 2.2's minimum", async () => {
+  test("stays a 24 px target around a 14 px box in the compact density, WCAG 2.2's minimum", async () => {
     await inCompactDensity(async () => {
       const screen = await render(<Checkbox aria-label="Target" />);
       const checkbox = screen.getByRole("checkbox", { name: "Target" }).element();
       expect(sizeOf(checkbox)).toStrictEqual([24, 24]);
-      expect(sizeOf(only(checkbox, '[data-slot="checkbox-box"]'))).toStrictEqual([12, 12]);
+      expect(sizeOf(only(checkbox, '[data-slot="checkbox-box"]'))).toStrictEqual([14, 14]);
     });
   });
 });
@@ -162,7 +162,7 @@ describe("Switch", () => {
     await expect.element(toggle).toHaveAccessibleDescription("Accept the limits to trade.");
   });
 
-  test("its sizes differ: the small track is narrower and shorter", async () => {
+  test("its sizes differ: the small track is narrower and shorter, each two thumbs and a pixel each side", async () => {
     const screen = await render(
       <>
         <Switch aria-label="Default" />
@@ -171,8 +171,12 @@ describe("Switch", () => {
     );
     const trackOf = (name: string): Element =>
       only(screen.getByRole("switch", { name }).element(), '[data-slot="switch-track"]');
-    expect(sizeOf(trackOf("Default"))).toStrictEqual([32, 18]);
-    expect(sizeOf(trackOf("Small"))).toStrictEqual([24, 14]);
+    expect(sizeOf(trackOf("Default"))).toStrictEqual([34, 18]);
+    expect(sizeOf(trackOf("Small"))).toStrictEqual([26, 14]);
+    await inCompactDensity(async () => {
+      await expect.poll(() => sizeOf(trackOf("Default"))).toStrictEqual([26, 14]);
+      expect(sizeOf(trackOf("Small"))).toStrictEqual([20, 11]);
+    });
   });
 
   test("on, its thumb sits at the track's end", async () => {

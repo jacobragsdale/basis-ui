@@ -9,7 +9,8 @@ import type { ComponentProps, ReactElement } from "react";
 
 import { LoaderCircleIcon } from "#vendor/lucide/loader-circle.tsx";
 
-/** A loading indicator, 16 px square unless `className` sizes it, as with `size-6`. It is a status named "Loading";
+/** A loading indicator, an icon's size in the density, 16 px square in the comfortable density and 14 in the compact,
+ * unless `className` sizes it, as with `size-6`. It is a status named "Loading";
  * give it an `aria-label` that says what is loading, such as "Loading positions", when the page shows more than one.
  *
  * @use For an action or a load under way whose length is unknown, such as a Button's while it submits. For content
@@ -29,7 +30,7 @@ function Spinner({ className, ...props }: ComponentProps<"output">): ReactElemen
       data-slot="spinner"
       aria-label="Loading"
       className={cn(
-        "inline-flex size-4 shrink-0 [&>svg]:animate-spin motion-reduce:[&>svg]:animate-none",
+        "inline-flex size-(--control-md-icon) shrink-0 [&>svg]:animate-spin motion-reduce:[&>svg]:animate-none",
         className,
       )}
       {...props}

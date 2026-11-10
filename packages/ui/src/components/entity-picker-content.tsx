@@ -21,7 +21,7 @@ function statusText<TItem>(state: EntitySearchState<TItem>, hint: string): React
       return (
         <>
           <span className="flex [&>svg]:animate-spin motion-reduce:[&>svg]:animate-none">
-            <LoaderCircleIcon className="size-4" />
+            <LoaderCircleIcon className="size-(--control-md-icon)" />
           </span>
           Searching…
         </>

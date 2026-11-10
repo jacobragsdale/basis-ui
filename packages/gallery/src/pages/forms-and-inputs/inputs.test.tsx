@@ -51,12 +51,12 @@ describe("Input", () => {
     expect(getComputedStyle(valid).borderTopColor).not.toBe(computedColour("var(--destructive)"));
   });
 
-  test("is 32 px tall, and 24 px in the compact density", async () => {
+  test("is 32 px tall, and 28 px in the compact density", async () => {
     const screen = await render(<Input aria-label="Price" />);
     expect(sizeOf(screen.getByRole("textbox", { name: "Price" }).element())[1]).toBe(32);
     await inCompactDensity(async () => {
       const compact = await render(<Input aria-label="Yield" />);
-      expect(sizeOf(compact.getByRole("textbox", { name: "Yield" }).element())[1]).toBe(24);
+      expect(sizeOf(compact.getByRole("textbox", { name: "Yield" }).element())[1]).toBe(28);
     });
   });
 });

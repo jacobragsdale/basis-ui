@@ -52,6 +52,30 @@
   --focus-offset: 0px;
   --shadow-raised: 0 1px 2px 0 oklch(0 0 0 / 0.06);
   --shadow-floating: 0 2px 6px -1px oklch(0 0 0 / 0.1);
+  --control-xs-gap: 0.25rem;
+  --control-xs-height: 1.5rem;
+  --control-xs-icon: 0.75rem;
+  --control-xs-inset: 0.375rem;
+  --control-xs-inset-icon: 0.25rem;
+  --control-xs-indent: 1.25rem;
+  --control-sm-gap: 0.25rem;
+  --control-sm-height: 1.625rem;
+  --control-sm-icon: 0.75rem;
+  --control-sm-inset: 0.5rem;
+  --control-sm-inset-icon: 0.375rem;
+  --control-sm-indent: 1.375rem;
+  --control-md-gap: 0.25rem;
+  --control-md-height: 1.75rem;
+  --control-md-icon: 0.875rem;
+  --control-md-inset: 0.5rem;
+  --control-md-inset-icon: 0.375rem;
+  --control-md-indent: 1.5rem;
+  --control-lg-gap: 0.375rem;
+  --control-lg-height: 1.875rem;
+  --control-lg-icon: 1rem;
+  --control-lg-inset: 0.625rem;
+  --control-lg-inset-icon: 0.5rem;
+  --control-lg-indent: 1.875rem;
   --background: oklch(0.981 0.0011 255);
   --foreground: oklch(0.24 0.0063 255);
   --card: oklch(0.993 0.0006 255);
@@ -240,9 +264,34 @@
   --div-11: oklch(0.82 0.1008 25);
 }
 
-/* The compact density shrinks the spacing unit, and every spacing utility and control height with it. */
-:root[data-density="compact"] {
-  --spacing: 0.1875rem;
+/* The comfortable density widens the spacing unit, and every spacing utility with it, and sets its own control
+   lengths. */
+:root[data-density="comfortable"] {
+  --spacing: 0.25rem;
+  --control-xs-gap: 0.25rem;
+  --control-xs-height: 1.5rem;
+  --control-xs-icon: 0.75rem;
+  --control-xs-inset: 0.5rem;
+  --control-xs-inset-icon: 0.375rem;
+  --control-xs-indent: 1.375rem;
+  --control-sm-gap: 0.25rem;
+  --control-sm-height: 1.75rem;
+  --control-sm-icon: 0.875rem;
+  --control-sm-inset: 0.625rem;
+  --control-sm-inset-icon: 0.375rem;
+  --control-sm-indent: 1.5rem;
+  --control-md-gap: 0.375rem;
+  --control-md-height: 2rem;
+  --control-md-icon: 1rem;
+  --control-md-inset: 0.625rem;
+  --control-md-inset-icon: 0.5rem;
+  --control-md-indent: 1.875rem;
+  --control-lg-gap: 0.375rem;
+  --control-lg-height: 2.25rem;
+  --control-lg-icon: 1rem;
+  --control-lg-inset: 0.625rem;
+  --control-lg-inset-icon: 0.5rem;
+  --control-lg-indent: 1.875rem;
 }
 
 /* Only the theme's own values exist: Tailwind's palette, its blur utilities and most of its shadows are removed, so a
@@ -261,7 +310,7 @@
   --opacity-disabled: 50%;
   --z-index-raised: 10;
   --z-index-popup: 50;
-  --spacing: 0.25rem;
+  --spacing: 0.1875rem;
   --spacing-target: 1.5rem;
   --text-2xs: 0.625rem;
   --text-2xs--line-height: 0.875rem;

@@ -275,8 +275,9 @@ describe("the theme under Tailwind", () => {
     expect(css).toContain(".min-w-target {\n    min-width: var(--spacing-target);");
     // A fixed 1.5rem, not a multiple of `--spacing`, which the compact density shrinks; 1rem is 16 px.
     expect(css).toContain("--spacing-target: 1.5rem;");
-    const [, compact] = committed.split(':root[data-density="compact"] {');
-    expect(compact?.slice(0, compact.indexOf("}"))).not.toContain("--spacing-target");
+    const [, comfortable] = committed.split(':root[data-density="comfortable"] {');
+    expect(comfortable, "the comfortable density's block").toBeDefined();
+    expect(comfortable?.slice(0, comfortable.indexOf("}"))).not.toContain("--spacing-target");
   });
 
   test("the focus ring's width and offset, and the shadows, are variables a theme can change", async () => {

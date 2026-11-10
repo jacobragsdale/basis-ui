@@ -490,9 +490,19 @@ it.
 `style` may set CSS variables and nothing else, and a class reads the variable: `style={{ "--fill": "40%" }}` with the
 class `w-(--fill)`. `@basis/ui`'s types let `style` take a variable.
 
-The components already keep WCAG 2.2's 24 px minimum target in the compact density: every control shorter than `h-8`
-carries `min-h-target` and `min-w-target`. A control drawn smaller than that, such as Checkbox's 16 px box, Switch's
-track or Slider's thumb, is a 24 px target with its shape drawn inside it, so it keeps shadcn's look.
+The density sets the spacing unit, 3 px in compact, the default, and 4 px in comfortable, so a page's own gaps and
+paddings, such as `gap-4` or `p-6`, shrink by a quarter in the compact density. The controls take lengths of their own
+for each density, in whole pixels, which no app sets. Button's `xs`, `sm`, default and `lg` are 24, 26, 28 and 30 px tall
+in the compact density and 24, 28, 32 and 36 in the comfortable, and Input, Select and Toggle take the same heights;
+an icon beside `text-sm` is 14 px in the compact density and 16 in the comfortable, never shorter than the capitals
+beside it. A page's own control-sized element, such as a toolbar's spacer, reads them as variables:
+`h-(--control-md-height)`, `px-(--control-md-inset)`, `size-(--control-md-icon)` and `gap-(--control-md-gap)`, for
+the sizes `xs`, `sm`, `md` and `lg`.
+
+The components keep WCAG 2.2's 24 px minimum target in either density: no control is shorter, and those that can be,
+such as Button's `xs` and `sm` under another theme, carry `min-h-target` and `min-w-target`. A control drawn smaller
+than that, such as Checkbox's box, Switch's track or Slider's thumb, is a 24 px target with its shape drawn inside it,
+so it keeps shadcn's look.
 
 ### The theme's tokens
 

@@ -3,8 +3,8 @@
  * from combobox.tsx only to keep each file under `eslint/max-lines`.
  *
  * Changed from shadcn: the chip's remove button takes its offset and opacity from the chip, since `shadcn/no-restyle`
- * keeps them off a `@basis/ui` Button inside the package too; the chip's height is `h-5.25` where shadcn wrote
- * `h-[calc(--spacing(5.25))]`; the invalid ring is the theme's one destructive tint, in place of shadcn's two; and the
+ * keeps them off a `@basis/ui` Button inside the package too; the chip's height is `h-5` where shadcn wrote
+ * `h-[calc(--spacing(5.25))]`, a whole number of pixels in either density; the invalid ring is the theme's one destructive tint, in place of shadcn's two; and the
  * remove button, which shadcn left unnamed, is named "Remove" and the chip's text. */
 
 import { Combobox as ComboboxPrimitive } from "@base-ui/react/combobox";
@@ -28,7 +28,7 @@ function ComboboxChips({
     <ComboboxPrimitive.Chips
       data-slot="combobox-chips"
       className={cn(
-        "flex min-h-8 flex-wrap items-center gap-1 rounded-lg border border-input bg-transparent bg-clip-padding px-2.5 py-1 text-sm transition-colors focus-within:border-ring focus-within:outline-solid focus-within:outline focus-within:outline-offset-(--focus-offset) focus-within:outline-ring has-aria-invalid:border-destructive has-aria-invalid:outline-destructive has-data-[slot=combobox-chip]:px-1",
+        "flex min-h-(--control-md-height) flex-wrap items-center gap-1 rounded-lg border border-input bg-transparent bg-clip-padding px-(--control-md-inset) py-1 text-sm transition-colors focus-within:border-ring focus-within:outline-solid focus-within:outline focus-within:outline-offset-(--focus-offset) focus-within:outline-ring has-aria-invalid:border-destructive has-aria-invalid:outline-destructive has-data-[slot=combobox-chip]:px-1",
         className,
       )}
       {...props}
@@ -52,7 +52,7 @@ function ComboboxChip({
     <ComboboxPrimitive.Chip
       data-slot="combobox-chip"
       className={cn(
-        "flex h-5.25 w-fit items-center justify-center gap-1 rounded-sm bg-muted px-1.5 text-xs font-medium whitespace-nowrap text-foreground has-disabled:pointer-events-none has-disabled:cursor-not-allowed has-disabled:opacity-disabled has-data-[slot=combobox-chip-remove]:pr-0 *:data-[slot=combobox-chip-remove]:-ml-1 *:data-[slot=combobox-chip-remove]:text-muted-foreground *:data-[slot=combobox-chip-remove]:hover:text-foreground",
+        "flex h-5 w-fit items-center justify-center gap-1 rounded-sm bg-muted px-(--control-xs-inset-icon) text-xs font-medium whitespace-nowrap text-foreground has-disabled:pointer-events-none has-disabled:cursor-not-allowed has-disabled:opacity-disabled has-data-[slot=combobox-chip-remove]:pr-0 *:data-[slot=combobox-chip-remove]:-ml-1 *:data-[slot=combobox-chip-remove]:text-muted-foreground *:data-[slot=combobox-chip-remove]:hover:text-foreground",
         className,
       )}
       {...props}

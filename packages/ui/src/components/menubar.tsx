@@ -87,7 +87,7 @@ function MenubarTrigger({ className, ...props }: MenuPrimitive.Trigger.Props): R
     <MenuPrimitive.Trigger
       data-slot="menubar-trigger"
       className={cn(
-        "flex min-h-target min-w-target items-center rounded-sm px-1.5 py-0.5 text-sm font-medium outline-hidden select-none hover:bg-muted focus-visible:outline-solid focus-visible:outline focus-visible:outline-offset-(--focus-offset) focus-visible:outline-ring aria-expanded:bg-muted",
+        "flex min-h-target min-w-target items-center rounded-sm px-(--control-xs-inset-icon) py-0.5 text-sm font-medium outline-hidden select-none hover:bg-muted focus-visible:outline-solid focus-visible:outline focus-visible:outline-offset-(--focus-offset) focus-visible:outline-ring aria-expanded:bg-muted",
         className,
       )}
       {...props}
@@ -139,13 +139,13 @@ function MenubarCheckboxItem({
       data-slot="menubar-checkbox-item"
       data-inset={inset}
       className={cn(
-        "relative flex min-h-target min-w-target cursor-default items-center gap-1.5 rounded-md py-1 pr-1.5 pl-7 text-sm outline-hidden select-none focus:bg-accent focus:text-accent-foreground focus:**:text-accent-foreground data-[inset=true]:pl-7 data-disabled:pointer-events-none data-disabled:opacity-disabled [&_svg]:pointer-events-none [&_svg]:shrink-0",
+        "relative flex min-h-target min-w-target cursor-default items-center gap-(--control-md-gap) rounded-md py-1 pr-(--control-md-inset-icon) pl-(--control-md-indent) text-sm outline-hidden select-none focus:bg-accent focus:text-accent-foreground focus:**:text-accent-foreground data-[inset=true]:pl-(--control-md-indent) data-disabled:pointer-events-none data-disabled:opacity-disabled [&_svg]:pointer-events-none [&_svg]:shrink-0",
         className,
       )}
       checked={checked}
       {...props}
     >
-      <span className="pointer-events-none absolute left-1.5 flex size-4 items-center justify-center [&_svg:not([class*='size-'])]:size-4">
+      <span className="pointer-events-none absolute left-(--control-md-inset-icon) flex size-(--control-md-icon) items-center justify-center [&_svg:not([class*='size-'])]:size-(--control-md-icon)">
         <MenuPrimitive.CheckboxItemIndicator>
           <CheckIcon />
         </MenuPrimitive.CheckboxItemIndicator>
@@ -172,12 +172,12 @@ function MenubarRadioItem({
       data-slot="menubar-radio-item"
       data-inset={inset}
       className={cn(
-        "relative flex min-h-target min-w-target cursor-default items-center gap-1.5 rounded-md py-1 pr-1.5 pl-7 text-sm outline-hidden select-none focus:bg-accent focus:text-accent-foreground focus:**:text-accent-foreground data-[inset=true]:pl-7 data-disabled:pointer-events-none data-disabled:opacity-disabled [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        "relative flex min-h-target min-w-target cursor-default items-center gap-(--control-md-gap) rounded-md py-1 pr-(--control-md-inset-icon) pl-(--control-md-indent) text-sm outline-hidden select-none focus:bg-accent focus:text-accent-foreground focus:**:text-accent-foreground data-[inset=true]:pl-(--control-md-indent) data-disabled:pointer-events-none data-disabled:opacity-disabled [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-(--control-md-icon)",
         className,
       )}
       {...props}
     >
-      <span className="pointer-events-none absolute left-1.5 flex size-4 items-center justify-center [&_svg:not([class*='size-'])]:size-4">
+      <span className="pointer-events-none absolute left-(--control-md-inset-icon) flex size-(--control-md-icon) items-center justify-center [&_svg:not([class*='size-'])]:size-(--control-md-icon)">
         <MenuPrimitive.RadioItemIndicator>
           <CheckIcon />
         </MenuPrimitive.RadioItemIndicator>
@@ -197,7 +197,10 @@ function MenubarLabel({
     <MenuPrimitive.GroupLabel
       data-slot="menubar-label"
       data-inset={inset}
-      className={cn("px-1.5 py-1 text-sm font-medium data-[inset=true]:pl-7", className)}
+      className={cn(
+        "px-(--control-md-inset-icon) py-1 text-sm font-medium data-[inset=true]:pl-(--control-md-indent)",
+        className,
+      )}
       {...props}
     />
   );

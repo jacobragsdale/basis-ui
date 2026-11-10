@@ -5,6 +5,7 @@ import { parse } from "culori";
 import type { Color, Oklch } from "culori";
 
 import {
+  controls,
   disabledOpacity,
   durations,
   focusRing,
@@ -17,6 +18,7 @@ import {
   targetSize,
 } from "./inputs.ts";
 import { rampStep, tone } from "./ramps.ts";
+import type { ControlSize, ControlSizeName } from "./inputs.ts";
 import type { Mode } from "./ramps.ts";
 import { tokens } from "./tokens.ts";
 import type { Source } from "./tokens.ts";
@@ -132,8 +134,53 @@ const fontsAndVariant = `@import "@fontsource-variable/inter";
   }
 }`;
 
-/** The tokens in each mode, and the compact density's spacing. The radius, the focus ring and the shadows are
- * variables here, rather than values Tailwind writes into each utility, so that a theme can change them at run time. */
+/** The pixels in a rem, at the browser's default font size. */
+const pixelsPerRem = 16;
+
+/** The control sizes, from the smallest. */
+const controlSizes: readonly ControlSizeName[] = ["xs", "sm", "md", "lg"];
+
+/** Where the text starts in a control whose icon sits at its start: the inset beside the icon, the icon and the gap. A
+ * menu's item without an icon is indented by it, so that its text lines up with its neighbours'. */
+function indentOf({ insetBesideIcon, icon, gap }: ControlSize): number {
+  return insetBesideIcon + icon + gap;
+}
+
+/** A length in pixels as rem, which is whole pixels at the default font size. */
+function rem(pixels: number): string {
+  return `${String(pixels / pixelsPerRem)}rem`;
+}
+
+/** A control size's lengths, each by the name its variable takes after the size. */
+function lengthsOf(lengths: ControlSize): readonly (readonly [string, number])[] {
+  return [
+    ["gap", lengths.gap],
+    ["height", lengths.height],
+    ["icon", lengths.icon],
+    ["inset", lengths.inset],
+    ["inset-icon", lengths.insetBesideIcon],
+    ["indent", indentOf(lengths)],
+  ];
+}
+
+/** One density's control lengths as declarations. A component reads them as `h-(--control-md-height)`,
+ * `px-(--control-md-inset)`, `pl-(--control-md-inset-icon)`, `size-(--control-md-icon)` and `gap-(--control-md-gap)`:
+ * variables, not named utilities, so that `cn` merges an app's `h-9` or `size-6` over them, where it would keep both of
+ * two named ones. */
+function controlDeclarations(density: keyof typeof controls): string {
+  return controlSizes
+    .flatMap((size) =>
+      lengthsOf(controls[density][size]).map(
+        ([name, pixels]) => `  --control-${size}-${name}: ${rem(pixels)};`,
+      ),
+    )
+    .join("\n");
+}
+
+/** The tokens in each mode, and the control lengths in each density. Compact, the default density, is the base, so a
+ * page that no script has touched shows it; `data-density="comfortable"` puts the comfortable density's spacing unit
+ * and control lengths in its place. The radius, the focus ring and the shadows are variables here, rather than values
+ * Tailwind writes into each utility, so that a theme can change them at run time. */
 function modes(): string {
   return `:root {
   color-scheme: light;
@@ -143,6 +190,7 @@ function modes(): string {
   --focus-offset: ${focusRing.offset};
   --shadow-raised: ${shadows.raised};
   --shadow-floating: ${shadows.floating};
+${controlDeclarations("compact")}
 ${declarations("light")}
 }
 
@@ -151,9 +199,11 @@ ${declarations("light")}
 ${declarations("dark")}
 }
 
-/* The compact density shrinks the spacing unit, and every spacing utility and control height with it. */
-:root[data-density="compact"] {
-  --spacing: ${spacing.compact};
+/* The comfortable density widens the spacing unit, and every spacing utility with it, and sets its own control
+   lengths. */
+:root[data-density="comfortable"] {
+  --spacing: ${spacing.comfortable};
+${controlDeclarations("comfortable")}
 }`;
 }
 
@@ -178,7 +228,7 @@ function scales(): string {
   --opacity-disabled: ${disabledOpacity};
   --z-index-raised: ${layers.raised};
   --z-index-popup: ${layers.popup};
-  --spacing: ${spacing.comfortable};
+  --spacing: ${spacing.compact};
   --spacing-target: ${targetSize};
   --text-2xs: 0.625rem;
   --text-2xs--line-height: 0.875rem;

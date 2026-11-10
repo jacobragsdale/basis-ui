@@ -76,13 +76,13 @@ function ComboboxTrigger({
     <ComboboxPrimitive.Trigger
       data-slot="combobox-trigger"
       className={cn(
-        "in-data-[slot=input-group]:data-pressed:bg-transparent [&_svg:not([class*='size-'])]:size-4 [&>svg]:text-muted-foreground",
+        "in-data-[slot=input-group]:data-pressed:bg-transparent [&_svg:not([class*='size-'])]:size-(--control-md-icon) [&>svg]:text-muted-foreground",
         className,
       )}
       {...props}
     >
       {children}
-      <ChevronDownIcon className="pointer-events-none size-4" />
+      <ChevronDownIcon className="pointer-events-none size-(--control-md-icon)" />
     </ComboboxPrimitive.Trigger>
   );
 }
@@ -209,7 +209,7 @@ function ComboboxItem({
     <ComboboxPrimitive.Item
       data-slot="combobox-item"
       className={cn(
-        "relative flex w-full cursor-default items-center gap-2 rounded-md py-1 pr-8 pl-1.5 text-sm outline-hidden select-none data-disabled:pointer-events-none data-disabled:opacity-disabled data-highlighted:bg-accent data-highlighted:text-accent-foreground not-data-[variant=destructive]:data-highlighted:**:text-accent-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        "relative flex w-full cursor-default items-center gap-2 rounded-md py-1 pr-8 pl-(--control-md-inset-icon) text-sm outline-hidden select-none data-disabled:pointer-events-none data-disabled:opacity-disabled data-highlighted:bg-accent data-highlighted:text-accent-foreground not-data-[variant=destructive]:data-highlighted:**:text-accent-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-(--control-md-icon)",
         className,
       )}
       {...props}
@@ -217,7 +217,7 @@ function ComboboxItem({
       {children}
       <ComboboxPrimitive.ItemIndicator
         render={
-          <span className="pointer-events-none absolute right-2 flex size-4 items-center justify-center" />
+          <span className="pointer-events-none absolute right-2 flex size-(--control-md-icon) items-center justify-center" />
         }
       >
         <CheckIcon className="pointer-events-none" />

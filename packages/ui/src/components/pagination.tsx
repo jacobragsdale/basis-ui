@@ -145,7 +145,7 @@ function PaginationEllipsis({ className, ...props }: ComponentProps<"span">): Re
       aria-hidden="true"
       data-slot="pagination-ellipsis"
       className={cn(
-        "flex size-8 items-center justify-center [&_svg:not([class*='size-'])]:size-4",
+        "flex size-8 items-center justify-center [&_svg:not([class*='size-'])]:size-(--control-md-icon)",
         className,
       )}
       {...props}

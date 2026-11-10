@@ -148,7 +148,7 @@ function FormsAndInputs(): ReactElement {
     <div className="flex flex-col gap-8">
       <Section
         title="Button"
-        description="An action. Its variant says how much it matters, and sizes below h-8 keep a 24 px target in the compact density."
+        description="An action. Its variant says how much it matters, and each size has a height of its own, at least a 24 px target, in either density."
       >
         <ButtonMatrix />
         <ButtonStates />

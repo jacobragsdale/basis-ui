@@ -27,7 +27,7 @@ function SidebarGroupLabel({
   ...props
 }: useRender.ComponentProps<"div">): ReactElement {
   const classes = cn(
-    "flex h-8 shrink-0 items-center rounded-md px-2 text-xs font-medium text-muted-foreground focus-visible:outline-sidebar-ring outline-hidden transition-opacity group-data-[collapsible=icon]:-mt-8 group-data-[collapsible=icon]:opacity-0 focus-visible:outline-solid focus-visible:outline focus-visible:outline-offset-(--focus-offset) [&>svg]:size-4 [&>svg]:shrink-0",
+    "flex h-8 shrink-0 items-center rounded-md px-2 text-xs font-medium text-muted-foreground focus-visible:outline-sidebar-ring outline-hidden transition-opacity group-data-[collapsible=icon]:-mt-8 group-data-[collapsible=icon]:opacity-0 focus-visible:outline-solid focus-visible:outline focus-visible:outline-offset-(--focus-offset) [&>svg]:size-(--control-md-icon) [&>svg]:shrink-0",
     className,
   );
   return useRender({
@@ -45,7 +45,7 @@ function SidebarGroupAction({
   ...props
 }: useRender.ComponentProps<"button">): ReactElement {
   const classes = cn(
-    "absolute top-6 right-3 flex aspect-square w-5 min-h-target min-w-target -translate-y-1/2 items-center justify-center rounded-md p-0 text-sidebar-foreground focus-visible:outline-sidebar-ring outline-hidden transition-transform group-data-[collapsible=icon]:hidden after:absolute after:-inset-2 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-solid focus-visible:outline focus-visible:outline-offset-(--focus-offset) md:after:hidden [&>svg]:size-4 [&>svg]:shrink-0",
+    "absolute top-6 right-3 flex aspect-square w-5 min-h-target min-w-target -translate-y-1/2 items-center justify-center rounded-md p-0 text-sidebar-foreground focus-visible:outline-sidebar-ring outline-hidden transition-transform group-data-[collapsible=icon]:hidden after:absolute after:-inset-2 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-solid focus-visible:outline focus-visible:outline-offset-(--focus-offset) md:after:hidden [&>svg]:size-(--control-md-icon) [&>svg]:shrink-0",
     className,
   );
   return useRender({

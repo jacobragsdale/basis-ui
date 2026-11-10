@@ -7,7 +7,7 @@ import { cva } from "#vendor/cva/cva.ts";
 
 /** A top-level trigger's look, which a top-level link takes through `variant="trigger"`. */
 const triggerLook =
-  "group/navigation-menu-trigger inline-flex h-9 w-max items-center justify-center rounded-lg px-2.5 py-1.5 text-sm font-medium transition-colors outline-none hover:bg-muted focus:bg-muted focus-visible:outline-solid focus-visible:outline focus-visible:outline-offset-(--focus-offset) focus-visible:outline-ring disabled:pointer-events-none disabled:opacity-disabled data-active:bg-muted data-open:bg-muted data-open:hover:bg-muted data-open:focus:bg-muted data-popup-open:bg-muted data-popup-open:hover:bg-muted";
+  "group/navigation-menu-trigger inline-flex h-(--control-lg-height) w-max items-center justify-center rounded-lg px-(--control-lg-inset) py-0 text-sm font-medium transition-colors outline-none hover:bg-muted focus:bg-muted focus-visible:outline-solid focus-visible:outline focus-visible:outline-offset-(--focus-offset) focus-visible:outline-ring disabled:pointer-events-none disabled:opacity-disabled data-active:bg-muted data-open:bg-muted data-open:hover:bg-muted data-open:focus:bg-muted data-popup-open:bg-muted data-popup-open:hover:bg-muted";
 
 /** NavigationMenuTrigger's look. */
 const navigationMenuTriggerVariants = cva(triggerLook);
@@ -18,7 +18,7 @@ const navigationMenuLinkVariants = cva("", {
   variants: {
     variant: {
       default:
-        "flex items-center gap-2 rounded-lg p-2 text-sm transition-colors outline-none hover:bg-muted focus:bg-muted focus-visible:outline-solid focus-visible:outline focus-visible:outline-offset-(--focus-offset) focus-visible:outline-ring data-active:bg-muted data-active:hover:bg-muted data-active:focus:bg-muted in-data-[slot=navigation-menu-content]:rounded-md [&_svg:not([class*='size-'])]:size-4",
+        "flex items-center gap-2 rounded-lg p-2 text-sm transition-colors outline-none hover:bg-muted focus:bg-muted focus-visible:outline-solid focus-visible:outline focus-visible:outline-offset-(--focus-offset) focus-visible:outline-ring data-active:bg-muted data-active:hover:bg-muted data-active:focus:bg-muted in-data-[slot=navigation-menu-content]:rounded-md [&_svg:not([class*='size-'])]:size-(--control-md-icon)",
       trigger: triggerLook,
     },
   },

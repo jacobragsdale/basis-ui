@@ -44,7 +44,7 @@ function InputGroup({ className, ...props }: ComponentProps<"div">): ReactElemen
       // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- shadcn's markup: the group is one input and its addons, not a `<fieldset>`'s set of fields with a legend.
       role="group"
       className={cn(
-        "group/input-group relative flex h-8 w-full min-w-0 items-center rounded-lg border border-input transition-colors outline-none in-data-[slot=combobox-content]:focus-within:border-inherit in-data-[slot=combobox-content]:focus-within:outline-none has-disabled:bg-disabled has-disabled:opacity-disabled has-[[data-slot=input-group-control]:focus-visible]:border-ring has-[[data-slot=input-group-control]:focus-visible]:outline-solid has-[[data-slot=input-group-control]:focus-visible]:outline has-[[data-slot=input-group-control]:focus-visible]:outline-offset-(--focus-offset) has-[[data-slot=input-group-control]:focus-visible]:outline-ring has-[[data-slot][aria-invalid=true]]:border-destructive has-[[data-slot][aria-invalid=true]]:outline-destructive has-[>[data-align=block-end]]:h-auto has-[>[data-align=block-end]]:flex-col has-[>[data-align=block-start]]:h-auto has-[>[data-align=block-start]]:flex-col has-[>textarea]:h-auto has-[>[data-align=block-end]]:[&>input]:pt-3 has-[>[data-align=block-start]]:[&>input]:pb-3 has-[>[data-align=inline-end]]:[&>input]:pr-1.5 has-[>[data-align=inline-start]]:[&>input]:pl-1.5",
+        "group/input-group relative flex h-(--control-md-height) w-full min-w-0 items-center rounded-lg border border-input transition-colors outline-none in-data-[slot=combobox-content]:focus-within:border-inherit in-data-[slot=combobox-content]:focus-within:outline-none has-disabled:bg-disabled has-disabled:opacity-disabled has-[[data-slot=input-group-control]:focus-visible]:border-ring has-[[data-slot=input-group-control]:focus-visible]:outline-solid has-[[data-slot=input-group-control]:focus-visible]:outline has-[[data-slot=input-group-control]:focus-visible]:outline-offset-(--focus-offset) has-[[data-slot=input-group-control]:focus-visible]:outline-ring has-[[data-slot][aria-invalid=true]]:border-destructive has-[[data-slot][aria-invalid=true]]:outline-destructive has-[>[data-align=block-end]]:h-auto has-[>[data-align=block-end]]:flex-col has-[>[data-align=block-start]]:h-auto has-[>[data-align=block-start]]:flex-col has-[>textarea]:h-auto has-[>[data-align=block-end]]:[&>input]:pt-3 has-[>[data-align=block-start]]:[&>input]:pb-3 has-[>[data-align=inline-end]]:[&>input]:pr-(--control-xs-inset-icon) has-[>[data-align=inline-start]]:[&>input]:pl-(--control-xs-inset-icon)",
         className,
       )}
       {...props}
@@ -102,7 +102,7 @@ function InputGroupButton({
       data-size={size}
       data-variant={variant}
       className={cn(
-        buttonVariants({ size: "default", variant }),
+        buttonVariants({ size: null, variant }),
         inputGroupButtonVariants({ size }),
         className,
       )}
@@ -116,7 +116,7 @@ function InputGroupText({ className, ...props }: ComponentProps<"span">): ReactE
   return (
     <span
       className={cn(
-        "flex items-center gap-2 text-sm text-muted-foreground [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4",
+        "flex items-center gap-2 text-sm text-muted-foreground [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-(--control-md-icon)",
         className,
       )}
       {...props}

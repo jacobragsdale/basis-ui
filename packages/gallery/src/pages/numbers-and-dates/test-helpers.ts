@@ -31,7 +31,7 @@ async function inCompactDensity(check: () => Promise<void>): Promise<void> {
   try {
     await check();
   } finally {
-    delete document.documentElement.dataset["density"];
+    document.documentElement.dataset["density"] = "comfortable";
   }
 }
 

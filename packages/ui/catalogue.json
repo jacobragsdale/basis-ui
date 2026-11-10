@@ -165,7 +165,7 @@
           "from": "@base-ui/react",
           "name": "render",
           "optional": true,
-          "type": "React.ReactElement | ComponentRenderFn<ation=ver, rt> | undefined"
+          "type": "React.ReactElement | ComponentRenderFn<my-px dat, ta> | undefined"
         }
       ],
       "purpose": "Text inside a button group, such as a unit or a prefix, on the muted surface. `render` makes it another element, such as a `<label>` for the group's input.",
@@ -1740,21 +1740,21 @@
           "from": "@base-ui/react",
           "name": "value",
           "optional": true,
-          "type": "io- | undefined"
+          "type": "iti | undefined"
         },
         {
           "description": "The uncontrolled value of the radio button that should be initially selected.",
           "from": "@base-ui/react",
           "name": "defaultValue",
           "optional": true,
-          "type": "io- | undefined"
+          "type": "iti | undefined"
         },
         {
           "description": "Callback fired when the value changes.",
           "from": "@base-ui/react",
           "name": "onValueChange",
           "optional": true,
-          "type": "((value: io-, eventDetails: RadioGroup.ChangeEventDetails) => void) | undefined"
+          "type": "((value: iti, eventDetails: RadioGroup.ChangeEventDetails) => void) | undefined"
         },
         {
           "description": "A ref to access the hidden input element.",
@@ -1818,7 +1818,7 @@
           "from": "@base-ui/react",
           "name": "value",
           "optional": false,
-          "type": "t s"
+          "type": "tar"
         },
         {
           "description": "Whether the component should ignore user interaction.",
@@ -6140,14 +6140,14 @@
           "from": "@base-ui/react",
           "name": "handle",
           "optional": true,
-          "type": "MenuHandle<r\"> | undefined"
+          "type": "MenuHandle<t?: boo> | undefined"
         },
         {
           "description": "The content of the menu. This can be a regular React node or a render function that receives the `payload` of the active trigger.",
           "from": "@base-ui/react",
           "name": "children",
           "optional": true,
-          "type": "React.ReactNode | PayloadChildRenderFunction<r\">"
+          "type": "React.ReactNode | PayloadChildRenderFunction<t?: boo>"
         }
       ],
       "purpose": "A dropdown menu: a list of actions or options behind a button. Arrow keys move through its items, typing jumps to one, Enter or a click runs it, and Escape closes the menu and returns focus to the trigger.",
@@ -7919,14 +7919,14 @@
           "from": "@base-ui/react",
           "name": "handle",
           "optional": true,
-          "type": "MenuHandle<r\"> | undefined"
+          "type": "MenuHandle<t?: boo> | undefined"
         },
         {
           "description": "The content of the menu. This can be a regular React node or a render function that receives the `payload` of the active trigger.",
           "from": "@base-ui/react",
           "name": "children",
           "optional": true,
-          "type": "React.ReactNode | PayloadChildRenderFunction<r\">"
+          "type": "React.ReactNode | PayloadChildRenderFunction<t?: boo>"
         }
       ],
       "purpose": "One of the bar's menus: a MenubarTrigger and its MenubarContent.",
@@ -9554,35 +9554,35 @@
           "from": "@base-ui/react",
           "name": "className",
           "optional": true,
-          "type": "string | ((state: AccordionRoot.State<tri>) => string | undefined) | undefined"
+          "type": "string | ((state: AccordionRoot.State<a-s>) => string | undefined) | undefined"
         },
         {
           "description": "Renders it as another element or component, such as a router's link, keeping its behaviour: a React element, or a function of its props and state.",
           "from": "@base-ui/react",
           "name": "render",
           "optional": true,
-          "type": "React.ReactElement | ComponentRenderFn<: Orienta, AccordionRoot.State<tri>> | undefined"
+          "type": "React.ReactElement | ComponentRenderFn<: Orienta, AccordionRoot.State<a-s>> | undefined"
         },
         {
           "description": "Inline styles: in an app, CSS variables only, which a class reads, as `style={{ \"--fill\": \"40%\" }}`.",
           "from": "@base-ui/react",
           "name": "style",
           "optional": true,
-          "type": "React.CSSProperties | ((state: AccordionRoot.State<tri>) => React.CSSProperties | undefined) | undefined"
+          "type": "React.CSSProperties | ((state: AccordionRoot.State<a-s>) => React.CSSProperties | undefined) | undefined"
         },
         {
           "description": "The controlled value of the item(s) that should be expanded.",
           "from": "@base-ui/react",
           "name": "value",
           "optional": true,
-          "type": "AccordionValue<tri> | undefined"
+          "type": "AccordionValue<a-s> | undefined"
         },
         {
           "description": "The uncontrolled value of the item(s) that should be initially expanded.",
           "from": "@base-ui/react",
           "name": "defaultValue",
           "optional": true,
-          "type": "AccordionValue<tri> | undefined"
+          "type": "AccordionValue<a-s> | undefined"
         },
         {
           "default": "false",
@@ -9620,7 +9620,7 @@
           "from": "@base-ui/react",
           "name": "onValueChange",
           "optional": true,
-          "type": "((value: AccordionValue<tri>, eventDetails: AccordionRootChangeEventDetails) => void) | undefined"
+          "type": "((value: AccordionValue<a-s>, eventDetails: AccordionRootChangeEventDetails) => void) | undefined"
         },
         {
           "default": "false",
@@ -12618,7 +12618,7 @@
       "module": "@basis/ui",
       "name": "Spinner",
       "props": [],
-      "purpose": "A loading indicator, 16 px square unless `className` sizes it, as with `size-6`. It is a status named \"Loading\"; give it an `aria-label` that says what is loading, such as \"Loading positions\", when the page shows more than one.",
+      "purpose": "A loading indicator, an icon's size in the density, 16 px square in the comfortable density and 14 in the compact, unless `className` sizes it, as with `size-6`. It is a status named \"Loading\"; give it an `aria-label` that says what is loading, such as \"Loading positions\", when the page shows more than one.",
       "use": "For an action or a load under way whose length is unknown, such as a Button's while it submits. For content still loading, use Skeleton; for a known share done, Progress.",
       "with": [
         "Button",
@@ -15399,14 +15399,14 @@
       "kind": "function",
       "module": "@basis/ui",
       "name": "applyPreferences",
-      "purpose": "Puts the preferences on the page's root element: the `dark` class, `color-scheme`, `data-density` and `data-motion`. A change to any of them holds every transition off until it is drawn, so the page changes in one frame, as its canvases do, where some sixty controls' colours would otherwise cross-fade and a density change lay the page out frame by frame.",
+      "purpose": "Puts the preferences on the page's root element: the `dark` class, `color-scheme`, `data-density` and `data-motion`. `data-density` always names the density, so that whatever reads it, such as parallax's canvases, need not know the stylesheet's base. A change to any of them holds every transition off until it is drawn, so the page changes in one frame, as its canvases do, where some sixty controls' colours would otherwise cross-fade and a density change lay the page out frame by frame.",
       "signature": "applyPreferences(root: PreferencesRoot, preferences: Preferences, systemDark: boolean): void"
     },
     {
       "kind": "constant",
       "module": "@basis/ui",
       "name": "defaultPreferences",
-      "purpose": "Compact is the default density, the maintainer's choice on 2026-11-07. The stylesheet's base is the comfortable spacing, which `data-density=\"compact\"` shrinks, so a page shows the default once the head script or `followPreferences` has run; a component rendered without either, as in a test, is comfortable.",
+      "purpose": "Compact is the default density, the maintainer's choice on 2026-11-07. The stylesheet's base is compact too, and `data-density=\"comfortable\"` widens it, so a page shows the default before the head script or `followPreferences` has run, and without either, as in a test.",
       "signature": "const defaultPreferences: Preferences"
     },
     {

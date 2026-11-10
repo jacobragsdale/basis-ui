@@ -11,7 +11,7 @@ import { cva } from "#vendor/cva/cva.ts";
  * theme holds to 5.5:1, and their description takes the status colour too, since muted text on a tint does not; show
  * the status with an icon as well as the colour. */
 const alertVariants = cva(
-  "group/alert relative grid w-full justify-start gap-0.5 rounded-lg border px-2.5 py-2 text-left text-sm has-data-[slot=alert-action]:relative has-data-[slot=alert-action]:pr-18 has-[>svg]:gap-x-2 *:[svg]:row-span-2 *:[svg]:translate-y-0.5 *:[svg]:text-current *:[svg:not([class*='size-'])]:size-4",
+  "group/alert relative grid w-full justify-start gap-0.5 rounded-lg border px-2.5 py-2 text-left text-sm has-data-[slot=alert-action]:relative has-data-[slot=alert-action]:pr-18 has-[>svg]:gap-x-2 *:[svg]:row-span-2 *:[svg]:translate-y-0.5 *:[svg]:text-current *:[svg:not([class*='size-'])]:size-(--control-md-icon)",
   {
     variants: {
       variant: {

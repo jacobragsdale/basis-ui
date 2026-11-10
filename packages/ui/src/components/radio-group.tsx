@@ -54,18 +54,18 @@ function RadioGroupItem({
     <RadioPrimitive.Root
       data-slot="radio-group-item"
       className={cn(
-        "peer group/radio-group-item relative inline-flex size-4 min-h-target min-w-target shrink-0 items-center justify-center rounded-full outline-none data-disabled:cursor-not-allowed data-disabled:opacity-disabled",
+        "peer group/radio-group-item relative inline-flex size-(--control-md-icon) min-h-target min-w-target shrink-0 items-center justify-center rounded-full outline-none data-disabled:cursor-not-allowed data-disabled:opacity-disabled",
         className,
       )}
       {...props}
     >
       <span
         data-slot="radio-group-circle"
-        className="relative flex aspect-square size-4 shrink-0 rounded-full border border-input transition-colors group-focus-visible/radio-group-item:border-ring group-focus-visible/radio-group-item:outline-solid group-focus-visible/radio-group-item:outline group-focus-visible/radio-group-item:outline-offset-(--focus-offset) group-focus-visible/radio-group-item:outline-ring group-has-[:focus-visible]/field-label:outline-none group-aria-invalid/radio-group-item:border-destructive group-aria-invalid/radio-group-item:outline-destructive group-data-checked/radio-group-item:border-primary group-data-checked/radio-group-item:bg-primary group-data-checked/radio-group-item:text-primary-foreground group-has-[:focus-visible]/field-label:group-data-unchecked/radio-group-item:border-input"
+        className="relative flex aspect-square size-(--control-md-icon) shrink-0 rounded-full border border-input transition-colors group-focus-visible/radio-group-item:border-ring group-focus-visible/radio-group-item:outline-solid group-focus-visible/radio-group-item:outline group-focus-visible/radio-group-item:outline-offset-(--focus-offset) group-focus-visible/radio-group-item:outline-ring group-has-[:focus-visible]/field-label:outline-none group-aria-invalid/radio-group-item:border-destructive group-aria-invalid/radio-group-item:outline-destructive group-data-checked/radio-group-item:border-primary group-data-checked/radio-group-item:bg-primary group-data-checked/radio-group-item:text-primary-foreground group-has-[:focus-visible]/field-label:group-data-unchecked/radio-group-item:border-input"
       >
         <RadioPrimitive.Indicator
           data-slot="radio-group-indicator"
-          className="flex size-4 items-center justify-center"
+          className="flex size-(--control-md-icon) items-center justify-center"
         >
           <span className="absolute top-1/2 left-1/2 size-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary-foreground" />
         </RadioPrimitive.Indicator>

@@ -173,7 +173,7 @@ function ToastIcon({ type }: { readonly type: string | undefined }): ReactElemen
     return (
       <span
         data-slot="toast-icon"
-        className="shrink-0 [&_svg]:pointer-events-none [&_svg]:animate-spin motion-reduce:[&_svg]:animate-none [&_svg:not([class*='size-'])]:size-4"
+        className="shrink-0 [&_svg]:pointer-events-none [&_svg]:animate-spin motion-reduce:[&_svg]:animate-none [&_svg:not([class*='size-'])]:size-(--control-md-icon)"
       >
         <LoaderCircleIcon />
       </span>
@@ -186,7 +186,7 @@ function ToastIcon({ type }: { readonly type: string | undefined }): ReactElemen
   return (
     <span
       data-slot="toast-icon"
-      className="shrink-0 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4"
+      className="shrink-0 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-(--control-md-icon)"
     >
       <Icon />
     </span>

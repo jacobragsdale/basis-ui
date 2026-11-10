@@ -48,7 +48,7 @@ function SortIcon({ sorted }: { readonly sorted: false | "asc" | "desc" }): Reac
   }
   return (
     <span className="flex text-muted-foreground">
-      <ArrowUpDownIcon className="size-3.5" />
+      <ArrowUpDownIcon className="size-(--control-sm-icon)" />
     </span>
   );
 }

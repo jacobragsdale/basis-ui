@@ -36,7 +36,7 @@ const shown = [
   <div key="f" className="[&>*]:p-4">f</div>,
   <div key="g" className={\`p-\${String(size)}\`}>g</div>,
   <div key="h" className="flexx">h</div>,
-  <div key="i" className="p-[13px]">i</div>,
+  <div key="i" className="p-[12px]">i</div>,
   <div key="j" style={{ color: "red" }}>j</div>,
 ];
 const dates = [when.toLocaleDateString(), new Intl.DateTimeFormat("en-US").format(when)];
@@ -137,8 +137,8 @@ describe("the preset's lint against a plain element's classes the theme lacks", 
     expect(at("shadcn(no-unknown-classes)", "flexx")).toStrictEqual([
       `ERROR "flexx" is no class or variant @basis/ui's theme generates, and an app declares none of its own: fix its spelling (closest: flex), or take the look from a component's variant or a theme token, which vp run docs --search WORDS finds.`,
     ]);
-    expect(at("shadcn(no-arbitrary-values)", "p-[13px]")).toStrictEqual([
-      `ERROR "p-[13px]" is a value off @basis/ui's theme, and an app declares no tokens or scales of its own: use p-3.25 instead, and for a colour the token named by its meaning, as text-loss for red or bg-muted for grey.`,
+    expect(at("shadcn(no-arbitrary-values)", "p-[12px]")).toStrictEqual([
+      `ERROR "p-[12px]" is a value off @basis/ui's theme, and an app declares no tokens or scales of its own: use p-4 instead, and for a colour the token named by its meaning, as text-loss for red or bg-muted for grey.`,
     ]);
     expect(at("shadcn(no-inline-styles)", 'color: "red"')).toStrictEqual([
       "ERROR this style sets color outside @basis/ui's theme: a style may set only a CSS variable that a class reads, as --fill read by w-(--fill), to a size and never a colour, and every other look comes from a component's variant or a theme token.",

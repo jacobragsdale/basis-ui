@@ -50,7 +50,7 @@ function NativeSelect({ className, size = "default", ...props }: NativeSelectPro
         {...props}
       />
       <ChevronDownIcon
-        className="pointer-events-none absolute top-1/2 right-2.5 size-4 -translate-y-1/2 select-none"
+        className="pointer-events-none absolute top-1/2 right-2.5 size-(--control-md-icon) -translate-y-1/2 select-none"
         data-slot="native-select-icon"
       />
     </div>
