@@ -314,9 +314,28 @@ theme and a user who needs it one of high contrast, while every app still looks 
 library's and not an app's. The default theme gets a look of its own, decided the same day, since the components read as
 shadcn's defaults: status colours with their own lightness, a neutral whose tint shows, elevation that reads, a dark
 primary that is not pastel, and a considered look for numbers. The firm's brand is ported onto the generator's inputs
-later, when the maintainer has its guidelines, and its values stay out of this public repo. Not yet: today there is one
-theme, the default, which still reads as shadcn's; the generator, `defineTheme`, is step 6.5.3, the choice of theme
-6.5.5, and the default's identity with the two more themes, dense dark and high contrast, 6.5.7.
+later, when the maintainer has its guidelines, and its values stay out of this public repo. Not yet: the generator is
+built (step 6.5.3, 2026-11-09), but it ships one theme, the default, which still reads as shadcn's; the choice of theme
+is step 6.5.5, and the default's identity with the two more themes, dense dark and high contrast, 6.5.7.
+
+A theme is one file of values and no code: `packages/ui/src/theme/themes/NAME.ts` exports a typed `ThemeInputs`
+through `defineTheme`, which checks what the type cannot, and the generator, pure functions of those inputs, writes
+every shipped theme into the one stylesheet, `theme.css`, whose committed copy a test compares with what the inputs
+produce. The inputs are each hue's angle, chroma and curve (each step's lightness in both modes and its share of the
+chroma, so a bright hue need not sit at a dark one's lightness), the neutral's tint, the step each surface takes in each
+mode (the elevation steps), the pressed primary, the veil's alpha, `gain` and `loss`, the chart palettes (categorical,
+sequential and diverging), the fonts for text, code and numbers, the type scale, the radius and its multiples, the
+spacing unit and the control lengths of each density, the two shadows in each mode, the focus ring and the durations.
+Which ramp step each token takes, the step's job, is the library's, the same in every theme; so are WCAG 2.2's target
+size, the stacking order, the pill's radius, the bundled faces, and reduced motion, which stops every transition in
+every theme. The default theme sits at `:root`, with `.dark` for its dark mode and `:root[data-density="comfortable"]`
+for its other density. Every other theme sits under `[data-theme="NAME"]`, on the root or on a wrapper, and declares
+again every value the default declares, so that a theme on a wrapper shows whole. Its dark mode is
+`[data-theme="NAME"].dark`, `.dark [data-theme="NAME"]` and `:where([data-theme="NAME"]) .dark`: the theme and the
+mode's class on one element, a theme inside a dark page, and a dark panel inside a theme, where `:where` keeps a theme
+on the dark element itself above a theme around it. A test with two dummy themes holds each case. `ThemeInputs` and the
+generator are not exported: the studio of step 6.5.8, the first code outside the package to need them, needs the
+default's inputs, the generator and `checkTheme` with the type, which go together on a subpath of their own then.
 
 Each theme has three layers, and no app can change it: apps declare no tokens, and use no `dark:` variants, since every
 token already switches with the mode. `no-restyle` rejects `dark:` on a component and the preset's `basis/theme-classes`
@@ -327,10 +346,9 @@ theme.
 1. **Ramps.** Twelve-step OKLCH scales for a neutral, the brand, and four status hues (red, amber, green and blue). Each
    step has one job: steps 1 and 2 are page backgrounds, 3 to 5 control fills at rest, hovered and pressed, 6 to 8
    borders, 9 and 10 solid fills, and 11 and 12 text. A dark ramp has the same steps at different lightness, so the dark
-   mode is designed rather than inverted. A script in this repo generates the ramps from a few inputs, the brand's hue
-   and chroma and the neutral's tint, and commits the CSS. Porting the firm's existing theme means changing those
-   inputs, the fonts and the radius; step 6.5.3 makes every hand-written value an input, so that a theme is one file of
-   them.
+   mode is designed rather than inverted. `vp run @basis/ui#theme` generates the ramps from each theme's hues and
+   curves and commits the CSS. Porting the firm's existing theme means a theme's file of inputs, which
+   `vp run @basis/ui#theme new NAME` starts from the default's.
 2. **Semantic tokens.** These are the only colours Tailwind exposes, and each one is a ramp step in each mode.
    Tailwind's own palette is removed, and `no-raw-colors` rejects a class such as `bg-pink-500`. A colour is drawn whole
    from its token, never faded with an opacity modifier such as `bg-primary/80`: a faded colour changes with whatever

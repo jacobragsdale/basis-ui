@@ -556,7 +556,10 @@ flowchart TD
    whose width and gap are variables, and durations, layers, the pill radius, the disabled fade and the shadows are
    named scales. 6.5.2 built on 2026-11-09: each density gives controls whole-pixel heights, paddings, icons and gaps
    of their own, Button's four sizes differ in both, and the stylesheet's base is the compact default, which a gallery
-   test measures on every control.
+   test measures on every control. 6.5.3 built on 2026-11-09: a theme is one file of `ThemeInputs`, from each hue's
+   curve to the chart palettes, the generator is pure functions of it, the default sits at `:root` and any other under
+   `[data-theme]` with its dark mode on, around or inside it, `vp run @basis/ui#theme new NAME` starts one, and the
+   default's stylesheet computes as it did.
 6. **6.6 Grid features.** Lane Grid, after 6.3, 6.4 and 6.5, one branch per item: rich cells (`6.6.1-rich-cells`), a
    context menu and events (`6.6.2-context-menu`), saved views (`6.6.3-saved-views`), layouts typed by the dataset's
    rows (`6.6.4-typed-layouts`), states on the canvas (`6.6.5-states`), and small charts that say what their marks are

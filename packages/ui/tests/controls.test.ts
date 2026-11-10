@@ -6,14 +6,16 @@ import path from "node:path";
 
 import { describe, expect, test } from "vite-plus/test";
 
-import { controls } from "#theme/inputs.ts";
 import type { ControlSize } from "#theme/inputs.ts";
+import { defaultTheme } from "#theme/themes/index.ts";
 
 const source = new URL("../src/", import.meta.url).pathname;
 const committed = readFileSync(path.join(source, "styles/theme.css"), "utf8");
 
 // Inter's capitals are 0.727 em tall and lucide draws in 20 of its 24 units.
 const smallestIcon = 0.727 / (20 / 24);
+
+const { controls } = defaultTheme;
 
 const densities = [
   ["compact", controls.compact],

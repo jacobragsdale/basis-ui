@@ -15469,7 +15469,7 @@
       "kind": "constant",
       "module": "@basis/ui",
       "name": "tokenNames",
-      "purpose": "Every token's name, for code that reads tokens at run time, such as parallax's canvases.",
+      "purpose": "Every token's name, the same in every theme, for code that reads tokens at run time, such as parallax's canvases.",
       "signature": "const tokenNames: readonly string[]"
     },
     {

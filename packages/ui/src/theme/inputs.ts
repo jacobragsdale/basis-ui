@@ -1,45 +1,125 @@
-// The theme's inputs. Porting the firm's own theme means changing these values, then running
-// `vp run @basis/ui#theme` to regenerate `src/styles/theme.css`; the theme's tests say whether the result still passes.
+// What a theme is made of: `ThemeInputs`, the one file of values each theme is, and `defineTheme`, which checks one.
+// The generator in `css.ts` turns themes into `src/styles/theme.css`; each theme's inputs are a file in `themes/`.
 
-/** A hue in OKLCH: its angle in degrees, and the chroma its solid steps reach. */
+import type { Density } from "./preferences.ts";
+
+type Mode = "light" | "dark";
+
+/** A ramp's steps, numbered as in the design, and each one's job. Every hue's ramp has them all, so a step means the
+ * same thing on every ramp and in every theme. */
+const stepJobs = {
+  1: "page background",
+  2: "page background",
+  3: "control fill at rest",
+  4: "control fill hovered",
+  5: "control fill pressed",
+  6: "border",
+  7: "border",
+  8: "border that clears 3:1, for control outlines and rings",
+  9: "solid fill",
+  10: "solid fill hovered",
+  11: "text",
+  12: "text",
+} as const;
+
+type Step = keyof typeof stepJobs;
+
+/** One step of a ramp: its OKLCH lightness in each mode, and its chroma as a share of its hue's. */
+interface StepTone {
+  readonly step: Step;
+  readonly light: number;
+  readonly dark: number;
+  readonly chromaShare: number;
+}
+
+/** A hue in OKLCH: its angle in degrees, the chroma its solid steps reach, and its ramp's curve, the twelve steps in
+ * order. Each hue has a curve of its own, so a bright hue need not sit at the lightness of a dark one. */
 interface Hue {
   readonly hue: number;
   readonly chroma: number;
+  readonly curve: readonly StepTone[];
 }
 
-/** The six hues the theme's ramps are built from. */
-const hues = {
-  amber: { chroma: 0.17, hue: 65 },
-  blue: { chroma: 0.16, hue: 245 },
-  /** The firm's brand: the main action, focus rings and selections. A sober blue until the firm's own replaces it. */
-  brand: { chroma: 0.17, hue: 258 },
-  green: { chroma: 0.16, hue: 150 },
-  /** Surfaces, borders and text: a cool grey with a faint tint. */
-  neutral: { chroma: 0.014, hue: 255 },
-  red: { chroma: 0.2, hue: 25 },
-} as const satisfies Record<string, Hue>;
+/** The six hues every theme's ramps are built from: the neutral, the brand and four status hues. */
+type HueName = "amber" | "blue" | "brand" | "green" | "neutral" | "red";
 
-type HueName = keyof typeof hues;
+/** A lightness on a hue in each mode, for a token that sits between a ramp's steps. */
+interface Shade {
+  readonly hue: HueName;
+  readonly light: number;
+  readonly dark: number;
+}
 
-/** The base corner radius; Tailwind's radius scale derives from it. */
-const radius = "0.375rem";
+/** Where each surface sits on the neutral's ramp in one mode: the elevation steps. A fill sits above every surface it
+ * can land on, and a secondary fill hovered and pressed each a step further from the page. The veil behind a dialog is
+ * the page's step. */
+interface Surfaces {
+  readonly background: Step;
+  readonly card: Step;
+  readonly popover: Step;
+  readonly muted: Step;
+  readonly secondary: Step;
+  readonly secondaryHover: Step;
+  readonly secondaryActive: Step;
+  readonly accent: Step;
+  readonly sidebar: Step;
+  readonly sidebarAccent: Step;
+}
 
-/** Font stacks. Both faces are bundled with `@basis/ui`, so text renders alike on every desktop. */
-const fonts = {
-  mono: '"JetBrains Mono Variable", ui-monospace, monospace',
-  /** The sans face with tabular figures as its default, for text a canvas draws, such as parallax's grids and axes: a
-   * canvas's font cannot ask for `tabular-nums`, so `--font-num` names a face that has them on. The DOM's numbers keep
-   * the sans stack and ask with `tabular-nums`. */
-  num: '"Inter Tabular", "Inter Variable", ui-sans-serif, system-ui, sans-serif',
-  sans: '"Inter Variable", ui-sans-serif, system-ui, sans-serif',
-} as const;
+/** The sequential scale's steps, from near zero to the largest value. */
+type SequentialName =
+  | "seq-1"
+  | "seq-2"
+  | "seq-3"
+  | "seq-4"
+  | "seq-5"
+  | "seq-6"
+  | "seq-7"
+  | "seq-8"
+  | "seq-9";
 
-/** The spacing unit at each density. Every Tailwind spacing utility is a multiple of it, so the layout's gaps and
- * paddings shrink by a quarter in the compact density; a control's own lengths are `controls`, in whole pixels. */
-const spacing = {
-  comfortable: "0.25rem",
-  compact: "0.1875rem",
-} as const;
+/** The diverging scale's steps below its midpoint, from the low end; each has its twin as far above it. */
+type DivergingArmName = "div-1" | "div-2" | "div-3" | "div-4" | "div-5";
+
+/** A categorical chart colour in each mode, as CSS. */
+interface ChartColour {
+  readonly light: string;
+  readonly dark: string;
+}
+
+/** The chart palettes. Their lengths are fixed, since every theme declares the same tokens: eight series, nine
+ * sequential steps, and five steps on each arm of the diverging scale. */
+interface Charts {
+  /** `chart-1` to `chart-8`, in their fixed order. */
+  readonly categorical: readonly [
+    ChartColour,
+    ChartColour,
+    ChartColour,
+    ChartColour,
+    ChartColour,
+    ChartColour,
+    ChartColour,
+    ChartColour,
+  ];
+  /** `seq-1` to `seq-9` on one hue, from near zero to the largest value: each step's lightness in light mode. In dark
+   * mode the scale runs the other way, so values near zero recede into the page in both: a step's two lightnesses add
+   * up to `mirror`. */
+  readonly sequential: {
+    readonly hue: HueName;
+    readonly lightness: Readonly<Record<SequentialName, number>>;
+    readonly mirror: number;
+  };
+  /** `div-1` to `div-11`: `low` below the midpoint, `high` above, and a neutral step at it, `div-6`. Each lightness, of
+   * `div-1` to `div-5` from the low end toward the midpoint, is also that of the step as far above it, `div-11` to
+   * `div-7`, in light mode; dark mode mirrors it as the sequential scale does. */
+  readonly diverging: {
+    readonly low: HueName;
+    readonly high: HueName;
+    readonly lightness: Readonly<Record<DivergingArmName, number>>;
+    readonly mirror: number;
+    readonly midpoint: Readonly<Record<Mode, Step>>;
+  };
+}
 
 /** A control size's lengths, in CSS pixels: its height, its horizontal padding, the padding on the side an icon sits,
  * which is less so that the icon looks as far from the edge as the text does, its icons' size, and the gap between an
@@ -55,76 +135,99 @@ interface ControlSize {
 /** The control sizes: `xs` and `sm` set their text at `text-xs`, `md` and `lg` at `text-sm`. */
 type ControlSizeName = "xs" | "sm" | "md" | "lg";
 
-/** Each density's control sizes, in whole pixels, where a multiple of the compact density's 3-pixel unit would fall
- * between them, and where Button's sizes would meet at the 24-pixel target. Every height is at least `targetSize`, and
- * each size is taller than the one before it. An icon is at least 0.873 em, the font size at which lucide's glyph,
- * drawn in 20 of its 24 units, reaches Inter's capitals, 0.727 em tall: 12 pixels beside `text-xs`, 14 beside
- * `text-sm`. */
-const controls = {
-  comfortable: {
-    xs: { gap: 4, height: 24, icon: 12, inset: 8, insetBesideIcon: 6 },
-    sm: { gap: 4, height: 28, icon: 14, inset: 10, insetBesideIcon: 6 },
-    md: { gap: 6, height: 32, icon: 16, inset: 10, insetBesideIcon: 8 },
-    lg: { gap: 6, height: 36, icon: 16, inset: 10, insetBesideIcon: 8 },
-  },
-  compact: {
-    xs: { gap: 4, height: 24, icon: 12, inset: 6, insetBesideIcon: 4 },
-    sm: { gap: 4, height: 26, icon: 12, inset: 8, insetBesideIcon: 6 },
-    md: { gap: 4, height: 28, icon: 14, inset: 8, insetBesideIcon: 6 },
-    lg: { gap: 6, height: 30, icon: 16, inset: 10, insetBesideIcon: 8 },
-  },
-} as const satisfies Record<"comfortable" | "compact", Record<ControlSizeName, ControlSize>>;
+/** The type scale's steps, which the components and parallax's canvases read as `text-*` and `--text-*`. */
+type TypeStep = "2xs" | "xs" | "sm" | "base" | "lg" | "xl" | "2xl";
 
-/** The smallest a control may be, across and down: WCAG 2.2's minimum target size, 24 CSS pixels. It is a fixed length
- * rather than a multiple of the spacing unit, so the compact density cannot shrink it. It gives `min-h-target` and
- * `min-w-target`, which every control that could be shorter carries. */
-const targetSize = "1.5rem";
+/** A step of the type scale: its font size and its line height, as CSS. */
+interface TypeSize {
+  readonly size: string;
+  readonly lineHeight: string;
+}
 
-/** The focus ring, an outline in the `ring` colour: its width, and its gap from the control's edge. An outline's gap
- * is transparent, so it shows the surface under it on any surface, and Windows' forced colours keep it. */
-const focusRing = {
-  offset: "0px",
-  width: "2px",
-} as const;
+/** The corner radii that derive from the base radius. */
+type RadiusName = "sm" | "md" | "lg" | "xl";
 
-/** The two shadows: a control raised off its surface, such as an active tab, and a popup floating over the page. */
-const shadows = {
-  floating: "0 2px 6px -1px oklch(0 0 0 / 0.1)",
-  raised: "0 1px 2px 0 oklch(0 0 0 / 0.06)",
-} as const;
+/** Everything one theme sets. Every theme declares the same tokens and variables, so a theme is these values and no
+ * code: the generator decides what each one becomes. */
+interface ThemeInputs {
+  /** The theme's name: its file's, and the `data-theme` value that selects it. The default theme sits at `:root`. */
+  readonly name: string;
+  /** The hues, each with its ramp's curve. The neutral's chroma is its tint, and its curve the surfaces'. */
+  readonly hues: Readonly<Record<HueName, Hue>>;
+  /** Where each surface sits on the neutral's ramp, in each mode. */
+  readonly surfaces: Readonly<Record<Mode, Surfaces>>;
+  /** A primary fill pressed, on the brand: as far again past its hovered step as that is past rest. */
+  readonly pressed: Shade;
+  /** The alpha of the veil behind a dialog, a sheet or a drawer, which lets the page show through. */
+  readonly overlay: number;
+  /** Signed values. Loss sits well below gain in lightness, so the two stay apart for readers who cannot tell red
+   * from green. */
+  readonly signed: { readonly gain: Shade; readonly loss: Shade };
+  /** The chart palettes. */
+  readonly charts: Charts;
+  /** Font stacks: text, code, and the face with tabular figures that a canvas draws numbers in. */
+  readonly fonts: { readonly sans: string; readonly mono: string; readonly num: string };
+  /** The type scale. */
+  readonly type: Readonly<Record<TypeStep, TypeSize>>;
+  /** The base corner radius, and each named radius as a multiple of it. */
+  readonly radius: { readonly base: string; readonly scale: Readonly<Record<RadiusName, number>> };
+  /** The spacing unit at each density. Every Tailwind spacing utility is a multiple of it. */
+  readonly spacing: Readonly<Record<Density, string>>;
+  /** Each density's control lengths, in whole pixels. Every height is at least WCAG 2.2's 24-pixel target. */
+  readonly controls: Readonly<Record<Density, Readonly<Record<ControlSizeName, ControlSize>>>>;
+  /** The two shadows in each mode: a control raised off its surface, such as an active tab, and a popup floating over
+   * the page. */
+  readonly shadows: Readonly<Record<Mode, { readonly raised: string; readonly floating: string }>>;
+  /** The focus ring, an outline in the `ring` colour: its width, and its gap from the control's edge. */
+  readonly focus: { readonly width: string; readonly offset: string };
+  /** How long a transition runs: a control's colours, a popup's fade and scale, and a panel that slides. Reduced
+   * motion, the user's or the operating system's, stops them all in every theme. */
+  readonly motion: { readonly control: string; readonly popup: string; readonly panel: string };
+  /** How far a disabled control fades, as an opacity. */
+  readonly disabled: string;
+}
 
-/** How long a transition runs: a control's colours, a popup's fade and scale, and a panel that slides. */
-const durations = {
-  control: "120ms",
-  panel: "150ms",
-  popup: "100ms",
-} as const;
+/** A theme's name goes into a selector and a file name, so it is lower case words joined by hyphens. */
+const namePattern = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/u;
 
-/** The stacking order: a part raised over its siblings, such as a focused button in a group, and a popup or the veil
- * behind a dialog, over the page. */
-const layers = {
-  popup: "50",
-  raised: "10",
-} as const;
+/** Checks a theme's inputs where their types cannot, and returns them. Each file in `themes/` exports its theme
+ * through it. */
+function defineTheme(inputs: ThemeInputs): ThemeInputs {
+  if (!namePattern.test(inputs.name)) {
+    throw new TypeError(
+      `The theme name "${inputs.name}" must be lower case words joined by hyphens, such as "high-contrast": it becomes a data-theme value and a file name.`,
+    );
+  }
+  const stepCount = Object.keys(stepJobs).length;
+  for (const [name, { curve }] of Object.entries(inputs.hues)) {
+    const inOrder = curve.every((tone, index) => tone.step === index + 1);
+    if (!inOrder || curve.length !== stepCount) {
+      const numbers = curve.map((tone) => tone.step).join(", ");
+      throw new RangeError(
+        `The ${inputs.name} theme's ${name} curve has steps ${numbers}; it needs each of 1 to ${String(stepCount)}, once and in order.`,
+      );
+    }
+  }
+  return inputs;
+}
 
-/** The radius of a pill, such as a badge or a switch's track: a half-circle at each end, whatever its length. */
-const pillRadius = "9999px";
-
-/** How far a disabled control fades, as an opacity. */
-const disabledOpacity = "50%";
-
-export {
-  controls,
-  disabledOpacity,
-  durations,
-  focusRing,
-  fonts,
-  hues,
-  layers,
-  pillRadius,
-  radius,
-  shadows,
-  spacing,
-  targetSize,
+export { defineTheme };
+export type {
+  ChartColour,
+  Charts,
+  ControlSize,
+  ControlSizeName,
+  DivergingArmName,
+  Hue,
+  HueName,
+  Mode,
+  RadiusName,
+  SequentialName,
+  Shade,
+  Step,
+  StepTone,
+  Surfaces,
+  ThemeInputs,
+  TypeSize,
+  TypeStep,
 };
-export type { ControlSize, ControlSizeName, Hue, HueName };

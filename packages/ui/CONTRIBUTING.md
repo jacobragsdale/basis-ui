@@ -119,6 +119,30 @@ To add one:
 5. Run `vp run @basis/ui#build`, then `vp run -r test`. `tests/icons.test.tsx` checks that every `*Icon` export renders
    lucide's SVG.
 
+## Making a theme
+
+A theme is a file of values, typed by `ThemeInputs` in `src/theme/inputs.ts`; the generator in `src/theme` turns the
+shipped themes into `src/styles/theme.css`, the one stylesheet apps import, and no component changes. The default
+theme is `src/theme/themes/default.ts`, which sits at `:root`; every other theme sits under `[data-theme="NAME"]`.
+
+1. Start the file from the default's: `vp run @basis/ui#theme new NAME`, where `NAME` is lower case words joined by
+   hyphens, such as `high-contrast`. It writes `src/theme/themes/NAME.ts`, the default's inputs under the new name,
+   with a comment saying what to change.
+2. Add the theme to `themes` in `src/theme/themes/index.ts`, after the default.
+3. Change its values: each hue's angle, chroma and curve, the surfaces' steps in each mode, the fonts, the type scale,
+   the radius, the spacing and control lengths of each density, the shadows in each mode, the focus ring, the
+   durations and the chart palettes. Each field's comment in `ThemeInputs` says what it sets. Which ramp step a token
+   takes is not a theme's to change: that is `src/theme/tokens.ts`, the same for every theme.
+4. Write the stylesheet: `vp run @basis/ui#theme`. Commit `src/styles/theme.css` with the inputs; a test fails when the
+   two disagree.
+5. Run the theme's tests, `vp test tests/theme.test.ts tests/themes.test.ts tests/theme-selectors.test.ts
+   tests/controls.test.ts` in `packages/ui`, then `vp run @basis/ui#build` and the gallery's screenshots,
+   `vp run @basis/gallery#shots`. A change to the default moves the baselines it touches: record them again with
+   `--update` and show the before and after.
+
+A change to the default's values that should not change how anything looks, such as moving a value into the inputs,
+leaves `theme.css` as it was: diff it before committing.
+
 ## Vendored code
 
 `src/vendor` holds small, stable code copied from upstream, which `@basis/ui` keeps instead of depending on it. Each
