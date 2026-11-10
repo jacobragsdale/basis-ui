@@ -457,6 +457,18 @@ The components already keep WCAG 2.2's 24 px minimum target in the compact densi
 carries `min-h-target` and `min-w-target`. A control drawn smaller than that, such as Checkbox's 16 px box, Switch's
 track or Slider's thumb, is a 24 px target with its shape drawn inside it, so it keeps shadcn's look.
 
+### The theme's tokens
+
+A plain element, such as a page's own panel, takes its colours from the theme's tokens, drawn whole: no class takes an
+opacity modifier. A filled control hovered and pressed is `primary-hover` and `primary-active`, or
+`secondary-hover` and `secondary-active`; a status's tint hovered is its `-subtle-hover`, and the outline of an alert
+on it its `-edge`. The outline of a card or a popup is `ring-1 ring-edge`, the veil behind a dialog `bg-overlay`, a
+control that is off `control-off` and a disabled field's fill `disabled`. A focus ring is an outline in the `ring`
+colour, whose width and gap are the theme's: `focus-visible:outline-solid focus-visible:outline
+focus-visible:outline-offset-(--focus-offset) focus-visible:outline-ring`. The scales are named for their use:
+`duration-popup` and `duration-panel`, `z-raised` and `z-popup`, `rounded-pill`, `opacity-disabled`, and `shadow-sm`
+and `shadow-md`.
+
 Text takes its look from the Typography components (`TypographyH1` to `TypographyH4`, `TypographyP`, `TypographyLead`,
 `TypographyMuted`, `TypographyInlineCode` and `TypographyList`), never from classes on a plain element. `render`
 changes a heading's level and keeps its look, as in `<TypographyH2 render={<h3>Risk</h3>} />`. In a `Table`, a column
@@ -1109,7 +1121,9 @@ parseSecurityIdentifier("91282CRF1", ["cusip"]); // { ok: false, reason: '"91282
 
 1. Port it from shadcn's Base UI source, keeping shadcn's names, props and parts, into
    `src/components/NAME.tsx`, or `NAME.ts` when it renders through `useRender` and holds no JSX. Replace every
-   `dark:` class with a token and every arbitrary value with the theme's scales and opacity modifiers. Merge classes
+   `dark:` class with a token and every arbitrary value with the theme's scales. Draw every colour whole from a token:
+   a test fails on an opacity modifier such as `hover:bg-primary/80`, so take the theme's token for it (see [The
+   theme's tokens](#the-themes-tokens)). Merge classes
    with `cn` from the `cn` package, as shadcn does; take `cva` from `#vendor/cva/cva.ts`, and each icon from its file
    in `src/vendor/lucide`, such as `#vendor/lucide/chevron-down.tsx`.
 

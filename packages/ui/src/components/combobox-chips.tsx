@@ -28,7 +28,7 @@ function ComboboxChips({
     <ComboboxPrimitive.Chips
       data-slot="combobox-chips"
       className={cn(
-        "flex min-h-8 flex-wrap items-center gap-1 rounded-lg border border-input bg-transparent bg-clip-padding px-2.5 py-1 text-sm transition-colors focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50 has-aria-invalid:border-destructive has-aria-invalid:ring-3 has-aria-invalid:ring-destructive/30 has-data-[slot=combobox-chip]:px-1",
+        "flex min-h-8 flex-wrap items-center gap-1 rounded-lg border border-input bg-transparent bg-clip-padding px-2.5 py-1 text-sm transition-colors focus-within:border-ring focus-within:outline-solid focus-within:outline focus-within:outline-offset-(--focus-offset) focus-within:outline-ring has-aria-invalid:border-destructive has-aria-invalid:outline-destructive has-data-[slot=combobox-chip]:px-1",
         className,
       )}
       {...props}
@@ -51,7 +51,7 @@ function ComboboxChip({
     <ComboboxPrimitive.Chip
       data-slot="combobox-chip"
       className={cn(
-        "flex h-5.25 w-fit items-center justify-center gap-1 rounded-sm bg-muted px-1.5 text-xs font-medium whitespace-nowrap text-foreground has-disabled:pointer-events-none has-disabled:cursor-not-allowed has-disabled:opacity-50 has-data-[slot=combobox-chip-remove]:pr-0 *:data-[slot=combobox-chip-remove]:-ml-1 *:data-[slot=combobox-chip-remove]:opacity-50 *:data-[slot=combobox-chip-remove]:hover:opacity-100",
+        "flex h-5.25 w-fit items-center justify-center gap-1 rounded-sm bg-muted px-1.5 text-xs font-medium whitespace-nowrap text-foreground has-disabled:pointer-events-none has-disabled:cursor-not-allowed has-disabled:opacity-disabled has-data-[slot=combobox-chip-remove]:pr-0 *:data-[slot=combobox-chip-remove]:-ml-1 *:data-[slot=combobox-chip-remove]:text-muted-foreground *:data-[slot=combobox-chip-remove]:hover:text-foreground",
         className,
       )}
       {...props}

@@ -48,6 +48,10 @@
   color-scheme: light;
   --radius: 0.375rem;
   --font-num: "Inter Tabular", "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+  --focus-width: 2px;
+  --focus-offset: 0px;
+  --shadow-raised: 0 1px 2px 0 oklch(0 0 0 / 0.06);
+  --shadow-floating: 0 2px 6px -1px oklch(0 0 0 / 0.1);
   --background: oklch(0.981 0.0011 255);
   --foreground: oklch(0.24 0.0063 255);
   --card: oklch(0.993 0.0006 255);
@@ -57,14 +61,22 @@
   --muted: oklch(0.958 0.0022 255);
   --muted-foreground: oklch(0.47 0.0115 255);
   --secondary: oklch(0.935 0.0034 255);
+  --secondary-hover: oklch(0.91 0.0045 255);
+  --secondary-active: oklch(0.87 0.0056 255);
   --secondary-foreground: oklch(0.24 0.0063 255);
   --accent: oklch(0.935 0.0034 255);
   --accent-foreground: oklch(0.24 0.0063 255);
   --primary: oklch(0.47 0.17 258);
+  --primary-hover: oklch(0.42 0.1555 258);
+  --primary-active: oklch(0.37 0.137 258);
   --primary-foreground: oklch(1 0 0);
   --border: oklch(0.87 0.0056 255);
+  --edge: oklch(0.91 0.0045 255);
   --input: oklch(0.62 0.0101 255);
   --ring: oklch(0.62 0.1224 258);
+  --control-off: oklch(0.62 0.0101 255);
+  --disabled: oklch(0.79 0.0073 255);
+  --overlay: oklch(0.981 0.0011 255 / 0.7);
   --sidebar: oklch(0.993 0.0006 255);
   --sidebar-foreground: oklch(0.24 0.0063 255);
   --sidebar-primary: oklch(0.47 0.17 258);
@@ -76,15 +88,23 @@
   --destructive: oklch(0.47 0.1905 25);
   --destructive-foreground: oklch(1 0 0);
   --destructive-subtle: oklch(0.958 0.0207 25);
+  --destructive-subtle-hover: oklch(0.981 0.0092 25);
+  --destructive-edge: oklch(0.79 0.104 25);
   --success: oklch(0.47 0.1294 150);
   --success-foreground: oklch(1 0 0);
   --success-subtle: oklch(0.958 0.0256 150);
+  --success-subtle-hover: oklch(0.981 0.0128 150);
+  --success-edge: oklch(0.79 0.0832 150);
   --warning: oklch(0.47 0.1054 65);
   --warning-foreground: oklch(1 0 0);
   --warning-subtle: oklch(0.958 0.0272 65);
+  --warning-subtle-hover: oklch(0.981 0.0125 65);
+  --warning-edge: oklch(0.79 0.0884 65);
   --info: oklch(0.47 0.1183 245);
   --info-foreground: oklch(1 0 0);
   --info-subtle: oklch(0.958 0.0214 245);
+  --info-subtle-hover: oklch(0.981 0.0096 245);
+  --info-edge: oklch(0.79 0.0832 245);
   --gain: oklch(0.47 0.1294 150);
   --loss: oklch(0.36 0.1459 25);
   --selection: oklch(0.935 0.0313 258);
@@ -136,14 +156,22 @@
   --muted: oklch(0.283 0.0034 255);
   --muted-foreground: oklch(0.8 0.0115 255);
   --secondary: oklch(0.312 0.0045 255);
+  --secondary-hover: oklch(0.348 0.0056 255);
+  --secondary-active: oklch(0.42 0.0073 255);
   --secondary-foreground: oklch(0.95 0.0063 255);
   --accent: oklch(0.312 0.0045 255);
   --accent-foreground: oklch(0.95 0.0063 255);
   --primary: oklch(0.74 0.135 258);
+  --primary-hover: oklch(0.79 0.1069 258);
+  --primary-active: oklch(0.84 0.0799 258);
   --primary-foreground: oklch(0.178 0.0006 255);
   --border: oklch(0.348 0.0056 255);
+  --edge: oklch(0.312 0.0045 255);
   --input: oklch(0.56 0.0101 255);
   --ring: oklch(0.56 0.1224 258);
+  --control-off: oklch(0.56 0.0101 255);
+  --disabled: oklch(0.42 0.0073 255);
+  --overlay: oklch(0.178 0.0006 255 / 0.7);
   --sidebar: oklch(0.213 0.0011 255);
   --sidebar-foreground: oklch(0.95 0.0063 255);
   --sidebar-primary: oklch(0.74 0.135 258);
@@ -155,15 +183,23 @@
   --destructive: oklch(0.74 0.1583 25);
   --destructive-foreground: oklch(0.178 0.0006 255);
   --destructive-subtle: oklch(0.252 0.032 25);
+  --destructive-subtle-hover: oklch(0.213 0.016 25);
+  --destructive-edge: oklch(0.42 0.104 25);
   --success: oklch(0.74 0.16 150);
   --success-foreground: oklch(0.178 0.0006 255);
   --success-subtle: oklch(0.252 0.0256 150);
+  --success-subtle-hover: oklch(0.213 0.0128 150);
+  --success-edge: oklch(0.42 0.0832 150);
   --warning: oklch(0.74 0.166 65);
   --warning-foreground: oklch(0.178 0.0006 255);
   --warning-subtle: oklch(0.252 0.0272 65);
+  --warning-subtle-hover: oklch(0.213 0.0136 65);
+  --warning-edge: oklch(0.42 0.0884 65);
   --info: oklch(0.74 0.144 245);
   --info-foreground: oklch(0.178 0.0006 255);
   --info-subtle: oklch(0.252 0.0256 245);
+  --info-subtle-hover: oklch(0.213 0.0128 245);
+  --info-edge: oklch(0.42 0.0832 245);
   --gain: oklch(0.84 0.16 150);
   --loss: oklch(0.7 0.1908 25);
   --selection: oklch(0.283 0.0408 258);
@@ -210,7 +246,9 @@
 }
 
 /* Only the theme's own values exist: Tailwind's palette, its blur utilities and most of its shadows are removed, so a
-   class that uses them is an unknown class and fails the lint. Citrix desktops draw on the CPU, where blur is slow. */
+   class that uses them is an unknown class and fails the lint. Citrix desktops draw on the CPU, where blur is slow.
+   Each scale is named for its use: `duration-popup` and `duration-panel`, `z-raised` and `z-popup`,
+   `rounded-pill` and `opacity-disabled`. */
 @theme {
   --color-*: initial;
   --blur-*: initial;
@@ -219,8 +257,10 @@
   --drop-shadow-*: initial;
   --text-shadow-*: initial;
   --radius-*: initial;
-  --shadow-sm: 0 1px 2px 0 oklch(0 0 0 / 0.06);
-  --shadow-md: 0 2px 6px -1px oklch(0 0 0 / 0.1);
+  --radius-pill: 9999px;
+  --opacity-disabled: 50%;
+  --z-index-raised: 10;
+  --z-index-popup: 50;
   --spacing: 0.25rem;
   --spacing-target: 1.5rem;
   --text-2xs: 0.625rem;
@@ -228,9 +268,19 @@
   --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono Variable", ui-monospace, monospace;
   --default-transition-duration: 120ms;
+  --transition-duration-popup: 100ms;
+  --transition-duration-panel: 150ms;
 }
 
+/* A bare `outline` or `ring` is the focus ring's width. A focus ring is
+   `outline-solid outline outline-offset-(--focus-offset) outline-ring` under `focus-visible:`: an outline, whose
+   offset is transparent on any surface and which Windows' forced colours keep. Its width and offset stay variables,
+   since `cn` would take a named width for a second colour and drop it. */
 @theme inline {
+  --default-outline-width: var(--focus-width);
+  --default-ring-width: var(--focus-width);
+  --shadow-sm: var(--shadow-raised);
+  --shadow-md: var(--shadow-floating);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -244,14 +294,22 @@
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
   --color-secondary: var(--secondary);
+  --color-secondary-hover: var(--secondary-hover);
+  --color-secondary-active: var(--secondary-active);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-active: var(--primary-active);
   --color-primary-foreground: var(--primary-foreground);
   --color-border: var(--border);
+  --color-edge: var(--edge);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-control-off: var(--control-off);
+  --color-disabled: var(--disabled);
+  --color-overlay: var(--overlay);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -263,15 +321,23 @@
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-destructive-subtle: var(--destructive-subtle);
+  --color-destructive-subtle-hover: var(--destructive-subtle-hover);
+  --color-destructive-edge: var(--destructive-edge);
   --color-success: var(--success);
   --color-success-foreground: var(--success-foreground);
   --color-success-subtle: var(--success-subtle);
+  --color-success-subtle-hover: var(--success-subtle-hover);
+  --color-success-edge: var(--success-edge);
   --color-warning: var(--warning);
   --color-warning-foreground: var(--warning-foreground);
   --color-warning-subtle: var(--warning-subtle);
+  --color-warning-subtle-hover: var(--warning-subtle-hover);
+  --color-warning-edge: var(--warning-edge);
   --color-info: var(--info);
   --color-info-foreground: var(--info-foreground);
   --color-info-subtle: var(--info-subtle);
+  --color-info-subtle-hover: var(--info-subtle-hover);
+  --color-info-edge: var(--info-edge);
   --color-gain: var(--gain);
   --color-loss: var(--loss);
   --color-selection: var(--selection);

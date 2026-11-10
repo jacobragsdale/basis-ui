@@ -6,7 +6,7 @@ import { cva } from "#vendor/cva/cva.ts";
 
 /** Label's look. It has no variant or size; FieldLabel adds its own classes to these. */
 const labelVariants = cva(
-  "flex items-center gap-2 text-sm leading-none font-medium select-none group-data-[disabled=true]:pointer-events-none group-data-[disabled=true]:opacity-50 peer-disabled:cursor-not-allowed peer-disabled:opacity-50 peer-data-disabled:cursor-not-allowed peer-data-disabled:opacity-50",
+  "flex items-center gap-2 text-sm leading-none font-medium select-none group-data-[disabled=true]:pointer-events-none group-data-[disabled=true]:opacity-disabled peer-disabled:cursor-not-allowed peer-disabled:opacity-disabled peer-data-disabled:cursor-not-allowed peer-data-disabled:opacity-disabled",
 );
 
 export { labelVariants };

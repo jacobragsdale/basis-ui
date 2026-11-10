@@ -38,18 +38,18 @@ function Switch({
       data-slot="switch"
       data-size={size}
       className={cn(
-        "peer group/switch relative inline-flex min-h-target min-w-target shrink-0 items-center justify-center rounded-full outline-none data-[size=default]:h-4.5 data-[size=default]:w-8 data-[size=sm]:h-3.5 data-[size=sm]:w-6 data-disabled:cursor-not-allowed data-disabled:opacity-50",
+        "peer group/switch relative inline-flex min-h-target min-w-target shrink-0 items-center justify-center rounded-pill outline-none data-[size=default]:h-4.5 data-[size=default]:w-8 data-[size=sm]:h-3.5 data-[size=sm]:w-6 data-disabled:cursor-not-allowed data-disabled:opacity-disabled",
         className,
       )}
       {...props}
     >
       <span
         data-slot="switch-track"
-        className="inline-flex shrink-0 items-center rounded-full p-0.25 transition-colors group-focus-visible/switch:ring-3 group-focus-visible/switch:ring-ring/50 group-focus-visible/switch:inset-ring group-focus-visible/switch:inset-ring-ring group-has-[:focus-visible]/field-label:ring-0 group-has-[:focus-visible]/field-label:inset-ring-0 group-aria-invalid/switch:ring-3 group-aria-invalid/switch:ring-destructive/30 group-aria-invalid/switch:inset-ring group-aria-invalid/switch:inset-ring-destructive group-data-checked/switch:bg-primary group-data-unchecked/switch:bg-input group-data-[size=default]/switch:h-4.5 group-data-[size=default]/switch:w-8 group-data-[size=sm]/switch:h-3.5 group-data-[size=sm]/switch:w-6"
+        className="inline-flex shrink-0 items-center rounded-pill p-0.25 transition-colors group-focus-visible/switch:outline-solid group-focus-visible/switch:outline group-focus-visible/switch:outline-offset-(--focus-offset) group-focus-visible/switch:outline-ring group-focus-visible/switch:inset-ring group-focus-visible/switch:inset-ring-ring group-has-[:focus-visible]/field-label:outline-none group-has-[:focus-visible]/field-label:inset-ring-0 group-aria-invalid/switch:outline-destructive group-aria-invalid/switch:inset-ring group-aria-invalid/switch:inset-ring-destructive group-data-checked/switch:bg-primary group-data-unchecked/switch:bg-control-off group-data-[size=default]/switch:h-4.5 group-data-[size=default]/switch:w-8 group-data-[size=sm]/switch:h-3.5 group-data-[size=sm]/switch:w-6"
       >
         <SwitchPrimitive.Thumb
           data-slot="switch-thumb"
-          className="pointer-events-none block rounded-full bg-background ring-0 transition-transform group-data-[size=default]/switch:size-4 group-data-[size=sm]/switch:size-3 data-unchecked:translate-x-0 group-data-[size=default]/switch:data-checked:translate-x-3.5 group-data-[size=sm]/switch:data-checked:translate-x-2.5"
+          className="pointer-events-none block rounded-pill bg-background ring-0 transition-transform group-data-[size=default]/switch:size-4 group-data-[size=sm]/switch:size-3 data-unchecked:translate-x-0 group-data-[size=default]/switch:data-checked:translate-x-3.5 group-data-[size=sm]/switch:data-checked:translate-x-2.5"
         />
       </span>
     </SwitchPrimitive.Root>

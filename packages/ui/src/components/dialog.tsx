@@ -71,7 +71,7 @@ function DialogOverlay({ className, ...props }: DialogPrimitive.Backdrop.Props):
   return (
     <DialogPrimitive.Backdrop
       data-slot="dialog-overlay"
-      className={cn("fixed inset-0 isolate z-50 bg-background/70", className)}
+      className={cn("fixed inset-0 isolate z-popup bg-overlay", className)}
       {...props}
     />
   );
@@ -90,12 +90,12 @@ function DialogContent({
       <DialogOverlay />
       <DialogPrimitive.Viewport
         data-slot="dialog-viewport"
-        className="fixed inset-0 z-50 flex overflow-y-auto p-4"
+        className="fixed inset-0 z-popup flex overflow-y-auto p-4"
       >
         <DialogPrimitive.Popup
           data-slot="dialog-content"
           className={cn(
-            "relative m-auto grid w-full gap-4 rounded-xl bg-popover p-4 text-sm text-popover-foreground shadow-md ring-1 ring-foreground/10 transition duration-100 outline-none data-ending-style:scale-95 data-ending-style:opacity-0 data-starting-style:scale-95 data-starting-style:opacity-0 sm:max-w-sm",
+            "relative m-auto grid w-full gap-4 rounded-xl bg-popover p-4 text-sm text-popover-foreground shadow-md ring-1 ring-edge transition duration-popup outline-none data-ending-style:scale-95 data-ending-style:opacity-0 data-starting-style:scale-95 data-starting-style:opacity-0 sm:max-w-sm",
             className,
           )}
           {...props}
@@ -135,7 +135,7 @@ function DialogFooter({
     <div
       data-slot="dialog-footer"
       className={cn(
-        "-mx-4 -mb-4 flex flex-col-reverse gap-2 rounded-b-xl border-t bg-muted/50 p-4 sm:flex-row sm:justify-end",
+        "-mx-4 -mb-4 flex flex-col-reverse gap-2 rounded-b-xl border-t bg-muted p-4 sm:flex-row sm:justify-end",
         className,
       )}
       {...props}

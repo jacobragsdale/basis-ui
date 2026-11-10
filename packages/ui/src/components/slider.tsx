@@ -53,10 +53,10 @@ function Slider({
       thumbAlignment="edge"
       {...props}
     >
-      <SliderPrimitive.Control className="relative flex w-full touch-none items-center select-none data-disabled:opacity-50 data-[orientation=vertical]:h-full data-[orientation=vertical]:min-h-40 data-[orientation=vertical]:w-auto data-[orientation=vertical]:flex-col">
+      <SliderPrimitive.Control className="relative flex w-full touch-none items-center select-none data-disabled:opacity-disabled data-[orientation=vertical]:h-full data-[orientation=vertical]:min-h-40 data-[orientation=vertical]:w-auto data-[orientation=vertical]:flex-col">
         <SliderPrimitive.Track
           data-slot="slider-track"
-          className="relative grow overflow-hidden rounded-full bg-muted select-none data-[orientation=horizontal]:h-1 data-[orientation=horizontal]:w-full data-[orientation=vertical]:h-full data-[orientation=vertical]:w-1"
+          className="relative grow overflow-hidden rounded-pill bg-muted select-none data-[orientation=horizontal]:h-1 data-[orientation=horizontal]:w-full data-[orientation=vertical]:h-full data-[orientation=vertical]:w-1"
         >
           <SliderPrimitive.Indicator
             data-slot="slider-range"
@@ -68,11 +68,11 @@ function Slider({
             data-slot="slider-thumb"
             key={thumb}
             aria-label={ariaLabel}
-            className="group/slider-thumb relative flex min-h-target min-w-target shrink-0 items-center justify-center outline-none select-none data-disabled:pointer-events-none data-disabled:opacity-50"
+            className="group/slider-thumb relative flex min-h-target min-w-target shrink-0 items-center justify-center outline-none select-none data-disabled:pointer-events-none data-disabled:opacity-disabled"
           >
             <span
               data-slot="slider-thumb-dot"
-              className="block size-3 shrink-0 rounded-full border border-ring bg-background ring-ring/50 transition-shadow group-hover/slider-thumb:ring-3 group-active/slider-thumb:ring-3 group-has-focus-visible/slider-thumb:ring-3"
+              className="block size-3 shrink-0 rounded-pill border border-ring bg-background ring-ring transition-shadow group-hover/slider-thumb:ring group-active/slider-thumb:ring group-has-focus-visible/slider-thumb:outline-solid group-has-focus-visible/slider-thumb:outline group-has-focus-visible/slider-thumb:outline-offset-(--focus-offset) group-has-focus-visible/slider-thumb:outline-ring"
             />
           </SliderPrimitive.Thumb>
         ))}

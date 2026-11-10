@@ -1,7 +1,7 @@
 /* Scroll Area and its scrollbar, from Jacob's ui, which matches shadcn's Base UI source: Base UI's scroll area with
  * a thin scrollbar drawn in the theme's border colour. The viewport loses shadcn's `rounded-[inherit]`, since an app
  * cannot round the scroll area, and its arbitrary transition and ring widths become the theme's `transition-shadow`
- * and `ring-3`. The scrollbar's classes match Base UI's `data-orientation`, as shadcn's stylesheet variants would. */
+ * and its focus ring. The scrollbar's classes match Base UI's `data-orientation`, as shadcn's stylesheet variants would. */
 
 import { ScrollArea as ScrollAreaPrimitive } from "@base-ui/react/scroll-area";
 import { cn } from "cn";
@@ -26,7 +26,7 @@ function ScrollBar({
     >
       <ScrollAreaPrimitive.Thumb
         data-slot="scroll-area-thumb"
-        className="relative flex-1 rounded-full bg-border"
+        className="relative flex-1 rounded-pill bg-border"
       />
     </ScrollAreaPrimitive.Scrollbar>
   );
@@ -57,7 +57,7 @@ function ScrollArea({
     >
       <ScrollAreaPrimitive.Viewport
         data-slot="scroll-area-viewport"
-        className="size-full transition-shadow outline-none focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-1"
+        className="size-full transition-shadow outline-none focus-visible:outline-solid focus-visible:outline focus-visible:outline-offset-(--focus-offset) focus-visible:outline-ring"
       >
         {children}
       </ScrollAreaPrimitive.Viewport>

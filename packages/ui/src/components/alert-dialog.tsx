@@ -75,7 +75,7 @@ function AlertDialogOverlay({
   return (
     <AlertDialogPrimitive.Backdrop
       data-slot="alert-dialog-overlay"
-      className={cn("fixed inset-0 isolate z-50 bg-background/70", className)}
+      className={cn("fixed inset-0 isolate z-popup bg-overlay", className)}
       {...props}
     />
   );
@@ -93,13 +93,13 @@ function AlertDialogContent({
       <AlertDialogOverlay />
       <AlertDialogPrimitive.Viewport
         data-slot="alert-dialog-viewport"
-        className="fixed inset-0 z-50 flex overflow-y-auto p-4"
+        className="fixed inset-0 z-popup flex overflow-y-auto p-4"
       >
         <AlertDialogPrimitive.Popup
           data-slot="alert-dialog-content"
           data-size={size}
           className={cn(
-            "group/alert-dialog-content relative m-auto grid w-full gap-4 rounded-xl bg-popover p-4 text-popover-foreground shadow-md ring-1 ring-foreground/10 transition duration-100 outline-none data-ending-style:scale-95 data-ending-style:opacity-0 data-starting-style:scale-95 data-starting-style:opacity-0 data-[size=default]:max-w-xs data-[size=sm]:max-w-xs data-[size=default]:sm:max-w-sm",
+            "group/alert-dialog-content relative m-auto grid w-full gap-4 rounded-xl bg-popover p-4 text-popover-foreground shadow-md ring-1 ring-edge transition duration-popup outline-none data-ending-style:scale-95 data-ending-style:opacity-0 data-starting-style:scale-95 data-starting-style:opacity-0 data-[size=default]:max-w-xs data-[size=sm]:max-w-xs data-[size=default]:sm:max-w-sm",
             className,
           )}
           {...props}
@@ -129,7 +129,7 @@ function AlertDialogFooter({ className, ...props }: ComponentProps<"div">): Reac
     <div
       data-slot="alert-dialog-footer"
       className={cn(
-        "-mx-4 -mb-4 flex flex-col-reverse gap-2 rounded-b-xl border-t bg-muted/50 p-4 group-data-[size=sm]/alert-dialog-content:grid group-data-[size=sm]/alert-dialog-content:grid-cols-2 sm:flex-row sm:justify-end",
+        "-mx-4 -mb-4 flex flex-col-reverse gap-2 rounded-b-xl border-t bg-muted p-4 group-data-[size=sm]/alert-dialog-content:grid group-data-[size=sm]/alert-dialog-content:grid-cols-2 sm:flex-row sm:justify-end",
         className,
       )}
       {...props}

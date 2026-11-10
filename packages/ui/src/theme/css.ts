@@ -4,7 +4,18 @@
 import { parse } from "culori";
 import type { Color, Oklch } from "culori";
 
-import { fonts, radius, spacing, targetSize } from "./inputs.ts";
+import {
+  disabledOpacity,
+  durations,
+  focusRing,
+  fonts,
+  layers,
+  pillRadius,
+  radius,
+  shadows,
+  spacing,
+  targetSize,
+} from "./inputs.ts";
 import { rampStep, tone } from "./ramps.ts";
 import type { Mode } from "./ramps.ts";
 import { tokens } from "./tokens.ts";
@@ -16,10 +27,11 @@ type HueSource = Exclude<Source, { readonly css: string }>;
 /** The decimal places the stylesheet writes each OKLCH channel with. */
 const places = { chroma: 4, hue: 1, lightness: 3 } as const;
 
-/** A hue source's colour in a mode. */
+/** A hue source's colour in a mode, with its alpha when it has one. */
 function toneOf(source: HueSource, inMode: Mode): Oklch {
   if ("step" in source) {
-    return rampStep(source.hue, inMode, source.step);
+    const colour = rampStep(source.hue, inMode, source.step);
+    return source.alpha === undefined ? colour : { ...colour, alpha: source.alpha };
   }
   return tone(source.hue, source.lightness);
 }
@@ -57,7 +69,8 @@ function format(source: Source, inMode: Mode): string {
   const lightness = round(colour.l, places.lightness);
   const chroma = round(colour.c, places.chroma);
   const hue = round(colour.h, places.hue);
-  return `oklch(${lightness} ${chroma} ${hue})`;
+  const alpha = colour.alpha === undefined ? "" : ` / ${String(colour.alpha)}`;
+  return `oklch(${lightness} ${chroma} ${hue}${alpha})`;
 }
 
 function declarations(inMode: Mode): string {
@@ -119,12 +132,17 @@ const fontsAndVariant = `@import "@fontsource-variable/inter";
   }
 }`;
 
-/** The tokens in each mode, and the compact density's spacing. */
+/** The tokens in each mode, and the compact density's spacing. The radius, the focus ring and the shadows are
+ * variables here, rather than values Tailwind writes into each utility, so that a theme can change them at run time. */
 function modes(): string {
   return `:root {
   color-scheme: light;
   --radius: ${radius};
   --font-num: ${fonts.num};
+  --focus-width: ${focusRing.width};
+  --focus-offset: ${focusRing.offset};
+  --shadow-raised: ${shadows.raised};
+  --shadow-floating: ${shadows.floating};
 ${declarations("light")}
 }
 
@@ -145,7 +163,9 @@ function scales(): string {
     .map((name) => `  --color-${name}: var(--${name});`)
     .join("\n");
   return `/* Only the theme's own values exist: Tailwind's palette, its blur utilities and most of its shadows are removed, so a
-   class that uses them is an unknown class and fails the lint. Citrix desktops draw on the CPU, where blur is slow. */
+   class that uses them is an unknown class and fails the lint. Citrix desktops draw on the CPU, where blur is slow.
+   Each scale is named for its use: \`duration-popup\` and \`duration-panel\`, \`z-raised\` and \`z-popup\`,
+   \`rounded-pill\` and \`opacity-disabled\`. */
 @theme {
   --color-*: initial;
   --blur-*: initial;
@@ -154,18 +174,30 @@ function scales(): string {
   --drop-shadow-*: initial;
   --text-shadow-*: initial;
   --radius-*: initial;
-  --shadow-sm: 0 1px 2px 0 oklch(0 0 0 / 0.06);
-  --shadow-md: 0 2px 6px -1px oklch(0 0 0 / 0.1);
+  --radius-pill: ${pillRadius};
+  --opacity-disabled: ${disabledOpacity};
+  --z-index-raised: ${layers.raised};
+  --z-index-popup: ${layers.popup};
   --spacing: ${spacing.comfortable};
   --spacing-target: ${targetSize};
   --text-2xs: 0.625rem;
   --text-2xs--line-height: 0.875rem;
   --font-sans: ${fonts.sans};
   --font-mono: ${fonts.mono};
-  --default-transition-duration: 120ms;
+  --default-transition-duration: ${durations.control};
+  --transition-duration-popup: ${durations.popup};
+  --transition-duration-panel: ${durations.panel};
 }
 
+/* A bare \`outline\` or \`ring\` is the focus ring's width. A focus ring is
+   \`outline-solid outline outline-offset-(--focus-offset) outline-ring\` under \`focus-visible:\`: an outline, whose
+   offset is transparent on any surface and which Windows' forced colours keep. Its width and offset stay variables,
+   since \`cn\` would take a named width for a second colour and drop it. */
 @theme inline {
+  --default-outline-width: var(--focus-width);
+  --default-ring-width: var(--focus-width);
+  --shadow-sm: var(--shadow-raised);
+  --shadow-md: var(--shadow-floating);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);

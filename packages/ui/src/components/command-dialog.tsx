@@ -34,12 +34,12 @@ function CommandDialog({
         <DialogOverlay />
         <DialogPrimitive.Viewport
           data-slot="command-dialog-viewport"
-          className="fixed inset-0 z-50 flex justify-center overflow-y-auto p-4"
+          className="fixed inset-0 z-popup flex justify-center overflow-y-auto p-4"
         >
           <DialogPrimitive.Popup
             data-slot="command-dialog-content"
             className={cn(
-              "relative top-1/3 h-fit w-full overflow-hidden rounded-xl bg-popover text-sm text-popover-foreground shadow-md ring-1 ring-foreground/10 transition duration-100 outline-none data-ending-style:scale-95 data-ending-style:opacity-0 data-starting-style:scale-95 data-starting-style:opacity-0 sm:max-w-sm",
+              "relative top-1/3 h-fit w-full overflow-hidden rounded-xl bg-popover text-sm text-popover-foreground shadow-md ring-1 ring-edge transition duration-popup outline-none data-ending-style:scale-95 data-ending-style:opacity-0 data-starting-style:scale-95 data-starting-style:opacity-0 sm:max-w-sm",
               className,
             )}
           >

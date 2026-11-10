@@ -98,9 +98,17 @@ const textPairs: readonly (readonly [text: string, surface: string])[] = [
   ["secondary-foreground", "secondary"],
   ["accent-foreground", "accent"],
   ["primary-foreground", "primary"],
+  ["primary-foreground", "primary-hover"],
+  ["primary-foreground", "primary-active"],
+  ["secondary-foreground", "secondary-hover"],
+  ["secondary-foreground", "secondary-active"],
   ["primary", "background"],
   ["primary", "card"],
   ["sidebar-foreground", "sidebar"],
+  // A sidebar group's label.
+  ["muted-foreground", "sidebar"],
+  // A key in a tooltip, which is drawn in `foreground` with `background` text.
+  ["background", "muted-foreground"],
   ["sidebar-accent-foreground", "sidebar-accent"],
   ["sidebar-primary-foreground", "sidebar-primary"],
   ...["destructive", "success", "warning", "info"].flatMap((status) => [
@@ -108,6 +116,7 @@ const textPairs: readonly (readonly [text: string, surface: string])[] = [
     [status, "background"] as const,
     [status, "card"] as const,
     [status, `${status}-subtle`] as const,
+    [status, `${status}-subtle-hover`] as const,
     ["foreground", `${status}-subtle`] as const,
   ]),
   ...["gain", "loss"].flatMap((signed) => [
@@ -116,12 +125,24 @@ const textPairs: readonly (readonly [text: string, surface: string])[] = [
   ]),
   ...["env-dev", "env-qa", "env-prod"].map((env) => [`${env}-foreground`, env] as const),
 ];
+// The focus ring is drawn whole, outside the control, so it sits on the surface the control sits on. A switch that is
+// off shows its track on the page and its thumb, in `background`, on the track.
 const outlinePairs: readonly (readonly [outline: string, surface: string])[] = [
   ["input", "background"],
   ["input", "card"],
-  ["ring", "background"],
-  ["ring", "card"],
+  ...["background", "card", "popover", "muted"].map((surface) => ["ring", surface] as const),
   ["sidebar-ring", "sidebar"],
+  ...["background", "card", "popover"].map((surface) => ["control-off", surface] as const),
+  ["background", "control-off"],
+];
+
+/* A fill hovered and pressed: each state must show against the one before it, as a fill against its surface. A status's
+ * tint, pressed, returns to rest. */
+const states: readonly (readonly [rest: string, hover: string, active: string])[] = [
+  ...["primary", "secondary"].map((fill) => [fill, `${fill}-hover`, `${fill}-active`] as const),
+  ...["destructive", "success", "warning", "info"].map(
+    (status) => [`${status}-subtle`, `${status}-subtle-hover`, `${status}-subtle`] as const,
+  ),
 ];
 
 /* A fill must show on every surface it can sit on, or a muted band or a highlighted menu item vanishes in a popup.
@@ -136,6 +157,13 @@ describe.each(modes)("fills in %s mode", (mode) => {
       expect(delta(colourOf(fill, mode), colourOf(surface, mode))).toBeGreaterThanOrEqual(2);
     },
   );
+});
+
+describe.each(modes)("hovered and pressed fills in %s mode", (mode) => {
+  test.each(states)("%s, %s and %s each stand apart from the one before", (rest, hover, active) => {
+    expect(delta(colourOf(hover, mode), colourOf(rest, mode))).toBeGreaterThanOrEqual(2);
+    expect(delta(colourOf(active, mode), colourOf(hover, mode))).toBeGreaterThanOrEqual(2);
+  });
 });
 
 describe.each(modes)("contrast in %s mode", (mode) => {
@@ -221,7 +249,20 @@ describe("the theme under Tailwind", () => {
   });
 
   test("the theme's own scales generate their utilities", async () => {
-    const kept = ["shadow-sm", "shadow-md", "rounded-lg", "text-2xs", "font-mono", "p-4"];
+    const kept = [
+      "shadow-sm",
+      "shadow-md",
+      "rounded-lg",
+      "rounded-pill",
+      "text-2xs",
+      "font-mono",
+      "p-4",
+      "duration-popup",
+      "duration-panel",
+      "z-raised",
+      "z-popup",
+      "opacity-disabled",
+    ];
     const css = await build(kept);
     for (const name of kept) {
       expect(css, name).toContain(`.${name} {`);
@@ -236,6 +277,18 @@ describe("the theme under Tailwind", () => {
     expect(css).toContain("--spacing-target: 1.5rem;");
     const [, compact] = committed.split(':root[data-density="compact"] {');
     expect(compact?.slice(0, compact.indexOf("}"))).not.toContain("--spacing-target");
+  });
+
+  test("the focus ring's width and offset, and the shadows, are variables a theme can change", async () => {
+    const css = await build(["outline", "ring", "shadow-sm", "shadow-md"]);
+    expect(css).toContain("outline-width: var(--focus-width);");
+    expect(css).toContain("calc(var(--focus-width) + var(--tw-ring-offset-width))");
+    expect(css).toContain("--tw-shadow: var(--shadow-raised);");
+    expect(css).toContain("--tw-shadow: var(--shadow-floating);");
+    // WCAG 2.2's focus appearance asks for a ring at least 2 px thick.
+    expect(
+      Number(/--focus-width: (?<px>[\d.]+)px;/u.exec(committed)?.groups?.["px"] ?? "0"),
+    ).toBeGreaterThanOrEqual(2);
   });
 
   test("`dark:` follows the dark class, not the operating system", async () => {

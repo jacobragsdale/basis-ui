@@ -61,18 +61,18 @@ function TooltipContent({
         alignOffset={alignOffset}
         side={side}
         sideOffset={sideOffset}
-        className="isolate z-50"
+        className="isolate z-popup"
       >
         <TooltipPrimitive.Popup
           data-slot="tooltip-content"
           className={cn(
-            "z-50 inline-flex w-fit max-w-xs origin-(--transform-origin) items-center gap-1.5 rounded-md bg-foreground px-3 py-1.5 text-xs text-background transition duration-100 has-data-[slot=kbd]:pr-1.5 data-ending-style:scale-95 data-ending-style:opacity-0 data-instant:transition-none data-starting-style:scale-95 data-starting-style:opacity-0 **:data-[slot=kbd]:relative **:data-[slot=kbd]:isolate **:data-[slot=kbd]:z-50 **:data-[slot=kbd]:rounded-sm",
+            "z-popup inline-flex w-fit max-w-xs origin-(--transform-origin) items-center gap-1.5 rounded-md bg-foreground px-3 py-1.5 text-xs text-background transition duration-popup has-data-[slot=kbd]:pr-1.5 data-ending-style:scale-95 data-ending-style:opacity-0 data-instant:transition-none data-starting-style:scale-95 data-starting-style:opacity-0 **:data-[slot=kbd]:relative **:data-[slot=kbd]:isolate **:data-[slot=kbd]:z-popup **:data-[slot=kbd]:rounded-sm",
             className,
           )}
           {...props}
         >
           {children}
-          <TooltipPrimitive.Arrow className="z-50 size-2.5 rotate-45 rounded-sm bg-foreground data-[side=bottom]:-top-0.75 data-[side=inline-end]:-left-0.75 data-[side=inline-start]:-right-0.75 data-[side=left]:-right-0.75 data-[side=right]:-left-0.75 data-[side=top]:-bottom-0.75" />
+          <TooltipPrimitive.Arrow className="z-popup size-2.5 rotate-45 rounded-sm bg-foreground data-[side=bottom]:-top-0.75 data-[side=inline-end]:-left-0.75 data-[side=inline-start]:-right-0.75 data-[side=left]:-right-0.75 data-[side=right]:-left-0.75 data-[side=top]:-bottom-0.75" />
         </TooltipPrimitive.Popup>
       </TooltipPrimitive.Positioner>
     </TooltipPrimitive.Portal>

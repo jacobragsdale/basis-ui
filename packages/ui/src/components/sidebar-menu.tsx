@@ -89,7 +89,7 @@ function SidebarMenuAction({
   ...props
 }: SidebarMenuActionProps): ReactElement {
   const classes = cn(
-    "absolute top-4 right-1 flex aspect-square w-5 min-h-target min-w-target -translate-y-1/2 items-center justify-center rounded-md p-0 text-sidebar-foreground ring-sidebar-ring outline-hidden transition-transform group-data-[collapsible=icon]:hidden peer-hover/menu-button:text-sidebar-accent-foreground peer-data-[size=lg]/menu-button:top-6 peer-data-[size=sm]/menu-button:top-3.5 after:absolute after:-inset-2 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 md:after:hidden [&>svg]:size-4 [&>svg]:shrink-0",
+    "absolute top-4 right-1 flex aspect-square w-5 min-h-target min-w-target -translate-y-1/2 items-center justify-center rounded-md p-0 text-sidebar-foreground focus-visible:outline-sidebar-ring outline-hidden transition-transform group-data-[collapsible=icon]:hidden peer-hover/menu-button:text-sidebar-accent-foreground peer-data-[size=lg]/menu-button:top-6 peer-data-[size=sm]/menu-button:top-3.5 after:absolute after:-inset-2 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-solid focus-visible:outline focus-visible:outline-offset-(--focus-offset) md:after:hidden [&>svg]:size-4 [&>svg]:shrink-0",
     showOnHover &&
       "group-focus-within/menu-item:opacity-100 group-hover/menu-item:opacity-100 peer-data-active/menu-button:text-sidebar-accent-foreground aria-expanded:opacity-100 md:opacity-0",
     className,
@@ -202,7 +202,7 @@ function SidebarMenuSubButton({
   ...props
 }: SidebarMenuSubButtonProps): ReactElement {
   const classes = cn(
-    "flex h-7 min-h-target min-w-target -translate-x-px items-center gap-2 overflow-hidden rounded-md px-2 text-sidebar-foreground ring-sidebar-ring outline-hidden group-data-[collapsible=icon]:hidden hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-active:bg-sidebar-accent data-active:text-sidebar-accent-foreground data-[size=md]:text-sm data-[size=sm]:text-xs [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0 [&>svg]:text-sidebar-accent-foreground",
+    "flex h-7 min-h-target min-w-target -translate-x-px items-center gap-2 overflow-hidden rounded-md px-2 text-sidebar-foreground focus-visible:outline-sidebar-ring outline-hidden group-data-[collapsible=icon]:hidden hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-solid focus-visible:outline focus-visible:outline-offset-(--focus-offset) active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-disabled aria-disabled:pointer-events-none aria-disabled:opacity-disabled data-active:bg-sidebar-accent data-active:text-sidebar-accent-foreground data-[size=md]:text-sm data-[size=sm]:text-xs [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0 [&>svg]:text-sidebar-accent-foreground",
     className,
   );
   return useRender({

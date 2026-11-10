@@ -89,7 +89,7 @@ function FileImportDrop({ title, limits, onFile, onFiles }: FileImportDropProps)
       data-dragging={dragging}
       className={cn(
         fileImportDropVariants({ variant: "outline" }),
-        "transition-colors data-[dragging=true]:border-ring data-[dragging=true]:bg-muted/50",
+        "transition-colors data-[dragging=true]:border-ring data-[dragging=true]:bg-muted",
       )}
       onDragEnter={hold}
       onDragOver={hold}

@@ -1,12 +1,14 @@
-// The semantic tokens: the only colours Tailwind exposes. Components and apps use these names and nothing else.
-// Each one names, per mode, a ramp step, a lightness on a hue, or a fixed colour.
+// The semantic tokens: the only colours Tailwind exposes. Components and apps use these names and nothing else, with
+// no opacity modifier: a hovered fill, an edge or a veil is a token of its own. Each one names, per mode, a ramp step,
+// a lightness on a hue, or a fixed colour.
 
 import type { HueName } from "./inputs.ts";
 import type { Mode, Step } from "./ramps.ts";
 
-/** Where a token's colour comes from in one mode. */
+/** Where a token's colour comes from in one mode. A step may carry an alpha, for the veil behind a dialog, which must
+ * let the page show through. */
 type Source =
-  | { readonly hue: HueName; readonly step: Step }
+  | { readonly hue: HueName; readonly step: Step; readonly alpha?: number }
   | { readonly hue: HueName; readonly lightness: number }
   | { readonly css: string };
 
@@ -35,18 +37,42 @@ const surfaces: readonly Entry[] = [
   ["muted", { dark: { hue: "neutral", step: 4 }, light: { hue: "neutral", step: 3 } }],
   ["muted-foreground", both({ hue: "neutral", step: 11 })],
   ["secondary", { dark: { hue: "neutral", step: 5 }, light: { hue: "neutral", step: 4 } }],
+  // A secondary button hovered and pressed: each a step further from the page.
+  ["secondary-hover", { dark: { hue: "neutral", step: 6 }, light: { hue: "neutral", step: 5 } }],
+  ["secondary-active", { dark: { hue: "neutral", step: 7 }, light: { hue: "neutral", step: 6 } }],
   ["secondary-foreground", both({ hue: "neutral", step: 12 })],
   ["accent", { dark: { hue: "neutral", step: 5 }, light: { hue: "neutral", step: 4 } }],
   ["accent-foreground", both({ hue: "neutral", step: 12 })],
 ];
 
-// The main action, lines, control outlines and focus.
+/** The main action, lines, control outlines and focus. A solid hovered is step 10; pressed, it goes as far again past
+ * it, darker in light mode and lighter in dark, where the ramp has no step left for a fill. */
 const actions: readonly Entry[] = [
   ["primary", both({ hue: "brand", step: 9 })],
+  ["primary-hover", both({ hue: "brand", step: 10 })],
+  [
+    "primary-active",
+    { dark: { hue: "brand", lightness: 0.84 }, light: { hue: "brand", lightness: 0.37 } },
+  ],
   ["primary-foreground", onSolid],
   ["border", both({ hue: "neutral", step: 6 })],
+  // The outline of a card or a popup, a step lighter than a border, as quiet as the page's own lines.
+  ["edge", both({ hue: "neutral", step: 5 })],
   ["input", both({ hue: "neutral", step: 8 })],
+  // The focus ring, drawn whole: it reaches 3:1 on every surface a control sits on.
   ["ring", both({ hue: "brand", step: 8 })],
+  // A control that is off, such as Switch's track: dark enough to read as a control on any surface.
+  ["control-off", both({ hue: "neutral", step: 8 })],
+  // The fill of a disabled field, under the fade every disabled control takes.
+  ["disabled", both({ hue: "neutral", step: 7 })],
+  // The veil behind a dialog, a sheet or a drawer: the page's own colour, letting the page show through.
+  [
+    "overlay",
+    {
+      dark: { alpha: 0.7, hue: "neutral", step: 1 },
+      light: { alpha: 0.7, hue: "neutral", step: 2 },
+    },
+  ],
 ];
 
 // The sidebar set shadcn defines.
@@ -61,12 +87,17 @@ const sidebar: readonly Entry[] = [
   ["sidebar-ring", both({ hue: "brand", step: 8 })],
 ];
 
-/** A status. Its colour is a solid fill, and text on the page; `-subtle` is the tint behind an alert or a badge. */
+/** A status. Its colour is a solid fill, and text on the page; `-subtle` is the tint behind an alert or a badge, and
+ * `-edge` the outline of an alert or a toast on it. Hovered, a tint steps away from its text, toward the page, since a
+ * step toward it costs the text its 5.5:1 (light `success` text is 5.38:1 on step 4); pressed, it returns to rest, since
+ * steps 1 and 2 are too close to tell apart in light mode. */
 function status(name: string, hue: HueName): readonly Entry[] {
   return [
     [name, both({ hue, step: 9 })],
     [`${name}-foreground`, onSolid],
     [`${name}-subtle`, both({ hue, step: 3 })],
+    [`${name}-subtle-hover`, both({ hue, step: 2 })],
+    [`${name}-edge`, both({ hue, step: 7 })],
   ];
 }
 

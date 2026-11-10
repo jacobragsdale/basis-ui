@@ -53,6 +53,7 @@ const radii = [
   ["rounded-md", "size-12 rounded-md border bg-muted"],
   ["rounded-lg", "size-12 rounded-lg border bg-muted"],
   ["rounded-xl", "size-12 rounded-xl border bg-muted"],
+  ["rounded-pill: a badge or a switch", "h-6 w-24 rounded-pill border bg-muted"],
 ] as const;
 
 const shadows = [
@@ -62,8 +63,8 @@ const shadows = [
 
 const motion = [
   ["transition-colors (the default)", "h-6 w-24 rounded-md bg-muted transition-colors"],
-  ["duration-100: a popup's fade and scale", "h-6 w-24 rounded-md bg-muted duration-100"],
-  ["duration-150: a panel that slides", "h-6 w-24 rounded-md bg-muted duration-150"],
+  ["duration-popup: a popup's fade and scale", "h-6 w-24 rounded-md bg-muted duration-popup"],
+  ["duration-panel: a panel that slides", "h-6 w-24 rounded-md bg-muted duration-panel"],
 ] as const;
 
 function TypeScaleSection(): ReactElement {
@@ -91,7 +92,7 @@ function RadiiSection(): ReactElement {
   return (
     <Section
       title="Radii"
-      description="Every radius derives from the theme's one base radius, which rounded-lg is."
+      description="Every radius derives from the theme's one base radius, which rounded-lg is, but a pill's, whose ends are half-circles."
     >
       <ul className="flex flex-col gap-2">
         {radii.map(([name, className]) => (

@@ -31,7 +31,7 @@ function MaximizeBefore({ maximizing }: { readonly maximizing: Maximizing }): Re
       <div
         data-slot={backdropSlot}
         aria-hidden="true"
-        className="fixed inset-0 z-50 bg-background/70 transition-opacity duration-150 starting:opacity-0"
+        className="fixed inset-0 z-50 bg-overlay transition-opacity duration-150 starting:opacity-0"
         onClick={() => {
           state.setMaximized(false);
         }}

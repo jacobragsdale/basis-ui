@@ -45,5 +45,50 @@ const spacing = {
  * `min-w-target`, which every control shorter than `h-8` carries. */
 const targetSize = "1.5rem";
 
-export { fonts, hues, radius, spacing, targetSize };
+/** The focus ring, an outline in the `ring` colour: its width, and its gap from the control's edge. An outline's gap
+ * is transparent, so it shows the surface under it on any surface, and Windows' forced colours keep it. */
+const focusRing = {
+  offset: "0px",
+  width: "2px",
+} as const;
+
+/** The two shadows: a control raised off its surface, such as an active tab, and a popup floating over the page. */
+const shadows = {
+  floating: "0 2px 6px -1px oklch(0 0 0 / 0.1)",
+  raised: "0 1px 2px 0 oklch(0 0 0 / 0.06)",
+} as const;
+
+/** How long a transition runs: a control's colours, a popup's fade and scale, and a panel that slides. */
+const durations = {
+  control: "120ms",
+  panel: "150ms",
+  popup: "100ms",
+} as const;
+
+/** The stacking order: a part raised over its siblings, such as a focused button in a group, and a popup or the veil
+ * behind a dialog, over the page. */
+const layers = {
+  popup: "50",
+  raised: "10",
+} as const;
+
+/** The radius of a pill, such as a badge or a switch's track: a half-circle at each end, whatever its length. */
+const pillRadius = "9999px";
+
+/** How far a disabled control fades, as an opacity. */
+const disabledOpacity = "50%";
+
+export {
+  disabledOpacity,
+  durations,
+  focusRing,
+  fonts,
+  hues,
+  layers,
+  pillRadius,
+  radius,
+  shadows,
+  spacing,
+  targetSize,
+};
 export type { Hue, HueName };

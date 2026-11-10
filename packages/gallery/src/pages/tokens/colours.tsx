@@ -30,18 +30,30 @@ interface Pairing {
 /** Tokens whose pairing no rule below gives. */
 const special: Readonly<Record<string, Pairing>> = {
   background: { on: [], under: ["foreground", "muted-foreground"] },
+  "control-off": { on: pageSurfaces, under: ["background"] },
   foreground: { on: [...pageSurfaces, ...fills, "selection", "highlight"], under: [] },
   highlight: { on: [], under: ["foreground"] },
   "muted-foreground": { on: [...pageSurfaces, "muted"], under: [] },
+  // A veil lets the page show through, so no contrast describes it.
+  overlay: { on: [], under: [] },
   selection: { on: [], under: ["foreground"] },
 };
 
 const foregroundSuffix = "-foreground";
 const subtleSuffix = "-subtle";
+const edgeSuffix = "-edge";
+const stateSuffixes = ["-hover", "-active"] as const;
 
-/** Text on a fill (`X-foreground` on `X`), a tint under its status's text (`X-subtle`), a fill with its own text and,
- * for a status, the page under it, a part of the sidebar on the sidebar, and anything else on the page's surfaces. */
-function pairingOf(name: string): Pairing {
+/** A status's edge sits on its tint. */
+function edgePairing(name: string): Pairing | undefined {
+  const tint = `${name.slice(0, -edgeSuffix.length)}${subtleSuffix}`;
+  return name.endsWith(edgeSuffix) && names.has(tint) ? { on: [tint], under: [] } : undefined;
+}
+
+/** A fill at rest: text on it (`X-foreground` on `X`), a tint under its status's text (`X-subtle`), a fill with its own
+ * text and, for a status, the page under it, a part of the sidebar on the sidebar, and anything else on the page's
+ * surfaces. */
+function restPairing(name: string): Pairing {
   const base = name.endsWith(foregroundSuffix) ? name.slice(0, -foregroundSuffix.length) : "";
   if (name.endsWith(subtleSuffix)) {
     return { on: [], under: [name.slice(0, -subtleSuffix.length)] };
@@ -54,6 +66,17 @@ function pairingOf(name: string): Pairing {
     return { on: isStatus ? pageSurfaces : [], under: [`${name}${foregroundSuffix}`] };
   }
   return { on: name.startsWith("sidebar-") ? ["sidebar"] : pageSurfaces, under: [] };
+}
+
+/** How a token pairs: a fill hovered or pressed as the fill at rest, a status's edge on its tint, and the rest as
+ * `restPairing` says. */
+function pairingOf(name: string): Pairing {
+  // A fill hovered or pressed carries the text its fill at rest does.
+  const state = stateSuffixes.find((suffix) => name.endsWith(suffix));
+  if (state !== undefined) {
+    return pairingOf(name.slice(0, -state.length));
+  }
+  return edgePairing(name) ?? restPairing(name);
 }
 
 interface PairProps {

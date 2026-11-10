@@ -546,6 +546,10 @@ flowchart TD
    in whole pixels (`6.5.2-density`), `defineTheme` (`6.5.3-define-theme`), `checkTheme` (`6.5.4-check-theme`), the
    choice of theme in the cookie (`6.5.5-theme-preference`), parallax on the same theme (`6.5.6-parallax-theme`), the
    default's identity and two more themes (`6.5.7-identity`), and the studio in the gallery (`6.5.8-studio`).
+   6.5.1 built on 2026-11-09: no colour class takes an opacity modifier, which a test holds, since hovered and pressed
+   fills, edges, the veil, a control that is off and a disabled field are tokens, the focus ring is a solid outline
+   whose width and gap are variables, and durations, layers, the pill radius, the disabled fade and the shadows are
+   named scales.
 6. **6.6 Grid features.** Lane Grid, after 6.3, 6.4 and 6.5, one branch per item: rich cells (`6.6.1-rich-cells`), a
    context menu and events (`6.6.2-context-menu`), saved views (`6.6.3-saved-views`), layouts typed by the dataset's
    rows (`6.6.4-typed-layouts`), states on the canvas (`6.6.5-states`), and small charts that say what their marks are

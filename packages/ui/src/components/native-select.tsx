@@ -33,7 +33,7 @@ function NativeSelect({ className, size = "default", ...props }: NativeSelectPro
   return (
     <div
       className={cn(
-        "group/native-select relative w-fit has-[select:disabled]:opacity-50 [&>svg]:text-muted-foreground",
+        "group/native-select relative w-fit has-[select:disabled]:opacity-disabled [&>svg]:text-muted-foreground",
         className,
       )}
       data-slot="native-select-wrapper"

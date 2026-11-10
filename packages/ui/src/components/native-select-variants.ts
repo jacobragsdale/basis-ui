@@ -7,7 +7,7 @@ import { cva } from "#vendor/cva/cva.ts";
 /** A native select, at Input's height (`default`) or a step smaller (`sm`), which keeps the 24 px target in the
  * compact density. */
 const nativeSelectVariants = cva(
-  "w-full min-w-0 appearance-none border border-input bg-transparent pr-8 pl-2.5 text-sm transition-colors outline-none select-none selection:bg-primary selection:text-primary-foreground placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/30",
+  "w-full min-w-0 appearance-none border border-input bg-transparent pr-8 pl-2.5 text-sm transition-colors outline-none select-none selection:bg-primary selection:text-primary-foreground placeholder:text-muted-foreground focus-visible:border-ring focus-visible:outline-solid focus-visible:outline focus-visible:outline-offset-(--focus-offset) focus-visible:outline-ring disabled:pointer-events-none disabled:cursor-not-allowed aria-invalid:border-destructive aria-invalid:outline-destructive",
   {
     variants: {
       size: {

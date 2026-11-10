@@ -287,14 +287,22 @@ app's stylesheet today (step 6.8.3).
    inputs, the fonts and the radius; step 6.5.3 makes every hand-written value an input, so that a theme is one file of
    them.
 2. **Semantic tokens.** These are the only colours Tailwind exposes, and each one is a ramp step in each mode.
-   Tailwind's own palette is removed, and `no-raw-colors` rejects a class such as `bg-pink-500`.
+   Tailwind's own palette is removed, and `no-raw-colors` rejects a class such as `bg-pink-500`. A colour is drawn whole
+   from its token, never faded with an opacity modifier such as `bg-primary/80`: a faded colour changes with whatever
+   lies under it, so no check can measure its contrast and no theme can re-skin it, and a test fails on any colour
+   class in `@basis/ui` that takes one (step 6.5.1, 2026-11-09). A hovered or pressed fill, an edge and a veil are
+   tokens of their own.
 
    | Tokens                                                                                       | Use                                                                                                                                                              |
    | -------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
    | `background`, `card`, `popover`, `muted`, `secondary`, `accent`, each with its `-foreground` | Surfaces and the text on them. These are shadcn's names, so its source ports with its `dark:` classes replaced by tokens.                                        |
    | `primary`, `primary-foreground`, `border`, `input`, `ring`                                   | The main action, lines, control outlines and focus                                                                                                               |
+   | `primary-hover`, `primary-active`, `secondary-hover`, `secondary-active`                     | A filled button hovered (step 10 for a solid) and pressed (as far again past it); a secondary fill a step and two steps further from the page                    |
+   | `edge`, `overlay`                                                                            | The outline of a card or a popup, a step lighter than `border`; the veil behind a dialog, sheet or drawer, the page's colour at 70%, the one token with an alpha |
+   | `control-off`, `disabled`                                                                    | A control that is off, such as Switch's track, at 3:1 on every surface; the fill of a disabled field, under the fade every disabled control takes                |
    | `sidebar-*`                                                                                  | shadcn's set for the sidebar                                                                                                                                     |
    | `success`, `warning`, `info` and `destructive`, each with `-foreground` and `-subtle`        | Status, always with an icon or a label as well as the colour                                                                                                     |
+   | each status's `-subtle-hover` and `-edge`                                                    | A tint hovered, a step toward the page, since a step toward its text costs the text its 5.5:1, and pressed back at rest; the outline of an alert or toast on it  |
    | `gain`, `loss`                                                                               | Signed values. They differ in lightness as well as hue, because red against green is the pair colour-blind readers lose, and every signed number shows its sign. |
    | `selection`, `highlight`                                                                     | Selected rows and cells, and search matches                                                                                                                      |
    | `env-dev`, `env-qa`, `env-prod`                                                              | The environment banner                                                                                                                                           |
@@ -304,7 +312,16 @@ app's stylesheet today (step 6.8.3).
    every control's height follows. One spacing value stays fixed, `--spacing-target` at 24 pixels, whose `min-h-target`
    and `min-w-target` every control shorter than `h-8` carries, so the compact density keeps WCAG 2.2's minimum target
    size. Type runs down to `text-2xs`, for axes and dense labels, and number components use
-   tabular figures. There are two shadows, both subtle. Citrix desktops draw on the CPU, so the theme removes the blur
+   tabular figures. There are two shadows, both subtle, `shadow-sm` for a control raised off its surface and
+   `shadow-md` for a popup, each a variable (`--shadow-raised`, `--shadow-floating`) rather than a value written into
+   the utility, so a theme can change it. The focus ring is an outline in `ring`, drawn whole, whose width and gap
+   are the variables `--focus-width` (2 pixels) and `--focus-offset` (none): `focus-visible:outline-solid
+   focus-visible:outline focus-visible:outline-offset-(--focus-offset) focus-visible:outline-ring`. An outline rather
+   than a ring, since an outline's gap is transparent on any surface where a ring's would need the surface's colour,
+   and Windows' forced colours keep an outline and drop a ring; a field that is invalid takes `outline-destructive`
+   for it. The other scales are named for their use: `duration-popup` and `duration-panel`, `z-raised` for a part over
+   its siblings and `z-popup` for a popup or a veil, `rounded-pill` for a badge or a switch, where a circle such as an
+   avatar or a radio stays `rounded-full`, and `opacity-disabled` for a disabled control's fade. Citrix desktops draw on the CPU, so the theme removes the blur
    scale, which makes `blur-sm` and `backdrop-blur-md` unknown classes; the other filter utilities have no scale to
    remove and stay out of the components by review. Transitions are short and stop under
    `prefers-reduced-motion`: 100 ms for a popup's fade and scale, 150 ms for a panel that slides, such as the sidebar,

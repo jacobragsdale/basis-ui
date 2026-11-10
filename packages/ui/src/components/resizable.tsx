@@ -181,7 +181,7 @@ function ResizableHandle({
       aria-disabled={active === null ? true : undefined}
       data-slot="resizable-handle"
       className={cn(
-        "relative z-10 flex shrink-0 touch-none items-center justify-center bg-border outline-none select-none after:absolute focus-visible:ring-1 focus-visible:ring-ring aria-disabled:cursor-default data-dragging:bg-ring",
+        "relative z-raised flex shrink-0 touch-none items-center justify-center bg-border outline-none select-none after:absolute focus-visible:outline-solid focus-visible:outline focus-visible:outline-offset-(--focus-offset) focus-visible:outline-ring aria-disabled:cursor-default data-dragging:bg-ring",
         "aria-[orientation=vertical]:w-px aria-[orientation=vertical]:cursor-col-resize aria-[orientation=vertical]:after:inset-y-0 aria-[orientation=vertical]:after:left-1/2 aria-[orientation=vertical]:after:w-target aria-[orientation=vertical]:after:-translate-x-1/2 pointer-fine:aria-[orientation=vertical]:after:w-1",
         "aria-[orientation=horizontal]:h-px aria-[orientation=horizontal]:cursor-row-resize aria-[orientation=horizontal]:after:inset-x-0 aria-[orientation=horizontal]:after:top-1/2 aria-[orientation=horizontal]:after:h-target aria-[orientation=horizontal]:after:-translate-y-1/2 pointer-fine:aria-[orientation=horizontal]:after:h-1 [&[aria-orientation=horizontal]>div]:rotate-90",
         className,
@@ -189,7 +189,7 @@ function ResizableHandle({
       {...props}
       {...handlers}
     >
-      {withHandle ? <div className="z-10 flex h-6 w-1 shrink-0 rounded-lg bg-border" /> : null}
+      {withHandle ? <div className="z-raised flex h-6 w-1 shrink-0 rounded-lg bg-border" /> : null}
     </div>
   );
 }
