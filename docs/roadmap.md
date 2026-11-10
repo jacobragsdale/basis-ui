@@ -506,7 +506,9 @@ flowchart TD
    2026-11-09: a reload's old rows stay only until the open views that need them apply them, and a decimal or
    timestamp too large to load is refused as an overflow. 6.1a built on 2026-11-09: the shell is one column under its
    banner and takes the gallery's preferences, the pickers count from today as they open, a table reports its
-   selection's ids again on new data, plain keys yield to controls and dialogs, and bad data shows `—`.
+   selection's ids again on new data, plain keys yield to controls and dialogs, and bad data shows `—`. 6.1b built on
+   2026-11-09: `vp run shot` uses only its own app's `vp dev`, shows its output and waits on no idle network,
+   `check-full` checks the fixtures and builds, `sync` removes only what it retired, and the example passes its check.
 2. **6.2 Gates that see.** Three branches at once, so that every later step is judged by them:
    - **6.2a** (`6.2a-gallery-shots`): a screenshot of each gallery section in every theme, mode and density, compared
      with baselines in the pinned Playwright image by `vp run @basis/gallery#shots`, an axe check on each, which waits

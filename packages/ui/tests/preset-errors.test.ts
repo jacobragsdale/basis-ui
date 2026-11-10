@@ -124,32 +124,41 @@ describe("the preset's lint against display rounding in an app", () => {
   });
 });
 
-describe("the preset's lint against Vitest's browser API outside a browser-only test", () => {
-  const testProbe = new URL("probe.test.ts", probeFolder);
+/** What `vp lint` reports in packages/consumer of Vitest's browser API, on a test at `file` in the probe's folder that
+ * imports vitest-browser-react and calls `expect.element`. */
+function browserApiFindings(file: string): z.infer<typeof diagnosticSchema>[] {
+  const testProbe = new URL(file, probeFolder);
+  mkdirSync(new URL(".", testProbe), { recursive: true });
+  writeFileSync(
+    testProbe,
+    'import { render } from "vitest-browser-react";\nimport { expect, test } from "vite-plus/test";\n\ntest("x", async () => {\n  const screen = await render(null);\n  await expect.element(screen.container).toBeVisible();\n});\n',
+  );
+  const vp = new URL("node_modules/.bin/vp", consumer).pathname;
+  let output = "";
+  try {
+    output = execFileSync(vp, ["lint", "--format", "json", `.lint-probe/${file}`], {
+      cwd: consumer,
+      encoding: "utf8",
+    });
+  } catch (error) {
+    output = error instanceof Error && "stdout" in error ? String(error.stdout) : String(error);
+  }
+  const parsed: unknown = JSON.parse(output.slice(output.indexOf("{")));
+  return reportSchema
+    .parse(parsed)
+    .diagnostics.filter(({ help }) => help?.includes("*.browser.test.tsx") === true);
+}
 
-  test("refuses vitest-browser-react and expect.element in a test any run may run, naming the fix", () => {
-    writeFileSync(
-      testProbe,
-      'import { render } from "vitest-browser-react";\nimport { expect, test } from "vite-plus/test";\n\ntest("x", async () => {\n  const screen = await render(null);\n  await expect.element(screen.container).toBeVisible();\n});\n',
-    );
-    const vp = new URL("node_modules/.bin/vp", consumer).pathname;
-    let output = "";
-    try {
-      output = execFileSync(vp, ["lint", "--format", "json", ".lint-probe/probe.test.ts"], {
-        cwd: consumer,
-        encoding: "utf8",
-      });
-    } catch (error) {
-      output = error instanceof Error && "stdout" in error ? String(error.stdout) : String(error);
-    }
-    const parsed: unknown = JSON.parse(output.slice(output.indexOf("{")));
-    const found = reportSchema
-      .parse(parsed)
-      .diagnostics.filter(({ help }) => help?.includes("*.browser.test.tsx") === true);
-    expect(found.map(({ code }) => code).toSorted()).toStrictEqual([
-      "eslint(no-restricted-imports)",
-      "eslint(no-restricted-properties)",
-    ]);
-    expect(found[0]?.help).toContain("render, screen and userEvent from @basis/ui/testing");
-  });
+describe("the preset's lint against Vitest's browser API outside a browser-only test", () => {
+  test.each(["probe.test.ts", "src/api/probe.test.ts"])(
+    "refuses vitest-browser-react and expect.element in a test any run may run, naming the fix: %s",
+    (file) => {
+      const found = browserApiFindings(file);
+      expect(found.map(({ code }) => code).toSorted()).toStrictEqual([
+        "eslint(no-restricted-imports)",
+        "eslint(no-restricted-properties)",
+      ]);
+      expect(found[0]?.help).toContain("render, screen and userEvent from @basis/ui/testing");
+    },
+  );
 });

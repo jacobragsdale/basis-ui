@@ -88,17 +88,21 @@ function basisPreset(): BasisPreset {
     lint,
     run: {
       tasks: {
-        /* The framework's files first, then `tsc --noEmit`, which type-checks the whole app with the installed
-         * TypeScript, the generated client included, which `vp check` lints around; last, the record `vp run review`
-         * reads. Screenshot comparison in WSL waits for the visual baselines. */
+        /* The framework's files first, then the client and the fixtures against `openapi.json`, then `tsc --noEmit`,
+         * which type-checks the whole app with the installed TypeScript, the generated client included, which
+         * `vp check` lints around; then the tests and the build, which fails on what only the React Compiler or the
+         * bundler finds; last, the record `vp run review` reads. Screenshot comparison in WSL waits for the visual
+         * baselines. */
         "check-full": {
           cache: false,
           command: [
             `node "${tasksScript}" sync --check`,
             "vp run client-check",
+            `node "${tasksScript}" fixtures`,
             "tsc --noEmit",
             "vp check",
             "vp test",
+            "vp build",
             `node "${tasksScript}" checked`,
           ],
         },

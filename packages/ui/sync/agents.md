@@ -8,7 +8,7 @@ line that starts with `ERROR`, gives the reason and ends with the fix.
 
 ```sh
 vp install              # once per clone: installs dependencies and the hooks in .vite-hooks/
-vp run check-full       # the framework files, the client against openapi.json, tsc, vp check, vp test
+vp run check-full       # the framework files, the client and fixtures against openapi.json, tsc, check, test, build
 vp test                 # the tests in headless Chromium; BASIS_TEST_DOM=node vp test runs them in a Node DOM
 vp build                # dist/, with FILE.br and FILE.gz beside each built file over 1 KB
 vp run doctor           # this machine's setup, and the fix for each problem

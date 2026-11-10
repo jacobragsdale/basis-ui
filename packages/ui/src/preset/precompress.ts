@@ -3,6 +3,7 @@
  * template's image. Brotli runs at its best quality, 11, for files under 1 MB, and at 9 for larger ones, such as
  * parallax's wasm, where 11 takes seconds for a few percent more. Every file compresses at once, on libuv's threads. */
 
+import { existsSync } from "node:fs";
 import { readdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
@@ -68,12 +69,16 @@ async function precompressFolder(outDir: string): Promise<void> {
   await Promise.all(files.map(async (file) => precompress(file)));
 }
 
-/** The plugin, for `vp build` only: after the build is written, every file in its output folder gets its .gz and .br. */
+/** The plugin, for `vp build` only: after the build is written, every file in its output folder gets its .gz and .br.
+ * A build that failed is left alone, so its own error is the one `vp build` reports, even with no output folder. */
 function precompressPlugin(): Plugin {
   let outDir = "dist";
   return {
     apply: "build",
-    async closeBundle() {
+    async closeBundle(error) {
+      if (error !== undefined || !existsSync(outDir)) {
+        return;
+      }
       await precompressFolder(outDir);
     },
     configResolved(config: ResolvedConfig) {

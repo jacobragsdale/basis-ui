@@ -3,6 +3,7 @@
  *   vp run sync [--check]      the framework's files (sync.ts)
  *   vp run doctor              the desktop's setup (doctor.ts)
  *   vp run review [BRANCH]     a pull request's summary (review.ts), and `checked`, check-full's last step
+ *   fixtures                   check-full's check of the fixtures in fixtures/ (fixture-files.ts)
  *   vp run docs [PAGE]         the installed version's docs (docs.ts)
  *   vp run upgrade [VERSION]   a new @basis/ui, synced and checked (upgrade.ts)
  *
@@ -12,6 +13,7 @@
 
 import { docs } from "./docs.ts";
 import { doctor } from "./doctor.ts";
+import { checkFixtures } from "./fixture-files.ts";
 import { recordCheck, review } from "./review.ts";
 import { TaskError } from "./shot-options.ts";
 import { sync } from "./sync.ts";
@@ -23,6 +25,7 @@ const tasks: ReadonlyMap<string, Task> = new Map([
   ["checked", recordCheck],
   ["docs", docs],
   ["doctor", doctor],
+  ["fixtures", checkFixtures],
   ["review", review],
   ["sync", sync],
   ["upgrade", upgrade],

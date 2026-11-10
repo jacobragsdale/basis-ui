@@ -4,7 +4,7 @@
 
 import type { z } from "zod";
 
-import { fixtureRecordSchema } from "./record.ts";
+import { fixtureRecordSchema, holdsJwt } from "./record.ts";
 import type { FixtureRecord, FixtureSource, LoadedFixture } from "./record.ts";
 
 /** A member's place in a record, as a reader finds it: `response.body[2].year_days`. */
@@ -19,9 +19,21 @@ function placeOf(path: readonly PropertyKey[]): string {
     .join("");
 }
 
-/** Each issue as `place: message`. A union's issues are those of the member that came closest, the one with the
- * fewest, so a response with a wrong status says so rather than that it matches none of its three forms; a record
- * key's are those of the key. */
+/** Whether a union member's issues say only that the value is another kind of thing, as a string member says of an
+ * object. */
+function wrongKind(issues: readonly z.core.$ZodIssue[]): boolean {
+  return issues.every((issue) => issue.code === "invalid_type" && issue.path.length === 0);
+}
+
+/** Which of two union members' issues come closer: one of the value's kind, then the one with fewer. */
+function closer(left: readonly z.core.$ZodIssue[], right: readonly z.core.$ZodIssue[]): number {
+  return Number(wrongKind(left)) - Number(wrongKind(right)) || left.length - right.length;
+}
+
+/** Each issue as `place: message`. A union's issues are those of the member that came closest: of the members of the
+ * value's kind, the one with the fewest, so a response with a wrong status says so rather than that it matches none of
+ * its three forms, and an object with a wrong key says so rather than that it is no string; a record key's are those
+ * of the key, at the key's place, or the object's when the key holds a JWT. */
 function issueLines(
   issues: readonly z.core.$ZodIssue[],
   prefix: readonly PropertyKey[] = [],
@@ -29,11 +41,13 @@ function issueLines(
   return issues.flatMap((issue) => {
     const path = [...prefix, ...issue.path];
     if (issue.code === "invalid_union" && issue.errors.length > 0) {
-      const [closest = []] = issue.errors.toSorted((left, right) => left.length - right.length);
+      const [closest = []] = issue.errors.toSorted(closer);
       return issueLines(closest, path);
     }
     if (issue.code === "invalid_key") {
-      return issueLines(issue.issues, path);
+      // A key that holds a token is named by the object it is in, so the line does not repeat the token.
+      const key = String(path.at(-1));
+      return issueLines(issue.issues, holdsJwt(key) ? path.slice(0, -1) : path);
     }
     const place = placeOf(path);
     return [place === "" ? issue.message : `${place}: ${issue.message}`];

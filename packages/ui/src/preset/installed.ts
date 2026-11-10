@@ -46,4 +46,18 @@ async function appDependencies(root: string): Promise<ReadonlyMap<string, string
   return new Map(Object.entries({ ...devDependencies, ...dependencies }));
 }
 
-export { appDependencies, exactVersion, ignored, installedVersion, manifestSchema, versionSchema };
+/** The command that installs the Chromium Playwright `version` pins. It runs that Playwright from the feed, since it is
+ * `@basis/ui`'s dependency rather than the app's, so `vp exec playwright` finds no command in an app. */
+function chromiumInstall(version: string): string {
+  return `vp dlx playwright@${version} install chromium`;
+}
+
+export {
+  appDependencies,
+  chromiumInstall,
+  exactVersion,
+  ignored,
+  installedVersion,
+  manifestSchema,
+  versionSchema,
+};

@@ -16,9 +16,20 @@ import { TaskError } from "./shot-options.ts";
 /** The packages that release together, at one version. */
 const released = ["@basis/ui", "@basis/parallax"];
 
+/** The failure when `vp` itself could not be run, as `spawnSync` reports it. */
+function unrunnable(error: Error): TaskError {
+  return new TaskError(
+    `ERROR vp run upgrade could not run vp (${error.message}): check that Vite+'s vp is on the PATH, as vp --version shows, then run vp run upgrade again.`,
+  );
+}
+
 /** Runs `vp ARGS` in the app's root, its output the task's, and says whether it passed. */
 function vp(root: string, args: readonly string[]): boolean {
-  return spawnSync("vp", args, { cwd: root, stdio: "inherit" }).status === 0;
+  const ran = spawnSync("vp", args, { cwd: root, stdio: "inherit" });
+  if (ran.error !== undefined) {
+    throw unrunnable(ran.error);
+  }
+  return ran.status === 0;
 }
 
 /** The latest release's version, which the feed's `latest` tag names. `@basis/ui@latest` would not do: pnpm resolves
@@ -29,6 +40,9 @@ function latestRelease(root: string): string {
     encoding: "utf8",
     stdio: ["ignore", "pipe", "inherit"],
   });
+  if (asked.error !== undefined) {
+    throw unrunnable(asked.error);
+  }
   const version = asked.stdout.trim().split("\n").at(-1) ?? "";
   if (asked.status !== 0 || !exactVersion.test(version)) {
     throw new TaskError(

@@ -60,6 +60,20 @@ const lint: OxlintConfig = {
   },
   overrides: [
     {
+      /* The client layer: the app's `src/api`, which imports the generated client to re-export it, and the place a
+       * `fetch` outside the API, if an app ever needs one, belongs. The libraries' bans still hold. It comes before
+       * the tests' overrides, since the last override that matches a file sets a rule, so a test in `src/api` keeps
+       * the tests' bans. */
+      files: ["**/src/api/**"],
+      rules: {
+        "eslint/no-restricted-globals": "off",
+        "eslint/no-restricted-imports": [
+          "error",
+          { paths: bannedImports, patterns: bannedPatterns },
+        ],
+      },
+    },
+    {
       // The vitest plugin's rules, such as `vitest/require-hook`, also fire on app code, so only tests get it.
       files: ["**/*.test.ts", "**/*.test.tsx"],
       plugins: [...corePlugins, "vitest"],
@@ -95,18 +109,6 @@ const lint: OxlintConfig = {
           { paths: bannedImports, patterns: [...bannedPatterns, generatedImports] },
         ],
         "eslint/no-restricted-properties": "off",
-      },
-    },
-    {
-      /* The client layer: the app's `src/api`, which imports the generated client to re-export it, and the place a
-       * `fetch` outside the API, if an app ever needs one, belongs. The libraries' bans still hold. */
-      files: ["**/src/api/**"],
-      rules: {
-        "eslint/no-restricted-globals": "off",
-        "eslint/no-restricted-imports": [
-          "error",
-          { paths: bannedImports, patterns: bannedPatterns },
-        ],
       },
     },
     {

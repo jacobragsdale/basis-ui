@@ -18,6 +18,8 @@ import { fileURLToPath } from "node:url";
 
 import { afterEach, beforeEach, describe, expect, test } from "vite-plus/test";
 
+import { planSync, syncProblems, syncWrite } from "#preset/sync.ts";
+
 const packageRoot = fileURLToPath(new URL("..", import.meta.url));
 const script = path.join(packageRoot, "src/preset/tasks.ts");
 const template = path.join(packageRoot, "../create/templates/app");
@@ -27,6 +29,10 @@ interface Run {
   readonly stdout: string;
   readonly stderr: string;
 }
+
+/** The line every framework file opens with, but CLAUDE.md, and AGENTS.md, whose block has markers of its own. */
+const header =
+  "# This file is managed by basis-ui: `vp run sync` rewrites it from the installed @basis/ui, and `vp run check-full` fails when it differs.";
 
 /** The environment without git's own variables, which a commit hook sets. */
 const environment = Object.fromEntries(
@@ -87,7 +93,7 @@ describe("vp run sync", () => {
     expect(run("sync").status).toBe(0);
     expect(read("CLAUDE.md")).toBe("@AGENTS.md\n");
     for (const file of ["Dockerfile", "Caddyfile", ".gitattributes", ".vite-hooks/pre-commit"]) {
-      expect(read(file).split("\n", 1)[0]).toContain("managed by basis-ui");
+      expect(read(file).split("\n", 1)[0]).toBe(header);
     }
     expect(read(".claude/skills/drive-the-app/SKILL.md")).toBe(
       read(".agents/skills/drive-the-app/SKILL.md"),
@@ -95,23 +101,56 @@ describe("vp run sync", () => {
     expect(run("sync", "--check")).toMatchObject({ status: 0 });
   });
 
-  test("--check fails with one line ending in the fix for each edited, missing or retired file", () => {
+  test("--check fails with one line ending in the fix for each edited or missing file", () => {
     run("sync");
     write("Caddyfile", `${read("Caddyfile")}# a change of the app's own\n`);
     rmSync(path.join(app, ".vite-hooks/pre-push"));
-    write(".vite-hooks/pre-rebase", "# managed by basis-ui: an earlier version's hook\n");
     const check = run("sync", "--check");
     expect(check.status).toBe(1);
     expect(check.stderr.trimEnd().split("\n")).toStrictEqual([
       "ERROR Caddyfile differs from what @basis/ui 0.0.0 writes: run vp run sync to put it back, since a change it needs belongs in @basis/ui.",
       "ERROR .vite-hooks/pre-push is missing: run vp run sync to write it.",
-      "ERROR .vite-hooks/pre-rebase carries basis-ui's marker, and @basis/ui 0.0.0 no longer writes it: run vp run sync to remove it.",
     ]);
-    expect(run("sync").stdout).toBe(
-      "Wrote Caddyfile.\nWrote .vite-hooks/pre-push.\nRemoved .vite-hooks/pre-rebase.\n",
-    );
-    expect(existsSync(path.join(app, ".vite-hooks/pre-rebase"))).toBe(false);
+    expect(run("sync").stdout).toBe("Wrote Caddyfile.\nWrote .vite-hooks/pre-push.\n");
     expect(run("sync", "--check").status).toBe(0);
+  });
+
+  test("keeps an app's own file that quotes basis-ui's marker", () => {
+    run("sync");
+    write(
+      "README.md",
+      "# Positions\n\nIts Dockerfile is managed by basis-ui: vp run sync rewrites it.\n",
+    );
+    write(".vite-hooks/post-merge", `${header}\nvp install\n`);
+    expect(run("sync", "--check")).toMatchObject({ status: 0 });
+    expect(run("sync").stdout).toBe("The framework's files match @basis/ui 0.0.0.\n");
+    expect(existsSync(path.join(app, "README.md"))).toBe(true);
+    expect(existsSync(path.join(app, ".vite-hooks/post-merge"))).toBe(true);
+  });
+
+  test("removes a file an earlier version wrote, by its path on the list of retired ones and its exact header", async () => {
+    run("sync");
+    const retired = [
+      ".vite-hooks/pre-rebase",
+      ".vite-hooks/post-checkout",
+      ".agents/skills/old/SKILL.md",
+    ];
+    write(".vite-hooks/pre-rebase", `${header}\nvp check\n`);
+    write(
+      ".vite-hooks/post-checkout",
+      "# The app's own hook, which once was basis-ui's.\nvp install\n",
+    );
+    write(".agents/skills/old/SKILL.md", read(".agents/skills/drive-the-app/SKILL.md"));
+    await expect(syncProblems(app, await planSync(app, retired))).resolves.toStrictEqual([
+      "ERROR .agents/skills/old/SKILL.md carries basis-ui's header, and @basis/ui 0.0.0 no longer writes it: run vp run sync to remove it.",
+      "ERROR .vite-hooks/pre-rebase carries basis-ui's header, and @basis/ui 0.0.0 no longer writes it: run vp run sync to remove it.",
+    ]);
+    expect(await syncWrite(app, retired)).toBe(
+      "Removed .agents/skills/old/SKILL.md.\nRemoved .vite-hooks/pre-rebase.",
+    );
+    expect(existsSync(path.join(app, ".agents/skills/old"))).toBe(false);
+    expect(existsSync(path.join(app, ".vite-hooks/pre-rebase"))).toBe(false);
+    expect(existsSync(path.join(app, ".vite-hooks/post-checkout"))).toBe(true);
   });
 
   test("keeps the app's own AGENTS.md, rewriting only basis-ui's block", () => {
@@ -191,6 +230,25 @@ describe("vp run review", () => {
 });
 
 describe("vp run doctor", () => {
+  test("finds Vite+'s hooks at the clone's top, for an app in a folder of the repo", () => {
+    git("init", "--quiet");
+    git("config", "core.hooksPath", ".vite-hooks/_");
+    write(".vite-hooks/_/h", "#!/bin/sh\n");
+    mkdirSync(path.join(app, "packages/web"), { recursive: true });
+    const result = runIn(path.join(app, "packages/web"), "doctor");
+    expect(result.stdout).toContain("ok git runs the hooks in .vite-hooks/\n");
+  });
+
+  test("names the one fix when git is set to Vite+'s hooks but the clone lacks them, as a fresh one does", () => {
+    git("init", "--quiet");
+    git("config", "core.hooksPath", ".vite-hooks/_");
+    const result = run("doctor");
+    expect(result.stderr).toContain(
+      `ERROR git runs its hooks from .vite-hooks/_, but ${path.join(git("rev-parse", "--show-toplevel"), ".vite-hooks/_")} holds no Vite+ hooks, as in a clone or worktree vp install has not run in: run vp install, which runs vp config.\n`,
+    );
+    expect(result.stderr).not.toContain("not Vite+'s");
+  });
+
   test("outside a git clone, fails with the fix for each problem", () => {
     const result = run("doctor");
     expect(result.status).toBe(1);
@@ -208,12 +266,23 @@ describe("vp run upgrade", () => {
       /^ERROR vp run upgrade takes one version at most, written exactly: .+\.\n$/u,
     );
   });
+
+  test("names the fix when vp cannot be run", () => {
+    const result = spawnSync(process.execPath, [script, "upgrade"], {
+      cwd: app,
+      encoding: "utf8",
+      env: { ...environment, PATH: path.join(app, "no-bin") },
+    });
+    expect(result.stderr).toBe(
+      "ERROR vp run upgrade could not run vp (spawnSync vp ENOENT): check that Vite+'s vp is on the PATH, as vp --version shows, then run vp run upgrade again.\n",
+    );
+  });
 });
 
 describe("a task @basis/ui does not have", () => {
   test("names the ones it has", () => {
     expect(run("deploy").stderr).toBe(
-      "ERROR deploy is no task of @basis/ui's: run one of checked, docs, doctor, review, sync, upgrade with vp run.\n",
+      "ERROR deploy is no task of @basis/ui's: run one of checked, docs, doctor, fixtures, review, sync, upgrade with vp run.\n",
     );
   });
 });

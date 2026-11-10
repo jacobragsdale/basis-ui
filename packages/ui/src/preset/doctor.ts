@@ -16,6 +16,7 @@ import { z } from "zod";
 import { git } from "./git.ts";
 import {
   appDependencies,
+  chromiumInstall,
   exactVersion,
   ignored,
   installedVersion,
@@ -64,12 +65,20 @@ function gitFindings(root: string): readonly Finding[] {
     : [passed(version), passed(`a git clone at ${top}`)];
 }
 
-/** Whether git runs the hooks in `.vite-hooks/`. */
+/** Whether git runs the hooks in `.vite-hooks/`: set to Vite+'s folder, which git reads from the clone's top, and
+ * that folder holding Vite+'s dispatcher, which `vp config` writes and git does not keep, so a fresh clone or worktree
+ * lacks it until `vp install` runs. */
 function hooksFinding(root: string): Finding {
   const configured = git(root, ["config", "core.hooksPath"]);
-  if (configured !== hooksPath || !existsSync(path.join(root, hooksPath, "h"))) {
+  if (configured !== hooksPath) {
     return failed(
       `git runs its hooks from ${configured ?? "its own folder"}, not Vite+'s ${hooksPath}, so the commit and push hooks never run: run vp config.`,
+    );
+  }
+  const folder = path.join(git(root, ["rev-parse", "--show-toplevel"]) ?? root, hooksPath);
+  if (!existsSync(path.join(folder, "h"))) {
+    return failed(
+      `git runs its hooks from ${hooksPath}, but ${folder} holds no Vite+ hooks, as in a clone or worktree vp install has not run in: run vp install, which runs vp config.`,
     );
   }
   return passed(`git runs the hooks in .vite-hooks/`);
@@ -126,7 +135,7 @@ async function chromiumFinding(): Promise<Finding> {
   return existsSync(executable)
     ? passed(`Playwright ${version}'s Chromium, for vp test and vp run shot`)
     : failed(
-        `Playwright ${version}'s Chromium is not installed, and vp test and vp run shot run in it: run vp dlx playwright@${version} install chromium.`,
+        `Playwright ${version}'s Chromium is not installed, and vp test and vp run shot run in it: run ${chromiumInstall(version)}.`,
       );
 }
 

@@ -3,7 +3,7 @@
  * generated handlers (src/fixtures/handlers.ts). The plugin
  *
  * - serves `vp dev` on a port of the app's own, derived from its folder, so apps in parallel git worktrees never
- *   collide and each keeps its address from one run to the next;
+ *   collide and each keeps its address from one run to the next, and names the app's root at `rootPath`;
  * - reads and checks the fixture files, prints an `ERROR` line for each one wrong, and reloads the page when one
  *   changes;
  * - starts fixture mode from index.html before the app's entry module runs, so an app writes no code for it.
@@ -29,6 +29,10 @@ const resolvedFixturesModule = `\0${fixturesModule}`;
 
 /** orval's MSW handlers in an app, from its root. */
 const generatedHandlersFile = `${generatedFolder}/client.msw.ts`;
+
+/** Where `vp dev` answers with the app's root, so `vp run shot` can tell the app's own `vp dev` on its port from
+ * another app's, which Vite moved there when its own port was taken, or from another program. */
+const rootPath = "/__basis/root";
 
 /** `vp dev`'s ports: 10,000 of them from 20,000, below every operating system's ephemeral range. */
 const firstPort = 20_000;
@@ -199,8 +203,15 @@ function fixtureModePlugin({ liveApi }: FixtureModePluginOptions): Plugin {
       state.logger = config.logger;
     },
     configureServer: (server) => {
+      if (state.test) {
+        return;
+      }
+      server.middlewares.use(rootPath, (_request, response) => {
+        response.setHeader("content-type", "text/plain; charset=utf-8");
+        response.end(state.root);
+      });
       const on = fixtureModeOn(state.root, liveApi);
-      if (state.test || (!on && liveApi === undefined)) {
+      if (!on && liveApi === undefined) {
         return;
       }
       printBanner(
@@ -227,5 +238,5 @@ function fixtureModePlugin({ liveApi }: FixtureModePluginOptions): Plugin {
   };
 }
 
-export { devPort, fixtureModePlugin, withFixtureMode };
+export { devPort, fixtureModePlugin, rootPath, withFixtureMode };
 export type { FixtureModePluginOptions };

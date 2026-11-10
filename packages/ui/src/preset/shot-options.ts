@@ -12,7 +12,7 @@ class TaskError extends Error {
 const usage =
   "run vp run shot ROUTE, such as vp run shot /positions, with --dark, --comfortable, --width N, --height N or --wait MS as needed";
 
-/** How long after the network is quiet the page settles before its picture is taken, unless `--wait` says. */
+/** How long the page settles, once loaded and its network quiet, before its picture is taken, unless `--wait` says. */
 const settleMs = 500;
 const defaultWidth = 1280;
 const defaultHeight = 800;
@@ -28,10 +28,11 @@ interface ShotOptions {
   readonly wait: number;
 }
 
-/** A whole number from `--NAME`'s value, or a failure that names it. */
+/** A whole number from `--NAME`'s value, at least 1, or 0 for `--wait`, or a failure that names it. */
 function count(name: string, value: string | undefined): number {
   const parsed = Number(value);
-  if (value === undefined || !Number.isInteger(parsed) || parsed <= 0) {
+  const least = name === "wait" ? 0 : 1;
+  if (value === undefined || value.trim() === "" || !Number.isInteger(parsed) || parsed < least) {
     throw new TaskError(
       `ERROR --${name} takes a whole number of pixels or milliseconds: ${usage}.`,
     );
@@ -85,10 +86,14 @@ function optionsOf(args: readonly string[]): ShotOptions {
   return optionsFrom(read);
 }
 
-/** The files' name: the route's words joined by dashes, `home` for /. */
+/** The files' name: the route's words joined by dashes, or by an underscore where a slash parts them, so /a/b and
+ * /a-b differ; `home` for /. */
 function nameOf(route: string): string {
-  const words = route.toLowerCase().match(/[a-z0-9]+/gu) ?? [];
-  return words.length === 0 ? "home" : words.join("-");
+  const name = route
+    .toLowerCase()
+    .replaceAll(/[^a-z0-9]+/gu, (gap) => (gap.includes("/") ? "_" : "-"))
+    .replaceAll(/^[_-]+|[_-]+$/gu, "");
+  return name === "" ? "home" : name;
 }
 
 export { TaskError, nameOf, optionsOf };

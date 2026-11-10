@@ -1,13 +1,14 @@
 /* The framework's files, which every basis-ui app shares and `vp run sync` writes from the installed `@basis/ui`:
  *
  *   vp run sync           writes each one that differs, and removes each one an earlier version wrote and this one
- *                         does not
+ *                         does not, at a path `retiredPaths` names, while it opens as basis-ui wrote it
  *   vp run sync --check   fails with one ERROR line for each one that differs, which `vp run check-full` runs first
  *
- * They are the files in this package's `sync/` folder, at the paths `framework` names, each opening with a comment
- * that says basis-ui manages it; `CLAUDE.md`, which holds only `@AGENTS.md`, as basis writes it; each skill in this
- * package's `skills/`, at `.agents/skills/NAME/` and its copy at `.claude/skills/NAME/`, the marker first in its front
- * matter's `metadata`; and basis-ui's block of `AGENTS.md`, between its markers, the rest of the file the app's own.
+ * They are the files in this package's `sync/` folder, at the paths `framework` names, each opening with `header`, the
+ * line that says basis-ui manages it, but `pnpm-workspace.yaml` in an app that is a package of a larger pnpm
+ * workspace; `CLAUDE.md`, which holds only `@AGENTS.md`, as basis writes it; each skill in this package's `skills/`,
+ * at `.agents/skills/NAME/` and its copy at `.claude/skills/NAME/`, the marker first in its front matter's
+ * `metadata`; and basis-ui's block of `AGENTS.md`, between its markers, the rest of the file the app's own.
  * Every file is compared byte for byte, so a line ending other than LF is a difference too. */
 
 import { mkdir, readFile, readdir, rm, rmdir, writeFile } from "node:fs/promises";
@@ -16,11 +17,13 @@ import path from "node:path";
 
 import { ignored } from "./installed.ts";
 import { TaskError } from "./shot-options.ts";
+import { inWorkspace, workspaceFile } from "./workspace.ts";
 
-/** What every file `vp run sync` writes carries in its first lines, and what marks one an earlier version wrote. */
+/** The line every framework file opens with, which marks one `vp run sync` wrote. */
+const header =
+  "# This file is managed by basis-ui: `vp run sync` rewrites it from the installed @basis/ui, and `vp run check-full` fails when it differs.";
+/** What a skill's front matter says in its `metadata`, the marker for a skill. */
 const marker = "managed by basis-ui";
-/** How many of a file's first lines may carry the marker: a skill's is in its front matter's `metadata`. */
-const markerLines = 4;
 
 const blockBegin = "<!-- basis-ui:begin (written by vp run sync; edit outside the markers) -->";
 const blockEnd = "<!-- basis-ui:end -->";
@@ -43,8 +46,13 @@ const framework: readonly { readonly path: string; readonly source: string }[] =
   { path: ".vite-hooks/pre-push", source: "pre-push" },
 ];
 
-/** The folders whose files an earlier version may have written: the app's root, the hooks' folder, and each skill's. */
+/** The folders the skills go in: `.agents/skills/NAME/`, and its copy for Claude Code. */
 const skillFolders = [".agents/skills", ".claude/skills"];
+
+/** Every path an earlier version wrote and this one does not, `/`-separated from the app's root, which `vp run sync`
+ * removes while it holds the file as basis-ui wrote it. A file that leaves `framework`, or a skill that leaves
+ * `skills/`, joins this list in the same change, its skill at both of its paths. */
+const retiredPaths: readonly string[] = [];
 
 /** A file `vp run sync` writes, by its path from the app's root, `/`-separated, and its text. */
 interface Wanted {
@@ -134,53 +142,33 @@ function withBlock(current: string | undefined, wanted: string): string {
   return `${current.slice(0, first.index)}${wanted}${after}`;
 }
 
-/** Whether `file` is one `vp run sync` wrote, by the marker in its first lines. */
-async function carriesMarker(file: string): Promise<boolean> {
-  const text = await textOf(file);
-  return text !== undefined && text.split("\n", markerLines).some((line) => line.includes(marker));
+/** Whether `text` opens as a file `vp run sync` wrote: with the framework's header, or a skill's stamped front matter. */
+function opensAsWritten(text: string): boolean {
+  return text.startsWith(`${header}\n`) || text.startsWith(`${frontMatterStart}${skillStamp}`);
 }
 
-/** The files directly in `folder`, by their path from `root`, `/`-separated. */
-async function filesIn(root: string, folder: string): Promise<readonly string[]> {
-  const entries = await readdir(path.join(root, folder), { withFileTypes: true }).catch(() => []);
-  return entries
-    .filter((entry) => entry.isFile())
-    .map((entry) => path.posix.join(folder, entry.name));
+/** The retired paths whose file the app holds as basis-ui wrote it. An app's own file at one of them, or anywhere
+ * else, stays, whatever it says of basis-ui. */
+async function retiredFiles(root: string, retired: readonly string[]): Promise<readonly string[]> {
+  const texts = await Promise.all(retired.map(async (file) => textOf(path.join(root, file))));
+  return retired
+    .filter((_file, index) => {
+      const text = texts[index];
+      return text !== undefined && opensAsWritten(text);
+    })
+    .toSorted();
 }
 
-/** Every file an earlier version may have written: in the app's root, `.vite-hooks/`, and each skill's folder. */
-async function candidates(root: string): Promise<readonly string[]> {
-  const skillNames = await Promise.all(
-    skillFolders.map(async (folder) => {
-      const entries = await readdir(path.join(root, folder), { withFileTypes: true }).catch(
-        () => [],
-      );
-      return entries
-        .filter((entry) => entry.isDirectory())
-        .map((entry) => path.posix.join(folder, entry.name));
-    }),
-  );
-  const folders = ["", ".vite-hooks", ...skillNames.flat()];
-  const files = await Promise.all(folders.map(async (folder) => filesIn(root, folder)));
-  return files.flat();
-}
-
-/** The files carrying the marker that the installed version no longer writes. */
-async function retiredFiles(root: string, wanted: readonly Wanted[]): Promise<readonly string[]> {
-  const paths = new Set(wanted.map((file) => file.path));
-  const all = await candidates(root);
-  const found = all.filter((file) => !paths.has(file));
-  const marked = await Promise.all(found.map(async (file) => carriesMarker(path.join(root, file))));
-  return found.filter((_file, index) => marked[index] === true).toSorted();
-}
-
-/** What the installed `@basis/ui` writes in the app at `root`, and what it removes. */
-async function planSync(root: string): Promise<SyncPlan> {
+/** What the installed `@basis/ui` writes in the app at `root`, and what it removes of `retired`. */
+async function planSync(root: string, retired = retiredPaths): Promise<SyncPlan> {
+  const member = await inWorkspace(root);
   const files = await Promise.all(
-    framework.map(async (file) => ({
-      path: file.path,
-      text: await shipped(`sync/${file.source}`),
-    })),
+    framework
+      .filter((file) => !member || file.path !== workspaceFile)
+      .map(async (file) => ({
+        path: file.path,
+        text: await shipped(`sync/${file.source}`),
+      })),
   );
   const agents = withBlock(await textOf(path.join(root, agentsFile)), await block());
   const wanted = [
@@ -189,7 +177,7 @@ async function planSync(root: string): Promise<SyncPlan> {
     ...(await skills()),
     { path: agentsFile, text: agents },
   ];
-  return { retired: await retiredFiles(root, wanted), version: await version(), wanted };
+  return { retired: await retiredFiles(root, retired), version: await version(), wanted };
 }
 
 /** The one line for `AGENTS.md`, when it differs. */
@@ -233,7 +221,7 @@ async function syncProblems(root: string, plan: SyncPlan): Promise<readonly stri
   const differing = files.map(({ current, file }) => problem(file.path, current, plan.version));
   const retired = plan.retired.map(
     (file) =>
-      `ERROR ${file} carries basis-ui's marker, and @basis/ui ${plan.version} no longer writes it: run vp run sync to remove it.`,
+      `ERROR ${file} carries basis-ui's header, and @basis/ui ${plan.version} no longer writes it: run vp run sync to remove it.`,
   );
   return [...differing, ...retired];
 }
@@ -248,8 +236,8 @@ async function remove(root: string, file: string): Promise<void> {
 }
 
 /** Writes each framework file that differs, removes each retired one, and says what it did. */
-async function syncWrite(root: string): Promise<string> {
-  const plan = await planSync(root);
+async function syncWrite(root: string, retired = retiredPaths): Promise<string> {
+  const plan = await planSync(root, retired);
   const writing = await stale(root, plan);
   await Promise.all(
     writing.map(async ({ file }) => {
@@ -291,5 +279,5 @@ async function installedUi(): Promise<{ readonly root: string; readonly version:
   return { root: packageRoot, version: await version() };
 }
 
-export { installedUi, planSync, sync, syncProblems };
+export { installedUi, planSync, sync, syncProblems, syncWrite };
 export type { SyncPlan, Wanted };

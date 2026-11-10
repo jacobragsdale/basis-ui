@@ -32,18 +32,18 @@ behaves alike, and a fix reaches all of them in one upgrade.
 
 ## What a developer sees
 
-| Command                         | What it does                                                                                                                          |
-| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| `vp check`                      | Formatting, linting and type checking together                                                                                        |
-| `vp test`                       | The Vitest suites, in Vitest's browser mode with the Playwright provider                                                              |
-| `vp dev`                        | The app in fixture mode, on a free port per git worktree, with no backend                                                             |
-| `vp run check-full`             | `sync --check`, `client-check`, `tsc --noEmit` on the whole app, `check` and `test`; screenshot comparison in WSL, not yet            |
-| `vp run shot ROUTE`             | A screenshot of a page, its accessibility tree and its console errors                                                                 |
-| `vp run client-pull`            | Copies the API's `openapi.json` from the API repo at a tag, or from a deployed API, and regenerates the client                        |
-| `vp run client-check`           | Whether the generated client still matches the repo's `openapi.json`: a task of its own, since an app cannot add a step to `vp check` |
-| `vp run review`                 | A pull request's summary: the client's diff, the versions, and the commit that was checked; screenshot diffs, not yet                 |
-| `vp run sync`, `vp run upgrade` | Rewrite the framework's files from the installed version; update `@basis/ui`, sync and check in one step                              |
-| `vp run doctor`, `vp run docs`  | Check the desktop's setup and print the fix for each problem; print the docs for the installed version                                |
+| Command                         | What it does                                                                                                                                                             |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `vp check`                      | Formatting, linting and type checking together                                                                                                                           |
+| `vp test`                       | The Vitest suites, in Vitest's browser mode with the Playwright provider                                                                                                 |
+| `vp dev`                        | The app in fixture mode, on a free port per git worktree, with no backend                                                                                                |
+| `vp run check-full`             | `sync --check`, `client-check`, the fixtures against `openapi.json`, `tsc --noEmit` on the whole app, `check`, `test` and `build`; screenshot comparison in WSL, not yet |
+| `vp run shot ROUTE`             | A screenshot of a page, its accessibility tree and its console errors                                                                                                    |
+| `vp run client-pull`            | Copies the API's `openapi.json` from the API repo at a tag, or from a deployed API, and regenerates the client                                                           |
+| `vp run client-check`           | Whether the generated client still matches the repo's `openapi.json`: a task of its own, since an app cannot add a step to `vp check`                                    |
+| `vp run review`                 | A pull request's summary: the client's diff, the versions, and the commit that was checked; screenshot diffs, not yet                                                    |
+| `vp run sync`, `vp run upgrade` | Rewrite the framework's files from the installed version; update `@basis/ui`, sync and check in one step                                                                 |
+| `vp run doctor`, `vp run docs`  | Check the desktop's setup and print the fix for each problem; print the docs for the installed version                                                                   |
 
 Screenshot comparison in `check-full` and screenshot diffs in `review` wait for baselines: the gallery's in roadmap
 step 6.2a, an app's in step 6.8.5.
@@ -468,8 +468,8 @@ path without `/api`, its query and its body, and the response's status, the head
 as JSON or as base64 bytes with their media type. A record never holds the bearer token: a request keeps no headers,
 and a JWT anywhere in a record is refused. A request for Arrow is answered only by a fixture, since orval's handlers
 make random bytes, and a request no source answers gets a problem that says what to add. Every file is checked against
-`openapi.json` when `vp dev` starts and when one changes, so a fixture a newer document has left behind fails with an
-`ERROR` line rather than serving an answer the API no longer gives.
+`openapi.json` when `vp dev` starts and when one changes, and each in `fixtures/` by `vp run check-full`, so a fixture a
+newer document has left behind fails with an `ERROR` line rather than serving an answer the API no longer gives.
 
 `vp dev` starts the app in fixture mode with no code in the app: the preset rewrites `index.html` to start the worker
 before the app's entry runs, and reports each answer and its source through the telemetry interface, which writes to

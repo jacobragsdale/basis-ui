@@ -29,6 +29,11 @@ describe("optionsOf", () => {
     expect(optionsOf(["/", "--compact"])).toMatchObject({ density: "compact" });
   });
 
+  test("takes --wait 0, for a page that needs no time to settle", () => {
+    expect(optionsOf(["/", "--wait", "0"])).toMatchObject({ wait: 0 });
+    expect(() => optionsOf(["/", "--width", "0"])).toThrow("ERROR --width takes a whole number");
+  });
+
   test("refuses no route, a second route, a word that is neither, and a size that is no whole number", () => {
     expect(() => optionsOf([])).toThrow("ERROR vp run shot needs a route");
     expect(() => optionsOf(["/", "/other"])).toThrow('ERROR "/other" is no route or option');
@@ -39,11 +44,15 @@ describe("optionsOf", () => {
 });
 
 describe("nameOf", () => {
-  test("names the files by the route's words", () => {
+  test("names the files by the route's words, an underscore where a slash parts them", () => {
     expect([nameOf("/"), nameOf("/settlements/new"), nameOf("/#/fixed-income?x=1")]).toStrictEqual([
       "home",
-      "settlements-new",
+      "settlements_new",
       "fixed-income-x-1",
     ]);
+  });
+
+  test("names two routes that differ only in a slash apart", () => {
+    expect(nameOf("/a/b")).not.toBe(nameOf("/a-b"));
   });
 });

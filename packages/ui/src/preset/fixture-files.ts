@@ -3,13 +3,16 @@
  * app's `openapi.json`. Each problem is one `ERROR` line that ends with its fix. */
 
 import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { stat } from "node:fs/promises";
 import path from "node:path";
 
 import { fixtureFolders, fixtureProblem, loadFixtureFiles } from "#fixtures/load.ts";
 import type { FixtureSource, LoadedFixture } from "#fixtures/record.ts";
 
 import { documentProblems, operationsOf } from "./fixture-document.ts";
+import { ignored } from "./installed.ts";
 import { documentFile } from "./orval-options.ts";
+import { TaskError } from "./shot-options.ts";
 
 interface ReadFixtures {
   readonly records: readonly LoadedFixture[];
@@ -90,5 +93,28 @@ function readFixtures(
   };
 }
 
-export { readFixtures };
+/** `vp run check-full`'s check of the fixtures in git, `fixtures/`, as `vp dev` checks them, so one that a newer
+ * `openapi.json` has left behind fails the push rather than only the next `vp dev`. The records in `.fixtures/`, which
+ * git ignores and each desktop holds its own of, are `vp dev`'s to check. */
+async function checkFixtures(root: string, args: readonly string[]): Promise<string> {
+  if (args.length > 0) {
+    throw new TaskError(
+      "ERROR the fixture check takes no arguments: run it as vp run check-full does, with none.",
+    );
+  }
+  const { fixtures, problems } = readFixtures(root, { records: false });
+  if (problems.length > 0) {
+    throw new TaskError(problems.join("\n"));
+  }
+  const counted =
+    fixtures.length === 1
+      ? "The 1 fixture in fixtures/ is a record"
+      : `The ${String(fixtures.length)} fixtures in fixtures/ are records`;
+  const document = await stat(path.join(root, documentFile)).catch(ignored);
+  return document === null
+    ? `${counted} in the fixture format; this app has no ${documentFile} to check them against.`
+    : `${counted} ${documentFile} answers.`;
+}
+
+export { checkFixtures, readFixtures };
 export type { ReadFixtures };

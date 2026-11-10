@@ -56,7 +56,7 @@ To set the app up:
 2. Install the Chromium that the preset's Playwright pins:
 
    ```sh
-   vpx playwright@1.65.0 install chromium
+   vp dlx playwright@1.65.0 install chromium
    ```
 
 3. Make `src/styles.css` this one line, and import it from the entry module, `src/main.tsx`, as `import "./styles.css";`:
@@ -197,8 +197,11 @@ as in `BASIS_API_URL=http://127.0.0.1:8000 vp dev`: the preset sends `/api` to i
 ingress does, `fakeSignIn()`'s tokens sign the user in, and fixture mode is off.
 
 `vp run client-check`, which `vp run check-full` runs first, fails when `src/api/generated` is not what `openapi.json`
-generates, one line for each file. Its fix is `vp run client-pull`. `check-full` then type-checks the whole app with
-the installed TypeScript's `tsc --noEmit`, the generated client included, since `vp check` lints around it. `@basis/ui/orval` exports `basisOrval()`, the
+generates, one line for each file. Its fix is `vp run client-pull`, which keeps the repo's `openapi.json` when the
+client cannot be generated from the copy it pulls. `check-full` then checks each fixture in `fixtures/` against
+`openapi.json`, as `vp dev` does, so one the document has left behind fails, type-checks the whole app with the
+installed TypeScript's `tsc --noEmit`, the generated client included, since `vp check` lints around it, and, after
+`vp check` and `vp test`, runs `vp build`. `@basis/ui/orval` exports `basisOrval()`, the
 configuration both tasks use, from spike 0.2: a Zod 4 schema for each model, which drops fields it does not know, a
 TanStack Query v5 hook for each operation, with every response parsed by its schema, and MSW handlers for each
 operation and status. Two settings never change: `zod.strict` stays off, since it would make every response refuse a
@@ -367,7 +370,8 @@ One file holds one exchange, as one JSON object:
 A record never holds the bearer token. A request keeps no headers; a response refuses `authorization`,
 `proxy-authorization`, `cookie` and `set-cookie`, as well as `content-type`, which is `media_type`, and the
 transport's `content-length`, `content-encoding`, `transfer-encoding`, `connection` and `keep-alive`; and no string
-anywhere in a record may hold a JWT. Every object refuses a member the table does not name.
+anywhere in a record may hold a JWT, nor may a key, the path, `operation_id`, or the bytes of `body_base64`. Every
+object refuses a member the table does not name.
 
 The format's JSON Schema ships as `@basis/ui/fixture-record.schema.json`, `schema/fixture-record.schema.json` in this
 package, and basis tests `basis records export` against it. `src/fixtures/record.ts` holds the format, as the Zod
@@ -917,14 +921,16 @@ const positionRow = z.object({
 the route: the page as `NAME.png`, its accessibility tree as `NAME.aria.yml`, and its console errors as
 `NAME.console.txt`. It uses the app's running `vp dev`, or starts one in fixture mode and stops it after. A page that
 logged errors fails the task, with the files still written. `--dark` and `--comfortable` take the other mode and density (the default is light and compact),
-`--width` and `--height` the viewport, and `--wait` the milliseconds to let the page settle after the network is
-quiet:
+`--width` and `--height` the viewport, and `--wait` the milliseconds, 0 or more, to let the page settle after it loads
+and its network is quiet, or 5 s have passed, since a page that polls is never quiet:
 
 ```sh
 vp run shot /positions --dark
 ```
 
-It needs Playwright's Chromium, which `vp exec --filter @basis/ui playwright install chromium` installs. The skill in
+It needs the Chromium that `@basis/ui`'s Playwright pins, which `vp dlx playwright@1.65.0 install chromium` installs, as
+`vp run doctor` says. It trusts only the `vp dev` that answers on the app's port with the app's own folder, and one it
+starts writes its output to the task's, so a fixture's `ERROR` line shows there. The skill in
 `skills/drive-the-app` says how an agent looks at its pages and clicks through them with Playwright CLI; the UI repo
 template copies it into each app.
 

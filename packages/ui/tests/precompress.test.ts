@@ -3,9 +3,10 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { brotliDecompressSync, gunzipSync } from "node:zlib";
 
+import { build } from "vite-plus";
 import { afterAll, beforeAll, describe, expect, test } from "vite-plus/test";
 
-import { precompressFolder } from "#preset/precompress.ts";
+import { precompressFolder, precompressPlugin } from "#preset/precompress.ts";
 
 const out = mkdtempSync(path.join(tmpdir(), "basis-precompress-"));
 const script = "export const answer = 42;\n".repeat(200);
@@ -32,5 +33,29 @@ describe(precompressFolder, () => {
   test("a file of 1 KB or less, or one compressed already, gets neither", () => {
     expect(existsSync(path.join(out, "index.html.br"))).toBe(false);
     expect(existsSync(path.join(out, "assets", "logo.png.gz"))).toBe(false);
+  });
+});
+
+describe(precompressPlugin, () => {
+  test("leaves a failed build's error alone, with no dist/ to compress", async () => {
+    const root = mkdtempSync(path.join(tmpdir(), "basis-precompress-failed-"));
+    try {
+      writeFileSync(
+        path.join(root, "index.html"),
+        '<!doctype html><title>x</title><script type="module" src="./main.js"></script>',
+      );
+      writeFileSync(path.join(root, "main.js"), "export const broken = ;\n");
+      const built = build({
+        configFile: false,
+        logLevel: "silent",
+        plugins: [precompressPlugin()],
+        root,
+      });
+      await expect(built).rejects.toThrow(/main\.js/u);
+      await expect(built).rejects.not.toThrow(/ENOENT/u);
+      expect(existsSync(path.join(root, "dist"))).toBe(false);
+    } finally {
+      rmSync(root, { force: true, recursive: true });
+    }
   });
 });

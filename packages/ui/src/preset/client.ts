@@ -199,23 +199,39 @@ function sourceOf(args: readonly string[]): { readonly source: string; readonly 
   return tag === undefined ? { source } : { source, tag };
 }
 
-/** Copies the API's document into the app's openapi.json, marked with where it came from. */
-async function copyDocument(root: string, args: readonly string[]): Promise<void> {
+/** Copies the API's document into the app's openapi.json, marked with where it came from, and returns the text the
+ * file held before, or `undefined` if there was none. */
+async function copyDocument(root: string, args: readonly string[]): Promise<string | undefined> {
   const { source, tag } = sourceOf(args);
   const text = tag === undefined ? await documentAtUrl(source) : documentAtTag(source, tag);
   const origin = tag === undefined ? source : `${source} at ${tag}`;
   const document = pinned(parseDocument(text, origin), origin);
-  writeFileSync(path.join(root, documentFile), `${JSON.stringify(document, null, 2)}\n`);
+  const file = path.join(root, documentFile);
+  const before = existsSync(file) ? await readFile(file, "utf8") : undefined;
+  writeFileSync(file, `${JSON.stringify(document, null, 2)}\n`);
+  return before;
+}
+
+/** Puts back the openapi.json the app held before a copy whose client could not be generated. */
+async function restoreDocument(root: string, before: string | undefined): Promise<void> {
+  const file = path.join(root, documentFile);
+  await (before === undefined ? rm(file, { force: true }) : writeFile(file, before));
 }
 
 async function pull(root: string, args: readonly string[]): Promise<string> {
-  if (args.length > 0) {
-    await copyDocument(root, args);
+  if (args.length === 0) {
+    await generateInto(root, path.join(root, generatedFolder));
+    return `Regenerated ${generatedFolder} from ${documentFile}.`;
   }
-  await generateInto(root, path.join(root, generatedFolder));
-  return args.length > 0
-    ? `Copied ${documentFile} and regenerated ${generatedFolder} from it.`
-    : `Regenerated ${generatedFolder} from ${documentFile}.`;
+  const before = await copyDocument(root, args);
+  try {
+    await generateInto(root, path.join(root, generatedFolder));
+  } catch (error) {
+    // The client stays the one the app's own document generated, so the two still match.
+    await restoreDocument(root, before);
+    throw error;
+  }
+  return `Copied ${documentFile} and regenerated ${generatedFolder} from it.`;
 }
 
 /** How a generated file differs from the one in the repo: `want` is what the document generates, `have` the repo's. */

@@ -11,6 +11,7 @@
     "operation_id": {
       "type": "string",
       "minLength": 1,
+      "pattern": "^(?![\\s\\S]*eyJ[A-Za-z0-9_-]*\\.eyJ[A-Za-z0-9_-]*\\.)",
       "description": "The operation's id in the API's document, such as bond, which basis takes from the handler's name."
     },
     "recorded_at": {
@@ -28,14 +29,22 @@
         },
         "path": {
           "type": "string",
-          "pattern": "^\\/[^?#]*$",
+          "allOf": [
+            {
+              "pattern": "^\\/[^?#]*$"
+            },
+            {
+              "pattern": "^(?![\\s\\S]*eyJ[A-Za-z0-9_-]*\\.eyJ[A-Za-z0-9_-]*\\.)"
+            }
+          ],
           "description": "The route's path as the request's URL holds it, percent-encoded, without the /api prefix the ingress removes, such as /bonds/US91282CRF04."
         },
         "query": {
           "type": "object",
           "propertyNames": {
             "type": "string",
-            "minLength": 1
+            "minLength": 1,
+            "pattern": "^(?![\\s\\S]*eyJ[A-Za-z0-9_-]*\\.eyJ[A-Za-z0-9_-]*\\.)"
           },
           "additionalProperties": {
             "minItems": 1,
@@ -187,7 +196,8 @@
         {
           "type": "object",
           "propertyNames": {
-            "type": "string"
+            "type": "string",
+            "pattern": "^(?![\\s\\S]*eyJ[A-Za-z0-9_-]*\\.eyJ[A-Za-z0-9_-]*\\.)"
           },
           "additionalProperties": {
             "$ref": "#/$defs/JsonValue"

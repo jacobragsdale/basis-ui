@@ -84,6 +84,29 @@ describe("the fixture record format", () => {
     ]);
   });
 
+  test("refuses a JWT in a path, the operation's id or base64 bytes, as in any string", () => {
+    const refused = "holds a JWT, which a record never does: remove the token";
+    const request = { method: "GET", path: `/tokens/${token}` };
+    expect(problemsOf(conventionsRecord({ request }))).toStrictEqual([`request.path: ${refused}`]);
+    const named = problemsOf(conventionsRecord({ operation_id: token }));
+    expect(named).toStrictEqual([`operation_id: ${refused}`]);
+    const bytes = { body_base64: btoa(token), media_type: "application/octet-stream", status: 200 };
+    const sent = problemsOf(conventionsRecord({ response: bytes }));
+    expect(sent).toStrictEqual([`response.body_base64: ${refused}`]);
+  });
+
+  test("refuses a JWT in a key, naming the object rather than repeating the token", () => {
+    const refused = "has a key that holds a JWT, which a record never does: remove the token";
+    const body = { legs: [{ [token]: true }] };
+    const keyed = problemsOf(conventionsRecord({ request: { body, method: "GET", path: "/x" } }));
+    expect(keyed).toStrictEqual([`request.body.legs[0]: ${refused}`]);
+    const query = { [token]: ["1"] };
+    const queried = problemsOf(
+      conventionsRecord({ request: { method: "GET", path: "/x", query } }),
+    );
+    expect(queried).toStrictEqual([`request.query: ${refused}`]);
+  });
+
   test("names the member at fault, and the fix where there is one", () => {
     const response = (changes: Record<string, unknown>): Record<string, unknown> =>
       conventionsRecord({

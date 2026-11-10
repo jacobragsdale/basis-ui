@@ -13,7 +13,8 @@
  *   }
  *
  * A record never holds the bearer token: a request keeps no headers, a response refuses the headers that carry
- * credentials, and no string anywhere in a record may hold a JWT. */
+ * credentials, and no string anywhere in a record may hold a JWT, nor may a key, a path, the operation's id, or the
+ * bytes of a base64 body. */
 
 import { z } from "zod";
 
@@ -34,13 +35,25 @@ function described<TSchema extends z.ZodType>(
 /** A JWT: a base64url header and payload, each a JSON object and so starting `eyJ`, then the signature. */
 const jwt = String.raw`eyJ[A-Za-z0-9_-]*\.eyJ[A-Za-z0-9_-]*\.`;
 
+/** What every string of a record, and the text of its base64 bytes, must not match. */
+const noJwt = new RegExp(String.raw`^(?![\s\S]*${jwt})`, "u");
+const jwtRefused = { error: "holds a JWT, which a record never does: remove the token" };
+
 /** Text of any kind but a JWT, so that a token copied into a body or a header is refused. */
-const textSchema = described(
-  z.string().regex(new RegExp(String.raw`^(?![\s\S]*${jwt})`, "u"), {
-    error: "holds a JWT, which a record never does: remove the token",
-  }),
-  { description: "Any text that holds no JWT.", id: "Text" },
-);
+const textSchema = described(z.string().regex(noJwt, jwtRefused), {
+  description: "Any text that holds no JWT.",
+  id: "Text",
+});
+
+/** Whether `text` holds a JWT, which a record's issue lines never repeat. */
+function holdsJwt(text: string): boolean {
+  return !noJwt.test(text);
+}
+
+/** An object's key, which holds no JWT either. */
+const keySchema = z.string().regex(noJwt, {
+  error: "has a key that holds a JWT, which a record never does: remove the token",
+});
 
 type JsonValue = boolean | number | string | null | readonly JsonValue[] | JsonObject;
 interface JsonObject {
@@ -56,7 +69,7 @@ const jsonValueSchema: z.ZodType<JsonValue> = described(
       z.boolean(),
       z.null(),
       z.array(jsonValueSchema),
-      z.record(z.string(), jsonValueSchema),
+      z.record(keySchema, jsonValueSchema),
     ]),
   ),
   { description: "Any JSON value whose strings hold no JWT.", id: "JsonValue" },
@@ -65,17 +78,20 @@ const jsonValueSchema: z.ZodType<JsonValue> = described(
 const methodSchema = z.enum(["GET", "POST", "PUT", "PATCH", "DELETE"]);
 
 const pathSchema = described(
-  z.string().regex(/^\/[^?#]*$/u, {
-    error:
-      "starts with / and holds no ? or #: the query goes in query, and the path leaves out /api",
-  }),
+  z
+    .string()
+    .regex(/^\/[^?#]*$/u, {
+      error:
+        "starts with / and holds no ? or #: the query goes in query, and the path leaves out /api",
+    })
+    .regex(noJwt, jwtRefused),
   {
     description:
       "The route's path as the request's URL holds it, percent-encoded, without the /api prefix the ingress removes, such as /bonds/US91282CRF04.",
   },
 );
 
-const querySchema = described(z.record(z.string().min(1), z.array(textSchema).min(1)), {
+const querySchema = described(z.record(keySchema.min(1), z.array(textSchema).min(1)), {
   description:
     'Each query key with its values, in the order the URL gives them, such as {"security": ["A", "B"]} for ?security=A&security=B. No key, or no query, means no query.',
 });
@@ -177,7 +193,17 @@ const bodyStatusSchema = z.union([
 /** The headers that matter to a UI, which every response may hold. */
 const headers = headersSchema.optional();
 
-const base64BodySchema = described(z.base64(), {
+/** Whether `base64`'s bytes, read as text, hold no JWT: a token sent as bytes is the same token. Text that is not
+ * base64 passes here, since `z.base64()` refuses it already. */
+function bytesHoldNoJwt(base64: string): boolean {
+  try {
+    return noJwt.test(atob(base64));
+  } catch {
+    return true;
+  }
+}
+
+const base64BodySchema = described(z.base64().refine(bytesHoldNoJwt, jwtRefused), {
   description:
     "The body's bytes in base64, as RFC 4648 section 4 writes them, such as an Arrow IPC stream.",
 });
@@ -208,7 +234,7 @@ const formatSchema = z.literal(fixtureFormat, {
   error: `is "${fixtureFormat}", the only format this @basis/ui reads`,
 });
 
-const operationIdSchema = described(z.string().min(1), {
+const operationIdSchema = described(z.string().min(1).regex(noJwt, jwtRefused), {
   description:
     "The operation's id in the API's document, such as bond, which basis takes from the handler's name.",
 });
@@ -260,7 +286,7 @@ function fixtureRecordJsonSchema(): Record<string, unknown> {
   };
 }
 
-export { fixtureFormat, fixtureRecordJsonSchema, fixtureRecordSchema };
+export { fixtureFormat, fixtureRecordJsonSchema, fixtureRecordSchema, holdsJwt };
 export type {
   FixtureRecord,
   FixtureRequest,

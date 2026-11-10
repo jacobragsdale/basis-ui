@@ -96,15 +96,12 @@ describe(basisPreset, () => {
     return typeof task === "object" && !Array.isArray(task) ? task.command : task;
   }
 
-  test("vp run check-full checks the framework's files and the generated client, type-checks the whole app, then the rest", () => {
-    const [drift, ...steps] = z.array(z.string()).parse(commandOf("check-full"));
+  test("vp run check-full checks the framework's files, the generated client and the fixtures, type-checks the whole app, then tests and builds it", () => {
+    const [drift, client, fixtures, ...steps] = z.array(z.string()).parse(commandOf("check-full"));
     expect(drift).toMatch(/^node "[^"]+" sync --check$/u);
-    expect(steps.slice(0, -1)).toStrictEqual([
-      "vp run client-check",
-      "tsc --noEmit",
-      "vp check",
-      "vp test",
-    ]);
+    expect(client).toBe("vp run client-check");
+    expect(fixtures).toMatch(/^node "[^"]+" fixtures$/u);
+    expect(steps.slice(0, -1)).toStrictEqual(["tsc --noEmit", "vp check", "vp test", "vp build"]);
     expect(steps.at(-1)).toMatch(/^node "[^"]+" checked$/u);
   });
 

@@ -11,7 +11,7 @@ import { createLogger, createServer, resolveConfig } from "vite-plus";
 import type { Plugin, ViteDevServer } from "vite-plus";
 import { afterAll, beforeAll, describe, expect, test } from "vite-plus/test";
 
-import { devPort, fixtureModePlugin, withFixtureMode } from "#preset/fixture-mode.ts";
+import { devPort, fixtureModePlugin, rootPath, withFixtureMode } from "#preset/fixture-mode.ts";
 
 import { example, makeApp, record, removeApp, writeIn } from "./fixture-app.ts";
 
@@ -209,6 +209,16 @@ describe("vp dev in fixture mode", () => {
       expect(lines.join("\n")).toContain(
         "Fixture mode: /api is answered by 1 record in .fixtures/, then 2 fixtures in fixtures/, then orval's generated handlers.",
       );
+    } finally {
+      await server.close();
+    }
+  });
+
+  test("names the app's root at its own path, so vp run shot knows whose vp dev answers on the port", async () => {
+    const { server } = await devServer();
+    try {
+      const [address = ""] = server.resolvedUrls?.local ?? [];
+      expect(await textOf(new URL(rootPath, address).href)).toBe(app);
     } finally {
       await server.close();
     }

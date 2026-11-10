@@ -64,24 +64,44 @@ function git(...args: string[]): void {
   );
 }
 
+/** Commits `document` as the API repo's openapi.json, tagged `tag`. */
+function commitDocument(document: Readonly<Record<string, unknown>>, tag: string): void {
+  writeFileSync(path.join(apiRepo, "openapi.json"), JSON.stringify(document));
+  git("add", "openapi.json");
+  git("commit", "--quiet", "--message", `The API's document at ${tag}`);
+  git("tag", tag);
+}
+
+/** A document orval cannot generate from: its one response names a schema it does not hold. */
+const missing = { $ref: "#/components/schemas/Missing" };
+const brokenDocument = {
+  info: { title: "Broken", version: "2.0.0" },
+  openapi: "3.1.0",
+  paths: {
+    "/broken": {
+      get: {
+        operationId: "broken",
+        responses: {
+          "200": { content: { "application/json": { schema: missing } }, description: "OK" },
+        },
+      },
+    },
+  },
+};
+
 beforeAll(() => {
   app = mkdtempSync(path.join(tmpdir(), "basis-ui-app-"));
   mkdirSync(path.join(app, "node_modules/@basis"), { recursive: true });
   symlinkSync(packageRoot, path.join(app, "node_modules/@basis/ui"), "junction");
   apiRepo = mkdtempSync(path.join(tmpdir(), "basis-ui-api-repo-"));
+  git("init", "--quiet");
   // The document as basis writes it in the API's repo: with basis's marker, not the example's.
   const members = Object.entries(membersOf(sampleDocument)).filter(([key]) => key !== "x-basis-ui");
-  writeFileSync(
-    path.join(apiRepo, "openapi.json"),
-    JSON.stringify({
-      "x-basis": "managed by basis: `basis sync` rewrites it",
-      ...Object.fromEntries(members),
-    }),
+  commitDocument(
+    { "x-basis": "managed by basis: `basis sync` rewrites it", ...Object.fromEntries(members) },
+    "v1.4.0",
   );
-  git("init", "--quiet");
-  git("add", "openapi.json");
-  git("commit", "--quiet", "--message", "The API's document");
-  git("tag", "v1.4.0");
+  commitDocument(brokenDocument, "v2.0.0");
 });
 
 afterAll(() => {
@@ -124,6 +144,18 @@ describe("vp run client-pull", () => {
     expect(result.stderr).toMatch(message);
     expect(result.stderr.trimEnd().split("\n")).toHaveLength(1);
     expect(result.stderr).toContain("such as vp run client-pull ../positions-api v1.4.0");
+  });
+
+  test("keeps the app's openapi.json when the client cannot be generated from the new one", () => {
+    expect(run("pull", apiRepo, "v1.4.0").status).toBe(0);
+    const before = readFileSync(path.join(app, "openapi.json"), "utf8");
+    const result = run("pull", apiRepo, "v2.0.0");
+    expect(result.status).toBe(1);
+    expect(result.stderr).toMatch(
+      /^ERROR orval could not generate the client from openapi\.json /u,
+    );
+    expect(readFileSync(path.join(app, "openapi.json"), "utf8")).toBe(before);
+    expect(run("check")).toMatchObject({ status: 0 });
   });
 
   test("names a tag the repo does not have", () => {
