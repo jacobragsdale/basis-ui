@@ -12,8 +12,23 @@ use wasm_bindgen::JsCast;
 use wasm_bindgen::closure::Closure;
 use wasm_bindgen_test::wasm_bindgen_test;
 
-/// An Arrow IPC stream of `rows` rows, as an app's API would send it.
-fn stream(rows: i64) -> Vec<u8> {
+/// An Arrow IPC stream of `rows` rows, as an app's API would send it, in the
+/// page's memory.
+fn stream(rows: i64) -> js_sys::Uint8Array {
+    js_sys::Uint8Array::from(stream_bytes(rows).as_slice())
+}
+
+/// The bytes of [`stream`], in batches of 65,536 rows.
+fn stream_bytes(rows: i64) -> Vec<u8> {
+    let batches: Vec<std::ops::Range<i64>> = (0..rows)
+        .step_by(65_536)
+        .map(|start| start..(start + 65_536).min(rows))
+        .collect();
+    stream_of(&batches)
+}
+
+/// A stream with one batch for each range of ids.
+fn stream_of(batches: &[std::ops::Range<i64>]) -> Vec<u8> {
     let schema = Arc::new(Schema::new(vec![
         Field::new("id", DataType::Int64, false),
         Field::new("fund", DataType::Utf8, false),
@@ -21,8 +36,8 @@ fn stream(rows: i64) -> Vec<u8> {
     ]));
     let mut out = Vec::new();
     let mut writer = arrow_ipc::writer::StreamWriter::try_new(&mut out, &schema).unwrap();
-    for start in (0..rows).step_by(65_536) {
-        let ids: Vec<i64> = (start..(start + 65_536).min(rows)).collect();
+    for range in batches {
+        let ids: Vec<i64> = range.clone().collect();
         let batch = RecordBatch::try_new(
             Arc::clone(&schema),
             vec![
@@ -48,12 +63,12 @@ fn a_load_past_the_row_limit_is_refused_and_one_at_it_loads() {
     let mut worker = Worker::new();
     assert_eq!(
         worker
-            .load_table("positions", stream(1_000), None, 1_000.0, None, 1_000)
+            .load_table("positions", &stream(1_000), None, 1_000.0, None, 1_000)
             .unwrap(),
         1_000
     );
     let error = worker
-        .load_table("big", stream(1_001), None, 1_000.0, None, 1_000)
+        .load_table("big", &stream(1_001), None, 1_000.0, None, 1_000)
         .unwrap_err();
     assert_eq!(
         message(error),
@@ -71,7 +86,7 @@ fn message(error: wasm_bindgen::JsError) -> String {
 fn csv_reaches_the_page_in_chunks_that_make_the_whole_file() {
     let mut worker = Worker::new();
     worker
-        .load_table("positions", stream(150_000), None, 1_000.0, None, 150_000)
+        .load_table("positions", &stream(150_000), None, 1_000.0, None, 150_000)
         .unwrap();
     let layout = r#"{"version":1,"dataset":"positions"}"#;
     let mut whole = Vec::new();
@@ -99,7 +114,7 @@ fn csv_reaches_the_page_in_chunks_that_make_the_whole_file() {
 fn excel_is_written_in_memory_up_to_its_cell_cap() {
     let mut worker = Worker::new();
     worker
-        .load_table("positions", stream(999), None, 1_000.0, None, 1_000)
+        .load_table("positions", &stream(999), None, 1_000.0, None, 1_000)
         .unwrap();
     let layout = r#"{"version":1,"dataset":"positions"}"#;
     // 1,000 rows with the header by 3 columns.
@@ -114,4 +129,57 @@ fn excel_is_written_in_memory_up_to_its_cell_cap() {
             .unwrap()
             .starts_with(b"PK")
     );
+}
+
+#[wasm_bindgen_test]
+fn a_stream_the_page_holds_loads_as_the_same_bytes_do_in_webassembly() {
+    let layout = r#"{"version":1,"dataset":"positions"}"#;
+    let csv = |worker: &Worker| {
+        let mut out = Vec::new();
+        worker.write_csv_to(layout, None, &mut out).unwrap();
+        out
+    };
+    let mut from_page = Worker::new();
+    from_page
+        .load_table(
+            "positions",
+            &stream(70_000),
+            Some("id".into()),
+            1_000.0,
+            None,
+            70_000,
+        )
+        .unwrap();
+    let mut from_memory = Worker::new();
+    from_memory
+        .load(
+            "positions",
+            &stream_bytes(70_000),
+            &parallax_wasm::Load {
+                primary_key: Some("id".into()),
+                now_micros: 1_000,
+                source_as_of_micros: None,
+                max_rows: 70_000,
+            },
+        )
+        .unwrap();
+    assert_eq!(csv(&from_page), csv(&from_memory));
+    // A reload whose second batch repeats a key of its first is refused whole,
+    // and the table keeps its first load.
+    let repeated = stream_of(&[0..65_536, 65_535..65_600]);
+    let refused = from_page
+        .load_table(
+            "positions",
+            &js_sys::Uint8Array::from(repeated.as_slice()),
+            None,
+            2_000.0,
+            None,
+            70_000,
+        )
+        .unwrap_err();
+    assert_eq!(
+        message(refused),
+        r#"positions: column id has 1 duplicate primary keys, for example ["Int64(65535)"]"#
+    );
+    assert_eq!(csv(&from_page), csv(&from_memory));
 }

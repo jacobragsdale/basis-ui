@@ -1,9 +1,9 @@
 {
-  "$comment": "Budgets for tests/perf/bench.ts, by profile, run and figure, in ms or MB as each name says. host: the build host's, which pull requests quote, set on 2026-11-09 at about twice the slowest of three full runs that day, under load averages of 1 to 10, and 1.25 times the last run's memory (docs/spikes/scale-1m.md); steps 6.3 and 6.4 tighten them toward their targets. nightly: the scheduled job's on a shared runner, plain only, its memory at 1.5 times and its times at 5 times.",
+  "$comment": "Budgets for tests/perf/bench.ts, by profile, run and figure, in ms or MB as each name says. host: the build host's, which pull requests quote, set on 2026-11-09 at about twice the slowest of three full runs that day, under load averages of 1 to 10, and 1.25 times the last run's memory (docs/spikes/scale-1m.md); steps 6.3 and 6.4 tighten them toward their targets: 6.3.1 set the trades' loads and memory at 150,000 and 1,000,000 rows the same way, from its runs of 2026-11-09. nightly: the scheduled job's on a shared runner, plain only, its memory at 1.5 times and its times at 5 times.",
   "host": {
     "trades 150000 plain": {
-      "firstRowsMs": 1200,
-      "loadedMs": 1200,
+      "firstRowsMs": 700,
+      "loadedMs": 700,
       "sortTextMs": 150,
       "toggleTextMs": 150,
       "sortNumberMs": 150,
@@ -16,14 +16,14 @@
       "drawMsPerFrame@1": 4,
       "drawMsPerFrame@1.25": 4,
       "drawMsPerFrame@1.5": 4,
-      "wasmLoadedMB": 240,
-      "wasmPeakMB": 240,
-      "rssAtRestMB": 860,
-      "rssPeakMB": 950
+      "wasmLoadedMB": 70,
+      "wasmPeakMB": 70,
+      "rssAtRestMB": 720,
+      "rssPeakMB": 830
     },
     "trades 150000 throttled": {
-      "firstRowsMs": 5000,
-      "loadedMs": 5000,
+      "firstRowsMs": 2900,
+      "loadedMs": 2900,
       "sortTextMs": 650,
       "toggleTextMs": 590,
       "sortNumberMs": 650,
@@ -36,10 +36,10 @@
       "drawMsPerFrame@1": 8,
       "drawMsPerFrame@1.25": 14,
       "drawMsPerFrame@1.5": 14,
-      "wasmLoadedMB": 240,
-      "wasmPeakMB": 240,
-      "rssAtRestMB": 870,
-      "rssPeakMB": 990
+      "wasmLoadedMB": 70,
+      "wasmPeakMB": 70,
+      "rssAtRestMB": 720,
+      "rssPeakMB": 830
     },
     "positions 150000 plain": {
       "firstRowsMs": 1600,
@@ -74,8 +74,8 @@
       "rssPeakMB": 1200
     },
     "trades 1000000 plain": {
-      "firstRowsMs": 5700,
-      "loadedMs": 5700,
+      "firstRowsMs": 1900,
+      "loadedMs": 1900,
       "sortTextMs": 1800,
       "toggleTextMs": 1800,
       "sortNumberMs": 1700,
@@ -88,14 +88,14 @@
       "drawMsPerFrame@1": 4,
       "drawMsPerFrame@1.25": 4,
       "drawMsPerFrame@1.5": 4,
-      "wasmLoadedMB": 1300,
-      "wasmPeakMB": 1300,
-      "rssAtRestMB": 1900,
-      "rssPeakMB": 2300
+      "wasmLoadedMB": 310,
+      "wasmPeakMB": 310,
+      "rssAtRestMB": 950,
+      "rssPeakMB": 1420
     },
     "trades 1000000 throttled": {
-      "firstRowsMs": 18000,
-      "loadedMs": 18000,
+      "firstRowsMs": 6800,
+      "loadedMs": 6800,
       "sortTextMs": 4400,
       "toggleTextMs": 4200,
       "sortNumberMs": 4700,
@@ -108,10 +108,10 @@
       "drawMsPerFrame@1": 8,
       "drawMsPerFrame@1.25": 14,
       "drawMsPerFrame@1.5": 15,
-      "wasmLoadedMB": 1300,
-      "wasmPeakMB": 1300,
-      "rssAtRestMB": 1900,
-      "rssPeakMB": 2300
+      "wasmLoadedMB": 310,
+      "wasmPeakMB": 310,
+      "rssAtRestMB": 950,
+      "rssPeakMB": 1420
     },
     "positions 1000000 plain": {
       "firstRowsMs": 9000,

@@ -14,8 +14,9 @@ use arrow_array::types::{
 };
 use arrow_array::{
     Array, ArrayRef, BooleanArray, Date32Array, Decimal128Array, Float64Array, Int64Array,
-    StringArray, TimestampMicrosecondArray,
+    LargeStringArray, StringArray, StringViewArray, TimestampMicrosecondArray,
 };
+use arrow_buffer::NullBuffer;
 use arrow_schema::{DataType, TimeUnit};
 
 use crate::bitmap::Bitmap;
@@ -343,13 +344,34 @@ impl Column {
         }
     }
 
+    /// Makes room for `additional` more slots without reallocating, so that a
+    /// load of a known size grows each vector once rather than by doubling.
+    pub(crate) fn reserve(&mut self, additional: usize) {
+        match &mut self.values {
+            Values::Boolean(v) => v.reserve_exact(additional),
+            Values::Int64(v) | Values::Timestamp(v) => v.reserve_exact(additional),
+            Values::Float64(v) => v.reserve_exact(additional),
+            Values::Decimal(v) => v.reserve_exact(additional),
+            Values::Utf8 { codes, .. } => codes.reserve_exact(additional),
+            Values::Date32(v) => v.reserve_exact(additional),
+        }
+        self.valid.reserve(additional);
+    }
+
     /// Appends every value of an Arrow array, converting it to this column's type.
     /// Returns how many NaNs became nulls.
+    ///
+    /// Values arrive as typed slices, appended whole where the types match; text
+    /// is interned from the array's own strings, and a dictionary-encoded array's
+    /// values once each, the first time a row uses them. A null slot holds the
+    /// placeholder [`Column::push_null`] gives it.
     ///
     /// # Errors
     ///
     /// Returns an error if the array's type does not map to this column's type, or a
-    /// timestamp has sub-microsecond precision that would be lost.
+    /// value cannot be represented without loss. The row an error names counts from
+    /// the array's start. On an error the column may hold part of the array, so a
+    /// load stages into columns of its own.
     pub(crate) fn extend_from_arrow(
         &mut self,
         name: &str,
@@ -363,18 +385,22 @@ impl Column {
                 found: array.data_type().clone(),
             });
         }
+        let start = self.len();
+        let nulls = array.nulls();
         let mut nans = 0;
-        let n = array.len();
         macro_rules! ints {
             ($t:ty) => {{
-                let a = array.as_primitive::<$t>();
                 let Values::Int64(v) = &mut self.values else {
                     unreachable!()
                 };
-                for i in 0..n {
-                    v.push(i64::from(a.value(i)));
-                    self.valid.push(a.is_valid(i));
-                }
+                v.extend(
+                    array
+                        .as_primitive::<$t>()
+                        .values()
+                        .iter()
+                        .map(|&x| i64::from(x)),
+                );
+                zero_nulls(v, start, nulls);
             }};
         }
         match array.data_type() {
@@ -383,15 +409,19 @@ impl Column {
                 let Values::Boolean(v) = &mut self.values else {
                     unreachable!()
                 };
-                for i in 0..n {
-                    v.push(a.value(i));
-                    self.valid.push(a.is_valid(i));
-                }
+                v.extend(a.values().iter());
+                zero_nulls(v, start, nulls);
             }
             DataType::Int8 => ints!(Int8Type),
             DataType::Int16 => ints!(Int16Type),
             DataType::Int32 => ints!(Int32Type),
-            DataType::Int64 => ints!(Int64Type),
+            DataType::Int64 => {
+                let Values::Int64(v) = &mut self.values else {
+                    unreachable!()
+                };
+                v.extend_from_slice(array.as_primitive::<Int64Type>().values());
+                zero_nulls(v, start, nulls);
+            }
             DataType::UInt8 => ints!(UInt8Type),
             DataType::UInt16 => ints!(UInt16Type),
             DataType::UInt32 => ints!(UInt32Type),
@@ -399,160 +429,221 @@ impl Column {
                 let Values::Float64(v) = &mut self.values else {
                     unreachable!()
                 };
-                for i in 0..n {
-                    let value = if array.data_type() == &DataType::Float32 {
-                        f64::from(array.as_primitive::<Float32Type>().value(i))
-                    } else {
-                        array.as_primitive::<Float64Type>().value(i)
-                    };
-                    let is_nan = array.is_valid(i) && value.is_nan();
-                    nans += usize::from(is_nan);
-                    v.push(if is_nan { 0.0 } else { value });
-                    self.valid.push(array.is_valid(i) && !is_nan);
+                if array.data_type() == &DataType::Float32 {
+                    let values = array.as_primitive::<Float32Type>().values();
+                    v.extend(values.iter().map(|&x| f64::from(x)));
+                } else {
+                    v.extend_from_slice(array.as_primitive::<Float64Type>().values());
                 }
+                zero_nulls(v, start, nulls);
+                self.valid.extend_from_validity(array.len(), nulls);
+                // A NaN becomes a null, counted; a null's placeholder is already 0.
+                for (i, value) in v[start..].iter_mut().enumerate() {
+                    if value.is_nan() {
+                        *value = 0.0;
+                        self.valid.set(start + i, false);
+                        nans += 1;
+                    }
+                }
+                return Ok(nans);
             }
             DataType::Decimal128(_, source_scale) => {
-                let factor = if *source_scale < 0 {
-                    10i128.pow(u32::from(source_scale.unsigned_abs()))
-                } else {
-                    1
-                };
                 let a = array.as_primitive::<Decimal128Type>();
                 let Values::Decimal(v) = &mut self.values else {
                     unreachable!()
                 };
-                for i in 0..n {
-                    let valid = a.is_valid(i);
-                    match a.value(i).checked_mul(factor) {
-                        Some(value) => v.push(value),
-                        None if !valid => v.push(0),
-                        None => {
+                if *source_scale >= 0 {
+                    v.extend_from_slice(a.values());
+                    zero_nulls(v, start, nulls);
+                } else {
+                    let factor = 10i128.pow(u32::from(source_scale.unsigned_abs()));
+                    v.reserve(a.len());
+                    for (i, &value) in a.values().iter().enumerate() {
+                        if a.is_null(i) {
+                            v.push(0);
+                            continue;
+                        }
+                        let Some(scaled) = value.checked_mul(factor) else {
                             return Err(LoadError::DecimalOverflow {
                                 column: name.to_owned(),
                                 row: i,
                                 scale: *source_scale,
                             });
-                        }
+                        };
+                        v.push(scaled);
                     }
-                    self.valid.push(valid);
                 }
             }
             DataType::Utf8
             | DataType::LargeUtf8
             | DataType::Utf8View
             | DataType::Dictionary(_, _) => {
-                let strings = arrow_cast_strings(array);
                 let Values::Utf8 { codes, dictionary } = &mut self.values else {
                     unreachable!()
                 };
-                for value in strings {
-                    match value {
-                        Some(s) => {
-                            codes.push(dictionary.intern(&s));
-                            self.valid.push(true);
-                        }
-                        None => {
-                            codes.push(0);
-                            self.valid.push(false);
-                        }
-                    }
-                }
+                extend_text(codes, dictionary, &mut self.valid, array);
+                return Ok(0);
             }
             DataType::Date32 => {
-                let a = array.as_primitive::<Date32Type>();
                 let Values::Date32(v) = &mut self.values else {
                     unreachable!()
                 };
-                for i in 0..n {
-                    v.push(a.value(i));
-                    self.valid.push(a.is_valid(i));
-                }
+                v.extend_from_slice(array.as_primitive::<Date32Type>().values());
+                zero_nulls(v, start, nulls);
             }
             DataType::Timestamp(unit, _) => {
                 let Values::Timestamp(v) = &mut self.values else {
                     unreachable!()
                 };
-                for i in 0..n {
-                    let valid = array.is_valid(i);
-                    // Seconds and milliseconds can overflow on the way to
-                    // microseconds; nanoseconds can only lose precision.
-                    let overflow = || LoadError::TimestampOverflow {
-                        column: name.to_owned(),
-                        row: i,
-                    };
-                    let micros = match unit {
-                        TimeUnit::Second => array
-                            .as_primitive::<TimestampSecondType>()
-                            .value(i)
-                            .checked_mul(1_000_000)
-                            .ok_or_else(overflow),
-                        TimeUnit::Millisecond => array
-                            .as_primitive::<TimestampMillisecondType>()
-                            .value(i)
-                            .checked_mul(1_000)
-                            .ok_or_else(overflow),
-                        TimeUnit::Microsecond => {
-                            Ok(array.as_primitive::<TimestampMicrosecondType>().value(i))
+                // Seconds and milliseconds can overflow on the way to
+                // microseconds; nanoseconds can only lose precision.
+                let overflow = |row| LoadError::TimestampOverflow {
+                    column: name.to_owned(),
+                    row,
+                };
+                match unit {
+                    TimeUnit::Microsecond => {
+                        v.extend_from_slice(
+                            array.as_primitive::<TimestampMicrosecondType>().values(),
+                        );
+                        zero_nulls(v, start, nulls);
+                    }
+                    TimeUnit::Second | TimeUnit::Millisecond => {
+                        let (values, factor) = match unit {
+                            TimeUnit::Second => (
+                                array.as_primitive::<TimestampSecondType>().values(),
+                                1_000_000,
+                            ),
+                            _ => (
+                                array.as_primitive::<TimestampMillisecondType>().values(),
+                                1_000,
+                            ),
+                        };
+                        v.reserve(values.len());
+                        for (i, &value) in values.iter().enumerate() {
+                            if array.is_null(i) {
+                                v.push(0);
+                                continue;
+                            }
+                            v.push(value.checked_mul(factor).ok_or_else(|| overflow(i))?);
                         }
-                        TimeUnit::Nanosecond => {
-                            let nanos = array.as_primitive::<TimestampNanosecondType>().value(i);
-                            if !valid || nanos % 1_000 == 0 {
-                                Ok(nanos / 1_000)
-                            } else {
-                                Err(LoadError::LossyTimestamp {
+                    }
+                    TimeUnit::Nanosecond => {
+                        let values = array.as_primitive::<TimestampNanosecondType>().values();
+                        v.reserve(values.len());
+                        for (i, &nanos) in values.iter().enumerate() {
+                            if array.is_null(i) {
+                                v.push(0);
+                                continue;
+                            }
+                            if nanos % 1_000 != 0 {
+                                return Err(LoadError::LossyTimestamp {
                                     column: name.to_owned(),
                                     row: i,
-                                })
+                                });
                             }
+                            v.push(nanos / 1_000);
                         }
-                    };
-                    match micros {
-                        Ok(m) => v.push(m),
-                        Err(_) if !valid => v.push(0),
-                        Err(error) => return Err(error),
                     }
-                    self.valid.push(valid);
                 }
             }
             _ => unreachable!("from_arrow accepted the type"),
         }
+        self.valid.extend_from_validity(array.len(), nulls);
         Ok(nans)
     }
 }
 
-/// Reads any Arrow string array, including dictionary-encoded and view arrays.
-fn arrow_cast_strings(array: &dyn Array) -> Vec<Option<String>> {
-    match array.data_type() {
-        DataType::Utf8 => array
-            .as_string::<i32>()
-            .iter()
-            .map(|s| s.map(str::to_owned))
-            .collect(),
-        DataType::LargeUtf8 => array
-            .as_string::<i64>()
-            .iter()
-            .map(|s| s.map(str::to_owned))
-            .collect(),
-        DataType::Utf8View => array
-            .as_string_view()
-            .iter()
-            .map(|s| s.map(str::to_owned))
-            .collect(),
-        DataType::Dictionary(_, _) => {
-            let dictionary = array.as_any_dictionary();
-            let values = arrow_cast_strings(dictionary.values().as_ref());
-            let keys = dictionary.normalized_keys();
-            (0..array.len())
-                .map(|i| {
-                    if array.is_valid(i) {
-                        values[keys[i]].clone()
-                    } else {
-                        None
-                    }
-                })
-                .collect()
+/// Sets the placeholder, the type's default, in each null slot from `start` on.
+fn zero_nulls<T: Default>(values: &mut [T], start: usize, nulls: Option<&NullBuffer>) {
+    let Some(nulls) = nulls.filter(|n| n.null_count() > 0) else {
+        return;
+    };
+    for (value, valid) in values[start..].iter_mut().zip(nulls.iter()) {
+        if !valid {
+            *value = T::default();
         }
-        _ => unreachable!("only string types reach here"),
+    }
+}
+
+/// The strings of an Arrow string array of any of its three layouts.
+#[derive(Clone, Copy)]
+enum Strings<'a> {
+    Utf8(&'a StringArray),
+    Large(&'a LargeStringArray),
+    View(&'a StringViewArray),
+}
+
+impl<'a> Strings<'a> {
+    fn of(array: &'a dyn Array) -> Self {
+        match array.data_type() {
+            DataType::Utf8 => Self::Utf8(array.as_string::<i32>()),
+            DataType::LargeUtf8 => Self::Large(array.as_string::<i64>()),
+            DataType::Utf8View => Self::View(array.as_string_view()),
+            _ => unreachable!("only string types reach here"),
+        }
+    }
+
+    fn is_valid(self, i: usize) -> bool {
+        match self {
+            Self::Utf8(a) => a.is_valid(i),
+            Self::Large(a) => a.is_valid(i),
+            Self::View(a) => a.is_valid(i),
+        }
+    }
+
+    fn value(self, i: usize) -> &'a str {
+        match self {
+            Self::Utf8(a) => a.value(i),
+            Self::Large(a) => a.value(i),
+            Self::View(a) => a.value(i),
+        }
+    }
+}
+
+/// A dictionary-encoded array's value that no row has used yet.
+const UNMAPPED: u32 = u32::MAX;
+
+/// Appends the codes and validity of a string or dictionary-encoded string
+/// array, interning each string from the array's own bytes. A dictionary's
+/// values are interned once each, the first time a row uses one, so codes follow
+/// the order rows first use their text, as they do for a plain string array,
+/// and a value no row uses is never interned. A row of a dictionary is null
+/// where its key is, or the value its key names; a null's code is 0.
+fn extend_text(
+    codes: &mut Vec<u32>,
+    dictionary: &mut Dictionary,
+    valid: &mut Bitmap,
+    array: &dyn Array,
+) {
+    if !matches!(array.data_type(), DataType::Dictionary(_, _)) {
+        let strings = Strings::of(array);
+        codes.extend((0..array.len()).map(|i| {
+            if strings.is_valid(i) {
+                dictionary.intern(strings.value(i))
+            } else {
+                0
+            }
+        }));
+        valid.extend_from_validity(array.len(), array.nulls());
+        return;
+    }
+    let encoded = array.as_any_dictionary();
+    let values = Strings::of(encoded.values().as_ref());
+    let keys = encoded.normalized_keys();
+    let mut mapped = vec![UNMAPPED; encoded.values().len()];
+    let start = valid.len();
+    valid.extend_ones(array.len());
+    for (i, &key) in keys.iter().enumerate() {
+        if !array.is_valid(i) || !values.is_valid(key) {
+            codes.push(0);
+            valid.set(start + i, false);
+            continue;
+        }
+        if mapped[key] == UNMAPPED {
+            mapped[key] = dictionary.intern(values.value(key));
+        }
+        codes.push(mapped[key]);
     }
 }
 
@@ -688,5 +779,112 @@ mod tests {
         let out = c.to_arrow(&[2, 1, 0]);
         let strings: Vec<Option<&str>> = out.as_string::<i32>().iter().collect();
         assert_eq!(strings, vec![Some("a"), None, Some("b")]);
+    }
+
+    /// The text of each slot, or `None` for a null.
+    fn texts(c: &Column) -> Vec<Option<String>> {
+        (0..c.len())
+            .map(|slot| match c.scalar(slot) {
+                Scalar::Utf8(text) => Some(text),
+                _ => None,
+            })
+            .collect()
+    }
+
+    #[test]
+    fn a_dictionary_interns_the_values_rows_use_once_in_the_order_rows_use_them() {
+        use arrow_array::DictionaryArray;
+        use arrow_array::types::Int8Type;
+        let mut c = Column::new(ColumnType::Utf8);
+        // "unused" is in the dictionary but no row names it, and "gone" only a
+        // null row does.
+        let values = StringArray::from(vec![
+            Some("b"),
+            Some("unused"),
+            None,
+            Some("a"),
+            Some("gone"),
+        ]);
+        let keys =
+            arrow_array::Int8Array::from(vec![Some(3), Some(0), Some(3), Some(2), None, Some(0)]);
+        let first = DictionaryArray::<Int8Type>::try_new(keys, Arc::new(values)).unwrap();
+        c.extend_from_arrow("s", &first).unwrap();
+        // The next batch's dictionary is another, as a stream may replace it.
+        let second: DictionaryArray<Int8Type> = vec!["c", "a", "c"].into_iter().collect();
+        c.extend_from_arrow("s", &second).unwrap();
+        let expected = [
+            Some("a"),
+            Some("b"),
+            Some("a"),
+            None,
+            None,
+            Some("b"),
+            Some("c"),
+            Some("a"),
+            Some("c"),
+        ];
+        assert_eq!(texts(&c), expected.map(|t| t.map(str::to_owned)));
+        let dictionary = c.dictionary().unwrap();
+        assert_eq!(dictionary.len(), 3);
+        assert_eq!(
+            (0..3).map(|code| dictionary.get(code)).collect::<Vec<_>>(),
+            ["a", "b", "c"]
+        );
+        // A plain string array interns in the same order.
+        let mut plain = Column::new(ColumnType::Utf8);
+        plain
+            .extend_from_arrow("s", &StringArray::from(expected.to_vec()))
+            .unwrap();
+        let Values::Utf8 { codes, .. } = &c.values else {
+            unreachable!()
+        };
+        let Values::Utf8 {
+            codes: plain_codes, ..
+        } = &plain.values
+        else {
+            unreachable!()
+        };
+        assert_eq!(codes, plain_codes);
+        assert_eq!(c.valid, plain.valid);
+    }
+
+    #[test]
+    fn every_string_layout_reads_the_same() {
+        let rows = vec![Some("x"), None, Some(""), Some("\u{e9}t\u{e9}"), Some("x")];
+        let mut expected = Column::new(ColumnType::Utf8);
+        expected
+            .extend_from_arrow("s", &StringArray::from(rows.clone()))
+            .unwrap();
+        let large = arrow_array::LargeStringArray::from(rows.clone());
+        let view = arrow_array::StringViewArray::from(rows);
+        for array in [&large as &dyn Array, &view] {
+            let mut c = Column::new(ColumnType::Utf8);
+            c.extend_from_arrow("s", array).unwrap();
+            assert_eq!(texts(&c), texts(&expected), "{:?}", array.data_type());
+        }
+    }
+
+    #[test]
+    fn a_null_slot_holds_the_placeholder_whatever_the_array_held() {
+        use arrow_buffer::NullBuffer;
+        let nulls = Some(NullBuffer::from(vec![true, false, true]));
+        let ints = Int64Array::new(vec![1, 99, 3].into(), nulls.clone());
+        let mut c = Column::new(ColumnType::Int64);
+        c.extend_from_arrow("i", &ints).unwrap();
+        let Values::Int64(v) = &c.values else {
+            unreachable!()
+        };
+        assert_eq!(v, &[1, 0, 3]);
+        let floats = Float64Array::new(vec![1.0, 9.5, f64::NAN].into(), nulls);
+        let mut c = Column::new(ColumnType::Float64);
+        assert_eq!(c.extend_from_arrow("f", &floats).unwrap(), 1);
+        let Values::Float64(v) = &c.values else {
+            unreachable!()
+        };
+        assert_eq!(v, &[1.0, 0.0, 0.0]);
+        assert_eq!(
+            (c.is_valid(0), c.is_valid(1), c.is_valid(2)),
+            (true, false, false)
+        );
     }
 }

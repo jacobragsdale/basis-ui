@@ -14,9 +14,10 @@ use std::io::Write;
 use std::sync::{Arc, RwLock};
 
 use parallax_engine::format::Formatter;
+use parallax_engine::{LoadError, Staging};
 use parallax_engine::{Table, TableOptions};
 use parallax_export::{ExportSource, ReadTable, write_csv, write_xlsx};
-use parallax_protocol::ipc::{decode_stream_in_place, stream_rows};
+use parallax_protocol::ipc::{StreamBatches, StreamSource, stream_rows_of};
 use parallax_protocol::layout::Layout;
 use parallax_session::{
     Catalog, LoadStatus, MemoryCatalog, Session, SharedTable, TableState, read_table,
@@ -67,7 +68,9 @@ impl Worker {
     }
 
     /// Loads or reloads dataset `name` from an app's Arrow IPC stream, as
-    /// [`Worker::load`] does. Returns the table's rows.
+    /// [`Worker::load`] does. Returns the table's rows. The stream stays in the
+    /// page's memory: the load copies its headers to count its rows, then one
+    /// message at a time into WebAssembly's.
     ///
     /// # Errors
     ///
@@ -76,7 +79,7 @@ impl Worker {
     pub fn load_table(
         &mut self,
         name: &str,
-        arrow_ipc: Vec<u8>,
+        arrow_ipc: &js_sys::Uint8Array,
         primary_key: Option<String>,
         now_micros: f64,
         source_as_of_micros: Option<f64>,
@@ -84,7 +87,7 @@ impl Worker {
     ) -> Result<u64, JsError> {
         self.load(
             name,
-            arrow_ipc,
+            &JsBytes(arrow_ipc),
             &Load {
                 primary_key,
                 now_micros: now_micros as i64,
@@ -172,28 +175,38 @@ impl Worker {
     /// the table's rows.
     ///
     /// The rows are counted from the stream's batch headers first, and a stream of
-    /// more than `load.max_rows` is refused before any of it is decoded. The stream
-    /// is then decoded in place, so its arrays point into `arrow_ipc` rather than
-    /// copying it, and the bytes are freed once the table holds the rows. The
-    /// stream's schema metadata may carry the load's status, as
+    /// more than `load.max_rows` is refused before any of it is decoded. The
+    /// stream is then read one message at a time: each record batch is copied out
+    /// of `arrow_ipc`, decoded in place and staged in the engine's columns, which
+    /// are sized for the counted rows at the start, and is freed before the next.
+    /// A first load keeps the staged columns as its table's, so the rows are
+    /// copied once. The stream's schema metadata may carry the load's status, as
     /// [`LoadStatus`] describes; without a source time, the status shows when the
-    /// app received the bytes. A reload of an existing dataset applies as a diff to
-    /// its open views on the next [`Worker::refresh`].
+    /// app received the bytes. A reload of an existing dataset is checked whole
+    /// before it changes the table, and applies as a diff to its open views on the
+    /// next [`Worker::refresh`].
     ///
     /// # Errors
     ///
     /// Returns the reason the load is refused: too many rows, an invalid stream
-    /// or status, or rows the table refuses.
-    pub fn load(&mut self, name: &str, arrow_ipc: Vec<u8>, load: &Load) -> Result<u64, String> {
-        let rows = stream_rows(&arrow_ipc).map_err(|e| format!("{name}: {e}"))?;
+    /// or status, or rows the table refuses. A refused reload keeps the table as
+    /// it was.
+    pub fn load<S: StreamSource + ?Sized>(
+        &mut self,
+        name: &str,
+        arrow_ipc: &S,
+        load: &Load,
+    ) -> Result<u64, String> {
+        let rows = stream_rows_of(arrow_ipc).map_err(|e| format!("{name}: {e}"))?;
         if rows > load.max_rows {
             return Err(format!(
                 "{name} has {rows} rows, more than the {} a table in the browser holds; have its API filter or aggregate the data to fit",
                 load.max_rows
             ));
         }
-        let (schema, batches) =
-            decode_stream_in_place(arrow_ipc).map_err(|e| format!("{name}: {e}"))?;
+        let rows = usize::try_from(rows).map_err(|e| format!("{name}: {e}"))?;
+        let mut batches = StreamBatches::new(arrow_ipc).map_err(|e| format!("{name}: {e}"))?;
+        let schema = batches.schema();
         let status = LoadStatus::from_schema(&schema).map_err(|e| format!("{name}: {e}"))?;
         let as_of = load
             .source_as_of_micros
@@ -203,23 +216,32 @@ impl Worker {
             let mut state = existing
                 .write()
                 .map_err(|_| format!("{name} is unavailable after an internal error"))?;
+            let staging = match stage(state.table.staging(rows), &mut batches) {
+                Ok(staging) => staging,
+                Err(refused) => {
+                    // Rows the table refuses are a failed refresh, which its views
+                    // show; a broken stream never reached the table.
+                    if let Refused::Rows(error) = &refused {
+                        state.refused(error, load.now_micros);
+                    }
+                    return Err(format!("{name}: {refused}"));
+                }
+            };
             let report = state
-                .reload(&batches, load.now_micros, as_of)
+                .reload_staged(staging, load.now_micros, as_of)
                 .map_err(|e| format!("{name}: {e}"))?;
             state.count_upstream_nans(&status.nans_to_null);
             return Ok(report.rows as u64);
         }
-        let mut state = TableState::from_batches(
-            &schema,
-            &batches,
-            TableOptions {
-                primary_key: load.primary_key.clone(),
-                ..TableOptions::default()
-            },
-            load.now_micros,
-            as_of,
-        )
-        .map_err(|e| format!("{name}: {e}"))?;
+        let options = TableOptions {
+            primary_key: load.primary_key.clone(),
+            ..TableOptions::default()
+        };
+        let table = Table::new(&schema, options).map_err(|e| format!("{name}: {e}"))?;
+        let staging =
+            stage(table.staging(rows), &mut batches).map_err(|e| format!("{name}: {e}"))?;
+        let mut state = TableState::from_staging(table, staging, load.now_micros, as_of)
+            .map_err(|e| format!("{name}: {e}"))?;
         state.count_upstream_nans(&status.nans_to_null);
         let rows = state.table.num_rows() as u64;
         self.catalog.insert(name, Arc::new(RwLock::new(state)));
@@ -344,6 +366,49 @@ impl<F: FnMut(&[u8]) -> std::io::Result<()>> Write for Chunks<F> {
 
     fn flush(&mut self) -> std::io::Result<()> {
         self.send_buffer()
+    }
+}
+
+/// Why a stream's batches could not be staged: the stream itself, or rows the
+/// table refuses.
+enum Refused {
+    Stream(String),
+    Rows(LoadError),
+}
+
+impl std::fmt::Display for Refused {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Stream(reason) => f.write_str(reason),
+            Self::Rows(error) => error.fmt(f),
+        }
+    }
+}
+
+/// Decodes each batch of a stream and stages it, dropping it before the next.
+fn stage<S: StreamSource + ?Sized>(
+    mut staging: Staging,
+    batches: &mut StreamBatches<'_, S>,
+) -> Result<Staging, Refused> {
+    for batch in batches {
+        staging
+            .push(&batch.map_err(|e| Refused::Stream(e.to_string()))?)
+            .map_err(Refused::Rows)?;
+    }
+    Ok(staging)
+}
+
+/// A stream the page holds, read from WebAssembly a piece at a time.
+struct JsBytes<'a>(&'a js_sys::Uint8Array);
+
+impl StreamSource for JsBytes<'_> {
+    fn len(&self) -> usize {
+        self.0.length() as usize
+    }
+
+    fn read(&self, at: usize, out: &mut [u8]) {
+        let end = at + out.len();
+        self.0.subarray(at as u32, end as u32).copy_to(out);
     }
 }
 
@@ -507,11 +572,11 @@ mod tests {
     fn a_load_is_refused_past_the_row_limit_before_it_is_decoded() {
         let mut worker = Worker::new();
         assert_eq!(
-            worker.load("at", stream(2_500, None), &load(2_500)),
+            worker.load("at", &stream(2_500, None), &load(2_500)),
             Ok(2_500)
         );
         let error = worker
-            .load("past", stream(2_501, None), &load(2_500))
+            .load("past", &stream(2_501, None), &load(2_500))
             .unwrap_err();
         assert_eq!(
             error,
@@ -521,10 +586,10 @@ mod tests {
         // by its headers alone.
         let mut cut = stream(3_000, None);
         cut.truncate(cut.len() / 2);
-        assert!(worker.load("cut", cut, &load(2_500)).is_err());
+        assert!(worker.load("cut", &cut, &load(2_500)).is_err());
         assert!(
             worker
-                .load("garbage", b"not arrow".to_vec(), &load(10))
+                .load("garbage", &b"not arrow".to_vec(), &load(10))
                 .unwrap_err()
                 .starts_with("garbage: ")
         );
@@ -535,7 +600,7 @@ mod tests {
         let mut worker = Worker::new();
         let status = r#"{"source_as_of_micros": 1200, "nans_to_null": [["price", 5]]}"#;
         worker
-            .load("app", stream(70, Some(status)), &load(100))
+            .load("app", &stream(70, Some(status)), &load(100))
             .unwrap();
         let (opened, as_of) = open(&mut worker, 1, "app");
         assert_eq!(as_of, 1_200);
@@ -549,20 +614,20 @@ mod tests {
         assert_eq!(nans, vec![("price".to_owned(), 15)]);
         // Without a status the table has no source time, never the time the app
         // received the bytes, and a time the app passes wins over the stream's.
-        worker.load("plain", stream(10, None), &load(100)).unwrap();
+        worker.load("plain", &stream(10, None), &load(100)).unwrap();
         assert_eq!(open(&mut worker, 2, "plain").1, 0);
         let passed = Load {
             source_as_of_micros: Some(900),
             ..load(100)
         };
         worker
-            .load("passed", stream(10, Some(status)), &passed)
+            .load("passed", &stream(10, Some(status)), &passed)
             .unwrap();
         assert_eq!(open(&mut worker, 3, "passed").1, 900);
         // A malformed status refuses the load, naming the dataset.
         let bad = stream(10, Some(r#"{"nans_to_null": [["volume", 1]]}"#));
         assert_eq!(
-            worker.load("bad", bad, &load(100)).unwrap_err(),
+            worker.load("bad", &bad, &load(100)).unwrap_err(),
             "bad: the load status counts NaNs in volume, which the data does not have"
         );
     }
@@ -570,12 +635,12 @@ mod tests {
     #[test]
     fn a_second_load_reloads_the_table_for_its_open_views() {
         let mut worker = Worker::new();
-        worker.load("app", stream(50, None), &load(100)).unwrap();
+        worker.load("app", &stream(50, None), &load(100)).unwrap();
         let (first, _) = open(&mut worker, 1, "app");
         assert_eq!(first.rows, 50);
         let status = r#"{"source_as_of_micros": 7000}"#;
         assert_eq!(
-            worker.load("app", stream(80, Some(status)), &load(100)),
+            worker.load("app", &stream(80, Some(status)), &load(100)),
             Ok(80)
         );
         let pushed: Vec<Body> = worker
@@ -591,7 +656,7 @@ mod tests {
             "{pushed:?}"
         );
         // A reload past the limit leaves the table as it was.
-        assert!(worker.load("app", stream(101, None), &load(100)).is_err());
+        assert!(worker.load("app", &stream(101, None), &load(100)).is_err());
         assert_eq!(open(&mut worker, 2, "app").0.rows, 80);
     }
 
@@ -599,7 +664,7 @@ mod tests {
     fn exports_read_the_loaded_table_and_csv_comes_in_chunks() {
         let mut worker = Worker::new();
         worker
-            .load("app", stream(3_000, None), &load(10_000))
+            .load("app", &stream(3_000, None), &load(10_000))
             .unwrap();
         let layout = r#"{"version":1,"dataset":"app"}"#;
         let mut whole = Vec::new();

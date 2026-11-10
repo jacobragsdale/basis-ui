@@ -1,6 +1,6 @@
 //! Times a load and the views over it, and splits each into its phases: the
-//! load into counting the stream's rows, decoding it, staging it in the
-//! engine's columns and appending it to the table; the demo's reference pivot
+//! load into counting the stream's rows, decoding it a batch at a time, staging
+//! each batch in the engine's columns and appending them to the table; the demo's reference pivot
 //! of the positions into aggregating the rows into leaf cells, sorting the
 //! leaves, building the tree, merging it upwards, and showing its first window.
 //! The scale harness's figures say how long the browser takes; this says
@@ -20,11 +20,11 @@
 //! native build is faster than WebAssembly, so read the shares, not the
 //! seconds, against the browser's. Memory is this process's resident set from
 //! Linux's `/proc`: its peak, and what the table holds once the stream is
-//! dropped.
+//! dropped. The stream is held whole, as the page holds it outside WebAssembly,
+//! so the peak counts it once beside the table.
 
 use std::time::Instant;
 
-use arrow_array::RecordBatch;
 use arrow_schema::SchemaRef;
 use parallax_datagen::Dataset;
 use parallax_datagen::positions::{Positions, PositionsOptions};
@@ -109,54 +109,61 @@ fn input(arg: &str) -> Input {
     }
 }
 
-/// Loads a stream as the browser's worker does: counts its rows, decodes it in
-/// place, and loads the batches into a table keyed as the demo keys it.
+/// Loads a stream as the browser's worker does: counts its rows, then decodes
+/// it a message at a time, staging each batch before the next, into a table
+/// keyed as the demo keys it.
 fn load(input: Input) -> Table {
     let arrow_mb = input.bytes.len() as f64 / 1e6;
-    let ((schema, batches), total) = timed(|| {
+    let bytes = input.bytes.as_slice();
+    let (table, total) = timed(|| {
         let rows = {
             let _phase = parallax_engine::profile::span("load: count");
-            parallax_protocol::ipc::stream_rows(&input.bytes).expect("a stream")
+            parallax_protocol::ipc::stream_rows(bytes).expect("a stream")
         };
-        let _phase = parallax_engine::profile::span("load: decode");
-        let decoded =
-            parallax_protocol::ipc::decode_stream_in_place(input.bytes).expect("a stream");
-        assert_eq!(
-            decoded.1.iter().map(RecordBatch::num_rows).sum::<usize>() as u64,
-            rows
-        );
-        decoded
+        let mut batches = {
+            let _phase = parallax_engine::profile::span("load: decode");
+            parallax_protocol::ipc::StreamBatches::new(bytes).expect("a stream")
+        };
+        let mut table = keyed_table(&batches.schema());
+        let mut staging = table.staging(usize::try_from(rows).expect("rows"));
+        loop {
+            let batch = {
+                let _phase = parallax_engine::profile::span("load: decode");
+                batches.next()
+            };
+            let Some(batch) = batch else { break };
+            staging.push(&batch.expect("a batch")).expect("a batch");
+        }
+        table.load_staged(staging).expect("a load");
+        table
     });
-    let (table, appended) = timed(|| keyed_table(&schema, &batches));
     report(
         &format!(
             "load {} ({arrow_mb:.0} MB of Arrow, {} rows)",
             input.name,
             table.num_rows()
         ),
-        total + appended,
+        total,
     );
-    drop(batches);
+    drop(input);
     if let Some((peak, now)) = memory() {
         println!("  memory: peak {peak:.0} MB, holding the table {now:.0} MB");
     }
     table
 }
 
-fn keyed_table(schema: &SchemaRef, batches: &[RecordBatch]) -> Table {
+fn keyed_table(schema: &SchemaRef) -> Table {
     let key = ["trade_id", "position_id"]
         .into_iter()
         .find(|name| schema.index_of(name).is_ok());
-    let mut table = Table::new(
+    Table::new(
         schema,
         TableOptions {
             primary_key: key.map(str::to_owned),
             ..TableOptions::default()
         },
     )
-    .expect("a table");
-    table.load(batches).expect("a load");
-    table
+    .expect("a table")
 }
 
 /// Builds a view and shows its first window, reporting both.

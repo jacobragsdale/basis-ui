@@ -35,13 +35,15 @@ export class Worker {
     handle(message: Uint8Array | number[]): Array<any>;
     /**
      * Loads or reloads dataset `name` from an app's Arrow IPC stream, as
-     * [`Worker::load`] does. Returns the table's rows.
+     * [`Worker::load`] does. Returns the table's rows. The stream stays in the
+     * page's memory: the load copies its headers to count its rows, then one
+     * message at a time into WebAssembly's.
      *
      * # Errors
      *
      * Returns the reason the load is refused.
      */
-    loadTable(name: string, arrow_ipc: Uint8Array | number[], primary_key: string | null | undefined, now_micros: number, source_as_of_micros: number | null | undefined, max_rows: number): bigint;
+    loadTable(name: string, arrow_ipc: Uint8Array, primary_key: string | null | undefined, now_micros: number, source_as_of_micros: number | null | undefined, max_rows: number): bigint;
     /**
      * Creates a worker with no tables.
      */
@@ -61,7 +63,7 @@ export interface InitOutput {
     readonly worker_exportCsv: (a: number, b: number, c: number, d: number, e: number, f: any) => [number, number, number];
     readonly worker_exportXlsx: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number, number, number];
     readonly worker_handle: (a: number, b: number, c: number) => any;
-    readonly worker_loadTable: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => [bigint, number, number];
+    readonly worker_loadTable: (a: number, b: number, c: number, d: any, e: number, f: number, g: number, h: number, i: number, j: number) => [bigint, number, number];
     readonly worker_new: () => number;
     readonly worker_refresh: (a: number) => any;
     readonly __wbindgen_malloc: (a: number, b: number) => number;

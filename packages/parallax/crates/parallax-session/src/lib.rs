@@ -20,7 +20,7 @@ use std::sync::{Arc, Mutex, PoisonError, RwLock, RwLockReadGuard, Weak};
 use arrow_array::RecordBatch;
 use arrow_schema::Schema;
 use parallax_engine::chart::{ChartRequest, ChartView};
-use parallax_engine::{ChangeSet, LoadError, LoadReport, Table, TableOptions, View};
+use parallax_engine::{ChangeSet, LoadError, LoadReport, Staging, Table, TableOptions, View};
 use parallax_protocol::PROTOCOL_VERSION;
 use parallax_protocol::ipc::{encode_batch, encode_schema};
 use parallax_protocol::layout::{
@@ -133,8 +133,27 @@ impl TableState {
         now_micros: i64,
         source_as_of_micros: i64,
     ) -> Result<Self, LoadError> {
-        let mut table = Table::new(schema, options)?;
-        let (report, _) = table.load(batches)?;
+        let table = Table::new(schema, options)?;
+        let staging = table.staging(batches.iter().map(RecordBatch::num_rows).sum());
+        let staging = batches.iter().try_fold(staging, |mut staging, batch| {
+            staging.push(batch).map(|()| staging)
+        })?;
+        Self::from_staging(table, staging, now_micros, source_as_of_micros)
+    }
+
+    /// Creates a table from a first load staged a batch at a time; `table` is the
+    /// empty table that started `staging`.
+    ///
+    /// # Errors
+    ///
+    /// Returns the load error if the table refuses the rows.
+    pub fn from_staging(
+        mut table: Table,
+        staging: Staging,
+        now_micros: i64,
+        source_as_of_micros: i64,
+    ) -> Result<Self, LoadError> {
+        let (report, _) = table.load_staged(staging)?;
         let mut state = Self::new(table, now_micros, source_as_of_micros);
         state.nans_to_null = report.nans_to_null;
         Ok(state)
@@ -152,7 +171,35 @@ impl TableState {
         now_micros: i64,
         source_as_of_micros: i64,
     ) -> Result<LoadReport, LoadError> {
-        match self.table.load(batches) {
+        let staging = self
+            .table
+            .staging(batches.iter().map(RecordBatch::num_rows).sum());
+        let staged = batches.iter().try_fold(staging, |mut staging, batch| {
+            staging.push(batch).map(|()| staging)
+        });
+        match staged {
+            Ok(staging) => self.reload_staged(staging, now_micros, source_as_of_micros),
+            Err(error) => {
+                self.refused(&error, now_micros);
+                Err(error)
+            }
+        }
+    }
+
+    /// Replaces the table's contents with a load staged a batch at a time, as
+    /// [`TableState::reload`] does. The load is checked whole before the table
+    /// changes.
+    ///
+    /// # Errors
+    ///
+    /// Returns the load error after recording it.
+    pub fn reload_staged(
+        &mut self,
+        staging: Staging,
+        now_micros: i64,
+        source_as_of_micros: i64,
+    ) -> Result<LoadReport, LoadError> {
+        match self.table.load_staged(staging) {
             Ok((report, change)) => {
                 let change = Arc::new(change);
                 let slots = self.table.num_slots();
@@ -172,10 +219,16 @@ impl TableState {
                 Ok(report)
             }
             Err(error) => {
-                self.refresh_error = Some((error.to_string(), now_micros));
+                self.refused(&error, now_micros);
                 Err(error)
             }
         }
+    }
+
+    /// Records a refused reload, which the table's views show beside the last
+    /// good data, until a load succeeds.
+    pub fn refused(&mut self, error: &LoadError, now_micros: i64) {
+        self.refresh_error = Some((error.to_string(), now_micros));
     }
 
     /// How many old row images the table holds for views that have not yet caught

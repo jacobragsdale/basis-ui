@@ -534,7 +534,10 @@ flowchart TD
    harness: a load that copies once (`6.3.1-load`), a progressive load (`6.3.2-progressive-load`), sorts on keys
    (`6.3.3-sort`), filters as kernels (`6.3.4-filter`), a typed group-by (`6.3.5-group-by`), no rebuild where the order
    alone changes (`6.3.6-rebuilds`), memory that comes back (`6.3.7-release`), narrower storage and build flags
-   (`6.3.8-storage-and-flags`), and the new limit in bytes (`6.3.9-limit`).
+   (`6.3.8-storage-and-flags`), and the new limit in bytes (`6.3.9-limit`). 6.3.1 built on 2026-11-09: the engine
+   reads the page's stream a batch at a time into columns sized once and keeps them as a first load's table, so
+   1,000,000 trades load fully in 3.2 s throttled, from 7.9 s, missing 3 s, and 0.87 s plain, from 2.8 s, in 242 MB of
+   WebAssembly, from 995 MB.
 4. **6.4 The canvas on a Citrix desktop.** Lane Grid, one branch per item in order: digits that line up
    (`6.4.1-tabular-digits`), whole device pixels (`6.4.2-device-pixels`), one draw per frame and one row step per notch
    (`6.4.3-frame-aligned`), a scroll that moves pixels (`6.4.4-scroll-blit`), rows past the scrollbar's reach

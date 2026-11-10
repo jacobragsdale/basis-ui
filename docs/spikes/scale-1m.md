@@ -7,7 +7,9 @@ and 1.25 GB of browser at its peak for each 1,000,000 trades. 2,000,000 position
 The engine's phase profile says where 6.3 should start: a load spends about 60% of its time appending and 37%
 staging, and decoding the stream costs 1.5%; the reference pivot spends about 70% aggregating rows into leaf cells,
 and the tree, the leaf sort and the merge share the rest. Run on 2026-11-09 in three full runs on a shared host, the
-last at a load average of 1.4 to 5.2.
+last at a load average of 1.4 to 5.2. Step 6.3.1 then made the load of 1,000,000 trades 2.4 times as fast throttled,
+3.2 s, and its WebAssembly memory a quarter, 0.8 times the Arrow, as [its section](#step-631-a-load-that-copies-once)
+says.
 
 ## Versions
 
@@ -205,3 +207,61 @@ ERROR positions at 2,000,000 rows, plain: rssAtRestMB is 4,215 MB, over its budg
 
 That line is the first full run checked against today's budgets: it read memory at rest before the bench collected
 garbage, with the worker's 921 MB of Arrow still held.
+
+## Step 6.3.1: a load that copies once
+
+Step 6.3.1 changed the load and measured it with this harness before and after, on trades at 150,000 and 1,000,000
+rows, plain and throttled, one round, on 2026-11-09 (`--datasets trades --sizes 150000,1000000 --rounds 1`). What
+changed:
+
+- The worker hands the engine the page's `Uint8Array` instead of copying the stream into WebAssembly. The engine counts
+  the rows from the headers, copying only them, then copies one message at a time into a buffer of its own, decodes it
+  in place there, stages its batch, and frees it before the next: WebAssembly never holds the stream.
+- Each staged column reserves the counted rows at once, so no vector grows by doubling. Values arrive as typed
+  slices, text is interned from the array's own `&str`, and a dictionary-encoded column interns each of its values
+  once, the first time a row uses it, so codes keep the order rows first use their text.
+- A first load keeps the staged columns as the table's own, so each row is copied once; a reload still stages whole
+  and is checked before the table changes, so a refused one keeps the table, as before.
+- A first load whose keys only rise, such as the trades' ids, or whose text keys are each new, cannot repeat a key,
+  so it builds no index: the next load that looks a key up builds it. Other keys are checked and indexed in one pass,
+  one hash insert for each row rather than three.
+
+| Trades, fully loaded and memory | Before, load average 3.8 to 6.0 | After, load average 4.0 to 7.8 |
+| ------------------------------- | ------------------------------- | ------------------------------ |
+| 150,000, plain                  | 626 ms                          | 347 ms                         |
+| 150,000, throttled              | 2,319 ms                        | 1,364 ms                       |
+| 1,000,000, plain                | 2,765 ms                        | 873 ms                         |
+| 1,000,000, throttled            | 7,858 ms                        | 3,214 and 3,370 ms             |
+| WebAssembly, 150,000            | 191 MB, 4.2 times the Arrow     | 53 MB, 1.2 times               |
+| WebAssembly, 1,000,000          | 995 MB, 3.3 times the Arrow     | 242 MB, 0.8 times              |
+| Browser at rest, 1,000,000      | 1,488 MB                        | 756 to 760 MB                  |
+| Browser at its peak, 1,000,000  | 1,825 MB                        | 1,064 to 1,134 MB              |
+
+The second throttled figure at 1,000,000 is a repeat of that run alone, at a load average of 3.3. WebAssembly's peak is
+its memory after the load, as before: nothing in the rounds raises it.
+
+The phase profile of 1,000,000 trades, three runs each, before at a load average of 3.2 and after at 2.9; the
+example now loads as the worker does, a message at a time, with the stream held whole beside the table, as the page
+holds it:
+
+| Load of 1,000,000 trades | Before  | Share | After   | Share |
+| ------------------------ | ------- | ----- | ------- | ----- |
+| Count the rows           | 0.000 s | 0%    | 0.000 s | 0%    |
+| Decode the stream        | 0.026 s | 1.7%  | 0.062 s | 28%   |
+| Stage the columns        | 0.587 s | 38%   | 0.154 s | 70%   |
+| Append to the table      | 0.921 s | 60%   | 0.004 s | 2%    |
+| Total                    | 1.55 s  |       | 0.22 s  |       |
+| Peak memory              | 940 MB  |       | 549 MB  |       |
+| The table, at rest       | 370 MB  |       | 245 MB  |       |
+
+Decoding now copies each message out of the stream, which is what keeps the stream out of WebAssembly; staging is the
+conversion into the engine's types, most of it the interning of the twelve text columns, a hash lookup for each
+cell. Natively the peak is the stream's 304 MB and the table's 245 MB.
+
+**The 3 s target for 1,000,000 trades fully loaded, throttled, is missed: 3.2 to 3.4 s.** The engine's own load of
+them takes 0.22 s natively. Throttled, the page shows 150,000 rows in 1.4 s, most of it starting the page and the
+worker; this harness does not split the rest of the 3.2 s between moving 304 MB to the worker, the load in
+WebAssembly and the first view. Step 6.3.2's progressive load, whose target is the first rows in 1 s, and step
+6.3.8's narrower storage are the next to act on it. The memory target, 700 MB of browser at rest, is 6.3.7's and
+6.3.8's; at 756 MB it is within 60 MB of it. The host budgets for these runs' loads and memory are now set as above:
+twice the slowest time and 1.25 times the memory.

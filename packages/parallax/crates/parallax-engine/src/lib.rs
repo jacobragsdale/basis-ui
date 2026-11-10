@@ -33,6 +33,6 @@ pub use error::{ConfigError, LoadError};
 pub use filter::{Filter, FilterOp};
 pub use format::{Format, Formatter};
 pub use order::Order;
-pub use table::{ChangeSet, DuplicatePolicy, LoadReport, Table, TableOptions};
+pub use table::{ChangeSet, DuplicatePolicy, LoadReport, Staging, Table, TableOptions};
 pub use types::{ColumnType, Scalar};
 pub use view::{CellValue, Frame, GroupCell, View, ViewConfig};

@@ -38,6 +38,48 @@ impl Bitmap {
         self.set(self.len - 1, value);
     }
 
+    /// Makes room for `additional` more bits without reallocating.
+    pub fn reserve(&mut self, additional: usize) {
+        let words = (self.len + additional).div_ceil(64);
+        self.words.reserve(words.saturating_sub(self.words.len()));
+    }
+
+    /// Appends `count` set bits, a word at a time.
+    pub fn extend_ones(&mut self, count: usize) {
+        let end = self.len + count;
+        self.words.resize(end.div_ceil(64), 0);
+        let mut at = self.len;
+        while at < end && !at.is_multiple_of(64) {
+            self.words[at / 64] |= 1 << (at % 64);
+            at += 1;
+        }
+        while at + 64 <= end {
+            self.words[at / 64] = u64::MAX;
+            at += 64;
+        }
+        if at < end {
+            self.words[at / 64] |= (1 << (end - at)) - 1;
+        }
+        self.len = end;
+    }
+
+    /// Appends `count` bits, set where `bits` is, or every one of them set
+    /// where there is no `bits`: an Arrow array's validity.
+    pub fn extend_from_validity(&mut self, count: usize, bits: Option<&arrow_buffer::NullBuffer>) {
+        let Some(bits) = bits.filter(|b| b.null_count() > 0) else {
+            self.extend_ones(count);
+            return;
+        };
+        let start = self.len;
+        self.extend_ones(count);
+        for (i, valid) in bits.inner().iter().take(count).enumerate() {
+            if !valid {
+                let at = start + i;
+                self.words[at / 64] &= !(1 << (at % 64));
+            }
+        }
+    }
+
     /// Returns bit `index`.
     ///
     /// # Panics
@@ -153,6 +195,32 @@ mod tests {
                 expected,
                 "{start}..{end}"
             );
+        }
+    }
+
+    #[test]
+    fn extending_sets_the_same_bits_as_pushing() {
+        for (start, count) in [(0, 0), (0, 64), (3, 61), (3, 200), (64, 1), (63, 130)] {
+            let mut pushed = Bitmap::new();
+            let mut extended = Bitmap::new();
+            for i in 0..start {
+                pushed.push(i % 2 == 0);
+                extended.push(i % 2 == 0);
+            }
+            let validity: Vec<bool> = (0..count).map(|i| i % 5 != 1).collect();
+            for &bit in &validity {
+                pushed.push(bit);
+            }
+            let nulls = arrow_buffer::NullBuffer::from(validity);
+            extended.reserve(count);
+            extended.extend_from_validity(count, Some(&nulls));
+            assert_eq!(extended, pushed, "{start} + {count}");
+            let mut ones = pushed.clone();
+            for _ in 0..count {
+                ones.push(true);
+            }
+            extended.extend_from_validity(count, None);
+            assert_eq!(extended, ones, "{start} + {count} set");
         }
     }
 }

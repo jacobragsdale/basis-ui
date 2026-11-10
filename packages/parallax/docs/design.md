@@ -54,8 +54,14 @@ native tests prove holds in the browser.
 
 The app loads its own data: Arrow IPC stream bytes it fetched from its API move
 to the worker in the message's transfer list, so they are never copied between
-threads, and the engine decodes them in place, its arrays pointing into the
-bytes rather than a second copy of them. A view of a dataset waits for its load,
+threads, and stay in the worker's memory, outside WebAssembly's. The engine
+reads them one record batch at a time: it copies the batch in, decodes it in
+place and converts it into its own columns, sized once for the rows the stream's
+headers counted, then frees it before the next. A first load keeps those
+columns as its table, so each row is copied once, and WebAssembly holds the
+table and one batch rather than the stream, a staged copy and the table. A
+reload is converted whole before the table changes, so a refused one keeps the
+table as it was. A view of a dataset waits for its load,
 which the app may start before the bytes arrive, and fails with the reason if
 the load does; the worker's welcome is sent before any load, so it lists no
 datasets. Spike 0.3 set the limit of one such table at 150,000 rows and 70 MB of
