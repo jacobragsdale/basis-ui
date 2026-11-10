@@ -1,11 +1,13 @@
-/* The app's routes, inside AppShell, each titled for its sidebar, breadcrumbs and command palette: the day count conventions at `/`, one bond at `/bonds/$security`, and the form
- * that records a settlement at `/settlements/new`. */
+/* The app's routes, inside AppShell, each titled for its sidebar, breadcrumbs and command palette: the day count
+ * conventions at `/`, filtered by its search parameters, one bond at `/bonds/$security`, and the form that records a
+ * settlement at `/settlements/new`. */
 
-import { AppShell, CalendarIcon, PlusIcon } from "@basis/ui";
+import { AppShell, CalendarIcon, PlusIcon, filterSearchSchema } from "@basis/ui";
 import { createRootRoute, createRoute } from "@tanstack/react-router";
 import { createElement } from "react";
 
 import { BondPage } from "./pages/bond.tsx";
+import { conventionFilters } from "./pages/conventions-filters.ts";
 import { ConventionsPage } from "./pages/conventions.tsx";
 import { SettlementPage } from "./pages/settlement.tsx";
 
@@ -21,6 +23,8 @@ const conventionsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
   staticData: { icon: CalendarIcon, title: "Day count conventions" },
+  // The filter bar's search parameters, typed by its filters.
+  validateSearch: filterSearchSchema(conventionFilters),
 });
 
 const bondRoute = createRoute({

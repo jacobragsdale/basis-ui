@@ -14709,6 +14709,50 @@
       "example": "import { FileImport, amountSchema, parSuffixes } from \"@basis/ui\";\nimport { z } from \"zod\";\n\nconst positionRow = z.object({ cusip: z.string(), par: amountSchema(parSuffixes) });\n\n<FileImport\n  schema={positionRow}\n  headers={{ par: [\"Par\", \"Par amount\"] }}\n  onImport={async () => {\n    await Promise.resolve();\n  }}\n/>;\n"
     },
     {
+      "extends": [],
+      "family": "filter-bar",
+      "module": "@basis/ui",
+      "name": "FilterBar",
+      "props": [
+        {
+          "description": "The page's filters and their values, as `useFilters` returns them.",
+          "name": "filters",
+          "optional": false,
+          "type": "FilterState<TFilters>"
+        },
+        {
+          "description": "The name of the bar's search landmark; \"Filters\" unless set.",
+          "name": "label",
+          "optional": true,
+          "type": "string | undefined"
+        },
+        {
+          "description": "What sits at the end of the controls, such as the page's saved views.",
+          "name": "actions",
+          "optional": true,
+          "type": "ReactNode"
+        },
+        {
+          "description": "Classes that place it: margin, width, and flex or grid placement. Its look comes from its props, never from classes.",
+          "name": "className",
+          "optional": true,
+          "type": "string | undefined"
+        }
+      ],
+      "purpose": "A bar of the page's filters, kept in its address's search parameters, with a chip for each active filter.",
+      "use": "For filtering a page's table, grid or list by its fields: text, a choice, several choices, a range of days or a range of numbers. Define the filters with `defineFilters`, give the route `filterSearchSchema(filters)` as its `validateSearch`, and give the bar `useFilters(filters)`; filter the rows with `filterRows`, or send `values` to the API. For a search box over one DataTable, DataTable's own filter is enough.",
+      "with": [
+        "defineFilters",
+        "filterSearchSchema",
+        "useFilters",
+        "filterRows",
+        "DataTable",
+        "Page"
+      ],
+      "variants": {},
+      "example": "import { DataTable, FilterBar, defineFilters, filterRows, filterSearchSchema, useFilters } from \"@basis/ui\";\nimport { createRootRoute, createRoute } from \"@tanstack/react-router\";\n\n// Once, outside any component: the filters, each by its search parameter.\nconst tradeFilters = defineFilters({\n  issuer: { kind: \"text\", label: \"Issuer\" },\n  book: { kind: \"choice\", label: \"Book\", options: [\"Rates\", \"Credit\"] },\n  settles: { kind: \"dateRange\", label: \"Settles\" },\n  par: { kind: \"numberRange\", label: \"Par\" },\n});\n\n// The route types its search parameters by the filters.\nexport const tradesRoute = createRoute({\n  getParentRoute: () => createRootRoute(),\n  path: \"/trades\",\n  validateSearch: filterSearchSchema(tradeFilters),\n});\n\n// In the page's component: the filters from the address, and the rows they keep.\nconst trades = [{ book: \"Rates\", id: \"t1\", issuer: \"Treasury\", par: 5_000_000, settles: \"2026-11-10\" }];\nconst filters = useFilters(tradeFilters);\nconst shown = filterRows(trades, {\n  fields: { book: (row) => row.book, issuer: (row) => row.issuer, par: (row) => row.par, settles: (row) => row.settles },\n  filters: tradeFilters,\n  values: filters.values,\n});\n\n<>\n  <FilterBar filters={filters} />\n  <DataTable\n    label=\"Trades\"\n    columns={[{ header: \"Issuer\", id: \"issuer\", value: (row: (typeof trades)[number]) => row.issuer }]}\n    data={shown}\n    getRowId={(row) => row.id}\n  />\n</>;\n"
+    },
+    {
       "extends": [
         "Omit<ComponentProps<\"span\">, \"children\">"
       ],
@@ -15452,6 +15496,61 @@
       "name": "numberText",
       "purpose": "A number as text, for a string such as a toast's or an accessible name, by the same rule `Num` shows it with: `numberText(150000, { decimals: 0 })` is `150,000`.",
       "signature": "numberText(value: NumericValue, format: NumberFormat = {}): string"
+    },
+    {
+      "kind": "function",
+      "module": "@basis/ui",
+      "name": "defineFilters",
+      "purpose": "A page's filters, checked, with each choice's options kept as the literal values the page wrote, so the route's search parameters and `FilterValues` take only those. Define them once, outside any component, and give them to `filterSearchSchema` for the route and to `useFilters` for the page.",
+      "signature": "defineFilters<const TFilters extends FilterDefinitions>(filters: TFilters): TFilters",
+      "use": "For the filters of a page's table, grid or list, kept in the address. Throws one ERROR line for a choice with no options, an empty option or one listed twice.",
+      "with": [
+        "FilterBar",
+        "filterSearchSchema",
+        "useFilters",
+        "filterRows"
+      ]
+    },
+    {
+      "kind": "function",
+      "module": "@basis/ui",
+      "name": "filterRows",
+      "purpose": "The rows every active filter keeps, in their order. A row's field passes text that it holds, ignoring case; the option chosen, or any of those chosen; or a date or number inside the range. With no filter active it returns `rows` itself.",
+      "signature": "filterRows<TRow, TFilters extends FilterDefinitions>(rows: readonly TRow[], { filters, values, fields }: FilterRowsOptions<TRow, TFilters>): readonly TRow[]",
+      "use": "For a page's own filtering of rows it holds, such as a Table's or a DataTable's data under a FilterBar. Rows an API filters are filtered there: send it the values instead.",
+      "with": [
+        "FilterBar",
+        "useFilters",
+        "defineFilters",
+        "DataTable"
+      ]
+    },
+    {
+      "kind": "function",
+      "module": "@basis/ui",
+      "name": "filterSearchSchema",
+      "purpose": "The Zod schema of the filters as search parameters, for the route's `validateSearch`, so the router types them. Each parameter is optional, and a value the filter cannot take is read as absent. Extend it with the route's other parameters: `filterSearchSchema(tradeFilters).extend({ selected: z.string().optional() })`. Throws one ERROR line for filters `defineFilters` would refuse.",
+      "signature": "filterSearchSchema<const TFilters extends FilterDefinitions>(filters: TFilters): FilterSearchSchema<TFilters>",
+      "use": "For the route of a page with a FilterBar, as its `validateSearch`. Its output type is the page's `FilterValues`.",
+      "with": [
+        "defineFilters",
+        "useFilters",
+        "FilterBar"
+      ]
+    },
+    {
+      "kind": "hook",
+      "module": "@basis/ui",
+      "name": "useFilters",
+      "purpose": "The page's filters, read from its address's search parameters and written back to them. Its route's `validateSearch` is `filterSearchSchema(filters)`, with the same filters. Give the result to `FilterBar`, and its `values` to `filterRows` or a query.",
+      "signature": "useFilters<const TFilters extends FilterDefinitions>(filters: TFilters): FilterState<TFilters>",
+      "use": "For a page with a FilterBar: call it once, then pass it to the bar and read `values` for the rows. Back and Forward restore the filters, and a link to the page opens them.",
+      "with": [
+        "FilterBar",
+        "defineFilters",
+        "filterSearchSchema",
+        "filterRows"
+      ]
     },
     {
       "kind": "class",
@@ -23017,6 +23116,43 @@
       "purpose": "A fixed scaling by a thousand, million or billion. The suffix is always shown."
     },
     {
+      "definition": "string | readonly string[] | DateRangeFilterValue | NumberRangeFilterValue",
+      "extends": [
+        "string",
+        "readonly string[]"
+      ],
+      "fields": [
+        {
+          "description": "",
+          "name": "start",
+          "optional": true,
+          "type": "string"
+        },
+        {
+          "description": "",
+          "name": "end",
+          "optional": true,
+          "type": "string"
+        },
+        {
+          "description": "",
+          "name": "min",
+          "optional": true,
+          "type": "number | undefined"
+        },
+        {
+          "description": "",
+          "name": "max",
+          "optional": true,
+          "type": "number | undefined"
+        }
+      ],
+      "exported": true,
+      "module": "@basis/ui",
+      "name": "AnyFilterValue",
+      "purpose": "Any value a filter holds."
+    },
+    {
       "definition": "Problem | ValidationProblem",
       "exported": true,
       "module": "@basis/ui",
@@ -23086,6 +23222,33 @@
       "module": "@basis/ui",
       "name": "AsOfOptions",
       "purpose": ""
+    },
+    {
+      "fields": [
+        {
+          "description": "",
+          "name": "kind",
+          "optional": false,
+          "type": "\"choice\""
+        },
+        {
+          "description": "The field's name on the page, such as \"Book\".",
+          "name": "label",
+          "optional": false,
+          "type": "string"
+        },
+        {
+          "description": "The options, in the order the list shows them.",
+          "name": "options",
+          "optional": false,
+          "type": "readonly FilterOption<TValue>[]"
+        }
+      ],
+      "exported": true,
+      "module": "@basis/ui",
+      "name": "ChoiceFilter",
+      "parameters": "<TValue extends string = string>",
+      "purpose": "One of a list of options, such as a book."
     },
     {
       "fields": [
@@ -23345,6 +23508,70 @@
       "purpose": "A column of text, or of anything but numbers."
     },
     {
+      "fields": [
+        {
+          "description": "",
+          "name": "kind",
+          "optional": false,
+          "type": "\"dateRange\""
+        },
+        {
+          "description": "The field's name on the page, such as \"Settles\".",
+          "name": "label",
+          "optional": false,
+          "type": "string"
+        },
+        {
+          "description": "The calendar whose business days the picker takes; SIFMA's unless set.",
+          "name": "calendar",
+          "optional": true,
+          "type": "Calendar | undefined"
+        },
+        {
+          "description": "The earliest date the picker takes; none unless set.",
+          "name": "min",
+          "optional": true,
+          "type": "Temporal.PlainDate | undefined"
+        },
+        {
+          "description": "The latest date the picker takes: none unless set, since a filter may look ahead, as at a coupon's payment.",
+          "name": "max",
+          "optional": true,
+          "type": "Temporal.PlainDate | undefined"
+        },
+        {
+          "description": "The presets the picker offers; all six unless set.",
+          "name": "presets",
+          "optional": true,
+          "type": "readonly DateRangePreset[] | undefined"
+        }
+      ],
+      "exported": true,
+      "module": "@basis/ui",
+      "name": "DateRangeFilter",
+      "purpose": "A range of business days, such as the days a trade settles in, picked with DateRangePicker."
+    },
+    {
+      "fields": [
+        {
+          "description": "",
+          "name": "start",
+          "optional": false,
+          "type": "string"
+        },
+        {
+          "description": "",
+          "name": "end",
+          "optional": false,
+          "type": "string"
+        }
+      ],
+      "exported": true,
+      "module": "@basis/ui",
+      "name": "DateRangeFilterValue",
+      "purpose": "An active date range filter: the first and last days it takes, as ISO 8601 dates such as `2026-11-09`."
+    },
+    {
       "definition": "| \"month-to-date\" | \"quarter-to-date\" | \"year-to-date\" | \"prior-month\" | \"prior-quarter\" | \"prior-year\"",
       "exported": true,
       "module": "@basis/ui",
@@ -23520,6 +23747,234 @@
       "purpose": "One field's error, by the field's name as TanStack Form gives it, such as `legs[0].price`; `\"\"` is the whole request."
     },
     {
+      "definition": "string | number | Temporal.PlainDate | readonly string[] | null | undefined",
+      "exported": true,
+      "module": "@basis/ui",
+      "name": "FilterCell",
+      "purpose": "What a field of a row gives a filter: its text, its option's value or values, a date, or a number."
+    },
+    {
+      "definition": "| TextFilter | ChoiceFilter | MultiChoiceFilter | DateRangeFilter | NumberRangeFilter",
+      "fields": [
+        {
+          "description": "",
+          "name": "kind",
+          "optional": false,
+          "type": "\"text\" | \"choice\" | \"multiChoice\" | \"dateRange\" | \"numberRange\""
+        },
+        {
+          "description": "The field's name on the page, such as \"Issuer\".",
+          "name": "label",
+          "optional": false,
+          "type": "string"
+        },
+        {
+          "description": "The input's text while it is empty; none unless set.",
+          "name": "placeholder",
+          "optional": true,
+          "type": "string | undefined"
+        },
+        {
+          "description": "The options, in the order the list shows them.",
+          "name": "options",
+          "optional": true,
+          "type": "readonly FilterOption<string>[]"
+        },
+        {
+          "description": "The calendar whose business days the picker takes; SIFMA's unless set.",
+          "name": "calendar",
+          "optional": true,
+          "type": "Calendar | undefined"
+        },
+        {
+          "description": "The earliest date the picker takes; none unless set.",
+          "name": "min",
+          "optional": true,
+          "type": "Temporal.PlainDate | undefined"
+        },
+        {
+          "description": "The latest date the picker takes: none unless set, since a filter may look ahead, as at a coupon's payment.",
+          "name": "max",
+          "optional": true,
+          "type": "Temporal.PlainDate | undefined"
+        },
+        {
+          "description": "The presets the picker offers; all six unless set.",
+          "name": "presets",
+          "optional": true,
+          "type": "readonly DateRangePreset[] | undefined"
+        },
+        {
+          "description": "The suffixes the two inputs accept; `amountSuffixes` unless set.",
+          "name": "suffixes",
+          "optional": true,
+          "type": "Suffixes | undefined"
+        }
+      ],
+      "exported": true,
+      "module": "@basis/ui",
+      "name": "FilterDefinition",
+      "purpose": "One filter: its kind, its label and what the kind needs."
+    },
+    {
+      "definition": "Readonly<Record<string, FilterDefinition>>",
+      "exported": true,
+      "module": "@basis/ui",
+      "name": "FilterDefinitions",
+      "purpose": "A page's filters by name; each name is a search parameter of the page's address, in the order the bar shows them."
+    },
+    {
+      "definition": "{ readonly [TName in keyof TFilters]: (row: TRow) => FilterCell; }",
+      "exported": true,
+      "module": "@basis/ui",
+      "name": "FilterFields",
+      "parameters": "<TRow, TFilters extends FilterDefinitions>",
+      "purpose": "How each filter reads its field from a row, by the filter's name."
+    },
+    {
+      "definition": "| TValue | { readonly value: TValue; readonly label: string }",
+      "extends": [
+        "TValue"
+      ],
+      "fields": [
+        {
+          "description": "",
+          "name": "value",
+          "optional": true,
+          "type": "TValue"
+        },
+        {
+          "description": "",
+          "name": "label",
+          "optional": true,
+          "type": "string"
+        }
+      ],
+      "exported": true,
+      "module": "@basis/ui",
+      "name": "FilterOption",
+      "parameters": "<TValue extends string = string>",
+      "purpose": "One of a choice's options: its value in the address, or the value with the label the page shows for it."
+    },
+    {
+      "definition": "z.ZodCatch<z.ZodOptional<z.ZodType<TValue, TValue>>>",
+      "exported": false,
+      "module": "@basis/ui",
+      "name": "FilterParameter",
+      "parameters": "<TValue>",
+      "purpose": "One filter's search parameter: absent, or a value the filter takes, any other value read as absent."
+    },
+    {
+      "fields": [
+        {
+          "description": "The page's filters, as `defineFilters` returned them.",
+          "name": "filters",
+          "optional": false,
+          "type": "TFilters"
+        },
+        {
+          "description": "The active filters, as `useFilters` gives them in `values`.",
+          "name": "values",
+          "optional": false,
+          "type": "FilterValues<TFilters>"
+        },
+        {
+          "description": "How each filter reads its field from a row.",
+          "name": "fields",
+          "optional": false,
+          "type": "FilterFields<TRow, TFilters>"
+        }
+      ],
+      "exported": true,
+      "module": "@basis/ui",
+      "name": "FilterRowsOptions",
+      "parameters": "<TRow, TFilters extends FilterDefinitions>",
+      "purpose": ""
+    },
+    {
+      "definition": "z.ZodObject<{ readonly [TName in keyof TFilters]: FilterParameter<FilterValue<TFilters[TName]>>; }>",
+      "exported": true,
+      "module": "@basis/ui",
+      "name": "FilterSearchSchema",
+      "parameters": "<TFilters extends FilterDefinitions>",
+      "purpose": "The schema of a page's filters: an object of one optional parameter a filter."
+    },
+    {
+      "fields": [
+        {
+          "description": "The page's filters, as `defineFilters` returned them.",
+          "name": "filters",
+          "optional": false,
+          "type": "TFilters"
+        },
+        {
+          "description": "The active filters, by name, as the address holds them; give them to `filterRows`, a table or an API.",
+          "name": "values",
+          "optional": false,
+          "type": "FilterValues<TFilters>"
+        },
+        {
+          "description": "Sets one filter, or clears it when `value` is `undefined`, empty text or no options.",
+          "name": "set",
+          "optional": false,
+          "type": "<TName extends keyof TFilters & string>( name: TName, value: FilterValue<TFilters[TName]> | undefined, write?: FilterWrite, ) => void"
+        },
+        {
+          "description": "Clears one filter.",
+          "name": "clear",
+          "optional": false,
+          "type": "(name: keyof TFilters & string) => void"
+        },
+        {
+          "description": "Clears every filter, in one history entry.",
+          "name": "clearAll",
+          "optional": false,
+          "type": "() => void"
+        },
+        {
+          "description": "Sets every filter at once, in one history entry, as a saved view restores them: a filter `values` leaves out is cleared, and a value the filter cannot take, such as an option the page no longer has, is dropped.",
+          "name": "setAll",
+          "optional": false,
+          "type": "(values: FilterValues<TFilters>) => void"
+        }
+      ],
+      "exported": true,
+      "module": "@basis/ui",
+      "name": "FilterState",
+      "parameters": "<TFilters extends FilterDefinitions>",
+      "purpose": "A page's filters, their active values, and how to change them."
+    },
+    {
+      "definition": "TDefinition extends { readonly kind: \"text\"; } ? string : TDefinition extends { readonly kind: \"choice\"; readonly options: readonly (infer TOption)[] } ? OptionValue<TOption> : TDefinition extends { readonly kind: \"multiChoice\"; readonly options: readonly (infer TOption)[]; } ? readonly OptionValue<TOption>[] : TDefinition extends { readonly kind: \"dateRange\" } ? DateRangeFilterValue : NumberRangeFilterValue",
+      "exported": true,
+      "module": "@basis/ui",
+      "name": "FilterValue",
+      "parameters": "<TDefinition extends FilterDefinition>",
+      "purpose": "What an active filter of a definition holds: the text, the option's value, the options' values, or the range."
+    },
+    {
+      "definition": "{ readonly [TName in keyof TFilters]?: FilterValue<TFilters[TName]> | undefined; }",
+      "exported": true,
+      "module": "@basis/ui",
+      "name": "FilterValues",
+      "parameters": "<TFilters extends FilterDefinitions>",
+      "purpose": "The page's active filters, by name; a filter that is not active is absent. It is plain JSON, as the address holds it, a saved view stores it and a table takes it."
+    },
+    {
+      "fields": [
+        {
+          "description": "Replace the current history entry rather than adding one, so Back skips this change; false unless set.",
+          "name": "replace",
+          "optional": true,
+          "type": "boolean | undefined"
+        }
+      ],
+      "exported": true,
+      "module": "@basis/ui",
+      "name": "FilterWrite",
+      "purpose": "How a change is written to the address."
+    },
+    {
       "fields": [
         {
           "description": "Digits after the decimal point. The default is a decimal's scale, 0 for integers, 1 when abbreviating, 2 for a percentage, and 2 for doubles.",
@@ -23686,6 +24141,33 @@
       "module": "@basis/ui",
       "name": "Motion",
       "purpose": "`full` moves as the operating system allows; `reduced` stops every transition and animation as `prefers-reduced-motion` does, for a desktop whose Windows setting is not the user's to change."
+    },
+    {
+      "fields": [
+        {
+          "description": "",
+          "name": "kind",
+          "optional": false,
+          "type": "\"multiChoice\""
+        },
+        {
+          "description": "The field's name on the page, such as \"Desks\".",
+          "name": "label",
+          "optional": false,
+          "type": "string"
+        },
+        {
+          "description": "The options, in the order the list shows them.",
+          "name": "options",
+          "optional": false,
+          "type": "readonly FilterOption<TValue>[]"
+        }
+      ],
+      "exported": true,
+      "module": "@basis/ui",
+      "name": "MultiChoiceFilter",
+      "parameters": "<TValue extends string = string>",
+      "purpose": "Any of a list of options, such as several desks."
     },
     {
       "fields": [
@@ -23862,6 +24344,52 @@
       "purpose": "How a number is written, as the formatter's `Format` has it."
     },
     {
+      "fields": [
+        {
+          "description": "",
+          "name": "kind",
+          "optional": false,
+          "type": "\"numberRange\""
+        },
+        {
+          "description": "The field's name on the page, such as \"Par\".",
+          "name": "label",
+          "optional": false,
+          "type": "string"
+        },
+        {
+          "description": "The suffixes the two inputs accept; `amountSuffixes` unless set.",
+          "name": "suffixes",
+          "optional": true,
+          "type": "Suffixes | undefined"
+        }
+      ],
+      "exported": true,
+      "module": "@basis/ui",
+      "name": "NumberRangeFilter",
+      "purpose": "A range of numbers, either end open, typed as AmountInput reads them, so `5mm` is 5,000,000."
+    },
+    {
+      "fields": [
+        {
+          "description": "",
+          "name": "min",
+          "optional": true,
+          "type": "number | undefined"
+        },
+        {
+          "description": "",
+          "name": "max",
+          "optional": true,
+          "type": "number | undefined"
+        }
+      ],
+      "exported": true,
+      "module": "@basis/ui",
+      "name": "NumberRangeFilterValue",
+      "purpose": "An active number range filter: the least and greatest numbers it takes, at least one of them."
+    },
+    {
       "definition": "number | null | undefined",
       "exported": true,
       "module": "@basis/ui",
@@ -23875,6 +24403,14 @@
       "name": "OmitUndefined",
       "parameters": "<Value>",
       "purpose": ""
+    },
+    {
+      "definition": "TOption extends { readonly value: infer TValue } ? TValue : TOption",
+      "exported": false,
+      "module": "@basis/ui",
+      "name": "OptionValue",
+      "parameters": "<TOption>",
+      "purpose": "The value an option gives, from its plain text or its `value`."
     },
     {
       "definition": "NonNullable<ToggleGroupPrimitive.Props[\"orientation\"]>",
@@ -24583,6 +25119,32 @@
       "module": "@basis/ui",
       "name": "TelemetryAttributes",
       "purpose": "What a report says about itself, such as `{ source: \"query\", query: \"/positions\" }`. Values stay flat, so any collector can index them."
+    },
+    {
+      "fields": [
+        {
+          "description": "",
+          "name": "kind",
+          "optional": false,
+          "type": "\"text\""
+        },
+        {
+          "description": "The field's name on the page, such as \"Issuer\".",
+          "name": "label",
+          "optional": false,
+          "type": "string"
+        },
+        {
+          "description": "The input's text while it is empty; none unless set.",
+          "name": "placeholder",
+          "optional": true,
+          "type": "string | undefined"
+        }
+      ],
+      "exported": true,
+      "module": "@basis/ui",
+      "name": "TextFilter",
+      "purpose": "Free text that a field must hold, ignoring case, such as part of an issuer's name."
     },
     {
       "definition": "(typeof themeNames)[number]",

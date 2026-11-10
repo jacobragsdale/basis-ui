@@ -38,6 +38,30 @@ describe("the conventions page", () => {
     expect(screen.getByRole("row").elements()).toHaveLength(4);
   });
 
+  test("opens with the filters its address holds, and keeps only their rows", async () => {
+    worker.use(getConventionsMockHandler(conventions));
+    const { screen } = await renderApp("/?convention=act");
+    const filters = screen.getByRole("search", { name: "Convention filters" });
+    await expect.element(filters.getByRole("searchbox", { name: "Convention" })).toHaveValue("act");
+    await expect.element(screen.getByRole("cell", { name: "ACT/360" })).toBeVisible();
+    await expect.element(screen.getByRole("cell", { name: "30/360" })).not.toBeInTheDocument();
+    await expect
+      .element(screen.getByRole("list", { name: "Active filters" }))
+      .toHaveTextContent("Convention: act");
+  });
+
+  test("filters the table by a choice, and clears it from its chip", async () => {
+    worker.use(getConventionsMockHandler(conventions));
+    const { screen } = await renderApp("/");
+    await expect.element(screen.getByRole("cell", { name: "30/360" })).toBeVisible();
+    await screen.getByRole("combobox", { name: "Days in a year" }).click();
+    await screen.getByRole("option", { name: "365 days" }).click();
+    await expect.element(screen.getByRole("cell", { name: "30/360" })).not.toBeInTheDocument();
+    expect(screen.getByRole("row").elements()).toHaveLength(2);
+    await screen.getByRole("button", { name: "Clear Days in a year" }).click();
+    await expect.element(screen.getByRole("cell", { name: "30/360" })).toBeVisible();
+  });
+
   test("asks the API under /api, with the signed-in user's token", async () => {
     const requests: { readonly authorization: string | null; readonly path: string }[] = [];
     worker.use(

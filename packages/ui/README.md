@@ -1019,8 +1019,8 @@ Pass `today` to fix the date both pickers count from, as a test does.
 
 ## Showing and taking data
 
-`DataTable`, `EntityPicker`, `SecurityPicker` and `FileImport` are the firm's components for small tables, searching
-for an entity, and importing a CSV file.
+`DataTable`, `FilterBar`, `EntityPicker`, `SecurityPicker` and `FileImport` are the firm's components for small
+tables, filtering a page's rows, searching for an entity, and importing a CSV file.
 
 ### DataTable
 
@@ -1084,6 +1084,69 @@ const columns: readonly DataTableColumn<Position>[] = [
 - **The row cap.** A DataTable draws every row it holds into the page. Past its cap, 2,000 rows unless `rowCap` says
   otherwise, it draws nothing, shows one error that names the cap and says to use parallax's `<Grid>`, and reports
   the error to telemetry. Data that size belongs in the grid, which draws only the rows on screen.
+
+### FilterBar
+
+`FilterBar` filters a page's rows by their fields, and keeps the filters in the page's search parameters, so a
+filtered view survives a reload, opens from a link, and Back and Forward step through it. Define the filters once, in
+a module of their own, give the route their schema, and give the bar `useFilters`:
+
+```tsx
+// src/pages/trades-filters.ts
+import { defineFilters, parSuffixes } from "@basis/ui";
+
+const tradeFilters = defineFilters({
+  issuer: { kind: "text", label: "Issuer" },
+  book: { kind: "choice", label: "Book", options: [{ value: "rates", label: "Rates" }, "Credit"] },
+  desks: { kind: "multiChoice", label: "Desks", options: ["UST", "Agency", "IG"] },
+  settles: { kind: "dateRange", label: "Settles" },
+  par: { kind: "numberRange", label: "Par", suffixes: parSuffixes },
+});
+
+// src/routes.ts
+createRoute({ path: "/trades", validateSearch: filterSearchSchema(tradeFilters) /* … */ });
+
+// src/pages/trades.tsx
+const filters = useFilters(tradeFilters);
+const shown = filterRows(trades, {
+  filters: tradeFilters,
+  values: filters.values,
+  fields: {
+    issuer: (row) => row.issuer,
+    book: (row) => row.book,
+    desks: (row) => row.desk,
+    settles: (row) => row.settles,
+    par: (row) => row.par,
+  },
+});
+
+<FilterBar filters={filters} />;
+```
+
+- **Kinds.** `text` is a search box, matched ignoring case; `choice` a Select with "Any"; `multiChoice` a combobox
+  whose choices are chips; `dateRange` a `DateRangePicker`, with `calendar`, `min`, `max` and `presets`; and
+  `numberRange` two `AmountInput`s, with `suffixes`, either end left open. `defineFilters` keeps each choice's options
+  as the literal values written, so `filters.values.book` is `"rates" | "Credit" | undefined`, and throws one `ERROR`
+  line for a choice with no options, an empty one or one listed twice.
+- **The address.** Each filter is the search parameter of its name, in the router's JSON, as
+  `?book=rates&par={"min":5000000}`. `filterSearchSchema` is a Zod object, so `.extend({...})` adds the route's other parameters, and the router types
+  them for `useSearch`, `Link` and `navigate`. A value a filter cannot take, from a stale link, opens as no filter
+  rather than an error. A change keeps the route's other parameters and the page's scroll.
+- **History.** A choice, a set of options, a range of days or a chip's clear is one history entry. Text and numbers
+  go to the address once typing pauses, or at once on Enter or leaving the field, and each use of the field is one
+  entry, so Back undoes the typing in one step.
+- **Chips.** Each active filter shows a chip in words, such as `Par: at least 5,000,000`, whose button clears it;
+  Clear all clears every filter in one entry.
+- **The rows.** `filterRows` keeps the rows every active filter keeps; each of `fields` reads its filter's field from
+  a row: text, or a list of texts, for `text`; the option's value for a choice; a `Temporal.PlainDate` or ISO 8601
+  text for a range of days; a number for a range of numbers. A field with no value passes no active filter. Rows an
+  API filters are filtered there: send it `filters.values`.
+- **Saved views and tables.** `filters.values` is a `FilterValues`, plain JSON with dates as ISO 8601 text, which a
+  saved view stores as it is; `filters.setAll(view)` restores one in one history entry, clearing the filters it leaves
+  out and dropping a value the filters no longer take. `actions` puts the page's own controls, such as its saved
+  views, at the end of the bar.
+
+The example app's conventions page filters its table this way.
 
 ### EntityPicker and SecurityPicker
 

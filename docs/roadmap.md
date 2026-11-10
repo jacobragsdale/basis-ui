@@ -187,9 +187,9 @@ second consumer on 2026-11-07: 1.12 and 1.13 wait on basis's contract, and 1.14 
     Each has its gallery page. Needs 1.3, 1.4, and 2.1 for the formatter's fixtures. On 2026-11-08 the shell's parts
     were built but for the filter bar, saved views and split panes: `AppShell`, with the sidebar, breadcrumbs and
     command palette built from routes' `staticData`, the environment banner, the user menu and the shortcut registry
-    with its `?` list, used and tested by the example app; t1b built `Sparkline`, `CellBar` and `QueryState`. Not yet:
-    the filter bar (step 6.7.2), saved views (6.6.3), split panes (6.7), and the forms' unsaved-changes guard and typed
-    confirmation (6.7.6).
+    with its `?` list, used and tested by the example app; t1b built `Sparkline`, `CellBar` and `QueryState`. The
+    filter bar was built in step 6.7.2. Not yet: saved views (6.6.3), split panes (6.7), and the forms'
+    unsaved-changes guard and typed confirmation (6.7.6).
 
 11. **1.11 Utilities.** Build the four modules the design's Utilities section lists, two agents at once: `dates`, with
     the SIFMA calendar first since the firm trades US fixed income, then the NYSE's and TARGET2's, alongside
@@ -587,7 +587,13 @@ flowchart TD
    content that scrolls or fills the window, whose `breadcrumb` titles the last breadcrumb from a query's data; the
    palette's commands take keywords, a group, an icon and a shortcut; the page shown is a shortcut scope, and a
    conflict logs an `ERROR` line; a repeated `toastError` counts on its open toast; and parallax's demo runs on the
-   shell, with its palette, shortcuts and breadcrumbs.
+   shell, with its palette, shortcuts and breadcrumbs. 6.7.2 built on 2026-11-09: `FilterBar` filters a page's rows by
+   text, a choice, several choices, a range of days and a range of numbers, on `@basis/ui`'s Select, Combobox,
+   DateRangePicker and AmountInput, with a chip for each active filter and Clear all; `defineFilters` declares the
+   filters, `filterSearchSchema` gives the route its Zod `validateSearch`, `useFilters` reads and writes the address,
+   and `filterRows` keeps the rows. Back and Forward restore the filters, and typing is one history entry. Its
+   `FilterValues` are the seam for saved views (6.6.3), which restore them with `setAll`, and for the controlled
+   `DataTable` (6.7.3). The example app's conventions page filters its table with it.
 8. **6.8 The agent's toolbelt.** Lane Preset, in order, since preset changes land one at a time: a catalogue that
    answers, with `vp run docs NAME` (`6.8.1-catalogue`), lint that costs fewer rounds (`6.8.2-lint-limits`), the doors
    that are open (`6.8.3-closed-doors`), one verdict, `vp run verify` (`6.8.4-verify`), a shot that explains itself

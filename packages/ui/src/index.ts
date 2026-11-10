@@ -388,7 +388,7 @@ export {
 } from "./format/display-format.ts";
 export { numberText, type NumberFormat, type NumericValue } from "./components/num-text.ts";
 
-// Data: the firm's own components for small tables, searching for an entity, and importing a CSV file.
+// Data: the firm's own components for small tables, filtering them, searching for an entity, and importing a CSV file.
 export { DataTable, type DataTableProps } from "./components/data-table.tsx";
 export type {
   DataTableColumn,
@@ -415,6 +415,31 @@ export type {
 } from "./securities/security-identifier.ts";
 export { FileImport, type FileImportProps } from "./components/file-import.tsx";
 export type { ImportHeaders, ImportSchema } from "./components/file-import-rows.ts";
+export { FilterBar, type FilterBarProps } from "./components/filter-bar.tsx";
+export {
+  defineFilters,
+  type AnyFilterValue,
+  type ChoiceFilter,
+  type DateRangeFilter,
+  type DateRangeFilterValue,
+  type FilterDefinition,
+  type FilterDefinitions,
+  type FilterOption,
+  type FilterValue,
+  type FilterValues,
+  type MultiChoiceFilter,
+  type NumberRangeFilter,
+  type NumberRangeFilterValue,
+  type TextFilter,
+} from "./components/filter-definitions.ts";
+export {
+  filterRows,
+  type FilterCell,
+  type FilterFields,
+  type FilterRowsOptions,
+} from "./components/filter-rows.ts";
+export { filterSearchSchema, type FilterSearchSchema } from "./components/filter-search.ts";
+export { useFilters, type FilterState, type FilterWrite } from "./components/filter-state.ts";
 
 export type { CssVariable } from "./components/css-variables.ts";
 

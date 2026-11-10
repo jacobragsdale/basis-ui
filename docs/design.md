@@ -284,7 +284,12 @@ The firm's own components cover what shadcn does not:
   `SecurityPicker` sends only a valid CUSIP, ISIN or SEDOL. `FileImport` reads CSV and Excel workbooks (.xlsx), previews
   the rows, and checks them against a schema before anything is sent; a workbook's cells read as the text Excel shows,
   with dates in ISO 8601, and a workbook with several sheets of the schema's columns offers a choice of sheet. An .xls,
-  .xlsb or .ods is refused with how to save it as .xlsx ([the reader's spike](spikes/xlsx-reader.md)).
+  .xlsb or .ods is refused with how to save it as .xlsx ([the reader's spike](spikes/xlsx-reader.md)). `FilterBar`
+  filters a page's rows by text, a choice, several choices, a range of days or a range of numbers, with a chip for each
+  active filter, and keeps them in the page's search parameters, typed by TanStack Router through a Zod schema made
+  from the filters, so a filtered view is a link and Back and Forward step through it; typing is one history entry,
+  not one a key. A value a stale link holds that a filter cannot take opens as no filter rather than failing the page.
+  Its values are plain JSON, which a saved view stores and restores as they are and a table takes.
 - **The shell's parts.** A sidebar built from the route tree, its pages in their groups, breadcrumbs that a page's data
   can title, a user menu holding the mode, density, motion and theme, a banner naming the environment, a command palette
   (Ctrl+K) filled from the routes and the app's commands, each with its keywords, group, icon and shortcut, a shortcut
@@ -294,8 +299,8 @@ The firm's own components cover what shadcn does not:
   is one, so its keys are its own and win over the app's. Two shortcuts that take the same keys in one scope are a
   conflict, logged as an `ERROR` line with its fix rather than thrown, since the two often meet only in some state of
   a page and a throw would take the page down for its users. The same error toast raised again within 10 seconds,
-  while it is open, counts on it rather than stacking. Not yet: a filter bar whose state lives in the URL's search parameters (step 6.7.2), saved views (step
-  6.6.3), and split panes for master and detail (step 6.7).
+  while it is open, counts on it rather than stacking. Not yet: saved views (step 6.6.3), and split panes for master
+  and detail (step 6.7).
 - **States.** One component shows a query's loading skeleton, its empty state, its error, read from problem details, and
   its staleness, as the time its data was current.
 - **Small charts.** `Sparkline` and an in-cell bar, drawn as SVG, for KPI cards and table cells, which are too small to

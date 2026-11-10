@@ -6,8 +6,15 @@ import { render } from "vitest-browser-react";
 
 import { Data } from "./data.tsx";
 
-/** The family's components, the table first, then the pickers, then the import. */
-const sections = ["DataTable", "DataTable states", "EntityPicker", "SecurityPicker", "FileImport"];
+/** The family's components, the table first, then its filter bar, then the pickers, then the import. */
+const sections = [
+  "DataTable",
+  "DataTable states",
+  "FilterBar",
+  "EntityPicker",
+  "SecurityPicker",
+  "FileImport",
+];
 
 describe("the data page", () => {
   test("shows a section for each component, in order", async () => {

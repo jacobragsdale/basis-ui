@@ -5,6 +5,13 @@ What changed in `@basis/ui`, newest first, in the words an app's agent needs: wh
 
 ## Unreleased
 
+- New: `FilterBar`, a page's filters over its rows, kept in its search parameters. Declare the filters with
+  `defineFilters` (kinds `text`, `choice`, `multiChoice`, `dateRange`, `numberRange`), give the route
+  `validateSearch: filterSearchSchema(filters)`, pass `useFilters(filters)` to the bar, and keep the rows with
+  `filterRows(rows, { filters, values, fields })`. Back and Forward restore the filters, typing is one history entry,
+  and a value a stale link holds that a filter cannot take opens as no filter. Each active filter is a chip that clears
+  it, beside Clear all. `filters.values` is a `FilterValues`, plain JSON for a saved view to store; `filters.setAll`
+  restores one in one history entry. See the README's FilterBar section.
 - The preferences carry a theme. `Preferences` has a `theme`, one of `themeNames` (only `default` ships yet), which
   the cookie stores as a fourth part, `dark.compact.full.default`, and the head script puts on the root as
   `data-theme`; an older cookie, or one naming a theme no longer shipped, reads as the default theme. The user menu
