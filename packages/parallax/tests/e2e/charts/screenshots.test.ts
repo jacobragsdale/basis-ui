@@ -1,5 +1,6 @@
 /* Every chart of the harness, its breakdowns, its fixed-income charts and its technical page, in both modes, compared pixel for pixel with the
- * screenshots in `screenshots/`, as web/e2e/screenshots.spec.ts compares the Angular demo's. Text renders differently
+ * screenshots in `screenshots/`, and a few charts again at 1.25 and 1.5, the ratios of a desktop scaled to 125 % and
+ * 150 %, as web/e2e/screenshots.spec.ts compares the Angular demo's. Text renders differently
  * from one machine to the next, so these run only in the pinned Playwright image: run them with `node
  * tests/e2e/charts/run.ts screenshots`, and take new ones with `--update-snapshots`. */
 
@@ -56,6 +57,8 @@ async function matches(page: Page, section: Locator, name: string): Promise<void
     caret: "hide",
     mask: [section.locator('[data-slot="chart-status"]')],
     maxDiffPixels: 0,
+    // In device pixels, which at a ratio of 1 are CSS pixels: a scaled desktop's screenshot shows each device pixel.
+    scale: "device",
     threshold: 0,
   });
 }
@@ -73,6 +76,21 @@ async function allMatch(
     await matches(page, section, `${naming.prefix}${id}-${naming.theme}.png`);
   });
 }
+
+/** The charts taken again at a scaled desktop's ratio: gridlines and an axis, bars running across, and candles' wicks. */
+const scaledCharts = ["area", "horizontal-bars", "candles"];
+
+test("a few charts draw as in their screenshots at a scaled desktop's ratio, light mode", async ({
+  page,
+}) => {
+  const errors = errorsOf(page);
+  await open(page, "/?page=charts&theme=light", chartCount);
+  await page.mouse.move(0, 0);
+  await inTurn(scaledCharts, async (id) => {
+    await matches(page, page.locator(`section[data-card="${id}"]`), `${id}-light.png`);
+  });
+  expect(errors).toStrictEqual([]);
+});
 
 for (const theme of ["light", "dark"] as const) {
   test(`every chart draws as in its screenshot, ${theme} mode`, async ({ page }) => {

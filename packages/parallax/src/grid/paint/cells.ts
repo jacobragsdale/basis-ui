@@ -114,25 +114,25 @@ function ring(pass: Pass, at: RowAt, cell: CellAt): void {
 
 /** Tints a cell whose row is chosen, or that is in the selected range, over its background. */
 function cellTint(pass: Pass, at: RowAt, cell: CellAt): void {
-  const { context, theme, metrics, range } = pass;
+  const { theme, metrics, range } = pass;
   const rect = [cell.x, at.y, cell.width, metrics.rowPx] as const;
   if (rowMark(pass, at.row) !== "") {
-    fillRect(context, theme.selectionBackground, rect);
+    fillRect(pass, theme.selectionBackground, rect);
   }
   if (range !== null && contains(range, { column: cell.column, row: at.row })) {
-    fillRect(context, theme.selectionBackground, rect);
+    fillRect(pass, theme.selectionBackground, rect);
   }
 }
 
 /** Fills a cell's background, highlighting it if its row is under the pointer and marking it if it is selected. */
 function cellBackground(pass: Pass, at: RowAt, cell: CellAt): void {
-  const { context, theme, metrics, focus, hover } = pass;
+  const { theme, metrics, focus, hover } = pass;
   const rect = [cell.x, at.y, cell.width, metrics.rowPx] as const;
   const fill = hover?.row === at.row ? hover.color : at.stripe;
   if (fill !== theme.background && translucent(fill)) {
-    fillRect(context, theme.background, rect);
+    fillRect(pass, theme.background, rect);
   }
-  fillRect(context, fill, rect);
+  fillRect(pass, fill, rect);
   cellTint(pass, at, cell);
   if (focus !== null && focus.row === at.row && focus.column === cell.column) {
     ring(pass, at, cell);
@@ -141,11 +141,11 @@ function cellBackground(pass: Pass, at: RowAt, cell: CellAt): void {
 
 /** Draws the line under a cell, if the theme has one, and the cell's right border. */
 function cellLines(pass: Pass, at: RowAt, cell: CellAt): void {
-  const { context, rowRule, theme, metrics } = pass;
+  const { rowRule, theme, metrics } = pass;
   if (rowRule !== null) {
-    fillRect(context, rowRule, [cell.x, at.y + metrics.rowPx - 1, cell.width, 1]);
+    fillRect(pass, rowRule, [cell.x, at.y + metrics.rowPx - 1, cell.width, 1]);
   }
-  fillRect(context, theme.columnBorder, [cell.x + cell.width - 1, at.y, 1, metrics.rowPx]);
+  fillRect(pass, theme.columnBorder, [cell.x + cell.width - 1, at.y, 1, metrics.rowPx]);
 }
 
 /** Keeps what a cell's tooltip says, or forgets it when null. */

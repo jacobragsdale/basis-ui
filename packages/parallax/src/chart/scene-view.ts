@@ -2,6 +2,8 @@
  * crosshair and tooltip where the pointer is or another chart of the group points, the brush, a measurement, the
  * plot's cursor, and the words of its status line and text alternative. */
 
+import { DevicePixels } from "#canvas/device-pixels.ts";
+
 import { categoryAt } from "./interaction.ts";
 import type { DrawingEditor } from "./drawing-editor.ts";
 import type { ChartModel, LegendEntry, Point } from "./model-types.ts";
@@ -34,6 +36,7 @@ class SceneView {
   readonly #model: SceneModel;
   #elements: SceneElements | null = null;
   #overlay: ChartOverlay | null = null;
+  #device: DevicePixels | null = null;
   #painted: ChartModel | null = null;
   #dirty = true;
   #legendText = "[]";
@@ -47,12 +50,19 @@ class SceneView {
     this.#model = model;
   }
 
-  public attach(elements: SceneElements, overlay: ChartOverlay): void {
+  /** Shows the model in `elements`, calling `redraw` when the canvas must be painted again on new device pixels: its
+   * box in device pixels changed, or the ratio did. */
+  public attach(elements: SceneElements, overlay: ChartOverlay, redraw: () => void): void {
     [this.#elements, this.#overlay, this.#dirty, this.#described] = [elements, overlay, true, null];
+    this.#device = new DevicePixels(elements.canvas, () => {
+      this.repaint();
+      redraw();
+    });
   }
 
   public detach(): void {
-    [this.#elements, this.#overlay, this.#painted] = [null, null, null];
+    this.#device?.dispose();
+    [this.#elements, this.#overlay, this.#painted, this.#device] = [null, null, null, null];
   }
 
   /** The drawings changed: the canvas is painted again even if the model did not. */
@@ -96,8 +106,9 @@ class SceneView {
 
   /** Paints the canvas, if the model or the drawings changed since it was last painted. */
   #paint(canvas: HTMLCanvasElement, model: ChartModel | null, editor: DrawingEditor): void {
-    if (model !== null && (model !== this.#painted || this.#dirty)) {
-      paintCanvas(canvas, model, { editor, theme: this.#model.theme });
+    const device = this.#device;
+    if (model !== null && device !== null && (model !== this.#painted || this.#dirty)) {
+      paintCanvas(canvas, model, { device, editor, theme: this.#model.theme });
       [this.#painted, this.#dirty] = [model, false];
     }
   }

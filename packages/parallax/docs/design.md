@@ -645,6 +645,37 @@ wheel can repaint it several times, and step 6.4.3 moves it to animation
 frames. Flashing cells, and the batching of live updates to a visual rate that
 they would need, are not in the code: live updates stay deferred.
 
+Every canvas, the grid's, the pivot's and each chart's, draws in whole device
+pixels. Windows desktops are often scaled to 125 % or 150 %, where a size in
+CSS pixels is rarely a whole number of device pixels: a canvas 531 CSS pixels
+tall covers 663.75 at 125 %, so a backing store of 664 would be resampled into
+it and every line and glyph blurred. So a canvas takes a CSS size of the whole
+device pixels inside the area it fills, a fraction of a pixel less at most,
+and its backing store is the size `ResizeObserver`'s
+`devicePixelContentBoxSize` reports, which is what the browser covers once it
+has rounded the canvas's position. Until that is reported, and in a browser
+that never reports it, as Safari, which lacks `device-pixel-content-box`, the
+backing store is the CSS size times the ratio, which is exact unless the
+canvas sits at a fraction of a device pixel. So it is when the reported box is
+more than a device pixel from that, as under a ratio that is only emulated,
+by Playwright's `deviceScaleFactor` or DevTools' device mode, where Chromium
+reports CSS pixels. What it draws lands on device
+pixels too: a filled area has its edges rounded to them, so cells tile without
+seams; a rule is whole device pixels thick, at least one and rounded down as a
+CSS border is, against the edge it borders; and gridlines, wicks and a
+checkbox's outline are stroked the same way. Text needs no help: Chromium
+rounds a glyph's baseline to a whole device pixel when the transform only
+scales, which a test holds it to, so rounding the text's position first would
+only move it at a ratio of 1. When the ratio changes,
+as when a window moves to another monitor or the page is zoomed, a
+`matchMedia` query on the resolution hears it, and the canvas is sized and
+drawn again. The code is in `src/canvas/device-pixels.ts`. Its tests run in
+Chromium started at 1.25 and 1.5 as well as 1, since emulating a ratio alone,
+as Playwright's `deviceScaleFactor` or CDP's device metrics do, changes
+`devicePixelRatio` but not the device pixels a box covers; the grid's, the
+pivot's and the charts' end-to-end suites take a few screenshots at those
+ratios too.
+
 Renderers, hit-testing and interaction are TypeScript inside `@basis/parallax`.
 Drawing from Rust would cross the WebAssembly boundary on every text call and
 make theming harder.

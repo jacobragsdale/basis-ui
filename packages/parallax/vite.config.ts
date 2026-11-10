@@ -1,5 +1,6 @@
 import babel from "@rolldown/plugin-babel";
 import { basisPlugins, basisTest } from "@basis/ui/preset";
+import { playwright } from "vite-plus/test/browser-playwright";
 import { reactCompilerPreset } from "@vitejs/plugin-react";
 import { fileURLToPath } from "node:url";
 
@@ -14,6 +15,35 @@ const rust = [
   ".cargo/config.toml",
   "scripts/build-wasm.ts",
 ];
+
+/** The browser tests' setup: Chromium, as `@basis/ui`'s preset runs it. */
+const browserTest = await basisTest();
+
+/**
+ * The canvas's device-pixel tests again at the ratios of a Windows desktop scaled to 125 % and 150 %, as the firm's
+ * Citrix desktops are. Chromium starts at the ratio: emulating one, as Playwright's `deviceScaleFactor` or CDP's
+ * `Emulation.setDeviceMetricsOverride` does alone, changes `devicePixelRatio` but not the device pixels a box covers,
+ * so `devicePixelContentBoxSize` still reports CSS pixels. The context's `deviceScaleFactor` is set to the same ratio,
+ * since the viewport Playwright sets would otherwise emulate 1.
+ */
+const windows125 = 1.25;
+const windows150 = 1.5;
+const scaledTests = [windows125, windows150].map((ratio) => ({
+  extends: true,
+  test: {
+    ...browserTest,
+    browser: {
+      ...browserTest.browser,
+      instances: [{ browser: "chromium" as const }],
+      provider: playwright({
+        contextOptions: { deviceScaleFactor: ratio },
+        launchOptions: { args: [`--force-device-scale-factor=${String(ratio)}`] },
+      }),
+    },
+    include: ["tests/browser/device-pixels.test.tsx"],
+    name: `browser at ${String(ratio)}`,
+  },
+}));
 
 export default defineConfig({
   pack: {
@@ -100,9 +130,11 @@ export default defineConfig({
         test: {
           include: ["tests/browser/**/*.test.{ts,tsx}"],
           name: "browser",
-          ...(await basisTest()),
+          ...browserTest,
         },
       },
+      // Without a browser, as BASIS_TEST_DOM=node asks, there is no ratio to start one at.
+      ...(browserTest.browser === undefined ? [] : scaledTests),
     ],
   },
 });

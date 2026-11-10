@@ -53,9 +53,11 @@ class TextWidths {
   }
 }
 
-/** What text is drawn with: the context, its widths, a cell's padding and a row's height. */
+/** What text is drawn with: the context and the device pixels of one of its CSS pixels, which marks snap to, its
+ * widths, a cell's padding and a row's height. */
 interface Pen {
   readonly context: CanvasRenderingContext2D;
+  readonly ratio: number;
   readonly widths: TextWidths;
   readonly padding: number;
   readonly rowPx: number;
@@ -83,7 +85,7 @@ function mark(pen: Pen, cell: CellText, shown: number): void {
   for (const [start, end] of marks.filter(([from]) => from < shown)) {
     const from = left + widths.measure(context, text.slice(0, start));
     const to = left + widths.measure(context, text.slice(0, Math.min(end, shown)));
-    fillRect(context, markColor, [from, y - height / 2, to - from, height]);
+    fillRect(pen, markColor, [from, y - height / 2, to - from, height]);
   }
   Object.assign(context, { fillStyle: ink });
 }

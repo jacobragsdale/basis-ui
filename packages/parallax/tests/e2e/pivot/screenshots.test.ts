@@ -1,5 +1,6 @@
 /* The pivot's screenshots, compared pixel for pixel with those in `screenshots/`: the pivot with its settings, a
- * measure header's menu, a Rows chip's menu, a filter's editor, and the rows behind a value, in both schemes. Fonts
+ * measure header's menu, a Rows chip's menu, a filter's editor, and the rows behind a value, in both schemes, and the
+ * pivot again at 1.25 and 1.5, the ratios of a desktop scaled to 125 % and 150 %. Fonts
  * and text rendering differ between machines, so these run only in the pinned Playwright image: run them with
  * `tests/e2e/pivot/in-image.sh screenshots`, and take new ones by adding `--update-snapshots`. The status bars tell
  * when the data was read and how long ago, so they are masked. */
@@ -16,7 +17,14 @@ test.skip(
 
 /** In the pinned image drawing is deterministic, so every pixel must match: the default tolerance misses a light
  * wash. */
-const exactly = { animations: "disabled", caret: "hide", maxDiffPixels: 0, threshold: 0 } as const;
+const exactly = {
+  animations: "disabled",
+  caret: "hide",
+  maxDiffPixels: 0,
+  // In device pixels, which at a ratio of 1 are CSS pixels: a scaled desktop's screenshot shows each device pixel.
+  scale: "device",
+  threshold: 0,
+} as const;
 
 /** Waits for two animation frames in the page. */
 async function twoFrames(page: Page): Promise<void> {
@@ -62,6 +70,13 @@ async function shot(target: Locator, name: string): Promise<void> {
     mask: [page.locator("[data-slot=grid-status]")],
   });
 }
+
+test("the pivot and its settings draw as in their screenshot at a scaled desktop's ratio, light scheme", async ({
+  page,
+}) => {
+  await pivot(page, "light");
+  await shot(page.locator("main"), "pivot-light.png");
+});
 
 for (const theme of ["light", "dark"] as const) {
   test(`the pivot and its settings draw as in their screenshot, ${theme} scheme`, async ({

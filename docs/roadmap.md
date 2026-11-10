@@ -541,7 +541,9 @@ flowchart TD
    (`6.4.5-row-position`), less work in a pass (`6.4.6-paint-cost`), selection that does not count rows
    (`6.4.7-selection`), and the charts' costs (`6.4.8-chart-cost`). 6.4.1 built on 2026-11-09: the canvases draw in
    `--font-num`, Inter declared again with tabular figures on, at `@basis/ui`'s text sizes, 14 px in cells and 12 on
-   axes, as the DOM's numbers are.
+   axes, as the DOM's numbers are. 6.4.2 built on 2026-11-09: every canvas is sized from `devicePixelContentBoxSize`
+   in whole device pixels, its rules and gridlines land on them, it sizes again when the ratio changes, and tests and
+   screenshots run in Chromium at 1.25 and 1.5.
 5. **6.5 Themes.** Lane Theme, one branch per item in order: tokens for what opacity fakes (`6.5.1-tokens`), density
    in whole pixels (`6.5.2-density`), `defineTheme` (`6.5.3-define-theme`), `checkTheme` (`6.5.4-check-theme`), the
    choice of theme in the cookie (`6.5.5-theme-preference`), parallax on the same theme (`6.5.6-parallax-theme`), the

@@ -14,9 +14,11 @@ import type { Painting } from "./paint-canvas.ts";
 import type { ChartModel } from "./model-types.ts";
 import { wrapText } from "./text.ts";
 
-/** What a chart is painted with: the theme's tokens, and the drawings over its price, none by default. */
+/** What a chart is painted with: the theme's tokens, the device pixels of one CSS pixel, 1 by default, and the
+ * drawings over its price, none by default. */
 interface PaintOptions {
   readonly theme: Theme;
+  readonly ratio?: number;
   readonly drawings?: DrawingLayer;
 }
 
@@ -76,9 +78,10 @@ function paintModel(painting: Painting, model: ChartModel): void {
 function paintChart(
   ctx: CanvasRenderingContext2D,
   model: ChartModel,
-  { theme, drawings }: PaintOptions,
+  { theme, drawings, ratio = 1 }: PaintOptions,
 ): void {
-  const painting: Painting = { ctx, small: `${theme.fontSizeSmall} ${theme.fontFamily}`, theme };
+  const small = `${theme.fontSizeSmall} ${theme.fontFamily}`;
+  const painting: Painting = { ctx, ratio, small, theme };
   paintModel(painting, model);
   if (drawings !== undefined && drawings.shapes.length > 0 && model.empty === null) {
     paintDrawings(painting, model, drawings);

@@ -1,6 +1,7 @@
-/* How a scene puts its model on the screen: the canvas at the device's pixel ratio, the brushed band, the measurement,
+/* How a scene puts its model on the screen: the canvas in whole device pixels, the brushed band, the measurement,
  * and the words a status line and a screen reader read. */
 
+import type { DevicePixels } from "#canvas/device-pixels.ts";
 import type { ChartFrameData } from "#frame/chart-data.ts";
 import type { Theme } from "#theme/read.ts";
 
@@ -12,34 +13,26 @@ import { paintChart } from "./paint.ts";
 import { pixel } from "./scale.ts";
 import type { Range } from "./range.ts";
 
-/** Sizes `canvas` to `model` at the device's pixel ratio, returning the ratio. */
-function fit(canvas: HTMLCanvasElement, model: ChartModel): number {
-  const ratio = window.devicePixelRatio;
-  const width = Math.max(1, Math.round(model.width * ratio));
-  const height = Math.max(1, Math.round(model.height * ratio));
-  if (canvas.width !== width || canvas.height !== height) {
-    canvas.width = width;
-    canvas.height = height;
-    canvas.style.width = `${String(model.width)}px`;
-    canvas.style.height = `${String(model.height)}px`;
-  }
-  return ratio;
-}
-
-/** Paints `model` on `canvas`, sized to the model at the device's pixel ratio, with the editor's drawings over it. */
+/** Paints `model` on `canvas`, which `device` sizes to the model in whole device pixels, with the editor's drawings
+ * over it. */
 function paintCanvas(
   canvas: HTMLCanvasElement,
   model: ChartModel,
-  { theme, editor }: { readonly theme: Theme; readonly editor: DrawingEditor },
+  {
+    theme,
+    editor,
+    device,
+  }: { readonly theme: Theme; readonly editor: DrawingEditor; readonly device: DevicePixels },
 ): void {
   const context = canvas.getContext("2d", { alpha: false });
   if (context === null) {
     return;
   }
-  const ratio = fit(canvas, model);
+  const { ratio } = device.fit(model.width, model.height);
   context.setTransform(ratio, 0, 0, ratio, 0, 0);
   paintChart(context, model, {
     drawings: { selected: editor.state.selected, shapes: editor.shapes() },
+    ratio,
     theme,
   });
 }

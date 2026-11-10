@@ -6,7 +6,7 @@ import type { FrameData } from "#frame/frame.ts";
 import type { RowKind } from "#frame/tree.ts";
 import { screenX } from "#grid/geometry.ts";
 
-import { fillRect } from "./canvas.ts";
+import { fillFromStart, fillRect } from "./canvas.ts";
 import { dataCell } from "./cells.ts";
 import type { RowAt } from "./cells.ts";
 import { columnsInView } from "./columns.ts";
@@ -53,7 +53,7 @@ function viewRow(pass: Pass, at: Omit<RowAt, "stripe">): number {
     return drawRow(pass, at);
   }
   if (pass.drawnRows.delete(at.row)) {
-    fillRect(pass.context, pass.theme.background, [0, at.y, pass.width, pass.metrics.rowPx]);
+    fillRect(pass, pass.theme.background, [0, at.y, pass.width, pass.metrics.rowPx]);
   }
   return 0;
 }
@@ -126,14 +126,14 @@ function drawFooter(pass: Pass, frame: FrameData, height: number): void {
   if (frame.totals === null) {
     return;
   }
-  fillRect(context, theme.totalBackground, [0, y, pass.width, metrics.rowPx]);
+  fillRect(pass, theme.totalBackground, [0, y, pass.width, metrics.rowPx]);
   pen.widths.use(context, `${theme.totalFontWeight} ${theme.font}`);
   totalLabel(pass, y);
   columnsInView(pass, { height: metrics.rowPx, top: y }, (column) => {
     totalCell(pass, { column, frame, y });
   });
   pen.widths.use(context, theme.font);
-  fillRect(context, theme.totalBorder, [0, y, pass.width, 1]);
+  fillFromStart(pass, theme.totalBorder, [0, y, pass.width, 1]);
 }
 
 export { drawFooter, drawRows };

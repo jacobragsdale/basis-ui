@@ -125,7 +125,7 @@ function columnHeader(pass: Pass, column: number): void {
     x: screenX(geometry, column, pass.scrollLeft),
   };
   if (headerState(pass, column) !== "rest") {
-    fillRect(context, theme.controlHover, [at.x, 0, at.width, metrics.headerPx]);
+    fillRect(pass, theme.controlHover, [at.x, 0, at.width, metrics.headerPx]);
   }
   Object.assign(context, { fillStyle: theme.headerForeground });
   const look = scene.look(column);
@@ -134,7 +134,7 @@ function columnHeader(pass: Pass, column: number): void {
   } else {
     menuHeader(pass, column, { ...at, look });
   }
-  fillRect(context, theme.columnBorder, [at.x + at.width - 1, 0, 1, metrics.headerPx]);
+  fillRect(pass, theme.columnBorder, [at.x + at.width - 1, 0, 1, metrics.headerPx]);
 }
 
 /** Draws the group column's header: the levels it groups by, and their sort. */
@@ -146,12 +146,12 @@ function treeHeader(pass: Pass): void {
     layout === null || layout.group_by.length === 0 ? "Group" : layout.group_by.join(" › ");
   const x = geometry.selectPx;
   headerText(pass, { mark: scene.sortMark(-1), title, width: geometry.treePx, x });
-  fillRect(context, theme.columnBorder, [x + geometry.treePx - 1, 0, 1, metrics.headerPx]);
+  fillRect(pass, theme.columnBorder, [x + geometry.treePx - 1, 0, 1, metrics.headerPx]);
 }
 
 /** Draws where a dragged header would drop: a line in the accent before the column it would go before. */
 function dropMark(pass: Pass): void {
-  const { context, theme, metrics, geometry, scene } = pass;
+  const { theme, metrics, geometry, scene } = pass;
   const { drag } = scene;
   if (drag === null || geometry.count === 0) {
     return;
@@ -161,13 +161,13 @@ function dropMark(pass: Pass): void {
     at < geometry.count
       ? screenX(geometry, at, pass.scrollLeft)
       : screenX(geometry, at - 1, pass.scrollLeft) + geometry.width(at - 1);
-  fillRect(context, theme.accent, [x - 1, 0, dropLine, metrics.headerPx]);
+  fillRect(pass, theme.accent, [x - 1, 0, dropLine, metrics.headerPx]);
 }
 
 /** Draws the whole header row. */
 function drawHeader(pass: Pass): void {
   const { context, theme, metrics, geometry, pen } = pass;
-  fillRect(context, theme.headerBackground, [0, 0, pass.width, metrics.headerPx]);
+  fillRect(pass, theme.headerBackground, [0, 0, pass.width, metrics.headerPx]);
   pen.widths.use(context, pass.fonts.header);
   selectHeader(pass);
   if (geometry.treePx > 0) {
@@ -178,7 +178,7 @@ function drawHeader(pass: Pass): void {
   });
   pen.widths.use(context, pass.fonts.body);
   dropMark(pass);
-  fillRect(context, theme.headerBorder, [0, metrics.headerPx - 1, pass.width, 1]);
+  fillRect(pass, theme.headerBorder, [0, metrics.headerPx - 1, pass.width, 1]);
 }
 
 export { drawHeader, markWidth };

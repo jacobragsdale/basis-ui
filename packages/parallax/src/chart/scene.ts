@@ -239,7 +239,9 @@ class ChartScene {
    * function is called. */
   #attach(elements: AttachedElements): () => void {
     this.#measurer = new TextMeasurer(elements.canvas.ownerDocument);
-    this.#view.attach(elements, new ChartOverlay(elements));
+    this.#view.attach(elements, new ChartOverlay(elements), () => {
+      this.schedule();
+    });
     const detachPointer = new ChartPointer(this.#gestures, elements.plot).attach();
     const unsubscribe = chartSync.subscribe(() => {
       this.schedule();

@@ -1,9 +1,11 @@
 /* Painting a chart's axes: hairline gridlines, value labels down the sides, category labels, indicator panes'
  * separators, guides and titles, and the x axis's labels and baseline. */
 
+import { hairline } from "#canvas/device-pixels.ts";
+
 import { plotBottom } from "./model.ts";
 import type { AxisTick, ChartModel, Pane, Rect, ValueAxis } from "./model-types.ts";
-import { half, strokeLine, style } from "./paint-canvas.ts";
+import { strokeLine, style } from "./paint-canvas.ts";
 import type { Painting } from "./paint-canvas.ts";
 import { fitText } from "./text.ts";
 
@@ -26,14 +28,25 @@ const titleInsetY = 2;
 const guideDash = 3;
 const guideDashes = [guideDash, guideDash];
 
-/** Vertical gridlines, where values run across. */
-function vertical({ ctx }: Painting, x: number, [from, to]: readonly [number, number]): void {
-  const at = Math.round(x) + half;
+/** Vertical gridlines, where values run across: one CSS pixel wide, on whole device pixels. */
+function vertical(
+  { ctx, ratio }: Painting,
+  x: number,
+  [from, to]: readonly [number, number],
+): void {
+  const { at, width } = hairline(x, ratio);
+  ctx.lineWidth = width;
   strokeLine(ctx, [at, from], [at, to]);
 }
 
-function horizontal({ ctx }: Painting, y: number, [from, to]: readonly [number, number]): void {
-  const at = Math.round(y) + half;
+/** A horizontal line, such as a gridline, a separator or the baseline: one CSS pixel thick, on whole device pixels. */
+function horizontal(
+  { ctx, ratio }: Painting,
+  y: number,
+  [from, to]: readonly [number, number],
+): void {
+  const { at, width } = hairline(y, ratio);
+  ctx.lineWidth = width;
   strokeLine(ctx, [from, at], [to, at]);
 }
 

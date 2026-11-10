@@ -3,6 +3,7 @@
  * Citrix's as idle as possible. Anything that moves the cells, such as a scroll, a new layout or new tokens, redraws
  * everything. */
 
+import type { DevicePixels } from "#canvas/device-pixels.ts";
 import { rangeOf } from "#grid/selection.ts";
 import type { CellRange, CellRef } from "#grid/selection.ts";
 import type { Theme } from "#theme/read.ts";
@@ -112,6 +113,7 @@ function scenePart(
   | "notes"
   | "pen"
   | "range"
+  | "ratio"
   | "stale"
   | "width"
 > {
@@ -133,19 +135,29 @@ function scenePart(
   };
 }
 
-/** Sizes a canvas to an area at the device's pixel ratio; returns whether its size changed. */
-function sized(canvas: HTMLCanvasElement, width: number, height: number): boolean {
-  const ratio = window.devicePixelRatio;
-  const element = canvas;
-  if (
-    element.width === Math.round(width * ratio) &&
-    element.height === Math.round(height * ratio)
-  ) {
-    return false;
+/** A canvas ready to draw on: its context, the device pixels of one CSS pixel, the area it covers, and whether it
+ * was resized, which cleared it. */
+interface Prepared {
+  readonly context: CanvasRenderingContext2D;
+  readonly ratio: number;
+  readonly at: Area;
+  readonly resized: boolean;
+}
+
+/** Sizes the canvas to fill the scene's area in whole device pixels, and gives its context their scale. Drawing fills
+ * the canvas, which is the area or a fraction of a pixel less. */
+function prepare(device: DevicePixels, scene: Scene): Prepared | null {
+  const context = device.canvas.getContext("2d", { alpha: false });
+  if (context === null) {
+    return null;
   }
-  Object.assign(element, { height: Math.round(height * ratio), width: Math.round(width * ratio) });
-  Object.assign(element.style, { height: `${String(height)}px`, width: `${String(width)}px` });
-  return true;
+  const { ratio, resized, cssWidth, cssHeight } = device.fit(
+    Math.max(1, scene.width),
+    Math.max(1, scene.height),
+  );
+  context.setTransform(ratio, 0, 0, ratio, 0, 0);
+  const at = { first: 0, height: cssHeight, scrollLeft: scene.scrollLeft, width: cssWidth };
+  return { at, context, ratio, resized };
 }
 
 /** Draws a grid's canvas, remembering what it drew to redraw as little as it can. */
@@ -176,21 +188,18 @@ class GridPainter {
     this.#stats.opening(atMs);
   }
 
-  /** Draws `scene` on `canvas`. */
-  public draw(canvas: HTMLCanvasElement, scene: Scene): void {
+  /** Draws `scene` on the canvas that `device` keeps in whole device pixels. */
+  public draw(device: DevicePixels, scene: Scene): void {
     const started = performance.now();
-    const at = {
-      first: 0,
-      height: Math.max(1, scene.height),
-      scrollLeft: scene.scrollLeft,
-      width: Math.max(1, scene.width),
-    };
-    const context = this.#prepare(canvas, at);
-    if (context === null) {
+    const prepared = prepare(device, scene);
+    if (prepared === null) {
       return;
     }
+    // A new size, as a new ratio gives, cleared the canvas.
+    this.#shape = prepared.resized ? "" : this.#shape;
+    const { at } = prepared;
     const area = { ...at, first: scene.rows.firstRow(scene.scrollTop, at.height) };
-    this.#body(this.#begin(context, scene, area), area, started);
+    this.#body(this.#begin(prepared, scene, area), area, started);
   }
 
   /** Draws the frame's rows and totals, if there is a frame, and counts them. */
@@ -201,17 +210,6 @@ class GridPainter {
       drawFooter(pass, frame, area.height);
       this.#stats.drew(frame, { cells, started });
     }
-  }
-
-  /** Sizes the canvas to the area at the device's pixel ratio, and gives its context that scale. */
-  #prepare(canvas: HTMLCanvasElement, at: Area): CanvasRenderingContext2D | null {
-    const context = canvas.getContext("2d", { alpha: false });
-    if (context !== null && sized(canvas, at.width, at.height)) {
-      this.#shape = "";
-    }
-    const ratio = window.devicePixelRatio;
-    context?.setTransform(ratio, 0, 0, ratio, 0, 0);
-    return context;
   }
 
   /**
@@ -227,7 +225,7 @@ class GridPainter {
   }
 
   /** Starts a pass: decides whether it redraws everything, and if so clears the canvas and draws the header. */
-  #begin(context: CanvasRenderingContext2D, scene: Scene, at: Area): Pass {
+  #begin({ context, ratio }: Prepared, scene: Scene, at: Area): Pass {
     const { selection, theme } = scene;
     const shape = shapeOf(scene, at);
     const range = selection === null ? null : rangeOf(selection);
@@ -235,7 +233,14 @@ class GridPainter {
     const stale = this.#staleRows(scene, { focus, hover: scene.hoverRow, range }, at);
     const full = theme !== this.#tokens || shape !== this.#shape;
     this.#remember(theme, { full, shape });
-    const pass = this.#pass(context, scene, { focus, full, range, stale, width: at.width });
+    const pass = this.#pass(context, scene, {
+      focus,
+      full,
+      range,
+      ratio,
+      stale,
+      width: at.width,
+    });
     this.#clear(pass, at);
     return pass;
   }
@@ -260,7 +265,7 @@ class GridPainter {
     this.widths.use(context, theme.font);
     Object.assign(context, { textBaseline: "middle" });
     if (pass.full) {
-      fillRect(context, theme.background, [0, 0, at.width, at.height]);
+      fillRect(pass, theme.background, [0, 0, at.width, at.height]);
       drawHeader(pass);
       this.#stats.full();
     }
@@ -269,7 +274,7 @@ class GridPainter {
   #pass(
     context: CanvasRenderingContext2D,
     scene: Scene,
-    drawing: Pick<Pass, "focus" | "full" | "range" | "stale" | "width">,
+    drawing: Pick<Pass, "focus" | "full" | "range" | "ratio" | "stale" | "width">,
   ): Pass {
     const { metrics } = scene;
     return {
@@ -279,7 +284,13 @@ class GridPainter {
       drawn: this.#drawn,
       drawnRows: this.#drawnRows,
       notes: this.#notes,
-      pen: { context, padding: metrics.padding, rowPx: metrics.rowPx, widths: this.widths },
+      pen: {
+        context,
+        padding: metrics.padding,
+        ratio: drawing.ratio,
+        rowPx: metrics.rowPx,
+        widths: this.widths,
+      },
     };
   }
 }

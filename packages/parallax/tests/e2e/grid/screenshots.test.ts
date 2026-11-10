@@ -1,6 +1,7 @@
 /* The grid's screenshots, compared pixel for pixel with those in `screenshots/`: the small tables' grids, in both
- * schemes, in parallax's standard look, its airy look, and `@basis/ui`'s, with a header menu open, and grouped. Fonts and
- * text rendering differ between machines, so these run only in the pinned Playwright image: run them with
+ * schemes, in parallax's standard look, its airy look, and `@basis/ui`'s, with a header menu open, and grouped. The
+ * book in `@basis/ui`'s look is taken again at 1.25 and 1.5, the ratios of a desktop scaled to 125 % and 150 %, where
+ * every rule must still be whole device pixels. Fonts and text rendering differ between machines, so these run only in the pinned Playwright image: run them with
  * `tests/e2e/grid/in-image.sh screenshots`, and take new ones by adding `--update-snapshots`. */
 
 import { expect, test } from "@playwright/test";
@@ -15,7 +16,14 @@ test.skip(
 
 /** In the pinned image drawing is deterministic, so every pixel must match: the default tolerance misses a light
  * wash. */
-const exactly = { animations: "disabled", caret: "hide", maxDiffPixels: 0, threshold: 0 } as const;
+const exactly = {
+  animations: "disabled",
+  caret: "hide",
+  maxDiffPixels: 0,
+  // In device pixels, which at a ratio of 1 are CSS pixels: a scaled desktop's screenshot shows each device pixel.
+  scale: "device",
+  threshold: 0,
+} as const;
 
 /** Waits for two animation frames in the page. */
 async function twoFrames(page: Page): Promise<void> {
@@ -82,6 +90,15 @@ for (const theme of ["light", "dark"] as const) {
   }) => {
     await sectionShot(await book(page, `theme=${theme}`), `grid-book-${theme}.png`);
     await sectionShot(await book(page, `theme=${theme}&look=airy`), `grid-book-airy-${theme}.png`);
+    await sectionShot(
+      await book(page, `theme=${theme}&look=basis`),
+      `grid-book-basis-${theme}.png`,
+    );
+  });
+
+  test(`the book's grid in @basis/ui's look draws as in its screenshot at a scaled desktop's ratio, ${theme} scheme`, async ({
+    page,
+  }) => {
     await sectionShot(
       await book(page, `theme=${theme}&look=basis`),
       `grid-book-basis-${theme}.png`,

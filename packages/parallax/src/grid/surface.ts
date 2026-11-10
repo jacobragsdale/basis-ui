@@ -2,6 +2,7 @@
  * the keyboard and the clipboard, the scroll's extent and the body's height, what the canvas draws, and the focused
  * cell as screen readers read it. */
 
+import { DevicePixels } from "#canvas/device-pixels.ts";
 import type { FrameData } from "#frame/frame.ts";
 
 import { Copier } from "./copy.ts";
@@ -42,6 +43,8 @@ class GridSurface {
   readonly #keys: KeyInput;
   readonly #copier: Copier;
   #scrollbarPx = widestScrollbar;
+  /** Keeps the canvas in whole device pixels while the surface listens. */
+  #device: DevicePixels | null = null;
   /** The search of each layout version, read once. */
   #search: { readonly version: bigint; readonly search: string } | null = null;
 
@@ -72,6 +75,9 @@ class GridSurface {
     };
     const observer = new ResizeObserver(scrolled);
     observer.observe(scroll);
+    // The canvas's box in device pixels, or the ratio, changed: it is sized and drawn again.
+    const device = new DevicePixels(canvas, changed);
+    this.#device = device;
     const stops = [
       on(scroll, "scroll", scrolled),
       on(scroll, "keydown", this.#keys.down),
@@ -87,6 +93,8 @@ class GridSurface {
     this.#measure();
     return () => {
       observer.disconnect();
+      device.dispose();
+      this.#device = null;
       pointer.clearTooltip();
       for (const stop of stops) {
         stop();
@@ -132,10 +140,11 @@ class GridSurface {
   public draw(painter: GridPainter): void {
     const { model } = this.#host;
     const { metrics, theme, frame, area, interaction } = model;
-    if (metrics === null || theme === null) {
+    const device = this.#device;
+    if (metrics === null || theme === null || device === null) {
       return;
     }
-    painter.draw(this.dom.parts.canvas, {
+    painter.draw(device, {
       ...area,
       drag: interaction.drag,
       frame,

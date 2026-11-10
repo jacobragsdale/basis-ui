@@ -119,6 +119,15 @@ Its parity spec compares the pivot's canvas pixel for pixel with the Angular
 pivot's, recorded from the Angular demo in the same image before step 2.7
 deleted it, and kept in `tests/e2e/pivot/angular/`.
 
+The grid's, the pivot's and the charts' suites also take a few screenshots at
+1.25 and 1.5, the ratios of a Windows desktop scaled to 125 % and 150 %, in
+the projects `chromium-1.25` and `chromium-1.5` that `tests/e2e/scaled.ts`
+adds; a spec whose title says it runs "at a scaled desktop's ratio" runs only
+there. The browser tests in `tests/browser/device-pixels.test.tsx` run again at
+both ratios too. Chromium is started at the ratio, since emulating one changes
+`devicePixelRatio` but not the device pixels a box covers. Look at the scaled
+screenshots at full size: every rule must be crisp, whole device pixels.
+
 ## The scale harness
 
 `bench` measures the package's build at scale, as `docs/spikes/scale-1m.md`

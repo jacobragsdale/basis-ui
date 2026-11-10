@@ -3,9 +3,12 @@
 
 import type { Theme } from "#theme/read.ts";
 
-/** A context to paint on, the theme's tokens, and the small font of axis and data labels. */
+/** A context to paint on and the device pixels of one of its CSS pixels, the theme's tokens, and the small font of
+ * axis and data labels. */
 interface Painting {
   readonly ctx: CanvasRenderingContext2D;
+  /** The device pixels of one CSS pixel, which the context's transform scales by and lines snap to. */
+  readonly ratio: number;
   readonly theme: Theme;
   /** Axis labels and data labels: the theme's small size. */
   readonly small: string;
@@ -27,7 +30,7 @@ type CanvasStyle = Partial<
   >
 >;
 
-/** Half a pixel, to put a one-pixel line on a pixel rather than between two. */
+/** Half a pixel, to put a one-pixel line on a pixel rather than between two at a ratio of 1. */
 const half = 0.5;
 /** How faint the bars, slices and dots of groups other than the selected one are. */
 const dim = 0.3;

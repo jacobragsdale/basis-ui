@@ -86,6 +86,8 @@ interface Area {
 interface Pass extends Searched {
   readonly scene: Scene;
   readonly context: CanvasRenderingContext2D;
+  /** The device pixels of one CSS pixel, which the context's transform scales by and drawing snaps to. */
+  readonly ratio: number;
   readonly pen: Pen;
   readonly theme: Theme;
   readonly metrics: Metrics;

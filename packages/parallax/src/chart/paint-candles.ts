@@ -1,11 +1,13 @@
 /* Painting candles and OHLC bars: a wick from the high to the low, then a body, hollow when the candle rose and filled
  * when it fell, or an OHLC bar's ticks for its open and close. */
 
+import { hairline } from "#canvas/device-pixels.ts";
+
 import { half, style } from "./paint-canvas.ts";
 import type { Painting } from "./paint-canvas.ts";
 import type { CandleMark } from "./model-types.ts";
 
-/** An OHLC bar's line width; a candle's wick is a pixel. */
+/** An OHLC bar's line width; a candle's wick is a CSS pixel, on whole device pixels. */
 const barsWidth = 1.5;
 
 /** An OHLC bar's ticks: the open ticks left, the close ticks right. */
@@ -47,11 +49,18 @@ function wick(ctx: CanvasRenderingContext2D, mark: CandleMark, x: number): void 
   ctx.lineTo(x, mark.low);
 }
 
+/** Where a wick or an OHLC bar's line goes across, and how wide it strokes: a wick is a hairline on device pixels. */
+function wickLine(
+  mark: CandleMark,
+  ratio: number,
+): { readonly at: number; readonly width: number } {
+  return mark.bars ? { at: Math.round(mark.x) + half, width: barsWidth } : hairline(mark.x, ratio);
+}
+
 function paintCandle(painting: Painting, mark: CandleMark): void {
   const { ctx } = painting;
-  style(ctx, { strokeStyle: mark.color, fillStyle: mark.color });
-  const x = Math.round(mark.x) + half;
-  ctx.lineWidth = mark.bars ? barsWidth : 1;
+  const { at: x, width } = wickLine(mark, painting.ratio);
+  style(ctx, { fillStyle: mark.color, lineWidth: width, strokeStyle: mark.color });
   wick(ctx, mark, x);
   if (mark.bars) {
     paintTicks(painting, mark, x);

@@ -2,6 +2,7 @@
  * row or a total, and one in the header, checked when every row shown was checked with it, mixed when some rows are
  * chosen, and empty when none are. Checked boxes are filled in the accent, as `@basis/ui`'s Checkbox is. */
 
+import { hairline } from "#canvas/device-pixels.ts";
 import { selectColumn } from "#grid/geometry.ts";
 
 import { cellBackground, cellLines, rowMark, unchanged } from "./cells.ts";
@@ -15,8 +16,6 @@ type CheckState = "checked" | "unchecked" | "mixed";
 
 /** A checkbox's size, its corners' radius, and the width of its mark, in CSS pixels. */
 const box = { mark: 2, radius: 3, size: 14 } as const;
-/** Half a pixel, which puts a one-pixel line on whole pixels. */
-const half = 0.5;
 /** The tick's three points and the dash's ends, as fractions of the box. */
 const tick = {
   bottomX: 0.42,
@@ -28,21 +27,36 @@ const tick = {
 } as const;
 const dash = { fromX: 0.26, toX: 0.74, y: 0.5 } as const;
 
-/** Where a checkbox sits: centred in the column's cell whose top is `y` and height `height`. */
-function boxAt(
-  pass: Pass,
-  y: number,
-  height: number,
-): { readonly left: number; readonly top: number } {
-  const width = pass.geometry.selectPx;
+/** Where a checkbox's outline goes, centred in the column's cell whose top is `y` and height `height`: the middle of
+ * its left and top lines, the distance to the middle of its right and bottom ones, and their width, so that each line
+ * covers whole device pixels. */
+interface BoxAt {
+  readonly left: number;
+  readonly top: number;
+  readonly width: number;
+  readonly height: number;
+  readonly line: number;
+}
+
+function boxAt(pass: Pass, y: number, height: number): BoxAt {
+  const { ratio } = pass;
+  const [x, top] = [
+    Math.round((pass.geometry.selectPx - box.size) / 2),
+    Math.round(y + (height - box.size) / 2),
+  ];
+  const [left, upper] = [hairline(x, ratio), hairline(top, ratio)];
+  const far = box.size - 1;
   return {
-    left: Math.round((width - box.size) / 2) + half,
-    top: Math.round(y + (height - box.size) / 2) + half,
+    height: hairline(top + far, ratio).at - upper.at,
+    left: left.at,
+    line: left.width,
+    top: upper.at,
+    width: hairline(x + far, ratio).at - left.at,
   };
 }
 
 /** The path of a checked box's tick, or a mixed box's dash. */
-function markPath(at: { readonly left: number; readonly top: number }, state: CheckState): Path2D {
+function markPath(at: BoxAt, state: CheckState): Path2D {
   const { size } = box;
   const path = new Path2D();
   if (state === "mixed") {
@@ -57,11 +71,7 @@ function markPath(at: { readonly left: number; readonly top: number }, state: Ch
 }
 
 /** Strokes the tick of a checked box, or the dash of a mixed one, in the colour on the accent. */
-function mark(
-  pass: Pass,
-  at: { readonly left: number; readonly top: number },
-  state: CheckState,
-): void {
+function mark(pass: Pass, at: BoxAt, state: CheckState): void {
   const { context, theme } = pass;
   Object.assign(context, {
     lineCap: "round",
@@ -81,10 +91,10 @@ function checkbox(
   const at = boxAt(pass, y, height);
   const on = state !== "unchecked";
   context.beginPath();
-  context.roundRect(at.left, at.top, box.size - 1, box.size - 1, box.radius);
+  context.roundRect(at.left, at.top, at.width, at.height, box.radius);
   Object.assign(context, {
     fillStyle: on ? theme.accent : theme.controlBackground,
-    lineWidth: 1,
+    lineWidth: at.line,
     strokeStyle: on ? theme.accent : theme.controlBorder,
   });
   context.fill();
@@ -129,13 +139,13 @@ function selectCell(pass: Pass, at: RowAt): number {
 /** Draws the checkbox column's header: the checkbox that checks every row shown, or clears the choice. */
 function selectHeader(pass: Pass): void {
   const choice = pass.scene.rowSelection;
-  const { geometry, metrics, theme, context } = pass;
+  const { geometry, metrics, theme } = pass;
   if (choice === null || geometry.selectPx === 0) {
     return;
   }
   const states = { all: "checked", none: "unchecked", some: "mixed" } as const;
   checkbox(pass, { height: metrics.headerPx, state: states[choice.header], y: 0 });
-  fillRect(context, theme.columnBorder, [geometry.selectPx - 1, 0, 1, metrics.headerPx]);
+  fillRect(pass, theme.columnBorder, [geometry.selectPx - 1, 0, 1, metrics.headerPx]);
 }
 
 export { selectCell, selectHeader };
