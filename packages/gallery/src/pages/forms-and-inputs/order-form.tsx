@@ -1,22 +1,12 @@
 /* A small order ticket on TanStack Form, the form library the design picks: a Zod 4 schema checks each field as it
  * changes, and on submit a stand-in for the API answers with a 422 whose errors `fieldErrors` places on the fields
- * their JSON Pointers name. Each field passes `data-invalid` to Field, `aria-invalid` to its input, and its errors to
- * FieldError, which shows them in words. */
+ * their JSON Pointers name. Each field is a FormTextField, which shows its errors once touched. */
 
-import {
-  Button,
-  Field,
-  FieldDescription,
-  FieldError,
-  FieldGroup,
-  FieldLabel,
-  Input,
-  fieldErrors,
-} from "@basis/ui";
+import { Button, FieldGroup, FormTextField, fieldErrors } from "@basis/ui";
 import type { ValidationProblem } from "@basis/ui";
 import { useForm } from "@tanstack/react-form";
 import { useState } from "react";
-import type { ComponentProps, ReactElement } from "react";
+import type { ReactElement } from "react";
 import { z } from "zod";
 
 import { Section } from "#pages/section.tsx";
@@ -45,49 +35,6 @@ async function placeOrder(order: Order): Promise<ValidationProblem | undefined> 
     title: "Unprocessable Content",
     type: "about:blank",
   };
-}
-
-interface TextFieldProps {
-  readonly id: string;
-  readonly label: string;
-  readonly description: string;
-  readonly value: string;
-  /** The field's errors, as TanStack Form holds them: the schema's issues and the API's details. */
-  readonly errors: NonNullable<ComponentProps<typeof FieldError>["errors"]>;
-  readonly touched: boolean;
-  readonly onChange: (value: string) => void;
-  readonly onBlur: () => void;
-}
-
-/** One text field of the ticket, invalid once it has been touched and has an error. */
-function TextField({
-  id,
-  label,
-  description,
-  value,
-  errors,
-  touched,
-  onChange,
-  onBlur,
-}: TextFieldProps): ReactElement {
-  const invalid = touched && errors.length > 0;
-  return (
-    <Field data-invalid={invalid}>
-      <FieldLabel htmlFor={id}>{label}</FieldLabel>
-      <Input
-        id={id}
-        value={value}
-        onBlur={onBlur}
-        onChange={(event) => {
-          onChange(event.target.value);
-        }}
-        aria-invalid={invalid}
-        aria-describedby={`${id}-description ${id}-error`}
-      />
-      <FieldDescription id={`${id}-description`}>{description}</FieldDescription>
-      <FieldError id={`${id}-error`} errors={invalid ? errors : undefined} />
-    </Field>
-  );
 }
 
 /** The ticket's fields, in order. */
@@ -143,15 +90,11 @@ function OrderForm(): ReactElement {
         {orderFields.map((spec) => (
           <form.Field key={spec.name} name={spec.name}>
             {(field) => (
-              <TextField
+              <FormTextField
+                field={field}
                 id={spec.id}
                 label={spec.label}
                 description={spec.description}
-                value={field.state.value}
-                errors={field.state.meta.errors}
-                touched={field.state.meta.isTouched}
-                onChange={field.handleChange}
-                onBlur={field.handleBlur}
               />
             )}
           </form.Field>

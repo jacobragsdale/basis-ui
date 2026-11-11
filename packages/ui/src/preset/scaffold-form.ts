@@ -1,10 +1,11 @@
 /* The page `vp run new form` writes: a form on TanStack Form for each field the operation's request body requires,
- * checked as it changes by the Zod schema orval generates, an amount read by AmountInput, a date by AsOfDatePicker, a
- * choice by NativeSelect and a flag by Checkbox, and sent with the generated mutation. A 422 lands on the fields its
- * errors name, through `fieldErrors`; any other failure shows above the button; a success raises a toast. */
+ * checked as it changes by the Zod schema orval generates, each field one of @basis/ui's form fields, an amount read
+ * by AmountInput, a date by DatePicker, a choice by NativeSelect and a flag by Checkbox, and sent with the generated
+ * mutation. A 422 lands on the fields its errors name, through `submitErrors`; any other failure shows above the
+ * button; a success raises a toast. */
 
 import { access } from "./scaffold-fields.ts";
-import { bindingTypes, failureLines, fieldComponents, widgets } from "./scaffold-form-parts.ts";
+import { failureLines, widgets } from "./scaffold-form-parts.ts";
 import type { Field, FieldKind } from "./scaffold-fields.ts";
 import { opening } from "./scaffold-plan.ts";
 import type { Scaffold } from "./scaffold-plan.ts";
@@ -27,7 +28,11 @@ function fieldElement(scaffold: Scaffold, field: Field): string {
     ...(field.description === undefined
       ? []
       : [`description=${JSON.stringify(field.description)}`]),
-    ...(field.kind === "choice" ? [`options={${JSON.stringify(field.options)} as const}`] : []),
+    ...(field.kind === "choice"
+      ? [
+          `options={${JSON.stringify(field.options.map((option) => ({ label: option, value: option })))} as const}`,
+        ]
+      : []),
   ];
   return `        <form.Field name=${JSON.stringify(field.name)}>
           {(field) => <${widgets[field.kind].component} ${props.join(" ")} field={field} />}
@@ -54,25 +59,24 @@ ${lines.join("\n")}
 const formParts = [
   "Button",
   "ErrorAlert",
-  "Field",
-  "FieldDescription",
-  "FieldError",
   "FieldGroup",
-  "FieldLabel",
   "Page",
-  "fieldErrors",
-  "isApiError",
+  "errorsOnFields",
+  "submitErrors",
   "toast",
   "useTelemetry",
 ];
 
 function formImports(scaffold: Scaffold, fields: readonly Field[]): string {
-  const ui = new Set([...formParts, ...fields.flatMap(({ kind }) => widgets[kind].ui)]);
+  const ui = new Set([
+    ...formParts,
+    ...fields.flatMap(({ kind }) => [widgets[kind].component, ...widgets[kind].ui]),
+  ]);
   const router =
     scaffold.parameters.length > 0 ? `import { useParams } from "@tanstack/react-router";\n` : "";
   return `import { ${[...ui].toSorted().join(", ")} } from "@basis/ui";
 import { useForm } from "@tanstack/react-form";
-${router}import type { ComponentProps, ReactElement } from "react";
+${router}import type { ReactElement } from "react";
 import type { z } from "zod";
 
 import { ${[scaffold.model.name, scaffold.client.hook].toSorted().join(", ")} } from "#api/client.ts";`;
@@ -105,7 +109,9 @@ function formHooks(scaffold: Scaffold): string {
       onSubmitAsync: async ({ value }) => {
         const data = formSchema.parse(value);
         const failure = await failureOf(async () => sending.mutateAsync({ ${[...names, "data"].join(", ")} }));
-        return failure === null ? undefined : submitErrors(failure);
+        return failure === null
+          ? undefined
+          : submitErrors(failure, { fields: fieldNames, message: "It was not sent." });
       },
     },
   });`;
@@ -129,7 +135,7 @@ ${formHooks(scaffold)}
         <FieldGroup>
 ${fields.map((field) => fieldElement(scaffold, field)).join("\n")}
         </FieldGroup>
-        <ErrorAlert error={errorsOnFields(sending.error) === undefined ? sending.error : null} />
+        <ErrorAlert error={errorsOnFields(sending.error, fieldNames) === undefined ? sending.error : null} />
         <Button type="submit" disabled={sending.isPending} className="self-start">
           ${button}
         </Button>
@@ -156,7 +162,6 @@ function formPage(scaffold: Scaffold): string {
     left.length === 0
       ? ""
       : ` It leaves out ${left.join(", ")}, which the body does not require or which hold an object or a list: add a field for each the page needs.`;
-  const components = [...new Set(fields.map(({ kind }) => widgets[kind].component))].toSorted();
   const comment = opening(
     `${scaffold.title}: a form for operation ${scaffold.operation.id} (${scaffold.operation.method} ${scaffold.operation.template}), as vp run new form wrote it, a field for each one its body requires, checked by the schema orval generates. A 422 lands on the fields its errors name; any other failure shows above the button.${leftNote}`,
   );
@@ -167,23 +172,16 @@ function formPage(scaffold: Scaffold): string {
 
 ${formImports(scaffold, fields)}
 
-/** The status of a request the API refused, whose problem names each field at fault. */
-const unprocessableContent = 422;
-
 ${schemaLines(scaffold, fields)}
 
 /** The form's fields, each named as the body names it, so a pointer such as \`#/settle\` finds it. */
-const fieldNames = new Set<string>(${JSON.stringify(fields.map(({ name }) => name))});
+const fieldNames = ${JSON.stringify(fields.map(({ name }) => name))} as const;
 
 const emptyForm: z.input<typeof formSchema> = {
 ${empty.join("\n")}
 };
 
 ${failureLines}
-
-${bindingTypes}
-
-${components.map((name) => fieldComponents[name]).join("\n\n")}
 
 ${formComponent(scaffold, fields, buttonText(scaffold))}
 

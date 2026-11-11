@@ -284,8 +284,9 @@ The firm's own components cover what shadcn does not:
   `MonthPicker` a month, and `DateRangePicker` offers month, quarter and year to date, the period before and the past
   month, three months and year, takes a range typed and clears (step 6.7.5, 2026-11-11).
 - **Forms.** Fields bind to the Zod schemas orval generates, so a form checks what the API's document declares. Errors
-  the API returns land on the fields they name. Leaving a page with unsaved changes is to ask first, and a destructive
-  action to ask for typed confirmation: neither is built yet (step 6.7.6). basis's contract names each field at fault in
+  the API returns land on the fields they name. Each field is one of `@basis/ui`'s form fields, bound to a TanStack Form field,
+  so no page writes the binding. Leaving a page with unsaved changes asks first, through TanStack Router's blocker and
+  the browser's prompt, and a destructive action asks for its subject's name to be typed (step 6.7.6, 2026-11-11). basis's contract names each field at fault in
   a 422's `errors`, RFC 9457's own list of `{detail, pointer}`, with `{detail, parameter}` for a query or path
   parameter, the shape spike 0.2 found and basis-ui asked basis for (jacobragsdale/basis#7). `fieldErrors` names each
   field as TanStack Form does, so the errors go straight onto the form; the example app's settlement form does this.

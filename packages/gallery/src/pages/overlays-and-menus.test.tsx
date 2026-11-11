@@ -12,6 +12,7 @@ import { OverlaysAndMenus } from "./overlays-and-menus.tsx";
 const openers = [
   ["Dialog", "button", "Edit position"],
   ["Alert Dialog", "button", "Delete view"],
+  ["TypedConfirmDialog", "button", "Delete book"],
   ["Sheet", "button", "Trade details, right"],
   ["Drawer", "button", "Drawer, down"],
   ["Popover", "button", "Filters"],

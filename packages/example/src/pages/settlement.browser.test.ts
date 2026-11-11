@@ -42,6 +42,11 @@ async function record(screen: RenderResult, values: SettlementRequest): Promise<
   await screen.getByRole("button", { name: "Record settlement" }).click();
 }
 
+/** Follows the sidebar's link to the start page. */
+async function leaveForTheStart(screen: RenderResult): Promise<void> {
+  await userEvent.click(screen.getByRole("link", { name: "Day count conventions" }).first());
+}
+
 describe("the settlement form", () => {
   test("records a settlement the API accepts, says so, and opens its bond", async () => {
     const sent: unknown[] = [];
@@ -132,5 +137,23 @@ describe("the settlement form", () => {
       .element(screen.getByLabelText("Face amount"))
       .toHaveAttribute("aria-invalid", "true");
     expect(sent).toBe(0);
+  });
+
+  test("asks before a page with changes is left, and Stay keeps them", async () => {
+    const { screen } = await renderApp("/settlements/new");
+    await screen.getByLabelText("ISIN").fill("US91282CRF04");
+    await leaveForTheStart(screen);
+    const dialog = screen.getByRole("alertdialog", { name: "Leave without saving?" });
+    await expect.element(dialog).toBeVisible();
+    await dialog.getByRole("button", { name: "Stay on this page" }).click();
+    await expect.element(screen.getByLabelText("ISIN")).toHaveValue("US91282CRF04");
+  });
+
+  test("leaves a page with changes once told to", async () => {
+    const { screen } = await renderApp("/settlements/new");
+    await screen.getByLabelText("ISIN").fill("US91282CRF04");
+    await leaveForTheStart(screen);
+    await screen.getByRole("button", { name: "Leave without saving" }).click();
+    await expect.element(screen.getByLabelText("ISIN")).not.toBeInTheDocument();
   });
 });

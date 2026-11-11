@@ -330,8 +330,9 @@ unless a fixture in `fixtures/` answers that request already; and the route `/NA
 for each path parameter, as `/bond/$security`, its page loaded with `lazyRouteComponent`. Each page is a `Page`, titled by
 NAME. A table has a column for
 each field of a row, and a page a line for each field, each number shown by the display format the API declares,
-through `displayFormats`. A form has a field for each one the body requires: an amount in `AmountInput`, a date in
-`AsOfDatePicker`, a choice in `NativeSelect`, a flag in `Checkbox`, text in `Input`; its schema is the generated one,
+through `displayFormats`. A form has a field for each one the body requires, on `@basis/ui`'s form fields: an amount
+in `FormAmountField`, a date in `FormDateField`, a choice in `FormSelectField`, a flag in `FormCheckboxField`, text in
+`FormTextField`; its schema is the generated one,
 a 422 lands on the fields it names, and a success raises a toast. A field that holds an object or a list is left out,
 and the page's opening comment names it. Then it prints what to run next:
 
@@ -763,50 +764,50 @@ of numbers takes `variant="numeric"` on its `TableHead` and each `TableCell`, wh
 
 ## Building a form
 
-A form's state is TanStack Form's, its schema Zod's, and its look `Field`'s. Each field passes `data-invalid` to
-`Field`, `aria-invalid` to its control, and its errors to `FieldError`, which shows them in words, as a line or a
-list, so an invalid field is never told by colour alone:
+A form's state is TanStack Form's, its schema the one orval generates, and its fields `@basis/ui`'s: `FormTextField`,
+`FormAmountField`, `FormDateField`, `FormSelectField` and `FormCheckboxField` each take `form.Field`'s field, a label
+and a description, and draw the label, the control, the description and the field's errors, the schema's issues and
+the API's details, once it has been touched, with `data-invalid` on the field and `aria-invalid` on its control, so an
+invalid field is never told by colour alone. `submitErrors` puts a 422's errors on the fields they name, or returns a
+form error for a failure they cannot hold, which an `ErrorAlert` above the button shows:
 
 ```tsx
-import { Field, FieldError, FieldLabel, Input, fieldErrors } from "@basis/ui";
-import { useForm } from "@tanstack/react-form";
+import { ErrorAlert, FormAmountField, FormTextField, UnsavedChangesGuard, errorsOnFields, submitErrors } from "@basis/ui";
+import { useForm, useSelector } from "@tanstack/react-form";
 
+const fieldNames = ["security_id", "face"] as const;
 const form = useForm({
-  defaultValues: { cusip: "" },
+  defaultValues: { face: null, security_id: "" },
   validators: {
-    onChange: orderSchema,
-    // A 422's errors, on the fields their JSON Pointers name.
+    onChange: settlementForm,
     onSubmitAsync: async ({ value }) => {
-      const problem = await placeOrder(value);
-      return problem === undefined
-        ? undefined
-        : { fields: Object.fromEntries(fieldErrors(problem)) };
+      const failure = await failureOf(async () => recording.mutateAsync({ data: settlementForm.parse(value) }));
+      return failure === null ? undefined : submitErrors(failure, { fields: fieldNames, message: "Not recorded." });
     },
   },
 });
+const dirty = useSelector(form.store, (state) => state.isDirty && !state.isSubmitting && !state.isSubmitSuccessful);
 
-<form.Field name="cusip">
-  {(field) => {
-    const invalid = field.state.meta.isTouched && !field.state.meta.isValid;
-    return (
-      <Field data-invalid={invalid}>
-        <FieldLabel htmlFor="cusip">CUSIP</FieldLabel>
-        <Input
-          id="cusip"
-          value={field.state.value}
-          onBlur={field.handleBlur}
-          onChange={(event) => {
-            field.handleChange(event.target.value);
-          }}
-          aria-invalid={invalid}
-          aria-describedby="cusip-error"
-        />
-        <FieldError id="cusip-error" errors={invalid ? field.state.meta.errors : undefined} />
-      </Field>
-    );
-  }}
-</form.Field>;
+<UnsavedChangesGuard when={dirty} />
+<form.Field name="security_id">
+  {(field) => <FormTextField field={field} label="ISIN" description="Twelve capital letters and digits." />}
+</form.Field>
+<form.Field name="face">{(field) => <FormAmountField field={field} label="Face amount" />}</form.Field>
+<ErrorAlert error={errorsOnFields(recording.error, fieldNames) === undefined ? recording.error : null} />
 ```
+
+`FormDateField` holds the ISO 8601 text a generated schema declares, on `DatePicker`, or on `AsOfDatePicker` with
+`asOf`; `FormAmountField` holds what `AmountInput` holds, which `amountSchema()` checks; `FormSelectField` takes its
+`options` as values and words. A field the five do not cover is built from `Field`, `FieldLabel`, its control and
+`FieldError` the same way.
+
+- **Leaving with changes.** `UnsavedChangesGuard`, given `when`, asks before the page is left while it holds: a link,
+  Back or a navigation the app makes opens a dialog, Stay on this page or Leave without saving, through TanStack
+  Router's blocker, and closing the tab or reloading asks through the browser's own prompt. Turn it off while the form
+  submits, so the page a success opens is not stopped.
+- **Typed confirmation.** `TypedConfirmDialog` asks for a name to be typed, exactly, before an action that cannot be
+  undone, such as deleting a book; its button stays off until the text matches, and the field starts empty each time
+  it opens.
 
 `FieldError` takes a schema's issues, the strings `fieldErrors` returns, and the lists TanStack Form types a form
 validator's field errors as. `fieldErrors` names each field as TanStack Form does, such as `legs[0].price` for the

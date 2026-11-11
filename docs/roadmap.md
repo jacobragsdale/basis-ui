@@ -663,7 +663,12 @@ flowchart TD
    its change with an arrow, a sign and a colour that `rising: "loss"` turns round, its recent values as a sparkline
    coloured the same way, and a skeleton while it loads. 6.7.5 built on 2026-11-11: `DatePicker` takes any date, such as a
    maturity, on the as-of field's input and grid, `MonthPicker` a month, and `DateRangePicker` gains the past month,
-   three months and year, a range typed From and To, and Clear.
+   three months and year, a range typed From and To, and Clear. 6.7.6 built on 2026-11-11: `FormTextField`, `FormAmountField`,
+   `FormDateField`, `FormSelectField` and `FormCheckboxField` bind a TanStack Form field to its control, label,
+   description and errors, and `submitErrors` puts a 422's on them, replacing the bindings the example's settlement
+   form, the gallery's two forms and `vp run new form` each wrote by hand; `UnsavedChangesGuard` asks before a page
+   with unsaved changes is left, and `TypedConfirmDialog` asks for a name to be typed before an action that cannot be
+   undone.
 8. **6.8 The agent's toolbelt.** Lane Preset, in order, since preset changes land one at a time: a catalogue that
    answers, with `vp run docs NAME` (`6.8.1-catalogue`), lint that costs fewer rounds (`6.8.2-lint-limits`), the doors
    that are open (`6.8.3-closed-doors`), one verdict, `vp run verify` (`6.8.4-verify`), a shot that explains itself

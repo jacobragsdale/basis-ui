@@ -9,11 +9,13 @@ import { MenubarSection } from "./overlays-and-menus/menubar.tsx";
 import { MenuSections } from "./overlays-and-menus/menus.tsx";
 import { PanelSections } from "./overlays-and-menus/panels.tsx";
 import { PopupSections } from "./overlays-and-menus/popups.tsx";
+import { TypedConfirmDialogSection } from "./overlays-and-menus/typed-confirm.tsx";
 
 function OverlaysAndMenus(): ReactElement {
   return (
     <div className="flex flex-col gap-8">
       <DialogSections />
+      <TypedConfirmDialogSection />
       <PanelSections />
       <PopupSections />
       <MenuSections />

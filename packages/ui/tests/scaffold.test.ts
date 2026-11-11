@@ -108,7 +108,9 @@ Next, run:
     expect(runs[2]?.status).toBe(0);
     const page = readFileSync(path.join(app, "src/pages/new-settlement.tsx"), "utf8");
     expect(page).toContain("face: amountSchema().pipe(SettlementRequest.shape.face),");
-    expect(page).toContain('<DateField id="new-settlement-settle" label="Settle" field={field} />');
+    expect(page).toContain(
+      '<FormDateField id="new-settlement-settle" label="Settle" field={field} />',
+    );
   });
 
   test("replaces what it wrote with --force, and leaves the route it added", () => {

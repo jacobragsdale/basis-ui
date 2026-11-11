@@ -15019,6 +15019,361 @@
     },
     {
       "extends": [],
+      "family": "form-fields",
+      "module": "@basis/ui",
+      "name": "FormAmountField",
+      "props": [
+        {
+          "description": "The field's label.",
+          "name": "label",
+          "optional": false,
+          "type": "string"
+        },
+        {
+          "description": "A line under the control that says what to enter, such as \"Twelve capital letters and digits\".",
+          "name": "description",
+          "optional": true,
+          "type": "string | undefined"
+        },
+        {
+          "description": "The control's id; one made from the field's name unless set.",
+          "name": "id",
+          "optional": true,
+          "type": "string | undefined"
+        },
+        {
+          "description": "The TanStack Form field, `form.Field`'s render argument.",
+          "name": "field",
+          "optional": false,
+          "type": "FormFieldApi<number | string | null>"
+        },
+        {
+          "description": "The suffixes it reads; AmountInput's default unless set, `parSuffixes` for par.",
+          "name": "suffixes",
+          "optional": true,
+          "type": "Suffixes | undefined"
+        },
+        {
+          "description": "An example of what to enter, such as \"5M\".",
+          "name": "placeholder",
+          "optional": true,
+          "type": "string | undefined"
+        }
+      ],
+      "purpose": "An amount, read by AmountInput, so `1mm` is 1,000,000; its value is AmountInput's, which `amountSchema()` checks.",
+      "use": "For a face amount, a quantity or a price in a form on TanStack Form.",
+      "with": [
+        "AmountInput",
+        "amountSchema",
+        "FormTextField"
+      ],
+      "variants": {}
+    },
+    {
+      "extends": [],
+      "family": "form-fields",
+      "module": "@basis/ui",
+      "name": "FormDateField",
+      "props": [
+        {
+          "description": "The field's label.",
+          "name": "label",
+          "optional": false,
+          "type": "string"
+        },
+        {
+          "description": "A line under the control that says what to enter, such as \"Twelve capital letters and digits\".",
+          "name": "description",
+          "optional": true,
+          "type": "string | undefined"
+        },
+        {
+          "description": "The control's id; one made from the field's name unless set.",
+          "name": "id",
+          "optional": true,
+          "type": "string | undefined"
+        },
+        {
+          "description": "The TanStack Form field, `form.Field`'s render argument.",
+          "name": "field",
+          "optional": false,
+          "type": "FormFieldApi<string>"
+        },
+        {
+          "description": "Takes business days only, as AsOfDatePicker does, up to today unless `max` says otherwise.",
+          "name": "asOf",
+          "optional": true,
+          "type": "boolean | undefined"
+        },
+        {
+          "description": "The earliest date it takes; none unless set.",
+          "name": "min",
+          "optional": true,
+          "type": "Temporal.PlainDate | undefined"
+        },
+        {
+          "description": "The latest date it takes; none unless set, and today for an as-of date unless set, `null` for none.",
+          "name": "max",
+          "optional": true,
+          "type": "Temporal.PlainDate | null | undefined"
+        },
+        {
+          "description": "Today, which the picker counts from; today in New York unless set, as a test sets it.",
+          "name": "today",
+          "optional": true,
+          "type": "Temporal.PlainDate | undefined"
+        }
+      ],
+      "purpose": "A date, held as the ISO 8601 text a generated schema declares, `\"\"` while there is none: DatePicker's for any date, or AsOfDatePicker's for the business day data is as of when `asOf`.",
+      "use": "For a settlement or maturity date in a form on TanStack Form.",
+      "with": [
+        "DatePicker",
+        "AsOfDatePicker",
+        "FormTextField"
+      ],
+      "variants": {}
+    },
+    {
+      "extends": [],
+      "family": "form-fields",
+      "module": "@basis/ui",
+      "name": "FormTextField",
+      "props": [
+        {
+          "description": "The field's label.",
+          "name": "label",
+          "optional": false,
+          "type": "string"
+        },
+        {
+          "description": "A line under the control that says what to enter, such as \"Twelve capital letters and digits\".",
+          "name": "description",
+          "optional": true,
+          "type": "string | undefined"
+        },
+        {
+          "description": "The control's id; one made from the field's name unless set.",
+          "name": "id",
+          "optional": true,
+          "type": "string | undefined"
+        },
+        {
+          "description": "The TanStack Form field, `form.Field`'s render argument.",
+          "name": "field",
+          "optional": false,
+          "type": "FormFieldApi<string>"
+        },
+        {
+          "description": "The input's type: text unless set, an email address, or a date the browser's own picker takes.",
+          "name": "type",
+          "optional": true,
+          "type": "\"text\" | \"email\" | \"date\" | undefined"
+        },
+        {
+          "description": "An example of what to enter, such as \"US91282CRF04\".",
+          "name": "placeholder",
+          "optional": true,
+          "type": "string | undefined"
+        }
+      ],
+      "purpose": "A text field: one line of text, or a date the browser picks when `type=\"date\"`.",
+      "use": "For a text field of a form on TanStack Form, such as an ISIN. For an amount, use FormAmountField; for a date, FormDateField; for a choice, FormSelectField.",
+      "with": [
+        "FormAmountField",
+        "FormDateField",
+        "FormSelectField",
+        "Field",
+        "fieldErrors"
+      ],
+      "variants": {},
+      "example": "import { FormTextField } from \"@basis/ui\";\n\n// In a page, the field is `form.Field`'s render argument: `{(field) => <FormTextField field={field} ... />}`.\nconst field = {\n  handleBlur: () => undefined,\n  handleChange: (_value: string) => undefined,\n  name: \"security_id\",\n  state: { meta: { errors: [], isTouched: false }, value: \"\" },\n};\n\n<FormTextField field={field} label=\"ISIN\" description=\"Twelve capital letters and digits.\" />;\n"
+    },
+    {
+      "extends": [],
+      "family": "form-choice-fields",
+      "module": "@basis/ui",
+      "name": "FormCheckboxField",
+      "props": [
+        {
+          "description": "The field's label.",
+          "name": "label",
+          "optional": false,
+          "type": "string"
+        },
+        {
+          "description": "A line under the control that says what to enter, such as \"Twelve capital letters and digits\".",
+          "name": "description",
+          "optional": true,
+          "type": "string | undefined"
+        },
+        {
+          "description": "The control's id; one made from the field's name unless set.",
+          "name": "id",
+          "optional": true,
+          "type": "string | undefined"
+        },
+        {
+          "description": "The TanStack Form field, `form.Field`'s render argument.",
+          "name": "field",
+          "optional": false,
+          "type": "FormFieldApi<boolean>"
+        }
+      ],
+      "purpose": "A flag, ticked or not, its label beside the box.",
+      "use": "For a yes or no in a form on TanStack Form, such as \"Send a confirmation\". For a setting that takes effect at once, use Switch.",
+      "with": [
+        "Checkbox",
+        "FormTextField"
+      ],
+      "variants": {}
+    },
+    {
+      "extends": [],
+      "family": "form-choice-fields",
+      "module": "@basis/ui",
+      "name": "FormSelectField",
+      "props": [
+        {
+          "description": "The field's label.",
+          "name": "label",
+          "optional": false,
+          "type": "string"
+        },
+        {
+          "description": "A line under the control that says what to enter, such as \"Twelve capital letters and digits\".",
+          "name": "description",
+          "optional": true,
+          "type": "string | undefined"
+        },
+        {
+          "description": "The control's id; one made from the field's name unless set.",
+          "name": "id",
+          "optional": true,
+          "type": "string | undefined"
+        },
+        {
+          "description": "The TanStack Form field, `form.Field`'s render argument.",
+          "name": "field",
+          "optional": false,
+          "type": "FormFieldApi<TValue>"
+        },
+        {
+          "description": "The options, each its value and the words it shows.",
+          "name": "options",
+          "optional": false,
+          "type": "readonly { readonly value: TValue; readonly label: string }[]"
+        },
+        {
+          "description": "What the select shows while the field holds none of the options.",
+          "name": "placeholder",
+          "optional": true,
+          "type": "string | undefined"
+        }
+      ],
+      "purpose": "A choice of a few options, on the browser's own select, such as an enum a generated schema declares. A field that starts with no choice holds `\"\"`, which the placeholder stands for until an option is chosen.",
+      "use": "For a choice among a handful of options in a form on TanStack Form. For a long list, use Combobox.",
+      "with": [
+        "NativeSelect",
+        "FormTextField"
+      ],
+      "variants": {},
+      "example": "import { FormSelectField } from \"@basis/ui\";\n\n// In a page, the field is `form.Field`'s render argument.\nconst field = {\n  handleBlur: () => undefined,\n  handleChange: (_value: \"buy\" | \"sell\") => undefined,\n  name: \"side\",\n  state: { meta: { errors: [], isTouched: false }, value: \"buy\" as const },\n};\n\n<FormSelectField\n  field={field}\n  label=\"Side\"\n  options={[\n    { label: \"Buy\", value: \"buy\" },\n    { label: \"Sell\", value: \"sell\" },\n  ]}\n/>;\n"
+    },
+    {
+      "extends": [],
+      "family": "unsaved-changes-guard",
+      "module": "@basis/ui",
+      "name": "UnsavedChangesGuard",
+      "props": [
+        {
+          "description": "Whether the page holds changes not yet saved, such as TanStack Form's `form.state.isDirty` until it submits.",
+          "name": "when",
+          "optional": false,
+          "type": "boolean"
+        },
+        {
+          "description": "The dialog's title; \"Leave without saving?\" unless set.",
+          "name": "title",
+          "optional": true,
+          "type": "string | undefined"
+        },
+        {
+          "description": "What leaving loses; \"Your changes on this page are not saved, and leaving discards them.\" unless set.",
+          "name": "description",
+          "optional": true,
+          "type": "string | undefined"
+        }
+      ],
+      "purpose": "Asks before the page is left while `when` holds: a dialog for a navigation inside the app, and the browser's own prompt for closing the tab or reloading.",
+      "use": "For a form whose changes would be lost by leaving, such as a trade ticket half filled in.",
+      "with": [
+        "TypedConfirmDialog",
+        "AlertDialog",
+        "FormTextField"
+      ],
+      "variants": {},
+      "example": "import { UnsavedChangesGuard } from \"@basis/ui\";\n\n// In a page on TanStack Form: useSelector(form.store, (state) => state.isDirty && !state.isSubmitting\n// && !state.isSubmitSuccessful), so the page a successful submit opens is not stopped.\nconst dirty = true;\n\n<UnsavedChangesGuard when={dirty} />;\n"
+    },
+    {
+      "extends": [],
+      "family": "typed-confirm-dialog",
+      "module": "@basis/ui",
+      "name": "TypedConfirmDialog",
+      "props": [
+        {
+          "description": "Whether the dialog is open; the page holds it, as the action's button opens it.",
+          "name": "open",
+          "optional": false,
+          "type": "boolean"
+        },
+        {
+          "description": "Called to open or close it: Cancel, Escape and a confirmed action close it.",
+          "name": "onOpenChange",
+          "optional": false,
+          "type": "(open: boolean) => void"
+        },
+        {
+          "description": "What is asked, such as \"Delete the book Rates?\".",
+          "name": "title",
+          "optional": false,
+          "type": "string"
+        },
+        {
+          "description": "What the action does and what it cannot undo.",
+          "name": "description",
+          "optional": false,
+          "type": "ReactNode"
+        },
+        {
+          "description": "The text to type, such as the book's name; it must match exactly, case and all.",
+          "name": "confirmText",
+          "optional": false,
+          "type": "string"
+        },
+        {
+          "description": "The button's words, such as \"Delete book\".",
+          "name": "actionLabel",
+          "optional": false,
+          "type": "string"
+        },
+        {
+          "description": "Runs once the text matches and the button is pressed; the dialog closes.",
+          "name": "onConfirm",
+          "optional": false,
+          "type": "() => void"
+        }
+      ],
+      "purpose": "A dialog that asks for a name to be typed before an action that cannot be undone.",
+      "use": "For deleting or closing something with consequences, such as a book, a fund or a saved model. For an action a click may confirm, use AlertDialog.",
+      "with": [
+        "AlertDialog",
+        "UnsavedChangesGuard"
+      ],
+      "variants": {},
+      "example": "import { Button, TypedConfirmDialog } from \"@basis/ui\";\nimport { useState } from \"react\";\n\nconst [open, setOpen] = useState(false);\n\n<>\n  <Button variant=\"destructive\" onClick={() => { setOpen(true); }}>Delete book</Button>\n  <TypedConfirmDialog\n    open={open}\n    onOpenChange={setOpen}\n    title=\"Delete the book Rates?\"\n    description=\"Its positions move to Unassigned. This cannot be undone.\"\n    confirmText=\"Rates\"\n    actionLabel=\"Delete book\"\n    onConfirm={() => undefined}\n  />\n</>;\n"
+    },
+    {
+      "extends": [],
       "family": "saved-views",
       "module": "@basis/ui",
       "name": "SavedViews",
@@ -16157,6 +16512,20 @@
       "name": "setTokenSource",
       "purpose": "Sets where `apiFetch` gets the user's token. The app shell calls it once, at startup.",
       "signature": "setTokenSource(source: TokenSource): void"
+    },
+    {
+      "kind": "function",
+      "module": "@basis/ui",
+      "name": "errorsOnFields",
+      "purpose": "A 422's errors by the field each names, or `undefined` when the form's fields cannot hold the failure: any failure but a 422, a 422 that names no field, and one that names a field the form does not have.",
+      "signature": "errorsOnFields(error: unknown, fields: ReadonlySet<string> | readonly string[]): Record<string, readonly string[]> | undefined"
+    },
+    {
+      "kind": "function",
+      "module": "@basis/ui",
+      "name": "submitErrors",
+      "purpose": "What a failed submit leaves on the form: the errors of the fields a 422 names, or `message`, a form error, for a failure they cannot hold, which the page shows with ErrorAlert.",
+      "signature": "submitErrors(error: unknown, { fields, message, }: { readonly fields: ReadonlySet<string> | readonly string[]; readonly message: string }): SubmitErrors"
     },
     {
       "kind": "constant",
@@ -24428,6 +24797,13 @@
       "purpose": ""
     },
     {
+      "definition": "NonNullable<ComponentProps<typeof FieldError>[\"errors\"]>",
+      "exported": false,
+      "module": "@basis/ui",
+      "name": "FieldErrors",
+      "purpose": ""
+    },
+    {
       "fields": [
         {
           "description": "",
@@ -24799,6 +25175,65 @@
       "module": "@basis/ui",
       "name": "Formatter",
       "purpose": "A checked format, ready to format values."
+    },
+    {
+      "fields": [
+        {
+          "description": "",
+          "name": "name",
+          "optional": false,
+          "type": "string"
+        },
+        {
+          "description": "",
+          "name": "state",
+          "optional": false,
+          "type": "{ readonly value: TValue; readonly meta: { readonly errors: FieldErrors; readonly isTouched: boolean }; }"
+        },
+        {
+          "description": "",
+          "name": "handleChange",
+          "optional": false,
+          "type": "(value: TValue) => void"
+        },
+        {
+          "description": "",
+          "name": "handleBlur",
+          "optional": false,
+          "type": "() => void"
+        }
+      ],
+      "exported": true,
+      "module": "@basis/ui",
+      "name": "FormFieldApi",
+      "parameters": "<TValue>",
+      "purpose": "What a field component reads of a TanStack Form field, `form.Field`'s render argument: its name, value, errors and whether it has been touched, and its handlers."
+    },
+    {
+      "fields": [
+        {
+          "description": "The field's label.",
+          "name": "label",
+          "optional": false,
+          "type": "string"
+        },
+        {
+          "description": "A line under the control that says what to enter, such as \"Twelve capital letters and digits\".",
+          "name": "description",
+          "optional": true,
+          "type": "string | undefined"
+        },
+        {
+          "description": "The control's id; one made from the field's name unless set.",
+          "name": "id",
+          "optional": true,
+          "type": "string | undefined"
+        }
+      ],
+      "exported": true,
+      "module": "@basis/ui",
+      "name": "FormFieldProps",
+      "purpose": "What every form field takes besides its field."
     },
     {
       "definition": "Omit< ComponentProps<\"svg\">, | \"children\" | \"color\" | \"fill\" | \"stroke\" | \"strokeLinecap\" | \"strokeLinejoin\" | \"strokeWidth\" | \"viewBox\" | \"xmlns\" >",
@@ -25912,6 +26347,24 @@
       "module": "@basis/ui",
       "name": "StatChange",
       "purpose": "A value's change, and how to show it."
+    },
+    {
+      "definition": "string | { readonly fields: Record<string, readonly string[]> }",
+      "extends": [
+        "string"
+      ],
+      "fields": [
+        {
+          "description": "",
+          "name": "fields",
+          "optional": true,
+          "type": "Record<string, readonly string[]>"
+        }
+      ],
+      "exported": true,
+      "module": "@basis/ui",
+      "name": "SubmitErrors",
+      "purpose": "What `onSubmitAsync` returns for a failure: a form error's text, or the errors of the fields a 422 names."
     },
     {
       "definition": "Readonly<Record<string, number>>",

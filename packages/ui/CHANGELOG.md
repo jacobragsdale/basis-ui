@@ -9,6 +9,12 @@ anything of an app.
 
 ## Unreleased
 
+- Form fields bound to a TanStack Form field: `FormTextField`, `FormAmountField`, `FormDateField`, `FormSelectField`
+  and `FormCheckboxField`, with `submitErrors` and `errorsOnFields` for a 422's errors; `UnsavedChangesGuard`, which
+  asks before a page with unsaved changes is left; and `TypedConfirmDialog`, which asks for a name to be typed before
+  an action that cannot be undone. `vp run new form` now writes its fields with them, so a new form is a third the
+  size. What to do: nothing; a form that binds its own fields can use them, as the README's "Building a form" shows.
+
 - `DatePicker`, for any date such as a maturity, and `MonthPicker`, for a month, beside `AsOfDatePicker`, whose props
   type is now exported as `AsOfDatePickerProps`. `DateRangePicker` gains the past month, three months and year among
   its presets, a range typed From and To, and Clear, which calls `onValueChange` with `null`. What to do: an
