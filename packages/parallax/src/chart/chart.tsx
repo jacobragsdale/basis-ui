@@ -32,7 +32,10 @@ type DatasetChartProps<TRow extends AnyRow = AnyRow> = Omit<
   ChartViewProps,
   "dataset" | "layout" | "order" | "source"
 > & {
+  /** The dataset to draw, from `useDataset`. */
   readonly dataset: Dataset<TRow>;
+  /** The view and its chart, as a layout: its `chart` section says what to draw. A dataset of rows of a known type,
+   * `useDataset<Position>`, takes only its columns' names. */
   readonly layout: LayoutFor<TRow>;
 };
 

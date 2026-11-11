@@ -16541,13 +16541,13 @@
           "type": "string"
         },
         {
-          "description": "",
+          "description": "The dataset to draw, from `useDataset`.",
           "name": "dataset",
           "optional": true,
           "type": "Dataset<TRow>"
         },
         {
-          "description": "",
+          "description": "The view and its chart, as a layout: its `chart` section says what to draw. A dataset of rows of a known type, `useDataset<Position>`, takes only its columns' names.",
           "name": "layout",
           "optional": true,
           "type": "LayoutFor<TRow>"
@@ -20943,13 +20943,13 @@
           "type": "string"
         },
         {
-          "description": "",
+          "description": "The dataset to draw, from `useDataset`.",
           "name": "dataset",
           "optional": false,
           "type": "Dataset<TRow>"
         },
         {
-          "description": "",
+          "description": "The view and its chart, as a layout: its `chart` section says what to draw. A dataset of rows of a known type, `useDataset<Position>`, takes only its columns' names.",
           "name": "layout",
           "optional": false,
           "type": "LayoutFor<TRow>"
