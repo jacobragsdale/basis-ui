@@ -14872,6 +14872,54 @@
       "example": "import { DataTable, FilterBar, defineFilters, filterRows, filterSearchSchema, useFilters } from \"@basis/ui\";\nimport { createRootRoute, createRoute } from \"@tanstack/react-router\";\n\n// Once, outside any component: the filters, each by its search parameter.\nconst tradeFilters = defineFilters({\n  issuer: { kind: \"text\", label: \"Issuer\" },\n  book: { kind: \"choice\", label: \"Book\", options: [\"Rates\", \"Credit\"] },\n  settles: { kind: \"dateRange\", label: \"Settles\" },\n  par: { kind: \"numberRange\", label: \"Par\" },\n});\n\n// The route types its search parameters by the filters.\nexport const tradesRoute = createRoute({\n  getParentRoute: () => createRootRoute(),\n  path: \"/trades\",\n  validateSearch: filterSearchSchema(tradeFilters),\n});\n\n// In the page's component: the filters from the address, and the rows they keep.\nconst trades = [{ book: \"Rates\", id: \"t1\", issuer: \"Treasury\", par: 5_000_000, settles: \"2026-11-10\" }];\nconst filters = useFilters(tradeFilters);\nconst shown = filterRows(trades, {\n  fields: { book: (row) => row.book, issuer: (row) => row.issuer, par: (row) => row.par, settles: (row) => row.settles },\n  filters: tradeFilters,\n  values: filters.values,\n});\n\n<>\n  <FilterBar filters={filters} />\n  <DataTable\n    label=\"Trades\"\n    columns={[{ header: \"Issuer\", id: \"issuer\", value: (row: (typeof trades)[number]) => row.issuer }]}\n    data={shown}\n    getRowId={(row) => row.id}\n  />\n</>;\n"
     },
     {
+      "extends": [],
+      "family": "saved-views",
+      "module": "@basis/ui",
+      "name": "SavedViews",
+      "props": [
+        {
+          "description": "Where the views live: `browserViewStore` for this browser alone, or `apiViewStore` over the app's API.",
+          "name": "store",
+          "optional": false,
+          "type": "SavedViewStore<TState>"
+        },
+        {
+          "description": "The page's state now, which a view saves.",
+          "name": "state",
+          "optional": false,
+          "type": "TState"
+        },
+        {
+          "description": "Puts a view's state on the page.",
+          "name": "onApply",
+          "optional": false,
+          "type": "(state: TState) => void"
+        },
+        {
+          "description": "Whether the default view, if there is one, is applied once the views load; true unless set. A page opened from a link that names its own state passes false.",
+          "name": "applyDefault",
+          "optional": true,
+          "type": "boolean | undefined"
+        },
+        {
+          "description": "What the views are of, which names the menu, such as \"Grid views\"; \"Views\" unless set.",
+          "name": "label",
+          "optional": true,
+          "type": "string | undefined"
+        }
+      ],
+      "purpose": "A menu of a page's saved views: apply one, save the page's state as a new one, or save changes to, rename, make the default or delete the one shown. Give it the store, the page's state and `onApply`, which puts a view's state on the page; the default view is applied once the views load, unless `applyDefault` is false.",
+      "use": "For views a user saves of a grid's, a pivot's or a chart's layout, or of a table's sort and filters.",
+      "with": [
+        "browserViewStore",
+        "apiViewStore",
+        "FilterBar",
+        "DataTable"
+      ],
+      "variants": {},
+      "example": "import { SavedViews, browserViewStore } from \"@basis/ui\";\nimport { useState } from \"react\";\nimport { z } from \"zod\";\n\n// Once, outside any component: what a view holds, and where the views live.\nconst viewSchema = z.object({ sortBy: z.enum([\"issuer\", \"par\"]) });\ntype PositionsView = z.infer<typeof viewSchema>;\nconst store = browserViewStore({\n  key: \"positions.table\",\n  parse: (state) => viewSchema.safeParse(state).data,\n});\n\n// In the page's component: the page's state, which a view saves and restores.\nconst [view, setView] = useState<PositionsView>({ sortBy: \"issuer\" });\n\n<SavedViews label=\"Position views\" store={store} state={view} onApply={setView} />;\n"
+    },
+    {
       "extends": [
         "Omit<ComponentProps<\"span\">, \"children\">"
       ],
@@ -15621,6 +15669,20 @@
       "name": "numberText",
       "purpose": "A number as text, for a string such as a toast's or an accessible name, by the same rule `Num` shows it with: `numberText(150000, { decimals: 0 })` is `150,000`.",
       "signature": "numberText(value: NumericValue, format: NumberFormat = {}): string"
+    },
+    {
+      "kind": "function",
+      "module": "@basis/ui",
+      "name": "apiViewStore",
+      "purpose": "A store over the app's API, which keeps a user's views wherever they sign in. A call that fails rejects the operation with its error, which `BasisApp` shows as a toast, as it does for every failed mutation.",
+      "signature": "apiViewStore<TState>({ key, calls, parse, }: ApiViewStoreOptions<TState>): SavedViewStore<TState>"
+    },
+    {
+      "kind": "function",
+      "module": "@basis/ui",
+      "name": "browserViewStore",
+      "purpose": "A store in the browser's storage: the user's views on this browser, which no other user or machine sees. A storage that refuses a write, as a full one does, rejects the operation with its error.",
+      "signature": "browserViewStore<TState>({ key, parse, storage = globalThis.localStorage, }: BrowserViewStoreOptions<TState>): SavedViewStore<TState>"
     },
     {
       "kind": "function",
@@ -23403,6 +23465,65 @@
     {
       "fields": [
         {
+          "description": "",
+          "name": "list",
+          "optional": false,
+          "type": "() => Promise<unknown>"
+        },
+        {
+          "description": "",
+          "name": "put",
+          "optional": false,
+          "type": "(view: SavedView<unknown>) => Promise<unknown>"
+        },
+        {
+          "description": "",
+          "name": "remove",
+          "optional": false,
+          "type": "(id: string) => Promise<unknown>"
+        },
+        {
+          "description": "",
+          "name": "setDefault",
+          "optional": false,
+          "type": "(id: string | null) => Promise<unknown>"
+        }
+      ],
+      "exported": true,
+      "module": "@basis/ui",
+      "name": "ApiViewCalls",
+      "purpose": "The app's calls to its API for a page's views, normally the generated client's. Each may resolve to whatever the client returns; `list` resolves to the list as the API sends it, which the store reads through `parse`."
+    },
+    {
+      "fields": [
+        {
+          "description": "What names the views, unique in the app, such as `\"positions.grid\"`.",
+          "name": "key",
+          "optional": false,
+          "type": "string"
+        },
+        {
+          "description": "",
+          "name": "calls",
+          "optional": false,
+          "type": "ApiViewCalls"
+        },
+        {
+          "description": "",
+          "name": "parse",
+          "optional": false,
+          "type": "ParseViewState<TState>"
+        }
+      ],
+      "exported": true,
+      "module": "@basis/ui",
+      "name": "ApiViewStoreOptions",
+      "parameters": "<TState>",
+      "purpose": ""
+    },
+    {
+      "fields": [
+        {
           "description": "The calendar whose business days count; SIFMA's unless set.",
           "name": "calendar",
           "optional": true,
@@ -23418,6 +23539,33 @@
       "exported": true,
       "module": "@basis/ui",
       "name": "AsOfOptions",
+      "purpose": ""
+    },
+    {
+      "fields": [
+        {
+          "description": "The storage key, which names the views' page and part, such as `\"positions.grid\"`; one key holds them all.",
+          "name": "key",
+          "optional": false,
+          "type": "string"
+        },
+        {
+          "description": "",
+          "name": "parse",
+          "optional": false,
+          "type": "ParseViewState<TState>"
+        },
+        {
+          "description": "The storage, `localStorage` unless set, so that a test can pass its own.",
+          "name": "storage",
+          "optional": true,
+          "type": "Storage | undefined"
+        }
+      ],
+      "exported": true,
+      "module": "@basis/ui",
+      "name": "BrowserViewStoreOptions",
+      "parameters": "<TState>",
       "purpose": ""
     },
     {
@@ -24835,6 +24983,14 @@
       "purpose": ""
     },
     {
+      "definition": "(state: unknown) => TState | undefined",
+      "exported": true,
+      "module": "@basis/ui",
+      "name": "ParseViewState",
+      "parameters": "<TState>",
+      "purpose": "Reads a view's stored state: the state, or `undefined` for one the page no longer takes. A Zod schema's `(value) => schema.safeParse(value).data` is one."
+    },
+    {
       "fields": [
         {
           "description": "",
@@ -25049,6 +25205,93 @@
       "module": "@basis/ui",
       "name": "RouteEntry",
       "purpose": "A page the shell can link to: a route with a title and no path parameters."
+    },
+    {
+      "fields": [
+        {
+          "description": "",
+          "name": "id",
+          "optional": false,
+          "type": "string"
+        },
+        {
+          "description": "",
+          "name": "name",
+          "optional": false,
+          "type": "string"
+        },
+        {
+          "description": "",
+          "name": "state",
+          "optional": false,
+          "type": "TState"
+        }
+      ],
+      "exported": true,
+      "module": "@basis/ui",
+      "name": "SavedView",
+      "parameters": "<TState>",
+      "purpose": "One saved view: its id, the name the user gave it, and the state it restores."
+    },
+    {
+      "fields": [
+        {
+          "description": "",
+          "name": "views",
+          "optional": false,
+          "type": "readonly SavedView<TState>[]"
+        },
+        {
+          "description": "",
+          "name": "defaultId",
+          "optional": false,
+          "type": "string | null"
+        }
+      ],
+      "exported": true,
+      "module": "@basis/ui",
+      "name": "SavedViewList",
+      "parameters": "<TState>",
+      "purpose": "Every saved view, in the order saved, and the one that opens by default, if any."
+    },
+    {
+      "fields": [
+        {
+          "description": "",
+          "name": "key",
+          "optional": false,
+          "type": "string"
+        },
+        {
+          "description": "",
+          "name": "list",
+          "optional": false,
+          "type": "() => Promise<SavedViewList<TState>>"
+        },
+        {
+          "description": "",
+          "name": "put",
+          "optional": false,
+          "type": "(view: SavedView<TState>) => Promise<void>"
+        },
+        {
+          "description": "",
+          "name": "remove",
+          "optional": false,
+          "type": "(id: string) => Promise<void>"
+        },
+        {
+          "description": "",
+          "name": "setDefault",
+          "optional": false,
+          "type": "(id: string | null) => Promise<void>"
+        }
+      ],
+      "exported": true,
+      "module": "@basis/ui",
+      "name": "SavedViewStore",
+      "parameters": "<TState>",
+      "purpose": "What `SavedViews` needs of a store: a key that names the views it holds, unique in the app, and four operations. `put` saves a view new or changed, by its id."
     },
     {
       "definition": "| { readonly kind: \"cusip\"; readonly value: Cusip } | { readonly kind: \"isin\"; readonly value: Isin } | { readonly kind: \"sedol\"; readonly value: Sedol }",

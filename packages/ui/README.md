@@ -1320,6 +1320,45 @@ const shown = filterRows(trades, {
 
 The example app's conventions page filters its table this way.
 
+### SavedViews
+
+`SavedViews` is a menu of a page's saved views: apply one, save the page's state as a new one, or save changes to,
+rename, make the default or delete the one shown. Its button names the view shown, with "(changed)" once the page
+differs from it. Give it a store, the page's state and `onApply`, which puts a view's state on the page. A view's state
+is plain JSON: a grid's, pivot's or chart's `LayoutInput`, a `DataTable`'s sorting and hidden columns, or a filter bar's
+`filters.values`, which `filters.setAll` restores.
+
+```tsx
+import { SavedViews, apiViewStore, browserViewStore } from "@basis/ui";
+
+// This browser alone, under one key per page and part.
+const gridViews = browserViewStore({
+  key: "positions.grid",
+  parse: (state) => layoutSchema.safeParse(state).data,
+});
+
+// Or the app's API, through its generated client, so a user's views follow them.
+const tableViews = apiViewStore({
+  key: "trades.table",
+  calls: { list: listViews, put: putView, remove: deleteView, setDefault: setDefaultView },
+  parse: (state) => tableViewSchema.safeParse(state).data,
+});
+
+<SavedViews label="Grid views" store={gridViews} state={layout} onApply={setLayout} />;
+<FilterBar
+  filters={filters}
+  actions={<SavedViews store={tableViews} state={tableState} onApply={applyTableState} />}
+/>;
+```
+
+- **Stores.** A store has a `key`, unique in the app, and four operations: `list`, `put` (a view new or changed, by its
+  id), `remove` and `setDefault`. Each adapter reads what it loads through `parse`, so a view saved by an older page
+  that the state no longer takes is dropped rather than applied, and a default that names no view is none.
+- **The default.** Once the views load, the default view is applied, unless `applyDefault={false}`, as on a page opened
+  from a link that names its own state.
+- **Errors.** The views load and change through TanStack Query, under `["@basis/ui", "saved-views", key]`, so a failed
+  change raises `BasisApp`'s error toast, as every failed mutation does, and the list stays as the store last gave it.
+
 ### EntityPicker and SecurityPicker
 
 `EntityPicker` is a combobox that searches through a function the app passes, normally the generated client's

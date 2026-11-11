@@ -627,7 +627,10 @@ flowchart TD
 6. **6.6 Grid features.** Lane Grid, after 6.3, 6.4 and 6.5, one branch per item: rich cells (`6.6.1-rich-cells`), a
    context menu and events (`6.6.2-context-menu`), saved views (`6.6.3-saved-views`), layouts typed by the dataset's
    rows (`6.6.4-typed-layouts`), states on the canvas (`6.6.5-states`), and small charts that say what their marks are
-   (`6.6.6-chart-finish`).
+   (`6.6.6-chart-finish`) 6.6.3 built on 2026-11-11: `SavedViews`, in `@basis/ui`, applies, saves, updates,
+   renames, deletes and makes default a named view of any JSON state, over `browserViewStore` or `apiViewStore`, each
+   reading a view back through the page's own parse; it sits in a filter bar's `actions` or beside a grid, pivot or
+   chart, whose layouts are its state.
 7. **6.7 Components for real apps.** Lane Components, after 6.5.1 and 6.5.2, one family per branch in order: the shell
    (`6.7.1-shell`), the filter bar (`6.7.2-filter-bar`), `DataTable` (`6.7.3-data-table`), `StatCard`
    (`6.7.4-stat-card`), dates (`6.7.5-dates`), forms (`6.7.6-forms`), choosing (`6.7.7-choosing`), display

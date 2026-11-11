@@ -309,8 +309,11 @@ The firm's own components cover what shadcn does not:
   is one, so its keys are its own and win over the app's. Two shortcuts that take the same keys in one scope are a
   conflict, logged as an `ERROR` line with its fix rather than thrown, since the two often meet only in some state of
   a page and a throw would take the page down for its users. The same error toast raised again within 10 seconds,
-  while it is open, counts on it rather than stacking. Not yet: saved views (step 6.6.3), and split panes for master
-  and detail (step 6.7).
+  while it is open, counts on it rather than stacking. A page's saved views are `SavedViews`, a menu that applies,
+  saves, updates, renames, deletes and makes default a named view of any JSON state, a grid's, pivot's or chart's
+  layout or a table's with its filter bar's values, over a store in the browser's storage or over the app's API, each
+  reading a view back through the page's own parse so that an old view the page no longer takes is dropped (step
+  6.6.3, 2026-11-11). Not yet: split panes for master and detail (step 6.7).
 - **States.** One component shows a query's loading skeleton, its empty state, its error, read from problem details, and
   its staleness, as the time its data was current.
 - **Small charts.** `Sparkline` and an in-cell bar, drawn as SVG, for KPI cards and table cells, which are too small to

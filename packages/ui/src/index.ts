@@ -417,6 +417,18 @@ export type {
 export { FileImport, type FileImportProps } from "./components/file-import.tsx";
 export type { ImportHeaders, ImportSchema } from "./components/file-import-rows.ts";
 export { FilterBar, type FilterBarProps } from "./components/filter-bar.tsx";
+export { SavedViews, type SavedViewsProps } from "./components/saved-views.tsx";
+export {
+  apiViewStore,
+  browserViewStore,
+  type ApiViewCalls,
+  type ApiViewStoreOptions,
+  type BrowserViewStoreOptions,
+  type ParseViewState,
+  type SavedView,
+  type SavedViewList,
+  type SavedViewStore,
+} from "./components/saved-views-store.ts";
 export {
   defineFilters,
   type AnyFilterValue,

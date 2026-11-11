@@ -44,7 +44,8 @@ building](#found-while-building) at the end of this page.
 | 6.5.5 | `dd19320`              | The theme in the cookie and head script, `preferencesDomain`, following another app's change.    |
 | 6.5.6 | `731086d`              | Parallax on `@basis/ui`'s theme, 13 dead tokens gone, rows by control size, `basis:themechange`. |
 | 6.5.7 | `09342aa` to `abf4de5` | The default's look, `desk` and `high-contrast`; every baseline in every theme.                   |
-| 6.5.8 | this commit            | The theme studio in the gallery on `@basis/ui/theming`; the demo's studio gone.                  |
+| 6.5.8 | `afd85af`              | The theme studio in the gallery on `@basis/ui/theming`; the demo's studio gone.                  |
+| 6.6.3 | this commit            | `SavedViews`, `browserViewStore` and `apiViewStore`; its gallery section in every theme.         |
 | 6.7.1 | `1af39dc`              | `Page`, shell slots and groups, scoped shortcuts, the demo in the shell, the shell's axe fixed.  |
 | 6.7.2 | `e5edd47`              | `FilterBar`, its state in typed search parameters.                                               |
 | 6.7.3 | `6f432c8`              | `DataTable` controllable and fast at its cap; pages 50 rows by default.                          |
@@ -70,7 +71,7 @@ Everything below, in this order where one needs another, except 6.10, which is t
 3. ~~6.4.5 to 6.4.7~~ done. **6.4.8**: the
    charts' costs.
 4. ~~6.5.7~~ done, its choices of look listed in "Found while building" for the maintainer's review. ~~6.5.8~~ done.
-5. **6.6.1 to 6.6.6**, the grid's features, after 6.3, 6.4 and 6.5.
+5. **6.6.1 to 6.6.6**, the grid's features, after 6.3, 6.4 and 6.5; ~~6.6.3~~ done, by the `@basis/ui` lane.
 6. **6.7.4 to 6.7.10**, the components. `@tanstack/react-virtual` is approved for 6.7.9.
 7. **6.8.10**, the skills.
 8. **6.9**, the showcase, last, built with only an app's tools, with `packages/showcase/BUILDING.md`.

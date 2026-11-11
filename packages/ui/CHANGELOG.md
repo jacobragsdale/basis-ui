@@ -9,6 +9,18 @@ anything of an app.
 
 ## Unreleased
 
+- `SavedViews`, a menu of a page's saved views, with `browserViewStore` for this browser alone and `apiViewStore` over
+  the app's API: apply a view, save the page's state as a new one, save changes to, rename, make the default or delete
+  the one shown. A view's state is any JSON, a grid's, pivot's or chart's layout or a table's with its filter bar's
+  values, read back through the page's own `parse`. What to do: nothing; `vp run docs SavedViews` shows it.
+
+- Two more themes ship beside the default, `desk`, dense and dark-first, and `high-contrast`, and the user menu now
+  offers the theme. The default has a look of its own: a slate neutral, white cards on a grey page, a deeper blue
+  brand, vivid in dark mode with dark text on it. A status's colour, `text-warning` and its kin, is now its ramp's
+  text step, and its solid fills only the environment banner, so `bg-warning` and its kin are darker than they were.
+  Figures are tabular across the page, table headings are small and muted, and icons draw at a 1.75 stroke. What to
+  do: nothing, unless a test reads a colour or an icon's stroke; `vp run shot --theme desk` shows a page in a theme.
+
 - `applyPreferences` dispatches `themeChangeEvent`, `basis:themechange`, on the root element once it changes the
   mode, density, motion or theme shown, and `@basis/parallax`'s canvases read their tokens again on it. Code that
   changes the theme's tokens another way, such as by setting a variable on a wrapper, dispatches it on the document.
