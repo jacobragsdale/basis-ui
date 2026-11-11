@@ -620,7 +620,10 @@ flowchart TD
    and statuses on curves of their own, a status's token on its text step and its solid an amber QA banner with dark
    text; `desk`, dense and dark-first, and `high-contrast` ship beside it, each passing `checkTheme`; the gallery, the
    grid, pivot, charts and demo are screenshotted in all three, 1,068 gallery shots among them, and the demo's menu
-   offers the theme. Its choices of look await the maintainer's review in PLAN.md's "Found while building".
+   offers the theme. Its choices of look await the maintainer's review in PLAN.md's "Found while building". 6.5.8 built
+   on 2026-11-11: the gallery's Theme studio page edits a theme's inputs, starting from any shipped theme, draws a
+   preview of the components under the inputs' own rules as they change, runs `checkTheme` on each change and exports
+   the inputs file, on `@basis/ui/theming`, which no app imports; the demo's studio of `--px-*` controls is gone.
 6. **6.6 Grid features.** Lane Grid, after 6.3, 6.4 and 6.5, one branch per item: rich cells (`6.6.1-rich-cells`), a
    context menu and events (`6.6.2-context-menu`), saved views (`6.6.3-saved-views`), layouts typed by the dataset's
    rows (`6.6.4-typed-layouts`), states on the canvas (`6.6.5-states`), and small charts that say what their marks are

@@ -1,8 +1,7 @@
-/* The demo's tools, in the sidebar's footer, where AppShell would put the user menu: the mode and density, the
- * performance overlay and the theme studio. Each is a menu button, so the folded icon rail shows its icon and names it
- * in a tooltip. */
+/* The demo's tools, in the sidebar's footer, where AppShell would put the user menu: the theme, mode and density, and
+ * the performance overlay. Each is a menu button, so the folded icon rail shows its icon and names it in a tooltip. */
 
-import { GaugeIcon, PaletteIcon, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@basis/ui";
+import { GaugeIcon, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@basis/ui";
 import type { ReactNode } from "react";
 
 import { AppearanceMenu } from "./appearance.tsx";
@@ -23,19 +22,6 @@ function ToolButtons(): ReactNode {
         >
           <GaugeIcon />
           <span>Performance</span>
-        </SidebarMenuButton>
-      </SidebarMenuItem>
-      <SidebarMenuItem>
-        <SidebarMenuButton
-          aria-pressed={tools.studio}
-          isActive={tools.studio}
-          tooltip="Theme studio"
-          onClick={() => {
-            tools.handleStudio(!tools.studio);
-          }}
-        >
-          <PaletteIcon />
-          <span>Theme studio</span>
         </SidebarMenuButton>
       </SidebarMenuItem>
     </SidebarMenu>

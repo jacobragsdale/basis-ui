@@ -362,9 +362,12 @@ for its other density. Every other theme sits under `[data-theme="NAME"]`, on th
 again every value the default declares, so that a theme on a wrapper shows whole. Its dark mode is
 `[data-theme="NAME"].dark`, `.dark [data-theme="NAME"]` and `:where([data-theme="NAME"]) .dark`: the theme and the
 mode's class on one element, a theme inside a dark page, and a dark panel inside a theme, where `:where` keeps a theme
-on the dark element itself above a theme around it. A test with two dummy themes holds each case. `ThemeInputs` and the
-generator are not exported: the studio of step 6.5.8, the first code outside the package to need them, needs the
-default's inputs, the generator and `checkTheme` with the type, which go together on a subpath of their own then.
+on the dark element itself above a theme around it. A test with two dummy themes holds each case. `ThemeInputs`, the
+shipped themes' inputs, the generator's scoped rules, `checkTheme` and `themeFile` are exported on a subpath of their
+own, `@basis/ui/theming`, for the gallery's theme studio (step 6.5.8, 2026-11-11), the one code outside the package that
+needs them: it edits a theme's inputs, writes their rules under `data-theme="studio"` over a preview of the components
+as they change, shows `checkTheme`'s result, and exports the inputs file. No app imports it, and the demo has no studio
+of its own.
 
 Each theme has three layers, and no app can change it: apps declare no tokens, and use no `dark:` variants, since every
 token already switches with the mode. `no-restyle` rejects `dark:` on a component and the preset's `basis/theme-classes`
@@ -791,8 +794,9 @@ script that recorded the Angular pivot's canvas, about 25,000 lines with the loc
 screenshots and the pivot canvas that the React layer's parity specs compare with are kept beside those specs, so
 they go on guarding the canvases against drift. The protocol's TypeScript is generated in the package itself, by `buf
 generate`. The demo is now a React app on `@basis/ui`, `packages/parallax-demo`, which runs the package's build as an
-app does: the grid, pivot and charts over generated positions, trades, prices and bonds, with the performance overlay
-and the theme studio, served as static files and screenshotted in light and dark.
+app does: the grid, pivot and charts over generated positions, trades, prices and bonds, with the performance overlay,
+served as static files and screenshotted in every theme, light and dark; its theme studio moved to the gallery (step
+6.5.8).
 
 ## Versions
 

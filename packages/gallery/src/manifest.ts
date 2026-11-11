@@ -14,6 +14,7 @@ const pageIds = [
   "app-in-shell",
   "icons",
   "tokens",
+  "theme-studio",
 ] as const;
 
 type PageId = (typeof pageIds)[number];

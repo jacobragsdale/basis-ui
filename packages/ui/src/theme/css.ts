@@ -136,6 +136,12 @@ ${controlDeclarations(theme, "comfortable")}
 }`;
 }
 
+/** One theme's own rules, under `[data-theme="NAME"]`, as every theme but the default is written: what the gallery's
+ * studio puts on its page as the inputs change, over the shipped stylesheet's utilities, which read the variables. */
+function scopedThemeCss(theme: ThemeInputs): string {
+  return blocks(theme, selectorsOf(theme), false);
+}
+
 /** Tailwind's theme: only the theme's own values, and a colour utility for every token. The library's own scales, the
  * same in every theme, come first: the pill, the stacking order and WCAG 2.2's target size. Then the default's values
  * of a theme's scales, which every other theme's block declares again. */
@@ -243,4 +249,4 @@ export { themeNames };
 `;
 }
 
-export { tabularFace, themeBlocks, themeCss, themeNamesModule };
+export { scopedThemeCss, tabularFace, themeBlocks, themeCss, themeNamesModule };

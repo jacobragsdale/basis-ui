@@ -26,6 +26,8 @@ export default defineConfig({
       "src/dates/index.ts",
       "src/securities/index.ts",
       "src/testing/index.ts",
+      // The theme studio's: the themes' inputs, the generator and checkTheme, which no app imports.
+      "src/theming/index.ts",
       // basisTest() runs it by its path before each test file.
       "src/testing/fixtures-setup.ts",
       // vp run upgrade imports each release's codemods by their paths (src/preset/codemods.ts).

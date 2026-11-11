@@ -566,7 +566,7 @@ The demo, in [`packages/parallax-demo`](../parallax-demo), is a React app on
 the positions' pivot, grids of trades and prices, the small tables, data the app
 makes itself, a dashboard, the breakdowns, every chart kind, the
 technical-analysis page, small charts and the fixed-income page, in the user's
-mode and density, with the performance overlay and the theme studio. It needs
+theme, mode and density, with the performance overlay. It needs
 the Rust toolchain that `rust-toolchain.toml` names and the `wasm-bindgen`
 command-line tool at the version in `Cargo.lock`, as the package's build does.
 

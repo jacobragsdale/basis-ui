@@ -1,6 +1,6 @@
-/* Every page of the demo, in light and dark at the comfortable density, in each theme @basis/ui ships, as an app's routes are screenshotted, and the
- * theme studio open, compared pixel for pixel with the screenshots in `screenshots/`. Text renders differently from
- * one machine to the next, so these run only in the pinned Playwright image: run them with `vp run
+/* Every page of the demo, in light and dark at the comfortable density, in each theme @basis/ui ships, as an app's
+ * routes are screenshotted, compared pixel for pixel with the screenshots in `screenshots/`. Text renders differently
+ * from one machine to the next, so these run only in the pinned Playwright image: run them with `vp run
  * @basis/parallax-demo#e2e screenshots`, and take new ones with `--update-snapshots`. The status lines say when the
  * data was read, which changes with every run, so they are masked. */
 
@@ -77,11 +77,3 @@ for (const theme of themes) {
     }
   }
 }
-
-test("the theme studio, open over a page, draws as in its screenshot", async ({ page }) => {
-  await open(page, "/small-tables");
-  await gridsDrawn(page, [300, 500]);
-  await page.getByRole("button", { name: "Theme studio" }).click();
-  await expect(page.getByRole("dialog", { name: "Theme studio" })).toBeVisible();
-  await matches(page, "theme-studio-light.png");
-});

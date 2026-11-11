@@ -60,6 +60,10 @@
       "types": "./dist/testing/index.d.mts",
       "default": "./dist/testing/index.mjs"
     },
+    "./theming": {
+      "types": "./dist/theming/index.d.mts",
+      "default": "./dist/theming/index.mjs"
+    },
     "./styles.css": "./src/styles/styles.css",
     "./theme.css": "./src/styles/theme.css",
     "./tsconfig.json": "./config/tsconfig.json",

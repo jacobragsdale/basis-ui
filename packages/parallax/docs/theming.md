@@ -15,9 +15,10 @@ basis-ui app does not change; the grid's toolbar, menus and status bar, the
 pivot's settings and the charts' chrome are `@basis/ui`'s components, and keep
 its theme whatever the tokens say.
 
-To start from a theme you can see, open the demo's **Theme studio**, set the
-accent, background, text, font, sizes and lines, and copy the result with
-**Copy CSS** or **Copy TypeScript**.
+A basis-ui app's themes are `@basis/ui`'s, which its user picks from the user
+menu, and whoever ports a brand makes one in the gallery's **Theme studio**,
+which edits `@basis/ui`'s theme inputs, checks them, and exports the inputs
+file; every canvas follows the theme through `basisTheme`.
 
 ### Set tokens in CSS
 

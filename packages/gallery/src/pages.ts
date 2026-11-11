@@ -1,6 +1,6 @@
-/* The gallery's pages, one per component family in the design's order, then the app shell's, the icons and the
- * theme's tokens. A family's agent owns its page and the page's test, so families built at once never edit the same
- * file. */
+/* The gallery's pages, one per component family in the design's order, then the app shell's, the icons, the theme's
+ * tokens and the theme studio. A family's agent owns its page and the page's test, so families built at once never
+ * edit the same file. */
 
 import type { ReactElement } from "react";
 
@@ -15,6 +15,7 @@ import { NavigationAndLayout } from "./pages/navigation-and-layout.tsx";
 import { NumbersAndDates } from "./pages/numbers-and-dates.tsx";
 import { OverlaysAndMenus } from "./pages/overlays-and-menus.tsx";
 import { SmallChartsAndStates } from "./pages/small-charts-and-states.tsx";
+import { ThemeStudio } from "./pages/theme-studio.tsx";
 import { Tokens } from "./pages/tokens.tsx";
 
 interface GalleryPage {
@@ -40,6 +41,7 @@ const pages: readonly [GalleryPage, ...GalleryPage[]] = [
   { Content: AppInShell, id: "app-in-shell", title: "An app in the shell" },
   { Content: Icons, id: "icons", title: "Icons" },
   { Content: Tokens, id: "tokens", title: "Tokens" },
+  { Content: ThemeStudio, id: "theme-studio", title: "Theme studio" },
 ];
 
 /** The page a query asks for with `?page=`, or the first page. */

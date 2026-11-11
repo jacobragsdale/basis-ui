@@ -1,4 +1,4 @@
-/* The demo's two tools, the performance overlay and the theme studio, which the sidebar opens over any page. */
+/* The demo's tool, the performance overlay, which the sidebar opens over any page. */
 
 import { createContext, use } from "react";
 
@@ -6,9 +6,6 @@ interface Tools {
   /** Whether the performance overlay is shown. */
   readonly performance: boolean;
   readonly handlePerformance: () => void;
-  /** Whether the theme studio is open. */
-  readonly studio: boolean;
-  readonly handleStudio: (open: boolean) => void;
 }
 
 const ToolsContext = createContext<Tools | null>(null);

@@ -82,9 +82,6 @@ Left out of milestone 5 (2026-11-04), for the reasons given.
 - **Bundled fonts.** The components use the system's fonts, which are Segoe UI
   on the Windows desktops parallax targets; any other font is a one-line token.
   Bundling one would make every application serve the files.
-- **Light and dark values in the theme studio.** The demo's studio sets one
-  value for both schemes; `light-dark()` in CSS, or `light` and `dark` in
-  `defineTheme`, give each its own.
 - **Startup cost of the new look.** With the refined look, a small table's
   first rows came about 5 to 8 ms later at a 4× CPU throttle, about 2 ms
   unthrottled, in an interleaved comparison with the previous build. Switching

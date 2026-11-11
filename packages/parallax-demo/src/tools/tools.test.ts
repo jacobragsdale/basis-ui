@@ -1,11 +1,9 @@
-/* The tools' arithmetic and text: the performance overlay's figures and report, and the theme studio's CSS and
- * TypeScript. */
+/* The tools' arithmetic and text: the performance overlay's figures and report. */
 
 import type { DrawStats } from "@basis/parallax";
 import { describe, expect, test } from "vite-plus/test";
 
 import { drawTime, figureLines, inputToScreen, percentile, report } from "./performance-figures.ts";
-import { settingsCss, settingsTypescript, withSetting } from "./studio-settings.ts";
 
 const stats = (frames: number, drawMs: number): DrawStats => ({
   cellDraws: 0,
@@ -74,36 +72,5 @@ describe("the performance overlay's figures", () => {
       "Memory: 100 MB",
       "Memory covers: whole tab, workers included",
     ]);
-  });
-});
-
-describe("the theme studio's output", () => {
-  test("a setting replaces the property's value, and an empty one removes it", () => {
-    const settings = withSetting({ "--px-accent": "#000000" }, "--px-row-height", "30px");
-    expect(withSetting(settings, "--px-accent", "")).toStrictEqual({ "--px-row-height": "30px" });
-  });
-
-  test("copies as CSS for :root, or says to move a control first", () => {
-    expect(settingsCss({})).toBe("/* Move a control to make a theme. */");
-    expect(settingsCss({ "--px-accent": "#7c3aed", "--px-row-height": "30px" })).toBe(
-      ":root {\n  --px-accent: #7c3aed;\n  --px-row-height: 30px;\n}",
-    );
-  });
-
-  test("copies as a theme over @basis/ui's, lengths in pixels as numbers", () => {
-    expect(settingsTypescript({ "--px-accent": "#7c3aed", "--px-row-height": "30px" })).toBe(
-      [
-        'import { basisTheme, defineTheme } from "@basis/parallax";',
-        "",
-        "export const myTheme = defineTheme({",
-        "  extends: basisTheme,",
-        '  name: "mine",',
-        "  params: {",
-        '    accent: "#7c3aed",',
-        "    rowHeight: 30,",
-        "  },",
-        "});",
-      ].join("\n"),
-    );
   });
 });

@@ -170,6 +170,11 @@ A theme is a file of values, typed by `ThemeInputs` in `src/theme/inputs.ts`; th
 shipped themes into `src/styles/theme.css`, the one stylesheet apps import, and no component changes. The default
 theme is `src/theme/themes/default.ts`, which sits at `:root`; every other theme sits under `[data-theme="NAME"]`.
 
+To try values by eye first, open the gallery's **Theme studio** page (`vp dev` in `packages/gallery`, then
+`?page=theme-studio`): it starts from any shipped theme, changes each hue's angle and chroma, the radius and the focus
+ring, draws a preview of the components with them as they change, runs `checkTheme` on every change, and downloads the
+inputs file, which takes the place of steps 1 and 3.
+
 1. Start the file from the default's: `vp run @basis/ui#theme new NAME`, where `NAME` is lower case words joined by
    hyphens, such as `high-contrast`. It writes `src/theme/themes/NAME.ts`, the default's inputs under the new name,
    with a comment saying what to change.
@@ -187,8 +192,9 @@ theme is `src/theme/themes/default.ts`, which sits at `:root`; every other theme
    several pairs.
 6. Run the theme's tests, `vp test tests/theme.test.ts tests/themes.test.ts tests/theme-selectors.test.ts
    tests/controls.test.ts` in `packages/ui`, then `vp run @basis/ui#build` and the gallery's screenshots,
-   `vp run @basis/gallery#shots`. A change to the default moves the baselines it touches: record them again with
-   `--update` and show the before and after.
+   `vp run @basis/gallery#shots`, which shoots every section in every shipped theme. A new theme, or a change to one,
+   moves the baselines it touches: record them again with `--update` and show the before and after, then parallax's
+   grid, pivot, charts and demo suites, which draw in every theme as well.
 
 A change to the default's values that should not change how anything looks, such as moving a value into the inputs,
 leaves `theme.css` as it was: diff it before committing.

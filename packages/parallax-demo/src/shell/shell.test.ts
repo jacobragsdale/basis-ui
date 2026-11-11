@@ -72,32 +72,4 @@ describe("the tools", () => {
     await toggle.click();
     await expect.element(overlay).not.toBeInTheDocument();
   });
-
-  test("the theme studio sets parallax's tokens on the page, shows them as CSS, and resets them", async () => {
-    const screen = await renderDemo("/small-charts");
-    await screen.getByRole("button", { name: "Theme studio" }).click();
-    const studio = screen.getByRole("dialog", { name: "Theme studio" });
-    await studio.getByLabelText("Accent").fill("#7c3aed");
-    await expect.poll(() => document.body.style.getPropertyValue("--px-accent")).toBe("#7c3aed");
-    await studio.getByRole("switch", { name: "Stripes" }).click();
-    await expect
-      .poll(() => document.body.style.getPropertyValue("--px-stripe"))
-      .toBe("transparent");
-    await expect
-      .element(studio.getByTestId("studio-css"))
-      .toHaveTextContent(":root { --px-accent: #7c3aed; --px-stripe: transparent; }");
-  });
-
-  test("the theme studio keeps its theme for the next visit, until Reset takes it away", async () => {
-    const screen = await renderDemo("/small-charts");
-    await screen.getByRole("button", { name: "Theme studio" }).click();
-    const studio = screen.getByRole("dialog", { name: "Theme studio" });
-    await studio.getByLabelText("Accent").fill("#7c3aed");
-    await expect
-      .poll(() => localStorage.getItem("parallax-demo-theme-studio"))
-      .toBe('{"--px-accent":"#7c3aed"}');
-    await studio.getByRole("button", { name: "Reset" }).click();
-    await expect.poll(() => document.body.style.getPropertyValue("--px-accent")).toBe("");
-    expect(localStorage.getItem("parallax-demo-theme-studio")).toBe("{}");
-  });
 });

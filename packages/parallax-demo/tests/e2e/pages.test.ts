@@ -1,5 +1,5 @@
-/* The demo's linked views and its theme studio: a slice clicked on the dashboard filters its table's grid, a breakdown
- * clicked narrows the other charts of its dataset, and the studio's tokens reach every canvas. */
+/* The demo's linked views and its themes: a slice clicked on the dashboard filters its table's grid, a breakdown
+ * clicked narrows the other charts of its dataset, and a theme chosen in the appearance menu reaches every canvas. */
 
 import { readFileSync } from "node:fs";
 
@@ -132,35 +132,12 @@ test("another breakdown's pick replaces the first, which is narrowed in its turn
   await expect(breakdown(page, "positions-by-fund")).toHaveAttribute("data-filtered", "false");
 });
 
-/** Opens the theme studio and sets its accent. */
-async function setAccent(page: Page, accentColor: string): Promise<void> {
-  await page.getByRole("button", { name: "Theme studio" }).click();
-  await page.getByRole("dialog", { name: "Theme studio" }).getByLabel("Accent").fill(accentColor);
-}
-
-test("the theme studio's tokens reach every canvas and copy as CSS", async ({ page }) => {
-  await open(page, "/small-tables");
-  await gridsDrawn(page, [300, 500]);
-  await setAccent(page, "#7c3aed");
-  await expect.poll(async () => accent(page)).toBe("rgb(124, 58, 237)");
-  await page.getByRole("button", { name: "Copy CSS" }).click();
-  await expect(page.getByRole("dialog").locator("output")).toHaveText("CSS copied");
-  expect(await page.evaluate(async () => navigator.clipboard.readText())).toContain(
-    "--px-accent: #7c3aed;",
-  );
-});
-
-test("the theme studio's theme stays for the next visit, until Reset takes it away", async ({
-  page,
-}) => {
+test("a theme chosen in the appearance menu reaches every canvas at once", async ({ page }) => {
   await open(page, "/small-tables");
   await gridsDrawn(page, [300, 500]);
   const theirs = await accent(page);
-  await setAccent(page, "#7c3aed");
-  await page.reload();
-  await gridsDrawn(page, [300, 500]);
-  await expect.poll(async () => accent(page)).toBe("rgb(124, 58, 237)");
-  await page.getByRole("button", { name: "Theme studio" }).click();
-  await page.getByRole("button", { name: "Reset" }).click();
-  await expect.poll(async () => accent(page)).toBe(theirs);
+  await page.getByRole("button", { name: "Appearance" }).click();
+  await page.getByRole("menuitemradio", { name: "Desk" }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "desk");
+  await expect.poll(async () => accent(page)).not.toBe(theirs);
 });
