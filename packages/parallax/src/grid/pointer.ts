@@ -4,6 +4,8 @@
  * checked, the header's checkbox checks every row, and a cell cut short shows its full text after a moment. */
 
 import { sortedBy, withWidth } from "./changes.ts";
+import { EdgeScroll } from "./edge-scroll.ts";
+import { cellClickEvent, rowActivateEvent, send } from "./events.ts";
 import { minWidth, selectColumn } from "./geometry.ts";
 import { HeaderDragger } from "./header-drag.ts";
 import type { Pressed } from "./header-drag.ts";
@@ -28,9 +30,11 @@ class PointerInput {
   #selecting = false;
   readonly #tooltips: Tooltips;
   readonly #headers: HeaderDragger;
+  readonly #edge: EdgeScroll;
 
   public constructor(host: GridHost, groupPanel: () => HTMLElement | null) {
     this.#host = host;
+    this.#edge = new EdgeScroll(host);
     this.#tooltips = new Tooltips(host);
     this.#headers = new HeaderDragger(host, { groupPanel, tooltips: this.#tooltips });
   }
@@ -59,17 +63,27 @@ class PointerInput {
     if (pressed !== null && this.#headers.follow(pressed, event)) {
       return;
     }
+    this.#follow(event);
+  };
+
+  /** Extends a selecting drag to the cell under the pointer, scrolling while it is past the edge, or else hovers. */
+  #follow(event: PointerEvent): void {
+    if (this.#selecting) {
+      this.#edge.follow(event.offsetX, event.offsetY);
+    }
     const hit = this.#host.hit(event.offsetX, event.offsetY);
     if (hit !== null && !this.#extend(hit)) {
       this.#hover(hit, event);
     }
-  };
+  }
 
   public readonly up = (event: PointerEvent): void => {
-    const pressed = this.#pressed;
-    this.#pressed = null;
-    this.#selecting = false;
+    const [pressed, selecting] = [this.#pressed, this.#selecting];
+    this.#release();
     if (pressed === null) {
+      if (selecting) {
+        this.#clickedCell(event);
+      }
       return;
     }
     if (pressed.hit.edge !== null) {
@@ -97,8 +111,7 @@ class PointerInput {
   public readonly cancel = (): void => {
     const { model } = this.#host;
     const dragging = model.interaction.drag !== null || model.liveWidth !== null;
-    this.#pressed = null;
-    this.#selecting = false;
+    this.#release();
     if (dragging) {
       Object.assign(model.interaction, { drag: null, overPanel: false });
       model.liveWidth = null;
@@ -250,6 +263,25 @@ class PointerInput {
       }
     } else {
       this.#host.drill(cell.row, cell.column);
+      send(this.#host, rowActivateEvent, cell);
+    }
+  }
+
+  /** Ends a press: nothing is pressed, selecting or scrolling past the edge. */
+  #release(): void {
+    this.#pressed = null;
+    this.#selecting = false;
+    this.#edge.stop();
+  }
+
+  /** Tells the app of a click that selected one data cell, pressed and released on it. */
+  #clickedCell(event: PointerEvent): void {
+    const { selection } = this.#host.model.interaction;
+    const hit = this.#host.hit(event.offsetX, event.offsetY);
+    const { anchor, focus } = selection ?? { anchor: null, focus: null };
+    const one = anchor !== null && anchor.row === focus.row && anchor.column === focus.column;
+    if (one && hit?.row === anchor.row && hit.column === anchor.column && anchor.column >= 0) {
+      send(this.#host, cellClickEvent, anchor);
     }
   }
 }

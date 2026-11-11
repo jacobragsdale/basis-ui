@@ -8,6 +8,10 @@ import type { ReactNode, RefObject } from "react";
 import type { ViewHandle } from "#engine/view.ts";
 import type { Layout } from "#layout/layout.ts";
 
+import type { ExportFormat } from "#engine/messages.ts";
+
+import { CellMenu } from "./cell-menu.tsx";
+import type { GridEvents } from "./cell-menu.tsx";
 import type { GridController } from "./controller.ts";
 import type { SourceField } from "./fields.ts";
 import { GridMenu } from "./grid-menu.tsx";
@@ -32,6 +36,9 @@ interface GridBodyProps {
   readonly measureMenu: ((props: MeasureMenuProps) => ReactNode) | undefined;
   /** The strip a dragged header can drop on. */
   readonly groupPanel: RefObject<HTMLElement | null>;
+  /** What the app hears of the cells, and adds to their menu. */
+  readonly events: Partial<GridEvents>;
+  readonly onExport: (format: ExportFormat) => void;
 }
 
 /** The text alternative of the canvas: the view's size and how to move about it. */
@@ -139,6 +146,12 @@ function Overlays({
   );
 }
 
+/** The app's events, each left out as undefined. */
+function eventsOf(events: Partial<GridEvents>): GridEvents {
+  const { contextMenuItems, onCellClick, onContextMenu, onRowActivate } = events;
+  return { contextMenuItems, onCellClick, onContextMenu, onRowActivate };
+}
+
 /** The grid's body. */
 function GridBody(props: GridBodyProps): ReactNode {
   const {
@@ -157,7 +170,14 @@ function GridBody(props: GridBodyProps): ReactNode {
   const { body, menuAnchor, scroll, pinnedEdge, tooltip } = parts;
   return (
     <div ref={body} data-slot="grid-body" className="relative min-h-0 flex-1">
-      <Scroll id={id} label={props.label} snapshot={snapshot} parts={parts} />
+      <CellMenu
+        controller={controller}
+        layout={layout}
+        events={eventsOf(props.events)}
+        onExport={props.onExport}
+      >
+        <Scroll id={id} label={props.label} snapshot={snapshot} parts={parts} />
+      </CellMenu>
       <p id={`${id}-description`} className="sr-only">
         {describe(snapshot.totalRows, snapshot.totalColumns)}
       </p>

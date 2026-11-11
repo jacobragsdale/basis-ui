@@ -80,7 +80,7 @@ class GridController {
 
   /** Starts driving the elements React rendered; returns a function that stops. */
   public attach(parts: GridParts, groupPanel: () => HTMLElement | null): () => void {
-    const surface = new GridSurface(parts, { groupPanel, host: this.#host() });
+    const surface = new GridSurface(parts, { groupPanel, host: this.host() });
     this.#surface = surface;
     const stop = surface.listen(() => {
       this.#update();
@@ -173,7 +173,7 @@ class GridController {
   }
 
   /** The grid as its input handlers see it. */
-  #host(): GridHost {
+  public host(): GridHost {
     const model = this.#model;
     const surface = (): GridSurface | null => this.#surface;
     return {

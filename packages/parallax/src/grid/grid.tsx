@@ -36,7 +36,7 @@ import { allParts } from "./parts.ts";
 import type { ToolbarParts } from "./parts.ts";
 import { GridToolbar } from "./toolbar.tsx";
 import { rowSelectionOf } from "./types.ts";
-import type { DrillRequest, GridRowSelection } from "./types.ts";
+import type { DrillRequest, GridEventProps, GridRowSelection } from "./types.ts";
 import { useHandles } from "./use-grid-handles.ts";
 import type { GridHandle } from "./use-grid-handles.ts";
 import { useGridLayout } from "./use-grid-layout.ts";
@@ -75,7 +75,7 @@ interface GridBaseProps {
   readonly ref?: Ref<GridHandle> | undefined;
 }
 
-type GridProps = GridBaseProps & GridRowSelection;
+type GridProps = GridBaseProps & GridEventProps & GridRowSelection;
 
 const defaultMaxHeight = 480;
 
@@ -230,6 +230,8 @@ function GridFrame(props: GridFrameProps): ReactNode {
         onChange={change}
         measureMenu={measureMenu}
         groupPanel={groupPanel}
+        events={props}
+        onExport={onExport}
       />
       <StatusBar
         dataset={dataset}

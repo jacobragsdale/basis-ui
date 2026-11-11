@@ -5,6 +5,7 @@ import type { Layout, LayoutScalar } from "#layout/layout.ts";
 
 import type { SourceField } from "./fields.ts";
 import type { HeaderDrag } from "./paint/scene.ts";
+import type { GridCell, GridMenuItem, GridRow } from "./events.ts";
 import type { RowSelectionInputs, RowsChosen } from "./row-selection.ts";
 import type { Selection } from "./selection.ts";
 
@@ -77,6 +78,18 @@ function rowSelectionOf(props: GridRowSelection): GridInputs["rowSelection"] {
   };
 }
 
+/** What the app hears of the grid's cells, and adds to the menu a right click opens on them. */
+interface GridEventProps {
+  /** Takes a click on a data cell: its row, column, text and value, its row's key, and whether it is a link. */
+  readonly onCellClick?: ((cell: GridCell) => void) | undefined;
+  /** Takes a row activated by a double click or Enter on one of its cells. */
+  readonly onRowActivate?: ((row: GridRow) => void) | undefined;
+  /** Takes the cell a right click opens the grid's menu on, or null off the cells. */
+  readonly onContextMenu?: ((cell: GridCell | null) => void) | undefined;
+  /** The app's own items in that menu, after the grid's, for the cell it opened on. */
+  readonly contextMenuItems?: ((cell: GridCell | null) => readonly GridMenuItem[]) | undefined;
+}
+
 /** An open header menu: its data column, and the source column it edits or, for a pivot, the measure. */
 interface OpenMenu {
   readonly column: number;
@@ -101,4 +114,4 @@ interface Interaction {
 }
 
 export { rowSelectionOf };
-export type { DrillRequest, GridInputs, GridRowSelection, Interaction, OpenMenu };
+export type { DrillRequest, GridEventProps, GridInputs, GridRowSelection, Interaction, OpenMenu };

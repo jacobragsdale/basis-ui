@@ -636,7 +636,11 @@ flowchart TD
    heat fill, a badge, a sparkline or a link, and its `rules` give a cell a tone's ink, tint or bold by a filter's
    condition; the engine gives each frame of a flat view its bar and heat columns' domains, the theme gains
    positive, warning and info inks and tints, and the Excel export writes them as data bars, colour scales and cell
-   formats, with a Notes line for a badge's shape, a sparkline and a rule Excel cannot test.
+   formats, with a Notes line for a badge's shape, a sparkline and a rule Excel cannot test. 6.6.2 built on
+   2026-11-11: a right click on a cell opens `@basis/ui`'s `ContextMenu` at the pointer, with copy, copy with
+   headers, filter by the value or exclude it, sort, pin, fit one column or all, export and the app's own items; the
+   grid gains `onCellClick`, `onRowActivate` and `onContextMenu`, `GridHandle` gains `scrollTo`, `getSelection` and
+   `copy`, and a drag that selects past the edge scrolls.
 7. **6.7 Components for real apps.** Lane Components, after 6.5.1 and 6.5.2, one family per branch in order: the shell
    (`6.7.1-shell`), the filter bar (`6.7.2-filter-bar`), `DataTable` (`6.7.3-data-table`), `StatCard`
    (`6.7.4-stat-card`), dates (`6.7.5-dates`), forms (`6.7.6-forms`), choosing (`6.7.7-choosing`), display

@@ -5,6 +5,7 @@
  * closes it; Ctrl+F searches the grid rather than the page; and Alt+Down opens the focused cell's column menu, as a
  * spreadsheet's filter does. */
 
+import { rowActivateEvent, send } from "./events.ts";
 import type { GridHost } from "./host.ts";
 import { moveFocus, selectAll } from "./selection.ts";
 import type { Extent, Selection } from "./selection.ts";
@@ -54,19 +55,27 @@ class KeyInput {
     if (this.#escape(event) || this.#check(event, selection)) {
       return true;
     }
-    // Alt+Enter is the page's: it maximizes the grid.
-    if (
-      (event.key === "Enter" || event.key === " ") &&
-      !event.altKey &&
-      selection.focus.column === -1
-    ) {
-      this.#host.toggleRow(selection.focus.row);
-      return true;
-    }
-    if (this.#selectAll(event, extent)) {
+    if (this.#enter(event, selection) || this.#selectAll(event, extent)) {
       return true;
     }
     return this.#move(this.#navigate(event, selection, extent));
+  }
+
+  /** Enter or Space on a group's cell opens or closes it, and Enter on a data cell activates its row, which the app
+   * hears; Alt+Enter is the page's, which maximizes the grid. Returns whether it acted. */
+  #enter(event: KeyboardEvent, { focus }: Selection): boolean {
+    if (event.altKey || (event.key !== "Enter" && event.key !== " ")) {
+      return false;
+    }
+    if (focus.column === -1) {
+      this.#host.toggleRow(focus.row);
+      return true;
+    }
+    if (event.key === "Enter" && focus.column >= 0) {
+      send(this.#host, rowActivateEvent, focus);
+      return true;
+    }
+    return false;
   }
 
   /** Ctrl+A selects everything, whatever case its letter arrives in, as with Caps Lock or Shift, and leaves the view

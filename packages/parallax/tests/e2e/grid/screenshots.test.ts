@@ -171,3 +171,21 @@ for (const ui of ["default", ...otherThemes]) {
     });
   }
 }
+
+/* The menu a right click opens on a cell, in every shipped theme. */
+for (const ui of ["default", ...otherThemes]) {
+  for (const theme of ["light", "dark"] as const) {
+    test(`a cell's menu draws as in its screenshot in @basis/ui's ${ui} theme, ${theme} scheme`, async ({
+      page,
+    }) => {
+      const section = await book(page, `theme=${theme}&look=basis&ui=${ui}`);
+      const canvas = section.locator("canvas");
+      await canvas.click({ button: "right", position: { x: 260, y: 60 } });
+      const menu = page.locator("[data-slot=grid-cell-menu]");
+      await expect(menu).toBeVisible();
+      await page.mouse.move(0, 0);
+      await paintAfresh(page);
+      await expect(menu).toHaveScreenshot(`grid-cell-menu-${theme}-${ui}.png`, exactly);
+    });
+  }
+}

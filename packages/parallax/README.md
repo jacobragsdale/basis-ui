@@ -126,7 +126,11 @@ frame for rows already on screen redraws only the cells whose text changed.
 | `asOf`           | The date the data is for, as `YYYY-MM-DD`: the status bar shows `as of 2026-11-06`, with no age. Without it, the bar shows when the source was read and how long ago, when `useDataset`'s `sourceAsOfMicros` or the stream's `parallax.load` gives the time, and no "as of" otherwise, never the time the browser loaded the table. A string that is not a calendar date shows an `ERROR` line there, with the fix, in place of the date |
 | `measureMenu`    | The menu a pivot's measure header opens, which the pivot gives the grid; without it, a measure's header has none                            |
 | `onFieldsChange` | Takes the dataset's columns when the view opens, as the pivot's field list reads them                                                       |
-| `ref`            | `drawStats()`, the drawing counters; `export(format)`, `xlsx` or `csv`; and `distinctValues(column, search, limit)`                         |
+| `ref`            | `drawStats()`, the drawing counters; `export(format)`, `xlsx` or `csv`; `distinctValues(column, search, limit)`; `scrollTo(row, column?)`, which selects that cell; `getSelection()`; and `copy(withHeaders?)` |
+| `onCellClick`    | Takes a click on a data cell: its `row`, `column`, `text`, `value`, its row's `key` when rows are chosen, and whether it is a `link`   |
+| `onRowActivate`  | Takes a row a double click or Enter activates: its `row` and `key`                                                                       |
+| `onContextMenu`  | Takes the cell a right click opens the grid's menu on, or null off the cells                                                            |
+| `contextMenuItems` | The app's own items in that menu, `{ label, onSelect }`, after the grid's, for the cell it opened on                                 |
 | `selectable`     | `true` adds a checkbox column for choosing rows, any number of them; `"single"` makes the focused cell's row the one chosen               |
 | `rowKey`         | With `selectable`, the column whose value names a row, such as a trade id or a CUSIP: one of the view's columns, different on every row   |
 | `selected`       | The rows chosen, when the app holds them: their keys, or a `RowsChosen`; without it, the grid keeps the choice itself                      |
@@ -182,6 +186,13 @@ count and then the mean, which the reading's tooltip still lists. The toolbar's
 Totals adds a totals row that counts the rows, and sums nothing on its own,
 since most of a desk's numbers, its prices, yields, spreads and durations, do
 not add; a column's menu picks its total, a sum among them.
+
+A right click on a cell opens the grid's menu at the pointer, in place of the
+browser's: Copy, Copy with headers, Filter by the cell's value or Exclude it,
+sort its column either way, pin or unpin it, fit it or every column, and export,
+then the app's `contextMenuItems`. A cell the selection does not hold is
+selected first. A drag that selects past the body's edge scrolls the grid that
+way until it comes back in.
 
 Maximize, at the toolbar's end, or Alt+Enter, makes the grid fill the window
 over the dimmed page, as a dialog, and Escape, Restore or a click on the page

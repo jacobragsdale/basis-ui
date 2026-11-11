@@ -16014,6 +16014,30 @@
           "type": "Ref<GridHandle> | undefined"
         },
         {
+          "description": "Takes a click on a data cell: its row, column, text and value, its row's key, and whether it is a link.",
+          "name": "onCellClick",
+          "optional": true,
+          "type": "((cell: GridCell) => void) | undefined"
+        },
+        {
+          "description": "Takes a row activated by a double click or Enter on one of its cells.",
+          "name": "onRowActivate",
+          "optional": true,
+          "type": "((row: GridRow) => void) | undefined"
+        },
+        {
+          "description": "Takes the cell a right click opens the grid's menu on, or null off the cells.",
+          "name": "onContextMenu",
+          "optional": true,
+          "type": "((cell: GridCell | null) => void) | undefined"
+        },
+        {
+          "description": "The app's own items in that menu, after the grid's, for the cell it opened on.",
+          "name": "contextMenuItems",
+          "optional": true,
+          "type": "((cell: GridCell | null) => readonly GridMenuItem[]) | undefined"
+        },
+        {
           "description": "Chooses rows: by checkbox, any number (`true`), or the focused cell's row alone (`\"single\"`).",
           "name": "selectable",
           "optional": true,
@@ -21367,6 +21391,82 @@
     {
       "fields": [
         {
+          "description": "Its view row, from 0.",
+          "name": "row",
+          "optional": false,
+          "type": "number"
+        },
+        {
+          "description": "Its source column's name, or the header a pivot's measure shows.",
+          "name": "column",
+          "optional": false,
+          "type": "string"
+        },
+        {
+          "description": "Its text as the grid shows it.",
+          "name": "text",
+          "optional": false,
+          "type": "string"
+        },
+        {
+          "description": "",
+          "name": "value",
+          "optional": false,
+          "type": "CellValue"
+        },
+        {
+          "description": "Its row's key, when rows are chosen by `rowKey`, else null.",
+          "name": "key",
+          "optional": false,
+          "type": "string | null"
+        },
+        {
+          "description": "Whether the layout draws its column as links.",
+          "name": "link",
+          "optional": false,
+          "type": "boolean"
+        }
+      ],
+      "exported": true,
+      "module": "@basis/parallax",
+      "name": "GridCell",
+      "purpose": "A cell of the grid, as the app is told of it."
+    },
+    {
+      "fields": [
+        {
+          "description": "Takes a click on a data cell: its row, column, text and value, its row's key, and whether it is a link.",
+          "name": "onCellClick",
+          "optional": true,
+          "type": "((cell: GridCell) => void) | undefined"
+        },
+        {
+          "description": "Takes a row activated by a double click or Enter on one of its cells.",
+          "name": "onRowActivate",
+          "optional": true,
+          "type": "((row: GridRow) => void) | undefined"
+        },
+        {
+          "description": "Takes the cell a right click opens the grid's menu on, or null off the cells.",
+          "name": "onContextMenu",
+          "optional": true,
+          "type": "((cell: GridCell | null) => void) | undefined"
+        },
+        {
+          "description": "The app's own items in that menu, after the grid's, for the cell it opened on.",
+          "name": "contextMenuItems",
+          "optional": true,
+          "type": "((cell: GridCell | null) => readonly GridMenuItem[]) | undefined"
+        }
+      ],
+      "exported": false,
+      "module": "@basis/parallax",
+      "name": "GridEventProps",
+      "purpose": "What the app hears of the grid's cells, and adds to the menu a right click opens on them."
+    },
+    {
+      "fields": [
+        {
           "description": "Drawing counters, for measuring the grid.",
           "name": "drawStats",
           "optional": false,
@@ -21379,6 +21479,24 @@
           "type": "(format: ExportFormat) => void"
         },
         {
+          "description": "Scrolls a view row, and a column by name when given, into view, and selects that cell.",
+          "name": "scrollTo",
+          "optional": false,
+          "type": "(row: number, column?: string) => void"
+        },
+        {
+          "description": "The selected cells: their first and last view rows and their columns by name; null for none.",
+          "name": "getSelection",
+          "optional": false,
+          "type": "() => GridSelection | null"
+        },
+        {
+          "description": "Copies the selection to the clipboard, with its headers first when `withHeaders`.",
+          "name": "copy",
+          "optional": false,
+          "type": "(withHeaders?: boolean) => Promise<void>"
+        },
+        {
           "description": "Lists a column's values under the view's other filters.",
           "name": "distinctValues",
           "optional": false,
@@ -21389,6 +21507,26 @@
       "module": "@basis/parallax",
       "name": "GridHandle",
       "purpose": "What a grid's ref offers: measuring, exporting, and the values of a column for a filter pick-list."
+    },
+    {
+      "fields": [
+        {
+          "description": "",
+          "name": "label",
+          "optional": false,
+          "type": "string"
+        },
+        {
+          "description": "",
+          "name": "onSelect",
+          "optional": false,
+          "type": "() => void"
+        }
+      ],
+      "exported": true,
+      "module": "@basis/parallax",
+      "name": "GridMenuItem",
+      "purpose": "An item an app adds to the menu a right click opens on the grid."
     },
     {
       "fields": [
@@ -21465,6 +21603,30 @@
           "type": "Ref<GridHandle> | undefined"
         },
         {
+          "description": "Takes a click on a data cell: its row, column, text and value, its row's key, and whether it is a link.",
+          "name": "onCellClick",
+          "optional": true,
+          "type": "((cell: GridCell) => void) | undefined"
+        },
+        {
+          "description": "Takes a row activated by a double click or Enter on one of its cells.",
+          "name": "onRowActivate",
+          "optional": true,
+          "type": "((row: GridRow) => void) | undefined"
+        },
+        {
+          "description": "Takes the cell a right click opens the grid's menu on, or null off the cells.",
+          "name": "onContextMenu",
+          "optional": true,
+          "type": "((cell: GridCell | null) => void) | undefined"
+        },
+        {
+          "description": "The app's own items in that menu, after the grid's, for the cell it opened on.",
+          "name": "contextMenuItems",
+          "optional": true,
+          "type": "((cell: GridCell | null) => readonly GridMenuItem[]) | undefined"
+        },
+        {
           "description": "Chooses rows: by checkbox, any number (`true`), or the focused cell's row alone (`\"single\"`).",
           "name": "selectable",
           "optional": true,
@@ -21499,6 +21661,26 @@
       "module": "@basis/parallax",
       "name": "GridProps",
       "purpose": ""
+    },
+    {
+      "fields": [
+        {
+          "description": "",
+          "name": "row",
+          "optional": false,
+          "type": "number"
+        },
+        {
+          "description": "",
+          "name": "key",
+          "optional": false,
+          "type": "string | null"
+        }
+      ],
+      "exported": true,
+      "module": "@basis/parallax",
+      "name": "GridRow",
+      "purpose": "A row of the grid, as the app is told of it: its view row and its key, when rows are chosen by `rowKey`."
     },
     {
       "definition": "| { readonly selectable?: false | undefined; readonly rowKey?: undefined; readonly selected?: undefined; readonly onSelectionChange?: undefined; readonly onRowsChange?: undefined; } | { /** Chooses rows: by checkbox, any number (`true`), or the focused cell's row alone (`\"single\"`). */ readonly selectable: true | \"single\"; /** The column whose value names a row, such as a trade id or a CUSIP: one of the view's columns, with a * different value on every row. A row's key is the column's text as a copy writes it, every digit of a number. */ readonly rowKey: string; /** The rows chosen, when the app holds them: their keys, or `RowsChosen`, which can say every row but some; * without it, the grid keeps the choice itself. */ readonly selected?: readonly string[] | RowsChosen | undefined; /** Takes the keys of the rows chosen, in the order they were chosen, whenever the user changes them. For every * row of a flat view, the header's checkbox, they are fetched, up to 1,000,000. */ readonly onSelectionChange?: ((keys: readonly string[]) => void) | undefined; /** Takes the rows chosen whenever the user changes them: `{ all: false, keys }` for those rows, or * `{ all: true, keys }` for every row the view shows but those, which the header's checkbox chooses in a flat * view without fetching a key, however many rows the view has. */ readonly onRowsChange?: ((rows: RowsChosen) => void) | undefined; }",
@@ -21538,6 +21720,32 @@
       "module": "@basis/parallax",
       "name": "GridRowSelection",
       "purpose": "Choosing rows: by checkbox, any number (`true`), or the focused cell's row alone (`\"single\"`), each named by its value in the `rowKey` column."
+    },
+    {
+      "fields": [
+        {
+          "description": "",
+          "name": "top",
+          "optional": false,
+          "type": "number"
+        },
+        {
+          "description": "",
+          "name": "bottom",
+          "optional": false,
+          "type": "number"
+        },
+        {
+          "description": "",
+          "name": "columns",
+          "optional": false,
+          "type": "readonly string[]"
+        }
+      ],
+      "exported": true,
+      "module": "@basis/parallax",
+      "name": "GridSelection",
+      "purpose": "The selected cells, as the grid's handle gives them: the first and last view rows, and the columns by name, the group column's as an empty name."
     },
     {
       "fields": [

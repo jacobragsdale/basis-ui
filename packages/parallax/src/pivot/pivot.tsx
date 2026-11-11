@@ -10,6 +10,7 @@ import type { ReactNode, Ref, RefObject } from "react";
 
 import type { ExportFormat } from "#engine/messages.ts";
 import type { DistinctValues } from "#engine/view-types.ts";
+import type { GridSelection } from "#grid/actions.ts";
 import type { SourceField } from "#grid/fields.ts";
 import { Grid } from "#grid/grid.tsx";
 import type { GridProps } from "#grid/grid.tsx";
@@ -67,6 +68,11 @@ function useHandle(ref: PivotProps["ref"], grid: RefObject<GridHandle | null>): 
     drawStats: (): DrawStats => handleOf(grid).drawStats(),
     export: (format: ExportFormat): void => {
       handleOf(grid).export(format);
+    },
+    copy: async (withHeaders?: boolean): Promise<void> => handleOf(grid).copy(withHeaders),
+    getSelection: (): GridSelection | null => handleOf(grid).getSelection(),
+    scrollTo: (row: number, column?: string): void => {
+      handleOf(grid).scrollTo(row, column);
     },
   }));
 }

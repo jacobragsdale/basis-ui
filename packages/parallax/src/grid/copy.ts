@@ -173,4 +173,4 @@ class Copier {
   }
 }
 
-export { Copier, holds, windowOf };
+export { Copier, countOf, holds, rangeText, windowOf };

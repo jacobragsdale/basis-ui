@@ -73,7 +73,7 @@ Everything below, in this order where one needs another, except 6.10, which is t
 2. ~~6.3.6 to 6.3.9~~ done.
 3. ~~6.4.5 to 6.4.8~~ done.
 4. ~~6.5.7~~ done, its choices of look listed in "Found while building" for the maintainer's review. ~~6.5.8~~ done.
-5. **6.6.1 to 6.6.6**, the grid's features, after 6.3, 6.4 and 6.5; ~~6.6.3~~ done, by the `@basis/ui` lane. ~~6.6.1~~ done.
+5. **6.6.1 to 6.6.6**, the grid's features, after 6.3, 6.4 and 6.5; ~~6.6.3~~ done, by the `@basis/ui` lane. ~~6.6.1, 6.6.2~~ done.
 6. ~~6.7.4 to 6.7.6~~ done. **6.7.7 to 6.7.10**, the components. `@tanstack/react-virtual` is approved for 6.7.9.
 7. **6.8.10**, the skills.
 8. **6.9**, the showcase, last, built with only an app's tools, with `packages/showcase/BUILDING.md`.
