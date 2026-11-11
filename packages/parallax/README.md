@@ -81,9 +81,23 @@ on at its own version.
    }
    ```
 
+   Name the rows' type, as the generated client's model gives it, and every
+   layout of the dataset names only its columns: a misspelt column, sort,
+   filter, measure, format, cell kind or rule is a type error where it is
+   written, not the engine's refusal when the page runs.
+
+   ```tsx
+   const positions = useDataset<Position>("positions", positionsBytes);
+   <Grid dataset={positions} layout={{ sort: [{ column: "market_value_usd" }] }} />;
+   ```
+
 4. Or give the dataset to a component that opens its own view and draws its
    frames: [a grid](#show-a-grid), [a pivot](#pivot-a-table) or
    [a chart](#draw-a-chart).
+
+`@basis/parallax` exports what an app uses. The engine's connection, the frame
+decoders and the theme's readers, which the components are built on, are in
+`@basis/parallax/internals`, for tests and tools.
 
 ## Show a grid
 

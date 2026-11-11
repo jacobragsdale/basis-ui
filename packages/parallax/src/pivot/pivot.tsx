@@ -19,9 +19,10 @@ import type { GridHandle } from "#grid/use-grid-handles.ts";
 import { useGridLayout } from "#grid/use-grid-layout.ts";
 import type { ValueSource } from "#grid/value-picker.tsx";
 import { checkLayout } from "#layout/layout.ts";
-import type { Layout, LayoutInput } from "#layout/layout.ts";
+import type { Layout } from "#layout/layout.ts";
 import { Maximizable } from "#react/maximize-parts.tsx";
 import type { MaximizeFrame } from "#react/maximize-parts.tsx";
+import type { AnyRow, LayoutFor } from "#layout/typed.ts";
 import type { Dataset } from "#react/use-dataset.ts";
 
 import { DrillRows } from "./drill-rows.tsx";
@@ -29,11 +30,12 @@ import { HeaderMeasureMenu } from "./measure-menu.tsx";
 import { PivotPanel } from "./pivot-panel.tsx";
 import { useDrill } from "./use-drill.ts";
 
-interface PivotProps {
+interface PivotProps<TRow extends AnyRow = AnyRow> {
   /** The dataset to pivot, from `useDataset`. */
-  readonly dataset: Dataset;
-  /** The pivot: its row and column groups, values, filters, sorts, formats and widths. */
-  readonly layout: LayoutInput;
+  readonly dataset: Dataset<TRow>;
+  /** The pivot: its row and column groups, values, filters, sorts, formats and widths, naming only the columns of a
+   * dataset of rows of a known type. */
+  readonly layout: LayoutFor<TRow>;
   /** Takes every change the user makes. Without it, the pivot keeps the changes itself until `layout` changes. */
   readonly onLayoutChange?: ((layout: Layout) => void) | undefined;
   /** The table's toolbar, as `<Grid>` takes it. */
@@ -216,6 +218,7 @@ function PivotFrame(props: PivotFrameProps): ReactNode {
  * }
  * ```
  */
+function Pivot<TRow extends AnyRow = AnyRow>(props: PivotProps<TRow>): ReactNode;
 function Pivot(props: PivotProps): ReactNode {
   return (
     <Maximizable label={props.label ?? props.dataset.name}>

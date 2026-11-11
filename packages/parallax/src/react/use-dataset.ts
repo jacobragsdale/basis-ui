@@ -5,14 +5,18 @@ import type { RefObject } from "react";
 
 import type { ParallaxClient, Restart } from "#engine/client.ts";
 import type { LoadOptions } from "#engine/limits.ts";
+import type { AnyRow } from "#layout/typed.ts";
 
 import { useParallaxClient } from "./context.ts";
 import { idle, loading, start } from "./dataset-load.ts";
 import { holdDataset } from "./dataset-share.ts";
 import type { DatasetSource, LoadRequest, LoadState, Settled } from "./dataset-load.ts";
 
-/** A dataset as `useDataset` returns it, for `useView`. */
-interface Dataset extends LoadState {
+/** A dataset as `useDataset` returns it, for `useView`, `Grid`, `Pivot` and `Chart`. `TRow`, the type of its rows
+ * that `useDataset<TRow>` names, gives its views' layouts their column names; it is never set at run time. */
+interface Dataset<TRow extends AnyRow = AnyRow> extends LoadState {
+  /** The rows' type, for the compiler alone. */
+  readonly rowType?: TRow;
   readonly name: string;
   /** Counts the engine's restarts the hook has heard of; the dataset's views reopen on the new engine when it changes. */
   readonly engine: number;
@@ -196,11 +200,11 @@ function useLoad(client: ParallaxClient, wanted: Wanted, settle: (settled: Settl
  * }
  * ```
  */
-function useDataset(
+function useDataset<TRow extends AnyRow = AnyRow>(
   name: string,
   source: DatasetSource | null,
   options: LoadOptions = {},
-): Dataset {
+): Dataset<TRow> {
   const client = useParallaxClient();
   const [reloads, setReloads] = useState(0);
   const wanted = { name, reloads, ...wantedOptions(options) };

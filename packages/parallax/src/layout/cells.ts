@@ -19,11 +19,13 @@ const cellSchema = z.discriminatedUnion("kind", [
   /** A fill by value, from the column's least to its greatest, or diverging about zero, under ink that reads on it. */
   z.strictObject({
     kind: z.literal("heat"),
+    /** From the least value to the greatest, or diverging about zero. */
     scale: z.enum(["sequential", "diverging"]).default("sequential"),
   }),
   /** A pill with the value's text, in the tone listed for it; a value not listed is neutral. */
   z.strictObject({
     kind: z.literal("badge"),
+    /** The tone of each value, by its text. */
     values: toneByValue.default({}),
   }),
   /** A small line of the numbers in a text cell, separated by spaces or commas, such as `101.2 101.5 100.9`. */
@@ -35,14 +37,20 @@ const cellSchema = z.discriminatedUnion("kind", [
 const ruleSchema = z.strictObject({
   /** The condition on the cell's value, with a filter's operators and operands. */
   when: z.strictObject({
+    /** The operator, as a filter's, such as `gt` or `contains`. */
     op: z.enum(filterOps),
+    /** The operand of an operator that takes one value. */
     value: scalar.default(null),
+    /** The operands of `in` and `not_in`. */
     values: z.array(scalar).default([]),
   }),
   /** The style: the text in a tone's ink, a fill in its tint, and bold. */
   format: z.strictObject({
+    /** The text's ink: a tone's, or the column's for none. */
     tone: toneSchema.nullable().default(null),
+    /** A fill in the tone's tint behind the cell. */
     fill: z.boolean().default(false),
+    /** The text in the group font. */
     bold: z.boolean().default(false),
   }),
 });

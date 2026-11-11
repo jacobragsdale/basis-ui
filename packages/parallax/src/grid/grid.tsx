@@ -36,17 +36,18 @@ import { allParts } from "./parts.ts";
 import type { ToolbarParts } from "./parts.ts";
 import { GridToolbar } from "./toolbar.tsx";
 import { rowSelectionOf } from "./types.ts";
-import type { DrillRequest, GridEventProps, GridRowSelection } from "./types.ts";
+import type { AnyRow, DrillRequest, GridEventProps, GridRowSelection, LayoutFor } from "./types.ts";
 import { useHandles } from "./use-grid-handles.ts";
 import type { GridHandle } from "./use-grid-handles.ts";
 import { useGridLayout } from "./use-grid-layout.ts";
 
-interface GridBaseProps {
+interface GridBaseProps<TRow extends AnyRow = AnyRow> {
   /** The dataset to show, from `useDataset`. */
-  readonly dataset: Dataset;
+  readonly dataset: Dataset<TRow>;
   /** The view: grouping, sorting, filters, formats and widths. The dataset is `dataset`'s. Left out, the grid shows
-   * every column in the table's order, each by its API's display format. */
-  readonly layout?: LayoutInput | undefined;
+   * every column in the table's order, each by its API's display format. A dataset of rows of a known type,
+   * `useDataset<Position>`, takes only its columns' names. */
+  readonly layout?: LayoutFor<TRow> | undefined;
   /** Takes every change the user makes. Without it, the grid keeps the changes itself until `layout` changes. */
   readonly onLayoutChange?: ((layout: Layout) => void) | undefined;
   /** The toolbar above the grid: true shows all of it, false hides it, and an object turns parts off, such as
@@ -75,7 +76,9 @@ interface GridBaseProps {
   readonly ref?: Ref<GridHandle> | undefined;
 }
 
-type GridProps = GridBaseProps & GridEventProps & GridRowSelection;
+type GridProps<TRow extends AnyRow = AnyRow> = GridBaseProps<TRow> &
+  GridEventProps &
+  GridRowSelection;
 
 const defaultMaxHeight = 480;
 
@@ -250,6 +253,7 @@ function GridFrame(props: GridFrameProps): ReactNode {
 /** A data grid and pivot table on a canvas, which can fill the window: a grid of `height` `auto` fills it too.
  * @use For many rows the user groups, filters, pivots and exports. For a few hundred with links, use DataTable.
  * @see ParallaxProvider, useDataset, Pivot, Chart, LayoutInput, encodeLayout, DataTable */
+function Grid<TRow extends AnyRow = AnyRow>(props: GridProps<TRow>): ReactNode;
 function Grid(props: GridProps): ReactNode {
   return (
     <Maximizable label={props.label ?? props.dataset.name}>

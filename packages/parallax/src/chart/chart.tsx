@@ -17,6 +17,8 @@ import { useId } from "react";
 import type { ReactNode } from "react";
 
 import type { LayoutInput } from "#layout/layout.ts";
+import type { AnyRow, LayoutFor } from "#layout/typed.ts";
+import type { Dataset } from "#react/use-dataset.ts";
 import { useDataset } from "#react/use-dataset.ts";
 
 import { ChartView } from "./chart-view.tsx";
@@ -25,7 +27,14 @@ import { reorderedKinds, rowOrder, smallBytes, smallLayout } from "./small-data.
 import type { ChartRow, ChartSettings, SmallChart } from "./small-data.ts";
 
 /** `<Chart>` over a dataset that `useDataset` loads. */
-type DatasetChartProps = Omit<ChartViewProps, "order" | "source">;
+/** `<Chart>` over a dataset, whose layout names only its columns when its rows are of a known type. */
+type DatasetChartProps<TRow extends AnyRow = AnyRow> = Omit<
+  ChartViewProps,
+  "dataset" | "layout" | "order" | "source"
+> & {
+  readonly dataset: Dataset<TRow>;
+  readonly layout: LayoutFor<TRow>;
+};
 
 /** `<Chart>` over rows the page holds. */
 interface RowsChartProps extends ChartOptions, SmallChart {
@@ -82,6 +91,9 @@ function RowsChart(props: RowsChartProps): ReactNode {
  * </div>;
  * ```
  */
+function Chart<TRow extends AnyRow = AnyRow>(
+  props: DatasetChartProps<TRow> | RowsChartProps,
+): ReactNode;
 function Chart(props: ChartProps): ReactNode {
   return "rows" in props ? <RowsChart {...props} /> : <ChartView {...props} />;
 }

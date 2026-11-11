@@ -53,23 +53,13 @@ export {
   type Restart,
   type WorkerSource,
 } from "./engine/client.ts";
-export { BrowserEngine } from "./engine/browser-engine.ts";
 export type { WorkerPort } from "./engine/port.ts";
-export { Connection, type Transport } from "./engine/connection.ts";
-export { ViewHandle } from "./engine/view.ts";
-export type {
-  ChartWindow,
-  DistinctValues,
-  Measurement,
-  ViewListener,
-  Viewport,
-} from "./engine/view-types.ts";
+export type { ViewHandle } from "./engine/view.ts";
+export type { DistinctValues, Viewport } from "./engine/view-types.ts";
 export {
-  exportTypes,
   maxArrowBytes,
   maxRows,
   maxXlsxCells,
-  trapReason,
   type LoadCall,
   type LoadOptions,
   type LoadProgress,
@@ -78,38 +68,21 @@ export {
 export type { ExportFormat } from "./engine/messages.ts";
 
 // Frames.
-export { decodeFrame, type FrameData, type GroupKey } from "./frame/frame.ts";
+export type { FrameData, GroupKey } from "./frame/frame.ts";
 export type { FrameColumn } from "./frame/columns.ts";
 export type { RowKind, TreeRows } from "./frame/tree.ts";
 export type { CellFlag, CellValue } from "./frame/cell.ts";
-export { decodeDistinct, type DistinctValue } from "./frame/distinct.ts";
-export { FrameError, decimalFromWords } from "./frame/readers.ts";
-export { decodeChartFrame } from "./frame/chart-frame.ts";
-export type {
-  CandleData,
-  ChartContent,
-  ChartEventData,
-  ChartFrameData,
-  ChartTickData,
-  HistogramSeries,
-  IndicatorLineData,
-  SeriesData,
-} from "./frame/chart-data.ts";
-export { exactDecimal, isNegativeText, pathValue, timestampText } from "./format.ts";
+export type { DistinctValue } from "./frame/distinct.ts";
 
 // Layouts.
 export {
   aggregates,
   checkLayout,
   filterOps,
-  layoutSchema,
   layoutVersion,
-  measureOfWidthKey,
-  measureWidthKey,
   parseLayout,
   showAs,
   textFilterOps,
-  treeWidthKey,
   type FilterOp,
   type Layout,
   type LayoutCheck,
@@ -132,6 +105,8 @@ export {
   type LayoutIndicator,
 } from "./layout/chart.ts";
 export { decodeLayout, encodeLayout } from "./layout/share.ts";
+export type { LayoutCell, LayoutRule, Tone } from "./layout/cells.ts";
+export type { AnyRow, ColumnOf, LayoutFor } from "./layout/typed.ts";
 
 // Theming.
 export { basisTheme } from "./theme/basis.ts";
@@ -143,20 +118,7 @@ export {
   type ThemeSpec,
 } from "./theme/define.ts";
 export { chartColors, type ChartColors } from "./theme/charts.ts";
-export {
-  defaultTheme,
-  readChartColors,
-  readTheme,
-  sameChartColors,
-  sameTheme,
-  type Theme,
-} from "./theme/read.ts";
-export {
-  installTheme,
-  installTokenStyles,
-  themeStyles,
-  tokenProperties,
-  tokenStyles,
-} from "./theme/styles.ts";
+export type { Theme } from "./theme/read.ts";
+export { tokenProperties } from "./theme/styles.ts";
 export type { ResolvedScheme, Scheme } from "./theme/kinds.ts";
 export type { TokenName } from "./theme/tokens.ts";

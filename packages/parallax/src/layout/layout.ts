@@ -115,7 +115,9 @@ const sortSchema = z.strictObject({
 });
 
 const groupSortSchema = z.strictObject({
+  /** Groups by their key, or by a measure, by its index among the measures. */
   by: z.union([z.literal("key"), z.strictObject({ measure: count })]).default("key"),
+  /** Whether the largest come first. */
   descending: z.boolean().default(false),
 });
 
@@ -124,8 +126,11 @@ const havingSchema = z.strictObject({ measure: count, op: z.enum(comparisons), v
 const topNSchema = z.strictObject({
   // oxlint-disable-next-line eslint/id-length -- `n` is the layout's JSON field, as parallax-protocol's Rust names it.
   n: count,
+  /** The measure, by its index among the measures, that ranks the groups. */
   measure: count,
+  /** Whether the largest are kept, or the smallest. */
   largest: z.boolean().default(true),
+  /** Whether the rest are summed in an Other row. */
   other: z.boolean().default(true),
 });
 

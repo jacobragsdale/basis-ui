@@ -50,7 +50,7 @@ export default defineConfig({
     dts: {
       generator: "tsgo",
     },
-    entry: ["src/index.ts", "src/worker.ts"],
+    entry: ["src/index.ts", "src/internals.ts", "src/worker.ts"],
     /* The worker's bundle loads the engine from beside itself, where wasm-bindgen's glue looks for it, so an app's
      * bundler finds it as an asset of the worker. */
     copy: [{ from: "wasm/parallax_wasm_bg.wasm", to: "dist" }],

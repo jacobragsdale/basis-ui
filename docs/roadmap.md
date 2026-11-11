@@ -640,7 +640,9 @@ flowchart TD
    2026-11-11: a right click on a cell opens `@basis/ui`'s `ContextMenu` at the pointer, with copy, copy with
    headers, filter by the value or exclude it, sort, pin, fit one column or all, export and the app's own items; the
    grid gains `onCellClick`, `onRowActivate` and `onContextMenu`, `GridHandle` gains `scrollTo`, `getSelection` and
-   `copy`, and a drag that selects past the edge scrolls.
+   `copy`, and a drag that selects past the edge scrolls. 6.6.4 built on 2026-11-11: `useDataset<TRow>` types its
+   views' layouts, so `Grid`, `Pivot`, `Chart` and `useView` take only the rows' column names (`LayoutFor<TRow>`),
+   every `LayoutInput` field has a doc comment, and about 40 internals moved to `@basis/parallax/internals`.
 7. **6.7 Components for real apps.** Lane Components, after 6.5.1 and 6.5.2, one family per branch in order: the shell
    (`6.7.1-shell`), the filter bar (`6.7.2-filter-bar`), `DataTable` (`6.7.3-data-table`), `StatCard`
    (`6.7.4-stat-card`), dates (`6.7.5-dates`), forms (`6.7.6-forms`), choosing (`6.7.7-choosing`), display

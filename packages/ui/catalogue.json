@@ -3149,7 +3149,7 @@
           "type": "Orientation | undefined"
         }
       ],
-      "purpose": "A line between groups in the toolbar, across its direction.",
+      "purpose": "A line between groups in the toolbar, across its direction: Base UI marks it vertical in a horizontal toolbar.",
       "variants": {}
     },
     {
@@ -16388,16 +16388,16 @@
           "type": "string"
         },
         {
-          "description": "The dataset to draw, from `useDataset`.",
+          "description": "",
           "name": "dataset",
           "optional": true,
-          "type": "Dataset"
+          "type": "Dataset<TRow>"
         },
         {
-          "description": "The view and its chart, as a layout: its `chart` section says what to draw.",
+          "description": "",
           "name": "layout",
           "optional": true,
-          "type": "LayoutInput"
+          "type": "LayoutFor<TRow>"
         },
         {
           "description": "What to draw, such as `line`, `bar` or `scatter`, as a layout's `chart.kind` names it.",
@@ -16472,13 +16472,13 @@
           "description": "The dataset to show, from `useDataset`.",
           "name": "dataset",
           "optional": false,
-          "type": "Dataset"
+          "type": "Dataset<TRow>"
         },
         {
-          "description": "The view: grouping, sorting, filters, formats and widths. The dataset is `dataset`'s. Left out, the grid shows every column in the table's order, each by its API's display format.",
+          "description": "The view: grouping, sorting, filters, formats and widths. The dataset is `dataset`'s. Left out, the grid shows every column in the table's order, each by its API's display format. A dataset of rows of a known type, `useDataset<Position>`, takes only its columns' names.",
           "name": "layout",
           "optional": true,
-          "type": "LayoutInput | undefined"
+          "type": "LayoutFor<TRow> | undefined"
         },
         {
           "description": "Takes every change the user makes. Without it, the grid keeps the changes itself until `layout` changes.",
@@ -16618,13 +16618,13 @@
           "description": "The dataset to pivot, from `useDataset`.",
           "name": "dataset",
           "optional": false,
-          "type": "Dataset"
+          "type": "Dataset<TRow>"
         },
         {
-          "description": "The pivot: its row and column groups, values, filters, sorts, formats and widths.",
+          "description": "The pivot: its row and column groups, values, filters, sorts, formats and widths, naming only the columns of a dataset of rows of a known type.",
           "name": "layout",
           "optional": false,
-          "type": "LayoutInput"
+          "type": "LayoutFor<TRow>"
         },
         {
           "description": "Takes every change the user makes. Without it, the pivot keeps the changes itself until `layout` changes.",
@@ -17883,7 +17883,7 @@
       "module": "@basis/parallax",
       "name": "useDataset",
       "purpose": "Loads a table into the page's engine as `name`, from `source`, and reports the load's state. It loads again when `name`, `source` or the options change, so give it a stable source: bytes held in state or a query, or a function the React Compiler keeps. A null source waits, as `idle`. Views of the dataset, opened with `useView`, may open while it loads: they wait for its first rows. A first load shows as it arrives, from a source that streams: its views open on its first rows and see more each time the rows read have grown fourfold, while `progress` says how many have been read of how many are expected, and a grid's status bar how many are still to come. Sorts, filters and pivots apply to the rows so far and update as more arrive; a chart waits for the whole load, and an export is refused until it is done. A reload is read whole and checked before anything changes: its views keep the rows before it until it applies, and a refused reload leaves them so, while `progress` says how far it has read. When the engine runs out of memory it starts again empty and fails every view; a dataset that was loaded then loads its source again, and its views reopen. A dataset whose load was under way, most likely the one that ran the engine out of memory, fails with the reason until `reload` is called or the source changes, as does every dataset once the engine keeps stopping. Components that ask for the same name and the same source share one load, so a page whose cards and grid show one dataset fetches it once. When the last component that shows a dataset unmounts, the engine drops it and its memory goes to later loads; once the engine's memory, which never shrinks, has grown past what its tables need, it starts again with what is still shown, which loads again as after a restart.",
-      "signature": "useDataset(name: string, source: DatasetSource | null, options: LoadOptions = {}): Dataset",
+      "signature": "useDataset<TRow extends AnyRow = AnyRow>(name: string, source: DatasetSource | null, options: LoadOptions = {}): Dataset<TRow>",
       "use": "Once for each table a page shows, inside a ParallaxProvider; give the dataset to a Grid, a Pivot or a Chart.",
       "with": [
         "ParallaxProvider",
@@ -17900,7 +17900,7 @@
       "module": "@basis/parallax",
       "name": "useView",
       "purpose": "Opens a view of `dataset`, which `useDataset` loads, as `layout` describes it, and reports what the engine sends: its frames, its chart's reduction, its table's status, and why it failed. The layout's dataset is `dataset`'s. The view opens while its dataset loads, and waits for it. A changed layout updates the open view in place, and a changed viewport or chart window asks for that window, without reopening. When the engine restarts, the view fails with the reason, and opens again once the dataset has loaded again. With `onChart`, the chart's reductions go to it rather than into the state, and with `onFrame`, the frames do, so a scroll that asks `handle` for rows renders nothing.",
-      "signature": "useView(dataset: Dataset, layout: LayoutInput, options: ViewOptions = {}): View"
+      "signature": "useView<TRow extends AnyRow = AnyRow>(dataset: Dataset<TRow>, layout: LayoutFor<TRow>, options?: ViewOptions): View"
     },
     {
       "kind": "hook",
@@ -17924,34 +17924,6 @@
       "signature": "class ParallaxClient"
     },
     {
-      "kind": "class",
-      "module": "@basis/parallax",
-      "name": "BrowserEngine",
-      "purpose": "The worker-hosted engine and its connection.",
-      "signature": "class BrowserEngine"
-    },
-    {
-      "kind": "class",
-      "module": "@basis/parallax",
-      "name": "Connection",
-      "purpose": "A protocol connection over one transport.",
-      "signature": "class Connection"
-    },
-    {
-      "kind": "class",
-      "module": "@basis/parallax",
-      "name": "ViewHandle",
-      "purpose": "One open view.",
-      "signature": "class ViewHandle"
-    },
-    {
-      "kind": "constant",
-      "module": "@basis/parallax",
-      "name": "exportTypes",
-      "purpose": "The media type of each export format.",
-      "signature": "const exportTypes: Readonly<Record<ExportFormat, string>>"
-    },
-    {
       "kind": "constant",
       "module": "@basis/parallax",
       "name": "maxArrowBytes",
@@ -17971,76 +17943,6 @@
       "name": "maxXlsxCells",
       "purpose": "The most cells an Excel export in the browser writes, the header and group column included. The browser holds a sheet in memory at about 190 bytes a cell, which WebAssembly never returns, so a larger view is refused with a reason that says to export CSV, which streams.",
       "signature": "const maxXlsxCells = 1_000_000"
-    },
-    {
-      "kind": "function",
-      "module": "@basis/parallax",
-      "name": "trapReason",
-      "purpose": "The reason every view and request is given after the engine traps.",
-      "signature": "trapReason(trap: string): string"
-    },
-    {
-      "kind": "function",
-      "module": "@basis/parallax",
-      "name": "decodeFrame",
-      "purpose": "Decodes and validates a frame.",
-      "signature": "decodeFrame(frame: Frame): FrameData"
-    },
-    {
-      "kind": "function",
-      "module": "@basis/parallax",
-      "name": "decodeDistinct",
-      "purpose": "Decodes and checks the values the engine lists for a filter.",
-      "signature": "decodeDistinct(bytes: Uint8Array): readonly DistinctValue[]"
-    },
-    {
-      "kind": "class",
-      "module": "@basis/parallax",
-      "name": "FrameError",
-      "purpose": "A frame the client cannot trust.",
-      "signature": "class FrameError extends Error"
-    },
-    {
-      "kind": "function",
-      "module": "@basis/parallax",
-      "name": "decimalFromWords",
-      "purpose": "Reconstructs a signed 128-bit integer from four little-endian 32-bit words.",
-      "signature": "decimalFromWords(words: Uint32Array, offset: number): bigint"
-    },
-    {
-      "kind": "function",
-      "module": "@basis/parallax",
-      "name": "decodeChartFrame",
-      "purpose": "Decodes and checks a chart frame.",
-      "signature": "decodeChartFrame(frame: ChartFrame): ChartFrameData"
-    },
-    {
-      "kind": "function",
-      "module": "@basis/parallax",
-      "name": "exactDecimal",
-      "purpose": "Writes an unscaled decimal exactly, without grouping, such as `-1234.50`.",
-      "signature": "exactDecimal(unscaled: bigint, scale: number): string"
-    },
-    {
-      "kind": "function",
-      "module": "@basis/parallax",
-      "name": "isNegativeText",
-      "purpose": "Whether display text shows a negative number, which draws in the negative colour. The text decides, not the value: -0.001 at two decimals shows as an unsigned 0.00 and is not coloured.",
-      "signature": "isNegativeText(text: string): boolean"
-    },
-    {
-      "kind": "function",
-      "module": "@basis/parallax",
-      "name": "pathValue",
-      "purpose": "Converts a group value to the JSON a layout path holds, exactly: decimals and integers past 2^53 as strings, infinities as `\"inf\"` and `\"-inf\"`, timestamps to the microsecond.",
-      "signature": "pathValue(value: CellValue): string | number | boolean | null"
-    },
-    {
-      "kind": "function",
-      "module": "@basis/parallax",
-      "name": "timestampText",
-      "purpose": "Microseconds since the epoch, exactly: RFC 3339 with `Z` for instants, and a civil date-time for wall-clock values.",
-      "signature": "timestampText(micros: bigint, zoned: boolean): string"
     },
     {
       "kind": "constant",
@@ -18066,30 +17968,9 @@
     {
       "kind": "constant",
       "module": "@basis/parallax",
-      "name": "layoutSchema",
-      "purpose": "The schema of a layout document. Unknown fields are errors, as in Rust.",
-      "signature": "const layoutSchema = z.strictObject({ /** The layout's version, `layoutVersion` in what this package writes. Older versi…"
-    },
-    {
-      "kind": "constant",
-      "module": "@basis/parallax",
       "name": "layoutVersion",
       "purpose": "The layout version this package writes. Older documents are read and brought up to date.",
       "signature": "const layoutVersion = 2"
-    },
-    {
-      "kind": "function",
-      "module": "@basis/parallax",
-      "name": "measureOfWidthKey",
-      "purpose": "The measure a `column_widths` key belongs to, or null for a column name.",
-      "signature": "measureOfWidthKey(key: string): number | null"
-    },
-    {
-      "kind": "function",
-      "module": "@basis/parallax",
-      "name": "measureWidthKey",
-      "purpose": "The key a measure's width is stored under in `column_widths`.",
-      "signature": "measureWidthKey(measure: number): string"
     },
     {
       "kind": "function",
@@ -18111,13 +17992,6 @@
       "name": "textFilterOps",
       "purpose": "The filter operators that match text, which only text columns take.",
       "signature": "const textFilterOps: readonly FilterOp[]"
-    },
-    {
-      "kind": "constant",
-      "module": "@basis/parallax",
-      "name": "treeWidthKey",
-      "purpose": "The key the group column's width is stored under in `column_widths`.",
-      "signature": "const treeWidthKey = \"__tree\""
     },
     {
       "kind": "constant",
@@ -18197,74 +18071,11 @@
       "signature": "const chartColors: Readonly<Record<ResolvedScheme, ChartColors>>"
     },
     {
-      "kind": "function",
-      "module": "@basis/parallax",
-      "name": "defaultTheme",
-      "purpose": "The defaults of a scheme as plain values, as `readTheme` returns them before the stylesheet applies.",
-      "signature": "defaultTheme(scheme: ResolvedScheme): Theme"
-    },
-    {
-      "kind": "function",
-      "module": "@basis/parallax",
-      "name": "readChartColors",
-      "purpose": "Reads the chart colours in effect for `element`, falling back to its scheme's defaults.",
-      "signature": "readChartColors(element: Element): ChartColors"
-    },
-    {
-      "kind": "function",
-      "module": "@basis/parallax",
-      "name": "readTheme",
-      "purpose": "Reads the tokens in effect for `element`, a host or an element inside one.",
-      "signature": "readTheme(element: Element): Theme"
-    },
-    {
-      "kind": "function",
-      "module": "@basis/parallax",
-      "name": "sameChartColors",
-      "purpose": "Whether two sets of chart colours are the same.",
-      "signature": "sameChartColors(first: ChartColors, second: ChartColors): boolean"
-    },
-    {
-      "kind": "function",
-      "module": "@basis/parallax",
-      "name": "sameTheme",
-      "purpose": "Whether two sets of tokens are the same, so that a change that alters none redraws nothing.",
-      "signature": "sameTheme(first: Theme, second: Theme): boolean"
-    },
-    {
-      "kind": "function",
-      "module": "@basis/parallax",
-      "name": "installTheme",
-      "purpose": "Puts a theme's stylesheet in a document, replacing the one of the same name installed before, if it differs.",
-      "signature": "installTheme(document: Document, theme: ParallaxTheme): void"
-    },
-    {
-      "kind": "function",
-      "module": "@basis/parallax",
-      "name": "installTokenStyles",
-      "purpose": "Adds the token stylesheet to a document once.",
-      "signature": "installTokenStyles(document: Document): void"
-    },
-    {
-      "kind": "function",
-      "module": "@basis/parallax",
-      "name": "themeStyles",
-      "purpose": "The stylesheet that declares a theme's values on the hosts given it, in each scheme.",
-      "signature": "themeStyles(theme: ParallaxTheme): string"
-    },
-    {
       "kind": "constant",
       "module": "@basis/parallax",
       "name": "tokenProperties",
       "purpose": "Every token's public property, such as `--px-accent`, chart colours included: what a host or a theme can set.",
       "signature": "const tokenProperties: readonly string[]"
-    },
-    {
-      "kind": "constant",
-      "module": "@basis/parallax",
-      "name": "tokenStyles",
-      "purpose": "The stylesheet that registers and declares every token.",
-      "signature": "const tokenStyles = baseStyles()"
     }
   ],
   "icons": [
@@ -20078,6 +19889,13 @@
       "purpose": ""
     },
     {
+      "definition": "object",
+      "exported": true,
+      "module": "@basis/parallax",
+      "name": "AnyRow",
+      "purpose": "Rows of no known type."
+    },
+    {
       "fields": [
         {
           "description": "",
@@ -20176,7 +19994,7 @@
           "type": "readonly (string | null)[]"
         }
       ],
-      "exported": true,
+      "exported": false,
       "module": "@basis/parallax",
       "name": "CandleData",
       "purpose": "Candlestick or OHLC buckets; a missing price is NaN, with null text."
@@ -20310,29 +20128,6 @@
       "purpose": "A cell value, typed by what the engine sent."
     },
     {
-      "extends": [
-        "Message<\"parallax.v1.ChartAnchor\">"
-      ],
-      "fields": [
-        {
-          "description": "The value as JSON, as the layout gave it.",
-          "name": "xJson",
-          "optional": false,
-          "type": "string"
-        },
-        {
-          "description": "Its axis position, NaN for a value the axis cannot place.",
-          "name": "position",
-          "optional": false,
-          "type": "number"
-        }
-      ],
-      "exported": false,
-      "module": "@basis/parallax",
-      "name": "ChartAnchor",
-      "purpose": "An x value a drawing is anchored to, and its place on the axis."
-    },
-    {
       "fields": [
         {
           "description": "Categorical slots, assigned to series in this order and never cycled.",
@@ -20428,45 +20223,10 @@
           "type": "CandleData"
         }
       ],
-      "exported": true,
+      "exported": false,
       "module": "@basis/parallax",
       "name": "ChartContent",
       "purpose": "What a chart frame holds."
-    },
-    {
-      "extends": [
-        "Message<\"parallax.v1.ChartEvent\">"
-      ],
-      "fields": [
-        {
-          "description": "The row's axis position.",
-          "name": "x",
-          "optional": false,
-          "type": "number"
-        },
-        {
-          "description": "The row's x value as text.",
-          "name": "xText",
-          "optional": false,
-          "type": "string"
-        },
-        {
-          "description": "The event, as text; with a series column, after the series' value.",
-          "name": "text",
-          "optional": false,
-          "type": "string"
-        },
-        {
-          "description": "The series column's value as text, or empty without a series column.",
-          "name": "series",
-          "optional": false,
-          "type": "string"
-        }
-      ],
-      "exported": false,
-      "module": "@basis/parallax",
-      "name": "ChartEvent",
-      "purpose": "The rows a chart's events column marks in the range shown."
     },
     {
       "fields": [
@@ -20495,165 +20255,10 @@
           "type": "string"
         }
       ],
-      "exported": true,
+      "exported": false,
       "module": "@basis/parallax",
       "name": "ChartEventData",
       "purpose": "A row an events column marks: where, when, and what happened."
-    },
-    {
-      "extends": [
-        "Message<\"parallax.v1.ChartFrame\">"
-      ],
-      "fields": [
-        {
-          "description": "",
-          "name": "viewId",
-          "optional": false,
-          "type": "number"
-        },
-        {
-          "description": "",
-          "name": "configVersion",
-          "optional": false,
-          "type": "bigint"
-        },
-        {
-          "description": "",
-          "name": "loadVersion",
-          "optional": false,
-          "type": "bigint"
-        },
-        {
-          "description": "",
-          "name": "sourceAsOfMicros",
-          "optional": false,
-          "type": "bigint"
-        },
-        {
-          "description": "True for frames pushed after a table refresh.",
-          "name": "pushed",
-          "optional": false,
-          "type": "boolean"
-        },
-        {
-          "description": "The x range shown, in axis positions.",
-          "name": "xFrom",
-          "optional": false,
-          "type": "number"
-        },
-        {
-          "description": "",
-          "name": "xTo",
-          "optional": false,
-          "type": "number"
-        },
-        {
-          "description": "",
-          "name": "ticks",
-          "optional": false,
-          "type": "ChartTick[]"
-        },
-        {
-          "description": "",
-          "name": "series",
-          "optional": false,
-          "type": "ChartSeries[]"
-        },
-        {
-          "description": "",
-          "name": "batch",
-          "optional": false,
-          "type": "Uint8Array"
-        },
-        {
-          "description": "A density's cells across and up, and the y range they or a scatter's dots span.",
-          "name": "columns",
-          "optional": false,
-          "type": "number"
-        },
-        {
-          "description": "",
-          "name": "rows",
-          "optional": false,
-          "type": "number"
-        },
-        {
-          "description": "",
-          "name": "yFrom",
-          "optional": false,
-          "type": "number"
-        },
-        {
-          "description": "",
-          "name": "yTo",
-          "optional": false,
-          "type": "number"
-        },
-        {
-          "description": "A candlestick or OHLC chart's bucket: minutes as \"<n>m\" (1, 5, 15, 30 or 60), \"day\", \"week\", \"month\", \"quarter\", \"year\", or years as \"<n>y\".",
-          "name": "interval",
-          "optional": false,
-          "type": "string"
-        },
-        {
-          "description": "The data's whole x range, in axis positions, which zooming and panning stay within. It equals x_from and x_to when the window names no range.",
-          "name": "extentFrom",
-          "optional": false,
-          "type": "number"
-        },
-        {
-          "description": "",
-          "name": "extentTo",
-          "optional": false,
-          "type": "number"
-        },
-        {
-          "description": "The indicators' lines, each for one series, and their points in indicator_batch.",
-          "name": "indicatorLines",
-          "optional": false,
-          "type": "ChartIndicatorLine[]"
-        },
-        {
-          "description": "One Arrow IPC stream holding one record batch: one row per kept point of each indicator line, line by line, with columns line (the index in indicator_lines), x, y (NaN at a break), x_text (null at a break) and y_text. Empty without indicators.",
-          "name": "indicatorBatch",
-          "optional": false,
-          "type": "Uint8Array"
-        },
-        {
-          "description": "Where each distinct x value the layout's drawings are anchored to sits on the axis.",
-          "name": "anchors",
-          "optional": false,
-          "type": "ChartAnchor[]"
-        },
-        {
-          "description": "The rows the layout's events column marks in the range shown, at most 500, evenly chosen, and how many there are in all.",
-          "name": "events",
-          "optional": false,
-          "type": "ChartEvent[]"
-        },
-        {
-          "description": "",
-          "name": "eventsTotal",
-          "optional": false,
-          "type": "number"
-        },
-        {
-          "description": "A scatter's fit lines, one per series, and their points in fit_batch: the layout's fit column, reduced like a line.",
-          "name": "fits",
-          "optional": false,
-          "type": "ChartSeries[]"
-        },
-        {
-          "description": "One Arrow IPC stream holding one record batch: one row per kept point of each fit line, line by line, with columns series (the index in fits), x, y (NaN at a break), x_text (null at a break) and y_text. Empty without a fit column.",
-          "name": "fitBatch",
-          "optional": false,
-          "type": "Uint8Array"
-        }
-      ],
-      "exported": false,
-      "module": "@basis/parallax",
-      "name": "ChartFrame",
-      "purpose": "A chart reduced to its plot. The batch is an Arrow IPC stream whose columns depend on the chart kind; each names its role in its \"parallax.role\" metadata: - line and area: series, x, y (NaN at a break), x_text and y_text (null at a break), and x_json, the x value as exact JSON for filters, one row per kept point, series by series; - scatter, at most 5,000 rows in the range shown: series, x, y, size (the size column's magnitude as a share of its largest in the chart, NaN for none), x_text, y_text, size_text and fit_text (null for none), id_text and id_json (the id column's text and exact JSON, null without one), and tooltip_0, tooltip_1 and so on, the text of each tooltip column, one row per dot, series by series; - scatter, past 5,000 rows: count, one row per density cell, row by row from the bottom; - histogram: series, from, to, count, from_text and to_text, one row per bin; - candlestick and OHLC: from, to, open, high, low, close and their texts, x_text for the bucket's start, and x_json and end_json, the bucket's start and the next bucket's start as exact JSON, one row per bucket; with a volume indicator, also volume (NaN for none or an overflow) and volume_text (null for none, \"overflow\" for a total too large to hold)."
     },
     {
       "fields": [
@@ -20760,116 +20365,10 @@
           "type": "number"
         }
       ],
-      "exported": true,
+      "exported": false,
       "module": "@basis/parallax",
       "name": "ChartFrameData",
       "purpose": "A decoded, checked chart frame."
-    },
-    {
-      "extends": [
-        "Message<\"parallax.v1.ChartIndicatorLine\">"
-      ],
-      "fields": [
-        {
-          "description": "The indicator, by index in the layout's chart indicators.",
-          "name": "indicator",
-          "optional": false,
-          "type": "number"
-        },
-        {
-          "description": "Which of its lines: \"sma\", \"ema\", \"wma\", \"upper\", \"middle\", \"lower\", \"rsi\", \"macd\", \"signal\", \"histogram\", \"atr\", \"k\", \"d\" or \"vwap\".",
-          "name": "line",
-          "optional": false,
-          "type": "string"
-        },
-        {
-          "description": "The series column's value it follows, as text, or empty without a series column.",
-          "name": "series",
-          "optional": false,
-          "type": "string"
-        }
-      ],
-      "exported": false,
-      "module": "@basis/parallax",
-      "name": "ChartIndicatorLine",
-      "purpose": "One line of an indicator, for one series."
-    },
-    {
-      "extends": [
-        "Message<\"parallax.v1.ChartMeasure\">"
-      ],
-      "fields": [
-        {
-          "description": "",
-          "name": "viewId",
-          "optional": false,
-          "type": "number"
-        },
-        {
-          "description": "False when the series has no row with a price.",
-          "name": "found",
-          "optional": false,
-          "type": "boolean"
-        },
-        {
-          "description": "The rows' x values, and their axis positions.",
-          "name": "fromX",
-          "optional": false,
-          "type": "string"
-        },
-        {
-          "description": "",
-          "name": "toX",
-          "optional": false,
-          "type": "string"
-        },
-        {
-          "description": "",
-          "name": "fromPosition",
-          "optional": false,
-          "type": "number"
-        },
-        {
-          "description": "",
-          "name": "toPosition",
-          "optional": false,
-          "type": "number"
-        },
-        {
-          "description": "Their prices, in the price column's format.",
-          "name": "fromValue",
-          "optional": false,
-          "type": "string"
-        },
-        {
-          "description": "",
-          "name": "toValue",
-          "optional": false,
-          "type": "string"
-        },
-        {
-          "description": "The later price less the earlier, in the price's format, and as a percentage of the earlier; \"\" when the earlier is zero.",
-          "name": "change",
-          "optional": false,
-          "type": "string"
-        },
-        {
-          "description": "",
-          "name": "percent",
-          "optional": false,
-          "type": "string"
-        },
-        {
-          "description": "Rows with a price from the earlier to the later, counting the later and not the earlier: the bars between them.",
-          "name": "rows",
-          "optional": false,
-          "type": "bigint"
-        }
-      ],
-      "exported": false,
-      "module": "@basis/parallax",
-      "name": "ChartMeasure",
-      "purpose": "What changed between two rows of a chart's series, all as the engine's text."
     },
     {
       "fields": [
@@ -20968,41 +20467,6 @@
       "purpose": "A group selected by clicking its bar or slice, the outermost group column and the group's exact key; or a scatter's dot, its id column and the id's exact value."
     },
     {
-      "extends": [
-        "Message<\"parallax.v1.ChartSeries\">"
-      ],
-      "fields": [
-        {
-          "description": "The legend label: the plotted column's title, then the series column's value, or the value alone when the plot draws one column, as a scatter and a histogram always do.",
-          "name": "label",
-          "optional": false,
-          "type": "string"
-        },
-        {
-          "description": "The plotted column.",
-          "name": "column",
-          "optional": false,
-          "type": "string"
-        },
-        {
-          "description": "Drawn against the right y axis.",
-          "name": "right",
-          "optional": false,
-          "type": "boolean"
-        },
-        {
-          "description": "The series column's value, as the label writes it; empty for a series that is not split.",
-          "name": "key",
-          "optional": false,
-          "type": "string"
-        }
-      ],
-      "exported": false,
-      "module": "@basis/parallax",
-      "name": "ChartSeries",
-      "purpose": "A series of a line, area or histogram chart."
-    },
-    {
       "definition": "Omit<NonNullable<LayoutInput[\"chart\"]>, \"kind\" | \"x\" | \"y\" | \"series\">",
       "exported": true,
       "module": "@basis/parallax",
@@ -21010,9 +20474,6 @@
       "purpose": "A chart's settings beyond its kind and columns, such as `stacked`, `horizontal`, `donut` or `log_y`."
     },
     {
-      "extends": [
-        "Message<\"parallax.v1.ChartTick\">"
-      ],
       "fields": [
         {
           "description": "",
@@ -21028,26 +20489,6 @@
         }
       ],
       "exported": false,
-      "module": "@basis/parallax",
-      "name": "ChartTick",
-      "purpose": "A labelled tick on a chart's x axis."
-    },
-    {
-      "fields": [
-        {
-          "description": "",
-          "name": "x",
-          "optional": false,
-          "type": "number"
-        },
-        {
-          "description": "",
-          "name": "label",
-          "optional": false,
-          "type": "string"
-        }
-      ],
-      "exported": true,
       "module": "@basis/parallax",
       "name": "ChartTickData",
       "purpose": "A labelled tick on the x axis."
@@ -21166,7 +20607,7 @@
           "type": "number"
         }
       ],
-      "exported": true,
+      "exported": false,
       "module": "@basis/parallax",
       "name": "ChartWindow",
       "purpose": "The part of a chart to reduce and the plot it fills, in pixels. Without an x range, the whole data."
@@ -21227,6 +20668,21 @@
       "purpose": ""
     },
     {
+      "definition": "| \"cells\" | \"columns\" | \"filters\" | \"formats\" | \"group_by\" | \"measures\" | \"orders\" | \"pinned\" | \"rules\" | \"sort\" | \"split_by\" | \"totals\"",
+      "exported": false,
+      "module": "@basis/parallax",
+      "name": "ColumnFields",
+      "purpose": "The layout's fields that name columns."
+    },
+    {
+      "definition": "string extends keyof TRow ? string : [Extract<keyof TRow, string>] extends [never] ? string : Extract<keyof TRow, string>",
+      "exported": true,
+      "module": "@basis/parallax",
+      "name": "ColumnOf",
+      "parameters": "<TRow>",
+      "purpose": "The column names of rows of `TRow`: its string keys, or any name for rows of no known type."
+    },
+    {
       "fields": [
         {
           "description": "",
@@ -21253,6 +20709,12 @@
           "type": "LoadProgress | null"
         },
         {
+          "description": "The rows' type, for the compiler alone.",
+          "name": "rowType",
+          "optional": true,
+          "type": "TRow"
+        },
+        {
           "description": "",
           "name": "name",
           "optional": false,
@@ -21274,7 +20736,8 @@
       "exported": true,
       "module": "@basis/parallax",
       "name": "Dataset",
-      "purpose": "A dataset as `useDataset` returns it, for `useView`."
+      "parameters": "<TRow extends AnyRow = AnyRow>",
+      "purpose": "A dataset as `useDataset` returns it, for `useView`, `Grid`, `Pivot` and `Chart`. `TRow`, the type of its rows that `useDataset<TRow>` names, gives its views' layouts their column names; it is never set at run time."
     },
     {
       "fields": [
@@ -21327,22 +20790,23 @@
           "type": "string"
         },
         {
-          "description": "The dataset to draw, from `useDataset`.",
+          "description": "",
           "name": "dataset",
           "optional": false,
-          "type": "Dataset"
+          "type": "Dataset<TRow>"
         },
         {
-          "description": "The view and its chart, as a layout: its `chart` section says what to draw.",
+          "description": "",
           "name": "layout",
           "optional": false,
-          "type": "LayoutInput"
+          "type": "LayoutFor<TRow>"
         }
       ],
       "exported": true,
       "module": "@basis/parallax",
       "name": "DatasetChartProps",
-      "purpose": "`<Chart>` over a dataset that `useDataset` loads."
+      "parameters": "<TRow extends AnyRow = AnyRow>",
+      "purpose": "`<Chart>` over a dataset, whose layout names only its columns when its rows are of a known type."
     },
     {
       "definition": "| ArrayBuffer | (() => ArrayBuffer | Response | PromiseLike<ArrayBuffer | Response>)",
@@ -21596,89 +21060,6 @@
       "purpose": "A scatter's fit line for one series: points in order, with NaN y values at breaks."
     },
     {
-      "extends": [
-        "Message<\"parallax.v1.Frame\">"
-      ],
-      "fields": [
-        {
-          "description": "",
-          "name": "viewId",
-          "optional": false,
-          "type": "number"
-        },
-        {
-          "description": "",
-          "name": "configVersion",
-          "optional": false,
-          "type": "bigint"
-        },
-        {
-          "description": "",
-          "name": "loadVersion",
-          "optional": false,
-          "type": "bigint"
-        },
-        {
-          "description": "",
-          "name": "firstRow",
-          "optional": false,
-          "type": "bigint"
-        },
-        {
-          "description": "",
-          "name": "firstColumn",
-          "optional": false,
-          "type": "number"
-        },
-        {
-          "description": "",
-          "name": "totalRows",
-          "optional": false,
-          "type": "bigint"
-        },
-        {
-          "description": "",
-          "name": "totalColumns",
-          "optional": false,
-          "type": "number"
-        },
-        {
-          "description": "One Arrow IPC stream holding one record batch.",
-          "name": "batch",
-          "optional": false,
-          "type": "Uint8Array"
-        },
-        {
-          "description": "When the source data was read, in microseconds since the Unix epoch.",
-          "name": "sourceAsOfMicros",
-          "optional": false,
-          "type": "bigint"
-        },
-        {
-          "description": "Whether this frame answers a viewport request or was pushed after a refresh.",
-          "name": "pushed",
-          "optional": false,
-          "type": "boolean"
-        },
-        {
-          "description": "For a flat or detail view with totals, the totals row of the frame's data columns: an Arrow IPC stream of one record batch of one row, whose data columns are the frame's. Empty without totals.",
-          "name": "totals",
-          "optional": false,
-          "type": "Uint8Array"
-        },
-        {
-          "description": "For a flat view whose layout draws cells by their value, such as data bars, the domain of the frame's data columns over the rows that pass the filters: an Arrow IPC stream of one record batch of two rows, the least and then the greatest value, whose data columns are the frame's; a column without a domain holds nulls. Empty without domains.",
-          "name": "domains",
-          "optional": false,
-          "type": "Uint8Array"
-        }
-      ],
-      "exported": false,
-      "module": "@basis/parallax",
-      "name": "Frame",
-      "purpose": "A window of a view."
-    },
-    {
       "fields": [
         {
           "description": "The column's identity as the engine produced it.",
@@ -21862,13 +21243,13 @@
           "description": "The dataset to show, from `useDataset`.",
           "name": "dataset",
           "optional": false,
-          "type": "Dataset"
+          "type": "Dataset<TRow>"
         },
         {
-          "description": "The view: grouping, sorting, filters, formats and widths. The dataset is `dataset`'s. Left out, the grid shows every column in the table's order, each by its API's display format.",
+          "description": "The view: grouping, sorting, filters, formats and widths. The dataset is `dataset`'s. Left out, the grid shows every column in the table's order, each by its API's display format. A dataset of rows of a known type, `useDataset<Position>`, takes only its columns' names.",
           "name": "layout",
           "optional": true,
-          "type": "LayoutInput | undefined"
+          "type": "LayoutFor<TRow> | undefined"
         },
         {
           "description": "Takes every change the user makes. Without it, the grid keeps the changes itself until `layout` changes.",
@@ -21934,6 +21315,7 @@
       "exported": false,
       "module": "@basis/parallax",
       "name": "GridBaseProps",
+      "parameters": "<TRow extends AnyRow = AnyRow>",
       "purpose": ""
     },
     {
@@ -22082,13 +21464,13 @@
           "description": "The dataset to show, from `useDataset`.",
           "name": "dataset",
           "optional": false,
-          "type": "Dataset"
+          "type": "Dataset<TRow>"
         },
         {
-          "description": "The view: grouping, sorting, filters, formats and widths. The dataset is `dataset`'s. Left out, the grid shows every column in the table's order, each by its API's display format.",
+          "description": "The view: grouping, sorting, filters, formats and widths. The dataset is `dataset`'s. Left out, the grid shows every column in the table's order, each by its API's display format. A dataset of rows of a known type, `useDataset<Position>`, takes only its columns' names.",
           "name": "layout",
           "optional": true,
-          "type": "LayoutInput | undefined"
+          "type": "LayoutFor<TRow> | undefined"
         },
         {
           "description": "Takes every change the user makes. Without it, the grid keeps the changes itself until `layout` changes.",
@@ -22208,6 +21590,7 @@
       "exported": true,
       "module": "@basis/parallax",
       "name": "GridProps",
+      "parameters": "<TRow extends AnyRow = AnyRow>",
       "purpose": ""
     },
     {
@@ -22354,7 +21737,7 @@
           "type": "readonly (string | null)[]"
         }
       ],
-      "exported": true,
+      "exported": false,
       "module": "@basis/parallax",
       "name": "HistogramSeries",
       "purpose": "One series of a histogram: a count per bin."
@@ -22404,10 +21787,18 @@
           "type": "readonly (string | null)[]"
         }
       ],
-      "exported": true,
+      "exported": false,
       "module": "@basis/parallax",
       "name": "IndicatorLineData",
       "purpose": "One line of an indicator, for one series: points in order, with NaN y values at breaks."
+    },
+    {
+      "definition": "NonNullable<LayoutInput[TKey]> extends readonly (infer TItem)[] ? TItem : never",
+      "exported": false,
+      "module": "@basis/parallax",
+      "name": "ItemOf",
+      "parameters": "<TKey extends keyof LayoutInput>",
+      "purpose": "An item of one of the layout's lists, as written."
     },
     {
       "fields": [
@@ -22579,13 +21970,13 @@
     {
       "fields": [
         {
-          "description": "",
+          "description": "The x column's value the point sits at.",
           "name": "x",
           "optional": false,
           "type": "string | number | boolean"
         },
         {
-          "description": "",
+          "description": "The price the point sits at.",
           "name": "y",
           "optional": false,
           "type": "number"
@@ -22597,159 +21988,166 @@
       "purpose": "A point a drawing is anchored to."
     },
     {
+      "definition": "z.output<typeof cellSchema>",
+      "exported": true,
+      "module": "@basis/parallax",
+      "name": "LayoutCell",
+      "purpose": "How one column's cells draw."
+    },
+    {
       "fields": [
         {
-          "description": "",
+          "description": "What it draws: a line, area, bar, candlestick, OHLC, scatter, heatmap, histogram, pie or waterfall chart.",
           "name": "kind",
           "optional": false,
           "type": "\"line\" | \"area\" | \"bar\" | \"scatter\" | \"heatmap\" | \"histogram\" | \"candlestick\" | \"ohlc\" | \"pie\" | \"waterfall\""
         },
         {
           "default": "\"\"",
-          "description": "",
+          "description": "The column along the x axis: a date, a time, a tenor, a number or a category.",
           "name": "x",
           "optional": false,
           "type": "string"
         },
         {
           "default": "[]",
-          "description": "",
+          "description": "The columns drawn against the left axis, a series each.",
           "name": "y",
           "optional": false,
           "type": "string[]"
         },
         {
           "default": "[]",
-          "description": "",
+          "description": "The columns drawn against a right axis of their own.",
           "name": "y_right",
           "optional": false,
           "type": "string[]"
         },
         {
           "default": "null",
-          "description": "",
+          "description": "A column whose values split each y column into a series per value, such as a curve per date.",
           "name": "series",
           "optional": false,
           "type": "string | null"
         },
         {
           "default": "null",
-          "description": "",
+          "description": "A candlestick's or OHLC bar's open, high, low and close columns.",
           "name": "ohlc",
           "optional": false,
           "type": "{ open: string; high: string; low: string; close: string } | null"
         },
         {
           "default": "\"value\"",
-          "description": "",
+          "description": "How the x axis spaces its points: by value, by trading time with closed hours left out, or by tenor.",
           "name": "axis",
           "optional": false,
           "type": "\"value\" | \"trading\" | \"tenor\""
         },
         {
           "default": "false",
-          "description": "",
+          "description": "Whether the left axis is logarithmic.",
           "name": "log_y",
           "optional": false,
           "type": "boolean"
         },
         {
           "default": "false",
-          "description": "",
+          "description": "Whether series stack, on an area or bar chart.",
           "name": "stacked",
           "optional": false,
           "type": "boolean"
         },
         {
           "default": "false",
-          "description": "",
+          "description": "Whether a bar chart's bars run across.",
           "name": "horizontal",
           "optional": false,
           "type": "boolean"
         },
         {
           "default": "null",
-          "description": "",
+          "description": "The x range shown, as the x axis's numbers, which zooming and panning record; everything when null.",
           "name": "range",
           "optional": false,
           "type": "{ from: number; to: number } | null"
         },
         {
           "default": "[]",
-          "description": "",
+          "description": "The series hidden from the legend, by label.",
           "name": "hidden",
           "optional": false,
           "type": "string[]"
         },
         {
           "default": "[]",
-          "description": "",
+          "description": "Indicators over the price: moving averages, bands and oscillators.",
           "name": "indicators",
           "optional": false,
           "type": "LayoutIndicator[]"
         },
         {
           "default": "null",
-          "description": "",
+          "description": "The volume column, which `volume` indicators and VWAP read.",
           "name": "volume",
           "optional": false,
           "type": "string | null"
         },
         {
           "default": "[]",
-          "description": "",
+          "description": "The user's drawings: trend lines, horizontal lines, Fibonacci retracements, rectangles and notes.",
           "name": "drawings",
           "optional": false,
           "type": "LayoutDrawing[]"
         },
         {
           "default": "false",
-          "description": "",
+          "description": "Whether series are drawn as their change from the first point shown, to compare them.",
           "name": "compare",
           "optional": false,
           "type": "boolean"
         },
         {
           "default": "null",
-          "description": "",
+          "description": "A column of events, such as dividends, marked along the x axis where it has a value.",
           "name": "events",
           "optional": false,
           "type": "string | null"
         },
         {
           "default": "true",
-          "description": "",
+          "description": "A pie is a ring, with the total in the middle, unless this is off.",
           "name": "donut",
           "optional": false,
           "type": "boolean"
         },
         {
           "default": "true",
-          "description": "",
+          "description": "Values on bars and shares on slices, where they fit, unless this is off.",
           "name": "labels",
           "optional": false,
           "type": "boolean"
         },
         {
-          "description": "",
+          "description": "The column sizing a scatter's dots.",
           "name": "size",
           "optional": true,
           "type": "string"
         },
         {
-          "description": "",
+          "description": "The column naming each dot, which a click selects by.",
           "name": "id",
           "optional": true,
           "type": "string"
         },
         {
-          "description": "",
+          "description": "More columns the tooltip lists.",
           "name": "tooltip",
           "optional": true,
           "type": "string[]"
         },
         {
-          "description": "",
+          "description": "The API's fitted curve, drawn as a line through the dots.",
           "name": "fit",
           "optional": true,
           "type": "string"
@@ -22767,7 +22165,7 @@
           "type": "\"nyse\" | \"sifma\""
         },
         {
-          "description": "",
+          "description": "The session a trading-time axis keeps, opening and closing as `HH:MM` in New York time.",
           "name": "session",
           "optional": true,
           "type": "{ opens: string; closes: string }"
@@ -22785,13 +22183,13 @@
           "type": "boolean"
         },
         {
-          "description": "",
+          "description": "Whether the right axis is upside down.",
           "name": "reverse_y_right",
           "optional": true,
           "type": "boolean"
         },
         {
-          "description": "",
+          "description": "Which colour a rise takes: the gain's, or the loss's, as for a yield.",
           "name": "rising",
           "optional": true,
           "type": "\"gain\" | \"loss\""
@@ -22882,6 +22280,14 @@
       "module": "@basis/parallax",
       "name": "LayoutFilter",
       "purpose": "One filter of a layout."
+    },
+    {
+      "definition": "string extends ColumnOf<TRow> ? LayoutInput : TypedLayout<ColumnOf<TRow>>",
+      "exported": true,
+      "module": "@basis/parallax",
+      "name": "LayoutFor",
+      "parameters": "<TRow>",
+      "purpose": "A layout as written for a dataset of rows of `TRow`: one naming only its columns, or any `LayoutInput` for rows of no known type."
     },
     {
       "fields": [
@@ -23196,6 +22602,26 @@
       "purpose": "How a text column's values are ordered."
     },
     {
+      "fields": [
+        {
+          "description": "The condition on the cell's value, with a filter's operators and operands.",
+          "name": "when",
+          "optional": false,
+          "type": "{ op: \"eq\" | \"ne\" | \"lt\" | \"le\" | \"gt\" | \"ge\" | \"in\" | \"not_in\" | \"is_null\" | \"is_not_null\" | \"contains\" | \"not_contains\" | \"starts_with\" | \"ends_with\"; value: string | number | boolean | z.null(…); values: (string | number | boolean | z.null(…))[] }"
+        },
+        {
+          "description": "The style: the text in a tone's ink, a fill in its tint, and bold.",
+          "name": "format",
+          "optional": false,
+          "type": "{ tone: \"positive\" | \"negative\" | \"warning\" | \"info\" | \"neutral\" | null; fill: boolean; bold: boolean }"
+        }
+      ],
+      "exported": true,
+      "module": "@basis/parallax",
+      "name": "LayoutRule",
+      "purpose": "A conditional format."
+    },
+    {
       "definition": "z.output<typeof scalar>",
       "exported": true,
       "module": "@basis/parallax",
@@ -23434,71 +22860,6 @@
       "purpose": "Arrow IPC stream bytes to load as a dataset: whole, the buffer moved to the worker with the message, or null when a response's body follows in `load-bytes` as it arrives."
     },
     {
-      "extends": [
-        "Omit<Message<\"parallax.v1.ChartMeasure\">, \"$typeName\" | \"$unknown\" | \"viewId\" | \"found\" | \"rows\">"
-      ],
-      "fields": [
-        {
-          "description": "The rows' x values, and their axis positions.",
-          "name": "fromX",
-          "optional": false,
-          "type": "string"
-        },
-        {
-          "description": "",
-          "name": "toX",
-          "optional": false,
-          "type": "string"
-        },
-        {
-          "description": "",
-          "name": "fromPosition",
-          "optional": false,
-          "type": "number"
-        },
-        {
-          "description": "",
-          "name": "toPosition",
-          "optional": false,
-          "type": "number"
-        },
-        {
-          "description": "Their prices, in the price column's format.",
-          "name": "fromValue",
-          "optional": false,
-          "type": "string"
-        },
-        {
-          "description": "",
-          "name": "toValue",
-          "optional": false,
-          "type": "string"
-        },
-        {
-          "description": "The later price less the earlier, in the price's format, and as a percentage of the earlier; \"\" when the earlier is zero.",
-          "name": "change",
-          "optional": false,
-          "type": "string"
-        },
-        {
-          "description": "",
-          "name": "percent",
-          "optional": false,
-          "type": "string"
-        },
-        {
-          "description": "",
-          "name": "rows",
-          "optional": false,
-          "type": "number"
-        }
-      ],
-      "exported": true,
-      "module": "@basis/parallax",
-      "name": "Measurement",
-      "purpose": "What changed between two rows of a chart's series, as the engine measured and wrote it."
-    },
-    {
       "fields": [
         {
           "description": "",
@@ -23535,6 +22896,36 @@
       "module": "@basis/parallax",
       "name": "MeasureMenuProps",
       "purpose": "What a pivot's measure menu is given."
+    },
+    {
+      "extends": [
+        "Omit<NonNullable<LayoutInput[\"measures\"]> extends readonly (infer TItem)[] ? TItem : never, \"column\" | \"unit_column\" | \"weight\">"
+      ],
+      "fields": [
+        {
+          "description": "",
+          "name": "column",
+          "optional": true,
+          "type": "TColumn | null"
+        },
+        {
+          "description": "",
+          "name": "weight",
+          "optional": true,
+          "type": "TColumn | null"
+        },
+        {
+          "description": "",
+          "name": "unit_column",
+          "optional": true,
+          "type": "TColumn | null"
+        }
+      ],
+      "exported": false,
+      "module": "@basis/parallax",
+      "name": "MeasureOf",
+      "parameters": "<TColumn extends string>",
+      "purpose": "A measure or a total whose column, weight and unit are columns of `TColumn`."
     },
     {
       "fields": [
@@ -24018,7 +23409,7 @@
           "type": "readonly (string | null)[]"
         }
       ],
-      "exported": true,
+      "exported": false,
       "module": "@basis/parallax",
       "name": "SeriesData",
       "purpose": "A line or area series: points in order, with NaN y values at breaks."
@@ -24198,6 +23589,13 @@
       "purpose": "The name of a token in a theme's parameters, such as `accent` or `fontSize`."
     },
     {
+      "definition": "(typeof tones)[number]",
+      "exported": true,
+      "module": "@basis/parallax",
+      "name": "Tone",
+      "purpose": "A status's tone."
+    },
+    {
       "fields": [
         {
           "description": "",
@@ -24350,26 +23748,6 @@
       "fields": [
         {
           "description": "",
-          "name": "send",
-          "optional": false,
-          "type": "(bytes: Uint8Array) => void"
-        },
-        {
-          "description": "",
-          "name": "close",
-          "optional": false,
-          "type": "() => void"
-        }
-      ],
-      "exported": true,
-      "module": "@basis/parallax",
-      "name": "Transport",
-      "purpose": "Moves encoded messages between the client and an engine."
-    },
-    {
-      "fields": [
-        {
-          "description": "",
           "name": "depth",
           "optional": false,
           "type": "(row: number) => number"
@@ -24407,6 +23785,186 @@
     {
       "fields": [
         {
+          "description": "The layout's version, `layoutVersion` in what this package writes. Older versions are read and brought up to date, as the Rust crate does.",
+          "name": "version",
+          "optional": true,
+          "type": "number"
+        },
+        {
+          "default": "\"\"",
+          "description": "The dataset the view reads. A component's or `useView`'s layout may leave it empty, since its dataset names it; when both are given they must agree.",
+          "name": "dataset",
+          "optional": true,
+          "type": "string"
+        },
+        {
+          "default": "{}",
+          "description": "The dataset's parameters. Vestigial: the engine still reads them, but no table in the browser has parameters, so views name a dataset alone.",
+          "name": "parameters",
+          "optional": true,
+          "type": "Record<string, string>"
+        },
+        {
+          "default": "[]",
+          "description": "The columns of a flat view, in order; every column when empty.",
+          "name": "columns",
+          "optional": true,
+          "type": "string[]"
+        },
+        {
+          "default": "[]",
+          "description": "The row groups, outermost first: a grid's groups, or a pivot's rows.",
+          "name": "group_by",
+          "optional": true,
+          "type": "string[]"
+        },
+        {
+          "default": "[]",
+          "description": "The column groups of a pivot: each value of these columns heads its own columns of the measures.",
+          "name": "split_by",
+          "optional": true,
+          "type": "string[]"
+        },
+        {
+          "default": "[]",
+          "description": "The measures of a grouped view, each an aggregate of a column, such as the sum of `market_value_usd`.",
+          "name": "measures",
+          "optional": true,
+          "type": "({ column?: string | null; aggregate: \"count\" | \"count_all\" | \"sum\" | \"mean\" | \"weighted_mean\" | \"min\" | \"max\" | \"first\" | \"last\" | \"distinct_count\" | \"variance\" | \"std_dev\" | \"median\" | \"percentile\"; percentile?: number | null; weight?: string | null; unit_column?: string | null; show_as?: \"value\" | \"percent_of_grand_total\" | \"percent_of_column_total\" | \"percent_of_row_total\" | \"percent_of_parent\" | \"running_total\"; format?: { decimals?: number | null; thousands?: boolean | null; percent?: boolean; abbreviate?: \"thousands\" | \"millions\" | \"billions\" | null; suffixes?: \"amount\" | \"par\"; bps?: boolean; thirty_seconds?: \"thirty_seconds\" | \"halves\" | \"quarters\" | \"eighths\"; negative?: \"minus\" | \"parentheses\"; zone?: string | null; precision?: \"seconds\" | \"milliseconds\" | \"microseconds\" } | null })[]"
+        },
+        {
+          "default": "[]",
+          "description": "The row filters, such as `{ column: \"ticker\", op: \"eq\", value: \"UST10Y\" }`.",
+          "name": "filters",
+          "optional": true,
+          "type": "({ column: string; op: \"eq\" | \"ne\" | \"lt\" | \"le\" | \"gt\" | \"ge\" | \"in\" | \"not_in\" | \"is_null\" | \"is_not_null\" | \"contains\" | \"not_contains\" | \"starts_with\" | \"ends_with\"; value?: string | number | boolean | z.null(…); values?: (string | number | boolean | z.null(…))[]; columns?: string[] })[]"
+        },
+        {
+          "default": "[]",
+          "description": "The sorts of a flat view, the first deciding first.",
+          "name": "sort",
+          "optional": true,
+          "type": "{ column: string; descending?: boolean }[]"
+        },
+        {
+          "default": "{ by: \"key\", descending: false }",
+          "description": "How groups are ordered among their siblings: by their key, by default, or by a measure.",
+          "name": "group_sort",
+          "optional": true,
+          "type": "{ by?: \"key\" | { measure: number }; descending?: boolean }"
+        },
+        {
+          "default": "[]",
+          "description": "Filters on the groups' measures, such as the groups whose sum passes a value.",
+          "name": "having",
+          "optional": true,
+          "type": "({ measure: number; op: \"gt\" | \"ge\" | \"lt\" | \"le\" | \"eq\" | \"ne\"; value: number })[]"
+        },
+        {
+          "default": "null",
+          "description": "Keeps the N largest or smallest groups among each set of siblings, by a measure, with an Other row for the rest unless `other` is false.",
+          "name": "top_n",
+          "optional": true,
+          "type": "{ n: number; measure: number; largest?: boolean; other?: boolean } | null"
+        },
+        {
+          "default": "0",
+          "description": "How many levels of groups open by default; none unless set.",
+          "name": "expand_depth",
+          "optional": true,
+          "type": "number"
+        },
+        {
+          "default": "[]",
+          "description": "The groups the user opened or closed, each by its values from the outermost level.",
+          "name": "expanded",
+          "optional": true,
+          "type": "({ path: (string | number | boolean | z.null(…))[]; expanded: boolean })[]"
+        },
+        {
+          "default": "{}",
+          "description": "Display formats by source column, in place of the API's; a measure takes its column's unless it sets its own.",
+          "name": "formats",
+          "optional": true,
+          "type": "Record<string, { decimals?: number | null; thousands?: boolean | null; percent?: boolean; abbreviate?: \"thousands\" | \"millions\" | \"billions\" | null; suffixes?: \"amount\" | \"par\"; bps?: boolean; thirty_seconds?: \"thirty_seconds\" | \"halves\" | \"quarters\" | \"eighths\"; negative?: \"minus\" | \"parentheses\"; zone?: string | null; precision?: \"seconds\" | \"milliseconds\" | \"microseconds\" }>"
+        },
+        {
+          "default": "{}",
+          "description": "Column widths in CSS pixels, as the user set them: by source column in a flat view, `__measure:0`, `__measure:1` and so on for a grouped view's data columns, and `__tree` for its group column. The engine ignores them.",
+          "name": "column_widths",
+          "optional": true,
+          "type": "Record<string, number>"
+        },
+        {
+          "default": "null",
+          "description": "Draws the view as a chart: its kind, columns, axis, indicators, panes and drawings, which `<Chart>` reads.",
+          "name": "chart",
+          "optional": true,
+          "type": "{ kind: \"line\" | \"area\" | \"bar\" | \"scatter\" | \"heatmap\" | \"histogram\" | \"candlestick\" | \"ohlc\" | \"pie\" | \"waterfall\"; x?: string; y?: string[]; y_right?: string[]; series?: string | null; ohlc?: { open: string; high: string; low: string; close: string } | null; axis?: \"value\" | \"trading\" | \"tenor\"; log_y?: boolean; stacked?: boolean; horizontal?: boolean; range?: { from: number; to: number } | null; hidden?: string[]; indicators?: z.discriminatedUnion(…)[]; volume?: string | null; drawings?: z.discriminatedUnion(…)[]; compare?: boolean; events?: string | null; donut?: boolean; labels?: boolean; size?: string; id?: string; tooltip?: string[]; fit?: string; tenor_spacing?: \"even\" | \"length\"; calendar?: \"nyse\" | \"sifma\"; session?: { opens: string; closes: string }; panes?: ({ columns: string[]; kind?: \"line\" | \"bar\"; title?: string; reverse?: boolean })[]; reverse_y?: boolean; reverse_y_right?: boolean; rising?: \"gain\" | \"loss\"; drawing_tools?: boolean } | null"
+        },
+        {
+          "default": "\"\"",
+          "description": "Text a row must hold, ignoring case, in one of the searched columns, as well as pass the filters: a flat view's text columns, or a pivot's group and column-group columns. Empty searches nothing.",
+          "name": "search",
+          "optional": true,
+          "type": "string"
+        },
+        {
+          "default": "[]",
+          "description": "Columns of a flat or detail view kept at the left while the rest scroll, in order; they come first, whatever `columns` says.",
+          "name": "pinned",
+          "optional": true,
+          "type": "string[]"
+        },
+        {
+          "default": "{}",
+          "description": "Header text by source column, or by a measure's header such as `sum(par)`; a column without one shows its name. An export's headers and a chart's legend take them too.",
+          "name": "titles",
+          "optional": true,
+          "type": "Record<string, string>"
+        },
+        {
+          "default": "[]",
+          "description": "The totals row of a flat or detail view: at most one measure of each column, such as its sum.",
+          "name": "totals",
+          "optional": true,
+          "type": "({ column?: string | null; aggregate: \"count\" | \"count_all\" | \"sum\" | \"mean\" | \"weighted_mean\" | \"min\" | \"max\" | \"first\" | \"last\" | \"distinct_count\" | \"variance\" | \"std_dev\" | \"median\" | \"percentile\"; percentile?: number | null; weight?: string | null; unit_column?: string | null; show_as?: \"value\" | \"percent_of_grand_total\" | \"percent_of_column_total\" | \"percent_of_row_total\" | \"percent_of_parent\" | \"running_total\"; format?: { decimals?: number | null; thousands?: boolean | null; percent?: boolean; abbreviate?: \"thousands\" | \"millions\" | \"billions\" | null; suffixes?: \"amount\" | \"par\"; bps?: boolean; thirty_seconds?: \"thirty_seconds\" | \"halves\" | \"quarters\" | \"eighths\"; negative?: \"minus\" | \"parentheses\"; zone?: string | null; precision?: \"seconds\" | \"milliseconds\" | \"microseconds\" } | null })[]"
+        },
+        {
+          "default": "false",
+          "description": "Groups by `group_by` with the rows under them, in `sort` order and with `columns`, as a grid does, rather than as a pivot of measures.",
+          "name": "detail",
+          "optional": true,
+          "type": "boolean"
+        },
+        {
+          "description": "How text columns' values are ordered, by column: `\"tenor\"` by length, `\"rating\"` best first, `{ values }` as listed, or `{ by }` by another column's smallest value. The Rust leaves them out of a layout that sets none, so there is no default.",
+          "name": "orders",
+          "optional": true,
+          "type": "Record<string, \"text\" | \"tenor\" | \"rating\" | { values: string[] } | { by: string }>"
+        },
+        {
+          "description": "",
+          "name": "cells",
+          "optional": true,
+          "type": "Partial<Record<TColumn, ValueOf<\"cells\">>>"
+        },
+        {
+          "description": "",
+          "name": "rules",
+          "optional": true,
+          "type": "Partial<Record<TColumn, ValueOf<\"rules\">>>"
+        }
+      ],
+      "exported": false,
+      "module": "@basis/parallax",
+      "name": "TypedLayout",
+      "parameters": "<TColumn extends string>",
+      "purpose": "A layout as written whose every column name is one of `TColumn`."
+    },
+    {
+      "fields": [
+        {
           "description": "",
           "name": "kind",
           "optional": false,
@@ -24429,6 +23987,14 @@
       "module": "@basis/parallax",
       "name": "UnloadRequest",
       "purpose": "A dataset to drop."
+    },
+    {
+      "definition": "NonNullable<LayoutInput[TKey]> extends Readonly<Record<string, infer TValue>> ? TValue : never",
+      "exported": false,
+      "module": "@basis/parallax",
+      "name": "ValueOf",
+      "parameters": "<TKey extends keyof LayoutInput>",
+      "purpose": "A value of one of the layout's records by column, as written."
     },
     {
       "fields": [
@@ -24485,44 +24051,6 @@
       "module": "@basis/parallax",
       "name": "View",
       "purpose": "A view as `useView` returns it."
-    },
-    {
-      "fields": [
-        {
-          "description": "",
-          "name": "frame",
-          "optional": false,
-          "type": "(frame: FrameData) => void"
-        },
-        {
-          "description": "A chart's reduction, for views whose layout has a chart the engine reduces.",
-          "name": "chart",
-          "optional": true,
-          "type": "(frame: ChartFrameData) => void"
-        },
-        {
-          "description": "",
-          "name": "opened",
-          "optional": true,
-          "type": "(opened: ViewOpened) => void"
-        },
-        {
-          "description": "",
-          "name": "status",
-          "optional": true,
-          "type": "(status: TableStatus) => void"
-        },
-        {
-          "description": "",
-          "name": "error",
-          "optional": true,
-          "type": "(message: string) => void"
-        }
-      ],
-      "exported": true,
-      "module": "@basis/parallax",
-      "name": "ViewListener",
-      "purpose": "What a view reports back."
     },
     {
       "extends": [

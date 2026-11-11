@@ -13,6 +13,25 @@ anything of an app.
   field with buttons that step it; and `Toolbar`, with `ToolbarButton`, `ToolbarGroup` and `ToolbarSeparator`. What to
   do: nothing.
 
+- `@basis/parallax`: a layout typed by its dataset's rows. `useDataset<Position>(...)` gives a dataset whose `Grid`,
+  `Pivot`, `Chart` and `useView` layouts name only `Position`'s columns, so a misspelt column, sort, filter, measure,
+  format, cell kind or rule is a type error where it is written; a dataset with no row type takes any name, as
+  before. `LayoutFor<TRow>`, `ColumnOf` and `AnyRow` are exported. About 40 internals moved from `@basis/parallax`
+  to `@basis/parallax/internals`: `BrowserEngine`, `Connection`, the `ViewHandle` class, `decodeFrame` and the other
+  decoders, `FrameError`, `decimalFromWords`, `exactDecimal`, `isNegativeText`, `pathValue`, `timestampText`,
+  `layoutSchema`, the width keys, `trapReason`, `exportTypes`, and the theme's readers and style installers
+  (`readTheme`, `readChartColors`, `defaultTheme`, `sameTheme`, `installTheme`, `tokenStyles` and their kin). What to
+  do: an app that imported one of them imports it from `@basis/parallax/internals`; `ViewHandle` stays a type in
+  `@basis/parallax`.
+
+- `@basis/parallax`'s grid: a right click on a cell opens its menu (copy, copy with headers, filter by the value or
+  exclude it, sort, pin, fit, export, and the app's `contextMenuItems`); `onCellClick`, `onRowActivate` and
+  `onContextMenu`; `GridHandle.scrollTo`, `getSelection` and `copy`; and a drag that selects past the edge scrolls.
+  A layout's `cells` draws a column as a data bar, a heat fill, a badge, a sparkline or a link, and its `rules`
+  style cells by value, in the grid and in the Excel export; the theme gains `positive`, `warning` and `info` inks
+  and their tints. Row selection holds every row but some: `onRowsChange` gets a `RowsChosen`, and `selected` takes
+  one, so the header's checkbox checks every row of a flat view without fetching a key. What to do: nothing.
+
 - Form fields bound to a TanStack Form field: `FormTextField`, `FormAmountField`, `FormDateField`, `FormSelectField`
   and `FormCheckboxField`, with `submitErrors` and `errorsOnFields` for a 422's errors; `UnsavedChangesGuard`, which
   asks before a page with unsaved changes is left; and `TypedConfirmDialog`, which asks for a name to be typed before

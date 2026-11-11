@@ -114,4 +114,5 @@ interface Interaction {
 }
 
 export { rowSelectionOf };
+export type { AnyRow, LayoutFor } from "#layout/typed.ts";
 export type { DrillRequest, GridEventProps, GridInputs, GridRowSelection, Interaction, OpenMenu };

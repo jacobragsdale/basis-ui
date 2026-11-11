@@ -10,6 +10,7 @@ import type { ChartFrameData } from "#frame/chart-data.ts";
 import type { FrameData } from "#frame/frame.ts";
 import { checkLayout } from "#layout/layout.ts";
 import type { Layout, LayoutInput } from "#layout/layout.ts";
+import type { AnyRow, LayoutFor } from "#layout/typed.ts";
 
 import { ViewAttempt } from "./attempt.ts";
 import type { ChartSink, FrameSink, Opened, Opening, Sinks } from "./attempt.ts";
@@ -177,6 +178,11 @@ function canOpen(dataset: Dataset): boolean {
  * rather than into the state, and with `onFrame`, the frames do, so a scroll that asks `handle` for rows renders
  * nothing.
  */
+function useView<TRow extends AnyRow = AnyRow>(
+  dataset: Dataset<TRow>,
+  layout: LayoutFor<TRow>,
+  options?: ViewOptions,
+): View;
 function useView(dataset: Dataset, layout: LayoutInput, options: ViewOptions = {}): View {
   const client = useParallaxClient();
   const checked = checkLayout({ ...layout, dataset: dataset.name });
