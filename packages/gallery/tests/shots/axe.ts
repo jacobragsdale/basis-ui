@@ -49,6 +49,7 @@ const exceptions: Readonly<Record<string, Readonly<Record<string, string>>>> = {
   },
   "hover-card": { region: portalledPopup },
   menubar: { region: portalledPopup },
+  multiselect: { region: portalledPopup },
   savedviews: { region: portalledPopup },
   "navigation-menu": { "aria-hidden-focus": focusGuards },
   select: { region: portalledPopup },

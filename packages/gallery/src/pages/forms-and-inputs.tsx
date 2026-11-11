@@ -1,12 +1,18 @@
 /* The forms and inputs family, in the design's order: Button, every variant at every size and the states a page puts
- * it in, and ButtonLink, a link drawn as a Button, here; every other component in its section's module under
- * forms-and-inputs/, each in every variant, size and state; and a form on TanStack Form. */
+ * it in, and ButtonLink, a link drawn as a Button, here; every other component, NumberField, MultiSelect and Toolbar
+ * among them, in its section's module under forms-and-inputs/, each in every variant, size and state; and a form on
+ * TanStack Form. */
 
 import { ArrowRightIcon, Button, ButtonLink, DownloadIcon, PlusIcon, Spinner } from "@basis/ui";
 import type { ReactElement } from "react";
 
 import { ButtonGroupSection } from "./forms-and-inputs/button-group.tsx";
 import { CheckboxSection, RadioGroupSection, SwitchSection } from "./forms-and-inputs/choices.tsx";
+import {
+  MultiSelectSection,
+  NumberFieldSection,
+  ToolbarSection,
+} from "./forms-and-inputs/choosing.tsx";
 import { ComboboxSection } from "./forms-and-inputs/combobox.tsx";
 import { FieldSection, LabelSection } from "./forms-and-inputs/fields.tsx";
 import { InputGroupSection, InputSection, TextareaSection } from "./forms-and-inputs/inputs.tsx";
@@ -164,11 +170,14 @@ function FormsAndInputs(): ReactElement {
       <RadioGroupSection />
       <SwitchSection />
       <SliderSection />
+      <NumberFieldSection />
       <SelectSection />
       <NativeSelectSection />
+      <MultiSelectSection />
       <ComboboxSection />
       <ToggleSection />
       <ToggleGroupSection />
+      <ToolbarSection />
       <OrderFormSection />
     </div>
   );

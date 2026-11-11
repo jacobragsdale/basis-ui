@@ -9,6 +9,10 @@ anything of an app.
 
 ## Unreleased
 
+- `MultiSelect`, several choices from a short list with "Select all" and a count; `NumberField`, Base UI's number
+  field with buttons that step it; and `Toolbar`, with `ToolbarButton`, `ToolbarGroup` and `ToolbarSeparator`. What to
+  do: nothing.
+
 - Form fields bound to a TanStack Form field: `FormTextField`, `FormAmountField`, `FormDateField`, `FormSelectField`
   and `FormCheckboxField`, with `submitErrors` and `errorsOnFields` for a 422's errors; `UnsavedChangesGuard`, which
   asks before a page with unsaved changes is left; and `TypedConfirmDialog`, which asks for a name to be typed before

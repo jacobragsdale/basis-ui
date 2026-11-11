@@ -66,6 +66,7 @@ export { Slider } from "./components/slider.tsx";
 export { Switch } from "./components/switch.tsx";
 export { Textarea } from "./components/textarea.tsx";
 export { Toggle } from "./components/toggle.tsx";
+export { Toolbar, ToolbarButton, ToolbarGroup, ToolbarSeparator } from "./components/toolbar.tsx";
 export { ToggleGroup, ToggleGroupItem } from "./components/toggle-group.tsx";
 
 // Overlays and menus.
@@ -360,6 +361,12 @@ export { amountSchema } from "./components/amount-schema.ts";
 export { AsOfDatePicker, type AsOfDatePickerProps } from "./components/as-of-date-picker.tsx";
 export { DatePicker, type DatePickerProps } from "./components/date-picker.tsx";
 export { MonthPicker, type MonthPickerProps } from "./components/month-picker.tsx";
+export { NumberField, type NumberFieldProps } from "./components/number-field.tsx";
+export {
+  MultiSelect,
+  type MultiSelectOption,
+  type MultiSelectProps,
+} from "./components/multi-select.tsx";
 export { DateRangePicker } from "./components/date-range-picker.tsx";
 export {
   dateRangePresets,

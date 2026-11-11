@@ -210,11 +210,14 @@ const sections = [
   "RadioGroup",
   "Switch",
   "Slider",
+  "NumberField",
   "Select",
   "NativeSelect",
+  "MultiSelect",
   "Combobox",
   "Toggle",
   "ToggleGroup",
+  "Toolbar",
   "A form on TanStack Form",
 ];
 

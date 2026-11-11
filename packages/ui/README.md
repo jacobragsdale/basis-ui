@@ -739,6 +739,16 @@ such as Button's `xs` and `sm` under another theme, carry `min-h-target` and `mi
 than that, such as Checkbox's box, Switch's track or Slider's thumb, is a 24 px target with its shape drawn inside it,
 so it keeps shadcn's look.
 
+### Choosing
+
+`MultiSelect` chooses several of a short list the page holds, such as books: give it `options`, each a value and its
+words, and a `noun` for the count. Its trigger names the one choice, counts several, "3 of 8 books", or says "All
+books"; its list opens with "Select all", which chooses every option and, chosen again, clears them, and stays open
+as options are chosen. `onValueChange` gets the values in the options' order. `NumberField` is Base UI's number field,
+a count stepped by its buttons, the arrow keys or the wheel within `min` and `max`; an amount a user types, with `1.5m`
+or `25bp`, is `AmountInput`'s. `Toolbar` is a row of actions, `ToolbarButton`s, ghost and small unless set, in
+`ToolbarGroup`s between `ToolbarSeparator`s: Tab reaches it once and the arrow keys move along it.
+
 ### The theme's tokens
 
 A plain element, such as a page's own panel, takes its colours from the theme's tokens, drawn whole: no class takes an

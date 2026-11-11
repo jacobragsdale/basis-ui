@@ -2928,6 +2928,234 @@
       "extends": [
         "ComponentProps<\"div\">"
       ],
+      "family": "toolbar",
+      "module": "@basis/ui",
+      "name": "Toolbar",
+      "props": [
+        {
+          "description": "Classes that place it: margin, width, and flex or grid placement. Its look comes from its props, never from classes.",
+          "from": "@base-ui/react",
+          "name": "className",
+          "optional": true,
+          "type": "string | ((state: ToolbarRootState) => string | undefined) | undefined"
+        },
+        {
+          "description": "Renders it as another element or component, such as a router's link, keeping its behaviour: a React element, or a function of its props and state.",
+          "from": "@base-ui/react",
+          "name": "render",
+          "optional": true,
+          "type": "React.ReactElement | ComponentRenderFn<end of th, ToolbarRootState> | undefined"
+        },
+        {
+          "description": "Inline styles: in an app, CSS variables only, which a class reads, as `style={{ \"--fill\": \"40%\" }}`.",
+          "from": "@base-ui/react",
+          "name": "style",
+          "optional": true,
+          "type": "React.CSSProperties | ((state: ToolbarRootState) => React.CSSProperties | undefined) | undefined"
+        },
+        {
+          "description": "",
+          "from": "@base-ui/react",
+          "name": "disabled",
+          "optional": true,
+          "type": "boolean | undefined"
+        },
+        {
+          "default": "'horizontal'",
+          "description": "The orientation of the toolbar.",
+          "from": "@base-ui/react",
+          "name": "orientation",
+          "optional": true,
+          "type": "ToolbarRoot.Orientation | undefined"
+        },
+        {
+          "default": "true",
+          "description": "If `true`, using keyboard navigation will wrap focus to the other end of the toolbar once the end is reached.",
+          "from": "@base-ui/react",
+          "name": "loopFocus",
+          "optional": true,
+          "type": "boolean | undefined"
+        }
+      ],
+      "purpose": "A toolbar: name it with `aria-label`, such as \"Positions\". The arrow keys move between its controls, and Tab reaches it once.",
+      "use": "For a row of actions over a grid, a chart or an editor. For a few buttons that belong together anywhere, use ButtonGroup; for menus, Menubar.",
+      "with": [
+        "ButtonGroup",
+        "Menubar",
+        "Button",
+        "ToggleGroup"
+      ],
+      "variants": {},
+      "example": "import { DownloadIcon, RefreshCwIcon, Toolbar, ToolbarButton, ToolbarGroup, ToolbarSeparator } from \"@basis/ui\";\n\n<Toolbar aria-label=\"Positions\">\n  <ToolbarGroup aria-label=\"Data\">\n    <ToolbarButton>\n      <RefreshCwIcon data-icon=\"inline-start\" />\n      Refresh\n    </ToolbarButton>\n  </ToolbarGroup>\n  <ToolbarSeparator />\n  <ToolbarButton>\n    <DownloadIcon data-icon=\"inline-start\" />\n    Export\n  </ToolbarButton>\n</Toolbar>;\n"
+    },
+    {
+      "extends": [
+        "ComponentProps<\"button\">"
+      ],
+      "family": "toolbar",
+      "module": "@basis/ui",
+      "name": "ToolbarButton",
+      "props": [
+        {
+          "default": "true",
+          "description": "Whether the component renders a native `<button>` element when replacing it via the `render` prop. Set to `false` if the rendered element is not a button (for example, `<div>`).",
+          "from": "@base-ui/react",
+          "name": "nativeButton",
+          "optional": true,
+          "type": "boolean | undefined"
+        },
+        {
+          "description": "Classes that place it: margin, width, and flex or grid placement. Its look comes from its props, never from classes.",
+          "from": "@base-ui/react",
+          "name": "className",
+          "optional": true,
+          "type": "string | ((state: ToolbarButtonState) => string | undefined) | undefined"
+        },
+        {
+          "description": "Renders it as another element or component, such as a router's link, keeping its behaviour: a React element, or a function of its props and state.",
+          "from": "@base-ui/react",
+          "name": "render",
+          "optional": true,
+          "type": "React.ReactElement | ComponentRenderFn<type Sta, ToolbarButtonState> | undefined"
+        },
+        {
+          "description": "Inline styles: in an app, CSS variables only, which a class reads, as `style={{ \"--fill\": \"40%\" }}`.",
+          "from": "@base-ui/react",
+          "name": "style",
+          "optional": true,
+          "type": "React.CSSProperties | ((state: ToolbarButtonState) => React.CSSProperties | undefined) | undefined"
+        },
+        {
+          "default": "false",
+          "description": "When `true` the item is disabled.",
+          "from": "@base-ui/react",
+          "name": "disabled",
+          "optional": true,
+          "type": "boolean | undefined"
+        },
+        {
+          "default": "true",
+          "description": "When `true` the item remains focusable when disabled.",
+          "from": "@base-ui/react",
+          "name": "focusableWhenDisabled",
+          "optional": true,
+          "type": "boolean | undefined"
+        }
+      ],
+      "purpose": "A button in the toolbar, in Button's variants and sizes: ghost and small unless set.",
+      "variants": {
+        "variant": {
+          "default": "default",
+          "options": [
+            "default",
+            "outline",
+            "secondary",
+            "ghost",
+            "destructive",
+            "link"
+          ]
+        },
+        "size": {
+          "default": "default",
+          "options": [
+            "default",
+            "xs",
+            "sm",
+            "lg",
+            "icon",
+            "icon-xs",
+            "icon-sm",
+            "icon-lg"
+          ]
+        }
+      }
+    },
+    {
+      "extends": [
+        "ComponentProps<\"div\">"
+      ],
+      "family": "toolbar",
+      "module": "@basis/ui",
+      "name": "ToolbarGroup",
+      "props": [
+        {
+          "description": "Classes that place it: margin, width, and flex or grid placement. Its look comes from its props, never from classes.",
+          "from": "@base-ui/react",
+          "name": "className",
+          "optional": true,
+          "type": "string | ((state: ToolbarGroupState) => string | undefined) | undefined"
+        },
+        {
+          "description": "Renders it as another element or component, such as a router's link, keeping its behaviour: a React element, or a function of its props and state.",
+          "from": "@base-ui/react",
+          "name": "render",
+          "optional": true,
+          "type": "React.ReactElement | ComponentRenderFn<, ToolbarGroupState> | undefined"
+        },
+        {
+          "description": "Inline styles: in an app, CSS variables only, which a class reads, as `style={{ \"--fill\": \"40%\" }}`.",
+          "from": "@base-ui/react",
+          "name": "style",
+          "optional": true,
+          "type": "React.CSSProperties | ((state: ToolbarGroupState) => React.CSSProperties | undefined) | undefined"
+        },
+        {
+          "default": "false",
+          "description": "When `true` all toolbar items in the group are disabled.",
+          "from": "@base-ui/react",
+          "name": "disabled",
+          "optional": true,
+          "type": "boolean | undefined"
+        }
+      ],
+      "purpose": "A group of related controls in the toolbar, named with `aria-label`.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<\"div\">"
+      ],
+      "family": "toolbar",
+      "module": "@basis/ui",
+      "name": "ToolbarSeparator",
+      "props": [
+        {
+          "description": "Classes that place it: margin, width, and flex or grid placement. Its look comes from its props, never from classes.",
+          "from": "@base-ui/react",
+          "name": "className",
+          "optional": true,
+          "type": "string | ((state: SeparatorState) => string | undefined) | undefined"
+        },
+        {
+          "description": "Renders it as another element or component, such as a router's link, keeping its behaviour: a React element, or a function of its props and state.",
+          "from": "@base-ui/react",
+          "name": "render",
+          "optional": true,
+          "type": "React.ReactElement | ComponentRenderFn<, SeparatorState> | undefined"
+        },
+        {
+          "description": "Inline styles: in an app, CSS variables only, which a class reads, as `style={{ \"--fill\": \"40%\" }}`.",
+          "from": "@base-ui/react",
+          "name": "style",
+          "optional": true,
+          "type": "React.CSSProperties | ((state: SeparatorState) => React.CSSProperties | undefined) | undefined"
+        },
+        {
+          "default": "'horizontal'",
+          "description": "The orientation of the separator.",
+          "from": "@base-ui/react",
+          "name": "orientation",
+          "optional": true,
+          "type": "Orientation | undefined"
+        }
+      ],
+      "purpose": "A line between groups in the toolbar, across its direction.",
+      "variants": {}
+    },
+    {
+      "extends": [
+        "ComponentProps<\"div\">"
+      ],
       "family": "toggle-group",
       "module": "@basis/ui",
       "name": "ToggleGroup",
@@ -13613,6 +13841,305 @@
     },
     {
       "extends": [
+        "Omit<ComponentProps<\"div\">, \"className\" | \"render\">"
+      ],
+      "family": "number-field",
+      "module": "@basis/ui",
+      "name": "NumberField",
+      "props": [
+        {
+          "description": "Inline styles: in an app, CSS variables only, which a class reads, as `style={{ \"--fill\": \"40%\" }}`.",
+          "from": "@base-ui/react",
+          "name": "style",
+          "optional": true,
+          "type": "React.CSSProperties | ((state: NumberFieldRootState) => React.CSSProperties | undefined) | undefined"
+        },
+        {
+          "description": "The input's id, which a `FieldLabel`'s `htmlFor` names.",
+          "name": "id",
+          "optional": true,
+          "type": "string | undefined"
+        },
+        {
+          "description": "The minimum value of the input element.",
+          "from": "@base-ui/react",
+          "name": "min",
+          "optional": true,
+          "type": "number | undefined"
+        },
+        {
+          "description": "The maximum value of the input element.",
+          "from": "@base-ui/react",
+          "name": "max",
+          "optional": true,
+          "type": "number | undefined"
+        },
+        {
+          "default": "false",
+          "description": "When true, direct text entry may be outside the `min`/`max` range without clamping, so native range underflow/overflow validation can occur. Step-based interactions (keyboard arrows, buttons, wheel, scrub) still clamp.",
+          "from": "@base-ui/react",
+          "name": "allowOutOfRange",
+          "optional": true,
+          "type": "boolean | undefined"
+        },
+        {
+          "default": "0.1",
+          "description": "The small step value of the input element when incrementing while the alt key is held. Snaps to multiples of this value when `snapOnStep` is enabled.",
+          "from": "@base-ui/react",
+          "name": "smallStep",
+          "optional": true,
+          "type": "number | undefined"
+        },
+        {
+          "default": "1",
+          "description": "Amount to increment and decrement with the buttons and arrow keys, or to scrub with pointer movement in the scrub area. To always enable step validation on form submission, specify the `min` prop explicitly in conjunction with this prop. Specify `step=\"any\"` to always disable step validation; interactive stepping then uses a base amount of `1`, while the alt and shift keys still step by `smallStep` and `largeStep`.",
+          "from": "@base-ui/react",
+          "name": "step",
+          "optional": true,
+          "type": "number | 'any' | undefined"
+        },
+        {
+          "default": "10",
+          "description": "The large step value of the input element when incrementing while the shift key is held. Snaps to multiples of this value when `snapOnStep` is enabled.",
+          "from": "@base-ui/react",
+          "name": "largeStep",
+          "optional": true,
+          "type": "number | undefined"
+        },
+        {
+          "default": "false",
+          "description": "Whether the user must enter a value before submitting a form.",
+          "from": "@base-ui/react",
+          "name": "required",
+          "optional": true,
+          "type": "boolean | undefined"
+        },
+        {
+          "default": "false",
+          "description": "Whether the component should ignore user interaction.",
+          "from": "@base-ui/react",
+          "name": "disabled",
+          "optional": true,
+          "type": "boolean | undefined"
+        },
+        {
+          "default": "false",
+          "description": "Whether the user should be unable to change the field value.",
+          "from": "@base-ui/react",
+          "name": "readOnly",
+          "optional": true,
+          "type": "boolean | undefined"
+        },
+        {
+          "description": "Identifies the field when a form is submitted.",
+          "from": "@base-ui/react",
+          "name": "name",
+          "optional": true,
+          "type": "string | undefined"
+        },
+        {
+          "description": "Identifies the form that owns the hidden input. Useful when the number field is rendered outside the form.",
+          "from": "@base-ui/react",
+          "name": "form",
+          "optional": true,
+          "type": "string | undefined"
+        },
+        {
+          "description": "The raw numeric value of the field.",
+          "from": "@base-ui/react",
+          "name": "value",
+          "optional": true,
+          "type": "number | null | undefined"
+        },
+        {
+          "description": "The uncontrolled value of the field when it's initially rendered.",
+          "from": "@base-ui/react",
+          "name": "defaultValue",
+          "optional": true,
+          "type": "number | undefined"
+        },
+        {
+          "default": "false",
+          "description": "Whether to allow the user to scrub the input value with the mouse wheel while focused and hovering over the input.",
+          "from": "@base-ui/react",
+          "name": "allowWheelScrub",
+          "optional": true,
+          "type": "boolean | undefined"
+        },
+        {
+          "default": "false",
+          "description": "Whether the value should snap to the nearest step when incrementing or decrementing.",
+          "from": "@base-ui/react",
+          "name": "snapOnStep",
+          "optional": true,
+          "type": "boolean | undefined"
+        },
+        {
+          "description": "Options to format the input value.",
+          "from": "@base-ui/react",
+          "name": "format",
+          "optional": true,
+          "type": "Intl.NumberFormatOptions | undefined"
+        },
+        {
+          "description": "Callback fired when the number value changes.",
+          "from": "@base-ui/react",
+          "name": "onValueChange",
+          "optional": true,
+          "type": "((value: number | null, eventDetails: NumberFieldRoot.ChangeEventDetails) => void) | undefined"
+        },
+        {
+          "description": "Callback function that is fired when the value is committed. It runs later than `onValueChange`, when: - The input is blurred after typing a value. - The pointer is released after scrubbing or pressing the increment/decrement buttons.",
+          "from": "@base-ui/react",
+          "name": "onValueCommitted",
+          "optional": true,
+          "type": "((value: number | null, eventDetails: NumberFieldRoot.CommitEventDetails) => void) | undefined"
+        },
+        {
+          "description": "The locale of the input element. Defaults to the user's runtime locale.",
+          "from": "@base-ui/react",
+          "name": "locale",
+          "optional": true,
+          "type": "Intl.LocalesArgument | undefined"
+        },
+        {
+          "description": "A ref to access the hidden input element.",
+          "from": "@base-ui/react",
+          "name": "inputRef",
+          "optional": true,
+          "type": "React.Ref<HTMLInputElement> | undefined"
+        },
+        {
+          "description": "The input's name for assistive technology, where no label names it.",
+          "name": "aria-label",
+          "optional": true,
+          "type": "string | undefined"
+        },
+        {
+          "description": "Marks the input invalid, as its field's validation finds it.",
+          "name": "aria-invalid",
+          "optional": true,
+          "type": "boolean | undefined"
+        },
+        {
+          "description": "The ids of the elements that describe the input, such as its field's description.",
+          "name": "aria-describedby",
+          "optional": true,
+          "type": "string | undefined"
+        },
+        {
+          "description": "The input's text while it is empty.",
+          "name": "placeholder",
+          "optional": true,
+          "type": "string | undefined"
+        },
+        {
+          "description": "Places the field, as with `w-40`; its look is fixed.",
+          "name": "className",
+          "optional": true,
+          "type": "string | undefined"
+        }
+      ],
+      "purpose": "A number field with buttons that step it down and up. Label it with a `FieldLabel` whose `htmlFor` is its `id`, or with `aria-label`.",
+      "use": "For a small count or a setting stepped by a fixed amount, such as a number of days, a quantity of contracts or a precision. For an amount, a price or a rate a user types, with `1.5m` and `25bp`, use AmountInput.",
+      "with": [
+        "AmountInput",
+        "Input",
+        "Field",
+        "FieldLabel"
+      ],
+      "variants": {},
+      "example": "import { Field, FieldLabel, NumberField } from \"@basis/ui\";\n\n<Field>\n  <FieldLabel htmlFor=\"lookback\">Look back, in days</FieldLabel>\n  <NumberField id=\"lookback\" defaultValue={30} min={1} max={365} />\n</Field>;\n"
+    },
+    {
+      "extends": [
+        "Omit<Parameters<typeof selectTriggerVariants>[0] extends undefined ? never : Parameters<typeof selectTriggerVariants>[0], \"class\" | \"className\">"
+      ],
+      "family": "multi-select",
+      "module": "@basis/ui",
+      "name": "MultiSelect",
+      "props": [
+        {
+          "description": "The options, in the order the list shows them.",
+          "name": "options",
+          "optional": false,
+          "type": "readonly MultiSelectOption<TValue>[]"
+        },
+        {
+          "description": "The values chosen, in the options' order, when the app controls them.",
+          "name": "value",
+          "optional": true,
+          "type": "readonly TValue[] | undefined"
+        },
+        {
+          "description": "The values an uncontrolled select starts with; none unless set.",
+          "name": "defaultValue",
+          "optional": true,
+          "type": "readonly TValue[] | undefined"
+        },
+        {
+          "description": "Called with the values chosen, in the options' order, each time one is chosen or cleared.",
+          "name": "onValueChange",
+          "optional": true,
+          "type": "((value: readonly TValue[]) => void) | undefined"
+        },
+        {
+          "description": "What the options are, in the plural, for the count, such as \"books\"; \"items\" unless set.",
+          "name": "noun",
+          "optional": true,
+          "type": "string | undefined"
+        },
+        {
+          "description": "What the trigger says while none is chosen; \"None\" unless set.",
+          "name": "placeholder",
+          "optional": true,
+          "type": "string | undefined"
+        },
+        {
+          "description": "The trigger's id, which a `FieldLabel`'s `htmlFor` names.",
+          "name": "id",
+          "optional": true,
+          "type": "string | undefined"
+        },
+        {
+          "description": "The trigger's name for assistive technology, where no label names it.",
+          "name": "aria-label",
+          "optional": true,
+          "type": "string | undefined"
+        },
+        {
+          "description": "Whether the select is disabled.",
+          "name": "disabled",
+          "optional": true,
+          "type": "boolean | undefined"
+        },
+        {
+          "description": "Whether the list starts open.",
+          "name": "defaultOpen",
+          "optional": true,
+          "type": "boolean | undefined"
+        },
+        {
+          "description": "Places the select, as with `w-64`; its look is fixed.",
+          "name": "className",
+          "optional": true,
+          "type": "string | undefined"
+        }
+      ],
+      "purpose": "A select of several options, with \"Select all\" and a count. Label it with a `FieldLabel` whose `htmlFor` is its `id`, or with `aria-label`.",
+      "use": "For choosing several of a short list the page holds, such as books, desks or currencies. For one choice, use Select; for a search an API answers, EntityPicker with `multiple`; for a hierarchy, TreeSelect.",
+      "with": [
+        "Select",
+        "EntityPicker",
+        "TreeSelect",
+        "Field",
+        "FieldLabel"
+      ],
+      "variants": {},
+      "example": "import { Field, FieldLabel, MultiSelect } from \"@basis/ui\";\n\nconst books = [\n  { label: \"Rates\", value: \"rates\" },\n  { label: \"Credit\", value: \"credit\" },\n  { label: \"Agency\", value: \"agency\" },\n] as const;\n\n<Field>\n  <FieldLabel htmlFor=\"books\">Books</FieldLabel>\n  <MultiSelect id=\"books\" options={books} noun=\"books\" defaultValue={[\"rates\", \"credit\"]} />\n</Field>;\n"
+    },
+    {
+      "extends": [
         "Omit<ComponentProps<\"button\">, \"value\" | \"defaultValue\" | \"onChange\" | \"children\" | \"type\">"
       ],
       "family": "date-range-picker",
@@ -18893,6 +19420,20 @@
       "purpose": ""
     },
     {
+      "definition": "NumberFieldRootChangeEventDetails",
+      "exported": false,
+      "module": "@base-ui/react",
+      "name": "NumberFieldRoot.ChangeEventDetails",
+      "purpose": ""
+    },
+    {
+      "definition": "NumberFieldRootCommitEventDetails",
+      "exported": false,
+      "module": "@base-ui/react",
+      "name": "NumberFieldRoot.CommitEventDetails",
+      "purpose": ""
+    },
+    {
       "definition": "(data: { side: Side; align: Align; anchor: { width: number; height: number; }; positioner: { width: number; height: number; }; }) => number",
       "exported": false,
       "module": "@base-ui/react",
@@ -19378,6 +19919,13 @@
       "module": "@base-ui/react",
       "name": "ToggleGroupPrimitive.Props",
       "parameters": "<Value extends string = string>",
+      "purpose": ""
+    },
+    {
+      "definition": "ToolbarRootOrientation",
+      "exported": false,
+      "module": "@base-ui/react",
+      "name": "ToolbarRoot.Orientation",
       "purpose": ""
     },
     {
@@ -25641,6 +26189,27 @@
       "name": "MultipleEntityPickerProps",
       "parameters": "<TItem>",
       "purpose": "A picker that chooses several items, shown as chips."
+    },
+    {
+      "fields": [
+        {
+          "description": "",
+          "name": "value",
+          "optional": false,
+          "type": "TValue"
+        },
+        {
+          "description": "",
+          "name": "label",
+          "optional": false,
+          "type": "string"
+        }
+      ],
+      "exported": true,
+      "module": "@basis/ui",
+      "name": "MultiSelectOption",
+      "parameters": "<TValue extends string>",
+      "purpose": "One option: its value and the words it shows."
     },
     {
       "definition": "\"minus\" | \"parentheses\"",

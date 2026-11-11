@@ -51,7 +51,8 @@ building](#found-while-building) at the end of this page.
 | 6.7.3 | `6f432c8`              | `DataTable` controllable and fast at its cap; pages 50 rows by default.                          |
 | 6.7.4 | `9be1fcf`              | `StatCard`: a figure, its change with arrow, sign and colour, its trend.                         |
 | 6.7.5 | `0845966`              | `DatePicker`, `MonthPicker`; `DateRangePicker` typed, cleared, trailing presets.                 |
-| 6.7.6 | this commit            | Form fields bound to TanStack Form, `submitErrors`, `UnsavedChangesGuard`, `TypedConfirmDialog`. |
+| 6.7.6 | `0bfee2d`              | Form fields bound to TanStack Form, `submitErrors`, `UnsavedChangesGuard`, `TypedConfirmDialog`. |
+| 6.7.7 | this commit, part 1    | `MultiSelect`, `NumberField`, `Toolbar`; the tree and the bulk paste follow.                     |
 | 6.8.1 | `7e434e2`              | `vp run docs NAME` and `--search`; the catalogue complete; README split; `CHANGELOG.md`.         |
 | 6.8.2 | `bc608c0`              | Six lint limits loosened in app code; messages that name the fix.                                |
 | 6.8.3 | `3d356fe`              | The open doors closed, each an `ERROR` line.                                                     |
