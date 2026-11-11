@@ -27,6 +27,9 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+mod cells;
+pub use cells::{BarFrom, HeatScale, LayoutCell, LayoutRule, RuleFormat, RuleWhen, Tone};
+
 /// The current layout version. Version 2 added `search`, filters across several
 /// columns, two text conditions, `pinned`, `titles`, `totals`, `detail` and pie
 /// charts; a version 1 document reads unchanged.
@@ -102,6 +105,16 @@ pub struct Layout {
     /// text.
     #[serde(skip_serializing_if = "BTreeMap::is_empty")]
     pub orders: BTreeMap<String, LayoutOrder>,
+    /// How a flat or detail view's cells draw, by source column: as a data bar,
+    /// a heat fill, a badge, a sparkline or a link, rather than as text. The
+    /// engine computes the domain of a flat view's bar and heat columns, which
+    /// each frame carries.
+    #[serde(skip_serializing_if = "BTreeMap::is_empty")]
+    pub cells: BTreeMap<String, LayoutCell>,
+    /// Conditional formats of a flat or detail view's cells, by source column:
+    /// the first rule whose condition a cell's value meets styles it.
+    #[serde(skip_serializing_if = "BTreeMap::is_empty")]
+    pub rules: BTreeMap<String, Vec<LayoutRule>>,
 }
 
 /// How a text column's values are ordered, in a layout.
@@ -165,6 +178,8 @@ impl Default for Layout {
             totals: Vec::new(),
             detail: false,
             orders: BTreeMap::new(),
+            cells: BTreeMap::new(),
+            rules: BTreeMap::new(),
         }
     }
 }
@@ -1840,6 +1855,7 @@ impl Layout {
                 .iter()
                 .map(|(column, order)| (column.clone(), order.to_engine()))
                 .collect(),
+            domains: cells::domains_of(table, &self.cells, &self.rules)?,
         };
         let session = match &self.chart {
             Some(c) => {
@@ -2377,6 +2393,13 @@ mod tests {
             "orders": {"factor": {"values": ["Carry", "Roll-down", "Curve 2Y"]}},
             "chart": {"kind": "waterfall"}
         }"#;
+        let cells = r#"{
+            "dataset": "bonds",
+            "cells": {"dv01_usd": {"kind": "bar"}, "spread": {"kind": "heat", "scale": "diverging"},
+                      "rating": {"kind": "badge", "values": {"AAA": "positive", "B": "warning"}},
+                      "issuer": {"kind": "link"}},
+            "rules": {"price": [{"when": {"op": "lt", "value": 95}, "format": {"tone": "negative", "bold": true}}]}
+        }"#;
         let sifma = r#"{
             "dataset": "yields",
             "chart": {"kind": "line", "x": "time", "y": ["yield"], "axis": "trading",
@@ -2407,6 +2430,7 @@ mod tests {
             Layout::from_json(tenor).unwrap(),
             Layout::from_json(formats).unwrap(),
             Layout::from_json(waterfall).unwrap(),
+            Layout::from_json(cells).unwrap(),
             Layout::from_json(sifma).unwrap(),
             Layout::from_json(panes).unwrap(),
             Layout::from_json(reversed).unwrap(),

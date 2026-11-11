@@ -20578,6 +20578,12 @@
           "name": "totals",
           "optional": false,
           "type": "Uint8Array"
+        },
+        {
+          "description": "For a flat view whose layout draws cells by their value, such as data bars, the domain of the frame's data columns over the rows that pass the filters: an Arrow IPC stream of one record batch of two rows, the least and then the greatest value, whose data columns are the frame's; a column without a domain holds nulls. Empty without domains.",
+          "name": "domains",
+          "optional": false,
+          "type": "Uint8Array"
         }
       ],
       "exported": false,
@@ -20748,6 +20754,12 @@
         {
           "description": "The totals row's data columns, as `columns` are, read at row 0; null for a view without totals.",
           "name": "totals",
+          "optional": false,
+          "type": "readonly FrameColumn[] | null"
+        },
+        {
+          "description": "The domain of the data columns a layout draws by value, as `columns` are: the least value at row 0 and the greatest at row 1, over the rows that pass the filters; null where the engine gives none.",
+          "name": "domains",
           "optional": false,
           "type": "readonly FrameColumn[] | null"
         }

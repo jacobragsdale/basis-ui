@@ -8,7 +8,9 @@
 import { z } from "zod";
 
 import { chartSchema } from "./chart.ts";
-import { count, name, scalar } from "./scalars.ts";
+import { cellFields } from "./cells.ts";
+import { count, filterOps, name, scalar } from "./scalars.ts";
+import type { FilterOp } from "./scalars.ts";
 
 /** The layout version this package writes. Older documents are read and brought up to date. */
 const layoutVersion = 2;
@@ -69,27 +71,6 @@ const showAs = [
   "percent_of_parent",
   "running_total",
 ] as const;
-
-/** The filter operators. */
-const filterOps = [
-  "eq",
-  "ne",
-  "lt",
-  "le",
-  "gt",
-  "ge",
-  "in",
-  "not_in",
-  "is_null",
-  "is_not_null",
-  "contains",
-  "not_contains",
-  "starts_with",
-  "ends_with",
-] as const;
-
-/** A filter operator. */
-type FilterOp = (typeof filterOps)[number];
 
 /** The filter operators that match text, which only text columns take. */
 const textFilterOps: readonly FilterOp[] = ["contains", "not_contains", "starts_with", "ends_with"];
@@ -222,6 +203,7 @@ const layoutSchema = z.strictObject({
    * listed, or `{ by }` by another column's smallest value. The Rust leaves them out of a layout that sets none, so
    * there is no default. */
   orders: z.record(name, orderSchema).optional(),
+  ...cellFields,
 });
 
 /** A complete layout, with every default filled in. */
@@ -274,10 +256,11 @@ function measureOfWidthKey(key: string): number | null {
 /** The key the group column's width is stored under in `column_widths`. */
 const treeWidthKey = "__tree";
 
+export { filterOps } from "./scalars.ts";
+export type { FilterOp } from "./scalars.ts";
 export {
   aggregates,
   checkLayout,
-  filterOps,
   layoutSchema,
   layoutVersion,
   measureOfWidthKey,
@@ -288,7 +271,6 @@ export {
   treeWidthKey,
 };
 export type {
-  FilterOp,
   Layout,
   LayoutCheck,
   LayoutFilter,

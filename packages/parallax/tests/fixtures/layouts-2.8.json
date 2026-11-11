@@ -297,6 +297,69 @@
     "version": 2
   },
   {
+    "cells": {
+      "dv01_usd": {
+        "from": "zero",
+        "kind": "bar"
+      },
+      "issuer": {
+        "kind": "link"
+      },
+      "rating": {
+        "kind": "badge",
+        "values": {
+          "AAA": "positive",
+          "B": "warning"
+        }
+      },
+      "spread": {
+        "kind": "heat",
+        "scale": "diverging"
+      }
+    },
+    "chart": null,
+    "column_widths": {},
+    "columns": [],
+    "dataset": "bonds",
+    "detail": false,
+    "expand_depth": 0,
+    "expanded": [],
+    "filters": [],
+    "formats": {},
+    "group_by": [],
+    "group_sort": {
+      "by": "key",
+      "descending": false
+    },
+    "having": [],
+    "measures": [],
+    "parameters": {},
+    "pinned": [],
+    "rules": {
+      "price": [
+        {
+          "format": {
+            "bold": true,
+            "fill": false,
+            "tone": "negative"
+          },
+          "when": {
+            "op": "lt",
+            "value": 95,
+            "values": []
+          }
+        }
+      ]
+    },
+    "search": "",
+    "sort": [],
+    "split_by": [],
+    "titles": {},
+    "top_n": null,
+    "totals": [],
+    "version": 2
+  },
+  {
     "chart": {
       "axis": "trading",
       "calendar": "sifma",

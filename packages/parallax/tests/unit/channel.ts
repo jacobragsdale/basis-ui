@@ -99,6 +99,7 @@ function emptyFrame(configVersion = firstVersion): FrameData {
   return {
     columns: [],
     configVersion,
+    domains: null,
     firstColumn: 0,
     firstRow: 0,
     groups: [],

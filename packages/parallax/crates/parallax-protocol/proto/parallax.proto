@@ -180,6 +180,12 @@ message Frame {
   // columns: an Arrow IPC stream of one record batch of one row, whose data
   // columns are the frame's. Empty without totals.
   bytes totals = 11;
+  // For a flat view whose layout draws cells by their value, such as data
+  // bars, the domain of the frame's data columns over the rows that pass the
+  // filters: an Arrow IPC stream of one record batch of two rows, the least and
+  // then the greatest value, whose data columns are the frame's; a column
+  // without a domain holds nulls. Empty without domains.
+  bytes domains = 12;
 }
 
 message TableStatus {

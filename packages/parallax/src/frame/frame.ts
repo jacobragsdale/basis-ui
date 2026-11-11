@@ -50,6 +50,9 @@ interface FrameData {
   readonly tree: TreeRows | null;
   /** The totals row's data columns, as `columns` are, read at row 0; null for a view without totals. */
   readonly totals: readonly FrameColumn[] | null;
+  /** The domain of the data columns a layout draws by value, as `columns` are: the least value at row 0 and the
+   * greatest at row 1, over the rows that pass the filters; null where the engine gives none. */
+  readonly domains: readonly FrameColumn[] | null;
 }
 
 /** The fields of a batch filed by role: tree columns, group keys, and each data column's parts. */
@@ -155,12 +158,25 @@ function decodeTotals(bytes: Uint8Array, columns: number): readonly FrameColumn[
   return row.columns;
 }
 
+/** The domains of a frame's data columns, checked against them: two rows, the least and the greatest value. */
+function decodeDomains(bytes: Uint8Array, columns: number): readonly FrameColumn[] | null {
+  if (bytes.length === 0) {
+    return null;
+  }
+  const rows = decodeBatch(bytes);
+  if (rows.rowCount !== 2 || rows.columns.length !== columns) {
+    throw new FrameError("A frame's domains must be two rows with the frame's data columns.");
+  }
+  return rows.columns;
+}
+
 /** Decodes and validates a frame. */
 function decodeFrame(frame: Frame): FrameData {
   const { rowCount, columns, groups, byRole } = decodeBatch(frame.batch);
   return {
     columns,
     configVersion: frame.configVersion,
+    domains: decodeDomains(frame.domains, columns.length),
     firstColumn: frame.firstColumn,
     firstRow: Number(frame.firstRow),
     groups,

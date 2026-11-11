@@ -95,6 +95,21 @@
         }
       ]
     },
+    "BarFrom": {
+      "description": "Where a data bar starts.",
+      "oneOf": [
+        {
+          "const": "zero",
+          "description": "From zero: a negative value's bar runs left, in the loss colour.",
+          "type": "string"
+        },
+        {
+          "const": "min",
+          "description": "From the column's least value.",
+          "type": "string"
+        }
+      ]
+    },
     "CalendarName": {
       "description": "The market calendar a trading-time axis follows, in a layout.",
       "oneOf": [
@@ -300,6 +315,21 @@
         }
       ]
     },
+    "HeatScale": {
+      "description": "The scale a heat fill takes its colour from.",
+      "oneOf": [
+        {
+          "const": "sequential",
+          "description": "From the column's least value to its greatest.",
+          "type": "string"
+        },
+        {
+          "const": "diverging",
+          "description": "About zero: losses one way, gains the other.",
+          "type": "string"
+        }
+      ]
+    },
     "LayoutAnchor": {
       "additionalProperties": false,
       "description": "A point a drawing is anchored to: a value of the chart's x column, as in a\nfilter, and a value on the price's axis. Drawings stay with the data however\nthe chart is zoomed or its axis placed.",
@@ -318,6 +348,99 @@
         "y"
       ],
       "type": "object"
+    },
+    "LayoutCell": {
+      "description": "How one column's cells draw.",
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "description": "A bar as long as the value over the column's domain, behind its text.",
+          "properties": {
+            "from": {
+              "$ref": "#/$defs/BarFrom",
+              "default": "zero",
+              "description": "From zero, the default, or from the column's least value."
+            },
+            "kind": {
+              "const": "bar",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "A fill by value, behind text in the ink that reads on it.",
+          "properties": {
+            "kind": {
+              "const": "heat",
+              "type": "string"
+            },
+            "scale": {
+              "$ref": "#/$defs/HeatScale",
+              "default": "sequential",
+              "description": "Sequential, the default, or diverging about zero."
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "A pill with the value's text, in the tone listed for it; a value not\nlisted is neutral.",
+          "properties": {
+            "kind": {
+              "const": "badge",
+              "type": "string"
+            },
+            "values": {
+              "additionalProperties": {
+                "$ref": "#/$defs/Tone"
+              },
+              "default": {},
+              "description": "The tone of each value, by its text.",
+              "type": "object"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "A small line of the numbers in the cell's text, separated by spaces or\ncommas, such as `101.2 101.5 100.9`.",
+          "properties": {
+            "kind": {
+              "const": "sparkline",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "Text that reports a click to the app.",
+          "properties": {
+            "kind": {
+              "const": "link",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
     },
     "LayoutChart": {
       "additionalProperties": false,
@@ -1281,6 +1404,25 @@
       ],
       "type": "object"
     },
+    "LayoutRule": {
+      "additionalProperties": false,
+      "description": "A conditional format: the cells whose value meets `when` take `format`.",
+      "properties": {
+        "format": {
+          "$ref": "#/$defs/RuleFormat",
+          "description": "The style."
+        },
+        "when": {
+          "$ref": "#/$defs/RuleWhen",
+          "description": "The condition."
+        }
+      },
+      "required": [
+        "when",
+        "format"
+      ],
+      "type": "object"
+    },
     "LayoutSession": {
       "additionalProperties": false,
       "description": "A trading day's session in New York time, in a layout: `HH:MM` times. A\nsession that opens later in the day than it closes opens the evening before\nits trading day.",
@@ -1417,6 +1559,59 @@
         }
       ]
     },
+    "RuleFormat": {
+      "additionalProperties": false,
+      "description": "How a rule styles a cell.",
+      "properties": {
+        "bold": {
+          "default": false,
+          "description": "Its text in the group font.",
+          "type": "boolean"
+        },
+        "fill": {
+          "default": false,
+          "description": "A fill in the tone's tint behind the cell.",
+          "type": "boolean"
+        },
+        "tone": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Tone"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The ink of its text, a tone's, or the column's for none."
+        }
+      },
+      "type": "object"
+    },
+    "RuleWhen": {
+      "additionalProperties": false,
+      "description": "When a rule styles a cell: a filter's condition on the cell's value.",
+      "properties": {
+        "op": {
+          "$ref": "#/$defs/FilterOpName",
+          "description": "The operator, as a filter's."
+        },
+        "value": {
+          "default": null,
+          "description": "The operand of single-value operators."
+        },
+        "values": {
+          "default": [],
+          "description": "The operands of `in` and `not_in`.",
+          "items": true,
+          "type": "array"
+        }
+      },
+      "required": [
+        "op"
+      ],
+      "type": "object"
+    },
     "ShowAsName": {
       "description": "How a measure is shown.",
       "oneOf": [
@@ -1507,6 +1702,36 @@
         }
       ]
     },
+    "Tone": {
+      "description": "A status's colour and shape, from the theme: a gain, a loss, a warning, a\nnote, or nothing to note.",
+      "oneOf": [
+        {
+          "const": "positive",
+          "description": "A gain, or what is good.",
+          "type": "string"
+        },
+        {
+          "const": "negative",
+          "description": "A loss, or what is wrong.",
+          "type": "string"
+        },
+        {
+          "const": "warning",
+          "description": "What needs a look.",
+          "type": "string"
+        },
+        {
+          "const": "info",
+          "description": "A note.",
+          "type": "string"
+        },
+        {
+          "const": "neutral",
+          "description": "Nothing to note.",
+          "type": "string"
+        }
+      ]
+    },
     "XAxisName": {
       "description": "How a chart places x values, in a layout.",
       "oneOf": [
@@ -1532,6 +1757,13 @@
   "additionalProperties": false,
   "description": "A view, as saved and sent.",
   "properties": {
+    "cells": {
+      "additionalProperties": {
+        "$ref": "#/$defs/LayoutCell"
+      },
+      "description": "How a flat or detail view's cells draw, by source column: as a data bar,\na heat fill, a badge, a sparkline or a link, rather than as text. The\nengine computes the domain of a flat view's bar and heat columns, which\neach frame carries.",
+      "type": "object"
+    },
     "chart": {
       "anyOf": [
         {
@@ -1657,6 +1889,16 @@
         "type": "string"
       },
       "type": "array"
+    },
+    "rules": {
+      "additionalProperties": {
+        "items": {
+          "$ref": "#/$defs/LayoutRule"
+        },
+        "type": "array"
+      },
+      "description": "Conditional formats of a flat or detail view's cells, by source column:\nthe first rule whose condition a cell's value meets styles it.",
+      "type": "object"
     },
     "search": {
       "default": "",

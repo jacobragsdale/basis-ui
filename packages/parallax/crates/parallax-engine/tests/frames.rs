@@ -618,3 +618,32 @@ fn a_detail_views_group_rows_carry_their_totals_as_a_pivot_shows_them() {
     let footer = detail.totals_window(&t, 0..3).unwrap();
     assert_eq!(text_of(&footer, 0), [pivot_pnl[0].clone()]);
 }
+
+#[test]
+fn a_flat_view_carries_the_domains_of_the_columns_drawn_by_value() {
+    use parallax_engine::{Filter, FilterOp};
+    let t = table();
+    let config = ViewConfig {
+        domains: vec!["pnl".into()],
+        ..ViewConfig::default()
+    };
+    let mut flat = View::new(&t, config.clone()).unwrap();
+    let domains = flat.domains_window(&t, 0..4).unwrap();
+    assert_eq!(domains.num_rows(), 2);
+    // pnl's least and greatest; the other columns have none.
+    assert_eq!(text_of(&domains, 2), ["-1,250,000.00", "2,000,000.00"]);
+    assert_eq!(text_of(&domains, 1), ["", ""]);
+    // Over the rows that pass the filters.
+    let filtered = ViewConfig {
+        filters: vec![Filter::new("desk", FilterOp::IsNull)],
+        ..config
+    };
+    let mut only = View::new(&t, filtered).unwrap();
+    assert_eq!(
+        text_of(&only.domains_window(&t, 2..3).unwrap(), 0),
+        ["10.00", "10.00"]
+    );
+    // A view that asks for none carries none.
+    let mut plain = View::new(&t, ViewConfig::default()).unwrap();
+    assert!(plain.domains_window(&t, 0..4).is_none());
+}

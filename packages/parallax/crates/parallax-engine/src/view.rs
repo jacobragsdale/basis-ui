@@ -150,6 +150,10 @@ pub struct ViewConfig {
     /// ignores them, since its grand total is a row of its own; a detail view also
     /// shows them on each group row.
     pub totals: Vec<Measure>,
+    /// Columns of a flat view whose least and greatest values over the rows that
+    /// pass the filters each frame carries, for cells drawn by their value, such
+    /// as data bars and heat. A detail view and a pivot carry none.
+    pub domains: Vec<String>,
     /// Shows the rows under each innermost group, in the order `sort` gives, with
     /// the data columns of `columns`: a grid grouped by `group_by` rather than a
     /// pivot. Its group rows carry a count of their rows and the totals. It takes
@@ -648,6 +652,9 @@ struct Flat {
     order: FlatOrder,
     /// The totals, as a grouped view with no levels, whose root is its one leaf.
     totals: Option<Box<Grouped>>,
+    /// The domains, the least and then the greatest value of each column of
+    /// `ViewConfig::domains`, as totals are kept.
+    domains: Option<Box<Grouped>>,
 }
 
 /// A flat view's rows, in order: the table's kept order of every live row
@@ -737,6 +744,7 @@ fn without_display(config: &ViewConfig) -> ViewConfig {
     stripped.titles.clear();
     stripped.columns.clear();
     stripped.totals.clear();
+    stripped.domains.clear();
     for m in &mut stripped.measures {
         m.format = None;
     }
@@ -902,6 +910,29 @@ fn compile_totals(table: &Table, config: &ViewConfig) -> Result<Option<Box<Group
     ))))
 }
 
+/// Compiles a flat view's domains: the least and the greatest value of each
+/// column, as measures of a grouped view with no levels, which are not computed
+/// yet.
+fn compile_domains(
+    table: &Table,
+    config: &ViewConfig,
+) -> Result<Option<Box<Grouped>>, ConfigError> {
+    if config.domains.is_empty() || config.is_grouped() {
+        return Ok(None);
+    }
+    let mut measures = Vec::with_capacity(2 * config.domains.len());
+    for column in &config.domains {
+        for aggregate in [Aggregate::Min, Aggregate::Max] {
+            measures.push(compile_measure(table, &Measure::new(aggregate, column))?);
+        }
+    }
+    Ok(Some(Box::new(Grouped::new(
+        measures,
+        Vec::new(),
+        Vec::new(),
+    ))))
+}
+
 /// Checks and compiles a view's totals: at most one per column, each of its
 /// column and shown as its value.
 fn total_measures(table: &Table, config: &ViewConfig) -> Result<Vec<CompiledMeasure>, ConfigError> {
@@ -1062,6 +1093,7 @@ impl View {
                 orders: Orders::compile(table, &config.orders)?,
                 order: FlatOrder::Passing(Vec::new()),
                 totals: compile_totals(table, &config)?,
+                domains: compile_domains(table, &config)?,
             })
         };
         let mut view = Self {
@@ -1173,6 +1205,20 @@ impl View {
                 }
                 flat.totals = totals;
             }
+            if self.config.domains != config.domains {
+                let mut domains = compile_domains(table, config)?;
+                if let Some(grouped) = &mut domains {
+                    for filter in &mut self.filters {
+                        filter.prepare(table, false);
+                    }
+                    let mask = mask(table, &self.filters);
+                    grouped.build(table, &|slot: usize| {
+                        mask.as_ref().is_none_or(|m| m.get(slot))
+                    });
+                    grouped.invalidate();
+                }
+                flat.domains = domains;
+            }
         }
         if let Kind::Grouped(g) = &mut self.kind
             && reorder
@@ -1259,6 +1305,58 @@ impl View {
         Some(out.finish())
     }
 
+    /// The domains of a flat view's data columns `columns`: two rows, the least
+    /// and then the greatest value over the rows that pass the filters, with a
+    /// data column for each column in the window, as [`View::window`] gives them.
+    /// A column without a domain holds nulls. `None` for a view without domains.
+    pub fn domains_window(&mut self, table: &Table, columns: Range<usize>) -> Option<RecordBatch> {
+        let Kind::Flat(flat) = &self.kind else {
+            return None;
+        };
+        let grouped = flat.domains.as_deref()?;
+        let shown = &flat.columns;
+        let cols = columns.start.min(shown.len())..columns.end.min(shown.len());
+        let mut out = FrameBuilder::default();
+        for (index, &c) in shown[cols].iter().enumerate() {
+            let field = table.schema().field(c);
+            let title = title_of(&self.config, field.name());
+            let formatter = &self.formatters.columns[c];
+            match self.config.domains.iter().position(|d| d == field.name()) {
+                Some(d) => {
+                    let measure = grouped.measures[2 * d].clone();
+                    let values = [
+                        grouped.shown(table, &[0], ROW_TOTAL, 2 * d),
+                        grouped.shown(table, &[0], ROW_TOTAL, 2 * d + 1),
+                    ];
+                    let (array, data_type) = values_to_arrow(table, &measure, &values);
+                    let flags = values.iter().map(value_flag).collect();
+                    let field = Field::new(field.name(), data_type, true);
+                    out.data_column(
+                        index,
+                        &field,
+                        title,
+                        array,
+                        Some(flags),
+                        formatter,
+                        None,
+                        None,
+                    );
+                }
+                None => out.data_column(
+                    index,
+                    &Field::new(field.name(), field.data_type().clone(), true),
+                    title,
+                    arrow_array::new_null_array(field.data_type(), 2),
+                    None,
+                    formatter,
+                    None,
+                    None,
+                ),
+            }
+        }
+        Some(out.finish())
+    }
+
     /// The configuration version, which every frame carries.
     #[must_use]
     pub fn config_version(&self) -> u64 {
@@ -1314,9 +1412,9 @@ impl View {
                         FlatOrder::Passing(walk(&sorted.slots, mask))
                     }
                 };
-                if let Some(totals) = &mut flat.totals {
-                    totals.build(table, &passes);
-                    totals.invalidate();
+                for grouped in [&mut flat.totals, &mut flat.domains].into_iter().flatten() {
+                    grouped.build(table, &passes);
+                    grouped.invalidate();
                 }
             }
             Kind::Grouped(g) => {

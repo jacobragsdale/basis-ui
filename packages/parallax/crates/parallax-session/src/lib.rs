@@ -1107,8 +1107,16 @@ impl Session {
             Err(e) => return Some(error(request_id, view_id, e.to_string())),
         };
         let totals = match view
-            .totals_window(&state.table, columns)
+            .totals_window(&state.table, columns.clone())
             .map(|t| encode_batch(&t))
+            .transpose()
+        {
+            Ok(bytes) => bytes.unwrap_or_default(),
+            Err(e) => return Some(error(request_id, view_id, e.to_string())),
+        };
+        let domains = match view
+            .domains_window(&state.table, columns)
+            .map(|d| encode_batch(&d))
             .transpose()
         {
             Ok(bytes) => bytes.unwrap_or_default(),
@@ -1128,6 +1136,7 @@ impl Session {
                 source_as_of_micros: state.source_as_of_micros,
                 pushed,
                 totals,
+                domains,
             }),
         ))
     }
