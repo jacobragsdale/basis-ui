@@ -78,6 +78,45 @@ interface Step {
   readonly layout: LayoutInput;
 }
 
+/** The trades filtered by `filters`. */
+function filtered(...filters: NonNullable<LayoutInput["filters"]>): LayoutInput {
+  return { ...tradesLayout, filters };
+}
+
+/** The trades' filters after the first, each changing the one before, as a user changing a filter does: one for
+ * each operator on text, a null check, and a comparison or range on an integer, a date and a decimal, then a second
+ * filter added to a range. Each shows rows at every size the bench runs: a change to no rows is not always seen drawn,
+ * so "is null", which the trades never meet, is left to `examples/measure.rs`. */
+function filterSteps(): readonly Step[] {
+  const buys = { column: "side", op: "eq", value: "Buy" } as const;
+  const dates = [
+    { column: "trade_date", op: "ge", value: "2025-01-01" },
+    { column: "trade_date", op: "le", value: "2025-06-30" },
+  ] as const;
+  return [
+    {
+      layout: filtered({ column: "ticker", op: "in", values: ["A", "B", "C", "D", "E"] }),
+      name: "filterIn",
+    },
+    { layout: filtered({ column: "trader", op: "contains", value: "an" }), name: "filterContains" },
+    { layout: filtered({ column: "broker", op: "is_not_null" }), name: "filterNotNull" },
+    {
+      layout: filtered(
+        { column: "trade_id", op: "ge", value: 25_000 },
+        { column: "trade_id", op: "lt", value: 75_000 },
+      ),
+      name: "filterInteger",
+    },
+    {
+      layout: filtered({ column: "trade_date", op: "eq", value: "2025-03-03" }),
+      name: "filterDate",
+    },
+    { layout: filtered({ column: "quantity", op: "ge", value: "1000" }), name: "filterDecimal" },
+    { layout: filtered(...dates), name: "filterDateRange" },
+    { layout: filtered(...dates, buys), name: "filterAdded" },
+  ];
+}
+
 /** One round of the trades' changes, which ends where it began. `ticker` is text, `quantity` a decimal and
  * `trade_date` a date. */
 function tradeSteps(): readonly Step[] {
@@ -95,7 +134,8 @@ function tradeSteps(): readonly Step[] {
     { layout: sorted("trade_date", true), name: "toggleDate" },
     { layout: { ...sorted("trade_date", true), filters: [buys] }, name: "filterUnderSort" },
     { layout: tradesLayout, name: "reset" },
-    { layout: { ...tradesLayout, filters: [buys] }, name: "filter" },
+    { layout: filtered(buys), name: "filter" },
+    ...filterSteps(),
     { layout: tradesLayout, name: "clearFilter" },
     { layout: { ...tradesLayout, search: "Bank" }, name: "search" },
     { layout: tradesLayout, name: "clearSearch" },

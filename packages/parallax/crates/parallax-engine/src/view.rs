@@ -23,6 +23,7 @@ use crate::aggregate::{
     Aggregate, CompiledMeasure, Input, Measure, MeasureValue, ShowAs, State, finish, pow10,
 };
 use crate::bignum::ratio_to_f64;
+use crate::bitmap::Bitmap;
 use crate::column::Column;
 use crate::error::ConfigError;
 use crate::filter::{CompiledFilter, Filter};
@@ -984,7 +985,7 @@ impl View {
             load_version: table.load_version(),
         };
         view.check_column_limit(table)?;
-        view.rebuild(table);
+        view.build(table);
         Ok(view)
     }
 
@@ -1001,8 +1002,9 @@ impl View {
         let limit = MAX_COLUMNS / per_key;
         let mut seen: rustc_hash::FxHashSet<Box<[Key]>> = rustc_hash::FxHashSet::default();
         let mut keys = Vec::with_capacity(g.split_columns.len());
+        let mask = mask(table, &self.filters);
         for slot in table.live_slots() {
-            if !self.passes(Source::Table(table), slot) {
+            if mask.as_ref().is_some_and(|m| !m.get(slot)) {
                 continue;
             }
             keys.clear();
@@ -1063,9 +1065,9 @@ impl View {
                     for filter in &mut self.filters {
                         filter.prepare(table, false);
                     }
-                    let filters = &self.filters;
+                    let mask = mask(table, &self.filters);
                     grouped.build(table, &|slot: usize| {
-                        filters.iter().all(|f| f.passes_table(table, slot))
+                        mask.as_ref().is_none_or(|m| m.get(slot))
                     });
                     grouped.invalidate();
                 }
@@ -1170,12 +1172,21 @@ impl View {
 
     /// Recomputes the view from the table.
     pub fn rebuild(&mut self, table: &Table) {
-        self.load_version = table.load_version();
         for filter in &mut self.filters {
             filter.prepare(table, true);
         }
-        let filters = std::mem::take(&mut self.filters);
-        let passes = |slot: usize| filters.iter().all(|f| f.passes_table(table, slot));
+        self.build(table);
+    }
+
+    /// Computes the view from the table, its filters prepared for it, as
+    /// compiling them prepares them.
+    fn build(&mut self, table: &Table) {
+        self.load_version = table.load_version();
+        let mask = {
+            let _phase = crate::profile::span("filter");
+            mask(table, &self.filters)
+        };
+        let passes = |slot: usize| mask.as_ref().is_none_or(|m| m.get(slot));
         match &mut self.kind {
             Kind::Flat(flat) => {
                 flat.orders.refresh(table);
@@ -1183,22 +1194,12 @@ impl View {
                     let _phase = crate::profile::span("flat: sort");
                     crate::sort::sorted(table, &flat.sort, &flat.orders)
                 };
-                flat.order = if filters.is_empty() {
-                    FlatOrder::All(sorted)
-                } else {
-                    let _phase = crate::profile::span("flat: filter");
-                    let mut pass = vec![false; table.num_slots()];
-                    for slot in passing_slots(table, &passes) {
-                        pass[slot] = true;
+                flat.order = match &mask {
+                    None => FlatOrder::All(sorted),
+                    Some(mask) => {
+                        let _phase = crate::profile::span("flat: filter");
+                        FlatOrder::Passing(walk(&sorted.slots, mask))
                     }
-                    FlatOrder::Passing(
-                        sorted
-                            .slots
-                            .iter()
-                            .copied()
-                            .filter(|&s| pass[s as usize])
-                            .collect(),
-                    )
                 };
                 if let Some(totals) = &mut flat.totals {
                     totals.build(table, &passes);
@@ -1211,7 +1212,6 @@ impl View {
                 g.invalidate();
             }
         }
-        self.filters = filters;
     }
 
     /// Applies a table change so that the view equals one rebuilt on the new table.
@@ -1796,27 +1796,36 @@ const PARTITIONS: usize = 64;
 /// once.
 const FEW_LEAVES: usize = 4_096;
 
-/// The live slots of `table` that pass, in slot order, tested in parallel where
-/// threads exist.
-fn passing_slots(table: &Table, passes: &(dyn Fn(usize) -> bool + Sync)) -> Vec<usize> {
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        let slots = table.num_slots();
-        if slots > BUILD_CHUNK {
-            let chunks: Vec<Range<usize>> = (0..slots)
-                .step_by(BUILD_CHUNK)
-                .map(|start| start..(start + BUILD_CHUNK).min(slots))
-                .collect();
-            return map_ordered(chunks, |range| {
-                table
-                    .live_slots_in(range)
-                    .filter(|&s| passes(s))
-                    .collect::<Vec<_>>()
-            })
-            .concat();
+/// The live slots of `table` that pass every filter in `filters`, a bit for
+/// each slot: the filters' words ANDed with the live slots'. `None` when there
+/// is no filter. The filters' answers for the dictionaries' codes must have
+/// been prepared for `table`.
+fn mask(table: &Table, filters: &[CompiledFilter]) -> Option<Bitmap> {
+    if filters.is_empty() {
+        return None;
+    }
+    let mut words = table.live_words().to_vec();
+    for filter in filters {
+        for (word, &other) in words.iter_mut().zip(filter.words(table).iter()) {
+            *word &= other;
         }
     }
-    table.live_slots().filter(|&s| passes(s)).collect()
+    Some(Bitmap::from_words(words, table.num_slots()))
+}
+
+/// The slots of `order` that `mask` holds, in its order. Each slot is written
+/// and kept by moving past it only if it passes, so that no branch depends on
+/// whether a row passes.
+fn walk(order: &[u32], mask: &Bitmap) -> Vec<u32> {
+    let words = mask.words();
+    let mut passing = vec![0; mask.count_ones() + 1];
+    let mut kept = 0;
+    for &slot in order {
+        passing[kept] = slot;
+        kept += (words[slot as usize / 64] >> (slot % 64) & 1) as usize;
+    }
+    passing.truncate(kept);
+    passing
 }
 
 /// Maps items to results in parallel where threads exist, keeping their order.
@@ -2814,8 +2823,9 @@ impl Grouped {
             return;
         }
         let mut buckets: FxHashMap<u32, Bucket> = FxHashMap::default();
+        let mask = mask(table, filters);
         for slot in table.live_slots() {
-            if !filters.iter().all(|f| f.passes_table(table, slot)) {
+            if mask.as_ref().is_some_and(|m| !m.get(slot)) {
                 continue;
             }
             let mut node = 0;

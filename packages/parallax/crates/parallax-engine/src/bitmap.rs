@@ -17,6 +17,19 @@ impl Bitmap {
         }
     }
 
+    /// A bitmap of `len` bits held in `words`, bit `i` of word `w` being bit
+    /// `64 * w + i`, with no bit set past `len`.
+    pub(crate) fn from_words(words: Vec<u64>, len: usize) -> Self {
+        debug_assert_eq!(words.len(), len.div_ceil(64));
+        Self { words, len }
+    }
+
+    /// The bits, 64 to a word, the first in each word's lowest bit, and none
+    /// set past the last.
+    pub(crate) fn words(&self) -> &[u64] {
+        &self.words
+    }
+
     /// Returns the number of bits.
     #[must_use]
     pub const fn len(&self) -> usize {

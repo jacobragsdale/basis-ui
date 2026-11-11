@@ -1,5 +1,5 @@
 {
-  "$comment": "Budgets for tests/perf/bench.ts, by profile, run and figure, in ms or MB as each name says. host: the build host's, which pull requests quote, set on 2026-11-09 at about twice the slowest of three full runs that day, under load averages of 1 to 10, and 1.25 times the last run's memory (docs/spikes/scale-1m.md); steps 6.3 and 6.4 tighten them toward their targets: 6.3.1 set the trades' loads and memory at 150,000 and 1,000,000 rows the same way, from its runs of 2026-11-09; 6.3.2 set the trades' first rows the same way, and the plain loads, from its runs of 2026-11-09, leaving the throttled loads, which it does not shorten; 6.3.3 set the trades' sorts, toggles and filter under a sort at 150,000 and 1,000,000 rows the same way, from its runs of 2026-11-10. nightly: the scheduled job's on a shared runner, plain only, its memory at 1.5 times and its times at 5 times.",
+  "$comment": "Budgets for tests/perf/bench.ts, by profile, run and figure, in ms or MB as each name says. host: the build host's, which pull requests quote, set on 2026-11-09 at about twice the slowest of three full runs that day, under load averages of 1 to 10, and 1.25 times the last run's memory (docs/spikes/scale-1m.md); steps 6.3 and 6.4 tighten them toward their targets: 6.3.1 set the trades' loads and memory at 150,000 and 1,000,000 rows the same way, from its runs of 2026-11-09; 6.3.2 set the trades' first rows the same way, and the plain loads, from its runs of 2026-11-09, leaving the throttled loads, which it does not shorten; 6.3.3 set the trades' sorts, toggles and filter under a sort at 150,000 and 1,000,000 rows the same way, from its runs of 2026-11-10; 6.3.4 set the 1,000,000 trades filter, filter under a sort and search the same way, from its runs of 2026-11-10. nightly: the scheduled job's on a shared runner, plain only, its memory at 1.5 times and its times at 5 times.",
   "host": {
     "trades 150000 plain": {
       "firstRowsMs": 500,
@@ -82,9 +82,9 @@
       "toggleNumberMs": 35,
       "sortDateMs": 50,
       "toggleDateMs": 35,
-      "filterMs": 60,
-      "filterUnderSortMs": 60,
-      "searchMs": 230,
+      "filterMs": 30,
+      "filterUnderSortMs": 30,
+      "searchMs": 30,
       "drawMsPerFrame@1": 4,
       "drawMsPerFrame@1.25": 4,
       "drawMsPerFrame@1.5": 4,
@@ -102,9 +102,9 @@
       "toggleNumberMs": 90,
       "sortDateMs": 120,
       "toggleDateMs": 100,
-      "filterMs": 230,
-      "filterUnderSortMs": 240,
-      "searchMs": 660,
+      "filterMs": 110,
+      "filterUnderSortMs": 150,
+      "searchMs": 90,
       "drawMsPerFrame@1": 8,
       "drawMsPerFrame@1.25": 14,
       "drawMsPerFrame@1.5": 15,

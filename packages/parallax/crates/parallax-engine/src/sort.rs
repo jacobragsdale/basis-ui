@@ -234,7 +234,7 @@ fn sort_column(column: &Column, ranks: Option<&[u32]>, slots: &mut Vec<u32>) -> 
 
 /// A float's place in IEEE 754's total order, as `f64::total_cmp` orders it,
 /// with negative zero as zero, as the engine's keys hold it.
-fn float_key(value: f64) -> u64 {
+pub(crate) fn float_key(value: f64) -> u64 {
     let bits = if value == 0.0 { 0 } else { value.to_bits() };
     // Negative floats count down: flip all but the sign, then the sign.
     bits ^ ((((bits as i64) >> 63) as u64) >> 1) ^ (1 << 63)

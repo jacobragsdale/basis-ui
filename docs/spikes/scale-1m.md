@@ -457,6 +457,45 @@ for each row and tested, and which step 6.3.4's typed filters are for. WebAssemb
 orders and the sort's scratch. The host budgets for these runs' sorts, toggles and filter under a sort are now twice
 the slowest time or 20 ms more, whichever is greater.
 
+## Step 6.3.4: filters as kernels
+
+Step 6.3.4 changed the flat filter and measured it with this harness before and after, on trades at 1,000,000 rows,
+plain and throttled, and 150,000 after, on 2026-11-10: two runs before, at load averages of 0.4 to 5.6, and two after,
+at 0.2 to 6.3. The harness's protocol gained a filter for each operator and type the filters take: "in" on text,
+"contains", "not null", an integer, a date, a decimal, a date range, a filter added beside another, and its clearing.
+What changed:
+
+- Before, a filter built a key for each row and tested it through the column's order, and a search did so for each
+  column of each row. Natively, one thread, a filter of 1,000,000 trades took 9 to 30 ms, all of it testing.
+- A view now tests a column's rows all at once: a loop for each column type and operator writes a bit for each row, 64
+  to a word, which the validity's words then mask. A text column decides each dictionary code once, then reads its
+  codes. A list of several values is a search of the sorted list. The columns of a search are ORed and a view's
+  filters ANDed a word at a time.
+- The table keeps the last few filters' words, about 125 kB each at 1,000,000 rows, until its rows change, so a filter
+  added beside others, or a sort changed under them, tests only what is new. A sort walks its kept order through the
+  words.
+- A property test checks, on random tables with nulls and every type, that each filter's words hold what testing each
+  row with the old code says. `tests/oracle.rs`, `tests/incremental.rs`, the transcript's fingerprint and the
+  WebAssembly tests pass unchanged.
+
+| Trades at 1,000,000 rows    | Before, plain | After, plain | Before, throttled | After, throttled |
+| --------------------------- | ------------- | ------------ | ----------------- | ---------------- |
+| A filter, text equal        | 26 to 30 ms   | 13 ms        | 102 ms            | 31 and 51 ms     |
+| "In", text                  | 27 to 30 ms   | 8 and 9 ms   | 72 ms             | 51 and 52 ms     |
+| "Contains"                  | 28 to 30 ms   | 13 and 14 ms | 90 ms             | 32 and 42 ms     |
+| An integer                  | 30 and 31 ms  | 9 and 18 ms  | 170 ms            | 38 and 61 ms     |
+| A decimal                   | 29 and 30 ms  | 9 and 11 ms  | 110 ms            | 31 and 59 ms     |
+| A date range                | 29 and 30 ms  | 12 and 13 ms | 112 ms            | 53 and 71 ms     |
+| A filter added beside one   | 32 and 33 ms  | 7 and 14 ms  | 120 ms            | 30 and 46 ms     |
+| A filter under a sort       | 30 and 31 ms  | 11 to 14 ms  | 108 ms            | 31 and 38 ms     |
+| A search across the columns | 95 and 97 ms  | 14 ms        | 331 ms            | 32 and 40 ms     |
+
+**The 100 ms target for a filter or a search is met, at 31 to 71 ms throttled, and the 50 ms target for a filter under
+a sort, at 31 and 38 ms, the medians of three rounds; one round of each run took 130 and 150 ms, the first after the
+load.** Natively the filters now take under a millisecond, so a throttled figure is mostly the frame, its drawing and
+the reply's trip. The host budgets for the 1,000,000 trades' filter, filter under a sort and search are now about
+twice the slowest median.
+
 ## Step 6.4.4: a scroll that moves pixels
 
 Step 6.4.4 made a scroll by rows, or across, copy the pixels that stay and paint only the band or strip it exposed,

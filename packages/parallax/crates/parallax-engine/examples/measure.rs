@@ -258,8 +258,88 @@ fn measure_views(table: &Table) {
             FilterOp::Eq(Scalar::Utf8("Buy".into())),
         )];
         view(table, "flat sorted by trade date, toggled, buys", buys);
+        for (what, filters) in trade_filters(table) {
+            view(
+                table,
+                &format!("flat filtered, {what}"),
+                ViewConfig {
+                    filters,
+                    ..ViewConfig::default()
+                },
+            );
+        }
     }
 }
+
+/// The scale harness's filters of the trades, each with its name: one for each
+/// operator on text, an integer, a date and a decimal, the null checks, two
+/// filters at once, and the search.
+fn trade_filters(table: &Table) -> Vec<(&'static str, Vec<Filter>)> {
+    let text = |s: &str| Scalar::Utf8(s.into());
+    // 2025-01-01, 2025-03-03 and 2025-06-30, as days since 1970.
+    let (first, monday, last) = (20_089, 20_150, 20_269);
+    let dates = || {
+        vec![
+            Filter::new("trade_date", FilterOp::Ge(Scalar::Date32(first))),
+            Filter::new("trade_date", FilterOp::Le(Scalar::Date32(last))),
+        ]
+    };
+    let buys = Filter::new("side", FilterOp::Eq(text("Buy")));
+    let texts: Vec<String> = table
+        .schema()
+        .fields()
+        .iter()
+        .filter(|f| *f.data_type() == arrow_schema::DataType::Utf8)
+        .map(|f| f.name().clone())
+        .collect();
+    let rest: Vec<&str> = texts[1..].iter().map(String::as_str).collect();
+    vec![
+        ("text equal", vec![buys.clone()]),
+        (
+            "text in",
+            vec![Filter::new(
+                "ticker",
+                FilterOp::In(TICKERS.iter().map(|t| text(t)).collect()),
+            )],
+        ),
+        (
+            "text contains",
+            vec![Filter::new("trader", FilterOp::Contains("an".into()))],
+        ),
+        ("not null", vec![Filter::new("broker", FilterOp::IsNotNull)]),
+        ("null", vec![Filter::new("venue", FilterOp::IsNull)]),
+        (
+            "integer range",
+            vec![
+                Filter::new("trade_id", FilterOp::Ge(Scalar::Int64(25_000))),
+                Filter::new("trade_id", FilterOp::Lt(Scalar::Int64(75_000))),
+            ],
+        ),
+        (
+            "date equal",
+            vec![Filter::new(
+                "trade_date",
+                FilterOp::Eq(Scalar::Date32(monday)),
+            )],
+        ),
+        ("date range", dates()),
+        (
+            "decimal at least",
+            vec![Filter::new(
+                "quantity",
+                FilterOp::Ge(Scalar::Decimal(1_000 * 10_000)),
+            )],
+        ),
+        ("buys in a date range", [vec![buys], dates()].concat()),
+        (
+            "search",
+            vec![Filter::new(&texts[0], FilterOp::Contains("bank".into())).or_in(&rest)],
+        ),
+    ]
+}
+
+/// Five one-letter tickers, for the filter of a list.
+const TICKERS: [&str; 5] = ["A", "B", "C", "D", "E"];
 
 fn main() {
     let mut args: Vec<String> = std::env::args().skip(1).collect();

@@ -545,7 +545,10 @@ flowchart TD
    current rows, so a toggle takes its runs backwards and a filter walks it: a first sort of a text or decimal column of
    1,000,000 trades takes 73 to 130 ms throttled, from 2.1 to 2.2 s, and 29 to 31 ms plain, from 0.5 s; a toggle 39 to
    49 ms throttled, from 1.3 to 2.1 s; a filter under a sort 98 to 119 ms, from 682 ms, missing 50 ms by the filter's
-   own cost, which 6.3.4 takes on.
+   own cost, which 6.3.4 takes on. 6.3.4 built on 2026-11-10: a flat view's filters test a column's rows in a loop for
+   each type and operator into words of bits, a text column deciding each dictionary code once, and the table keeps the
+   last filters' words, so a filter of 1,000,000 trades takes 31 to 71 ms throttled, from 72 to 170 ms, a search 32
+   to 40 ms, from 331 ms, and a filter under a sort 31 and 38 ms, from 108 ms, meeting 100 and 50 ms.
 4. **6.4 The canvas on a Citrix desktop.** Lane Grid, one branch per item in order: digits that line up
    (`6.4.1-tabular-digits`), whole device pixels (`6.4.2-device-pixels`), one draw per frame and one row step per notch
    (`6.4.3-frame-aligned`), a scroll that moves pixels (`6.4.4-scroll-blit`), rows past the scrollbar's reach

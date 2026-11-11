@@ -10,6 +10,7 @@ use rustc_hash::FxHashMap;
 use crate::bitmap::Bitmap;
 use crate::column::Column;
 use crate::error::LoadError;
+use crate::filter::FilterCache;
 use crate::sort::SortCache;
 use crate::types::{ColumnType, Key};
 
@@ -235,6 +236,8 @@ pub struct Table {
     growth: Option<Growth>,
     /// The orders flat views sorted the current rows in.
     sorts: SortCache,
+    /// The rows that passed the filters views tested last.
+    filters: FilterCache,
 }
 
 impl Table {
@@ -283,6 +286,7 @@ impl Table {
             load_version: 0,
             growth: None,
             sorts: SortCache::default(),
+            filters: FilterCache::default(),
         })
     }
 
@@ -347,6 +351,16 @@ impl Table {
     /// The orders flat views sorted the current rows in.
     pub(crate) fn sorts(&self) -> &SortCache {
         &self.sorts
+    }
+
+    /// The rows that passed the filters views tested last.
+    pub(crate) fn filters(&self) -> &FilterCache {
+        &self.filters
+    }
+
+    /// Which slots are live, a bit for each, 64 to a word.
+    pub(crate) fn live_words(&self) -> &[u64] {
+        self.live.words()
     }
 
     /// Returns the insertion sequence number of `slot`. Rows that are updated keep
@@ -484,6 +498,7 @@ impl Table {
         let growth = self.growth.as_ref().expect("a growing table");
         assert!(!growth.refused, "a table that refused a batch is dropped");
         self.sorts.clear();
+        self.filters.clear();
         let start = self.columns.first().map_or(0, Column::len);
         let extended = self.extend_columns(batch, start);
         if let Some(growth) = &mut self.growth {
@@ -590,6 +605,7 @@ impl Table {
             return None;
         }
         self.sorts.clear();
+        self.filters.clear();
         self.live.extend_ones(rows - before);
         let first = self.next_seq;
         self.next_seq += (rows - before) as u64;
@@ -761,6 +777,7 @@ impl Table {
             seq: Vec::new(),
         };
         self.sorts.clear();
+        self.filters.clear();
         self.columns = staged;
         for column in &mut self.columns {
             column.refresh_ranks();
@@ -876,6 +893,7 @@ impl Table {
 
         // From here on nothing can fail.
         self.sorts.clear();
+        self.filters.clear();
         let mut removed = RemovedRows {
             columns: self
                 .columns
