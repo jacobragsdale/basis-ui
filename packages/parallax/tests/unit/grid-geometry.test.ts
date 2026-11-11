@@ -108,6 +108,25 @@ describe("rowGeometry", () => {
     ).toStrictEqual([0, 1, 12_345, 10_000_000, 19_999_970]);
   });
 
+  test.each([
+    { ratio: 1, rowPx: 24 },
+    { ratio: 1.25, rowPx: 24 },
+    { ratio: 1.5, rowPx: 20 },
+    { ratio: 1.75, rowPx: 24 },
+  ])(
+    "lands on every row of 1,000,000 past the native scroll's reach, at ratio $ratio, as a browser rounds the offset",
+    ({ ratio, rowPx }) => {
+      const viewport = 600;
+      const rows = rowGeometry(1_000_000, { headerPx: 30, rowPx }, viewport);
+      expect(rows.spacerPx).toBeLessThan(1_000_000 * rowPx);
+      // A browser keeps a scroll offset in whole device pixels.
+      const landed = (row: number): number =>
+        rows.firstRow(Math.round(rows.scrollTopFor(row, viewport) * ratio) / ratio, viewport);
+      const sample = Array.from({ length: 2000 }, (_unused, index) => index * 487 + (index % 7));
+      expect(sample.filter((row) => landed(row) !== row)).toStrictEqual([]);
+    },
+  );
+
   test("shows the last row whole at the scroll's end when the body holds part of a row more", () => {
     // Ten and a half rows of 24 px under a 30 px header.
     const viewport = 30 + 10.5 * 24;

@@ -571,7 +571,9 @@ flowchart TD
    scratch canvas and paints only what it exposed, so scrolling 1,000,000 trades three rows a frame repaints 9 % of the
    canvas, from all of it, at every ratio; throttled, the drawing is 1.8, 1.9 and 3.1 ms a frame at 1, 1.25 and 1.5,
    from 1.8, 2.3 and 2.8, within the 8 ms target, and the main thread is busy 3.9, 5.2 and 7.9 ms a frame, from 4.5,
-   6.2 and 8.5, since the copy moves every pixel that stays.
+   6.2 and 8.5, since the copy moves every pixel that stays. 6.4.5 built on 2026-11-10: past the scrollbar's native
+   reach the grid aims a row's offset at the middle of its share of the scrollbar, so at 125 % the keyboard reveals
+   every row of 1,000,000, where one in twenty landed a row early.
 5. **6.5 Themes.** Lane Theme, one branch per item in order: tokens for what opacity fakes (`6.5.1-tokens`), density
    in whole pixels (`6.5.2-density`), `defineTheme` (`6.5.3-define-theme`), `checkTheme` (`6.5.4-check-theme`), the
    choice of theme in the cookie (`6.5.5-theme-preference`), parallax on the same theme (`6.5.6-parallax-theme`), the

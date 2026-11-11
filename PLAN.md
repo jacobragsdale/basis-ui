@@ -65,8 +65,8 @@ Everything below, in this order where one needs another, except 6.10, which is t
 
 1. ~~6.3.5, the rest.~~ Done: the browser's figures are in the spike, and the target is recorded as missed.
 2. ~~6.3.6, 6.3.7~~ done. **6.3.8 and 6.3.9** in order: narrower storage and build flags, the new limit in bytes.
-3. **6.4.5 to 6.4.8** in order: rows past the scrollbar's reach, less work in a pass, selection that does not count
-   rows, the charts' costs.
+3. ~~6.4.5~~ done. **6.4.6 to 6.4.8** in order: less work in a pass, selection that does not count rows, the
+   charts' costs.
 4. **6.5.7** the default's identity and two more themes, then **6.5.8** the studio. The plan asks the maintainer to
    review the gallery before 6.5.7's baselines are recorded. The maintainer said on 2026-11-10 to implement everything
    but 6.10, so record them, and list each choice of look in "Found while building" for a later review.

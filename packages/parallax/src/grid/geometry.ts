@@ -13,6 +13,8 @@ const defaultTreeWidth = 260;
 const minWidth = 40;
 /** Browsers cap element heights near 33 million pixels; the spacer stays well below. */
 const maxScrollPx = 15_000_000;
+/** Half a row, the middle of a row's share of a scaled scroll. */
+const halfRow = 0.5;
 /** The column index of the row selection's checkboxes, at the far left, before the group column's -1. */
 const selectColumn = -2;
 /** The checkbox column's width: room for a checkbox and the padding either side of it. */
@@ -193,8 +195,13 @@ function rowGeometry(rows: number, { rowPx, headerPx = 0 }: RowSizes, viewportPx
       const fraction = top / Math.max(1, maxScrollPx - viewport);
       return Math.min(rows - 1, Math.floor(fraction * span(viewport)));
     },
+    /* The middle of the row's share of the scroll, so that a browser that keeps the offset in whole device pixels,
+     * rounding it by up to half of one at 125 %, still lands on the row: a row has 15 pixels of the scroll at
+     * 1,000,000 rows. The first row is at the top. */
     scrollTopFor: (row, viewport) =>
-      Math.ceil((row / Math.max(1, span(viewport))) * Math.max(1, maxScrollPx - viewport)),
+      row <= 0
+        ? 0
+        : ((row + halfRow) / Math.max(1, span(viewport))) * Math.max(1, maxScrollPx - viewport),
     spacerPx: maxScrollPx,
   };
 }

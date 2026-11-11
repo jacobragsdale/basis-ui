@@ -704,7 +704,19 @@ deltas, the horizontal wheel, Shift's sideways scroll and Ctrl's zoom stay the
 browser's, as does a wheel at either end, which scrolls the page. The
 keyboard, which moves the focused cell and reveals it, and the native
 scrollbar, dragged, are unchanged. The code is in `src/grid/next-frame.ts` and
-`src/grid/wheel.ts`. Flashing cells, and the batching of live updates to a visual rate that
+`src/grid/wheel.ts`.
+
+Past 15,000,000 pixels, about 625,000 rows of 24, the scrollbar's extent is
+capped and its offset scales to rows, about 15 pixels of it a row at 1,000,000.
+A browser keeps the offset in whole device pixels, so at 125 % an offset set
+for a row read back up to half a device pixel lower, and the grid showed the row
+before: the keyboard could not reveal one row in twenty. Since basis-ui's step
+6.4.5 the grid aims at the middle of a row's share of the scrollbar, which
+rounding cannot leave while a row has more than a pixel of it, that is, up to
+about 15,000,000 rows. The plan's alternative, the first row held as the model
+and the scrollbar a view of it, is not needed below that.
+
+Flashing cells, and the batching of live updates to a visual rate that
 they would need, are not in the code: live updates stay deferred.
 
 Every canvas, the grid's, the pivot's and each chart's, draws in whole device
