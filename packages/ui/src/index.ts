@@ -591,6 +591,7 @@ export {
   readPreferences,
   resolveMode,
   serializePreferences,
+  themeChangeEvent,
   writePreferences,
   type CookieOptions,
   type Density,

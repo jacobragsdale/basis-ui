@@ -1,8 +1,9 @@
-/* The colours charts draw data with, beside the tokens they share with the grid. Their defaults are `@basis/ui`'s
- * data colours, `chart-1` to `chart-8`, the sequential scale and the red arm of the diverging scale, which the
- * `basis` theme reads live from the page; these are what a canvas draws before the stylesheet applies. */
+// Written by `vp run @basis/ui#theme` from @basis/ui's default theme; do not edit it by hand. The colours charts
+// draw data with, beside the tokens they share with the grid: the theme's `chart-1` to `chart-8`, `gain` and
+// `loss`, the sequential scale, and the diverging scale's midpoint and red arm. The `basis` theme reads those tokens
+// live from the page; these are what a canvas draws before the stylesheet applies.
 
-import type { ResolvedScheme, TokenSpec } from "./kinds.ts";
+import type { ResolvedScheme } from "./kinds.ts";
 
 /** The colours charts draw data with. */
 interface ChartColors {
@@ -89,35 +90,5 @@ const chartColors: Readonly<Record<ResolvedScheme, ChartColors>> = {
   },
 };
 
-/** The lists of chart colours, by the property each colour's number follows: `series-1`, `ramp-1` and so on. */
-const chartLists = [
-  ["series", "series"],
-  ["ramp", "ramp"],
-  ["negative-ramp", "negativeRamp"],
-] as const;
-
-/** The single chart colours, by property. */
-const chartSingles = ["up", "down", "middle"] as const;
-
-/** Every chart colour's property and defaults, as a token: `series-1` to `series-8`, `up`, `ramp-1`, and so on. */
-function chartEntries(): readonly TokenSpec[] {
-  const { light, dark } = chartColors;
-  const lists = chartLists.flatMap(([property, key]) =>
-    light[key].map((value, index): TokenSpec => ({
-      dark: dark[key][index] ?? value,
-      light: value,
-      property: `${property}-${String(index + 1)}`,
-      syntax: "color",
-    })),
-  );
-  const singles = chartSingles.map((key): TokenSpec => ({
-    dark: dark[key],
-    light: light[key],
-    property: key,
-    syntax: "color",
-  }));
-  return [...lists, ...singles];
-}
-
-export { chartColors, chartEntries, chartLists, chartSingles };
+export { chartColors };
 export type { ChartColors };

@@ -10,6 +10,7 @@ import {
   axis,
   columnStyle,
   hidden,
+  lineWidthOf,
   onto,
   padOf,
   plotFor,
@@ -20,9 +21,6 @@ import {
 } from "./model-shared.ts";
 import { segmentsOf } from "./panes.ts";
 import { linearScale, pixel } from "./scale.ts";
-
-/** A series' line width. */
-const lineWidth = 2;
 
 /** A series shown, and its place among all the series, which picks its colour. */
 interface Visible {
@@ -107,7 +105,7 @@ function seriesMarks(
             dashed: false,
             kind: "line",
             segments,
-            width: lineWidth,
+            width: lineWidthOf(input),
           },
         ];
   });

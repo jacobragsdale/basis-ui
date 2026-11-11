@@ -2,8 +2,10 @@
  * Angular layer's chart colours, so that the React chart's canvas can be compared pixel for pixel with the Angular
  * demo's screenshots wherever the renderer is the same. */
 
-import { basisTheme, defineTheme, standardTheme } from "#index.ts";
+import { basisTheme, defineTheme } from "#index.ts";
 import type { ParallaxTheme } from "#index.ts";
+
+import { standardTheme } from "#theme/looks.ts";
 
 /** The Angular layer's chart colours, `CHART_COLORS` in web/projects/parallax/src/lib/theme.ts. Its ramps have seven
  * steps where the React layer's have nine and five, so densities and heatmaps cannot match. */

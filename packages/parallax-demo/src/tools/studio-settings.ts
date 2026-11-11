@@ -55,7 +55,6 @@ const ranges: readonly RangeControl[] = [
     start: 13,
   },
   { label: "Spacing", max: 6, min: 3, param: "spacing", property: "--px-spacing", start: 4 },
-  { label: "Corners", max: 12, min: 0, param: "radius", property: "--px-radius", start: 6 },
   { label: "Rows", max: 40, min: 20, param: "rowHeight", property: "--px-row-height", start: 24 },
 ];
 

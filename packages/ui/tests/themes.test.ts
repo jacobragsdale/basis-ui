@@ -9,6 +9,7 @@ import { describe, expect, test } from "vite-plus/test";
 
 import { tabularFace, themeBlocks, themeCss, themeNamesModule } from "#theme/css.ts";
 import { defineTheme } from "#theme/inputs.ts";
+import { parallaxChartsModule } from "#theme/parallax-charts.ts";
 import { startTheme } from "#theme/start-theme.ts";
 import { defaultTheme, themes } from "#theme/themes/index.ts";
 
@@ -28,6 +29,11 @@ test("the tabular face's file, and its licence, are the package's (run `vp run @
   expect(readFileSync(new URL("fonts/LICENSE", styles), "utf8")).toBe(
     readFileSync(require.resolve("@fontsource-variable/inter/LICENSE"), "utf8"),
   );
+});
+
+test("parallax's committed chart colours are the default theme's (run `vp run @basis/ui#theme` after changing it)", () => {
+  const charts = new URL("../../parallax/src/theme/charts.ts", import.meta.url);
+  expect(readFileSync(charts, "utf8")).toBe(parallaxChartsModule(defaultTheme));
 });
 
 const sea = dummy("sea", 200);

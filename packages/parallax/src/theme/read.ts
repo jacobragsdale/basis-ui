@@ -102,5 +102,15 @@ function sameChartColors(first: ChartColors, second: ChartColors): boolean {
   return JSON.stringify(first) === JSON.stringify(second);
 }
 
-export { defaultTheme, readChartColors, readTheme, sameChartColors, sameTheme };
+/** Whether two themes fit a column to different widths: a font, its loading, a cell's padding or the header's icons. */
+function measuresDiffer(was: Theme, now: Theme): boolean {
+  return (
+    was.font !== now.font ||
+    was.fontLoaded !== now.fontLoaded ||
+    was.cellPadding !== now.cellPadding ||
+    was.iconSize !== now.iconSize
+  );
+}
+
+export { defaultTheme, measuresDiffer, readChartColors, readTheme, sameChartColors, sameTheme };
 export type { Theme };

@@ -9,6 +9,12 @@ anything of an app.
 
 ## Unreleased
 
+- `applyPreferences` dispatches `themeChangeEvent`, `basis:themechange`, on the root element once it changes the
+  mode, density, motion or theme shown, and `@basis/parallax`'s canvases read their tokens again on it. Code that
+  changes the theme's tokens another way, such as by setting a variable on a wrapper, dispatches it on the document.
+  `@basis/parallax`'s grid rows are now a medium control's height, 28 px compact and 32 comfortable, so a page's
+  grids are as dense as its forms. What to do: nothing, unless a test reads a grid's row height in pixels.
+
 - An app made with `vp create @basis:app` now gets its `.gitignore`. The packed template had dropped it, as a packed
   package drops every `.gitignore`, so `vp run verify` failed its sync stage, and its lint read `node_modules` until it
   was killed. The template holds it as `_gitignore`, which `vp create` renames, and CI now makes an app from the packed

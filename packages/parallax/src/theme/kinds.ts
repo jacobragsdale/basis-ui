@@ -7,22 +7,19 @@ type Scheme = "light" | "dark" | "auto";
 type ResolvedScheme = Exclude<Scheme, "auto">;
 
 /** How a token's value is registered: colours and lengths by their syntax, so they compute to concrete values. */
-type Syntax = "color" | "length" | "family" | "weight" | "shadow" | "border";
+type Syntax = "color" | "length" | "family" | "weight";
 
 /** The `@property` syntax each kind registers with, if any. */
 const registeredSyntax: Readonly<Record<Syntax, string | null>> = {
-  border: null,
   color: "<color>",
   family: null,
   length: "<length>",
-  shadow: null,
   weight: null,
 };
 
 /**
  * One token: its property after `--px-`, its kind, and its default in each scheme. A default may be an expression of
  * other tokens, such as a `calc()`; `initial` is then the value it registers with, which must be a plain value.
- * `stepped` lengths grow by the density's step, so a comfortable grid's rows are taller in any theme.
  */
 interface TokenSpec {
   readonly property: string;
@@ -30,7 +27,6 @@ interface TokenSpec {
   readonly light: string;
   readonly dark: string;
   readonly initial?: string;
-  readonly stepped?: boolean;
 }
 
 /** A tint of one token over another, by a share in percent in each scheme. */

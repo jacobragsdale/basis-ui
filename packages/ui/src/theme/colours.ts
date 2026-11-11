@@ -64,6 +64,15 @@ function format(theme: ThemeInputs, source: Source, inMode: Mode): string {
   return `oklch(${lightness} ${chroma} ${hue}${alpha})`;
 }
 
+/** A token's value in a theme and mode, as the stylesheet writes it. */
+function tokenValue(theme: ThemeInputs, name: string, inMode: Mode): string {
+  const token = tokensOf(theme)[name];
+  if (token === undefined) {
+    throw new RangeError(`The theme has no token named ${name}.`);
+  }
+  return format(theme, token[inMode], inMode);
+}
+
 /** A theme's tokens in a mode, as declarations. */
 function tokenDeclarations(theme: ThemeInputs, inMode: Mode): string {
   return Object.entries(tokensOf(theme))
@@ -71,4 +80,4 @@ function tokenDeclarations(theme: ThemeInputs, inMode: Mode): string {
     .join("\n");
 }
 
-export { colourOf, resolve, tokenDeclarations };
+export { colourOf, resolve, tokenDeclarations, tokenValue };

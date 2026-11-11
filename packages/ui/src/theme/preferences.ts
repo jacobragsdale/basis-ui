@@ -26,12 +26,20 @@ interface PreferencesRoot {
   readonly classList: Pick<DOMTokenList, "toggle">;
   readonly style: Pick<CSSStyleDeclaration, "colorScheme">;
   readonly dataset: DOMStringMap;
+  /** Announces a change, as `themeChangeEvent`; an element has it, and a stand-in may leave it out. */
+  readonly dispatchEvent?: (event: Event) => boolean;
   readonly ownerDocument?:
     | { readonly defaultView: Pick<Window, "requestAnimationFrame"> | null }
     | undefined;
 }
 
 const darkQuery = "(prefers-color-scheme: dark)";
+
+/** The event `applyPreferences` dispatches on the root element, bubbling to the document, once it has changed the
+ * mode, density, motion or theme shown: whatever draws from the theme's tokens outside CSS, such as parallax's
+ * canvases, reads them again. Code that changes the tokens in a way no attribute shows, such as by swapping a
+ * stylesheet, dispatches it on the document. */
+const themeChangeEvent = "basis:themechange";
 
 /** Whether the page has the cookie, of this app's or the shared domain's. */
 function hasCookie(): boolean {
@@ -115,7 +123,7 @@ function show(root: PreferencesRoot, { mode, density, motion, theme }: Shown): v
  * such as parallax's canvases, need not know the stylesheet's base; the default theme's rules sit at `:root` and hold
  * whatever `data-theme` says, and every other theme's under its `[data-theme="NAME"]`. A change to any of them holds every transition off until it is drawn, so the page changes in one
  * frame, as its canvases do, where some sixty controls' colours would otherwise cross-fade and a density change lay
- * the page out frame by frame. */
+ * the page out frame by frame, and then dispatches `themeChangeEvent` on the root element. */
 function applyPreferences(
   root: PreferencesRoot,
   preferences: Preferences,
@@ -128,10 +136,14 @@ function applyPreferences(
     theme: preferences.theme,
   };
   const view = root.ownerDocument?.defaultView ?? null;
-  if (view !== null && differs(root, shown)) {
+  const changed = differs(root, shown);
+  if (view !== null && changed) {
     holdTransitions(root, view);
   }
   show(root, shown);
+  if (changed) {
+    root.dispatchEvent?.(new Event(themeChangeEvent, { bubbles: true }));
+  }
 }
 
 /** The preferences stored in this page's cookies. */
@@ -223,6 +235,7 @@ export {
   headScript,
   readPreferences,
   resolveMode,
+  themeChangeEvent,
   writePreferences,
 };
 export type { PreferencesRoot, ResolvedMode };

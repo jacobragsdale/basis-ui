@@ -38,8 +38,20 @@ const gap = 2;
 /** About one tick on a value axis every this many pixels. */
 const pixelsPerTick = 56;
 const ticksPerPixel = 1 / pixelsPerTick;
-/** A label's height where labels stack down the side. */
-const lineHeight = 16;
+/** A label's height where labels stack down the side, unless the theme gives one. */
+const defaultLineHeight = 16;
+/** A series' line width, unless the theme gives one. */
+const defaultLineWidth = 2;
+
+/** The height of a line of label text, the theme's. */
+function lineHeightOf(input: Pick<ModelInput, "lineHeight">): number {
+  return input.lineHeight ?? defaultLineHeight;
+}
+
+/** A series' line width, the theme's. */
+function lineWidthOf(input: Pick<ModelInput, "lineWidth">): number {
+  return input.lineWidth ?? defaultLineWidth;
+}
 
 const count = new Intl.NumberFormat("en-US");
 
@@ -249,7 +261,8 @@ export {
   gutter,
   hidden,
   legendOf,
-  lineHeight,
+  lineHeightOf,
+  lineWidthOf,
   maxBar,
   maxLabel,
   onto,

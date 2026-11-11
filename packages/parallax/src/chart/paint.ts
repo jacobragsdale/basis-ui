@@ -9,7 +9,7 @@ import { paintDrawings } from "./paint-drawings.ts";
 import type { DrawingLayer } from "./paint-drawings.ts";
 import { paintLabels } from "./paint-labels.ts";
 import { paintClipped } from "./paint-marks.ts";
-import { style } from "./paint-canvas.ts";
+import { paintSizes, style } from "./paint-canvas.ts";
 import type { Painting } from "./paint-canvas.ts";
 import type { ChartModel } from "./model-types.ts";
 import { wrapText } from "./text.ts";
@@ -81,7 +81,7 @@ function paintChart(
   { theme, drawings, ratio = 1 }: PaintOptions,
 ): void {
   const small = `${theme.fontSizeSmall} ${theme.fontFamily}`;
-  const painting: Painting = { ctx, ratio, small, theme };
+  const painting: Painting = { ctx, ratio, sizes: paintSizes(theme), small, theme };
   paintModel(painting, model);
   if (drawings !== undefined && drawings.shapes.length > 0 && model.empty === null) {
     paintDrawings(painting, model, drawings);

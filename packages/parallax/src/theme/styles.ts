@@ -2,17 +2,15 @@
  * declaration is in the `parallax` cascade layer, below any rule a host writes.
  *
  * An element is a parallax host when it carries `data-px-scheme`, as `useParallaxTheme()`'s attributes set it; its
- * `data-px-theme` names its theme, and `data-px-density="comfortable"` adds the density's step to its rows. */
+ * `data-px-theme` names its theme. A theme's lengths, such as the `basis` theme's rows, may follow the page's density
+ * through the variables they name. */
 
-import { chartEntries } from "./charts.ts";
+import { chartEntries } from "./chart-tokens.ts";
 import type { ParallaxTheme } from "./define.ts";
 import { tokenNames } from "./define.ts";
 import { given, registeredSyntax } from "./kinds.ts";
 import { specs } from "./tokens.ts";
 import type { ResolvedScheme, TokenSpec } from "./kinds.ts";
-
-/** How much taller a comfortable grid's rows and header are than a compact one's, in pixels. */
-const densityStep = 6;
 
 /** The elements the tokens are declared on. */
 const hosts = "[data-px-scheme]";
@@ -24,9 +22,7 @@ const entries: readonly TokenSpec[] = [...tokenNames.map((name) => specs[name]),
 const tokenProperties: readonly string[] = entries.map((entry) => `--px-${entry.property}`);
 
 function resolved(entry: TokenSpec, value: string): string {
-  const own = given(entry.property, value);
-  const stepped = entry.stepped === true ? `calc(${own} + var(--_px-density-step, 0px))` : own;
-  return `--_px-${entry.property}: ${stepped};`;
+  return `--_px-${entry.property}: ${given(entry.property, value)};`;
 }
 
 /** The `@property` rule that registers a colour or a length, so its computed value is concrete. */
@@ -50,7 +46,6 @@ function baseStyles(): string {
   const dark = entries
     .filter((entry) => entry.dark !== entry.light)
     .map((entry) => resolved(entry, entry.dark));
-  const comfortable = `${hosts}[data-px-density="comfortable"] { --_px-density-step: ${String(densityStep)}px; }`;
   // The scheme also picks the native controls' and scrollbars' colours; checkboxes and radios take the accent.
   const native =
     "accent-color: var(--_px-accent); scrollbar-color: var(--_px-scrollbar) transparent;";
@@ -58,7 +53,7 @@ function baseStyles(): string {
   const darkRule = `${hosts}[data-px-scheme="dark"] { color-scheme: dark; ${dark.join(" ")} }`;
   return [
     ...entries.flatMap((entry) => registration(entry)),
-    `@layer parallax { ${lightRule} ${darkRule} ${comfortable} }`,
+    `@layer parallax { ${lightRule} ${darkRule} }`,
   ].join("\n");
 }
 
@@ -81,9 +76,13 @@ function themeStyles(theme: ParallaxTheme): string {
   return rules.length === 0 ? "" : `@layer parallax { ${rules.join(" ")} }`;
 }
 
-/** Adds a stylesheet to a document's head once, by its id. */
+/** Puts a stylesheet in a document's head by its id, replacing the text of one already there if it differs. */
 function install(document: Document, id: string, css: string): void {
-  if (document.querySelector(`#${id}`) !== null) {
+  const existing = document.querySelector(`#${id}`);
+  if (existing !== null) {
+    if (existing.textContent !== css) {
+      existing.textContent = css;
+    }
     return;
   }
   const style = document.createElement("style");
@@ -97,17 +96,9 @@ function installTokenStyles(document: Document): void {
   install(document, "px-theme-tokens", tokenStyles);
 }
 
-/** Adds a theme's stylesheet to a document once. */
+/** Puts a theme's stylesheet in a document, replacing the one of the same name installed before, if it differs. */
 function installTheme(document: Document, theme: ParallaxTheme): void {
   install(document, `px-theme-${theme.name}`, themeStyles(theme));
 }
 
-export {
-  densityStep,
-  entries,
-  installTheme,
-  installTokenStyles,
-  themeStyles,
-  tokenProperties,
-  tokenStyles,
-};
+export { entries, installTheme, installTokenStyles, themeStyles, tokenProperties, tokenStyles };

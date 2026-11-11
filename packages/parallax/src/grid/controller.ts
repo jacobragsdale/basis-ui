@@ -8,7 +8,7 @@ import type { ViewHandle } from "#engine/view.ts";
 import type { Viewport } from "#engine/view-types.ts";
 import type { FrameData } from "#frame/frame.ts";
 import type { Layout } from "#layout/layout.ts";
-import { sameTheme } from "#theme/read.ts";
+import { measuresDiffer, sameTheme } from "#theme/read.ts";
 import type { Theme } from "#theme/read.ts";
 
 import type { GridParts } from "./dom.ts";
@@ -117,8 +117,8 @@ class GridController {
       return;
     }
     this.#model.theme = theme;
-    if (was !== null && (was.font !== theme.font || was.fontLoaded !== theme.fontLoaded)) {
-      // Text measured in the old font, or in a fallback before it loaded, is the wrong width now: fit it again.
+    if (was !== null && measuresDiffer(was, theme)) {
+      // Widths measured in the old font, padding or header icons are wrong now: fit them again.
       this.#painter.widths.clear();
       this.#model.fitter.reset();
       this.#fit();

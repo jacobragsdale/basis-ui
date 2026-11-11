@@ -79,19 +79,19 @@ describe("the performance overlay's figures", () => {
 
 describe("the theme studio's output", () => {
   test("a setting replaces the property's value, and an empty one removes it", () => {
-    const settings = withSetting({ "--px-accent": "#000000" }, "--px-radius", "8px");
-    expect(withSetting(settings, "--px-accent", "")).toStrictEqual({ "--px-radius": "8px" });
+    const settings = withSetting({ "--px-accent": "#000000" }, "--px-row-height", "30px");
+    expect(withSetting(settings, "--px-accent", "")).toStrictEqual({ "--px-row-height": "30px" });
   });
 
   test("copies as CSS for :root, or says to move a control first", () => {
     expect(settingsCss({})).toBe("/* Move a control to make a theme. */");
-    expect(settingsCss({ "--px-accent": "#7c3aed", "--px-radius": "8px" })).toBe(
-      ":root {\n  --px-accent: #7c3aed;\n  --px-radius: 8px;\n}",
+    expect(settingsCss({ "--px-accent": "#7c3aed", "--px-row-height": "30px" })).toBe(
+      ":root {\n  --px-accent: #7c3aed;\n  --px-row-height: 30px;\n}",
     );
   });
 
   test("copies as a theme over @basis/ui's, lengths in pixels as numbers", () => {
-    expect(settingsTypescript({ "--px-accent": "#7c3aed", "--px-radius": "8px" })).toBe(
+    expect(settingsTypescript({ "--px-accent": "#7c3aed", "--px-row-height": "30px" })).toBe(
       [
         'import { basisTheme, defineTheme } from "@basis/parallax";',
         "",
@@ -100,7 +100,7 @@ describe("the theme studio's output", () => {
         '  name: "mine",',
         "  params: {",
         '    accent: "#7c3aed",',
-        "    radius: 8,",
+        "    rowHeight: 30,",
         "  },",
         "});",
       ].join("\n"),

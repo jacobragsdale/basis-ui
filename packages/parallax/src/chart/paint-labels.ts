@@ -2,7 +2,6 @@
  * its hole, and event markers along the price's plot. Each label is written only where it fits. */
 
 import { inkOn } from "./ink.ts";
-import { lineHeight } from "./paint-axes.ts";
 import { dim, style } from "./paint-canvas.ts";
 import type { Painting } from "./paint-canvas.ts";
 import type { ChartModel, Rect, RectMark, SliceMark } from "./model-types.ts";
@@ -40,7 +39,11 @@ const eventHalf = 4;
 const eventHeight = 7;
 
 /** An upright bar's value over its top, or under its bottom if it is negative, if it fits. */
-function columnLabel({ ctx, theme }: Painting, { model, mark, label, width }: BarLabel): void {
+function columnLabel(
+  { ctx, theme, sizes }: Painting,
+  { model, mark, label, width }: BarLabel,
+): void {
+  const { lineHeight } = sizes;
   const { rect } = mark;
   const { plot } = model;
   const up = mark.round === "top";
@@ -73,18 +76,18 @@ function acrossPlace({ model, mark, width }: BarLabel): {
 }
 
 /** A bar running across: its value past its end if that stays in the plot, else inside its end if it is long enough. */
-function acrossLabel({ ctx, theme }: Painting, bar: BarLabel): void {
+function acrossLabel({ ctx, theme, sizes }: Painting, bar: BarLabel): void {
   const { rect } = bar.mark;
   const right = bar.mark.round === "right";
   const { fitsOutside, x } = acrossPlace(bar);
   if (
-    rect.height < lineHeight - labelGap ||
+    rect.height < sizes.lineHeight - labelGap ||
     (!fitsOutside && rect.width < bar.width + insideRoom)
   ) {
     return;
   }
   style(ctx, {
-    fillStyle: fitsOutside ? theme.foreground : inkOn(bar.mark.color),
+    fillStyle: fitsOutside ? theme.foreground : inkOn(bar.mark.color, sizes.inks),
     textAlign: right === fitsOutside ? "left" : "right",
     textBaseline: "middle",
   });
@@ -113,12 +116,14 @@ function labelRadius(mark: SliceMark): number {
   return mark.inner > 0 ? (mark.inner + mark.outer) / 2 : mark.outer * pieLabelRadius;
 }
 
-/** Whether a label of `width` fits on a slice at its middle, with a margin, between the hole and the rim and within the arc. */
-function fitsSlice(mark: SliceMark, width: number): boolean {
+/** Whether a label's box fits on a slice at its middle, with a margin, between the hole and the rim and within the arc. */
+function fitsSlice(
+  mark: SliceMark,
+  { width, height }: { readonly width: number; readonly height: number },
+): boolean {
   const middle = (mark.start + mark.end) / 2;
   const radius = labelRadius(mark);
   // The level text's box, turned into the slice's frame: how far it reaches along the radius and across it.
-  const height = lineHeight;
   const [cos, sin] = [Math.abs(Math.cos(middle)), Math.abs(Math.sin(middle))];
   const along = width * cos + height * sin;
   const across = width * sin + height * cos;
@@ -127,14 +132,21 @@ function fitsSlice(mark: SliceMark, width: number): boolean {
 }
 
 /** A slice's share across its middle, in the ink that reads best on it, if the slice has room for it. */
-function sliceLabel({ ctx }: Painting, mark: SliceMark): void {
+function sliceLabel({ ctx, sizes }: Painting, mark: SliceMark): void {
   const text = mark.label;
-  if (text === undefined || !fitsSlice(mark, ctx.measureText(text).width)) {
+  if (
+    text === undefined ||
+    !fitsSlice(mark, { height: sizes.lineHeight, width: ctx.measureText(text).width })
+  ) {
     return;
   }
   const middle = (mark.start + mark.end) / 2;
   const radius = labelRadius(mark);
-  style(ctx, { fillStyle: inkOn(mark.color), textAlign: "center", textBaseline: "middle" });
+  style(ctx, {
+    fillStyle: inkOn(mark.color, sizes.inks),
+    textAlign: "center",
+    textBaseline: "middle",
+  });
   ctx.fillText(text, mark.cx + Math.cos(middle) * radius, mark.cy + Math.sin(middle) * radius);
 }
 

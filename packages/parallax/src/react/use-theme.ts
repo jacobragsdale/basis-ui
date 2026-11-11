@@ -8,11 +8,10 @@ import type { Theme } from "#theme/read.ts";
 import type { ParallaxThemeState } from "./context.ts";
 import { useThemeState } from "./context.ts";
 
-/** The attributes a component's element carries to draw in the theme: its scheme, theme and density. */
+/** The attributes a component's element carries to draw in the theme: its scheme and theme. */
 interface ParallaxThemeAttributes {
   readonly "data-px-scheme": ParallaxThemeState["scheme"];
   readonly "data-px-theme": string;
-  readonly "data-px-density": ParallaxThemeState["density"];
 }
 
 /** The tokens in effect for an element, as a canvas draws with them, and the theme state they were read in. */
@@ -48,7 +47,6 @@ function useParallaxTheme(): ParallaxThemeInfo {
   return {
     ...state,
     attributes: {
-      "data-px-density": density,
       "data-px-scheme": scheme,
       "data-px-theme": themeName,
     },

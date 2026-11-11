@@ -17,8 +17,6 @@ import type {
   SliceMark,
 } from "./model-types.ts";
 
-/** The data end of a bar or column is rounded; its baseline stays square. */
-const radius = 4;
 /** The surface gap between touching slices, as between bars. */
 const sliceGap = 2;
 /** An area's and a band's wash: the series colour at 10 %, never a saturated block. */
@@ -65,8 +63,9 @@ function corners(side: Side, round: number): [number, number, number, number] {
   }
 }
 
-function paintRect({ ctx }: Painting, rect: Rect, side: Side): void {
-  const round = Math.max(0, Math.min(radius, rect.width / 2, rect.height / 2));
+/** A bar or column: its data end rounded by the theme's radius, its baseline square. */
+function paintRect({ ctx, sizes }: Painting, rect: Rect, side: Side): void {
+  const round = Math.max(0, Math.min(sizes.barRadius, rect.width / 2, rect.height / 2));
   ctx.beginPath();
   ctx.roundRect(rect.x, rect.y, rect.width, rect.height, corners(side, round));
   ctx.fill();

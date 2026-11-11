@@ -15752,7 +15752,7 @@
       "kind": "function",
       "module": "@basis/ui",
       "name": "applyPreferences",
-      "purpose": "Puts the preferences on the page's root element: the `dark` class, `color-scheme`, `data-density`, `data-motion` and `data-theme`. `data-density` and `data-theme` always name the density and the theme, so that whatever reads them, such as parallax's canvases, need not know the stylesheet's base; the default theme's rules sit at `:root` and hold whatever `data-theme` says, and every other theme's under its `[data-theme=\"NAME\"]`. A change to any of them holds every transition off until it is drawn, so the page changes in one frame, as its canvases do, where some sixty controls' colours would otherwise cross-fade and a density change lay the page out frame by frame.",
+      "purpose": "Puts the preferences on the page's root element: the `dark` class, `color-scheme`, `data-density`, `data-motion` and `data-theme`. `data-density` and `data-theme` always name the density and the theme, so that whatever reads them, such as parallax's canvases, need not know the stylesheet's base; the default theme's rules sit at `:root` and hold whatever `data-theme` says, and every other theme's under its `[data-theme=\"NAME\"]`. A change to any of them holds every transition off until it is drawn, so the page changes in one frame, as its canvases do, where some sixty controls' colours would otherwise cross-fade and a density change lay the page out frame by frame, and then dispatches `themeChangeEvent` on the root element.",
       "signature": "applyPreferences(root: PreferencesRoot, preferences: Preferences, systemDark: boolean): void"
     },
     {
@@ -15810,6 +15810,13 @@
       "name": "serializePreferences",
       "purpose": "The `document.cookie` assignment that stores the preferences for a year.",
       "signature": "serializePreferences(preferences: Preferences, options: CookieOptions = {}): string"
+    },
+    {
+      "kind": "constant",
+      "module": "@basis/ui",
+      "name": "themeChangeEvent",
+      "purpose": "The event `applyPreferences` dispatches on the root element, bubbling to the document, once it has changed the mode, density, motion or theme shown: whatever draws from the theme's tokens outside CSS, such as parallax's canvases, reads them again. Code that changes the tokens in a way no attribute shows, such as by swapping a stylesheet, dispatches it on the document.",
+      "signature": "const themeChangeEvent = \"basis:themechange\""
     },
     {
       "kind": "function",
@@ -16972,25 +16979,11 @@
       "signature": "const basisTheme: ParallaxTheme"
     },
     {
-      "kind": "constant",
-      "module": "@basis/parallax",
-      "name": "airyTheme",
-      "purpose": "A roomier look: taller rows and header, wider padding, no lines between columns and a hairline between rows in place of stripes, a header on the grid's own background, and rounder corners.",
-      "signature": "const airyTheme: ParallaxTheme"
-    },
-    {
       "kind": "function",
       "module": "@basis/parallax",
       "name": "defineTheme",
-      "purpose": "Makes a theme: values for some tokens, in both schemes or in one, over those of the theme it extends. Give it to `<ParallaxProvider theme>`. A token a host sets in CSS still wins. Throws if `name` is not lowercase letters, digits and hyphens, or names a different theme already defined.",
+      "purpose": "Makes a theme: values for some tokens, in both schemes or in one, over those of the theme it extends. Give it to `<ParallaxProvider theme>`. A token a host sets in CSS still wins. A name is one theme on a page: a theme given the name of one installed before replaces it there, as a theme edited while the page runs does. Throws if `name` is not lowercase letters, digits and hyphens.",
       "signature": "defineTheme(spec: ThemeSpec): ParallaxTheme"
-    },
-    {
-      "kind": "constant",
-      "module": "@basis/parallax",
-      "name": "standardTheme",
-      "purpose": "Parallax's own look, refined and dense: its defaults, unchanged.",
-      "signature": "const standardTheme: ParallaxTheme"
     },
     {
       "kind": "function",
@@ -17042,17 +17035,10 @@
       "signature": "sameTheme(first: Theme, second: Theme): boolean"
     },
     {
-      "kind": "constant",
-      "module": "@basis/parallax",
-      "name": "densityStep",
-      "purpose": "How much taller a comfortable grid's rows and header are than a compact one's, in pixels.",
-      "signature": "const densityStep = 6"
-    },
-    {
       "kind": "function",
       "module": "@basis/parallax",
       "name": "installTheme",
-      "purpose": "Adds a theme's stylesheet to a document once.",
+      "purpose": "Puts a theme's stylesheet in a document, replacing the one of the same name installed before, if it differs.",
       "signature": "installTheme(document: Document, theme: ParallaxTheme): void"
     },
     {
@@ -22157,18 +22143,12 @@
           "name": "data-px-theme",
           "optional": false,
           "type": "string"
-        },
-        {
-          "description": "",
-          "name": "data-px-density",
-          "optional": false,
-          "type": "ParallaxThemeState[\"density\"]"
         }
       ],
       "exported": true,
       "module": "@basis/parallax",
       "name": "ParallaxThemeAttributes",
-      "purpose": "The attributes a component's element carries to draw in the theme: its scheme, theme and density."
+      "purpose": "The attributes a component's element carries to draw in the theme: its scheme and theme."
     },
     {
       "fields": [
@@ -24835,6 +24815,12 @@
           "name": "dataset",
           "optional": false,
           "type": "DOMStringMap"
+        },
+        {
+          "description": "Announces a change, as `themeChangeEvent`; an element has it, and a stand-in may leave it out.",
+          "name": "dispatchEvent",
+          "optional": true,
+          "type": "(event: Event) => boolean"
         },
         {
           "description": "",

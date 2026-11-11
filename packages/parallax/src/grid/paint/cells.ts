@@ -26,11 +26,8 @@ const flagNotes: Readonly<Record<CellFlag, string | null>> = {
 };
 
 const noMarks: Ranges = [];
-/** The selected cell's ring: its width and its corners' radius. */
-const ringWidth = 2;
-const ringRadius = 2;
-/** The ring sits a pixel inside the cell, and three pixels narrower and shorter than it. */
-const ringInset = 3;
+/** The ring's outer edge stops this short of the cell's right and bottom edges, clear of the column's and row's rules. */
+const ringClear = 1;
 
 /** One row being drawn: its view row, its row in the frame, its top, and its background. */
 interface RowAt {
@@ -97,17 +94,20 @@ function unchanged(
   return !pass.full && !pass.stale.has(row) && pass.drawn.get(drawn.key) === drawn.text;
 }
 
-/** Strokes the focused cell's ring inside it. */
+/** Strokes the focused cell's ring inside it: a stroke is centred on its path, so the path sits half the ring's width
+ * in from the cell's top and left edges. */
 function ring(pass: Pass, at: RowAt, cell: CellAt): void {
   const { context, theme, metrics } = pass;
-  Object.assign(context, { lineWidth: ringWidth, strokeStyle: theme.selectionBorder });
+  const { width, radius } = metrics.ring;
+  const half = width / 2;
+  Object.assign(context, { lineWidth: width, strokeStyle: theme.selectionBorder });
   context.beginPath();
   context.roundRect(
-    cell.x + 1,
-    at.y + 1,
-    cell.width - ringInset,
-    metrics.rowPx - ringInset,
-    ringRadius,
+    cell.x + half,
+    at.y + half,
+    cell.width - width - ringClear,
+    metrics.rowPx - width - ringClear,
+    radius,
   );
   context.stroke();
 }

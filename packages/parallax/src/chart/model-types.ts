@@ -243,6 +243,10 @@ interface ModelInput {
   readonly muted: string;
   /** Measures a label's width in the chart font. */
   readonly measure: (text: string) => number;
+  /** The height of a line of label text, the theme's `lineHeightSmall`; 16 pixels if not given. */
+  readonly lineHeight?: number;
+  /** A series' line width, the theme's `lineWidth`; 2 pixels if not given. */
+  readonly lineWidth?: number;
   readonly frame: ChartFrameData | null;
   readonly categories: CategoryData | null;
   /** The narrowest left gutter, so that the price's axis lines up with its panes'. */

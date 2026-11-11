@@ -23,6 +23,7 @@ import {
   gap,
   hidden,
   legendOf,
+  lineHeightOf,
   padOf,
   seriesColor,
   xAxisHeight,
@@ -182,7 +183,12 @@ function barModel(input: ModelInput, data: CategoryData): ChartModel {
     xTicks:
       categoryRoom === null ? across : categoryLabels(data.categories, positions, categoryRoom),
     yAxes: horizontal ? [] : [axis("left", value, { style })],
-    yLabels: horizontal ? sideTicks(data.categories, positions, plot.height) : [],
+    yLabels: horizontal
+      ? sideTicks(data.categories, positions, {
+          length: plot.height,
+          lineHeight: lineHeightOf(input),
+        })
+      : [],
   };
 }
 

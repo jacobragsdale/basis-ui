@@ -4,7 +4,7 @@
 import { keys } from "@basis/ui/utils";
 
 import type { ChartColors } from "./charts.ts";
-import { chartLists, chartSingles } from "./charts.ts";
+import { chartLists, chartSingles } from "./chart-tokens.ts";
 import { specs } from "./tokens.ts";
 import type { LengthToken, TokenName } from "./tokens.ts";
 
@@ -41,9 +41,6 @@ interface ThemeSpec {
 
 const themeName = /^[a-z][a-z0-9-]*$/u;
 
-/** The themes defined so far, by name, to refuse a second, different theme of the same name. */
-const defined = new Map<string, string>();
-
 /** Every token's name, in the stylesheet's order. */
 const tokenNames: readonly TokenName[] = keys(specs);
 
@@ -78,9 +75,10 @@ function declared(params: ThemeParams | undefined): Readonly<Record<string, stri
 
 /**
  * Makes a theme: values for some tokens, in both schemes or in one, over those of the theme it extends. Give it to
- * `<ParallaxProvider theme>`. A token a host sets in CSS still wins.
+ * `<ParallaxProvider theme>`. A token a host sets in CSS still wins. A name is one theme on a page: a theme given the
+ * name of one installed before replaces it there, as a theme edited while the page runs does.
  *
- * Throws if `name` is not lowercase letters, digits and hyphens, or names a different theme already defined.
+ * Throws if `name` is not lowercase letters, digits and hyphens.
  */
 function defineTheme(spec: ThemeSpec): ParallaxTheme {
   if (!themeName.test(spec.name)) {
@@ -89,18 +87,11 @@ function defineTheme(spec: ThemeSpec): ParallaxTheme {
     );
   }
   const both = declared(spec.params);
-  const theme: ParallaxTheme = {
+  return {
     dark: { ...spec.extends?.dark, ...both, ...declared(spec.dark) },
     light: { ...spec.extends?.light, ...both, ...declared(spec.light) },
     name: spec.name,
   };
-  const key = JSON.stringify([theme.light, theme.dark]);
-  const earlier = defined.get(spec.name);
-  if (earlier !== undefined && earlier !== key) {
-    throw new Error(`Another theme is already named "${spec.name}"; give this one another name.`);
-  }
-  defined.set(spec.name, key);
-  return theme;
 }
 
 /** Another token's value, for a theme's value made from it, such as
@@ -109,29 +100,5 @@ function token(name: TokenName): string {
   return `var(--_px-${specs[name].property})`;
 }
 
-/** Parallax's own look, refined and dense: its defaults, unchanged. */
-const standardTheme: ParallaxTheme = defineTheme({ name: "standard" });
-
-/** A roomier look: taller rows and header, wider padding, no lines between columns and a hairline between rows in
- * place of stripes, a header on the grid's own background, and rounder corners. */
-const airyTheme: ParallaxTheme = defineTheme({
-  name: "airy",
-  params: {
-    cellPadding: 12,
-    columnBorder: "transparent",
-    controlHeight: 32,
-    groupBackground: `color-mix(in srgb, ${token("accent")} 5%, ${token("background")})`,
-    headerBackground: token("background"),
-    headerHeight: 38,
-    radius: 8,
-    rowBorder: `color-mix(in srgb, ${token("foreground")} 8%, ${token("background")})`,
-    rowHeight: 30,
-    spacing: 5,
-    stripe: "transparent",
-    totalBackground: token("background"),
-    wrapperRadius: 12,
-  },
-});
-
-export { airyTheme, defineTheme, standardTheme, token, tokenNames };
+export { defineTheme, token, tokenNames };
 export type { ParallaxTheme, ThemeParams, ThemeSpec };

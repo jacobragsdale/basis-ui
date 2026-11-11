@@ -57,7 +57,7 @@ test("a token set on a wrapper or on :root reaches the canvas once the page's cl
   await expect.poll(async () => pixel(page, corner)).toBe("0,0,255");
 });
 
-test("a row height set on :root sizes the grid's rows, and comfortable rows add their step to it", async ({
+test("a row height set on :root sizes the grid's rows in either density, as a theme's number does", async ({
   page,
 }) => {
   await open(page, "preset=pivot");
@@ -77,8 +77,9 @@ test("a row height set on :root sizes the grid's rows, and comfortable rows add 
   await page.addStyleTag({ content: ":root { --px-row-height: 40px; }" });
   await bodyClass(page, "tall", true);
   await expect.poll(async () => contentHeight(40, 46)).toBe(rows * 40 + 46);
+  // Only a theme that ties its rows to the page's density, as `basisTheme` does, follows it.
   await page.getByLabel("Row height", { exact: true }).selectOption("comfortable");
-  await expect.poll(async () => contentHeight(46, 52)).toBe(rows * 46 + 52);
+  await expect.poll(async () => contentHeight(40, 46)).toBe(rows * 40 + 46);
 });
 
 test("light-dark() in a token follows the grid's scheme", async ({ page }) => {

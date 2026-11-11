@@ -4,7 +4,7 @@
 import { barLabel, barPlot, barRect, barSlots } from "./model-bar-plot.ts";
 import { categoryAxis } from "./model-categories.ts";
 import type { CategoryData, Mark, ModelInput, Rect, Scale } from "./model-types.ts";
-import { dimmed, lineHeight, padOf, xAxisHeight } from "./model-shared.ts";
+import { dimmed, lineHeightOf, padOf, xAxisHeight } from "./model-shared.ts";
 import { pixel } from "./scale.ts";
 
 /** The total bar's category label. */
@@ -14,8 +14,6 @@ const bandMargin = 4;
 
 /** The gap between a step's end and its label, with a margin. */
 const labelGap = 6;
-/** The room a step's label takes past its end: a line and its gap. */
-const labelSpace = lineHeight + labelGap;
 
 /** A group's step: from the running total before it to its own. */
 interface Step {
@@ -44,6 +42,8 @@ function withLabelSpace(input: ModelInput, values: readonly number[]): readonly 
   }
   const [low, high] = [Math.min(0, ...values), Math.max(0, ...values)];
   const length = input.height - xAxisHeight - padOf(input);
+  // The room a step's label takes past its end: a line and its gap.
+  const labelSpace = lineHeightOf(input) + labelGap;
   const room = ((high - low) * labelSpace) / Math.max(1, length - 2 * labelSpace);
   return [...values, low < 0 ? low - room : low, high > 0 ? high + room : high];
 }

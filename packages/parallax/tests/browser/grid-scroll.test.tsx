@@ -70,8 +70,8 @@ async function frames(): Promise<void> {
   await nextFrame();
 }
 
-/** The compact density's rows, the default: 24 px under a 30 px header. */
-const compactRowPx = 24;
+/** The compact density's rows, the default: a medium control's 28 px, under a large control's 30 px header. */
+const compactRowPx = 28;
 const compactHeaderPx = 30;
 const hundredRows = (): ArrayBuffer => countedBytes(100);
 /** Rows past the far scroll's, of a view too large to fetch whole, which load in one step and show at once, so the grid

@@ -3,7 +3,16 @@
 
 import { styleOf } from "./axis-styles.ts";
 import type { CategoryData, CategorySeries, ModelInput, Rect, Scale } from "./model-types.ts";
-import { axis, gap, lineHeight, maxBar, onto, padOf, plotFor, valueScale } from "./model-shared.ts";
+import {
+  axis,
+  gap,
+  lineHeightOf,
+  maxBar,
+  onto,
+  padOf,
+  plotFor,
+  valueScale,
+} from "./model-shared.ts";
 import { pixel } from "./scale.ts";
 
 /** A bar's thickness as a share of its band, alone or stacked, and a group's share when bars sit side by side. */
@@ -107,7 +116,7 @@ function labelRoom(
         length / labelShare,
         Math.max(0, ...texts.map((text) => input.measure(text))) + besideMargin,
       )
-    : lineHeight + 2;
+    : lineHeightOf(input) + 2;
 }
 
 /** A bar's label, its value within `room` pixels, unless bars are unlabelled, stacked or have no text. */

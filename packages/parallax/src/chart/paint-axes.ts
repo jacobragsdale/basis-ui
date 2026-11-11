@@ -9,8 +9,6 @@ import { strokeLine, style } from "./paint-canvas.ts";
 import type { Painting } from "./paint-canvas.ts";
 import { fitText } from "./text.ts";
 
-/** The height of a line of axis text, in pixels. */
-const lineHeight = 15;
 /** How far labels sit from what they label, in pixels. */
 const labelGap = 6;
 /** How far a gutter's labels may reach before they are cut, from the plot's left edge. */
@@ -85,7 +83,7 @@ function levelLabel(
     return at.lastRight;
   }
   for (const [i, line] of lines.entries()) {
-    ctx.fillText(line, centre, at.top + i * lineHeight);
+    ctx.fillText(line, centre, at.top + i * painting.sizes.lineHeight);
   }
   return centre + halfWidth;
 }
@@ -205,4 +203,4 @@ function paintAxes(painting: Painting, model: ChartModel): void {
   horizontal(painting, plotBottom(model), [plot.x, plot.x + plot.width]);
 }
 
-export { lineHeight, paintAxes };
+export { paintAxes };

@@ -7,7 +7,9 @@ import { NativeSelect, NativeSelectOption } from "@basis/ui";
 import { useEffect, useLayoutEffect, useState } from "react";
 import type { ReactNode } from "react";
 
-import { ParallaxProvider, airyTheme, basisTheme, standardTheme } from "#index.ts";
+import { ParallaxProvider, basisTheme } from "#index.ts";
+
+import { airyTheme, standardTheme } from "#theme/looks.ts";
 import type { ResolvedScheme } from "#index.ts";
 
 import { SinglePage, SmallTables } from "./pages.tsx";

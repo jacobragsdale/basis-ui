@@ -585,7 +585,14 @@ flowchart TD
    in `data-theme` before the first paint and an unknown name reads as the default, the user menu offers the
    generator's themes once more than one ships, `BasisApp`'s `preferencesDomain` puts the cookie on the parent domain,
    a page follows another app's change through the cookie store's change event and, without one, on focus, and
-   `vp run shot --theme` takes any shipped theme.
+   `vp run shot --theme` takes any shipped theme. 6.5.6 built on 2026-11-10: parallax drops the 13 tokens nothing read
+   and `standardTheme`, `airyTheme` and `densityStep` from its API; `vp run @basis/ui#theme` writes its chart colours,
+   held to the generator by a test; `basisTheme` sizes rows, the header, padding and the header's icons by
+   `@basis/ui`'s control lengths, so rows are 28 px compact and 32 comfortable, from 24 and 30, and takes the bars'
+   radius, the focus ring's width, the label line height and the two inks from the theme; canvases read their tokens
+   again when a theme, density or `dark` class changes on any element, a stylesheet is swapped, or
+   `applyPreferences`'s `basis:themechange` event fires, and a grid fits its columns again when its padding or icons
+   change.
 6. **6.6 Grid features.** Lane Grid, after 6.3, 6.4 and 6.5, one branch per item: rich cells (`6.6.1-rich-cells`), a
    context menu and events (`6.6.2-context-menu`), saved views (`6.6.3-saved-views`), layouts typed by the dataset's
    rows (`6.6.4-typed-layouts`), states on the canvas (`6.6.5-states`), and small charts that say what their marks are

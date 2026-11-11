@@ -9,7 +9,7 @@ import { inkOn } from "#chart/ink.ts";
 import { ParallaxProvider } from "#react/provider.tsx";
 import { useParallaxTheme } from "#react/use-theme.ts";
 import type { ChartColors } from "#theme/charts.ts";
-import { airyTheme } from "#theme/define.ts";
+import { airyTheme } from "#theme/looks.ts";
 
 import { startWorker } from "./data.ts";
 import { Swatch } from "./swatch.tsx";
@@ -113,7 +113,7 @@ describe("ParallaxProvider's theme", () => {
       .toHaveTextContent(computed("var(--card)"));
   });
 
-  test("gives its hosts the page's density, and a scheme of its own when told one", async () => {
+  test("gives its hosts a scheme of its own when told one, and its theme's name", async () => {
     document.documentElement.dataset["density"] = "compact";
     const screen = await render(
       <ParallaxProvider worker={startWorker} scheme="dark" theme={airyTheme}>
@@ -122,7 +122,6 @@ describe("ParallaxProvider's theme", () => {
     );
     const host = screen.getByLabelText("scheme").element().parentElement;
     expect(host?.dataset).toMatchObject({
-      pxDensity: "compact",
       pxScheme: "dark",
       pxTheme: "airy",
     });

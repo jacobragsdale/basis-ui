@@ -15,9 +15,10 @@ import {
   basisTheme,
   decodeLayout,
   encodeLayout,
-  standardTheme,
   useDataset,
 } from "#index.ts";
+
+import { standardTheme } from "#theme/looks.ts";
 import type { LayoutInput, ResolvedScheme } from "#index.ts";
 
 import { flatPositions, positions, referencePivot } from "./data.ts";

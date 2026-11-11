@@ -1,11 +1,13 @@
-// Writes src/styles/theme.css from every shipped theme in src/theme/themes, and src/theme/theme-names.ts with their
-// names, and copies beside the stylesheet the font file its tabular face names. Run it with `vp run @basis/ui#theme` after changing a theme's inputs or updating
+// Writes src/styles/theme.css from every shipped theme in src/theme/themes, src/theme/theme-names.ts with their
+// names, and parallax's chart colours from the default, and copies beside the stylesheet the font file its tabular face
+// names. Run it with `vp run @basis/ui#theme` after changing a theme's inputs or updating
 // @fontsource-variable/inter. `vp run @basis/ui#theme new NAME` starts a theme's inputs file from the default's.
 import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 
 import { tabularFace, themeCss, themeNamesModule } from "#theme/css.ts";
 import { defineTheme } from "#theme/inputs.ts";
+import { parallaxChartsModule } from "#theme/parallax-charts.ts";
 import { startTheme } from "#theme/start-theme.ts";
 import { defaultTheme, themes } from "#theme/themes/index.ts";
 
@@ -36,17 +38,18 @@ function writeNames(): void {
   process.stdout.write(`Wrote ${target.pathname}\n`);
 }
 
-/** Writes the stylesheet and the themes' names, and copies the tabular face's file and its licence beside it. */
-function writeThemes(): void {
-  const target = new URL("../src/styles/theme.css", import.meta.url);
-  writeFileSync(target, themeCss(themes));
-  process.stdout.write(
-    `Wrote ${target.pathname} with ${themes.map((theme) => theme.name).join(", ")}\n`,
-  );
-  writeNames();
+/** Writes parallax's chart colours, the defaults its canvases draw with before the stylesheet applies, from the
+ * default theme. */
+function writeParallaxCharts(): void {
+  const target = new URL("../../parallax/src/theme/charts.ts", import.meta.url);
+  writeFileSync(target, parallaxChartsModule(defaultTheme));
+  process.stdout.write(`Wrote ${target.pathname}\n`);
+}
 
-  /* The tabular face is a second @font-face of Inter's own file, which a stylesheet can name only by a relative URL: an
-     app's bundler resolves none into a package. So the file, and its licence, are copied from the package. */
+/** Copies the tabular face's file and its licence beside the stylesheet. The tabular face is a second @font-face of
+ * Inter's own file, which a stylesheet can name only by a relative URL: an app's bundler resolves none into a package.
+ * So the file, and its licence, are copied from the package. */
+function copyTabularFace(): void {
   const require = createRequire(import.meta.url);
   const fonts = new URL("../src/styles/fonts/", import.meta.url);
   mkdirSync(fonts, { recursive: true });
@@ -57,6 +60,18 @@ function writeThemes(): void {
     copyFileSync(require.resolve(from), new URL(to, fonts));
     process.stdout.write(`Copied ${from} to ${new URL(to, fonts).pathname}\n`);
   }
+}
+
+/** Writes the stylesheet, the themes' names and parallax's chart colours, and copies the tabular face. */
+function writeThemes(): void {
+  const target = new URL("../src/styles/theme.css", import.meta.url);
+  writeFileSync(target, themeCss(themes));
+  process.stdout.write(
+    `Wrote ${target.pathname} with ${themes.map((theme) => theme.name).join(", ")}\n`,
+  );
+  writeNames();
+  writeParallaxCharts();
+  copyTabularFace();
 }
 
 const [command, name, ...rest] = process.argv.slice(2);

@@ -2,7 +2,7 @@
  * where they would touch. Bar charts and heatmaps share them. */
 
 import type { AxisTick, ModelInput } from "./model-types.ts";
-import { lineHeight, maxLabel, pad, xAxisHeight } from "./model-shared.ts";
+import { lineHeightOf, maxLabel, pad, xAxisHeight } from "./model-shared.ts";
 import { wrapText } from "./text.ts";
 
 /** The most lines a level label breaks onto. */
@@ -29,7 +29,7 @@ interface CategoryAxis {
 function sideTicks(
   categories: readonly string[],
   position: (i: number) => number,
-  length: number,
+  { length, lineHeight }: { readonly length: number; readonly lineHeight: number },
 ): readonly AxisTick[] {
   const every = Math.max(1, Math.ceil((lineHeight * categories.length) / Math.max(1, length)));
   return categories.flatMap((label, i) => (i % every === 0 ? [{ label, px: position(i) }] : []));
@@ -37,6 +37,7 @@ function sideTicks(
 
 /** Turned 45°, a label's line takes its height times √2 along the axis; closer than that, labels would touch. */
 function turnedAxis(input: ModelInput, band: number, widest: number): CategoryAxis {
+  const lineHeight = lineHeightOf(input);
   const every = Math.max(1, Math.ceil((lineHeight * Math.SQRT2) / Math.max(1, band)));
   const share = input.compact === true ? compactTurnedShare : turnedShare;
   const room = Math.max(
@@ -77,7 +78,7 @@ function categoryAxis(
   ) {
     return {
       every: 1,
-      height: xAxisHeight + lineHeight,
+      height: xAxisHeight + lineHeightOf(input),
       lines: wrapped,
       room: band - pad / 2,
       rotated: false,

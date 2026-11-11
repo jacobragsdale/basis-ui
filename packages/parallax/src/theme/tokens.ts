@@ -26,14 +26,10 @@ const specs = {
   fontSize: same("font-size", "length", "13px"),
   /** The unit every gap, margin and padding is a multiple of. */
   spacing: same("spacing", "length", "4px"),
-  /** The corners of controls, chips and menus. */
-  radius: same("radius", "length", "6px"),
-  /** A grid row, before the density's step. */
-  rowHeight: { ...same("row-height", "length", rowHeight), stepped: true },
+  /** A grid row. */
+  rowHeight: same("row-height", "length", rowHeight),
   muted: { dark: "#8a93a3", light: "#667085", property: "muted", syntax: "color" },
   negative: { dark: "#ff7b72", light: "#b42318", property: "negative", syntax: "color" },
-  warning: { dark: "#e0a400", light: "#b54708", property: "warning", syntax: "color" },
-  danger: { dark: "#ff7b72", light: "#b42318", property: "danger", syntax: "color" },
   /** The background behind text that matches a search. */
   highlight: {
     dark: "rgba(255, 214, 10, 0.38)",
@@ -41,7 +37,7 @@ const specs = {
     property: "highlight",
     syntax: "color",
   },
-  /** Text on the accent, the warning and the danger colours. */
+  /** Text on the accent: a pressed toolbar button's, a drop target's. */
   onAccent: { dark: "#0b1220", light: "#ffffff", property: "on-accent", syntax: "color" },
   /** Lines between parts: under the toolbar, around menus and panels. */
   borderColor: tinted(
@@ -100,22 +96,9 @@ const specs = {
     initial: "#2563eb",
     value: "var(--_px-accent)",
   }),
-  statusBackground: derived("status-background", "color", {
-    initial: "#f8f8f9",
-    value: "var(--_px-chrome-background)",
-  }),
-  statusForeground: tinted(
-    "status-foreground",
-    { dark: 72, light: 72, of: "foreground", over: "background" },
-    "#61656e",
-  ),
   controlBackground: derived("control-background", "color", {
     initial: "#ffffff",
     value: "var(--_px-background)",
-  }),
-  controlForeground: derived("control-foreground", "color", {
-    initial: "#1d2330",
-    value: "var(--_px-foreground)",
   }),
   controlBorder: tinted(
     "control-border",
@@ -127,46 +110,17 @@ const specs = {
     { dark: 9, light: 6, of: "foreground", over: "background" },
     "#f0f0f1",
   ),
-  /** The ring around a focused control. */
-  focus: tinted(
-    "focus",
-    { dark: 45, light: 35, of: "accent", over: "transparent" },
-    "rgba(37, 99, 235, 0.35)",
-  ),
-  /** Behind a filter chip and a drop target. */
-  chipBackground: tinted(
-    "chip-background",
-    { dark: 20, light: 10, of: "accent", over: "background" },
-    "#e9effd",
-  ),
-  /** Under popovers, menus and tooltips. */
-  shadow: {
-    dark: "0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.5)",
-    light: "0 1px 2px rgba(16, 24, 40, 0.06), 0 8px 24px rgba(16, 24, 40, 0.14)",
-    property: "shadow",
-    syntax: "shadow",
-  },
-  /** Around a grid or pivot; none removes it. */
-  wrapperBorder: derived("wrapper-border", "border", {
-    initial: "1px solid #e1e2e5",
-    value: "1px solid var(--_px-border-color)",
-  }),
-  /** The corners of a grid or pivot, and of menus and popovers. */
-  wrapperRadius: same("wrapper-radius", "length", "8px"),
   /** The scrollbars' thumbs. */
   scrollbar: tinted(
     "scrollbar",
     { dark: 30, light: 25, of: "foreground", over: "background" },
     "#c6c8cb",
   ),
-  /** The grid's header, before the density's step. */
-  headerHeight: {
-    ...derived("header-height", "length", {
-      initial: "30px",
-      value: `calc(${given("row-height", rowHeight)} + 6px)`,
-    }),
-    stepped: true,
-  },
+  /** The grid's header. */
+  headerHeight: derived("header-height", "length", {
+    initial: "30px",
+    value: `calc(${given("row-height", rowHeight)} + 6px)`,
+  }),
   /** Between a cell's edge and its text. */
   cellPadding: derived("cell-padding", "length", {
     initial: "8px",
@@ -174,11 +128,9 @@ const specs = {
   }),
   /** How far each level of a group column's tree is indented. */
   indent: same("indent", "length", "14px"),
-  /** Icons in toolbars and menus; the grid's header draws them at seven eighths of this. */
-  iconSize: same("icon-size", "length", "16px"),
-  /** Buttons, inputs and selects. */
-  controlHeight: same("control-height", "length", "28px"),
-  /** Status bars, chips, legends and notes. */
+  /** The grid's header's icons: the funnel, the pin and a measure's chevron. */
+  iconSize: same("icon-size", "length", "14px"),
+  /** A chart's axis labels, legends and data labels. */
   fontSizeSmall: derived("font-size-small", "length", {
     initial: "12px",
     value: "calc(var(--_px-font-size) - 1px)",
@@ -208,12 +160,21 @@ const specs = {
     { dark: 11, light: 8, of: "foreground", over: "background" },
     "#ebebec",
   ),
-  /** The shadow at the edge of pinned columns once the rest scroll under them. */
-  pinnedShadow: tinted(
-    "pinned-shadow",
-    { dark: 40, light: 14, of: "foreground", over: "transparent" },
-    "rgba(29, 35, 48, 0.14)",
-  ),
+  /** A line of the small text: how far apart a label's lines sit, and the room a label takes where labels stack. */
+  lineHeightSmall: derived("line-height-small", "length", {
+    initial: "16px",
+    value: "calc(var(--_px-font-size-small) + 4px)",
+  }),
+  /** The focused cell's ring: its width, and its corners' radius. */
+  selectionWidth: same("selection-width", "length", "2px"),
+  selectionRadius: same("selection-radius", "length", "2px"),
+  /** A series' line in a line or area chart. */
+  lineWidth: same("line-width", "length", "2px"),
+  /** The rounded data end of a bar or a column. */
+  barRadius: same("bar-radius", "length", "4px"),
+  /** The two inks a label painted on a bar or a slice takes, whichever has the more contrast with its colour. */
+  lightInk: same("light-ink", "color", "#ffffff"),
+  darkInk: same("dark-ink", "color", "#111827"),
 } as const satisfies Readonly<Record<string, TokenSpec>>;
 
 /** The name of a token in a theme's parameters, such as `accent` or `fontSize`. */

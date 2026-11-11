@@ -1,5 +1,5 @@
-/* The ink that reads on a colour: white or near-black, by contrast with the colour's luminance, for labels painted
- * on bars and slices. The theme's colours are registered colour properties, which `getComputedStyle` gives in the form
+/* The ink that reads on a colour: the theme's light ink or its dark one, by contrast with the colour's luminance, for
+ * labels painted on bars and slices. The theme's colours are registered colour properties, which `getComputedStyle` gives in the form
  * they were written in: `oklch()` for @basis/ui's, `rgb()` for hex and named colours. */
 
 /** The largest value of one channel written in hexadecimal. */
@@ -15,18 +15,22 @@ const curvePower = 2.4;
 const redWeight = 0.2126;
 const greenWeight = 0.7152;
 const blueWeight = 0.0722;
-/** The flare WCAG's contrast ratio adds to each luminance, and white's luminance with it. */
+/** The flare WCAG's contrast ratio adds to each luminance. */
 const flare = 0.05;
-const whiteWithFlare = 1.05;
 /** What 100% of an OKLab `a` or `b`, or of an OKLCH chroma, is. */
 const okFullScale = 0.4;
 const cube = 3;
 const degreesPerTurn = 360;
 const radiansPerDegree = (2 * Math.PI) / degreesPerTurn;
 
-/** Near-black text, whose luminance `inkOn` compares with white's. */
-const darkInk = "#111827";
-const darkInkLuminance = 0.0092;
+/** The two inks a label may take: the theme's `lightInk` and `darkInk`. */
+interface Inks {
+  readonly light: string;
+  readonly dark: string;
+}
+
+/** The inks of parallax's own defaults: white and near-black. */
+const defaultInks: Inks = { dark: "#111827", light: "#ffffff" };
 
 /** One row of a 3 × 3 matrix, by the three coordinates it weighs. */
 interface Row {
@@ -140,13 +144,22 @@ function luminance(color: string): number | null {
   return redWeight * red + greenWeight * green + blueWeight * blue;
 }
 
-/** White or near-black, whichever has the higher contrast with `color`; white if `color` can't be read. */
-function inkOn(color: string): string {
-  const shade = luminance(color);
-  return shade === null ||
-    whiteWithFlare / (shade + flare) >= (shade + flare) / (darkInkLuminance + flare)
-    ? "#ffffff"
-    : darkInk;
+/** The contrast of two luminances, as WCAG measures it. */
+function contrast(first: number, second: number): number {
+  return (Math.max(first, second) + flare) / (Math.min(first, second) + flare);
 }
 
-export { inkOn, luminance };
+/** The light ink or the dark one, whichever has the higher contrast with `color`; the light one if `color` can't be
+ * read. An ink that can't be read counts as white, or as black. */
+function inkOn(color: string, inks: Inks = defaultInks): string {
+  const shade = luminance(color);
+  if (shade === null) {
+    return inks.light;
+  }
+  const light = luminance(inks.light) ?? 1;
+  const dark = luminance(inks.dark) ?? 0;
+  return contrast(light, shade) >= contrast(dark, shade) ? inks.light : inks.dark;
+}
+
+export { defaultInks, inkOn, luminance };
+export type { Inks };

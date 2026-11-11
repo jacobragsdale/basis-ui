@@ -30,7 +30,7 @@ accent, background, text, font, sizes and lines, and copy the result with
      --px-accent: #7c3aed;
      --px-font-family: "IBM Plex Sans", system-ui, sans-serif;
      --px-font-size: 14px;
-     --px-radius: 8px;
+     --px-row-height: 28px;
    }
    ```
 
@@ -48,9 +48,21 @@ accent, background, text, font, sizes and lines, and copy the result with
 
 3. Change tokens while the application runs through an attribute of `<html>`
    or `<body>`, such as a class or a style there. The canvas reads its tokens
-   only when it is told they may have changed: when an attribute of `<html>`
-   or `<body>` changes, as `@basis/ui`'s mode and density do, when the
-   system's colour scheme changes, and when a font loads.
+   only when it is told they may have changed:
+   - an attribute of `<html>` or `<body>` changes, as `@basis/ui`'s mode,
+     density and theme do;
+   - `data-theme` or `data-density` changes on any element, or its class gains
+     or loses `dark`, as on a wrapper that shows another theme;
+   - a stylesheet is added to or taken from the head;
+   - `@basis/ui`'s `themeChangeEvent`, `basis:themechange`, reaches the
+     document. `applyPreferences` dispatches it, and code that changes tokens
+     in a way none of the above shows, such as a variable set on a wrapper's
+     style, dispatches it on the document itself:
+     `document.dispatchEvent(new Event(themeChangeEvent))`;
+   - the system's colour scheme changes, or a font loads.
+
+   A canvas then draws again whole, and a grid fits its columns again if the
+   font, the cell padding or the header's icons changed.
 
 ### Define a named theme
 
@@ -59,22 +71,24 @@ accent, background, text, font, sizes and lines, and copy the result with
    be numbers of pixels. `token()` refers to another token's value:
 
    ```ts
-   import { airyTheme, defineTheme, token } from "@basis/parallax";
+   import { basisTheme, defineTheme, token } from "@basis/parallax";
 
    export const acme = defineTheme({
      name: "acme",
-     extends: airyTheme,
+     extends: basisTheme,
      params: {
        accent: "#7c3aed",
-       radius: 8,
+       barRadius: 2,
        rowBorder: `color-mix(in srgb, ${token("accent")} 15%, ${token("background")})`
      },
      dark: { accent: "#a78bfa" }
    });
    ```
 
-   A theme's name must be lowercase letters, digits and hyphens, and two
-   different themes can't share one: `defineTheme` throws.
+   A theme's name must be lowercase letters, digits and hyphens, or
+   `defineTheme` throws. A name is one theme on a page: a theme defined again
+   under a name already installed replaces it there, as a theme edited while
+   the page runs does.
 
 2. Give the theme to every component under the provider, with the scheme,
    which follows `@basis/ui`'s mode by default:
@@ -107,8 +121,12 @@ A default derived from other tokens, such as "`--px-foreground` 12% in
 `--px-background`", follows the values in effect for those tokens. A value
 CSS refuses is ignored.
 
-The comfortable density, `@basis/ui`'s, adds 6 px to `--px-row-height` and
-`--px-header-height`, whoever set them.
+`basisTheme` sizes the grid by `@basis/ui`'s control lengths, which follow
+its density: a row is a medium control's height, `--control-md-height`, 28 px
+compact and 32 comfortable; the header a large control's, 30 and 36; a cell's
+padding a medium control's inset, and the header's icons its icon size. So a
+control fits a row, and the grid is as dense as the page's forms. A theme that
+sets `rowHeight` as a number keeps that height in both densities.
 
 ### Numbers that line up on the canvas
 
@@ -150,14 +168,11 @@ parameter can be a number of pixels.
 | `--px-font-family` | `fontFamily` | font family | `system-ui, -apple-system, 'Segoe UI', sans-serif` | same | Every component's text, on the canvas and in the DOM. |
 | `--px-font-size` | `fontSize` | length | `13px` | same | Body text in cells, headers, toolbars and menus. |
 | `--px-spacing` | `spacing` | length | `4px` | same | The unit every gap, margin and padding in the toolbar, menus, panels and chart chrome is a multiple of. |
-| `--px-radius` | `radius` | length | `6px` | same | Corners of buttons, inputs, chips and menu items. |
-| `--px-row-height` | `rowHeight` | length | `24px` | same | A grid row. Comfortable density adds 6 px. |
+| `--px-row-height` | `rowHeight` | length | `24px` | same | A grid row. `basisTheme`'s is `--control-md-height`. |
 | `--px-muted` | `muted` | colour | `#667085` | `#8a93a3` | Secondary text: hints, counts, axis labels, resting funnels and flagged cells. |
 | `--px-negative` | `negative` | colour | `#b42318` | `#ff7b72` | Numbers below zero. |
-| `--px-warning` | `warning` | colour | `#b54708` | `#e0a400` | The status bar's warning badge. |
-| `--px-danger` | `danger` | colour | `#b42318` | `#ff7b72` | Error messages and the status bar's danger badge. |
 | `--px-highlight` | `highlight` | colour | `#ffe58a` | `rgba(255, 214, 10, 0.38)` | Behind text that matches a search. |
-| `--px-on-accent` | `onAccent` | colour | `#ffffff` | `#0b1220` | Text on the accent, warning and danger colours. |
+| `--px-on-accent` | `onAccent` | colour | `#ffffff` | `#0b1220` | Text on the accent: a pressed toolbar button's, a drop target's. |
 | `--px-border-color` | `borderColor` | colour | `--px-foreground` 12% in `--px-background` | `--px-foreground` 16% in `--px-background` | Lines between parts: under the toolbar, around menus and panels, and the frame. |
 | `--px-chrome-background` | `chromeBackground` | colour | `--px-foreground` 3% in `--px-background` | `--px-foreground` 5% in `--px-background` | Behind the header, the totals row, group rows, the status bar and the pivot's settings, through the tokens that default to it. |
 | `--px-stripe` | `stripe` | colour | `--px-foreground` 2% in `--px-background` | `--px-foreground` 3% in `--px-background` | Behind every other row. `transparent` draws no stripes. |
@@ -172,30 +187,27 @@ parameter can be a number of pixels.
 | `--px-group-background` | `groupBackground` | colour | `--px-chrome-background` | same | Behind group rows in a grouped grid. A pivot's group rows keep the stripes. |
 | `--px-selection-background` | `selectionBackground` | colour | `--px-accent` at 12% | `--px-accent` at 22% | Over selected cells. |
 | `--px-selection-border` | `selectionBorder` | colour | `--px-accent` | same | The focused cell's ring. |
-| `--px-status-background` | `statusBackground` | colour | `--px-chrome-background` | same | Behind the status bar. |
-| `--px-status-foreground` | `statusForeground` | colour | `--px-foreground` 72% in `--px-background` | same | The status bar's text. |
 | `--px-control-background` | `controlBackground` | colour | `--px-background` | same | Buttons, inputs and selects. |
-| `--px-control-foreground` | `controlForeground` | colour | `--px-foreground` | same | Text in buttons, inputs and selects. |
 | `--px-control-border` | `controlBorder` | colour | `--px-foreground` 18% in `--px-background` | `--px-foreground` 22% in `--px-background` | Borders of buttons, inputs and selects. |
 | `--px-control-hover` | `controlHover` | colour | `--px-foreground` 6% in `--px-background` | `--px-foreground` 9% in `--px-background` | Behind a control, menu item or header under the pointer. |
-| `--px-focus` | `focus` | colour | `--px-accent` at 35% | `--px-accent` at 45% | The ring around a focused control. |
-| `--px-chip-background` | `chipBackground` | colour | `--px-accent` 10% in `--px-background` | `--px-accent` 20% in `--px-background` | Filter chips, pressed toolbar buttons and drop targets. |
-| `--px-shadow` | `shadow` | shadow | `0 1px 2px rgba(16, 24, 40, 0.06), 0 8px 24px rgba(16, 24, 40, 0.14)` | `0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.5)` | Under popovers, menus and tooltips. |
-| `--px-wrapper-border` | `wrapperBorder` | border | 1 px solid `--px-border-color` | same | A grid's and a pivot's frame. `none` removes it. |
-| `--px-wrapper-radius` | `wrapperRadius` | length | `8px` | same | Corners of the frame, popovers and menus. |
 | `--px-scrollbar` | `scrollbar` | colour | `--px-foreground` 25% in `--px-background` | `--px-foreground` 30% in `--px-background` | Scrollbar thumbs. |
-| `--px-header-height` | `headerHeight` | length | `--px-row-height` + 6 px | same | The grid's header. Comfortable density adds 6 px. |
+| `--px-header-height` | `headerHeight` | length | `--px-row-height` + 6 px | same | The grid's header. `basisTheme`'s is `--control-lg-height`. |
 | `--px-cell-padding` | `cellPadding` | length | 2 × `--px-spacing` | same | Between a cell's edge and its text. |
 | `--px-indent` | `indent` | length | `14px` | same | Each level of a group column's tree. |
-| `--px-icon-size` | `iconSize` | length | `16px` | same | Icons in toolbars and menus. The header draws its icons at seven eighths of it. |
-| `--px-control-height` | `controlHeight` | length | `28px` | same | Buttons, inputs and selects. |
-| `--px-font-size-small` | `fontSizeSmall` | length | `--px-font-size` − 1 px | same | Status bars, chips, legends, axis labels and data labels. |
+| `--px-icon-size` | `iconSize` | length | `14px` | same | The grid's header's icons: the funnel, the pin and a measure's chevron. |
+| `--px-font-size-small` | `fontSizeSmall` | length | `--px-font-size` − 1 px | same | A chart's axis labels, legends and data labels. |
 | `--px-column-border` | `columnBorder` | colour | `--px-foreground` 7% in `--px-background` | `--px-foreground` 9% in `--px-background` | Between columns. `transparent` draws none. |
 | `--px-row-border` | `rowBorder` | colour | `transparent` | same | Between rows. `transparent` draws none. |
 | `--px-header-border` | `headerBorder` | colour | `--px-border-color` | same | Under the header. |
 | `--px-total-border` | `totalBorder` | colour | `--px-foreground` 22% in `--px-background` | `--px-foreground` 26% in `--px-background` | Over the totals row. |
 | `--px-gridline` | `gridline` | colour | `--px-foreground` 8% in `--px-background` | `--px-foreground` 11% in `--px-background` | A chart's gridlines. |
-| `--px-pinned-shadow` | `pinnedShadow` | colour | `--px-foreground` at 14% | `--px-foreground` at 40% | The shadow at the edge of pinned columns while others scroll under them. |
+| `--px-line-height-small` | `lineHeightSmall` | length | `--px-font-size-small` + 4 px | same | How far apart a label's lines sit, and the room a label takes where labels stack. |
+| `--px-selection-width` | `selectionWidth` | length | `2px` | same | The focused cell's ring. `basisTheme`'s is the focus ring's, `--focus-width`. |
+| `--px-selection-radius` | `selectionRadius` | length | `2px` | same | The focused cell's ring's corners. |
+| `--px-line-width` | `lineWidth` | length | `2px` | same | A series' line in a line or area chart. |
+| `--px-bar-radius` | `barRadius` | length | `4px` | same | The rounded data end of a bar or a column. `basisTheme`'s is `--radius-sm`. |
+| `--px-light-ink` | `lightInk` | colour | `#ffffff` | same | A label on a dark bar or slice. |
+| `--px-dark-ink` | `darkInk` | colour | `#111827` | same | A label on a light bar or slice; a label takes whichever ink has the more contrast. |
 
 ### Chart colours
 
@@ -214,5 +226,7 @@ surface. A theme that replaces `series` should check its own.
 
 | Theme | Name | Look |
 |---|---|---|
-| `standardTheme` | `standard` | The defaults above: dense, faint column lines and stripes. Used when no theme is given. |
-| `airyTheme` | `airy` | 30 px rows, a 38 px header, 12 px cell padding, 5 px spacing, 32 px controls, rounder corners, no column lines or stripes, a hairline between rows, and the header on the background. |
+| `basisTheme` | `basis` | Every token from `@basis/ui`'s theme, its mode and its density; `ParallaxProvider`'s default. |
+
+The defaults in the tables above draw when no theme applies, as before the
+stylesheet loads.

@@ -188,8 +188,9 @@ A canvas is invisible to screen readers, so the grid is a `grid` whose name is
 move about it, and whose active descendant is the focused cell, read as its
 column's title and its text. A live region says the selection's size, and the
 totals row is said as text. The canvas draws in the theme's tokens, which
-`basisTheme` takes from `@basis/ui`'s, in either mode, and reads them again when
-the mode, the density or the fonts change. Its toolbar, menus and status bar are
+`basisTheme` takes from `@basis/ui`'s, in either mode, its rows, header and
+padding the size of `@basis/ui`'s controls in the page's density, and reads them
+again when the theme, the mode, the density or the fonts change. Its toolbar, menus and status bar are
 `@basis/ui`'s components, in `@basis/ui`'s theme.
 
 ## Pivot a table
@@ -523,8 +524,10 @@ leaves no table.
 
 The theme follows `@basis/ui`'s: `basisTheme` gives every token one of
 `@basis/ui`'s, and charts take `chart-1` to `chart-8`, the sequential scale and
-the diverging scale's red arm. When the page's mode or density changes,
-`useParallaxTheme()`'s `read` changes, and the canvases read their tokens again.
+the diverging scale's red arm. When the page's theme, mode or density changes,
+on the root or on any element around a component, or `@basis/ui`'s
+`themeChangeEvent` reaches the document, `useParallaxTheme()`'s `read` changes,
+and the canvases read their tokens again and draw whole.
 
 ### When the engine runs out of memory
 

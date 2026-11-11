@@ -17,8 +17,8 @@ import { countedBytes, startWorker } from "./data.ts";
 import { canvasOf } from "./grid-helpers.tsx";
 import { GridPage } from "./grid-page.tsx";
 
-/** The compact density's rows, the default: 24 px under a 30 px header. */
-const rowPx = 24;
+/** The compact density's rows, the default: a medium control's 28 px, under a large control's 30 px header. */
+const rowPx = 28;
 const headerPx = 30;
 /** How many frames a test watches after the wheel, longer than any smooth scroll of a notch animates. */
 const watchedFrames = 30;

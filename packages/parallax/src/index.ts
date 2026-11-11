@@ -133,9 +133,7 @@ export { decodeLayout, encodeLayout } from "./layout/share.ts";
 // Theming.
 export { basisTheme } from "./theme/basis.ts";
 export {
-  airyTheme,
   defineTheme,
-  standardTheme,
   token,
   type ParallaxTheme,
   type ThemeParams,
@@ -151,7 +149,6 @@ export {
   type Theme,
 } from "./theme/read.ts";
 export {
-  densityStep,
   installTheme,
   installTokenStyles,
   themeStyles,

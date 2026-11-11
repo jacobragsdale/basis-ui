@@ -3,7 +3,9 @@ import { readFileSync } from "node:fs";
 import { describe, expect, test } from "vite-plus/test";
 
 import { basisTheme } from "#theme/basis.ts";
-import { airyTheme, defineTheme, standardTheme, token } from "#theme/define.ts";
+import { defineTheme, token } from "#theme/define.ts";
+
+import { airyTheme, standardTheme } from "#theme/looks.ts";
 import { themeStyles, tokenProperties, tokenStyles } from "#theme/styles.ts";
 
 describe("the token stylesheet", () => {
@@ -31,13 +33,10 @@ describe("the token stylesheet", () => {
     expect(tokenStyles).not.toContain("@property --_px-shadow");
   });
 
-  test("adds the density's step to the row and header heights, whoever sets them", () => {
-    expect(tokenStyles).toContain('[data-px-density="comfortable"] { --_px-density-step: 6px; }');
+  test("sizes rows and the header by their tokens alone, which a theme may tie to the page's density", () => {
+    expect(tokenStyles).not.toContain("density");
     expect(tokenStyles).toContain(
-      "--_px-row-height: calc(var(--px-row-height, var(--_px-theme-row-height, 24px)) + var(--_px-density-step, 0px));",
-    );
-    expect(tokenStyles).toContain(
-      "--_px-header-height: calc(var(--px-header-height, var(--_px-theme-header-height, calc(var(--px-row-height, var(--_px-theme-row-height, 24px)) + 6px))) + var(--_px-density-step, 0px));",
+      "--_px-row-height: var(--px-row-height, var(--_px-theme-row-height, 24px));",
     );
   });
 
@@ -73,7 +72,7 @@ describe(defineTheme, () => {
       params: {
         accent: "#7c3aed",
         fontSize: "14px",
-        radius: 8,
+        barRadius: 8,
         series: ["#111111", "#222222"],
         up: "#00aa00",
       },
@@ -82,7 +81,7 @@ describe(defineTheme, () => {
     expect(theme.light).toMatchObject({
       accent: "#7c3aed",
       "font-size": "14px",
-      radius: "8px",
+      "bar-radius": "8px",
       "series-1": "#111111",
       "series-2": "#222222",
       up: "#00aa00",
@@ -93,7 +92,7 @@ describe(defineTheme, () => {
     const base = defineTheme({
       dark: { background: "#000002" },
       name: "spec-base",
-      params: { accent: "#000001", radius: 2 },
+      params: { accent: "#000001", barRadius: 2 },
     });
     const theme = defineTheme({
       dark: { accent: "#000004" },
@@ -101,17 +100,19 @@ describe(defineTheme, () => {
       name: "spec-child",
       params: { accent: "#000003" },
     });
-    expect(theme.light).toStrictEqual({ accent: "#000003", radius: "2px" });
-    expect(theme.dark).toStrictEqual({ accent: "#000004", background: "#000002", radius: "2px" });
+    expect(theme.light).toStrictEqual({ accent: "#000003", "bar-radius": "2px" });
+    expect(theme.dark).toStrictEqual({
+      accent: "#000004",
+      background: "#000002",
+      "bar-radius": "2px",
+    });
   });
 
-  test("refuses a name CSS cannot hold, and a second, different theme of the same name", () => {
+  test("refuses a name CSS cannot hold, and lets a theme be defined again under its name, as an edited one is", () => {
     expect(() => defineTheme({ name: "Has Space" })).toThrow(/lowercase letters/u);
     defineTheme({ name: "spec-twice", params: { accent: "#123456" } });
-    expect(() => defineTheme({ name: "spec-twice", params: { accent: "#123456" } })).not.toThrow();
-    expect(() => defineTheme({ name: "spec-twice", params: { accent: "#654321" } })).toThrow(
-      /already named/u,
-    );
+    const edited = defineTheme({ name: "spec-twice", params: { accent: "#654321" } });
+    expect(edited.light).toStrictEqual({ accent: "#654321" });
   });
 
   test("declares a theme's values for the hosts given it, in each scheme apart", () => {
@@ -150,8 +151,24 @@ describe("the built-in themes", () => {
   });
 
   test("draw basis in @basis/ui's tokens, every chart slot and step of its scales included", () => {
-    expect(basisTheme.light).toStrictEqual(basisTheme.dark);
+    // The two schemes differ only in which of the card's colours is the light ink and which the dark.
+    expect({ ...basisTheme.light, "dark-ink": "", "light-ink": "" }).toStrictEqual({
+      ...basisTheme.dark,
+      "dark-ink": "",
+      "light-ink": "",
+    });
     expect(basisTheme.light).toMatchObject({
+      "dark-ink": "var(--card-foreground)",
+      "light-ink": "var(--card)",
+    });
+    expect(basisTheme.dark).toMatchObject({
+      "dark-ink": "var(--card)",
+      "light-ink": "var(--card-foreground)",
+    });
+    expect(basisTheme.light).toMatchObject({
+      "cell-padding": "var(--control-md-inset)",
+      "header-height": "var(--control-lg-height)",
+      "row-height": "var(--control-md-height)",
       accent: "var(--primary)",
       background: "var(--card)",
       "negative-ramp-1": "var(--div-7)",

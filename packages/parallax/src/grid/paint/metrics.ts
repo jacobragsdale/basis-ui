@@ -1,5 +1,6 @@
 /* The sizes a grid draws with, in CSS pixels, from its theme's tokens, and how its colours decide what to draw. */
 
+import { leadingNumber, pixels } from "#theme/lengths.ts";
 import type { Theme } from "#theme/read.ts";
 
 /** The sizes a grid draws with. */
@@ -18,36 +19,24 @@ interface Metrics {
   readonly markerPx: number;
   /** A sort arrow. */
   readonly arrowPx: number;
+  /** The focused cell's ring: its width and its corners' radius. */
+  readonly ring: { readonly width: number; readonly radius: number };
 }
 
 // The tokens' own defaults, for a token that is not a length.
-const fallbackIcon = 16;
-const fallbackPadding = 6;
+const fallbackIcon = 14;
+const fallbackPadding = 8;
 const fallbackRow = 24;
 const fallbackIndent = 14;
-/** The header draws its icons at seven eighths of the icon size, and a sort arrow at 85 % of that. */
-const headerIconShare = 0.875;
+const fallbackRing = 2;
+/** A sort arrow is drawn at 85 % of the header's icons. */
 const arrowShare = 0.85;
 /** The marker's gap after the icon. */
 const markerGap = 4;
 
-/** The number a CSS value starts with, such as 24 for `24px` or 50 for `50%`; NaN for none. */
-const leading = /^\s*(?<number>[+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?)/iu;
-
-function leadingNumber(value: string): number {
-  const number = leading.exec(value)?.groups?.["number"];
-  return number === undefined ? Number.NaN : Number(number);
-}
-
-/** A length token in pixels, or `otherwise` if it is not one. */
-function pixels(value: string, otherwise: number): number {
-  const parsed = leadingNumber(value);
-  return Number.isFinite(parsed) ? parsed : otherwise;
-}
-
 /** The sizes `tokens` give. */
 function metricsOf(tokens: Theme): Metrics {
-  const iconPx = pixels(tokens.iconSize, fallbackIcon) * headerIconShare;
+  const iconPx = pixels(tokens.iconSize, fallbackIcon);
   const padding = pixels(tokens.cellPadding, fallbackPadding);
   return {
     arrowPx: Math.round(iconPx * arrowShare),
@@ -57,6 +46,10 @@ function metricsOf(tokens: Theme): Metrics {
     indent: pixels(tokens.indent, fallbackIndent),
     markerPx: iconPx + markerGap,
     padding,
+    ring: {
+      radius: pixels(tokens.selectionRadius, fallbackRing),
+      width: pixels(tokens.selectionWidth, fallbackRing),
+    },
     rowPx: Math.max(1, Math.round(pixels(tokens.rowHeight, fallbackRow))),
   };
 }
