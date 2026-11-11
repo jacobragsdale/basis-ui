@@ -6140,14 +6140,14 @@
           "from": "@base-ui/react",
           "name": "handle",
           "optional": true,
-          "type": "MenuHandle<t?: boo> | undefined"
+          "type": "MenuHandle<actElem> | undefined"
         },
         {
           "description": "The content of the menu. This can be a regular React node or a render function that receives the `payload` of the active trigger.",
           "from": "@base-ui/react",
           "name": "children",
           "optional": true,
-          "type": "React.ReactNode | PayloadChildRenderFunction<t?: boo>"
+          "type": "React.ReactNode | PayloadChildRenderFunction<actElem>"
         }
       ],
       "purpose": "A dropdown menu: a list of actions or options behind a button. Arrow keys move through its items, typing jumps to one, Enter or a click runs it, and Escape closes the menu and returns focus to the trigger.",
@@ -6318,6 +6318,13 @@
           "type": "boolean | React.RefObject<HTMLElement | null> | ((closeType: InteractionType) => boolean | HTMLElement | null | void) | undefined"
         },
         {
+          "description": "An element to position the popup against. By default, the popup will be positioned against the trigger.",
+          "from": "@base-ui/react",
+          "name": "anchor",
+          "optional": true,
+          "type": "Element | null | VirtualElement | React.RefObject<Element | null> | (() => Element | VirtualElement | null) | undefined"
+        },
+        {
           "default": "0",
           "description": "Distance between the anchor and the popup in pixels. Also accepts a function that returns the distance to read the dimensions of the anchor and positioner elements, along with its side and alignment.",
           "from": "@base-ui/react",
@@ -6350,7 +6357,7 @@
           "type": "UseAnchorPositioningSharedParameters['side'] | undefined"
         }
       ],
-      "purpose": "The menu's popup, in a portal, on the trigger's `side` (`bottom` by default), at least as wide as the trigger.",
+      "purpose": "The menu's popup, in a portal, on the `side` (`bottom` by default) of the trigger, or of `anchor` when given.",
       "variants": {}
     },
     {
@@ -6933,6 +6940,13 @@
           "type": "boolean | React.RefObject<HTMLElement | null> | ((closeType: InteractionType) => boolean | HTMLElement | null | void) | undefined"
         },
         {
+          "description": "An element to position the popup against. By default, the popup will be positioned against the trigger.",
+          "from": "@base-ui/react",
+          "name": "anchor",
+          "optional": true,
+          "type": "Element | null | VirtualElement | React.RefObject<Element | null> | (() => Element | VirtualElement | null) | undefined"
+        },
+        {
           "default": "0",
           "description": "Distance between the anchor and the popup in pixels. Also accepts a function that returns the distance to read the dimensions of the anchor and positioner elements, along with its side and alignment.",
           "from": "@base-ui/react",
@@ -7125,14 +7139,14 @@
           "from": "@base-ui/react",
           "name": "handle",
           "optional": true,
-          "type": "MenuHandle<loses t> | undefined"
+          "type": "MenuHandle<r actio> | undefined"
         },
         {
           "description": "A payload to pass to the menu when it is opened.",
           "from": "@base-ui/react",
           "name": "payload",
           "optional": true,
-          "type": "loses t | undefined"
+          "type": "r actio | undefined"
         },
         {
           "default": "100",
@@ -7599,6 +7613,13 @@
           "type": "boolean | React.RefObject<HTMLElement | null> | ((closeType: InteractionType) => boolean | HTMLElement | null | void) | undefined"
         },
         {
+          "description": "An element to position the popup against. By default, the popup will be positioned against the trigger.",
+          "from": "@base-ui/react",
+          "name": "anchor",
+          "optional": true,
+          "type": "Element | null | VirtualElement | React.RefObject<Element | null> | (() => Element | VirtualElement | null) | undefined"
+        },
+        {
           "default": "0",
           "description": "Distance between the anchor and the popup in pixels. Also accepts a function that returns the distance to read the dimensions of the anchor and positioner elements, along with its side and alignment.",
           "from": "@base-ui/react",
@@ -7919,14 +7940,14 @@
           "from": "@base-ui/react",
           "name": "handle",
           "optional": true,
-          "type": "MenuHandle<t?: boo> | undefined"
+          "type": "MenuHandle<actElem> | undefined"
         },
         {
           "description": "The content of the menu. This can be a regular React node or a render function that receives the `payload` of the active trigger.",
           "from": "@base-ui/react",
           "name": "children",
           "optional": true,
-          "type": "React.ReactNode | PayloadChildRenderFunction<t?: boo>"
+          "type": "React.ReactNode | PayloadChildRenderFunction<actElem>"
         }
       ],
       "purpose": "One of the bar's menus: a MenubarTrigger and its MenubarContent.",
@@ -8341,6 +8362,13 @@
           "name": "finalFocus",
           "optional": true,
           "type": "boolean | React.RefObject<HTMLElement | null> | ((closeType: InteractionType) => boolean | HTMLElement | null | void) | undefined"
+        },
+        {
+          "description": "An element to position the popup against. By default, the popup will be positioned against the trigger.",
+          "from": "@base-ui/react",
+          "name": "anchor",
+          "optional": true,
+          "type": "Element | null | VirtualElement | React.RefObject<Element | null> | (() => Element | VirtualElement | null) | undefined"
         },
         {
           "default": "0",
@@ -14241,6 +14269,96 @@
       "name": "DataTable",
       "props": [
         {
+          "description": "The sort, by column `id`, ascending unless `desc` is set, held by the app; the table holds it unless set.",
+          "name": "sorting",
+          "optional": true,
+          "type": "readonly DataTableSort[] | undefined"
+        },
+        {
+          "description": "The sort it starts with when the table holds it; the data's order unless set.",
+          "name": "defaultSorting",
+          "optional": true,
+          "type": "readonly DataTableSort[] | undefined"
+        },
+        {
+          "description": "Hears the sort a heading asks for, with `desc` on each column.",
+          "name": "onSortingChange",
+          "optional": true,
+          "type": "((sorting: readonly DataTableSort[]) => void) | undefined"
+        },
+        {
+          "description": "The text filter's text, held by the app; the table holds it unless set.",
+          "name": "filter",
+          "optional": true,
+          "type": "string | undefined"
+        },
+        {
+          "description": "The text the filter starts with when the table holds it; none unless set.",
+          "name": "defaultFilter",
+          "optional": true,
+          "type": "string | undefined"
+        },
+        {
+          "description": "Hears the text typed once typing pauses, or at once on Enter.",
+          "name": "onFilterChange",
+          "optional": true,
+          "type": "((filter: string) => void) | undefined"
+        },
+        {
+          "description": "The ids of the columns hidden, held by the app; the table holds them unless set.",
+          "name": "hiddenColumns",
+          "optional": true,
+          "type": "readonly string[] | undefined"
+        },
+        {
+          "description": "The columns hidden when the table holds them; none unless set.",
+          "name": "defaultHiddenColumns",
+          "optional": true,
+          "type": "readonly string[] | undefined"
+        },
+        {
+          "description": "Hears the ids of the columns hidden after the columns menu hides or shows one.",
+          "name": "onHiddenColumnsChange",
+          "optional": true,
+          "type": "((hidden: readonly string[]) => void) | undefined"
+        },
+        {
+          "description": "The page showing, from 0, held by the app; the table holds it unless set. A page past the last shows the last.",
+          "name": "page",
+          "optional": true,
+          "type": "number | undefined"
+        },
+        {
+          "description": "The page it starts on when the table holds it; the first unless set.",
+          "name": "defaultPage",
+          "optional": true,
+          "type": "number | undefined"
+        },
+        {
+          "description": "Hears the page a button asks for, and 0 when a new sort or filter goes back to the first.",
+          "name": "onPageChange",
+          "optional": true,
+          "type": "((page: number) => void) | undefined"
+        },
+        {
+          "description": "The ids of the rows selected, held by the app; the table holds them unless set.",
+          "name": "selectedIds",
+          "optional": true,
+          "type": "readonly string[] | undefined"
+        },
+        {
+          "description": "The ids selected when the table holds them, among the rows it holds; none unless set.",
+          "name": "defaultSelectedIds",
+          "optional": true,
+          "type": "readonly string[] | undefined"
+        },
+        {
+          "description": "Hears the selected rows, in order, and their ids on each change and when new data drops or replaces one.",
+          "name": "onSelectionChange",
+          "optional": true,
+          "type": "SelectionListener<TRow> | undefined"
+        },
+        {
           "description": "The table's name, for assistive technology and the filter, and its CSV file's unless `exportName` is set.",
           "name": "label",
           "optional": false,
@@ -14271,10 +14389,16 @@
           "type": "((row: TRow) => string) | undefined"
         },
         {
-          "description": "A row's actions, listed in a menu at the row's end.",
+          "description": "A row's actions, listed in a menu at the row's end, asked for when the row's menu opens.",
           "name": "rowActions",
           "optional": true,
           "type": "((row: TRow) => readonly DataTableRowAction[]) | undefined"
+        },
+        {
+          "description": "Hears a click on a row, but not on a link, button or checkbox in it: a pointer's shortcut, so keep a link or an action in the row for the keyboard.",
+          "name": "onRowClick",
+          "optional": true,
+          "type": "((row: TRow) => void) | undefined"
         },
         {
           "description": "Adds a checkbox to each row and the heading, and the button that copies the selection; no unless set.",
@@ -14283,10 +14407,10 @@
           "type": "boolean | undefined"
         },
         {
-          "description": "Hears the selected rows, in order, and their ids on each change and when new data drops or replaces one.",
-          "name": "onSelectionChange",
+          "description": "A FilterBar's filters, the values `useFilters` gives and how each reads its field, as `filterRows` takes them: the table shows the rows they keep, and keeps the selection of rows they hide.",
+          "name": "filterBy",
           "optional": true,
-          "type": "SelectionListener<TRow> | undefined"
+          "type": "FilterRowsOptions<TRow, TFilters> | undefined"
         },
         {
           "description": "Whether the toolbar has the text filter; yes unless set.",
@@ -14307,16 +14431,10 @@
           "type": "string | undefined"
         },
         {
-          "description": "Rows a page, for a table that pages; every row on one page unless set.",
+          "description": "Rows a page; 50 unless set. A table of more rows than a page, or with a page size set, shows its pages.",
           "name": "pageSize",
           "optional": true,
           "type": "number | undefined"
-        },
-        {
-          "description": "The sort it starts with, by column `id`, ascending unless `desc` is set; the data's order unless set.",
-          "name": "defaultSorting",
-          "optional": true,
-          "type": "readonly DataTableSort[] | undefined"
         },
         {
           "description": "The most rows the table draws; 2,000 unless set. Past it the table shows an error in their place.",
@@ -14349,17 +14467,18 @@
           "type": "ReactNode"
         },
         {
-          "description": "Places the table, as with `mt-4`; its look is fixed.",
+          "description": "Places the table, as with `mt-4`. Given a height, as with `h-96` or in a Page that fills the window, its rows scroll under a header that stays in view; its look is fixed.",
           "name": "className",
           "optional": true,
           "type": "string | undefined"
         }
       ],
       "purpose": "A table of a few hundred rows, or up to its row cap, whose cells may hold links and buttons.",
-      "use": "With sorting, selection, copying and export. Past its row cap, or to group or pivot, use parallax's Grid.",
+      "use": "With sorting, filtering, selection, pages, copying and export, each of whose state the app may hold. Under a FilterBar, pass its values as `filterBy`. Past its row cap, or to group or pivot, use parallax's Grid.",
       "with": [
         "Table",
         "Grid",
+        "FilterBar",
         "Num",
         "Money",
         "CellBar",
@@ -23321,6 +23440,18 @@
           "type": "((row: TRow) => ReactNode) | undefined"
         },
         {
+          "description": "The text the cell shows, which the filter matches, for a `cell` that shows other text than the value's, as `Buy` for `B`; a numeric column's value by its `format`, and any other column's value as text, unless set.",
+          "name": "text",
+          "optional": true,
+          "type": "((row: TRow) => string) | undefined"
+        },
+        {
+          "description": "The column's width in CSS pixels, or its content's where that is wider; its content's unless set.",
+          "name": "width",
+          "optional": true,
+          "type": "number | undefined"
+        },
+        {
           "description": "Whether the column sorts when its heading is pressed; yes unless set.",
           "name": "sortable",
           "optional": true,
@@ -23382,6 +23513,18 @@
           "name": "cell",
           "optional": true,
           "type": "((row: TRow) => ReactNode) | undefined"
+        },
+        {
+          "description": "The text the cell shows, which the filter matches, for a `cell` that shows other text than the value's, as `Buy` for `B`; a numeric column's value by its `format`, and any other column's value as text, unless set.",
+          "name": "text",
+          "optional": true,
+          "type": "((row: TRow) => string) | undefined"
+        },
+        {
+          "description": "The column's width in CSS pixels, or its content's where that is wider; its content's unless set.",
+          "name": "width",
+          "optional": true,
+          "type": "number | undefined"
         },
         {
           "description": "Whether the column sorts when its heading is pressed; yes unless set.",
@@ -23481,6 +23624,105 @@
     {
       "fields": [
         {
+          "description": "The sort, by column `id`, ascending unless `desc` is set, held by the app; the table holds it unless set.",
+          "name": "sorting",
+          "optional": true,
+          "type": "readonly DataTableSort[] | undefined"
+        },
+        {
+          "description": "The sort it starts with when the table holds it; the data's order unless set.",
+          "name": "defaultSorting",
+          "optional": true,
+          "type": "readonly DataTableSort[] | undefined"
+        },
+        {
+          "description": "Hears the sort a heading asks for, with `desc` on each column.",
+          "name": "onSortingChange",
+          "optional": true,
+          "type": "((sorting: readonly DataTableSort[]) => void) | undefined"
+        },
+        {
+          "description": "The text filter's text, held by the app; the table holds it unless set.",
+          "name": "filter",
+          "optional": true,
+          "type": "string | undefined"
+        },
+        {
+          "description": "The text the filter starts with when the table holds it; none unless set.",
+          "name": "defaultFilter",
+          "optional": true,
+          "type": "string | undefined"
+        },
+        {
+          "description": "Hears the text typed once typing pauses, or at once on Enter.",
+          "name": "onFilterChange",
+          "optional": true,
+          "type": "((filter: string) => void) | undefined"
+        },
+        {
+          "description": "The ids of the columns hidden, held by the app; the table holds them unless set.",
+          "name": "hiddenColumns",
+          "optional": true,
+          "type": "readonly string[] | undefined"
+        },
+        {
+          "description": "The columns hidden when the table holds them; none unless set.",
+          "name": "defaultHiddenColumns",
+          "optional": true,
+          "type": "readonly string[] | undefined"
+        },
+        {
+          "description": "Hears the ids of the columns hidden after the columns menu hides or shows one.",
+          "name": "onHiddenColumnsChange",
+          "optional": true,
+          "type": "((hidden: readonly string[]) => void) | undefined"
+        },
+        {
+          "description": "The page showing, from 0, held by the app; the table holds it unless set. A page past the last shows the last.",
+          "name": "page",
+          "optional": true,
+          "type": "number | undefined"
+        },
+        {
+          "description": "The page it starts on when the table holds it; the first unless set.",
+          "name": "defaultPage",
+          "optional": true,
+          "type": "number | undefined"
+        },
+        {
+          "description": "Hears the page a button asks for, and 0 when a new sort or filter goes back to the first.",
+          "name": "onPageChange",
+          "optional": true,
+          "type": "((page: number) => void) | undefined"
+        },
+        {
+          "description": "The ids of the rows selected, held by the app; the table holds them unless set.",
+          "name": "selectedIds",
+          "optional": true,
+          "type": "readonly string[] | undefined"
+        },
+        {
+          "description": "The ids selected when the table holds them, among the rows it holds; none unless set.",
+          "name": "defaultSelectedIds",
+          "optional": true,
+          "type": "readonly string[] | undefined"
+        },
+        {
+          "description": "Hears the selected rows, in order, and their ids on each change and when new data drops or replaces one.",
+          "name": "onSelectionChange",
+          "optional": true,
+          "type": "SelectionListener<TRow> | undefined"
+        }
+      ],
+      "exported": true,
+      "module": "@basis/ui",
+      "name": "DataTableStateProps",
+      "parameters": "<TRow>",
+      "purpose": "The parts of a DataTable's state an app may hold, each with the change that tells it and a default."
+    },
+    {
+      "fields": [
+        {
           "description": "The column's key in the table's sort, visibility and filter, unique among its columns.",
           "name": "id",
           "optional": false,
@@ -23497,6 +23739,18 @@
           "name": "cell",
           "optional": true,
           "type": "((row: TRow) => ReactNode) | undefined"
+        },
+        {
+          "description": "The text the cell shows, which the filter matches, for a `cell` that shows other text than the value's, as `Buy` for `B`; a numeric column's value by its `format`, and any other column's value as text, unless set.",
+          "name": "text",
+          "optional": true,
+          "type": "((row: TRow) => string) | undefined"
+        },
+        {
+          "description": "The column's width in CSS pixels, or its content's where that is wider; its content's unless set.",
+          "name": "width",
+          "optional": true,
+          "type": "number | undefined"
         },
         {
           "description": "Whether the column sorts when its heading is pressed; yes unless set.",

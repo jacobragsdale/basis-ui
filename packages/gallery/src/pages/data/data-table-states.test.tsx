@@ -121,7 +121,7 @@ describe("DataTable's states", () => {
     await expect.element(screen.getByText('No rows match "zzz".')).toBeVisible();
     await screen.getByRole("button", { name: "Clear the filter" }).click();
     await expect.element(filter).toHaveValue("");
-    expect(columnText(screen.getByRole("table"), 0)).toHaveLength(12);
+    await expect.poll(() => columnText(screen.getByRole("table"), 0)).toHaveLength(12);
   });
 });
 
@@ -136,7 +136,10 @@ describe("DataTable's filter, columns, pages and actions", () => {
       />,
     );
     await screen.getByRole("searchbox", { name: "Filter Positions" }).fill("hedge");
-    expect(columnText(screen.getByRole("table"), 0)).toStrictEqual(["91282CRM5", "91282CRJ2"]);
+    // The table filters once typing pauses.
+    await expect
+      .poll(() => columnText(screen.getByRole("table"), 0))
+      .toStrictEqual(["91282CRM5", "91282CRJ2"]);
   });
 
   test("the columns menu hides a column, but not the last one showing", async () => {

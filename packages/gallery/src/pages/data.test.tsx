@@ -9,6 +9,7 @@ import { Data } from "./data.tsx";
 /** The family's components, the table first, then its filter bar, then the pickers, then the import. */
 const sections = [
   "DataTable",
+  "DataTable at its row cap",
   "DataTable states",
   "FilterBar",
   "EntityPicker",

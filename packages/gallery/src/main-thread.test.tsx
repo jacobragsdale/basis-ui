@@ -1,7 +1,7 @@
 import "#styles.css";
 
 import { DataTable, applyPreferences } from "@basis/ui";
-import type { Preferences } from "@basis/ui";
+import type { DataTableRowAction, Preferences } from "@basis/ui";
 import type { ReactElement } from "react";
 import { afterAll, beforeAll, describe, expect, inject, test } from "vite-plus/test";
 import { cdp, page, userEvent } from "vite-plus/test/browser";
@@ -14,16 +14,17 @@ import type { Position } from "#pages/data/fixtures.ts";
 import { DialogExample } from "#pages/overlays-and-menus/dialogs.tsx";
 
 /* The main thread's budget, with the CPU slowed four times through DevTools, as spike 0.3's proxy for a Citrix
- * desktop: what `DataTable` at its row cap, a dialog opening and a change of mode cost, as long animation frames, the
- * frames whose work took over 50 ms. Each budget is the count of such frames and their longest, set from measurement
- * on the build host, an 8-core Ryzen 7 8745HS, on 2026-11-09, alone and beside the rest of the gallery's suite, while
- * other agents' builds and tests shared the host (a load average of 6 to 8). The counts held steady; the longest
- * frames varied up to twice over, so their budgets are about twice the worst seen. A change that adds frames, or makes
- * one much longer, fails here.
+ * desktop: what `DataTable` at its row cap, a dialog opening, a key in the table's filter and a change of mode over it
+ * cost, as long animation frames, the frames whose work took over 50 ms. Each budget is the count of such frames and
+ * their longest, set from measurement on the build host, an 8-core Ryzen 7 8745HS, alone and beside the rest of the
+ * gallery's suite, while other agents' builds and tests shared the host: the dialog's on 2026-11-09 (step 6.2c), the
+ * table's on 2026-11-10 (step 6.7.3), at a load average of 2 to 5. The counts held steady; the longest frames varied up
+ * to twice over, so their budgets are about twice the worst seen. A change that adds frames, or makes one much longer,
+ * fails here. Step 6.7.3's target was no frame over 200 ms: a key and a change of mode meet it alone, and the first
+ * render, which runs the table's code for the first time, does not (PLAN.md, "Found while building").
  *
- * GitHub's runners are slower and shared, and the same commit's table there has taken from 9 to 39 s under the
- * slowdown. In CI the counts hold as they are, and the longest frame meets a ceiling of `ciSlack` times its budget:
- * these frames are a known cost of DataTable, for step 6.7.3, which a host's run measures and CI only bounds. */
+ * GitHub's runners are slower and shared: in CI the counts hold as they are, and the longest frame meets a ceiling of
+ * `ciSlack` times its budget, which a host's run measures and CI only bounds. */
 
 declare module "vite-plus/test" {
   interface ProvidedContext {
@@ -34,7 +35,7 @@ declare module "vite-plus/test" {
 
 /** How many times its budget a frame may take on a CI runner. */
 const ciSlack = 4;
-/** Each test's timeout: under the slowdown, a CI runner has spent 39 s rendering the table at its cap. */
+/** Each test's timeout: under the slowdown, a CI runner spent 39 s rendering the table at its cap before it paged. */
 const slowTimeout = 120_000;
 
 const slowdown = 4;
@@ -104,7 +105,21 @@ const capped: readonly Position[] = Array.from(
   return position === undefined ? [] : [{ ...position, id: `p${String(index)}` }];
 });
 
-/** The positions at the row cap, with selection and the column menus on, as a desk's blotter would have them. */
+/** What an action does here: the test never runs one. */
+function nothing(): void {
+  // The menu is never opened.
+}
+
+/** A position's actions, as a desk's table lists them. */
+function actionsFor(row: Position): readonly DataTableRowAction[] {
+  return [
+    { label: "View position", onSelect: nothing },
+    { disabled: !row.settled, label: "Close position", onSelect: nothing },
+  ];
+}
+
+/** The positions at the row cap, with selection, the column menus and each row's actions on, as a desk's table would
+ * have them, 50 rows a page, its default. */
 function CappedTable(): ReactElement {
   return (
     <DataTable
@@ -114,8 +129,18 @@ function CappedTable(): ReactElement {
       getRowId={(row) => row.id}
       rowLabel={(row) => row.cusip}
       selectable
+      rowActions={actionsFor}
     />
   );
+}
+
+/** Runs the test runner's own first render, query and key, so the first test measures the page and not the runner:
+ * its locators and its keyboard run for the first time otherwise inside the frame measured. */
+async function warmTheRunner(): Promise<void> {
+  const screen = await render(<input aria-label="Warm" />);
+  await userEvent.type(screen.getByRole("textbox", { name: "Warm" }), "a");
+  await expect.element(screen.getByRole("textbox", { name: "Warm" })).toHaveValue("a");
+  await screen.unmount();
 }
 
 const light: Preferences = {
@@ -146,13 +171,15 @@ describe("the main thread, with the CPU slowed four times", { timeout: slowTimeo
   });
 
   test("DataTable at its row cap", async () => {
+    await warmTheRunner();
     const spent = await cost(async () => {
       const screen = await render(<CappedTable />);
       await expect.element(screen.getByRole("table")).toBeVisible();
     });
-    /* Measured: 2 long frames, the longest 3.9 to 4.7 s alone and up to 8.3 s beside the rest of the suite, as React
-     * renders 2,000 rows and the browser lays them out. */
-    expect(within(spent, { longFrames: 3, longest: 16_000 })).toStrictEqual(spent);
+    /* Measured: 1 or 2 long frames, the longest 267 to 346 ms alone and 505 to 563 ms beside the rest of the suite, as
+     * React draws the first page of 50 rows and runs the table's code for the first time; later tables take 130 to
+     * 180 ms. Before step 6.7.3 drew pages, it drew all 2,000 rows: 2 frames, the longest 3.9 to 8.3 s. */
+    expect(within(spent, { longFrames: 3, longest: 1200 })).toStrictEqual(spent);
   });
 
   test("a dialog opening", async () => {
@@ -168,6 +195,23 @@ describe("the main thread, with the CPU slowed four times", { timeout: slowTimeo
     expect(within(spent, { longFrames: 2, longest: 250 })).toStrictEqual(spent);
   });
 
+  test("a key in the filter of the table at its row cap", async () => {
+    const screen = await render(<CappedTable />);
+    const filter = screen.getByRole("searchbox", { name: "Filter Positions" });
+    await expect.element(filter).toBeVisible();
+    await frames(2);
+    const spent = await cost(async () => {
+      await userEvent.type(filter, "a");
+      // The table filters once typing pauses, 200 ms, and draws the rows the filter keeps.
+      await expect.element(screen.getByText("Rows 1–50 of 1,502")).toBeVisible();
+      await pause(300);
+    });
+    /* Measured: 1 or 2 long frames, the longest 96 to 159 ms alone and 206 to 213 ms beside the rest of the suite, the
+     * frame that filters the 2,000 rows by the text their cells show and draws the page they leave. Before step 6.7.3,
+     * every key drew every row again: 1.0 to 1.4 s a key. */
+    expect(within(spent, { longFrames: 3, longest: 450 })).toStrictEqual(spent);
+  });
+
   test("a change of mode, over the table at its row cap", async () => {
     const screen = await render(<CappedTable />);
     await expect.element(screen.getByRole("table")).toBeVisible();
@@ -176,8 +220,8 @@ describe("the main thread, with the CPU slowed four times", { timeout: slowTimeo
       applyPreferences(document.documentElement, { ...light, mode: "dark" }, false);
       await frames(3);
     });
-    /* Measured: 4 long frames, the longest 3.1 to 4.1 s, restyling the table's tens of thousands of elements; with
-     * transitions left on, 5, the longest 3.9 s. */
-    expect(within(spent, { longFrames: 6, longest: 8000 })).toStrictEqual(spent);
+    /* Measured: 1 or 2 long frames, the longest 146 to 171 ms alone and 66 to 213 ms beside the rest of the suite,
+     * restyling the page of 50 rows. Before step 6.7.3, 4 frames, the longest 3.1 to 4.1 s, restyling all 2,000. */
+    expect(within(spent, { longFrames: 3, longest: 450 })).toStrictEqual(spent);
   });
 });

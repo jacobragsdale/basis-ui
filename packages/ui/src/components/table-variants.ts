@@ -33,4 +33,17 @@ const tableCellVariants = cva("p-2 align-middle whitespace-nowrap [&:has([role=c
   },
 });
 
-export { tableCellVariants, tableHeadVariants };
+/** A cell's classes, as TableCell's but without its rule for a checkbox inside it, for rows drawn many at a time, as
+ * DataTable's are: a selector that looks inside each cell costs every cell of a large table its style, at each change
+ * of mode. The checkbox's cell is a variant of its own. */
+const tableCellClasses = {
+  checkbox: "p-2 pr-0 align-middle whitespace-nowrap",
+  default: "p-2 align-middle whitespace-nowrap",
+  numeric: "p-2 align-middle whitespace-nowrap text-right tabular-nums",
+} as const;
+
+/** A row's classes, as TableRow's but without its rule for an open menu inside it: the row is told, and adds
+ * `bg-muted` itself. Its hover shows at once, with no fade. */
+const tableRowClasses = "border-b hover:bg-muted data-[state=selected]:bg-selection";
+
+export { tableCellClasses, tableCellVariants, tableHeadVariants, tableRowClasses };

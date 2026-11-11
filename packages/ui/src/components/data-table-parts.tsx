@@ -1,26 +1,24 @@
-/* DataTable's cells beyond the data: a heading that sorts, the selection checkboxes, a row's actions menu, and the rows
- * that stand in while the table loads or has nothing to show. Each takes plain values rather than TanStack's objects,
- * whose methods read state the React Compiler cannot see, so a part renders again whenever what it shows changes. */
+/* DataTable's cells beyond the data: a heading that sorts, the selection checkboxes, and the rows that stand in while
+ * the table loads or has nothing to show. Each takes plain values rather than TanStack's objects, whose methods read
+ * state the React Compiler cannot see, so a part renders again whenever what it shows changes.
+ *
+ * A row's checkbox is the browser's own, drawn as Checkbox draws its box: Base UI's checkbox is the costliest part of a
+ * row, and a table draws one a row. It is named, takes the focus, and toggles with Space, as Base UI's does. */
 
 import type { ReactElement, ReactNode } from "react";
 
 import { ArrowDownIcon } from "#vendor/lucide/arrow-down.tsx";
 import { ArrowUpIcon } from "#vendor/lucide/arrow-up.tsx";
 import { ArrowUpDownIcon } from "#vendor/lucide/arrow-up-down.tsx";
-import { EllipsisIcon } from "#vendor/lucide/ellipsis.tsx";
+import { CheckIcon } from "#vendor/lucide/check.tsx";
 
 import { Button } from "./button.tsx";
 import { Checkbox } from "./checkbox.tsx";
-import type { DataTableRowAction } from "./data-table-columns.ts";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "./dropdown-menu.tsx";
+import { isShiftEvent } from "./data-table-state.ts";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from "./empty.tsx";
 import { Skeleton } from "./skeleton.tsx";
 import { TableCell, TableHead, TableRow } from "./table.tsx";
+import { tableCellClasses } from "./table-variants.ts";
 
 /** How many placeholder rows stand in while the table loads. */
 const loadingRows = 5;
@@ -120,7 +118,8 @@ function SelectAllHead({
   );
 }
 
-/** A row's checkbox, named after the row. Shift with a click selects the rows from the last one chosen. */
+/** A row's checkbox, named after the row: the browser's own, under a box drawn as Checkbox's is, in a 24 px target.
+ * Shift with a click selects the rows from the last one chosen. */
 function SelectRowCell({
   label,
   checked,
@@ -128,54 +127,29 @@ function SelectRowCell({
 }: {
   readonly label: string;
   readonly checked: boolean;
-  readonly onToggle: (checked: boolean, event: Event) => void;
+  readonly onToggle: (checked: boolean, shift: boolean) => void;
 }): ReactElement {
   return (
-    <TableCell>
-      <Checkbox
-        aria-label={`Select ${label}`}
-        checked={checked}
-        onCheckedChange={(next, details) => {
-          onToggle(next, details.event);
-        }}
-      />
-    </TableCell>
-  );
-}
-
-/** A row's actions, behind a button named after the row. */
-function RowActionsCell({
-  label,
-  actions,
-}: {
-  readonly label: string;
-  readonly actions: readonly DataTableRowAction[];
-}): ReactElement {
-  return (
-    <TableCell className="w-0 text-right">
-      <DropdownMenu>
-        <DropdownMenuTrigger
-          render={<Button variant="ghost" size="icon-sm" />}
-          aria-label={`Actions for ${label}`}
+    <td data-slot="table-cell" data-variant="default" className={tableCellClasses.checkbox}>
+      <span className="relative inline-flex size-(--control-md-icon) min-h-target min-w-target shrink-0 items-center justify-center">
+        <input
+          type="checkbox"
+          aria-label={`Select ${label}`}
+          checked={checked}
+          className="peer absolute inset-0 m-0 cursor-pointer opacity-0"
+          onChange={(event) => {
+            onToggle(event.target.checked, isShiftEvent(event.nativeEvent));
+          }}
+        />
+        <span
+          data-slot="checkbox-box"
+          aria-hidden="true"
+          className="pointer-events-none flex size-(--control-md-icon) items-center justify-center rounded-sm border border-input text-primary-foreground transition-colors peer-checked:border-primary peer-checked:bg-primary peer-focus-visible:border-ring peer-focus-visible:outline peer-focus-visible:outline-offset-(--focus-offset) peer-focus-visible:outline-ring peer-focus-visible:outline-solid"
         >
-          <EllipsisIcon />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-auto">
-          {actions.map((action) => (
-            <DropdownMenuItem
-              key={action.label}
-              variant={action.variant ?? "default"}
-              disabled={action.disabled ?? false}
-              onClick={() => {
-                action.onSelect();
-              }}
-            >
-              {action.label}
-            </DropdownMenuItem>
-          ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </TableCell>
+          {checked ? <CheckIcon className="size-(--control-sm-icon)" /> : null}
+        </span>
+      </span>
+    </td>
   );
 }
 
@@ -225,4 +199,4 @@ function EmptyRow({
   );
 }
 
-export { EmptyRow, LoadingRows, RowActionsCell, SelectAllHead, SelectRowCell, SortableHead };
+export { EmptyRow, LoadingRows, SelectAllHead, SelectRowCell, SortableHead };

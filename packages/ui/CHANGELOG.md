@@ -25,6 +25,21 @@ anything of an app.
   `vp run sync` for the new lines in `AGENTS.md`, and upgrade with `vp run upgrade`, after `vp run upgrade --dry-run`
   to see what it will do.
 
+- `DataTable` pages 50 rows unless `pageSize` says otherwise, and shows its pages once it holds more rows than a page;
+  a table of fewer rows looks as it did. Its state can be the app's: `sorting`, `filter`, `hiddenColumns`, `page` and
+  `selectedIds`, each with its `on…Change` and a `default…` for a table that holds its own (`DataTableStateProps`).
+  `filterBy={{ filters, values, fields }}` takes a FilterBar's values as `filterRows` does, and keeps the selection of
+  the rows they hide. The text filter matches the text a cell shows, `5,000,000` or `99-16+`, not the value's digits,
+  and filters once typing pauses, 200 ms, or at once on Enter; a column's `text` says what a `cell` of its own shows.
+  `onRowClick` hears a click on a row but not on a control in it. The header stays in view as the rows scroll, once the
+  table is given a height, as with `className="h-96"` or in a Page that fills the window. A column's `width` sets its
+  width in pixels. A row's actions are asked for when its menu opens, not as each row draws. At its row cap, a first
+  page, a key in the filter and a change of mode take a tenth of the main thread they did. What to do: pass
+  `pageSize={2000}` where a table must show every row on one page; where a test reads a table's rows straight after
+  typing in its filter, wait for them, as with `expect.poll`; give a column whose `cell` shows other text than its
+  value a `text`, so the filter finds what users see. `DropdownMenuContent` takes `anchor`, for a menu opened from an
+  element that is not its trigger.
+
 - `checkRoutes(routeTree)` from `@basis/ui/testing` makes one test per route. Each renders the route on the fixtures
   in `fixtures/`, answered as `vp dev`'s fixture mode answers them, with no browser. It fails with an `ERROR` line on
   a request nothing answers, an error reported to telemetry, an error toast, a console error, a page still loading

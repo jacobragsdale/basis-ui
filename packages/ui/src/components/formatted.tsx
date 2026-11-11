@@ -5,20 +5,10 @@
 import type { ComponentProps, ReactElement } from "react";
 
 import type { DisplayFormat } from "#format/display-format.ts";
-import type { ThirtySecondsPrecision } from "#numbers/thirty-seconds.ts";
 
+import { precisionOf } from "./formatted-text.ts";
 import { Bps, Money, Num, Pct, Price32 } from "./num.tsx";
 import type { NumericValue } from "./num-text.ts";
-
-/** The precision `Price32` shows for each step a format names. */
-const precisionOf: Readonly<
-  Record<"32nd" | "half" | "quarter" | "eighth", ThirtySecondsPrecision>
-> = {
-  "32nd": "thirty-seconds",
-  eighth: "eighths",
-  half: "halves",
-  quarter: "quarters",
-};
 
 interface FormattedProps extends Pick<
   ComponentProps<typeof Num>,

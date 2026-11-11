@@ -397,6 +397,7 @@ export type {
   DataTableSort,
   DataTableTextColumn,
 } from "./components/data-table-columns.ts";
+export type { DataTableStateProps } from "./components/data-table-control.ts";
 export { EntityPicker } from "./components/entity-picker.tsx";
 export type {
   EntityPickerProps,

@@ -288,8 +288,9 @@ The firm's own components cover what shadcn does not:
   a 422's `errors`, RFC 9457's own list of `{detail, pointer}`, with `{detail, parameter}` for a query or path
   parameter, the shape spike 0.2 found and basis-ui asked basis for (jacobragsdale/basis#7). `fieldErrors` names each
   field as TanStack Form does, so the errors go straight onto the form; the example app's settlement form does this.
-- **Data.** `DataTable`, on TanStack Table, is for small data whose cells hold links and buttons; past its row cap it
-  fails with a message that points to parallax's grid. `EntityPicker` searches through the generated client, and
+- **Data.** `DataTable`, on TanStack Table, is for small data whose cells hold links and buttons; it shows 50 rows a
+  page unless told otherwise, its state can be the app's, and past its row cap it fails with a message that points to
+  parallax's grid. `EntityPicker` searches through the generated client, and
   `SecurityPicker` sends only a valid CUSIP, ISIN or SEDOL. `FileImport` reads CSV and Excel workbooks (.xlsx), previews
   the rows, and checks them against a schema before anything is sent; a workbook's cells read as the text Excel shows,
   with dates in ISO 8601, and a workbook with several sheets of the schema's columns offers a choice of sheet. An .xls,
@@ -435,8 +436,8 @@ theme.
    skeleton holds still, where shadcn's pulses, so a page that loads sends nothing until it has loaded. And a change of
    theme, mode, density or motion is drawn in one frame, with every transition held off until it is, as the canvases
    change. `Resizable` resizes a pane that holds a canvas once, on release, with only its line following the pointer.
-   A gallery test holds `DataTable` at its row cap, a dialog opening and a change of mode to a budget of long animation
-   frames with the CPU slowed four times. Fonts are bundled, so screenshots match on every desktop: Inter for text and
+   A gallery test holds `DataTable` at its row cap, a dialog opening, a key in the table's filter and a change of mode
+   to a budget of long animation frames with the CPU slowed four times. Fonts are bundled, so screenshots match on every desktop: Inter for text and
    JetBrains Mono for code, until the firm's fonts replace them. A canvas's font cannot ask for tabular figures, so
    `--font-num` names Inter declared again with them on, which parallax's canvases draw in.
 

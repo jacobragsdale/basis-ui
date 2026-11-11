@@ -1,15 +1,16 @@
 /* The data page's position columns, shared by its DataTable examples and their tests: a link in each CUSIP cell, and
- * the numbers drawn by the formatter, right-aligned in tabular figures. Also the failure and the oversized data the
- * states examples show. */
+ * the numbers shown by their display formats, right-aligned in tabular figures, which the filter matches as shown.
+ * Also the failure and the oversized data the states examples show. */
 
-import { ApiError, Num, Price32 } from "@basis/ui";
+import { ApiError, Num } from "@basis/ui";
 import type { DataTableColumn } from "@basis/ui";
 
 import { positions } from "./fixtures.ts";
 import type { Position } from "./fixtures.ts";
 
-/** One row past DataTable's cap of 2,000. */
-const pastTheCap = 2001;
+/** DataTable's cap of 2,000 rows, and one row past it. */
+const rowCap = 2000;
+const pastTheCap = rowCap + 1;
 
 const positionColumns: readonly DataTableColumn<Position>[] = [
   {
@@ -29,14 +30,14 @@ const positionColumns: readonly DataTableColumn<Position>[] = [
   { header: "Security", id: "security", value: (row) => row.security },
   { header: "Book", id: "book", value: (row) => row.book },
   {
-    cell: (row) => <Num value={row.par} decimals={0} />,
+    format: { decimals: 0, kind: "number" },
     header: "Par",
     id: "par",
     value: (row) => row.par,
     variant: "numeric",
   },
   {
-    cell: (row) => <Price32 value={row.price} />,
+    format: { kind: "price32", step: "eighth" },
     header: "Price",
     id: "price",
     value: (row) => row.price,
@@ -72,4 +73,12 @@ const manyPositions = Array.from(
   (_unused, index) => positions[index % positions.length],
 ).filter((row) => row !== undefined);
 
-export { manyPositions, positionColumns, unavailable };
+/** The positions at the row cap, each with its own id. */
+const cappedPositions = Array.from({ length: rowCap }, (_unused, index) => index).flatMap(
+  (index) => {
+    const position = positions[index % positions.length];
+    return position === undefined ? [] : [{ ...position, id: `p${String(index)}` }];
+  },
+);
+
+export { cappedPositions, manyPositions, positionColumns, unavailable };

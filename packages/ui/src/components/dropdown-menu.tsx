@@ -1,12 +1,10 @@
 /* Dropdown Menu and its parts, from shadcn's Base UI source (its base-nova style), on Base UI's Menu. Context Menu
  * and Menubar draw their items with these parts. The changes:
  * - The popup fades and scales from its anchor through Base UI's `data-starting-style` and `data-ending-style` on a
- *   short transition, which the theme's reduced-motion rule stops, in place of tw-animate-css's keyframes, which the
- *   theme lacks.
+ *   short transition, which reduced motion stops, in place of tw-animate-css's keyframes, which the theme lacks.
  * - A destructive item, when highlighted, sits on the theme's `destructive-subtle` tint, where shadcn tints it with an
  *   opacity of `destructive` and a `dark:` class.
- * - Items carry `min-h-target` and `min-w-target`, since they are shorter than `h-8`, so they keep a 24 px target in
- *   the compact density.
+ * - Items carry `min-h-target` and `min-w-target`, so they keep a 24 px target in the compact density.
  * - The submenu's popup is the menu's popup with `w-auto min-w-24` in place of shadcn's restyling with an arbitrary
  *   96px and `shadow-lg`, which the theme lacks.
  * - `inset` pads an item only when it is true, where shadcn's `data-inset:` also matches `data-inset="false"`, and the
@@ -53,18 +51,19 @@ function DropdownMenuTrigger(props: MenuPrimitive.Trigger.Props): ReactElement {
   return <MenuPrimitive.Trigger data-slot="dropdown-menu-trigger" {...props} />;
 }
 
-/** The menu's popup, in a portal, on the trigger's `side` (`bottom` by default), at least as wide as the trigger. */
+/** The menu's popup, in a portal, on the `side` (`bottom` by default) of the trigger, or of `anchor` when given. */
 function DropdownMenuContent({
   align = "start",
   alignOffset = 0,
   side = "bottom",
   sideOffset = sideGap,
+  anchor,
   className,
   ...props
 }: MenuPrimitive.Popup.Props &
   Pick<
     MenuPrimitive.Positioner.Props,
-    "align" | "alignOffset" | "side" | "sideOffset"
+    "align" | "alignOffset" | "side" | "sideOffset" | "anchor"
   >): ReactElement {
   return (
     <MenuPrimitive.Portal>
@@ -74,6 +73,7 @@ function DropdownMenuContent({
         alignOffset={alignOffset}
         side={side}
         sideOffset={sideOffset}
+        anchor={anchor}
       >
         <MenuPrimitive.Popup
           data-slot="dropdown-menu-content"

@@ -1136,12 +1136,15 @@ tables, filtering a page's rows, searching for an entity, and importing a CSV fi
 ### DataTable
 
 `DataTable` is TanStack Table v9 drawn on `Table`'s parts, for a few hundred rows whose cells hold links and buttons.
-Declare each column's `value`, which it sorts, filters, copies and exports by, and draw the cell with `cell` when the
-value's text is not enough:
+Declare each column's `value`, which it sorts, copies and exports by, and draw the cell with `cell` when the value's
+text is not enough:
 
 ```tsx
 import { DataTable, Money } from "@basis/ui";
 import type { DataTableColumn } from "@basis/ui";
+
+// The text the price's cell shows, for the filter: `$99.97`.
+const moneyText = (price: number): string => `$${price.toFixed(2)}`;
 
 const columns: readonly DataTableColumn<Position>[] = [
   {
@@ -1157,6 +1160,7 @@ const columns: readonly DataTableColumn<Position>[] = [
     variant: "numeric",
     value: (row) => row.price,
     cell: (row) => <Money value={row.price} />,
+    text: (row) => moneyText(row.price),
   },
 ];
 
@@ -1177,24 +1181,81 @@ const columns: readonly DataTableColumn<Position>[] = [
 ```
 
 - **Columns.** A column with `variant: "numeric"` takes a number as the API sends it, and aligns right in tabular
-  figures, its heading too; it sorts by value and exports as a number.
-  Any other column's value is text, a boolean or a number. `sortable`, `hideable` and `filterable` are on unless set
-  to `false`.
+  figures, its heading too; it sorts by value, shows by its `format`, the display format the API declares, and exports
+  as a number. Any other column's value is text, a boolean or a number. `sortable`, `hideable` and `filterable` are on
+  unless set to `false`. `width` sets a column's width in CSS pixels, which a wider cell widens.
 - **Sorting.** A heading sorts its column ascending, then descending, then not at all; Shift adds the column to the
   sort, and each sorted heading shows its place. Missing values sort last either way.
 - **Selection.** `selectable` adds a checkbox to each row, named after the row (`rowLabel`, the first column's value
   unless set), and one to the heading, which selects every row the filter shows, on every page. Shift with a click
-  selects a range. `onSelectionChange` hears the selected rows and their ids, and again when new data, such as a
-  refetch's, drops or replaces a selected row; hold the ids, which outlast a refetch.
-- **Toolbar.** The text filter searches the columns' values, ignoring case. The columns menu hides and shows
-  columns. Copy puts the selected rows on the clipboard as TSV, which pastes into a spreadsheet's cells; Export CSV
-  saves the rows the filter shows as `label.csv` (`exportName` to change it). Both write the columns showing, through
-  `toTsv` and `toCsv`, which write a text cell that starts with `=`, `+`, `-` or `@` as text, not a formula.
+  selects a range, and Space toggles the focused row's. `onSelectionChange` hears the selected rows and their ids, and
+  again when new data, such as a refetch's, drops or replaces a selected row; hold the ids, which outlast a refetch.
+- **Toolbar.** The text filter matches the text each cell shows, ignoring case: a number as its format writes it, as
+  `5,000,000` or `99-16+`, and a column with a `cell` of its own by its `text`, so a column whose cell shows `Buy` for
+  `B` declares `text: (row) => (row.side === "B" ? "Buy" : "Sell")`. It filters once typing pauses, 200 ms, or at once
+  on Enter. The columns menu hides and shows columns. Copy puts the selected rows on the clipboard as TSV, which
+  pastes into a spreadsheet's cells; Export CSV saves the rows the filters keep as `label.csv` (`exportName` to change
+  it). Both write the columns showing, through `toTsv` and `toCsv`, which write a text cell that starts with `=`, `+`,
+  `-` or `@` as text, not a formula.
+- **Pages.** A table shows 50 rows a page unless `pageSize` says otherwise, and shows its pages once it holds more rows
+  than a page, or is given a page size. A new sort or filter goes back to the first page.
+- **Rows.** `rowActions` lists a row's actions in a menu at its end, asked for when the menu opens. `onRowClick` hears a
+  click on a row, but not on a link, button or checkbox in it, nor the end of a drag that selects text; it is a
+  pointer's shortcut, so keep a link or an action in the row for the keyboard. Given a height, as with
+  `className="h-96"` or in a `Page` that fills the window, the table's rows scroll under a header that stays in view.
 - **States.** `loading` shows placeholder rows and marks the table busy; an `error` shows over the table, or alone
   while there are no rows; an empty table says so, in `empty`'s words when set.
-- **The row cap.** A DataTable draws every row it holds into the page. Past its cap, 2,000 rows unless `rowCap` says
+- **The row cap.** A DataTable draws its page's rows into the page. Past its cap, 2,000 rows unless `rowCap` says
   otherwise, it draws nothing, shows one error that names the cap and says to use parallax's `<Grid>`, and reports
-  the error to telemetry. Data that size belongs in the grid, which draws only the rows on screen.
+  the error to telemetry. Data that size belongs in the grid, which draws only the rows on screen. At the cap, with the
+  CPU slowed four times as on a Citrix desktop, its first page takes about 300 ms of the main thread, a key in its
+  filter and a change of mode under 200 ms; `pageSize={2000}`, every row on one page, takes about 3 s.
+
+The table's state is its own unless the app holds it. Each part is a value, a change that hears it, and a default for
+a table that holds its own: `sorting`, `onSortingChange` and `defaultSorting`; `filter`, `onFilterChange` and
+`defaultFilter`, the text filter's; `hiddenColumns`, `onHiddenColumnsChange` and `defaultHiddenColumns`; `page`,
+`onPageChange` and `defaultPage`, from 0, a page past the last showing the last; and `selectedIds`,
+`onSelectionChange` and `defaultSelectedIds`. A table that holds a part shows the app's value and tells it of each
+change, so a saved view, a link or a test can set it:
+
+```tsx
+import { DataTable } from "@basis/ui";
+import type { DataTableSort } from "@basis/ui";
+import { useState } from "react";
+
+const [sorting, setSorting] = useState<readonly DataTableSort[]>([{ id: "par", desc: true }]);
+const [selected, setSelected] = useState<readonly string[]>([]);
+
+<DataTable
+  label="Positions"
+  columns={columns}
+  data={positions.data?.data}
+  getRowId={(row) => row.id}
+  sorting={sorting}
+  onSortingChange={setSorting}
+  selectable
+  selectedIds={selected}
+  onSelectionChange={(_rows, ids) => {
+    setSelected(ids);
+  }}
+/>;
+```
+
+Under a FilterBar, give the table the bar's values as `filterBy`, as `filterRows` takes them. The table shows the rows
+they keep, and keeps the selection of the rows they hide:
+
+```tsx
+const filters = useFilters(tradeFilters);
+
+<FilterBar filters={filters} />
+<DataTable
+  label="Trades"
+  columns={columns}
+  data={trades.data?.data}
+  getRowId={(row) => row.id}
+  filterBy={{ filters: tradeFilters, values: filters.values, fields: tradeFields }}
+/>;
+```
 
 ### FilterBar
 

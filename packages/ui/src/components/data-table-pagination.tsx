@@ -1,13 +1,11 @@
 /* DataTable's pages, when it pages: which rows show, which page this is, and the buttons to the pages beside it. */
 
-import type { RowData } from "@tanstack/react-table";
 import type { ReactElement } from "react";
 
 import { ChevronLeftIcon } from "#vendor/lucide/chevron-left.tsx";
 import { ChevronRightIcon } from "#vendor/lucide/chevron-right.tsx";
 
 import { Button } from "./button.tsx";
-import type { DataTableInstance } from "./data-table-state.ts";
 
 const counts = new Intl.NumberFormat("en-US");
 
@@ -74,34 +72,39 @@ function DataTablePagination({
   );
 }
 
-/** The line under a paged table. */
-function PaginationFor<TRow extends RowData>({
+/** The line under a paged table, at `page` of the `rows` the filters keep. */
+function PaginationFor({
   label,
-  table,
+  page,
   pageSize,
+  rows,
+  onPageChange,
 }: {
   readonly label: string;
-  readonly table: DataTableInstance<TRow>;
+  readonly page: number;
   readonly pageSize: number;
+  readonly rows: number;
+  readonly onPageChange: (page: number) => void;
 }): ReactElement {
+  const pageCount = Math.ceil(rows / pageSize);
   return (
     <DataTablePagination
       label={label}
-      pageIndex={table.state.pagination.pageIndex}
-      pageCount={table.getPageCount()}
+      pageIndex={page}
+      pageCount={pageCount}
       pageSize={pageSize}
-      rows={table.getPrePaginatedRowModel().rows.length}
+      rows={rows}
       onPrevious={
-        table.getCanPreviousPage()
+        page > 0
           ? () => {
-              table.previousPage();
+              onPageChange(page - 1);
             }
           : undefined
       }
       onNext={
-        table.getCanNextPage()
+        page + 1 < pageCount
           ? () => {
-              table.nextPage();
+              onPageChange(page + 1);
             }
           : undefined
       }

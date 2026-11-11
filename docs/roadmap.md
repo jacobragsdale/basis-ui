@@ -605,7 +605,14 @@ flowchart TD
    filters, `filterSearchSchema` gives the route its Zod `validateSearch`, `useFilters` reads and writes the address,
    and `filterRows` keeps the rows. Back and Forward restore the filters, and typing is one history entry. Its
    `FilterValues` are the seam for saved views (6.6.3), which restore them with `setAll`, and for the controlled
-   `DataTable` (6.7.3). The example app's conventions page filters its table with it.
+   `DataTable` (6.7.3). The example app's conventions page filters its table with it. 6.7.3 built on 2026-11-10:
+   `DataTable`'s sort, text filter, hidden columns, page and selected ids can each be the app's, with its change and a
+   default; `filterBy` takes a FilterBar's values; it pages 50 rows unless told otherwise, memoises its rows, draws a
+   row's checkbox and actions button as the browser's own and its menus when they open, filters by the text its cells
+   show once typing pauses, and has `onRowClick`, a header that stays in view and column widths. With the CPU slowed
+   four times, at its row cap, before and after: the first render's longest frame 3.9 to 8.3 s, now 267 to 346 ms
+   alone (target 200 ms, missed: PLAN.md, "Found while building"); a key in the filter 1.0 to 1.4 s, now 96 to 159 ms;
+   a change of mode 3.1 to 4.1 s, now 146 to 171 ms.
 8. **6.8 The agent's toolbelt.** Lane Preset, in order, since preset changes land one at a time: a catalogue that
    answers, with `vp run docs NAME` (`6.8.1-catalogue`), lint that costs fewer rounds (`6.8.2-lint-limits`), the doors
    that are open (`6.8.3-closed-doors`), one verdict, `vp run verify` (`6.8.4-verify`), a shot that explains itself
