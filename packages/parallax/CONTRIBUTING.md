@@ -109,6 +109,16 @@ Angular layer's screenshots, kept in `tests/e2e/grid/angular`. Its performance
 spec measures scrolling as the Angular layer's did, and runs only when asked. Look
 at new screenshots before committing them.
 
+What gets a screenshot: the maintainer decided on 2026-11-11 that screenshots cost too much to take one of
+everything in every theme. The canvas's pixels are the product, so parallax keeps
+baselines, but in the default theme alone, light and dark, with at most one more
+for each of `@basis/ui`'s other themes in each suite (grid, pivot, charts, demo),
+to show the theme is followed (`tests/e2e/ui-themes.ts`'s `themeProbes`). A new
+feature gets a new baseline only where a test of the paint model or of the DOM
+cannot hold it; a menu, a dialog or any of `@basis/ui`'s components is held by a
+DOM test, not a picture. A step records only the specs its change touches, never
+a whole suite, and looks at a picture only where the eye is the only judge.
+
 `pivot-e2e` runs the React pivot's Playwright specs in `tests/e2e/pivot` the
 same way, in the same image, against its own harness in
 `tests/e2e/pivot/harness` on port 8794, over the demo's 150,000 positions,

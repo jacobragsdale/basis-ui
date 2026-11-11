@@ -8,7 +8,7 @@ import { expect, test } from "@playwright/test";
 import type { Locator, Page } from "@playwright/test";
 
 // oxlint-disable-next-line import/no-relative-parent-imports -- the grid, pivot and charts suites share the list of themes, which is no part of the package to import by name.
-import { otherThemes } from "../ui-themes.ts";
+import { themeProbes } from "../ui-themes.ts";
 import { bookRows, openMenu } from "./helpers.ts";
 
 test.skip(
@@ -138,54 +138,20 @@ for (const theme of ["light", "dark"] as const) {
   });
 }
 
-/* @basis/ui's other themes: the book in @basis/ui's look, and a header's menu, which is @basis/ui's, in each. */
-for (const ui of otherThemes) {
-  for (const theme of ["light", "dark"] as const) {
-    test(`the book's grid and a header's menu draw as in their screenshots in @basis/ui's ${ui} theme, ${theme} scheme`, async ({
-      page,
-    }) => {
-      const section = await book(page, `theme=${theme}&look=basis&ui=${ui}`);
-      await sectionShot(section, `grid-book-basis-${theme}-${ui}.png`);
-      const menu = await openMenu(page, section, 1);
-      await expect(menu.getByRole("list", { name: "Values" }).getByRole("checkbox")).toHaveCount(
-        8,
-        {
-          timeout: 30_000,
-        },
-      );
-      await page.mouse.move(0, 0);
-      await paintAfresh(page);
-      await expect(menu).toHaveScreenshot(`grid-header-menu-${theme}-${ui}.png`, exactly);
-    });
-  }
+/* @basis/ui's other themes: the book in @basis/ui's look, once in each, to show the canvas follows the theme. */
+for (const { ui, mode } of themeProbes) {
+  test(`the book's grid draws as in its screenshot in @basis/ui's ${ui} theme, ${mode} scheme`, async ({
+    page,
+  }) => {
+    const section = await book(page, `theme=${mode}&look=basis&ui=${ui}`);
+    await sectionShot(section, `grid-book-basis-${mode}-${ui}.png`);
+  });
 }
 
-/* Rich cells: the book with a bar, a diverging heat fill, badges, a link and a rule, in every shipped theme. */
-for (const ui of ["default", ...otherThemes]) {
-  for (const theme of ["light", "dark"] as const) {
-    test(`the book's rich cells draw as in their screenshot in @basis/ui's ${ui} theme, ${theme} scheme`, async ({
-      page,
-    }) => {
-      const section = await book(page, `theme=${theme}&look=basis&cells=1&ui=${ui}`);
-      await sectionShot(section, `grid-book-cells-${theme}-${ui}.png`);
-    });
-  }
-}
-
-/* The menu a right click opens on a cell, in every shipped theme. */
-for (const ui of ["default", ...otherThemes]) {
-  for (const theme of ["light", "dark"] as const) {
-    test(`a cell's menu draws as in its screenshot in @basis/ui's ${ui} theme, ${theme} scheme`, async ({
-      page,
-    }) => {
-      const section = await book(page, `theme=${theme}&look=basis&ui=${ui}`);
-      const canvas = section.locator("canvas");
-      await canvas.click({ button: "right", position: { x: 260, y: 60 } });
-      const menu = page.locator("[data-slot=grid-cell-menu]");
-      await expect(menu).toBeVisible();
-      await page.mouse.move(0, 0);
-      await paintAfresh(page);
-      await expect(menu).toHaveScreenshot(`grid-cell-menu-${theme}-${ui}.png`, exactly);
-    });
-  }
+/* Rich cells: the book with a bar, a diverging heat fill, badges, a link and a rule, in the default theme. */
+for (const theme of ["light", "dark"] as const) {
+  test(`the book's rich cells draw as in their screenshot, ${theme} scheme`, async ({ page }) => {
+    const section = await book(page, `theme=${theme}&look=basis&cells=1`);
+    await sectionShot(section, `grid-book-cells-${theme}-default.png`);
+  });
 }

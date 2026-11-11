@@ -9,7 +9,7 @@ import { expect, test } from "@playwright/test";
 import type { Locator, Page } from "@playwright/test";
 
 // oxlint-disable-next-line import/no-relative-parent-imports -- the grid, pivot and charts suites share the list of themes, which is no part of the package to import by name.
-import { otherThemes } from "../ui-themes.ts";
+import { themeProbes } from "../ui-themes.ts";
 import { canvasOf, filterBy, firstFund, listNamed, open, valuesOf } from "./helpers.ts";
 
 test.skip(
@@ -139,19 +139,13 @@ for (const theme of ["light", "dark"] as const) {
   });
 }
 
-/* @basis/ui's other themes: the pivot with its settings, and a Rows chip's menu, which is @basis/ui's, in each. */
-for (const ui of otherThemes) {
-  for (const theme of ["light", "dark"] as const) {
-    test(`the pivot and a Rows chip's menu draw as in their screenshots in @basis/ui's ${ui} theme, ${theme} scheme`, async ({
-      page,
-    }) => {
-      await open(page, `preset=pivot&theme=${theme}&look=basis&ui=${ui}`);
-      await page.mouse.move(0, 0);
-      await shot(page.locator("main"), `pivot-${theme}-${ui}.png`);
-      await page.getByRole("button", { name: "Options for strategy" }).click();
-      const menu = page.getByRole("menu", { name: "Field strategy" });
-      await expect(menu.getByRole("menuitem")).toHaveCount(6);
-      await shot(menu, `pivot-group-menu-${theme}-${ui}.png`);
-    });
-  }
+/* @basis/ui's other themes: the pivot with its settings, once in each, to show the canvas follows the theme. */
+for (const { ui, mode } of themeProbes) {
+  test(`the pivot draws as in its screenshot in @basis/ui's ${ui} theme, ${mode} scheme`, async ({
+    page,
+  }) => {
+    await open(page, `preset=pivot&theme=${mode}&look=basis&ui=${ui}`);
+    await page.mouse.move(0, 0);
+    await shot(page.locator("main"), `pivot-${mode}-${ui}.png`);
+  });
 }

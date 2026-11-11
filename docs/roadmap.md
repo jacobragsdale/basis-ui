@@ -458,6 +458,11 @@ comes from a review of the whole repo on 2026-11-09, and carries out the decisio
 [the design](design.md) records. [PLAN.md](../PLAN.md) holds each step's detail, its findings, its targets and its
 measurements, until the phase is done, then is deleted; this section is the summary.
 
+On 2026-11-11 the maintainer limited screenshots: parallax's suites keep baselines in the default theme alone, with at
+most one more for each other theme in each suite, a new feature gets a baseline only where a test of the paint model
+or the DOM cannot hold it, and a step records only the specs its change touches. The gallery keeps about a dozen
+whole-page baselines.
+
 By the maintainer's choice on 2026-11-09, Phase 6's steps push straight to `main`, after a fetch, a rebase onto
 `origin/main` and the checks, rather than merging through a pull request. Every other rule for working in parallel
 holds: a branch and worktree per step, named after its id, and the preset's changes one at a time, so the steps of 6.8

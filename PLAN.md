@@ -97,6 +97,12 @@ These replace the plan's and the roadmap's rules on branches, worktrees and pull
   its commit, a missed target recorded with its figure and reason, baselines regenerated only for intended changes, the
   design edited in the same commit as a decision it changes, and each step marked "Built on …" in the roadmap.
 - `axe-core` and `@tanstack/react-virtual` are approved. Ask before any other dependency.
+- Screenshots, as the maintainer decided on 2026-11-11, replacing "baselines in every theme" wherever this plan says
+  it: parallax keeps baselines in the default theme alone, with at most one more for each other theme in each of the
+  grid's, pivot's, charts' and demo's suites, to show the theme is followed. A new feature gets a baseline only where a
+  test of the paint model or the DOM cannot hold it. A step records only the specs its change touches, never a whole
+  suite, and looks at a picture only where the eye is the only judge. The gallery's suite is cut to about a dozen
+  whole-page baselines.
 
 What the earlier steps learned about this machine:
 
@@ -690,7 +696,8 @@ Lane: `packages/parallax/`. After 6.3, 6.4 and 6.5. One branch per item.
 6. **6.6.6 Charts** (`6.6.6-chart-finish`). A donut at card size shows neither labels nor a legend: the dashboard's
    donuts cannot be read. Make every small chart say what its marks are.
 
-Done when each feature has unit, browser and end-to-end tests and its baselines in every theme.
+Done when each feature has unit, browser and end-to-end tests, and a baseline in the default theme where a test of the
+paint model or the DOM cannot hold it (the maintainer's decision of 2026-11-11).
 
 ### 6.7 Components for real apps
 

@@ -5,4 +5,12 @@
 /** @basis/ui's themes other than the default, in its order. */
 const otherThemes = ["desk", "high-contrast"] as const;
 
-export { otherThemes };
+/** The one screenshot each suite takes in each of the other themes, to show the theme is followed: desk in light mode,
+ * and high-contrast in dark. Everything else is screenshotted in the default theme alone, as the maintainer decided on
+ * 2026-11-11. */
+const themeProbes = [
+  { mode: "light", ui: "desk" },
+  { mode: "dark", ui: "high-contrast" },
+] as const satisfies readonly { mode: "light" | "dark"; ui: (typeof otherThemes)[number] }[];
+
+export { otherThemes, themeProbes };
