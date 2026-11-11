@@ -1,6 +1,6 @@
 import "#styles.css";
 
-import { CellBar, QueryState, Sparkline } from "@basis/ui";
+import { CellBar, Money, QueryState, Sparkline, StatCard } from "@basis/ui";
 import type { QueryLike } from "@basis/ui";
 import { describe, expect, test, vi } from "vite-plus/test";
 import { render } from "vitest-browser-react";
@@ -36,6 +36,57 @@ const list = (rows: readonly string[]): React.ReactNode => (
     ))}
   </ul>
 );
+
+describe("StatCard", () => {
+  test("shows the figure, its change signed with an arrow in the gain colour, and its trend", async () => {
+    const screen = await render(
+      <StatCard
+        label="NAV"
+        value={<Money value={1_284_500_000} currency="USD" abbreviate="M" />}
+        change={{ label: "vs yesterday", value: 0.021 }}
+        trend={[1, 2, 3]}
+        trendLabel="NAV, up"
+      />,
+    );
+    await expect.element(screen.getByText("$1,284.5M")).toBeVisible();
+    const change = screen.getByText("+2.10%");
+    await expect.element(change).toHaveAttribute("data-direction", "gain");
+    expect(getComputedStyle(change.element()).color).toBe(computedColour("var(--gain)"));
+    expect(change.element().querySelector("svg")).not.toBeNull();
+    await expect.element(screen.getByText("vs yesterday")).toBeVisible();
+    await expect.element(screen.getByRole("img", { name: "NAV, up" })).toBeVisible();
+  });
+
+  test("colours a rise the loss colour where a rise is bad, and no change neither", async () => {
+    const screen = await render(
+      <>
+        <StatCard
+          label="Spread"
+          value="161 bp"
+          change={{ as: "bps", decimals: 0, rising: "loss", value: 0.0019 }}
+          trend={[1.42, 1.61]}
+          trendLabel="Spread, widening"
+        />
+        <StatCard label="Orders" value="12" change={{ as: "num", decimals: 0, value: 0 }} />
+      </>,
+    );
+    const rise = screen.getByText("+19 bp");
+    expect(getComputedStyle(rise.element()).color).toBe(computedColour("var(--loss)"));
+    await expect
+      .element(screen.getByRole("img", { name: "Spread, widening" }))
+      .toHaveClass("text-loss");
+    const none = screen.getByText("0", { exact: true });
+    await expect.element(none).toHaveAttribute("data-direction", "none");
+    expect(none.element().querySelector("svg")).toBeNull();
+  });
+
+  test("shows a skeleton, and no figure, while it loads", async () => {
+    const screen = await render(<StatCard label="NAV" value="$1.2B" loading />);
+    await expect.element(screen.getByText("NAV")).toBeVisible();
+    expect(screen.container.querySelector('[aria-busy="true"]')).not.toBeNull();
+    expect(screen.container.textContent).not.toContain("$1.2B");
+  });
+});
 
 describe("Sparkline", () => {
   test("is an image named by its label, 96 by 24 unless sized, marking its last value", async () => {

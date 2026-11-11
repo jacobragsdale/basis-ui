@@ -9,6 +9,10 @@ anything of an app.
 
 ## Unreleased
 
+- `StatCard`, a dashboard's figure: its value in large tabular figures, its change with an arrow, a sign and the gain
+  or loss colour, `rising: "loss"` turning that round, and its recent values as a sparkline, with a skeleton while
+  it loads. What to do: nothing; a KPI card built from `Card` and `Sparkline` by hand can become one.
+
 - `SavedViews`, a menu of a page's saved views, with `browserViewStore` for this browser alone and `apiViewStore` over
   the app's API: apply a view, save the page's state as a new one, save changes to, rename, make the default or delete
   the one shown. A view's state is any JSON, a grid's, pivot's or chart's layout or a table's with its filter bar's

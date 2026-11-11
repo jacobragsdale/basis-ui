@@ -15098,6 +15098,69 @@
       "example": "import { Sparkline } from \"@basis/ui\";\n\n// A KPI's last ten days, a day missing, coloured by its trend.\n<Sparkline\n  label=\"NAV over ten days, up\"\n  values={[101.2, 101.5, 101.1, null, 102, 102.4, 102.1, 102.8, 103, 103.3]}\n  trend\n  area\n/>;\n"
     },
     {
+      "extends": [
+        "Omit<ComponentProps<\"div\">, \"children\">"
+      ],
+      "family": "stat-card",
+      "module": "@basis/ui",
+      "name": "StatCard",
+      "props": [
+        {
+          "description": "What the figure is, such as \"NAV\".",
+          "name": "label",
+          "optional": false,
+          "type": "string"
+        },
+        {
+          "description": "The figure, as one of the number components, such as `<Money value={nav} abbreviate=\"M\" />`.",
+          "name": "value",
+          "optional": false,
+          "type": "ReactNode"
+        },
+        {
+          "description": "The figure's change, with an arrow and a sign beside its colour.",
+          "name": "change",
+          "optional": true,
+          "type": "StatChange | undefined"
+        },
+        {
+          "description": "Its recent values, oldest first, drawn as a sparkline under it.",
+          "name": "trend",
+          "optional": true,
+          "type": "readonly SparkValue[] | undefined"
+        },
+        {
+          "description": "What the sparkline shows, for a screen reader, such as \"NAV over the last 30 days\"; the label unless set.",
+          "name": "trendLabel",
+          "optional": true,
+          "type": "string | undefined"
+        },
+        {
+          "description": "A line under the figure, such as the time it is as of.",
+          "name": "footnote",
+          "optional": true,
+          "type": "ReactNode"
+        },
+        {
+          "description": "Shows a skeleton of the figure, its change and its trend while the data loads.",
+          "name": "loading",
+          "optional": true,
+          "type": "boolean | undefined"
+        }
+      ],
+      "purpose": "A dashboard's figure on a small card: its label, its value in large tabular figures, its change with an arrow, a sign and a colour, and a sparkline of its recent values.",
+      "use": "For a KPI at the top of a dashboard or a page. For a figure inside a table, use the number components; for a chart with axes, parallax's Chart.",
+      "with": [
+        "Card",
+        "Sparkline",
+        "Money",
+        "Pct",
+        "Num"
+      ],
+      "variants": {},
+      "example": "import { Money, StatCard } from \"@basis/ui\";\n\n<StatCard\n  label=\"NAV\"\n  value={<Money value={1_284_500_000} abbreviate=\"M\" />}\n  change={{ value: 0.021, label: \"vs yesterday\" }}\n  trend={[1240, 1251, 1248, 1262, 1270, 1284.5]}\n  trendLabel=\"NAV over the last six days, in millions\"\n  footnote=\"As of the 4:00 p.m. close\"\n/>;\n"
+    },
+    {
       "extends": [],
       "family": "error-alert",
       "module": "@basis/ui",
@@ -25653,6 +25716,44 @@
       "module": "@basis/ui",
       "name": "StageName",
       "purpose": "A stage of `vp run verify`, which `--stage` names."
+    },
+    {
+      "fields": [
+        {
+          "description": "The change, as the API sends it: a fraction for `pct`, such as 0.021 for 2.1%.",
+          "name": "value",
+          "optional": false,
+          "type": "NumericValue"
+        },
+        {
+          "description": "How it is written: a percentage, the default, basis points, or a number like the value's.",
+          "name": "as",
+          "optional": true,
+          "type": "\"pct\" | \"bps\" | \"num\" | undefined"
+        },
+        {
+          "description": "Digits after the point; the format's default unless set.",
+          "name": "decimals",
+          "optional": true,
+          "type": "number | undefined"
+        },
+        {
+          "description": "What it is measured against, such as \"vs yesterday\".",
+          "name": "label",
+          "optional": true,
+          "type": "string | undefined"
+        },
+        {
+          "description": "Which colour a rise takes: the gain colour, or the loss colour, as a rising yield or a rising loss is to the desk.",
+          "name": "rising",
+          "optional": true,
+          "type": "\"gain\" | \"loss\" | undefined"
+        }
+      ],
+      "exported": true,
+      "module": "@basis/ui",
+      "name": "StatChange",
+      "purpose": "A value's change, and how to show it."
     },
     {
       "definition": "Readonly<Record<string, number>>",

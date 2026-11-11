@@ -645,6 +645,7 @@ export {
 export { CellBar, type CellBarProps } from "./components/cell-bar.tsx";
 export { QueryState, type QueryLike, type QueryStateProps } from "./components/query-state.tsx";
 export { Sparkline, type SparklineProps } from "./components/sparkline.tsx";
+export { StatCard, type StatCardProps, type StatChange } from "./components/stat-card.tsx";
 export type { SparkValue } from "./components/sparkline-geometry.ts";
 
 // The app shell: its providers, the sign-in adapter and its fake, telemetry, and how errors are shown.

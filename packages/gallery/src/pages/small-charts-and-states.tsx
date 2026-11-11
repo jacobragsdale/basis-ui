@@ -1,7 +1,7 @@
-/* The small charts and query states family: Sparkline on KPI cards, CellBar in a table's cells, and QueryState in each
+/* The small charts and query states family: StatCard, a dashboard's figure, Sparkline on KPI cards, CellBar in a table's cells, and QueryState in each
  * of a query's states, loading, failed, empty, current and stale. */
 
-import { CellBar, Money, QueryState, Sparkline } from "@basis/ui";
+import { Bps, CellBar, Money, QueryState, Sparkline, StatCard } from "@basis/ui";
 import type { QueryLike } from "@basis/ui";
 import type { ReactElement } from "react";
 
@@ -58,6 +58,41 @@ const states: readonly { readonly name: string; readonly query: QueryLike<readon
     query: queryOf({ data: ["912828C57"], dataUpdatedAt: Date.now() - staleMinutes * minuteMs }),
   },
 ];
+
+function StatCardSection(): ReactElement {
+  return (
+    <Section
+      title="StatCard"
+      description="A dashboard's figure: its value in large tabular figures, its change with an arrow, a sign and a colour, and its recent values; a rising spread takes the loss colour, and a card loads as a skeleton."
+    >
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <StatCard
+          label="NAV"
+          value={<Money value={1_284_500_000} currency="USD" abbreviate="M" />}
+          change={{ label: "vs yesterday", value: 0.021 }}
+          trend={navDays}
+          trendLabel="NAV over the last ten days, rising"
+          footnote="As of the 4:00 p.m. close"
+        />
+        <StatCard
+          label="Credit spread"
+          value={<Bps value={0.0161} decimals={0} />}
+          change={{ as: "bps", decimals: 0, label: "this week", rising: "loss", value: 0.0019 }}
+          trend={spreadDays}
+          trendLabel="Spread over the last ten days, widening"
+        />
+        <StatCard
+          label="Day's P&L"
+          value={<Money value={-1_900_000} currency="USD" abbreviate="M" signed />}
+          change={{ label: "vs the 10-day average", value: -0.24 }}
+          trend={pnlDays}
+          trendLabel="P&L over the last ten days, falling"
+        />
+        <StatCard label="Open orders" value="—" trend={navDays} loading />
+      </div>
+    </Section>
+  );
+}
 
 function SparklineSection(): ReactElement {
   return (
@@ -162,6 +197,7 @@ function QueryStateSection(): ReactElement {
 function SmallChartsAndStates(): ReactElement {
   return (
     <>
+      <StatCardSection />
       <SparklineSection />
       <CellBarSection />
       <QueryStateSection />

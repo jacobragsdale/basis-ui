@@ -1558,6 +1558,22 @@ otherwise its children with the data, under the time it was current, in the warn
 </QueryState>
 ```
 
+`StatCard` is a dashboard's figure on a small card: its `label`, its `value` as one of the number components, in
+large tabular figures, its `change` with an arrow and a sign as well as a colour, written as a percentage unless `as`
+says `bps` or `num`, and its `trend`, recent values drawn as a sparkline. `rising: "loss"` colours a rise the loss
+colour, as for a spread; `loading` shows a skeleton in place of the figure:
+
+```tsx
+<StatCard
+  label="NAV"
+  value={<Money value={nav} abbreviate="M" />}
+  change={{ value: 0.021, label: "vs yesterday" }}
+  trend={navDays}
+  trendLabel="NAV over the last 30 days"
+  loading={positions.isPending}
+/>
+```
+
 `Sparkline` draws a series too small for parallax, such as a KPI card's last 30 days, as an SVG line named by its
 `label`; `trend` colours it gain or loss by its first and last values, and `rising="loss"` turns that round for a
 yield. `CellBar` puts a bar of a value behind its text in a table cell, as a share of `max`, the column's largest
