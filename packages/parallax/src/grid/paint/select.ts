@@ -120,23 +120,23 @@ function checkbox(
 /** What a row's checkbox cell shows, to tell when it changes: whether it has a checkbox, and whether it is checked. */
 function selectState(
   pass: Pass,
-  row: number,
+  at: RowAt,
 ): { readonly selectable: boolean; readonly text: string } {
-  const selectable = pass.scene.rowSelection?.selectable(row) === true;
-  return { selectable, text: `${String(selectable)}${rowMark(pass, row)}` };
+  const selectable = pass.scene.rowSelection?.selectable(at.row) === true;
+  return { selectable, text: `${String(selectable)}${rowMark(at)}` };
 }
 
 /** Draws a row's checkbox, checked if its row is chosen, if the row is one of the table's. */
 function rowCheckbox(pass: Pass, at: RowAt, selectable: boolean): void {
   if (selectable) {
-    const state = rowMark(pass, at.row) === "" ? "unchecked" : "checked";
+    const state = at.chosen ? "checked" : "unchecked";
     checkbox(pass, { height: pass.metrics.rowPx, state, y: at.y });
   }
 }
 
 /** Draws a row's cell in the checkbox column, if its state changed. Returns the cells drawn. */
 function selectCell(pass: Pass, at: RowAt): number {
-  const { selectable, text } = selectState(pass, at.row);
+  const { selectable, text } = selectState(pass, at);
   const drawn = { key: cellKey(at.row, selectColumn), text };
   if (pass.geometry.selectPx === 0 || unchanged(pass, at.row, drawn)) {
     return 0;

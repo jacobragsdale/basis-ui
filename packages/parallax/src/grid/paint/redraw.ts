@@ -7,8 +7,14 @@ import type { CellRange, CellRef } from "#grid/selection.ts";
 
 import type { Area, Scene } from "./scene.ts";
 
+/** What the header alone shows of the pointer: the header under it, the column whose menu is open, and a header being
+ * dragged. A change to it draws the header again, and leaves the rows. */
+function headerShapeOf(scene: Scene): string {
+  return JSON.stringify([scene.hoverHeader, scene.menuColumn, scene.drag]);
+}
+
 /** Everything a full redraw depends on, as one comparable string. Where the view is scrolled to is not: a scroll moves
- * the pixels it can and paints what it exposed. */
+ * the pixels it can and paints what it exposed, nor is the pointer over the header, which draws the header alone. */
 function shapeOf(scene: Scene, at: Area, ratio: number): string {
   const { frame, layout, geometry } = scene;
   const versions =
@@ -29,14 +35,28 @@ function shapeOf(scene: Scene, at: Area, ratio: number): string {
           layout.group_sort,
           layout.filters,
           layout.pinned,
-          scene.hoverHeader,
-          scene.menuColumn,
-          scene.drag,
           // The header's checkbox is drawn with the header, so a change to it draws everything again.
           scene.rowSelection?.header ?? null,
         ];
   const columns = [geometry.selectPx, geometry.treePx, geometry.contentWidth];
   return JSON.stringify([[at.width, at.height, ratio], versions, columns, decor]);
+}
+
+/** What a cell's text depends on besides its row and column: the frame, and the search its matches are marked for. */
+type DrawnWith = readonly [FrameData | null, string];
+
+function drawnWith(scene: Scene): DrawnWith {
+  const { search, searched, labelsSearched } = scene.searched;
+  return [scene.frame, JSON.stringify([search, [...searched], labelsSearched])];
+}
+
+/** Forgets the entries of `keyed` whose key `keep` refuses. */
+function forget<TKey>(keyed: Set<TKey> | Map<TKey, unknown>, keep: (key: TKey) => boolean): void {
+  for (const key of keyed.keys()) {
+    if (!keep(key)) {
+      keyed.delete(key);
+    }
+  }
 }
 
 /** Whether a row is in a range. */
@@ -105,40 +125,45 @@ class Memory {
   public readonly drawn = new Map<string, string>();
   public readonly notes = new Map<string, string>();
   public readonly drawnRows = new Set<number>();
+  public readonly chosenRows = new Map<number, boolean>();
   public readonly titles = new Map<number, string>();
   /** The totals the totals row was drawn with, or undefined until it is drawn. */
   public totals: FrameData["totals"] | undefined = undefined;
+  /** What the header was drawn showing of the pointer, as `headerShapeOf` gives it. */
+  public header = "";
+  /** The frame and the search the canvas was last drawn with. */
+  #drawnWith: DrawnWith = [null, ""];
+
+  /** Remembers the frame and search `scene` draws with; returns whether they are those of the draw before, so that no
+   * cell's text changed. */
+  public drawingWith(scene: Scene): boolean {
+    const now = drawnWith(scene);
+    const [frame, search] = this.#drawnWith;
+    this.#drawnWith = now;
+    return now[0] !== null && now[0] === frame && now[1] === search;
+  }
 
   /** Forgets everything, for a full redraw. */
   public clear(): void {
     this.drawn.clear();
     this.notes.clear();
     this.drawnRows.clear();
+    this.chosenRows.clear();
     this.titles.clear();
     this.totals = undefined;
+    this.header = "";
   }
 
   /** Forgets the cells, rows and headers out of `view`. */
   public keepOnly(view: InView): void {
-    for (const map of [this.drawn, this.notes]) {
-      for (const key of map.keys()) {
-        if (!keyInView(key, view)) {
-          map.delete(key);
-        }
-      }
-    }
-    for (const row of this.drawnRows) {
-      if (row < view.first || row >= view.first + view.count) {
-        this.drawnRows.delete(row);
-      }
-    }
-    for (const column of this.titles.keys()) {
-      if (!view.columns.has(column)) {
-        this.titles.delete(column);
-      }
-    }
+    const inRows = (row: number): boolean => row >= view.first && row < view.first + view.count;
+    forget(this.drawn, (key) => keyInView(key, view));
+    forget(this.notes, (key) => keyInView(key, view));
+    forget(this.drawnRows, inRows);
+    forget(this.chosenRows, inRows);
+    forget(this.titles, (column) => view.columns.has(column));
   }
 }
 
-export { Memory, hoverRows, moved, nothingShown, selectionRows, shapeOf };
+export { Memory, headerShapeOf, hoverRows, moved, nothingShown, selectionRows, shapeOf };
 export type { InView, Shown };

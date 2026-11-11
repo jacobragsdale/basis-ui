@@ -12,7 +12,7 @@ import type { Ranges } from "#grid/filters.ts";
 import { screenX } from "#grid/geometry.ts";
 import { contains } from "#grid/selection.ts";
 
-import { fillRect } from "./canvas.ts";
+import { fillRect, withClip } from "./canvas.ts";
 import { translucent } from "./metrics.ts";
 import { cellKey } from "./scene.ts";
 import type { Pass } from "./scene.ts";
@@ -29,13 +29,15 @@ const noMarks: Ranges = [];
 /** The ring's outer edge stops this short of the cell's right and bottom edges, clear of the column's and row's rules. */
 const ringClear = 1;
 
-/** One row being drawn: its view row, its row in the frame, its top, and its background. */
+/** One row being drawn: its view row, its row in the frame, its top, its background, and whether it is chosen, read
+ * once for the row rather than for each of its cells. */
 interface RowAt {
   readonly frame: FrameData;
   readonly local: number;
   readonly row: number;
   readonly y: number;
   readonly stripe: string;
+  readonly chosen: boolean;
 }
 
 /** A cell's place: its data column, -1 for the group column, its left and its width. */
@@ -81,8 +83,8 @@ function cellStyle(pass: Pass, data: FrameColumn, shown: Shown): Style {
 }
 
 /** What a cell's drawn text is kept with, so that choosing its row or leaving it draws the cell again. */
-function rowMark(pass: Pass, row: number): string {
-  return pass.scene.rowSelection?.selected(row) === true ? "\u0001" : "";
+function rowMark(at: RowAt): string {
+  return at.chosen ? "\u0001" : "";
 }
 
 /** Whether a cell can be left as it was drawn: the pass redraws only what changed, and its text is unchanged. */
@@ -95,28 +97,32 @@ function unchanged(
 }
 
 /** Strokes the focused cell's ring inside it: a stroke is centred on its path, so the path sits half the ring's width
- * in from the cell's top and left edges. */
+ * in from the cell's top and left edges. The ring is clipped to its row, whose edges are on device pixels: at a ratio
+ * such as 1.25 the stroke's smoothed edge would reach into the row above, and a row a scroll copies must hold only its
+ * own pixels. */
 function ring(pass: Pass, at: RowAt, cell: CellAt): void {
   const { context, theme, metrics } = pass;
   const { width, radius } = metrics.ring;
   const half = width / 2;
-  Object.assign(context, { lineWidth: width, strokeStyle: theme.selectionBorder });
-  context.beginPath();
-  context.roundRect(
-    cell.x + half,
-    at.y + half,
-    cell.width - width - ringClear,
-    metrics.rowPx - width - ringClear,
-    radius,
-  );
-  context.stroke();
+  withClip(pass, [0, at.y, pass.width, metrics.rowPx], () => {
+    Object.assign(context, { lineWidth: width, strokeStyle: theme.selectionBorder });
+    context.beginPath();
+    context.roundRect(
+      cell.x + half,
+      at.y + half,
+      cell.width - width - ringClear,
+      metrics.rowPx - width - ringClear,
+      radius,
+    );
+    context.stroke();
+  });
 }
 
 /** Tints a cell whose row is chosen, or that is in the selected range, over its background. */
 function cellTint(pass: Pass, at: RowAt, cell: CellAt): void {
   const { theme, metrics, range } = pass;
   const rect = [cell.x, at.y, cell.width, metrics.rowPx] as const;
-  if (rowMark(pass, at.row) !== "") {
+  if (at.chosen) {
     fillRect(pass, theme.selectionBackground, rect);
   }
   if (range !== null && contains(range, { column: cell.column, row: at.row })) {
@@ -220,7 +226,7 @@ function dataCell(pass: Pass, at: RowAt, column: number): boolean {
   const data = at.frame.columns[column - at.frame.firstColumn];
   const drawn = {
     key: cellKey(at.row, column),
-    text: (data?.text(at.local) ?? "") + rowMark(pass, at.row),
+    text: (data?.text(at.local) ?? "") + rowMark(at),
   };
   if (data === undefined || unchanged(pass, at.row, drawn)) {
     return false;

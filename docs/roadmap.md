@@ -578,7 +578,12 @@ flowchart TD
    from 1.8, 2.3 and 2.8, within the 8 ms target, and the main thread is busy 3.9, 5.2 and 7.9 ms a frame, from 4.5,
    6.2 and 8.5, since the copy moves every pixel that stays. 6.4.5 built on 2026-11-10: past the scrollbar's native
    reach the grid aims a row's offset at the middle of its share of the scrollbar, so at 125 % the keyboard reveals
-   every row of 1,000,000, where one in twenty landed a row early.
+   every row of 1,000,000, where one in twenty landed a row early. 6.4.6 built on 2026-11-11: a cut text is fitted by
+   halves, a few measurements where it took one for each character dropped; a pass with the frame and search it last
+   drew walks only the rows the selection, the pointer or the choice of rows moved over, and reads whether a row is
+   chosen once for the row; each area of columns is clipped once for all the rows, not twice a row; and moving along
+   the header repaints the header alone. Scrolling 1,000,000 trades draws 1.0, 1.2 and 1.4 ms a frame at 1, 1.25 and
+   1.5, from 1.1, 1.3 and 1.8, and 1.0, 1.5 and 2.3 throttled, from 1.5, 1.8 and 2.4. No pixel changed.
 5. **6.5 Themes.** Lane Theme, one branch per item in order: tokens for what opacity fakes (`6.5.1-tokens`), density
    in whole pixels (`6.5.2-density`), `defineTheme` (`6.5.3-define-theme`), `checkTheme` (`6.5.4-check-theme`), the
    choice of theme in the cookie (`6.5.5-theme-preference`), parallax on the same theme (`6.5.6-parallax-theme`), the

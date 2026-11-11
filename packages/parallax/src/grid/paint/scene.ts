@@ -122,6 +122,10 @@ interface Pass extends Searched {
   readonly drawn: Map<string, string>;
   /** The view rows drawn, to clear a row that no longer has data. */
   readonly drawnRows: Set<number>;
+  /** Whether each view row drawn was drawn chosen, to walk a row whose choice changed. */
+  readonly chosenRows: Map<number, boolean>;
+  /** Whether the frame and the search are those the canvas was last drawn with, so that no cell's text changed. */
+  readonly sameFrame: boolean;
   /** The full text of cells drawn cut short, and notes for flagged cells, by cell key, for their tooltips. */
   readonly notes: Map<string, string>;
   /** The title each data column's header was drawn with, which the frame's columns give, by data column. */

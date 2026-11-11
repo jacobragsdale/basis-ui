@@ -12,6 +12,7 @@ import { dataCell } from "./cells.ts";
 import { drawsSpan, spanOf } from "./damage.ts";
 import type { RowAt } from "./cells.ts";
 import { columnsInView } from "./columns.ts";
+import type { Band } from "./columns.ts";
 import { selectCell } from "./select.ts";
 import type { Pass } from "./scene.ts";
 import { clipText } from "./text.ts";
@@ -35,25 +36,60 @@ function frozenCells(pass: Pass, at: RowAt): number {
   return selectCell(pass, at) + (at.frame.tree === null ? 0 : treeCell(pass, at.frame.tree, at));
 }
 
-/** Draws one row of the frame. A group's row, and a pivot's grand total, stand out in the group font. Returns the
- * cells drawn. */
-function drawRow(pass: Pass, at: Omit<RowAt, "stripe">): number {
-  const kind = at.frame.tree?.kind(at.local) ?? null;
-  const strong = kind === "group" || kind === "total";
-  const placed = { ...at, stripe: stripeOf(pass, kind, at.row) };
-  // Setting a font is slow, so only a strong row sets one, and sets the body's back after it.
-  if (strong) {
-    pass.pen.widths.use(pass.context, pass.fonts.group);
+/** A row to draw: where it is, and whether it stands out in the group font, as a group's row and a pivot's grand total
+ * do. */
+interface Placed extends RowAt {
+  readonly strong: boolean;
+}
+
+/** Sets the group font, or the body's, if it is not the font already set; returns whether the group font is set. */
+function switchFont(pass: Pass, was: boolean, strong: boolean): boolean {
+  if (strong !== was) {
+    pass.pen.widths.use(pass.context, strong ? pass.fonts.group : pass.fonts.body);
   }
-  let cells = frozenCells(pass, placed);
-  columnsInView(pass, { height: pass.metrics.rowPx, top: at.y }, (column) => {
-    const drew = dataCell(pass, placed, column);
-    cells += drew ? 1 : 0;
-    return drew;
+  return strong;
+}
+
+/** Runs `paint` on each row in order, in its font: the group font for a strong row, set only where it changes from the
+ * row before, since setting a font is slow. Returns the bands of the rows where it drew. */
+function byFont(
+  pass: Pass,
+  rows: readonly Placed[],
+  paint: (at: Placed) => boolean,
+): readonly Band[] {
+  const drew: Band[] = [];
+  let strong = false;
+  for (const at of rows) {
+    strong = switchFont(pass, strong, at.strong);
+    if (paint(at)) {
+      drew.push({ height: pass.metrics.rowPx, top: at.y });
+    }
+  }
+  switchFont(pass, strong, false);
+  return drew;
+}
+
+/** Draws the rows' cells: the checkboxes and group column, then each area's data columns under one clip for them all.
+ * Returns the cells drawn. */
+function drawPlaced(pass: Pass, rows: readonly Placed[]): number {
+  let cells = 0;
+  byFont(pass, rows, (at) => {
+    cells += frozenCells(pass, at);
+    return false;
   });
-  if (strong) {
-    pass.pen.widths.use(pass.context, pass.fonts.body);
-  }
+  const { headerPx } = pass.metrics;
+  columnsInView(pass, { height: pass.bodyBottom - headerPx, top: headerPx }, (columns) =>
+    byFont(pass, rows, (at) => {
+      let drew = false;
+      for (const column of columns) {
+        if (dataCell(pass, at, column)) {
+          cells += 1;
+          drew = true;
+        }
+      }
+      return drew;
+    }),
+  );
   return cells;
 }
 
@@ -63,19 +99,38 @@ function bodyOf(pass: Pass): readonly [number, number, number, number] {
   return [0, top, pass.width, pass.bodyBottom - top];
 }
 
-/** Draws view row `row` if the frame holds it, or clears it if it no longer has data, such as after a group
- * collapsed. Returns the cells drawn. */
-function viewRow(pass: Pass, at: Omit<RowAt, "stripe">): number {
-  if (at.local >= 0 && at.local < at.frame.rowCount) {
-    pass.drawnRows.add(at.row);
-    return drawRow(pass, at);
-  }
+/** Whether a pass walks view row `row`'s cells: a pass that draws what changed, with the frame and search it last drew,
+ * finds no text changed, so it walks only the rows the selection or the pointer moved over and those chosen or left
+ * since. */
+function walks(pass: Pass, row: number, chosen: boolean): boolean {
+  return pass.full || !pass.sameFrame || pass.stale.has(row) || pass.chosenRows.get(row) !== chosen;
+}
+
+/** Clears a row drawn before that no longer has data. */
+function clearRow(pass: Pass, at: { readonly row: number; readonly y: number }): void {
   if (pass.drawnRows.delete(at.row)) {
     const rect = [0, at.y, pass.width, pass.metrics.rowPx] as const;
     fillRect(pass, pass.theme.background, rect);
     pass.tally.cell(rect, bodyOf(pass));
   }
-  return 0;
+}
+
+/** View row `row` placed to draw, if the frame holds it; or cleared if it no longer has data, such as after a group
+ * collapsed, and null. */
+function placeRow(
+  pass: Pass,
+  at: Omit<RowAt, "chosen" | "stripe">,
+  chosen: boolean,
+): Placed | null {
+  pass.chosenRows.set(at.row, chosen);
+  if (at.local >= 0 && at.local < at.frame.rowCount) {
+    pass.drawnRows.add(at.row);
+    const kind = at.frame.tree?.kind(at.local) ?? null;
+    const strong = kind === "group" || kind === "total";
+    return { ...at, chosen, stripe: stripeOf(pass, kind, at.row), strong };
+  }
+  clearRow(pass, at);
+  return null;
 }
 
 /** Whether the pass draws the row whose top is `y`, as far as it shows in the body. */
@@ -95,15 +150,20 @@ function drawRows(
   const { metrics } = pass;
   const visible = Math.ceil((height - metrics.headerPx) / metrics.rowPx);
   return withClip(pass, bodyOf(pass), () => {
-    let cells = 0;
+    const rows: Placed[] = [];
     for (let index = 0; index < visible; index += 1) {
       const y = metrics.headerPx + metrics.rowPx * index;
       const row = first + index;
-      cells += drawsRow(pass, y)
-        ? viewRow(pass, { frame, local: row - frame.firstRow, row, y })
-        : 0;
+      const chosen = pass.scene.rowSelection?.selected(row) === true;
+      const placed =
+        drawsRow(pass, y) && walks(pass, row, chosen)
+          ? placeRow(pass, { frame, local: row - frame.firstRow, row, y }, chosen)
+          : null;
+      if (placed !== null) {
+        rows.push(placed);
+      }
     }
-    return cells;
+    return drawPlaced(pass, rows);
   });
 }
 
@@ -148,6 +208,17 @@ function totalLabel(pass: Pass, y: number): void {
   }
 }
 
+/** Draws each data column's total in the totals row at `y`. */
+function totalCells(pass: Pass, frame: FrameData, y: number): void {
+  const band = { height: pass.metrics.rowPx, top: y };
+  columnsInView(pass, band, (columns) => {
+    for (const column of columns) {
+      totalCell(pass, { column, frame, y });
+    }
+    return [band];
+  });
+}
+
 /** Draws the totals row along the bottom, over the rows: the engine's text for each column with a total. */
 function drawFooter(pass: Pass, frame: FrameData, height: number): void {
   const { context, theme, metrics, pen } = pass;
@@ -158,10 +229,7 @@ function drawFooter(pass: Pass, frame: FrameData, height: number): void {
   fillRect(pass, theme.totalBackground, [0, y, pass.width, metrics.rowPx]);
   pen.widths.use(context, `${theme.totalFontWeight} ${theme.font}`);
   totalLabel(pass, y);
-  columnsInView(pass, { height: metrics.rowPx, top: y }, (column) => {
-    totalCell(pass, { column, frame, y });
-    return true;
-  });
+  totalCells(pass, frame, y);
   pen.widths.use(context, theme.font);
   fillFromStart(pass, theme.totalBorder, [0, y, pass.width, 1]);
 }

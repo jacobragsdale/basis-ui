@@ -61,7 +61,7 @@ function treeCell(pass: Pass, tree: TreeRows, at: RowAt): number {
   const label = groupText(tree, at.local);
   const drawn = {
     key: cellKey(at.row, -1),
-    text: treeState(tree.expanded(at.local), label) + rowMark(pass, at.row),
+    text: treeState(tree.expanded(at.local), label) + rowMark(at),
   };
   if (unchanged(pass, at.row, drawn)) {
     return 0;

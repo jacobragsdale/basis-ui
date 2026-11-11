@@ -31,14 +31,25 @@ function fontsOf(theme: Theme): Pass["fonts"] {
 }
 
 /** What a draw decides before it draws: the selection, focus and stale rows, the body's bottom, the ratio and width. */
-type Drawing = Pick<Pass, "bodyBottom" | "focus" | "range" | "ratio" | "stale" | "width">;
+type Drawing = Pick<
+  Pass,
+  "bodyBottom" | "focus" | "range" | "ratio" | "sameFrame" | "stale" | "width"
+>;
 
 /** The part of a pass its scene decides. */
 function scenePart(
   scene: Scene,
 ): Omit<
   Pass,
-  keyof Drawing | keyof Mode | "context" | "drawn" | "drawnRows" | "notes" | "pen" | "titles"
+  | keyof Drawing
+  | keyof Mode
+  | "chosenRows"
+  | "context"
+  | "drawn"
+  | "drawnRows"
+  | "notes"
+  | "pen"
+  | "titles"
 > {
   const { theme, metrics, hoverRow } = scene;
   return {
@@ -196,11 +207,13 @@ class GridPainter {
     const range = selection === null ? null : rangeOf(selection);
     const focus = selection?.focus ?? null;
     const stale = this.#staleRows(scene, { focus, hover: scene.hoverRow, range }, at);
+    const sameFrame = this.#memory.drawingWith(scene);
     return {
       bodyBottom: bodyBottomOf(scene, at.height),
       focus,
       range,
       ratio,
+      sameFrame,
       stale,
       width: at.width,
     };
@@ -259,6 +272,7 @@ class GridPainter {
       ...drawing,
       context,
       drawn: memory.drawn,
+      chosenRows: memory.chosenRows,
       drawnRows: memory.drawnRows,
       notes: memory.notes,
       pen: {

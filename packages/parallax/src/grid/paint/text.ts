@@ -100,13 +100,21 @@ function rightText(pen: Pen, cell: CellText, measured: number): boolean {
   return !fits;
 }
 
-/** How many of a text's characters fit in `room` with an ellipsis after them. */
+/** How many of a text's characters fit in `room` with an ellipsis after them, found by halves: a longer prefix is
+ * never narrower, so a long text takes a few measurements rather than one for each character dropped. The text as a
+ * whole is known not to fit. */
 function fittingLength(pen: Pen, text: string, room: number): number {
-  let cut = text.length;
-  while (cut > 0 && pen.widths.measure(pen.context, `${text.slice(0, cut)}…`) > room) {
-    cut -= 1;
+  let fits = 0;
+  let over = text.length;
+  while (over - fits > 1) {
+    const cut = Math.floor((fits + over) / 2);
+    if (pen.widths.measure(pen.context, `${text.slice(0, cut)}…`) > room) {
+      over = cut;
+    } else {
+      fits = cut;
+    }
   }
-  return cut;
+  return fits;
 }
 
 /**

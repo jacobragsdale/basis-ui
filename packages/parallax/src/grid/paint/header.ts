@@ -188,9 +188,12 @@ function drawHeader(pass: Pass): void {
   fillRect(pass, theme.headerBackground, [0, 0, pass.width, metrics.headerPx]);
   pen.widths.use(context, pass.fonts.header);
   frozenHeaders(pass);
-  columnsInView(pass, { height: metrics.headerPx, top: 0 }, (column) => {
-    columnHeader(pass, column);
-    return true;
+  const band = { height: metrics.headerPx, top: 0 };
+  columnsInView(pass, band, (columns) => {
+    for (const column of columns) {
+      columnHeader(pass, column);
+    }
+    return [band];
   });
   pen.widths.use(context, pass.fonts.body);
   dropMark(pass);

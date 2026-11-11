@@ -10,6 +10,7 @@ import { fillRect, withClip } from "./canvas.ts";
 import { Tally, boxOf, exposedBox } from "./damage.ts";
 import type { Box, Exposed } from "./damage.ts";
 import { drawHeader, titleOf } from "./header.ts";
+import { headerShapeOf } from "./redraw.ts";
 import type { InView, Memory } from "./redraw.ts";
 import { drawFooter, drawRows } from "./rows.ts";
 import type { Area, Pass, Scene } from "./scene.ts";
@@ -68,12 +69,16 @@ function retitled(draw: Draw, pass: Pass): boolean {
   );
 }
 
-/** Draws the header again, counting its pixels, if a column in view now has another title. */
+/** Draws the header again, counting its pixels, if a column in view now has another title, or the header shows another
+ * part of the pointer: a full redraw has drawn it. */
 function redrawHeader(
   draw: Draw,
   { pass, whole }: { readonly pass: Pass; readonly whole: Pass },
 ): void {
-  if (!pass.full && retitled(draw, pass)) {
+  const header = headerShapeOf(draw.scene);
+  const pointed = header !== draw.memory.header;
+  draw.memory.header = header;
+  if (!pass.full && (pointed || retitled(draw, pass))) {
     drawHeader(whole);
     pass.tally.area(boxOf([0, 0, draw.area.width, pass.metrics.headerPx], draw.ratio));
   }
