@@ -1,4 +1,4 @@
-/* Every page of the demo, in light and dark at the comfortable density, as an app's routes are screenshotted, and the
+/* Every page of the demo, in light and dark at the comfortable density, in each theme @basis/ui ships, as an app's routes are screenshotted, and the
  * theme studio open, compared pixel for pixel with the screenshots in `screenshots/`. Text renders differently from
  * one machine to the next, so these run only in the pinned Playwright image: run them with `vp run
  * @basis/parallax-demo#e2e screenshots`, and take new ones with `--update-snapshots`. The status lines say when the
@@ -53,19 +53,28 @@ async function matches(page: Page, name: string): Promise<void> {
   });
 }
 
-for (const mode of ["light", "dark"] as const satisfies readonly Mode[]) {
-  for (const shot of shots) {
-    test(`${shot.name} draws as in its screenshot, ${mode} mode`, async ({ page }) => {
-      const errors = errorsOf(page);
-      await open(page, shot.path, { mode });
-      // A page of charts shows its grids beside them, if any; a page of grids shows one at least.
-      if (shot.charts > 0) {
-        await chartsDrawn(page, shot.charts);
-      }
-      await gridsDrawn(page, shot.rows, { some: shot.charts === 0 });
-      await matches(page, `${shot.name}-${mode}.png`);
-      expect(errors).toStrictEqual([]);
-    });
+/** @basis/ui's themes, the default first, whose screenshots carry no theme in their names: its `themeNames`, which
+ * parallax's unit test of tests/e2e/ui-themes.ts holds its own list to. */
+const themes = ["default", "desk", "high-contrast"] as const;
+
+for (const theme of themes) {
+  for (const mode of ["light", "dark"] as const satisfies readonly Mode[]) {
+    for (const shot of shots) {
+      const suffix = theme === "default" ? "" : `-${theme}`;
+      test(`${shot.name} draws as in its screenshot, ${theme} theme, ${mode} mode`, async ({
+        page,
+      }) => {
+        const errors = errorsOf(page);
+        await open(page, shot.path, { mode, theme });
+        // A page of charts shows its grids beside them, if any; a page of grids shows one at least.
+        if (shot.charts > 0) {
+          await chartsDrawn(page, shot.charts);
+        }
+        await gridsDrawn(page, shot.rows, { some: shot.charts === 0 });
+        await matches(page, `${shot.name}-${mode}${suffix}.png`);
+        expect(errors).toStrictEqual([]);
+      });
+    }
   }
 }
 

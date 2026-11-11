@@ -41,7 +41,7 @@ describe("the sidebar", () => {
     await expect.element(screen.getByRole("heading", { name: "Data from the app" })).toBeVisible();
   });
 
-  test("sets the mode and the density in the preferences every app shares", async () => {
+  test("sets the mode, the density and the theme in the preferences every app shares", async () => {
     const screen = await renderDemo("/small-charts");
     await screen.getByRole("button", { name: "Appearance" }).click();
     await screen.getByRole("menuitemradio", { name: "Dark" }).click();
@@ -49,11 +49,13 @@ describe("the sidebar", () => {
     // A choice leaves the menu open, as a radio item's does.
     await screen.getByRole("menuitemradio", { name: "Compact" }).click();
     await expect.poll(() => document.documentElement.dataset["density"]).toBe("compact");
+    await screen.getByRole("menuitemradio", { name: "High contrast" }).click();
+    await expect.poll(() => document.documentElement.dataset["theme"]).toBe("high-contrast");
     expect(readPreferences()).toStrictEqual({
       density: "compact",
       mode: "dark",
       motion: "full",
-      theme: "default",
+      theme: "high-contrast",
     });
   });
 });

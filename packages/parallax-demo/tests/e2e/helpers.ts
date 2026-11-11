@@ -19,11 +19,16 @@ async function open(
   {
     mode = "light",
     density = "comfortable",
-  }: { readonly mode?: Mode; readonly density?: Density } = {},
+    theme = "default",
+  }: { readonly mode?: Mode; readonly density?: Density; readonly theme?: string } = {},
 ): Promise<void> {
-  await page
-    .context()
-    .addCookies([{ name: "basis-ui-preferences", url: server.url, value: `${mode}.${density}` }]);
+  await page.context().addCookies([
+    {
+      name: "basis-ui-preferences",
+      url: server.url,
+      value: `${mode}.${density}.full.${theme}`,
+    },
+  ]);
   await page.goto(`/#${path}`);
 }
 

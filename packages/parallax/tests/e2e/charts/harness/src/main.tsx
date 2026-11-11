@@ -1,7 +1,9 @@
 /* The end-to-end harness: the React chart's pages, which the Playwright specs beside it drive. `?page=` picks the
- * page (`charts`, `technical`, `breakdowns` or `fixed-income`), `?theme=` the mode (`light` or `dark`), and `?look=angular` draws in
- * parallax's standard theme with the Angular layer's chart colours, for the pixel comparison with its screenshots. */
+ * page (`charts`, `technical`, `breakdowns` or `fixed-income`), `?theme=` the mode (`light` or `dark`), `?ui=` one of
+ * @basis/ui's other themes, and `?look=angular` draws in parallax's standard theme with the Angular layer's chart
+ * colours, for the pixel comparison with its screenshots. */
 
+import { themeNames } from "@basis/ui";
 import "./styles.css";
 
 import { StrictMode } from "react";
@@ -24,6 +26,9 @@ const search = new URLSearchParams(globalThis.location.search);
 const scheme = search.get("theme") === "dark" ? "dark" : "light";
 // @basis/ui's mode is the `dark` class on the root, as its preferences set it.
 document.documentElement.classList.toggle("dark", scheme === "dark");
+// @basis/ui's theme, as `?ui=NAME` names it.
+document.documentElement.dataset["theme"] =
+  themeNames.find((name) => name === search.get("ui")) ?? themeNames[0];
 
 const root = document.querySelector("#root");
 if (root === null) {

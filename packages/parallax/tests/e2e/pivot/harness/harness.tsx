@@ -1,10 +1,10 @@
 /* The end-to-end harness: the Angular demo's pivot page, rebuilt on `<Pivot>`. The address bar picks the view
  * (`preset`: pivot, or flat for a grid of the same rows), the scheme (`theme`), the canvas's theme (`look`: standard,
  * parallax's own and the demo's, so a canvas here can be compared with the demo's; or basis, the look an app on
- * `@basis/ui` gets), the density, and a shared view (`layout`), which opens as a pivot if it groups and as a grid
- * otherwise, as the demo's did. "Copy link to this view" writes the view into the address bar. */
+ * `@basis/ui` gets), the density, @basis/ui's theme (`ui`), and a shared view (`layout`), which opens as a pivot if it
+ * groups and as a grid otherwise, as the demo's did. "Copy link to this view" writes the view into the address bar. */
 
-import { Button, NativeSelect, NativeSelectOption } from "@basis/ui";
+import { Button, NativeSelect, NativeSelectOption, themeNames } from "@basis/ui";
 import { useEffect, useLayoutEffect, useState } from "react";
 import type { ReactNode } from "react";
 
@@ -22,6 +22,11 @@ import { standardTheme } from "#theme/looks.ts";
 import type { LayoutInput, ResolvedScheme } from "#index.ts";
 
 import { flatPositions, positions, referencePivot } from "./data.ts";
+
+// @basis/ui's theme, as `?ui=NAME` names it, before anything draws.
+document.documentElement.dataset["theme"] =
+  themeNames.find((name) => name === new URLSearchParams(location.search).get("ui")) ??
+  themeNames[0];
 
 const looks = { basis: basisTheme, standard: standardTheme } as const;
 const presets = { flat: flatPositions, pivot: referencePivot } as const;

@@ -7,6 +7,8 @@
 import { expect, test } from "@playwright/test";
 import type { Locator, Page } from "@playwright/test";
 
+// oxlint-disable-next-line import/no-relative-parent-imports -- the grid, pivot and charts suites share the list of themes, which is no part of the package to import by name.
+import { otherThemes } from "../ui-themes.ts";
 import { inTurn } from "./gestures.ts";
 import { chartCount, errorsOf, open } from "./pages.ts";
 
@@ -130,4 +132,20 @@ for (const theme of ["light", "dark"] as const) {
     );
     expect(errors).toStrictEqual([]);
   });
+}
+
+/* @basis/ui's other themes: every chart on the charts page, whose colours, ink and type are the theme's, in each. */
+for (const ui of otherThemes) {
+  for (const theme of ["light", "dark"] as const) {
+    test(`every chart draws as in its screenshot in @basis/ui's ${ui} theme, ${theme} mode`, async ({
+      page,
+    }) => {
+      const errors = errorsOf(page);
+      await open(page, `/?page=charts&theme=${theme}&ui=${ui}`, chartCount);
+      const cards = page.locator("section[data-card]");
+      await expect(cards).toHaveCount(chartCount);
+      await allMatch(page, cards, { attribute: "data-card", prefix: "", theme: `${theme}-${ui}` });
+      expect(errors).toStrictEqual([]);
+    });
+  }
 }

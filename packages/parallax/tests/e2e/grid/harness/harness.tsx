@@ -1,9 +1,10 @@
 /* The end-to-end harness: the Angular demo's grid pages, rebuilt on `<Grid>`. The address bar picks the page
  * (`preset`: pivot, trades or small), the scheme (`theme`), the canvas's theme (`look`: standard, airy or basis), the
- * density, and the drawing counters (`performance=on`). Standard is parallax's own look, the demo's, so a canvas here
- * can be compared with the demo's screenshots; basis is the look an app on `@basis/ui` gets. */
+ * density, @basis/ui's theme (`ui`, one of its `themeNames`), and the drawing counters (`performance=on`).
+ * Standard is parallax's own look, the demo's, so a canvas here can be compared with the demo's screenshots; basis is
+ * the look an app on `@basis/ui` gets. */
 
-import { NativeSelect, NativeSelectOption } from "@basis/ui";
+import { NativeSelect, NativeSelectOption, themeNames } from "@basis/ui";
 import { useEffect, useLayoutEffect, useState } from "react";
 import type { ReactNode } from "react";
 
@@ -13,6 +14,11 @@ import { airyTheme, standardTheme } from "#theme/looks.ts";
 import type { ResolvedScheme } from "#index.ts";
 
 import { SinglePage, SmallTables } from "./pages.tsx";
+
+// @basis/ui's theme, as `?ui=NAME` names it, before anything draws.
+document.documentElement.dataset["theme"] =
+  themeNames.find((name) => name === new URLSearchParams(location.search).get("ui")) ??
+  themeNames[0];
 
 const looks = { airy: airyTheme, basis: basisTheme, standard: standardTheme } as const;
 
