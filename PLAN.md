@@ -63,10 +63,7 @@ data is for and never the load time; `94343fc`, `8aaf718` and `e1c39b5` fixed CI
 
 Everything below, in this order where one needs another, except 6.10, which is the maintainer's at the firm.
 
-1. **6.3.5, the rest.** The packed keys and flat tallies are in. Left: the browser bench before and after (the run of
-   2026-11-10 was stopped for want of memory), and, if the throttled reference pivot of 1,000,000 positions misses 300
-   ms, the plan's "tree held as arrays" for the tree build and merge, now most of a build natively (0.07 and 0.04 s of
-   0.14 to 0.22 s), and float sums in an inline window.
+1. ~~6.3.5, the rest.~~ Done: the browser's figures are in the spike, and the target is recorded as missed.
 2. **6.3.6 to 6.3.9** in order: no rebuild where the order alone changes, memory that comes back, narrower storage and
    build flags, the new limit in bytes.
 3. **6.4.5 to 6.4.8** in order: rows past the scrollbar's reach, less work in a pass, selection that does not count
@@ -887,7 +884,8 @@ Each stays here until a step closes it.
 | 6.3.2    | 1,000,000 trades, throttled: first rows in 1.7 s against 1 s, fully loaded in 4.1 s against 3 s. The CPU quota covers the whole browser, so download and load share it.                                                                                        | 6.3.8, 6.10                |
 | 6.3.1    | Browser memory at rest for 1,000,000 trades is 756 MB against 700 MB.                                                                                                                                                                                          | 6.3.7, 6.3.8               |
 | 6.3.2    | The generated client returns a `Blob`, so a dataset fetched through it cannot stream into the engine; `useDataset` streams only a `Response`.                                                                                                                  | `@basis/ui`'s fetcher, 6.9 |
-| 6.3.5    | The typed group-by's browser figures are not measured: the bench was stopped for want of memory on a shared host. Natively the reference pivot builds in 0.14 to 0.22 s, from 0.55 s.                                                                          | A quiet host               |
+| 6.3.5    | The reference pivot of 1,000,000 positions takes 867 ms throttled against 300 ms, from 1,702 ms; 205 ms plain. A tree held as arrays would leave it near 600 ms; not done.                                                                                     | 6.10                       |
+| 6.3.5    | One bench run's 1,000,000 throttled pass stopped on "The grid drew no change within 600000 ms" at its second pivot; the next run drew every change. Not reproduced.                                                                                            | Watch the nightly bench    |
 | 6.4.1    | The canvas's tabular digits need Chrome or Edge 139. Recorded in the design's "Not yet verified".                                                                                                                                                              | 6.10                       |
 | 6.5.2    | The pie's legend beside it is cut off by the status line, and taller rows hide more of it.                                                                                                                                                                     | 6.6.6                      |
 | 6.8.1    | Doc comments pushed seven library files past `max-lines` (300), and were trimmed to fit. Letting `max-lines` skip comments is a design change.                                                                                                                 | The maintainer's decision  |

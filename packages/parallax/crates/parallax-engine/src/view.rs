@@ -337,6 +337,8 @@ impl<'a> Source<'a> {
 struct Cell {
     rows: i64,
     states: Vec<State>,
+    /// The rows of each unit, by measure, or empty when no measure has a unit
+    /// column, so that a cell of a pivot of some 150,000 leaves allocates once.
     units: Vec<Option<FxHashMap<Key, u32>>>,
 }
 
@@ -345,10 +347,14 @@ impl Cell {
         Self {
             rows: 0,
             states: measures.iter().map(|m| m.empty(leaf)).collect(),
-            units: measures
-                .iter()
-                .map(|m| m.unit.map(|_| FxHashMap::default()))
-                .collect(),
+            units: if measures.iter().any(|m| m.unit.is_some()) {
+                measures
+                    .iter()
+                    .map(|m| m.unit.map(|_| FxHashMap::default()))
+                    .collect()
+            } else {
+                Vec::new()
+            },
         }
     }
 
@@ -356,7 +362,7 @@ impl Cell {
         self.rows += sign;
         for (i, m) in measures.iter().enumerate() {
             self.states[i].apply(m, &inputs[i], sign);
-            if let (Some(units), Some(unit)) = (&mut self.units[i], inputs[i].unit)
+            if let (Some(Some(units)), Some(unit)) = (self.units.get_mut(i), inputs[i].unit)
                 && (inputs[i].key != Key::Null || m.aggregate == Aggregate::CountAll)
             {
                 let entry = units.entry(unit).or_insert(0);
@@ -376,7 +382,7 @@ impl Cell {
     fn merge_measure(&mut self, other: &Self, m: usize) {
         self.rows += other.rows;
         self.states[m].merge(&other.states[m]);
-        if let (Some(a), Some(b)) = (&mut self.units[m], &other.units[m]) {
+        if let (Some(Some(a)), Some(Some(b))) = (self.units.get_mut(m), other.units.get(m)) {
             for (&k, &c) in b {
                 *a.entry(k).or_insert(0) += c;
             }
@@ -408,7 +414,52 @@ struct Node {
     parent: u32,
     children: FxHashMap<Key, u32>,
     total: Cell,
-    split: FxHashMap<u32, Cell>,
+    split: Splits,
+}
+
+/// A node's cells by column-pivot key, sorted by the key's id: a pivot has a few
+/// such keys, so a short vector beats a hash map, which each of some 150,000
+/// leaves would allocate.
+#[derive(Clone, Debug, Default)]
+struct Splits(Vec<(u32, Cell)>);
+
+impl Splits {
+    fn get(&self, split: u32) -> Option<&Cell> {
+        let i = self.0.binary_search_by_key(&split, |e| e.0).ok()?;
+        Some(&self.0[i].1)
+    }
+
+    /// The cell of `split`, made by `new` if there is none.
+    fn entry(&mut self, split: u32, new: impl FnOnce() -> Cell) -> &mut Cell {
+        let i = match self.0.binary_search_by_key(&split, |e| e.0) {
+            Ok(i) => i,
+            Err(i) => {
+                self.0.insert(i, (split, new()));
+                i
+            }
+        };
+        &mut self.0[i].1
+    }
+
+    /// Sets the cell of `split`. A leaf's cells mostly arrive in the order of
+    /// their ids, so this mostly appends.
+    fn put(&mut self, split: u32, cell: Cell) {
+        match self.0.last() {
+            Some(&(last, _)) if last >= split => *self.entry(split, || Cell::new(&[], true)) = cell,
+            _ => self.0.push((split, cell)),
+        }
+    }
+
+    fn remove(&mut self, split: u32) {
+        if let Ok(i) = self.0.binary_search_by_key(&split, |e| e.0) {
+            self.0.remove(i);
+        }
+    }
+
+    /// The cells in the order of their keys' ids.
+    fn iter(&self) -> impl Iterator<Item = (u32, &Cell)> {
+        self.0.iter().map(|(s, c)| (*s, c))
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -1388,8 +1439,7 @@ impl View {
             };
             let path = g.path(table, id);
             let rows = node.total.rows;
-            let mut splits: Vec<(u32, i64)> =
-                node.split.iter().map(|(&s, c)| (s, c.rows)).collect();
+            let mut splits: Vec<(u32, i64)> = node.split.iter().map(|(s, c)| (s, c.rows)).collect();
             splits.sort_unstable();
             out.push(GroupCell {
                 path: path.clone(),
@@ -2207,7 +2257,7 @@ impl Grouped {
             parent,
             children: FxHashMap::default(),
             total: Cell::new(&self.measures, leaf),
-            split: FxHashMap::default(),
+            split: Splits::default(),
         };
         match self.free.pop() {
             Some(id) => {
@@ -2307,7 +2357,7 @@ impl Grouped {
                 self.split_rows[s as usize] += cell.rows;
                 let leaf = self.node_mut(node);
                 leaf.total.merge(&cell);
-                leaf.split.insert(s, cell);
+                leaf.split.put(s, cell);
             } else {
                 // Without a column pivot, each leaf group has exactly one cell.
                 self.node_mut(node).total = cell;
@@ -2325,11 +2375,10 @@ impl Grouped {
             let child = from[0].as_ref().expect("live node");
             let parent = before[child.parent as usize].as_mut().expect("live node");
             parent.total.merge(&child.total);
-            for (&s, cell) in &child.split {
+            for (s, cell) in child.split.iter() {
                 parent
                     .split
-                    .entry(s)
-                    .or_insert_with(|| Cell::new(measures, false))
+                    .entry(s, || Cell::new(measures, false))
                     .merge(cell);
             }
         }
@@ -2364,13 +2413,10 @@ impl Grouped {
             let n = self.node_mut(id);
             n.total.apply(&measures, &inputs, sign);
             if let Some(s) = split {
-                let cell = n
-                    .split
-                    .entry(s)
-                    .or_insert_with(|| Cell::new(&measures, leaf));
+                let cell = n.split.entry(s, || Cell::new(&measures, leaf));
                 cell.apply(&measures, &inputs, sign);
                 if cell.rows == 0 {
-                    n.split.remove(&s);
+                    n.split.remove(s);
                 }
             }
             self.measures = measures;
@@ -2419,7 +2465,7 @@ impl Grouped {
         if split == ROW_TOTAL {
             Some(&node.total)
         } else {
-            node.split.get(&split)
+            node.split.get(split)
         }
     }
 
@@ -2448,7 +2494,7 @@ impl Grouped {
         m: usize,
     ) -> MeasureValue {
         let measure = &self.measures[m];
-        if let Some(units) = &cell.units[m]
+        if let Some(Some(units)) = cell.units.get(m)
             && units.len() > 1
             && !matches!(
                 measure.aggregate,

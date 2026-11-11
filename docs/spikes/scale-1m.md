@@ -498,9 +498,9 @@ twice the slowest median.
 
 ## Step 6.3.5: a typed group-by
 
-Step 6.3.5 changed how a pivot adds its rows into leaf cells. Its browser figures are still to come: the bench of
-2026-11-10 was stopped part of the way, with the host short of memory beside other sessions' work, so the figures below
-are the native phase profile's, one thread, 1,000,000 generated positions, the reference pivot (`examples/measure.rs`).
+Step 6.3.5 changed how a pivot adds its rows into leaf cells. The first bench of 2026-11-10 was stopped part of the
+way, with the host short of memory beside other sessions' work, so the step was measured natively first, one thread,
+1,000,000 generated positions, the reference pivot (`examples/measure.rs`), and in the browser after it landed, below.
 What changed:
 
 - Before, each row built its leaf key as a boxed slice of keys, one for each group and split column, hashed and
@@ -526,7 +526,37 @@ What changed:
 | Merge                                            | 0.025 s | 0.041 s       |
 
 The tree, a node and a hash map of children for each group, and its merge upward are now most of a build, and are what
-the plan's "a tree held as arrays" would take on. The 300 ms throttled target is not yet measured.
+the plan's "a tree held as arrays" would take on.
+
+In the browser, on 2026-11-10, `main` at `1825ac4`, positions at 150,000 and 1,000,000 rows, ratio 1 (`--datasets
+positions --sizes 150000,1000000 --ratios 1`), at load averages of 1.5 to 5.6; the 1,000,000 throttled run is a second
+run of one round, since the first stopped on a change that never drew (below). Before is step 6.2b's final run, which
+6.3.1 to 6.3.4 left unchanged for a pivot.
+
+| Positions, the reference pivot's rounds | Before, plain | After, plain | Before, throttled | After, throttled |
+| --------------------------------------- | ------------- | ------------ | ----------------- | ---------------- |
+| Reference pivot, 1,000,000              | 516 ms        | 205 ms       | 1,702 ms          | 867 ms           |
+| Expand all, 1,000,000                   | 605 ms        | 250 ms       | n/a               | 1,042 ms         |
+| Collapse all, 1,000,000                 | 566 ms        | 221 ms       | n/a               | 799 ms           |
+| Reference pivot, 150,000                | n/a           | 65 ms        | n/a               | 255 ms           |
+| Expand all and collapse all, 150,000    | 116 and 100   | 67 and 57    | n/a               | 299 and 219      |
+
+**The 300 ms throttled target for the reference pivot of 1,000,000 positions is missed, at 867 ms, from 1,702.** The
+browser's plain figure, 205 ms, is the native build's, 0.14 to 0.19 s, and its first window, 0.02 s, so the throttled
+figure is the engine's build under the quota, with the drawing and the reply's trip. What is left is spread: the
+aggregation 0.04 to 0.06 s, the leaf sort and unpacking of the keys 0.02, the tree 0.045 to 0.06, the merge 0.025 to
+0.03, natively. The tree was then made lighter where it was cheap to: a cell allocates no vector for units when no
+measure has a unit column, and a node's column-pivot cells are a short sorted vector, not a hash map, which took the
+merge from 0.032 to 0.026 s and left the tree within the noise. Holding the whole tree as arrays would take most of
+the tree's and merge's 0.08 s, natively, which at the quota's 2.5 times and the browser's own share leaves the throttled
+build near 600 ms, still twice the target; the step stops short of that rewrite, which touches every reader of the
+tree, and leaves the target for 6.10's figures from a real desktop. The plan's other item, float sums in a small inline
+window, does not bear on the reference pivot, whose measures are decimals and a count, and is left too. Expand all and collapse all are a rebuild today,
+which step 6.3.6 removes.
+
+The first run's 1,000,000 throttled pass stopped with "The grid drew no change within 600000 ms" at the second pivot,
+after the first had drawn in 214 ms; the second run drew every change. It did not happen again in the steps that
+followed, which ran the bench several times; it is recorded in PLAN.md's "Found while building".
 
 ## Step 6.4.4: a scroll that moves pixels
 
