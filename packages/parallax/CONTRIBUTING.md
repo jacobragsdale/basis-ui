@@ -57,7 +57,9 @@ vp run @basis/parallax#proto  # buf generate: the protocol's TypeScript, src/pro
 vp run @basis/parallax#bench  # the scale harness: 150,000 to 2,000,000 rows, against tests/perf/budgets.json
 ```
 
-`wasm` builds `parallax-wasm` for `wasm32-unknown-unknown` in release and runs
+`wasm` builds `parallax-wasm` for `wasm32-unknown-unknown` in the `wasm`
+profile, release optimised as one unit, with SIMD on, which takes about two
+minutes on one job, and runs
 `wasm-bindgen --remove-name-section` on it, which needs the Rust toolchain and
 the `wasm-bindgen` command as above. It builds with one rustc job unless
 `CARGO_BUILD_JOBS` says otherwise, and honours `CARGO_TARGET_DIR`. Vite+

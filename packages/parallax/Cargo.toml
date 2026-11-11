@@ -36,6 +36,13 @@ missing_docs = "warn"
 [workspace.lints.clippy]
 all = { level = "warn", priority = -1 }
 
+# The browser's build (scripts/build-wasm.ts): the whole program optimised as one
+# unit, which measured faster than release's defaults (docs/spikes/scale-1m.md).
+[profile.wasm]
+inherits = "release"
+lto = "fat"
+codegen-units = 1
+
 # Dependencies build without debug info: it halves rustc's memory for large crates
 # such as js-sys and arrow, which matters on memory-constrained machines.
 [profile.dev.package."*"]

@@ -30,13 +30,90 @@ pub(crate) enum Values {
     Boolean(Vec<bool>),
     Int64(Vec<i64>),
     Float64(Vec<f64>),
-    Decimal(Vec<i128>),
+    Decimal(Decimals),
     Utf8 {
         codes: Vec<u32>,
         dictionary: Dictionary,
     },
     Date32(Vec<i32>),
     Timestamp(Vec<i64>),
+}
+
+/// A decimal column's unscaled values: a word each while every value fits in
+/// one, as a price or an amount of money nearly always does whatever its
+/// declared precision, else two. A value that does not fit widens the column.
+#[derive(Clone, Debug)]
+pub(crate) enum Decimals {
+    Narrow(Vec<i64>),
+    Wide(Vec<i128>),
+}
+
+impl Decimals {
+    #[inline]
+    pub(crate) fn get(&self, slot: usize) -> i128 {
+        match self {
+            Self::Narrow(v) => i128::from(v[slot]),
+            Self::Wide(v) => v[slot],
+        }
+    }
+
+    /// The values as words, after widening them if `value` does not fit in one.
+    fn narrow_for(&mut self, value: i128) -> Result<&mut Vec<i64>, &mut Vec<i128>> {
+        if let Self::Narrow(v) = self
+            && i64::try_from(value).is_err()
+        {
+            *self = Self::Wide(v.iter().map(|&x| i128::from(x)).collect());
+        }
+        match self {
+            Self::Narrow(v) => Ok(v),
+            Self::Wide(v) => Err(v),
+        }
+    }
+
+    pub(crate) fn set(&mut self, slot: usize, value: i128) {
+        match self.narrow_for(value) {
+            Ok(v) => v[slot] = value as i64,
+            Err(v) => v[slot] = value,
+        }
+    }
+
+    pub(crate) fn push(&mut self, value: i128) {
+        match self.narrow_for(value) {
+            Ok(v) => v.push(value as i64),
+            Err(v) => v.push(value),
+        }
+    }
+
+    /// Appends `values`, those that `nulls` marks null as zero.
+    fn extend_valid(&mut self, values: &[i128], nulls: Option<&NullBuffer>) {
+        let valid = |i: usize| nulls.is_none_or(|n| n.is_valid(i));
+        let fits = values
+            .iter()
+            .enumerate()
+            .all(|(i, &x)| !valid(i) || i64::try_from(x).is_ok());
+        if !fits && let Self::Narrow(v) = self {
+            *self = Self::Wide(v.iter().map(|&x| i128::from(x)).collect());
+        }
+        let value = |(i, &x): (usize, &i128)| if valid(i) { x } else { 0 };
+        match self {
+            Self::Narrow(v) => v.extend(values.iter().enumerate().map(|e| value(e) as i64)),
+            Self::Wide(v) => v.extend(values.iter().enumerate().map(value)),
+        }
+    }
+
+    fn reserve_exact(&mut self, additional: usize) {
+        match self {
+            Self::Narrow(v) => v.reserve_exact(additional),
+            Self::Wide(v) => v.reserve_exact(additional),
+        }
+    }
+
+    fn heap_bytes(&self) -> usize {
+        match self {
+            Self::Narrow(v) => v.capacity() * 8,
+            Self::Wide(v) => v.capacity() * 16,
+        }
+    }
 }
 
 /// One column of a table, or of a batch being loaded.
@@ -55,7 +132,7 @@ impl Column {
             ColumnType::Boolean => Values::Boolean(Vec::new()),
             ColumnType::Int64 => Values::Int64(Vec::new()),
             ColumnType::Float64 => Values::Float64(Vec::new()),
-            ColumnType::Decimal { .. } => Values::Decimal(Vec::new()),
+            ColumnType::Decimal { .. } => Values::Decimal(Decimals::Narrow(Vec::new())),
             ColumnType::Utf8 => Values::Utf8 {
                 codes: Vec::new(),
                 dictionary: Dictionary::new(),
@@ -116,7 +193,7 @@ impl Column {
             Values::Boolean(v) => Key::Bool(v[slot]),
             Values::Int64(v) => Key::Int(v[slot]),
             Values::Float64(v) => Key::float(v[slot]),
-            Values::Decimal(v) => Key::Decimal(v[slot]),
+            Values::Decimal(v) => Key::Decimal(v.get(slot)),
             Values::Utf8 { codes, .. } => Key::Str(codes[slot]),
             Values::Date32(v) => Key::Date(v[slot]),
             Values::Timestamp(v) => Key::Ts(v[slot]),
@@ -155,7 +232,7 @@ impl Column {
             Values::Boolean(v) => v.capacity(),
             Values::Int64(v) | Values::Timestamp(v) => v.capacity() * 8,
             Values::Float64(v) => v.capacity() * 8,
-            Values::Decimal(v) => v.capacity() * 16,
+            Values::Decimal(v) => v.heap_bytes(),
             Values::Date32(v) => v.capacity() * 4,
             Values::Utf8 { codes, dictionary } => codes.capacity() * 4 + dictionary.heap_bytes(),
         };
@@ -229,7 +306,7 @@ impl Column {
         }
         match &self.values {
             Values::Int64(v) => Some(i128::from(v[slot])),
-            Values::Decimal(v) => Some(v[slot]),
+            Values::Decimal(v) => Some(v.get(slot)),
             _ => None,
         }
     }
@@ -259,7 +336,7 @@ impl Column {
             (Values::Boolean(d), Values::Boolean(s)) => d[slot] = s[source_slot],
             (Values::Int64(d), Values::Int64(s)) => d[slot] = s[source_slot],
             (Values::Float64(d), Values::Float64(s)) => d[slot] = s[source_slot],
-            (Values::Decimal(d), Values::Decimal(s)) => d[slot] = s[source_slot],
+            (Values::Decimal(d), Values::Decimal(s)) => d.set(slot, s.get(source_slot)),
             (Values::Date32(d), Values::Date32(s)) => d[slot] = s[source_slot],
             (Values::Timestamp(d), Values::Timestamp(s)) => d[slot] = s[source_slot],
             (
@@ -296,7 +373,7 @@ impl Column {
             (Values::Float64(x), Values::Float64(y)) => {
                 x[slot].to_bits() == y[other_slot].to_bits()
             }
-            (Values::Decimal(x), Values::Decimal(y)) => x[slot] == y[other_slot],
+            (Values::Decimal(x), Values::Decimal(y)) => x.get(slot) == y.get(other_slot),
             (Values::Date32(x), Values::Date32(y)) => x[slot] == y[other_slot],
             (Values::Timestamp(x), Values::Timestamp(y)) => x[slot] == y[other_slot],
             (
@@ -351,7 +428,7 @@ impl Column {
                 };
                 Arc::new(
                     (0..len)
-                        .map(|i| value(i).map(|s| v[s]))
+                        .map(|i| value(i).map(|s| v.get(s)))
                         .collect::<Decimal128Array>()
                         .with_precision_and_scale(precision, scale)
                         .expect("valid decimal type"),
@@ -487,11 +564,10 @@ impl Column {
                     unreachable!()
                 };
                 if *source_scale >= 0 {
-                    v.extend_from_slice(a.values());
-                    zero_nulls(v, start, nulls);
+                    v.extend_valid(a.values(), nulls);
                 } else {
                     let factor = 10i128.pow(u32::from(source_scale.unsigned_abs()));
-                    v.reserve(a.len());
+                    v.reserve_exact(a.len());
                     for (i, &value) in a.values().iter().enumerate() {
                         if a.is_null(i) {
                             v.push(0);

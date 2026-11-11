@@ -88,10 +88,25 @@ function build(): void {
   checkBindgen(version);
   /* Parallel rustc jobs have run machines with little free memory out of it, so one job unless the caller sets
    * CARGO_BUILD_JOBS, as CI does. */
+  /* The `wasm` profile is release optimised as one unit; SIMD, which every Chrome and Edge since 91 runs, lets the
+   * compiler vectorise the kernels. */
   run(
     "cargo",
-    ["build", "--release", "--locked", "-p", "parallax-wasm", "--target", "wasm32-unknown-unknown"],
-    { ...process.env, CARGO_BUILD_JOBS: process.env["CARGO_BUILD_JOBS"] ?? "1" },
+    [
+      "build",
+      "--profile",
+      "wasm",
+      "--locked",
+      "-p",
+      "parallax-wasm",
+      "--target",
+      "wasm32-unknown-unknown",
+    ],
+    {
+      ...process.env,
+      CARGO_BUILD_JOBS: process.env["CARGO_BUILD_JOBS"] ?? "1",
+      CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUSTFLAGS: "-C target-feature=+simd128",
+    },
   );
   run("wasm-bindgen", [
     "--target",
@@ -102,7 +117,7 @@ function build(): void {
     outDir,
     "--out-name",
     "parallax_wasm",
-    `${targetDirectory()}/wasm32-unknown-unknown/release/parallax_wasm.wasm`,
+    `${targetDirectory()}/wasm32-unknown-unknown/wasm/parallax_wasm.wasm`,
   ]);
   process.stdout.write(`Wrote ${outDir}\n`);
 }

@@ -25,7 +25,7 @@ use crate::aggregate::{
 };
 use crate::bignum::ratio_to_f64;
 use crate::bitmap::Bitmap;
-use crate::column::{Column, Values};
+use crate::column::{Column, Decimals, Values};
 use crate::error::ConfigError;
 use crate::filter::{CompiledFilter, Filter};
 use crate::format::{self, Format, Formatter};
@@ -2198,7 +2198,14 @@ fn tally_states(table: &Table, tally: Tally, rows: &[(u32, u32)], counts: &[i64]
                         }
                     }
                 }
-                Values::Decimal(values) => {
+                Values::Decimal(Decimals::Narrow(values)) => {
+                    for &(slot, at) in rows {
+                        if column.valid.get(slot as usize) {
+                            add(at, i128::from(values[slot as usize]));
+                        }
+                    }
+                }
+                Values::Decimal(Decimals::Wide(values)) => {
                     for &(slot, at) in rows {
                         if column.valid.get(slot as usize) {
                             add(at, values[slot as usize]);

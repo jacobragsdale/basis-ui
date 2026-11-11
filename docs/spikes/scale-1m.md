@@ -612,6 +612,39 @@ Step 6.3.7 gave the engine a way to drop a table, and the page a reason to. What
 The memory itself is not measured here: the bench loads one dataset a page. Step 6.9's showcase moves between pages
 of 1,000,000 trades and positions, which is where it shows.
 
+## Step 6.3.8: narrower storage and build flags
+
+Step 6.3.8 measured each of the plan's narrowings and flags, and kept those that paid, on positions at 1,000,000 rows,
+ratio 1, on 2026-11-10 at load averages of 1.7 to 7. What changed, and what was left:
+
+- **Decimals in a word, kept.** A decimal column holds its unscaled values as `i64` while every value fits, whatever
+  its declared precision, and widens in place to `i128` at the first value that does not: a price or an amount of
+  money nearly always fits, since an `i64` holds 92 thousand trillion dollars in cents. Filters, sorts and exact sums
+  read either. Natively the 1,000,000 positions' table at rest falls from 413 to 333 MB; in the browser the WebAssembly
+  after the load from 531 to 449 MB, its peak from 552 to 470 MB, and the browser at rest from 1,044 to 964 MB, with the
+  load, the pivots and the reorders unchanged. `tests/decimals.rs` checks a column that fits, one that widens on an
+  update and one that widens part way through a load, filters by a key no word holds, and their sums.
+- **Text codes in a byte or two, left.** Of the positions' 40 columns 14 are text, most of fewer than 256 values: codes
+  of one or two bytes would save about 30 to 40 MB more, a tenth, at the cost of every kernel that reads codes, the
+  filters', the sort's, the packed leaf keys' and the load's. The decimals bring the browser near the 700 MB target
+  without it.
+- **Packed booleans, left.** Neither dataset has a boolean column; a byte a row is 1 MB a column at 1,000,000 rows.
+- **No `seq` for a table with no key, left.** It is 8 MB at 1,000,000 rows, and the order of a table with no key.
+- **Build flags, kept.** The browser's build is a profile of its own, `wasm`: release with `lto = "fat"` and
+  `codegen-units = 1`, with SIMD on (`+simd128`, in every Chrome and Edge since 91). The module falls from 5.17 to 4.69
+  MB, a tenth less to fetch and compile; the times stay within the host's noise, the reference pivot 731 against 714 ms
+  throttled and the load 8.19 against 8.00 s. The build takes 2 minutes on one job, from about 35 s.
+- **`wasm-opt -O3`, left.** It needs binaryen, a tool the build does not have; a new dependency is the maintainer's
+  to approve.
+
+| Positions at 1,000,000 rows | 6.3.7, plain and throttled | Decimals in a word | And the build flags |
+| --------------------------- | -------------------------- | ------------------ | ------------------- |
+| WebAssembly after the load  | 531 MB                     | 449 MB             | 448 MB              |
+| Browser at rest, plain      | 1,044 MB                   | 964 MB             | 964 MB              |
+| Fully loaded, throttled     | 8.16 s                     | 8.19 s             | 8.00 s              |
+| Reference pivot, throttled  | 833 ms                     | 731 ms             | 714 ms              |
+| The module                  | 5.17 MB                    | 5.17 MB            | 4.69 MB             |
+
 ## Step 6.4.4: a scroll that moves pixels
 
 Step 6.4.4 made a scroll by rows, or across, copy the pixels that stay and paint only the band or strip it exposed,

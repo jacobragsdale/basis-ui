@@ -21,7 +21,7 @@
 use std::sync::{Arc, Mutex, PoisonError};
 
 use crate::bitmap::Bitmap;
-use crate::column::{Column, Values};
+use crate::column::{Column, Decimals, Values};
 use crate::order::{Order, Orders};
 use crate::table::Table;
 
@@ -206,7 +206,8 @@ fn sort_column(column: &Column, ranks: Option<&[u32]>, slots: &mut Vec<u32>) -> 
             Some(ranks) => sort_by(slots, |s| u64::from(ranks[codes[s as usize] as usize])),
             None => sort_by(slots, |s| u64::from(dictionary.rank(codes[s as usize]))),
         },
-        Values::Decimal(v) => {
+        Values::Decimal(Decimals::Narrow(v)) => sort_by(slots, |s| v[s as usize] as u64 ^ SIGN),
+        Values::Decimal(Decimals::Wide(v)) => {
             let (least, most) = slots
                 .iter()
                 .map(|&s| v[s as usize])

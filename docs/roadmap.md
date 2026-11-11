@@ -555,7 +555,11 @@ flowchart TD
    built on 2026-11-10: a pivot keeps its tree when its groups' order, value filter, ranking or depth changes, and each
    node's child order once worked out, so expand all on 1,000,000 positions takes 71 ms throttled, from 1,042 ms, and
    collapse all 20 ms, from 799 ms. 6.3.7 built on 2026-11-10: a dataset no component shows is unloaded, components
-   share one load of the same data, and a worker whose memory outgrew its tables is replaced once idle.
+   share one load of the same data, and a worker whose memory outgrew its tables is replaced once idle. 6.3.8 built on
+   2026-11-10: a decimal column holds a word a value until one does not fit, so the 1,000,000 positions take 449 MB of
+   WebAssembly, from 531, and the browser's build is optimised as one unit with SIMD, a module of 4.69 MB, from 5.17;
+   narrower text codes, packed booleans, no sequence for a table with no key and `wasm-opt` were measured or weighed
+   and left.
 4. **6.4 The canvas on a Citrix desktop.** Lane Grid, one branch per item in order: digits that line up
    (`6.4.1-tabular-digits`), whole device pixels (`6.4.2-device-pixels`), one draw per frame and one row step per notch
    (`6.4.3-frame-aligned`), a scroll that moves pixels (`6.4.4-scroll-blit`), rows past the scrollbar's reach

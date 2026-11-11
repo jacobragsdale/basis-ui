@@ -18,7 +18,7 @@ use std::sync::{Arc, Mutex, PoisonError};
 use rustc_hash::FxHashSet;
 
 use crate::bitmap::Bitmap;
-use crate::column::{Column, Values};
+use crate::column::{Column, Decimals, Values};
 use crate::dictionary::Dictionary;
 use crate::error::ConfigError;
 use crate::sort::float_key;
@@ -379,7 +379,22 @@ fn compare_words(
             compare(&v[..slots], k, ordering, negate)
         }
         (Values::Date32(v), Key::Date(k)) => compare(&v[..slots], k, ordering, negate),
-        (Values::Decimal(v), Key::Decimal(k)) => compare(&v[..slots], k, ordering, negate),
+        (Values::Decimal(Decimals::Wide(v)), Key::Decimal(k)) => {
+            compare(&v[..slots], k, ordering, negate)
+        }
+        (Values::Decimal(Decimals::Narrow(v)), Key::Decimal(k)) => match i64::try_from(k) {
+            Ok(k) => compare(&v[..slots], k, ordering, negate),
+            // Every word lies on one side of a key that does not fit in one.
+            Err(_) => {
+                let above = k > 0;
+                let passes = match ordering {
+                    Ordering::Equal => false,
+                    Ordering::Less => above,
+                    Ordering::Greater => !above,
+                };
+                pack(&v[..slots], |_| passes != negate)
+            }
+        },
         (Values::Boolean(v), Key::Bool(k)) => compare(&v[..slots], k, ordering, negate),
         (Values::Float64(v), Key::Float(bits)) => {
             let k = float_key(f64::from_bits(bits));
@@ -439,7 +454,10 @@ fn in_words(values: &Values, slots: usize, keys: &FxHashSet<Key>, negate: bool) 
                     None
                 }
             });
-            listed(&v[..slots], |x| x, list, negate)
+            match v {
+                Decimals::Narrow(v) => listed(&v[..slots], i128::from, list, negate),
+                Decimals::Wide(v) => listed(&v[..slots], |x| x, list, negate),
+            }
         }
         Values::Boolean(v) => {
             let list = list(keys, |k| if let Key::Bool(b) = k { Some(b) } else { None });
