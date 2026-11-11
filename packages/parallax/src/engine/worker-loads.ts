@@ -131,6 +131,11 @@ class WorkerLoads {
     this.#queue = this.#queue.then(async () => this.#guarded(engine, task));
   }
 
+  /** Runs `work` once the loads started before it have ended. */
+  public after(work: () => void): void {
+    this.#queue = this.#queue.then(work);
+  }
+
   /** Keeps the next chunk of a load's body for the load to read. */
   public bytes(message: LoadBytes): void {
     const task = this.#tasks.get(message.id);

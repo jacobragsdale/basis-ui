@@ -12,7 +12,7 @@
 import init, { Worker as Engine } from "#wasm/parallax_wasm.js";
 
 import { parseToWorker } from "./messages.ts";
-import type { ExportRequest, FromWorker } from "./messages.ts";
+import type { ExportRequest, FromWorker, UnloadRequest } from "./messages.ts";
 import { WorkerLoads } from "./worker-loads.ts";
 
 /** Sends the page a message, moving the buffers in `transfer` rather than copying them. */
@@ -95,6 +95,29 @@ function exportView(engine: Engine, request: ExportRequest): void {
   );
 }
 
+/** The engine's WebAssembly memory, once it has started. */
+let memory: WebAssembly.Memory | null = null;
+
+/** Drops a dataset once the loads before it have ended, and says what the memory holds then. */
+function unload(engine: Engine, request: UnloadRequest): void {
+  loads.after(() => {
+    run(
+      () => {
+        engine.unloadTable(request.dataset);
+        post({
+          heldBytes: engine.heldBytes(),
+          id: request.id,
+          kind: "unloaded",
+          memoryBytes: memory?.buffer.byteLength ?? 0,
+        });
+      },
+      (message) => {
+        post({ id: request.id, kind: "failed", message });
+      },
+    );
+  });
+}
+
 /** Passes one encoded protocol message to the engine and its replies to the page. */
 function protocol(engine: Engine, bytes: Uint8Array): void {
   run(
@@ -121,6 +144,8 @@ function handle(engine: Engine, data: unknown): void {
     loads.bytes(message);
   } else if (message.kind === "load-end") {
     loads.end(message);
+  } else if (message.kind === "unload") {
+    unload(engine, message);
   } else {
     exportView(engine, message);
   }
@@ -131,7 +156,7 @@ let started: Promise<Engine> | null = null;
 
 /** Starts the engine, whose WebAssembly sits beside this script. */
 async function start(): Promise<Engine> {
-  await init();
+  ({ memory } = await init());
   return new Engine();
 }
 

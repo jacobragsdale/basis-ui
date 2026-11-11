@@ -74,6 +74,11 @@ export class Worker {
      */
     handle(message: Uint8Array | number[]): Array<any>;
     /**
+     * About how many bytes the tables held take, as
+     * [`MemoryCatalog::held_bytes`] counts them.
+     */
+    heldBytes(): number;
+    /**
      * Loads or reloads dataset `name` from an app's Arrow IPC stream, all of it
      * at once, as [`Worker::load`] does. Returns the table's rows. The stream
      * stays in the page's memory: the load copies its headers to count its rows,
@@ -102,6 +107,11 @@ export class Worker {
      * Returns the reason the load is refused; it is then over.
      */
     stepLoad(name: string): any;
+    /**
+     * Drops dataset `name`, as [`Worker::unload`] does, and returns whether
+     * it was held.
+     */
+    unloadTable(name: string): boolean;
 }
 
 export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembly.Module;
@@ -117,10 +127,12 @@ export interface InitOutput {
     readonly worker_exportXlsx: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number, number, number];
     readonly worker_finishLoad: (a: number, b: number, c: number) => [bigint, number, number];
     readonly worker_handle: (a: number, b: number, c: number) => any;
+    readonly worker_heldBytes: (a: number) => number;
     readonly worker_loadTable: (a: number, b: number, c: number, d: any, e: number, f: number, g: number, h: number, i: number, j: number) => [bigint, number, number];
     readonly worker_new: () => number;
     readonly worker_refresh: (a: number) => any;
     readonly worker_stepLoad: (a: number, b: number, c: number) => [number, number, number];
+    readonly worker_unloadTable: (a: number, b: number, c: number) => number;
     readonly __wbindgen_malloc: (a: number, b: number) => number;
     readonly __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;
     readonly __wbindgen_free: (a: number, b: number, c: number) => void;

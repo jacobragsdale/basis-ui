@@ -25,6 +25,12 @@ const fromWorkerSchema = z.discriminatedUnion("kind", [
   z.strictObject({ id, kind: z.literal("loaded"), rows: z.int().nonnegative() }),
   z.strictObject({ bytes, id, kind: z.literal("chunk") }),
   z.strictObject({ bytes: bytes.nullable(), id, kind: z.literal("exported") }),
+  z.strictObject({
+    heldBytes: z.number().nonnegative(),
+    id,
+    kind: z.literal("unloaded"),
+    memoryBytes: z.number().nonnegative(),
+  }),
   z.strictObject({ id, kind: z.literal("failed"), message: z.string() }),
   z.strictObject({ kind: z.literal("trapped"), message: z.string() }),
   z.strictObject({ kind: z.literal("fatal"), message: z.string() }),

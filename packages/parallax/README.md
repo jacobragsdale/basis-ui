@@ -529,6 +529,17 @@ on the root or on any element around a component, or `@basis/ui`'s
 `themeChangeEvent` reaches the document, `useParallaxTheme()`'s `read` changes,
 and the canvases read their tokens again and draw whole.
 
+### Memory, from page to page
+
+Components that call `useDataset` with the same name and the same source share
+one load: a page whose cards and grid show one dataset fetches it once. When
+the last component that shows a dataset unmounts, the engine drops it, and its
+memory goes to later loads. WebAssembly's memory never shrinks, so once the
+engine's memory has grown past 1 GiB while its tables take less than half of
+it, the engine starts again as soon as nothing waits on it, and the datasets
+still shown load again from their sources, as after a restart. That restart is
+planned: it never counts towards the three below.
+
 ### When the engine runs out of memory
 
 A load, pivot or export past the engine's memory traps it. The engine then

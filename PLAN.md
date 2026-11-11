@@ -64,8 +64,7 @@ data is for and never the load time; `94343fc`, `8aaf718` and `e1c39b5` fixed CI
 Everything below, in this order where one needs another, except 6.10, which is the maintainer's at the firm.
 
 1. ~~6.3.5, the rest.~~ Done: the browser's figures are in the spike, and the target is recorded as missed.
-2. **6.3.6 to 6.3.9** in order: no rebuild where the order alone changes, memory that comes back, narrower storage and
-   build flags, the new limit in bytes.
+2. ~~6.3.6, 6.3.7~~ done. **6.3.8 and 6.3.9** in order: narrower storage and build flags, the new limit in bytes.
 3. **6.4.5 to 6.4.8** in order: rows past the scrollbar's reach, less work in a pass, selection that does not count
    rows, the charts' costs.
 4. **6.5.7** the default's identity and two more themes, then **6.5.8** the studio. The plan asks the maintainer to
@@ -885,7 +884,7 @@ Each stays here until a step closes it.
 | 6.3.1    | Browser memory at rest for 1,000,000 trades is 756 MB against 700 MB.                                                                                                                                                                                          | 6.3.7, 6.3.8               |
 | 6.3.2    | The generated client returns a `Blob`, so a dataset fetched through it cannot stream into the engine; `useDataset` streams only a `Response`.                                                                                                                  | `@basis/ui`'s fetcher, 6.9 |
 | 6.3.5    | The reference pivot of 1,000,000 positions takes 867 ms throttled against 300 ms, from 1,702 ms; 205 ms plain. A tree held as arrays would leave it near 600 ms; not done.                                                                                     | 6.10                       |
-| 6.3.5    | One bench run's 1,000,000 throttled pass stopped on "The grid drew no change within 600000 ms" at its second pivot; the next run drew every change. Not reproduced.                                                                                            | Watch the nightly bench    |
+| 6.3.7    | The memory a page gets back by unloading is not measured: the bench loads one dataset a page.                                                                                                                                                                  | 6.9                        |
 | 6.4.1    | The canvas's tabular digits need Chrome or Edge 139. Recorded in the design's "Not yet verified".                                                                                                                                                              | 6.10                       |
 | 6.5.2    | The pie's legend beside it is cut off by the status line, and taller rows hide more of it.                                                                                                                                                                     | 6.6.6                      |
 | 6.8.1    | Doc comments pushed seven library files past `max-lines` (300), and were trimmed to fit. Letting `max-lines` skip comments is a design change.                                                                                                                 | The maintainer's decision  |

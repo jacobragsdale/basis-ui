@@ -558,6 +558,60 @@ The first run's 1,000,000 throttled pass stopped with "The grid drew no change w
 after the first had drawn in 214 ms; the second run drew every change. It did not happen again in the steps that
 followed, which ran the bench several times; it is recorded in PLAN.md's "Found while building".
 
+## Step 6.3.6: no rebuild where the order alone changes
+
+Step 6.3.6 let a pivot keep its tree when only how its groups are ordered, filtered by a value, ranked or opened
+changes, and measured positions at 150,000 and 1,000,000 rows, ratio 1, on 2026-11-10, at load averages of 5 to 19 as
+other sessions built beside it. Before is step 6.3.5's run above. What changed:
+
+- `View::reformat` takes a new group sort, having, top-N or open depth: the tree stays, and only the rows that show,
+  their running totals and each node's child order are worked out again. A new depth alone keeps the child orders.
+  The session keeps a view through such a change, and through a change of the groups opened by hand, which it now
+  replaces rather than rebuilding when one is dropped.
+- Each node's children are put in order the first time it opens, and kept until the view or the order changes, so
+  opening or closing a group walks the rows that show without sorting a sibling set again.
+- The groups opened by hand are found by node once for each walk, by their keys from the root, rather than by
+  building a path of values for every node and comparing it with each.
+- A filter menu's values were left as they are: since step 6.3.5 a count of one text column takes the packed keys'
+  path, 9 to 16 ms natively for the 10,000 tickers of 1,000,000 positions.
+- `tests/reorder.rs` checks that a view reordered every way equals one built anew, and opened and closed by hand
+  too; the oracle, incremental and WebAssembly tests pass unchanged.
+
+| Positions, the rounds | Before, plain | After, plain | Before, throttled | After, throttled |
+| --------------------- | ------------- | ------------ | ----------------- | ---------------- |
+| Expand all, 1,000,000 | 250 ms        | 21 ms        | 1,042 ms          | 71 ms            |
+| Collapse all          | 221 ms        | 14 ms        | 799 ms            | 20 ms            |
+| Reopen                | 255 ms        | 26 ms        | 981 ms            | 81 ms            |
+| Expand all, 150,000   | 67 ms         | 12 ms        | 299 ms            | 71 ms            |
+| Collapse all          | 57 ms         | 7 ms         | 219 ms            | 29 ms            |
+
+Natively, one thread, 1,000,000 positions (`examples/measure.rs`'s reorders): sorting the groups by value takes 0.054
+s, from 0.26 s; expanding all 0.005 to 0.01 s, from 0.22 to 0.24 s; collapsing all under a millisecond, from 0.17 s.
+The host budgets for expand all, collapse all and the reference pivot are now about twice the slowest figure.
+
+The bench's hang of step 6.3.5 came back in this step's first runs, and was found: a layout change's first frame
+carries when the change was asked for, and when the window asked for after it answered within the same animation
+frame, the grid replaced the first frame before drawing it, so the change was never seen drawn. The user saw it
+drawn; the bench waited for ever. The grid now carries the time onto the frame that replaces it.
+
+## Step 6.3.7: memory that comes back
+
+Step 6.3.7 gave the engine a way to drop a table, and the page a reason to. What changed:
+
+- The worker takes `unload`, after any load before it, drops the dataset and answers with its WebAssembly memory
+  and about how much its tables still take. Views open on it keep its table until they close.
+- `useDataset` counts the components that show each dataset: when the last unmounts, after the rest of the commit, so
+  StrictMode and a page that hands the dataset on keep it, the dataset is unloaded. Components that ask for the same
+  name and source share one load.
+- WebAssembly memory never shrinks, so a worker whose memory has passed 1 GiB while its tables take less than half
+  is replaced once nothing waits on it, and the datasets still shown load again, as after a restart. That restart is
+  planned, and never counts towards the three a minute after which parallax stops recovering.
+- Unit tests check the unload's message, the planned restart and when it waits; a browser test that two pivots share
+  one load, and that the last to unmount unloads it; a native test that a table's bytes leave with it.
+
+The memory itself is not measured here: the bench loads one dataset a page. Step 6.9's showcase moves between pages
+of 1,000,000 trades and positions, which is where it shows.
+
 ## Step 6.4.4: a scroll that moves pixels
 
 Step 6.4.4 made a scroll by rows, or across, copy the pixels that stay and paint only the band or strip it exposed,

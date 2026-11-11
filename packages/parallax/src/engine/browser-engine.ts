@@ -1,25 +1,27 @@
-/* The engine in the browser: a Web Worker running the WebAssembly build, holding the tables the app loads.
- *
- * One worker serves the page. The app hands it Arrow bytes with `load`, which move to the worker rather than being
- * copied, or a response whose body moves there piece by piece as it arrives, and the worker's connection answers views
- * of those tables. A first load's views open on its first rows and see more as they come.
- *
- * The browser's limits are checked before a load costs any memory, and say so plainly. A load or export that runs the
- * engine out of memory traps it, which nothing can recover from in place; the worker is then ended, which frees all
- * its memory, every waiting request and open view fails with the reason, and a new, empty worker takes its place. */
+/* The engine in the browser: one Web Worker running the WebAssembly build, holding the tables the app loads. The app
+ * hands it Arrow bytes with `load`, which move rather than copy, or a response whose body moves piece by piece as it
+ * arrives, and its connection answers views of those tables, a first load's from its first rows. The browser's limits
+ * are checked before a load costs memory. A load or export that runs the engine out of memory traps it; the worker is
+ * then ended, which frees its memory, every waiting request and open view fails with the reason, and a new, empty
+ * worker takes its place. A dataset the page unloads gives its memory back as `memory.ts` says. */
 
 import { Answers } from "./answers.ts";
 import type { Answered } from "./answers.ts";
 import { Connection } from "./connection.ts";
 import { Holdings, loadRequest } from "./holdings.ts";
 import type { Job, LoadBody } from "./holdings.ts";
-import { exportTypes, loadLimits, maxXlsxCells, tooManyBytes, trapReason } from "./limits.ts";
+import { exportRequest, exportedFile } from "./exported.ts";
+import { loadLimits, tooManyBytes, trapReason } from "./limits.ts";
 import type { LoadCall, Loaded } from "./limits.ts";
 import type { ExportFormat, LoadRequest, ToWorker } from "./messages.ts";
+import { MemoryWatch, plannedReason } from "./memory.ts";
+import type { EngineOptions, Unloaded } from "./memory.ts";
 import { arriving, listen } from "./port.ts";
 import type { WorkerPort } from "./port.ts";
 import { parseFromWorker } from "./replies.ts";
 import type { Reply } from "./replies.ts";
+import { Restarts } from "./restarts.ts";
+import type { RestartListener } from "./restarts.ts";
 import { checkResponse, streamBody } from "./stream.ts";
 
 /** One worker and the connection to its engine. */
@@ -33,13 +35,15 @@ class BrowserEngine {
   readonly #start: () => WorkerPort;
   readonly #answers = new Answers();
   readonly #holdings = new Holdings();
-  readonly #restartListeners = new Set<(reason: string) => void>();
+  readonly #restarts = new Restarts();
+  readonly #memory: MemoryWatch;
   #running: Running;
   #failure: string | null = null;
 
-  /** `start` makes a worker: once now, and again whenever the engine traps. */
-  public constructor(start: () => WorkerPort) {
+  /** `start` makes a worker: once now, and again whenever the engine traps or gives its memory back. */
+  public constructor(start: () => WorkerPort, options: EngineOptions = {}) {
     this.#start = start;
+    this.#memory = new MemoryWatch(options);
     this.#running = this.#spawn();
   }
 
@@ -48,25 +52,18 @@ class BrowserEngine {
     return this.#running.connection;
   }
 
-  /** Calls `listener` with the reason whenever the engine traps and starts again empty, so that the app can load its
-   * data again. Returns a function that stops calling it. */
-  public onRestart(listener: (reason: string) => void): () => void {
-    this.#restartListeners.add(listener);
-    return () => {
-      this.#restartListeners.delete(listener);
-    };
+  /** Calls `listener` whenever the engine starts again empty, so the app loads its data again; returns its remover. */
+  public onRestart(listener: RestartListener): () => void {
+    return this.#restarts.add(listener);
   }
 
   /**
    * Loads Arrow IPC stream bytes that the app holds, such as its API's response, as `dataset`. The buffer moves to the
-   * worker, so the page can no longer read it, and it is never copied between threads. A second load of the same
-   * dataset reloads it, and its open views show the new rows.
-   *
-   * `bytes` may also be a `Response`, such as `fetch`'s, whose body then moves to the worker piece by piece as it
-   * arrives: the engine reads each record batch as soon as it is all there, so a first load's views show its first
-   * rows long before the last arrive. Or it may be a promise of either, such as a fetch still on its way: the load
-   * counts as in flight from this call, so a view that opens before the bytes arrive waits for them, and a fetch that
-   * fails fails its views with the reason.
+   * worker, never copied, so the page can no longer read it. A second load of the same dataset reloads it. `bytes` may
+   * also be a `Response`, whose body moves to the worker piece by piece, the engine reading each record batch once it
+   * is there, so a first load's views show its first rows long before the last arrive; or a promise of either, such as
+   * a fetch on its way, which counts as in flight from this call, so a view that opens first waits for it, and fails
+   * with the fetch's reason.
    *
    * Bytes past `maxArrowBytes` are refused before they leave the page, and the buffer stays the app's; a response whose
    * `Content-Length` says it is past them is refused before its body is read, and one that does not say is refused as
@@ -84,7 +81,9 @@ class BrowserEngine {
     options: LoadCall = {},
   ): Promise<Loaded> {
     const job = this.#holdings.job(dataset, options);
-    const done = arriving(bytes) ? this.#sendWhenArrived(job, bytes) : this.#sendBody(job, bytes);
+    const done = arriving(bytes)
+      ? Promise.resolve(bytes).then(async (body) => this.#sendBody(job, body))
+      : this.#sendBody(job, bytes);
     return this.#failure === null ? this.#holdings.track(job, done) : done;
   }
 
@@ -97,9 +96,8 @@ class BrowserEngine {
     return this.#holdings.holds(dataset, whole);
   }
 
-  /** The connection for views of `dataset`, once the app's load of it has succeeded, or its first rows show, unless
-   * the view waits for the dataset `whole`, as a chart does. A load still in flight is waited for, and one that fails,
-   * or no load at all, fails the view with the reason. */
+  /** The connection for views of `dataset` once its load has succeeded or its first rows show, or, `whole`, once it
+   * has all loaded, as a chart's; a load that fails, or none, fails the view with the reason. */
   public async connectionFor(dataset: string, whole = false): Promise<Connection> {
     if (!(await this.holds(dataset, whole))) {
       throw new Error(
@@ -112,7 +110,7 @@ class BrowserEngine {
   /**
    * Writes the view a layout describes as xlsx or CSV, in the worker, which already holds its table, and returns the
    * file. `loadVersion` is the load the screen shows; an export of any other load is refused, so the file holds what
-   * the screen does. An xlsx of more than {@link maxXlsxCells} cells is refused with a reason that says to export CSV.
+   * the screen does. An xlsx of more than `maxXlsxCells` cells is refused with a reason that says to export CSV.
    * A CSV arrives in chunks as it is written, joined into the file without being held whole anywhere else.
    */
   public async export(
@@ -120,22 +118,18 @@ class BrowserEngine {
     format: ExportFormat,
     loadVersion: bigint | number | null = null,
   ): Promise<Blob> {
-    const answer = await this.#request((id) => ({
-      format,
-      id,
-      kind: "export",
-      layout: layoutJson,
-      loadVersion: loadVersion === null ? null : Number(loadVersion),
-      maxCells: maxXlsxCells,
-    }));
-    if (answer.kind !== "exported") {
-      throw new Error("The parallax worker answered an export with something else.");
-    }
-    const type = exportTypes[format];
-    if (answer.bytes !== null) {
-      return new Blob([answer.bytes], { type });
-    }
-    return new Blob(answer.parts === null ? [] : [answer.parts], { type });
+    const answer = await this.#request(exportRequest(layoutJson, format, loadVersion));
+    return exportedFile(answer, format);
+  }
+
+  /** Drops `dataset`, which the page no longer shows, once any load of it before has ended; views open on it keep it
+   * until they close. The worker may then be replaced to give its memory back, as `memory.ts` says. */
+  public async unload(dataset: string): Promise<Unloaded> {
+    this.#holdings.drop(dataset);
+    const answer = await this.#request((id) => ({ dataset, id, kind: "unload" }));
+    const unloaded = this.#memory.unloaded(answer);
+    this.#restartIfIdle();
+    return unloaded;
   }
 
   /** Stops using the worker for good, as when the page no longer shows parallax: every pending and later request
@@ -163,10 +157,6 @@ class BrowserEngine {
       },
     });
     return { connection, worker };
-  }
-
-  async #sendWhenArrived(job: Job, bytes: PromiseLike<LoadBody>): Promise<Loaded> {
-    return this.#sendBody(job, await bytes);
   }
 
   async #sendBody(job: Job, body: LoadBody): Promise<Loaded> {
@@ -264,6 +254,17 @@ class BrowserEngine {
         message.id,
         message.kind === "failed" ? new Error(message.message) : message,
       );
+      queueMicrotask(() => {
+        this.#restartIfIdle();
+      });
+    }
+  }
+
+  /** Replaces a worker that is to give its memory back, once nothing waits on it: after an answer's own
+   * continuations, which may ask for more. */
+  #restartIfIdle(): void {
+    if (this.#failure === null && this.#memory.restartNow(this.#answers.idle)) {
+      this.#restart(plannedReason, true);
     }
   }
 
@@ -275,16 +276,15 @@ class BrowserEngine {
     running.worker.terminate();
   }
 
-  /** Replaces a worker whose engine trapped with a new, empty one. Every pending request and open view fails with
-   * `reason`, and ending the old worker frees all its memory. */
-  #restart(reason: string): void {
+  /** Replaces a worker whose engine trapped, or that is to give its memory back, `planned`, with a new, empty one.
+   * Every pending request and open view fails with `reason`, and ending the old worker frees all its memory. */
+  #restart(reason: string, planned = false): void {
+    this.#memory.reset();
     const trapped = this.#running;
     // The new worker first, so that whatever reacts to the failures below reaches it.
     this.#running = this.#spawn();
     this.#stop(reason, trapped);
-    for (const listener of this.#restartListeners) {
-      listener(reason);
-    }
+    this.#restarts.tell(reason, planned);
   }
 
   /** Stops using the worker for good. A worker that cannot start would only fail again, so it is not replaced. */

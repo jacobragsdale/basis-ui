@@ -147,6 +147,40 @@ impl Column {
         }
     }
 
+    /// About how many bytes of the heap the column holds: its values, its
+    /// validity and its dictionary's text.
+    pub(crate) fn heap_bytes(&self) -> usize {
+        use std::mem::size_of_val;
+        let values = match &self.values {
+            Values::Boolean(v) => v.capacity(),
+            Values::Int64(v) | Values::Timestamp(v) => v.capacity() * 8,
+            Values::Float64(v) => v.capacity() * 8,
+            Values::Decimal(v) => v.capacity() * 16,
+            Values::Date32(v) => v.capacity() * 4,
+            Values::Utf8 { codes, dictionary } => codes.capacity() * 4 + dictionary.heap_bytes(),
+        };
+        values + size_of_val(self.valid.words())
+    }
+
+    /// The key that [`Self::key_to_scalar`] turns into `scalar`, if this column
+    /// can hold it: `None` for text it has never held, or a value of another
+    /// type.
+    pub(crate) fn scalar_to_key(&self, scalar: &Scalar) -> Option<Key> {
+        Some(match (scalar, &self.values) {
+            (Scalar::Null, _) => Key::Null,
+            (Scalar::Boolean(b), Values::Boolean(_)) => Key::Bool(*b),
+            (Scalar::Int64(i), Values::Int64(_)) => Key::Int(*i),
+            (Scalar::Float64(f), Values::Float64(_)) => Key::float(*f),
+            (Scalar::Decimal(d), Values::Decimal(_)) => Key::Decimal(*d),
+            (Scalar::Utf8(text), Values::Utf8 { dictionary, .. }) => {
+                Key::Str(dictionary.code(text)?)
+            }
+            (Scalar::Date32(d), Values::Date32(_)) => Key::Date(*d),
+            (Scalar::Timestamp(t), Values::Timestamp(_)) => Key::Ts(*t),
+            _ => return None,
+        })
+    }
+
     /// Returns the string of a text key in this column.
     pub(crate) fn text(&self, key: Key) -> Option<&str> {
         match key {

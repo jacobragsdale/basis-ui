@@ -312,6 +312,21 @@ impl Worker {
         self.finish(name).map_err(|e| JsError::new(&e))
     }
 
+    /// Drops dataset `name`, as [`Worker::unload`] does, and returns whether
+    /// it was held.
+    #[wasm_bindgen(js_name = unloadTable)]
+    pub fn unload_table(&mut self, name: &str) -> bool {
+        self.unload(name)
+    }
+
+    /// About how many bytes the tables held take, as
+    /// [`MemoryCatalog::held_bytes`] counts them.
+    #[wasm_bindgen(js_name = heldBytes)]
+    #[must_use]
+    pub fn held_bytes_js(&self) -> f64 {
+        self.held_bytes() as f64
+    }
+
     /// Gives up a load, as [`Worker::abandon`] does.
     #[wasm_bindgen(js_name = abandonLoad)]
     pub fn abandon_load(&mut self, name: &str) {
@@ -538,6 +553,21 @@ impl Worker {
         {
             self.catalog.remove(name);
         }
+    }
+
+    /// Drops dataset `name`, giving up any load of it under way, and returns
+    /// whether it was held. Views open on it keep its table until they close,
+    /// and the memory then goes back to the engine's allocator; WebAssembly's
+    /// memory itself never shrinks.
+    pub fn unload(&mut self, name: &str) -> bool {
+        let loading = self.loads.remove(name).is_some();
+        self.catalog.remove(name).is_some() || loading
+    }
+
+    /// About how many bytes the tables held take.
+    #[must_use]
+    pub fn held_bytes(&self) -> usize {
+        self.catalog.held_bytes()
     }
 
     fn loading(&mut self, name: &str) -> Result<&mut Loading, String> {
@@ -1062,6 +1092,36 @@ mod tests {
             })
             .unwrap_or_else(|| panic!("{replies:?}"));
         (status, as_of)
+    }
+
+    #[test]
+    fn an_unloaded_table_leaves_the_catalog_and_its_bytes_with_it() {
+        let mut worker = Worker::new();
+        assert_eq!(worker.held_bytes(), 0);
+        worker
+            .load("small", stream(1_000, None), &load(10_000))
+            .unwrap();
+        let small = worker.held_bytes();
+        worker
+            .load("large", stream(9_000, None), &load(10_000))
+            .unwrap();
+        let both = worker.held_bytes();
+        // Three columns of 9,000 rows: at least 8 + 4 + 8 bytes each.
+        assert!(both - small >= 9_000 * 20, "{small} then {both}");
+        assert!(worker.unload("large"));
+        assert_eq!(worker.held_bytes(), small);
+        assert!(!worker.unload("large"), "it is gone");
+        assert!(worker.catalog.get("large").is_none());
+        // A load under way is given up with its table.
+        worker.begin("arriving", load(10_000), None).unwrap();
+        worker
+            .add_bytes("arriving", Box::new(stream(500, None)))
+            .unwrap();
+        worker.step("arriving").unwrap();
+        assert!(worker.unload("arriving"));
+        assert!(worker.add_bytes("arriving", Box::new(Vec::new())).is_err());
+        assert!(worker.unload("small"));
+        assert_eq!(worker.held_bytes(), 0);
     }
 
     #[test]

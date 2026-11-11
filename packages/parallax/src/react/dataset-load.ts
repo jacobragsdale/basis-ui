@@ -5,6 +5,7 @@ import type { ParallaxClient } from "#engine/client.ts";
 import type { LoadOptions, LoadProgress } from "#engine/limits.ts";
 
 import { applyWhenCurrent } from "./current.ts";
+import { sharedLoad } from "./dataset-share.ts";
 
 /**
  * Where a dataset's Arrow IPC stream comes from: bytes the app holds, or a function that fetches them. A function that
@@ -87,7 +88,8 @@ async function load(
   }
 }
 
-/** Starts a request's load, applying its outcome while the effect that started it holds. */
+/** Starts a request's load, or joins the same load another component started, applying its outcome while the effect
+ * that started it holds. */
 function start(
   client: ParallaxClient,
   request: LoadRequest,
@@ -102,7 +104,11 @@ function start(
       apply({ ...loading, progress: state });
     }
   };
-  applyWhenCurrent(load(client, request, progress), () => live, apply).catch(reportError);
+  const outcome = sharedLoad(client, request, {
+    progress,
+    run: async (heard) => load(client, request, heard),
+  });
+  applyWhenCurrent(outcome, () => live, apply).catch(reportError);
   return () => {
     live = false;
   };

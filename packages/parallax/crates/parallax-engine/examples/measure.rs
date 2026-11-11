@@ -225,10 +225,80 @@ fn reference_pivot() -> ViewConfig {
     }
 }
 
+/// Times changing the reference pivot's order and depth, as the toolbar's
+/// buttons and a click on a measure's header do, on a view already built: each
+/// a reorder when the view can keep its tree, else a build.
+fn reorders(table: &Table) {
+    let mut view = View::new(table, reference_pivot()).expect("a view");
+    view.num_rows(table);
+    let mut by_value = reference_pivot();
+    by_value.group_sort = GroupSort {
+        by: GroupOrder::Measure(0),
+        descending: true,
+    };
+    let levels = by_value.group_by.len();
+    let changes = [
+        ("largest first", by_value.clone()),
+        (
+            "expand all",
+            ViewConfig {
+                expand_depth: levels,
+                ..by_value.clone()
+            },
+        ),
+        (
+            "collapse all",
+            ViewConfig {
+                expand_depth: 0,
+                ..by_value
+            },
+        ),
+        ("reopened", reference_pivot()),
+    ];
+    for (what, config) in changes {
+        let ((kept, rows), seconds) = timed(|| {
+            let kept = view.reformat(table, &config).expect("a valid change");
+            if !kept {
+                view = View::new(table, config.clone()).expect("a view");
+            }
+            let rows = view.num_rows(table);
+            view.window(table, 0..60, 0..15);
+            (kept, rows)
+        });
+        let how = if kept { "reordered" } else { "rebuilt" };
+        report(
+            &format!("reference pivot, {what}: {how}, first window ({rows} visible rows)"),
+            seconds,
+        );
+    }
+}
+
+/// Times the values a filter menu lists for `column`: each distinct value and
+/// its rows, as the session asks for them.
+fn menu(table: &Table, column: &str) {
+    let config = ViewConfig {
+        group_by: vec![column.into()],
+        measures: vec![Measure::count_all()],
+        ..ViewConfig::default()
+    };
+    let (rows, seconds) = timed(|| {
+        let mut view = View::new(table, config).expect("a view");
+        let rows = view.num_rows(table);
+        view.window(table, 1..1_001, 0..1);
+        rows
+    });
+    report(
+        &format!("filter menu of {column} ({} values)", rows - 1),
+        seconds,
+    );
+}
+
 fn measure_views(table: &Table) {
     let has = |name: &str| table.column_index(name).is_some();
     if has("market_value_usd") {
         view(table, "reference pivot", reference_pivot());
+        reorders(table);
+        menu(table, "ticker");
         let mut by_value = reference_pivot();
         by_value.group_sort = GroupSort {
             by: GroupOrder::Measure(0),
@@ -242,6 +312,8 @@ fn measure_views(table: &Table) {
         );
     }
     if has("trade_id") {
+        menu(table, "ticker");
+        menu(table, "trader");
         // The scale harness's rounds: each sort, then its toggle, then a filter
         // under the last.
         for column in ["ticker", "quantity", "trade_date"] {

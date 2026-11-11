@@ -9,6 +9,9 @@
  * - `export` asks for a view's xlsx, which comes back whole as `exported`, or its CSV, which comes back as `chunk`s and
  *   then `exported`, so the whole file is never held in the worker.
  * - `message` carries one encoded protocol message each way; the worker's replies come back as `reply`, in order.
+ * - `unload` drops a dataset the page no longer shows, after any load before it, and the worker answers `unloaded`
+ *   with its WebAssembly memory, which never shrinks, and about how much of it the tables still held take, so the page
+ *   can tell when to start a fresh worker to give memory back.
  * - `failed` answers a load or an export the engine refused, with the reason.
  * - `trapped` says the engine hit a WebAssembly trap, such as running out of memory, which leaves it unusable; the
  *   worker answers nothing more, and the page ends it and starts another.
@@ -74,8 +77,25 @@ interface ExportRequest {
   readonly maxCells: number;
 }
 
+/** A dataset to drop. */
+interface UnloadRequest {
+  readonly kind: "unload";
+  readonly id: number;
+  readonly dataset: string;
+}
+
+/** What the worker's memory holds once a dataset is dropped. */
+interface UnloadedReply {
+  readonly kind: "unloaded";
+  readonly id: number;
+  /** The WebAssembly memory's size, its high-water mark. */
+  readonly memoryBytes: number;
+  /** About how many bytes the tables still held take. */
+  readonly heldBytes: number;
+}
+
 /** A message the page sends the worker. */
-type ToWorker = ProtocolMessage | LoadRequest | LoadBytes | LoadEnd | ExportRequest;
+type ToWorker = ProtocolMessage | LoadRequest | LoadBytes | LoadEnd | ExportRequest | UnloadRequest;
 
 /** A message the worker sends the page. */
 type FromWorker =
@@ -84,6 +104,7 @@ type FromWorker =
   | { readonly kind: "loaded"; readonly id: number; readonly rows: number }
   | { readonly kind: "chunk"; readonly id: number; readonly bytes: Uint8Array }
   | { readonly kind: "exported"; readonly id: number; readonly bytes: Uint8Array | null }
+  | UnloadedReply
   | { readonly kind: "failed"; readonly id: number; readonly message: string }
   | { readonly kind: "trapped"; readonly message: string }
   | { readonly kind: "fatal"; readonly message: string };
@@ -164,33 +185,37 @@ function parseExport(data: Readonly<Record<string, unknown>>): ExportRequest | n
   return { format, id, kind: "export", layout, loadVersion, maxCells };
 }
 
+function parseMessage(data: Readonly<Record<string, unknown>>): ProtocolMessage | null {
+  const { bytes } = data;
+  return bytes instanceof Uint8Array ? { bytes, kind: "message" } : null;
+}
+
+function parseUnload(data: Readonly<Record<string, unknown>>): UnloadRequest | null {
+  const { id, dataset } = data;
+  return isCount(id) && isString(dataset) ? { dataset, id, kind: "unload" } : null;
+}
+
+/** How each kind of message the page sends is read. */
+const parsers: Readonly<
+  Record<ToWorker["kind"], (data: Readonly<Record<string, unknown>>) => ToWorker | null>
+> = {
+  export: parseExport,
+  load: parseLoad,
+  "load-bytes": parseLoadBytes,
+  "load-end": parseLoadEnd,
+  message: parseMessage,
+  unload: parseUnload,
+};
+
 /** Reads a message the page sent, or null if it is not one the worker knows. The worker checks it by hand, so that
  * its bundle carries no schema library. */
 function parseToWorker(data: unknown): ToWorker | null {
   if (!isRecord(data)) {
     return null;
   }
-  switch (data["kind"]) {
-    case "message": {
-      const { bytes } = data;
-      return bytes instanceof Uint8Array ? { bytes, kind: "message" } : null;
-    }
-    case "load": {
-      return parseLoad(data);
-    }
-    case "load-bytes": {
-      return parseLoadBytes(data);
-    }
-    case "load-end": {
-      return parseLoadEnd(data);
-    }
-    case "export": {
-      return parseExport(data);
-    }
-    default: {
-      return null;
-    }
-  }
+  const { kind } = data;
+  const parse = Object.entries(parsers).find(([name]) => name === kind)?.[1];
+  return parse === undefined ? null : parse(data);
 }
 
 export { parseToWorker };
@@ -204,4 +229,6 @@ export type {
   LoadRequest,
   ProtocolMessage,
   ToWorker,
+  UnloadRequest,
+  UnloadedReply,
 };

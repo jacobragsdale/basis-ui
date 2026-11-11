@@ -1,15 +1,33 @@
 import { describe, expect, test } from "vite-plus/test";
 
 import { ParallaxClient } from "#engine/client.ts";
-import type { Restart } from "#engine/client.ts";
+import type { ClientOptions, Restart } from "#engine/client.ts";
 import { parseToWorker } from "#engine/messages.ts";
 
 import { fakeWorkers } from "./fake-worker.ts";
 
 const trap = { kind: "trapped", message: "RuntimeError: unreachable" };
 
+/** Unloads a dataset `count` times, each answered by a worker whose memory has outgrown its tables. */
+async function plannedRestarts(
+  parallax: ParallaxClient,
+  workers: ReturnType<typeof fakeWorkers>,
+  count: number,
+): Promise<void> {
+  if (count === 0) {
+    return;
+  }
+  const unloaded = parallax.unload("positions");
+  const [request] = workers.current().sent("unload");
+  workers.current().answer({ heldBytes: 0, id: request?.id, kind: "unloaded", memoryBytes: 1000 });
+  await unloaded;
+  // The restart waits for the answer's own continuations.
+  await Promise.resolve();
+  await plannedRestarts(parallax, workers, count - 1);
+}
+
 /** A client on fake workers, with a clock the test moves, and the restarts it reports. */
-function client(): {
+function client(options: ClientOptions = {}): {
   readonly parallax: ParallaxClient;
   readonly workers: ReturnType<typeof fakeWorkers>;
   readonly restarts: Restart[];
@@ -17,7 +35,7 @@ function client(): {
 } {
   const workers = fakeWorkers();
   const time = { now: 0 };
-  const parallax = new ParallaxClient(workers.start, { now: (): number => time.now });
+  const parallax = new ParallaxClient(workers.start, { now: (): number => time.now, ...options });
   const restarts: Restart[] = [];
   parallax.onRestart((restart) => {
     restarts.push(restart);
@@ -41,6 +59,17 @@ describe(ParallaxClient, () => {
     expect(workers.current().terminated).toBe(true);
     parallax.load("positions", new ArrayBuffer(8)).catch(() => null);
     expect([workers.all.length, parallax.generation]).toStrictEqual([2, 2]);
+  });
+
+  test("recovers from a planned restart, which gives memory back, and does not count it", async () => {
+    const { parallax, workers, restarts } = client({ restartAboveBytes: 100 });
+    await expect(parallax.unload("positions")).resolves.toBeNull();
+    parallax.prewarm();
+    await plannedRestarts(parallax, workers, 4);
+    expect(workers.all).toHaveLength(5);
+    expect(restarts.map((restart) => restart.recover)).toStrictEqual([true, true, true, true]);
+    workers.current().answer(trap);
+    expect(restarts.at(-1)?.recover).toBe(true);
   });
 
   test("tells its listeners of a restart, to recover from", () => {

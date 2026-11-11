@@ -8,6 +8,7 @@ import type { LoadOptions } from "#engine/limits.ts";
 
 import { useParallaxClient } from "./context.ts";
 import { idle, loading, start } from "./dataset-load.ts";
+import { holdDataset } from "./dataset-share.ts";
 import type { DatasetSource, LoadRequest, LoadState, Settled } from "./dataset-load.ts";
 
 /** A dataset as `useDataset` returns it, for `useView`. */
@@ -125,6 +126,8 @@ type Wanted = Omit<LoadRequest, "source"> & {
 function useLoad(client: ParallaxClient, wanted: Wanted, settle: (settled: Settled) => void): void {
   const { engine, name, primaryKey, receivedAtMicros, reloads, source, sourceAsOfMicros, stopped } =
     wanted;
+  // The last component to show the dataset unloads it as it unmounts.
+  useEffect(() => holdDataset(client, name), [client, name]);
   useEffect(() => {
     if (source === null || stopped !== null) {
       return (): void => undefined;
@@ -168,6 +171,11 @@ function useLoad(client: ParallaxClient, wanted: Wanted, settle: (settled: Settl
  * memory it starts again empty and fails every view; a dataset that was loaded then loads its source again, and its
  * views reopen. A dataset whose load was under way, most likely the one that ran the engine out of memory, fails with
  * the reason until `reload` is called or the source changes, as does every dataset once the engine keeps stopping.
+ *
+ * Components that ask for the same name and the same source share one load, so a page whose cards and grid show one
+ * dataset fetches it once. When the last component that shows a dataset unmounts, the engine drops it and its memory
+ * goes to later loads; once the engine's memory, which never shrinks, has grown past what its tables need, it starts
+ * again with what is still shown, which loads again as after a restart.
  *
  * @use Once for each table a page shows, inside a ParallaxProvider; give the dataset to a Grid, a Pivot or a Chart.
  * @see ParallaxProvider, Grid, Pivot, Chart, useView, LayoutInput

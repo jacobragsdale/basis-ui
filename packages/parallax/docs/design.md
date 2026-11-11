@@ -117,7 +117,12 @@ in a trap that says only `unreachable`. A trap leaves the engine half-changed
 and borrowed, so every later call would fail; the worker therefore reports it
 and answers nothing more, and the page ends the worker, which frees all its
 memory, fails every waiting request and open view with the reason, and starts
-an empty one. The release build drops the module's name section, a quarter of
+an empty one. Memory that tables leave behind goes back the same way: since
+basis-ui's step 6.3.7 a dataset no component shows is unloaded, and its memory
+is reused by later loads; a worker whose memory has grown past 1 GiB, more
+than twice what its tables take, is replaced once idle, and the app loads what
+it still shows again. Without it, a page that changes datasets grows until it
+traps. The release build drops the module's name section, a quarter of
 its bytes, which only stack traces use.
 
 Until basis-ui's step 2.2, parallax also had a server: it held tables too large

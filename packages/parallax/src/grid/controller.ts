@@ -27,7 +27,7 @@ import type { GridSnapshot } from "./snapshot.ts";
 import { GridSurface } from "./surface.ts";
 import type { RowSelectionInputs } from "./row-selection.ts";
 import type { GridInputs } from "./types.ts";
-import { keepsShown, missingWindow, windowFor } from "./window.ts";
+import { frameToShow, missingWindow, windowFor } from "./window.ts";
 
 /** A grid's controller. */
 class GridController {
@@ -67,7 +67,7 @@ class GridController {
     const { metrics, frame: shown } = this.#model;
     const before = this.#model.totalRows;
     const wanted = metrics === null ? null : this.#model.visible(metrics);
-    this.#model.frame = shown !== null && keepsShown(shown, frame, wanted) ? shown : frame;
+    this.#model.frame = frameToShow(shown, frame, wanted);
     this.#fit();
     this.#surface?.rowsChanged(before);
     this.#update();

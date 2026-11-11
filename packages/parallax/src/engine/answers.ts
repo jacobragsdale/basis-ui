@@ -3,7 +3,7 @@
 import type { Reply } from "./replies.ts";
 
 /** An answer to one request. */
-type Answer = Extract<Reply, { readonly kind: "loaded" | "exported" }>;
+type Answer = Extract<Reply, { readonly kind: "loaded" | "exported" | "unloaded" }>;
 
 /** An answer, with the chunks of a CSV collected for it. */
 type Answered = Answer & { readonly parts: Blob | null };
@@ -48,6 +48,11 @@ class Answers {
     if (waiting !== undefined) {
       waiting.parts = new Blob(waiting.parts === null ? [bytes] : [waiting.parts, bytes]);
     }
+  }
+
+  /** Whether no request is waiting for its answer. */
+  public get idle(): boolean {
+    return this.#waiting.size === 0;
   }
 
   /** Fails every request still waiting. */

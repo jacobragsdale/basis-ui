@@ -128,6 +128,31 @@ function keepsShown(shown: FrameData, arriving: FrameData, wanted: Viewport | nu
   return covers(held(shown), need, shown) && !covers(held(arriving), need, arriving);
 }
 
+/**
+ * The frame the grid shows once `arriving` comes: `shown`, if it keeps it, else `arriving`. A layout change's first
+ * frame carries when the change was asked for, and a later frame of the same layout can replace it before the grid
+ * draws, as when the window asked for with the change and the one asked for after both answer within a frame; the
+ * later frame then carries the time, so the change is still seen drawn.
+ */
+function frameToShow(
+  shown: FrameData | null,
+  arriving: FrameData,
+  wanted: Viewport | null,
+): FrameData {
+  if (shown === null) {
+    return arriving;
+  }
+  if (keepsShown(shown, arriving, wanted)) {
+    return shown;
+  }
+  const { changedAtMs } = shown;
+  return changedAtMs !== undefined &&
+    arriving.changedAtMs === undefined &&
+    arriving.configVersion === shown.configVersion
+    ? { ...arriving, changedAtMs }
+    : arriving;
+}
+
 /** A group the user expanded or collapsed, as the layout records it. */
 interface ExpandedEntry {
   readonly path: readonly LayoutScalar[];
@@ -182,8 +207,8 @@ function searchIn(json: string): string {
 }
 
 export {
+  frameToShow,
   groupPath,
-  keepsShown,
   missingWindow,
   searchIn,
   toggledEntry,

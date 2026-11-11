@@ -711,6 +711,30 @@ mod requests {
     }
 
     #[test]
+    fn the_benchs_pivots_each_answer_their_update() {
+        let mut s = session_of(20_000);
+        let reference = r#"{"expand_depth":3,"group_by":["fund","strategy","sector","ticker"],"measures":[{"aggregate":"sum","column":"market_value_usd"},{"aggregate":"sum","column":"daily_pnl_usd"},{"aggregate":"count_all"}],"split_by":["asset_class"]}"#;
+        let by_region = r#"{"expand_depth":2,"group_by":["asset_class","region","currency"],"measures":[{"aggregate":"sum","column":"market_value_usd"},{"aggregate":"sum","column":"unrealized_pnl_usd"}]}"#;
+        let by_book = r#"{"expand_depth":1,"group_by":["portfolio_manager","book"],"group_sort":{"by":{"measure":0},"descending":true},"measures":[{"aggregate":"sum","column":"notional_usd"},{"aggregate":"count_all"}],"split_by":["long_short"]}"#;
+        let expand_all = r#"{"expand_depth":4,"expanded":[],"group_by":["fund","strategy","sector","ticker"],"measures":[{"aggregate":"sum","column":"market_value_usd"},{"aggregate":"sum","column":"daily_pnl_usd"},{"aggregate":"count_all"}],"split_by":["asset_class"]}"#;
+        open(&mut s, reference);
+        for round in 0..3_u64 {
+            for (i, layout) in [by_region, by_book, reference, expand_all, reference]
+                .into_iter()
+                .enumerate()
+            {
+                let version = round * 10 + i as u64 + 1;
+                let id = version + 100;
+                let answered = ask(&mut s, id, update(layout, version, Some(window(0, 40))));
+                assert!(
+                    frame_rows(&answered).is_some_and(|(at, rows)| at == id && rows > 0),
+                    "round {round}, layout {i}: {answered:?}"
+                );
+            }
+        }
+    }
+
+    #[test]
     fn rows_that_end_before_the_viewport_answer_from_the_top() {
         let mut s = session();
         open(&mut s, r#"{"columns":["position_id","fund"]}"#);

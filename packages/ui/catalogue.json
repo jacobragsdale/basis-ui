@@ -16685,7 +16685,7 @@
       "kind": "hook",
       "module": "@basis/parallax",
       "name": "useDataset",
-      "purpose": "Loads a table into the page's engine as `name`, from `source`, and reports the load's state. It loads again when `name`, `source` or the options change, so give it a stable source: bytes held in state or a query, or a function the React Compiler keeps. A null source waits, as `idle`. Views of the dataset, opened with `useView`, may open while it loads: they wait for its first rows. A first load shows as it arrives, from a source that streams: its views open on its first rows and see more each time the rows read have grown fourfold, while `progress` says how many have been read of how many are expected, and a grid's status bar how many are still to come. Sorts, filters and pivots apply to the rows so far and update as more arrive; a chart waits for the whole load, and an export is refused until it is done. A reload is read whole and checked before anything changes: its views keep the rows before it until it applies, and a refused reload leaves them so, while `progress` says how far it has read. When the engine runs out of memory it starts again empty and fails every view; a dataset that was loaded then loads its source again, and its views reopen. A dataset whose load was under way, most likely the one that ran the engine out of memory, fails with the reason until `reload` is called or the source changes, as does every dataset once the engine keeps stopping.",
+      "purpose": "Loads a table into the page's engine as `name`, from `source`, and reports the load's state. It loads again when `name`, `source` or the options change, so give it a stable source: bytes held in state or a query, or a function the React Compiler keeps. A null source waits, as `idle`. Views of the dataset, opened with `useView`, may open while it loads: they wait for its first rows. A first load shows as it arrives, from a source that streams: its views open on its first rows and see more each time the rows read have grown fourfold, while `progress` says how many have been read of how many are expected, and a grid's status bar how many are still to come. Sorts, filters and pivots apply to the rows so far and update as more arrive; a chart waits for the whole load, and an export is refused until it is done. A reload is read whole and checked before anything changes: its views keep the rows before it until it applies, and a refused reload leaves them so, while `progress` says how far it has read. When the engine runs out of memory it starts again empty and fails every view; a dataset that was loaded then loads its source again, and its views reopen. A dataset whose load was under way, most likely the one that ran the engine out of memory, fails with the reason until `reload` is called or the source changes, as does every dataset once the engine keeps stopping. Components that ask for the same name and the same source share one load, so a page whose cards and grid show one dataset fetches it once. When the last component that shows a dataset unmounts, the engine drops it and its memory goes to later loads; once the engine's memory, which never shrinks, has grown past what its tables need, it starts again with what is still shown, which loads again as after a restart.",
       "signature": "useDataset(name: string, source: DatasetSource | null, options: LoadOptions = {}): Dataset",
       "use": "Once for each table a page shows, inside a ParallaxProvider; give the dataset to a Grid, a Pivot or a Chart.",
       "with": [
@@ -19956,6 +19956,12 @@
     {
       "fields": [
         {
+          "description": "The WebAssembly memory past which a worker holding less than half of it is replaced once idle: 1 GiB by default.",
+          "name": "restartAboveBytes",
+          "optional": true,
+          "type": "number"
+        },
+        {
           "description": "The most restarts recovered from within `recoveryWindowMs`; 2 by default.",
           "name": "maxRecoveries",
           "optional": true,
@@ -19977,7 +19983,7 @@
       "exported": true,
       "module": "@basis/parallax",
       "name": "ClientOptions",
-      "purpose": "How the client counts restarts, which tests change."
+      "purpose": "How the client counts restarts and gives memory back, which tests change."
     },
     {
       "extends": [
@@ -22802,13 +22808,13 @@
       "purpose": "Which parts of the toolbar show. A grid in a small tile can turn some, or the whole toolbar, off."
     },
     {
-      "definition": "ProtocolMessage | LoadRequest | LoadBytes | LoadEnd | ExportRequest",
+      "definition": "ProtocolMessage | LoadRequest | LoadBytes | LoadEnd | ExportRequest | UnloadRequest",
       "fields": [
         {
           "description": "",
           "name": "kind",
           "optional": false,
-          "type": "\"message\" | \"load\" | \"load-bytes\" | \"load-end\" | \"export\""
+          "type": "\"message\" | \"load\" | \"load-bytes\" | \"load-end\" | \"export\" | \"unload\""
         },
         {
           "description": "",
@@ -22951,6 +22957,32 @@
       "module": "@basis/parallax",
       "name": "TreeRows",
       "purpose": "Tree columns of a grouped view's rows."
+    },
+    {
+      "fields": [
+        {
+          "description": "",
+          "name": "kind",
+          "optional": false,
+          "type": "\"unload\""
+        },
+        {
+          "description": "",
+          "name": "id",
+          "optional": false,
+          "type": "number"
+        },
+        {
+          "description": "",
+          "name": "dataset",
+          "optional": false,
+          "type": "string"
+        }
+      ],
+      "exported": false,
+      "module": "@basis/parallax",
+      "name": "UnloadRequest",
+      "purpose": "A dataset to drop."
     },
     {
       "fields": [

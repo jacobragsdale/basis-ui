@@ -302,6 +302,17 @@ impl Table {
         self.live.count_ones()
     }
 
+    /// About how many bytes of the heap the table's rows hold: its columns,
+    /// their dictionaries, and its key's index. What views and caches hold
+    /// besides is not counted.
+    #[must_use]
+    pub fn heap_bytes(&self) -> usize {
+        let columns: usize = self.columns.iter().map(Column::heap_bytes).sum();
+        // An entry of the index is a key of 24 bytes and a slot, and a control byte.
+        let index = (24 + 8 + 1) * self.index.capacity();
+        columns + index + 8 * (self.seq.capacity() + self.free.capacity()) + self.num_slots() / 8
+    }
+
     /// The number of slots, live or free.
     #[must_use]
     pub fn num_slots(&self) -> usize {

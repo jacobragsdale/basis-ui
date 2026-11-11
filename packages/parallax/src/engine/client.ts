@@ -4,9 +4,11 @@
  * When the engine traps, every view fails and a new, empty engine starts; the client then tells its listeners whether
  * to recover, by loading their data again and reopening their views. An engine that traps again and again soon after
  * each recovery would load, trap and restart for ever, and hold a desktop's CPU while it did, so past a few restarts
- * in a minute the client says not to, and the views stay failed with the reason. */
+ * in a minute the client says not to, and the views stay failed with the reason. A planned restart, which gives
+ * back the memory of datasets the page unloaded, is always recovered from and never counted. */
 
 import { BrowserEngine } from "./browser-engine.ts";
+import type { EngineOptions, Unloaded } from "./memory.ts";
 import type { Connection } from "./connection.ts";
 import type { LoadCall, Loaded } from "./limits.ts";
 import type { ExportFormat } from "./messages.ts";
@@ -24,8 +26,8 @@ interface Restart {
   readonly recover: boolean;
 }
 
-/** How the client counts restarts, which tests change. */
-interface ClientOptions {
+/** How the client counts restarts and gives memory back, which tests change. */
+interface ClientOptions extends EngineOptions {
   /** The most restarts recovered from within `recoveryWindowMs`; 2 by default. */
   readonly maxRecoveries?: number;
   /** 60 seconds by default. */
@@ -58,6 +60,7 @@ class ParallaxClient {
   readonly #maxRecoveries: number;
   readonly #recoveryWindowMs: number;
   readonly #now: () => number;
+  readonly #engineOptions: EngineOptions;
   #engine: BrowserEngine | null = null;
   #restarts: readonly number[] = [];
   #generation = 0;
@@ -67,12 +70,21 @@ class ParallaxClient {
     this.#maxRecoveries = options.maxRecoveries ?? defaultRecoveries;
     this.#recoveryWindowMs = options.recoveryWindowMs ?? defaultWindowMs;
     this.#now = options.now ?? ((): number => performance.now());
+    this.#engineOptions =
+      options.restartAboveBytes === undefined
+        ? {}
+        : { restartAboveBytes: options.restartAboveBytes };
   }
 
   /** Counts the engines this client has started: it rises when the engine restarts, or starts again after `close`.
    * Views opened on an older engine are gone. */
   public get generation(): number {
     return this.#generation;
+  }
+
+  /** Whether an engine runs: false before the first use, and after `close` until the next. */
+  public get running(): boolean {
+    return this.#engine !== null;
   }
 
   /** Starts the engine's worker before any data or view needs it, so the first rows show sooner. */
@@ -111,6 +123,12 @@ class ParallaxClient {
     return this.#current().export(layoutJson, format, loadVersion);
   }
 
+  /** Drops `dataset`, which the page no longer shows, freeing its memory for later loads; see
+   * `BrowserEngine.unload`. Null when no engine runs, which holds nothing. */
+  public async unload(dataset: string): Promise<Unloaded | null> {
+    return this.#engine === null ? null : this.#engine.unload(dataset);
+  }
+
   /** Calls `listener` whenever the engine stops and starts again empty, with whether to recover. Returns a function
    * that stops calling it. */
   public onRestart(listener: (restart: Restart) => void): () => void {
@@ -130,20 +148,22 @@ class ParallaxClient {
     if (this.#engine !== null) {
       return this.#engine;
     }
-    const engine = new BrowserEngine(this.#start);
+    const engine = new BrowserEngine(this.#start, this.#engineOptions);
     this.#generation += 1;
-    engine.onRestart((reason) => {
-      this.#restarted(reason);
+    engine.onRestart((reason, planned) => {
+      this.#restarted(reason, planned);
     });
     this.#engine = engine;
     return engine;
   }
 
-  #restarted(reason: string): void {
+  #restarted(reason: string, planned: boolean): void {
     this.#generation += 1;
     const now = this.#now();
-    this.#restarts = [...this.#restarts.filter((at) => now - at < this.#recoveryWindowMs), now];
-    const recover = this.#restarts.length <= this.#maxRecoveries;
+    if (!planned) {
+      this.#restarts = [...this.#restarts.filter((at) => now - at < this.#recoveryWindowMs), now];
+    }
+    const recover = planned || this.#restarts.length <= this.#maxRecoveries;
     const restart: Restart = { reason: recover ? reason : givenUp(reason), recover };
     for (const listener of this.#listeners) {
       listener(restart);

@@ -551,7 +551,11 @@ flowchart TD
    to 40 ms, from 331 ms, and a filter under a sort 31 and 38 ms, from 108 ms, meeting 100 and 50 ms. 6.3.5 built on
    2026-11-10: a leaf key of text and boolean columns packs into one integer, and counts and exact sums add up in flat
    arrays a measure at a time, so the reference pivot of 1,000,000 positions builds natively in 0.14 to 0.22 s, from
-   0.55 s, and in the browser in 205 ms plain, from 516 ms, and 867 ms throttled, from 1,702 ms, missing 300 ms.
+   0.55 s, and in the browser in 205 ms plain, from 516 ms, and 867 ms throttled, from 1,702 ms, missing 300 ms. 6.3.6
+   built on 2026-11-10: a pivot keeps its tree when its groups' order, value filter, ranking or depth changes, and each
+   node's child order once worked out, so expand all on 1,000,000 positions takes 71 ms throttled, from 1,042 ms, and
+   collapse all 20 ms, from 799 ms. 6.3.7 built on 2026-11-10: a dataset no component shows is unloaded, components
+   share one load of the same data, and a worker whose memory outgrew its tables is replaced once idle.
 4. **6.4 The canvas on a Citrix desktop.** Lane Grid, one branch per item in order: digits that line up
    (`6.4.1-tabular-digits`), whole device pixels (`6.4.2-device-pixels`), one draw per frame and one row step per notch
    (`6.4.3-frame-aligned`), a scroll that moves pixels (`6.4.4-scroll-blit`), rows past the scrollbar's reach

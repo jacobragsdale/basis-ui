@@ -391,6 +391,18 @@ impl MemoryCatalog {
             .remove(&(name.to_owned(), BTreeMap::new()))
     }
 
+    /// About how many bytes of the heap the catalog's tables hold, as
+    /// [`Table::heap_bytes`] counts them.
+    #[must_use]
+    pub fn held_bytes(&self) -> usize {
+        self.tables
+            .read()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .values()
+            .filter_map(|table| read_table(table).ok().map(|t| t.table.heap_bytes()))
+            .sum()
+    }
+
     /// Returns a dataset's table without parameters.
     #[must_use]
     pub fn get(&self, name: &str) -> Option<SharedTable> {
@@ -748,8 +760,10 @@ impl Session {
                     // corrected layout repairs it.
                     let current = open.catch_up(&state).is_ok();
                     let resolved = layout.resolve(&state.table).map_err(|e| e.to_string())?;
-                    // Display-only changes, such as formats, widths or newly expanded
-                    // groups, keep the computed view; anything else rebuilds it.
+                    // Display-only changes, such as formats, widths or expanded
+                    // groups, and a new order, filter by value, ranking or depth of
+                    // a pivot's groups keep the computed view; anything else
+                    // rebuilds it.
                     let grid = match &mut open.view {
                         Computed::Grid(view) if resolved.chart.is_none() => Some(view),
                         _ => None,
@@ -757,9 +771,6 @@ impl Session {
                     let kept = match grid {
                         Some(view) => {
                             current
-                                && open.layout.expanded.iter().all(|old| {
-                                    layout.expanded.iter().any(|new| new.path == old.path)
-                                })
                                 && view
                                     .reformat(&state.table, &resolved.config)
                                     .map_err(|e| e.to_string())?
@@ -767,10 +778,7 @@ impl Session {
                         None => false,
                     };
                     if kept {
-                        let view = open.view.grid()?;
-                        for (path, expanded) in resolved.expanded {
-                            view.set_expanded(path, expanded);
-                        }
+                        open.view.grid()?.reset_expanded(resolved.expanded);
                     } else if let (Computed::Chart(chart), Some(config), Some(new)) =
                         (&mut open.view, &resolved.chart, &layout.chart)
                         && current

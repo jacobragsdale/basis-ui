@@ -4,6 +4,7 @@ import { describe, expect, test, vi } from "vite-plus/test";
 import { render } from "vitest-browser-react";
 import type { RenderResult } from "vitest-browser-react";
 
+import type { WorkerPort } from "#engine/port.ts";
 import type { ViewHandle } from "#engine/view.ts";
 import type { LayoutInput } from "#layout/layout.ts";
 import { ParallaxProvider } from "#react/provider.tsx";
@@ -209,5 +210,66 @@ describe("the hooks, when the engine runs out of memory", () => {
     );
     await expect.element(screen.getByLabelText("other")).toHaveTextContent("loaded");
     await expect.element(screen.getByText("Total: 652.75")).toBeVisible();
+  });
+});
+
+/** A worker that records the datasets the page unloads. */
+function recordingWorker(): { readonly start: () => WorkerPort; readonly unloaded: string[] } {
+  const unloaded: string[] = [];
+  return {
+    start: (): WorkerPort => {
+      const worker = startWorker();
+      return {
+        addEventListener: (type, listener): void => {
+          worker.addEventListener(type, listener);
+        },
+        postMessage: (message, options): void => {
+          if (message.kind === "unload") {
+            unloaded.push(message.dataset);
+          }
+          worker.postMessage(message, options);
+        },
+        terminate: (): void => {
+          worker.terminate();
+        },
+      };
+    },
+    unloaded,
+  };
+}
+
+/** A page of `count` pivots of the positions from `source`, on the worker `start` starts. */
+function pivots(start: () => WorkerPort, source: () => ArrayBuffer, count: number): ReactNode {
+  return (
+    <ParallaxProvider worker={start}>
+      {Array.from({ length: count }, (_unused, index) => (
+        <Pivot key={index} positions={source} />
+      ))}
+    </ParallaxProvider>
+  );
+}
+
+describe("the hooks' datasets, shared between components", () => {
+  test("load once for every component that asks for the same data", async () => {
+    const { start, unloaded } = recordingWorker();
+    const source = vi.fn(positionsBytes);
+    const screen = await render(pivots(start, source, 2));
+    await expect.poll(() => screen.getByText("Total: 652.75").all()).toHaveLength(2);
+    await screen.rerender(pivots(start, source, 1));
+    await screen.rerender(pivots(start, source, 3));
+    await expect.poll(() => screen.getByText("Total: 652.75").all()).toHaveLength(3);
+    expect([source.mock.calls.length, unloaded]).toStrictEqual([1, []]);
+  });
+
+  test("unload the data once the last component that shows it unmounts, and load it again if shown again", async () => {
+    const { start, unloaded } = recordingWorker();
+    const source = vi.fn(positionsBytes);
+    const screen = await render(pivots(start, source, 1));
+    await expect.element(screen.getByText("Total: 652.75")).toBeVisible();
+    await screen.rerender(pivots(start, source, 0));
+    await expect.poll(() => unloaded.filter((name) => name === "positions")).toHaveLength(1);
+    await screen.rerender(pivots(start, source, 1));
+    await expect.element(screen.getByText("Total: 652.75")).toBeVisible();
+    expect(source).toHaveBeenCalledTimes(2);
   });
 });

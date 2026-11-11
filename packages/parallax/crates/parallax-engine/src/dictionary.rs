@@ -34,6 +34,23 @@ impl Dictionary {
         Self::default()
     }
 
+    /// About how many bytes of the heap the dictionary holds.
+    #[must_use]
+    pub fn heap_bytes(&self) -> usize {
+        // Each value is held twice, as it is and folded, with a box of two words
+        // in each list and an entry of three words and a code in the lookup.
+        let text: usize = self
+            .values
+            .iter()
+            .zip(&self.folded)
+            .map(|(v, f)| v.len() + f.len())
+            .sum();
+        let boxes = 16 * (self.values.capacity() + self.folded.capacity());
+        let lookup =
+            (24 + 4) * self.lookup.capacity() + self.values.iter().map(|v| v.len()).sum::<usize>();
+        text + boxes + lookup + 4 * (self.sorted.capacity() + self.ranks.capacity())
+    }
+
     /// Returns the number of distinct strings.
     #[must_use]
     pub fn len(&self) -> usize {

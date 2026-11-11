@@ -573,13 +573,27 @@ struct Bucket {
     sorted: bool,
 }
 
+/// A node's children that show, in their order, and those a top-N puts in its
+/// "Other" row.
+type SiblingOrder = (Vec<u32>, Vec<u32>);
+
 /// What orders, filters and ranks each set of siblings: the parts of a view's
 /// configuration that decide which groups show and in what order.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq)]
 struct Siblings {
     sort: GroupSort,
     having: Vec<Having>,
     top_n: Option<TopN>,
+}
+
+impl Siblings {
+    fn of(config: &ViewConfig) -> Self {
+        Self {
+            sort: config.group_sort,
+            having: config.having.clone(),
+            top_n: config.top_n,
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -609,6 +623,14 @@ struct Grouped {
     running: RefCell<FxHashMap<(u32, u32, usize), MeasureValue>>,
     /// How each set of siblings is ordered, filtered and ranked.
     siblings: Siblings,
+    /// Each node's children in their order, and those a top-N puts in its Other
+    /// row, worked out the first time the node opens. Cleared whenever the view
+    /// changes or its siblings are ordered anew, and kept when a group opens or
+    /// closes.
+    child_orders: RefCell<FxHashMap<u32, Arc<SiblingOrder>>>,
+    /// The groups opened or closed by hand, by node, from `expanded`'s paths:
+    /// worked out with the visible rows.
+    opened: FxHashMap<u32, bool>,
     scratch_inputs: Vec<Input>,
     scratch_keys: Vec<Key>,
     scratch_path: Vec<u32>,
@@ -910,6 +932,40 @@ fn total_measures(table: &Table, config: &ViewConfig) -> Result<Vec<CompiledMeas
 
 /// Refuses ordering, filtering or ranking groups by a running total, which
 /// depends on their order and on which of them show.
+/// Checks that the measures a grouped view's siblings are sorted, filtered and
+/// ranked by exist among its `measures`, and can be.
+fn check_siblings(config: &ViewConfig, measures: usize) -> Result<(), ConfigError> {
+    let check = |i: usize| {
+        if i < measures {
+            Ok(())
+        } else {
+            Err(ConfigError::UnknownMeasure(i))
+        }
+    };
+    if let GroupOrder::Measure(i) = config.group_sort.by {
+        check(i)?;
+    }
+    for h in &config.having {
+        check(h.measure)?;
+    }
+    if let Some(t) = &config.top_n {
+        check(t.measure)?;
+    }
+    check_running(config)
+}
+
+/// A configuration without how its groups are ordered, filtered, ranked and
+/// opened, which a grouped view changes without building its tree again.
+fn without_order(config: &ViewConfig) -> ViewConfig {
+    ViewConfig {
+        group_sort: GroupSort::default(),
+        having: Vec::new(),
+        top_n: None,
+        expand_depth: 0,
+        ..config.clone()
+    }
+}
+
 fn check_running(config: &ViewConfig) -> Result<(), ConfigError> {
     let running = |i: usize| {
         config
@@ -974,24 +1030,7 @@ impl View {
                     .map(|m| compile_measure(table, m))
                     .collect::<Result<Vec<_>, _>>()?
             };
-            let n = measures.len();
-            let check = |i: usize| {
-                if i < n {
-                    Ok(())
-                } else {
-                    Err(ConfigError::UnknownMeasure(i))
-                }
-            };
-            if let GroupOrder::Measure(i) = config.group_sort.by {
-                check(i)?;
-            }
-            for h in &config.having {
-                check(h.measure)?;
-            }
-            if let Some(t) = &config.top_n {
-                check(t.measure)?;
-            }
-            check_running(&config)?;
+            check_siblings(&config, measures.len())?;
             let mut grouped = Grouped::new(
                 measures,
                 config
@@ -1013,11 +1052,7 @@ impl View {
                 }));
             }
             grouped.orders = Orders::compile(table, &config.orders)?;
-            grouped.siblings = Siblings {
-                sort: config.group_sort,
-                having: config.having.clone(),
-                top_n: config.top_n,
-            };
+            grouped.siblings = Siblings::of(&config);
             Kind::Grouped(Box::new(grouped))
         } else {
             let sort = flat_sort(table, &config)?;
@@ -1083,19 +1118,31 @@ impl View {
 
     /// Switches to `config` without computing the rows again, if it differs from
     /// the current configuration only in how they are shown: formats, titles,
-    /// totals, and which columns a flat view shows in what order. Totals that
-    /// changed are computed over the same rows. Returns `false`, changing nothing,
-    /// when it differs in anything else.
+    /// totals, and which columns a flat view shows in what order; and for a
+    /// grouped view, how its groups are sorted, filtered by a value, ranked and
+    /// opened, which reorders the groups it holds. Totals that changed are
+    /// computed over the same rows. Returns `false`, changing nothing, when it
+    /// differs in anything else.
     ///
     /// # Errors
     ///
     /// Returns an error if a new format, column or total is invalid; the view is
     /// then unchanged.
     pub fn reformat(&mut self, table: &Table, config: &ViewConfig) -> Result<bool, ConfigError> {
-        if without_display(&self.config) != without_display(config) {
+        let (old, new) = (without_display(&self.config), without_display(config));
+        let reorder = old != new;
+        if reorder && !(self.is_grouped() && without_order(&old) == without_order(&new)) {
             return Ok(false);
         }
         let formatters = Formatters::new(table, config)?;
+        if let Kind::Grouped(g) = &self.kind
+            && reorder
+        {
+            if g.detail.is_some() {
+                check_detail(config)?;
+            }
+            check_siblings(config, g.measures.len())?;
+        }
         if let Kind::Grouped(g) = &mut self.kind
             && let Some(detail) = &mut g.detail
         {
@@ -1125,6 +1172,19 @@ impl View {
                     grouped.invalidate();
                 }
                 flat.totals = totals;
+            }
+        }
+        if let Kind::Grouped(g) = &mut self.kind
+            && reorder
+        {
+            let siblings = Siblings::of(config);
+            if g.siblings == siblings {
+                // Only the depth that opens changed: the order of each set of
+                // siblings holds.
+                g.visible = None;
+            } else {
+                g.siblings = siblings;
+                g.reordered();
             }
         }
         self.formatters = formatters;
@@ -1308,6 +1368,18 @@ impl View {
             g.expanded.retain(|(p, _)| *p != path);
             g.expanded.push((path, expanded));
             g.visible = None;
+        }
+    }
+
+    /// Replaces every group opened or closed by hand with `expanded`, in order,
+    /// as setting each on a view just built would.
+    pub fn reset_expanded(&mut self, expanded: Vec<(Vec<Scalar>, bool)>) {
+        if let Kind::Grouped(g) = &mut self.kind {
+            g.expanded.clear();
+            g.visible = None;
+        }
+        for (path, open) in expanded {
+            self.set_expanded(path, open);
         }
     }
 
@@ -2238,6 +2310,8 @@ impl Grouped {
             lazy_values: RefCell::default(),
             running: RefCell::default(),
             siblings: Siblings::default(),
+            child_orders: RefCell::default(),
+            opened: FxHashMap::default(),
             scratch_inputs: Vec::new(),
             scratch_keys: Vec::new(),
             scratch_path: Vec::new(),
@@ -2280,13 +2354,20 @@ impl Grouped {
     }
 
     fn invalidate(&mut self) {
-        self.visible = None;
+        self.reordered();
         self.columns = None;
         self.lazy_values.get_mut().clear();
-        self.running.get_mut().clear();
         if let Some(detail) = &mut self.detail {
             detail.buckets = None;
         }
+    }
+
+    /// Forgets what follows the order of each set of siblings, which changed:
+    /// the rows that show, their running totals and each node's child order.
+    fn reordered(&mut self) {
+        self.visible = None;
+        self.running.get_mut().clear();
+        self.child_orders.get_mut().clear();
     }
 
     /// The id of a column-pivot key, assigned on first sight.
@@ -2611,7 +2692,8 @@ impl Grouped {
         if let Some(value) = self.running.borrow().get(&(id, split, m)) {
             return value.clone();
         }
-        let (children, rest) = self.children_in_order(table, parent);
+        let order = self.ordered_children(table, parent);
+        let (children, rest) = (&order.0, &order.1);
         let mut run = Cell::new(&self.measures, false);
         let mut values = Vec::with_capacity(children.len() + rest.len());
         let add = |run: &mut Cell, child: u32| {
@@ -2619,12 +2701,12 @@ impl Grouped {
                 run.merge_measure(cell, m);
             }
         };
-        for &child in &children {
+        for &child in children {
             add(&mut run, child);
             values.push((child, self.run_value(table, &run, m)));
         }
         if !rest.is_empty() {
-            for &child in &rest {
+            for &child in rest {
                 add(&mut run, child);
             }
             let other = self.run_value(table, &run, m);
@@ -2665,7 +2747,7 @@ impl Grouped {
         }
     }
 
-    fn is_expanded(&self, table: &Table, id: u32, config: &ViewConfig) -> bool {
+    fn is_expanded(&self, id: u32, config: &ViewConfig) -> bool {
         let node = self.node(id);
         if node.parent == NO_PARENT {
             return true;
@@ -2673,18 +2755,54 @@ impl Grouped {
         if node.depth as usize == self.levels() && self.detail.is_none() {
             return false;
         }
-        if !self.expanded.is_empty() {
-            let path = self.path(table, id);
-            if let Some((_, e)) = self.expanded.iter().rev().find(|(p, _)| *p == path) {
-                return *e;
-            }
+        if let Some(&opened) = self.opened.get(&id) {
+            return opened;
         }
         (node.depth as usize) <= config.expand_depth
     }
 
+    /// The node at `path`, from the outermost level down, if there is one.
+    fn node_at(&self, table: &Table, path: &[Scalar]) -> Option<u32> {
+        if path.len() > self.levels() {
+            return None;
+        }
+        path.iter()
+            .zip(&self.group_columns)
+            .try_fold(0, |node, (scalar, &column)| {
+                let key = table.column(column).scalar_to_key(scalar)?;
+                self.node(node).children.get(&key).copied()
+            })
+    }
+
+    /// The groups opened or closed by hand, by node; the last setting of a path
+    /// holds.
+    fn resolve_opened(&mut self, table: &Table) {
+        let mut opened = std::mem::take(&mut self.opened);
+        opened.clear();
+        for (path, expanded) in &self.expanded {
+            if let Some(id) = self.node_at(table, path) {
+                opened.insert(id, *expanded);
+            }
+        }
+        self.opened = opened;
+    }
+
+    /// The children of `id` in their order, worked out once until the view or
+    /// its siblings' order changes.
+    fn ordered_children(&self, table: &Table, id: u32) -> Arc<SiblingOrder> {
+        if let Some(order) = self.child_orders.borrow().get(&id) {
+            return Arc::clone(order);
+        }
+        let order = Arc::new(self.children_in_order(table, id));
+        self.child_orders
+            .borrow_mut()
+            .insert(id, Arc::clone(&order));
+        order
+    }
+
     /// The children of `id` that show, in their order, and those a top-N puts in
     /// its "Other" row.
-    fn children_in_order(&self, table: &Table, id: u32) -> (Vec<u32>, Vec<u32>) {
+    fn children_in_order(&self, table: &Table, id: u32) -> SiblingOrder {
         let config = &self.siblings;
         let node = self.node(id);
         let level = node.depth as usize;
@@ -2771,6 +2889,7 @@ impl Grouped {
 
     fn visible(&mut self, table: &Table, config: &ViewConfig) -> &Shown {
         if self.visible.is_none() {
+            self.resolve_opened(table);
             // A pivot shows its grand total first; a detail view's is its footer.
             let mut out = Shown::default();
             if self.detail.is_none() {
@@ -2778,7 +2897,7 @@ impl Grouped {
             }
             // Depth-first, children in display order.
             fn walk(g: &Grouped, table: &Table, config: &ViewConfig, id: u32, out: &mut Shown) {
-                let shown = g.show_all || g.is_expanded(table, id, config);
+                let shown = g.show_all || g.is_expanded(id, config);
                 if g.node(id).depth as usize == g.levels() {
                     if g.detail.is_some() && shown {
                         out.push(Visible::Rows {
@@ -2791,15 +2910,15 @@ impl Grouped {
                 if !shown {
                     return;
                 }
-                let (children, rest) = g.children_in_order(table, id);
-                for c in children {
+                let order = g.ordered_children(table, id);
+                for &c in &order.0 {
                     out.push(Visible::Node(c));
                     walk(g, table, config, c, out);
                 }
-                if !rest.is_empty() {
+                if !order.1.is_empty() {
                     out.push(Visible::Other {
                         parent: id,
-                        members: rest,
+                        members: order.1.clone(),
                     });
                 }
             }
@@ -2892,7 +3011,7 @@ impl Grouped {
                     .iter()
                     .map(|v| match v {
                         Row::Node(id) if *id != 0 && (self.node(*id).depth as usize) < levels => {
-                            Some(self.is_expanded(table, *id, config))
+                            Some(self.is_expanded(*id, config))
                         }
                         _ => None,
                     })
@@ -3118,7 +3237,7 @@ impl Grouped {
                 shown
                     .iter()
                     .map(|r| match r {
-                        Row::Node(id) => Some(self.is_expanded(table, *id, config)),
+                        Row::Node(id) => Some(self.is_expanded(*id, config)),
                         _ => None,
                     })
                     .collect::<BooleanArray>(),

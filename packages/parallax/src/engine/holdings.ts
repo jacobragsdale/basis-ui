@@ -126,6 +126,12 @@ class Holdings {
     this.#listeners.delete(id);
   }
 
+  /** Forgets `dataset`, which the page unloads. */
+  public drop(dataset: string): void {
+    this.#held.delete(dataset);
+    this.#loading.delete(dataset);
+  }
+
   /** Forgets every table and load, as when the worker ends. */
   public clear(): void {
     this.#held.clear();
