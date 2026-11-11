@@ -43,7 +43,7 @@ for _ in $(seq 30); do
 done
 curl -sf "$url" >/dev/null || { echo "ERROR the gallery's server did not answer at $url within 30 s:" >&2; cat "$log" >&2; exit 1; }
 
-docker run --rm --network host --user "$(id -u):$(id -g)" -e HOME=/tmp -e CI="${CI:-}" -e GALLERY_PINNED_IMAGE=1 \
+docker run --rm --name "gallery-shots-$$" --memory "${E2E_MEMORY:-8g}" --network host --user "$(id -u):$(id -g)" -e HOME=/tmp -e CI="${CI:-}" -e GALLERY_PINNED_IMAGE=1 \
   -v "$repo:$repo" -w "$gallery" "mcr.microsoft.com/playwright:v$version-noble" \
   node_modules/.bin/playwright test -c tests/shots/playwright.config.ts "${arguments[@]}" || {
   status=$?

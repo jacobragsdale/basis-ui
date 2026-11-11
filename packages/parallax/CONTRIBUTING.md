@@ -81,7 +81,9 @@ demo's datasets and the fixed-income page's bonds, which it writes with
 renders differently from one machine to the next, so it runs Playwright in the
 Docker image `mcr.microsoft.com/playwright` of the installed `@playwright/test`
 version, against the harness it builds and serves from this machine, and
-compares screenshots at threshold 0. Its parity spec compares each chart's
+compares screenshots at threshold 0. Every Docker suite here, the gallery's
+included, caps its container's memory at `E2E_MEMORY`, 8g by default, so a
+runaway browser dies inside it. Its parity spec compares each chart's
 canvas pixel for pixel with the Angular layer's screenshots, recorded in the
 same image and kept in `tests/e2e/charts/angular` since step 2.7 deleted that
 layer. After an intended change to how charts look, run

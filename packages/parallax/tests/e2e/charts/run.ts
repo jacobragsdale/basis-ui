@@ -103,7 +103,21 @@ function playwright(args: readonly string[]): number {
     "PARALLAX_PINNED_IMAGE=1",
   ];
   const config = "tests/e2e/charts/playwright.config.ts";
-  const container = ["run", "--rm", "--network", "host", "--user", user, ...environment];
+  const memory = process.env["E2E_MEMORY"] ?? "8g";
+  const name = `parallax-charts-e2e-${process.pid}`;
+  const container = [
+    "run",
+    "--rm",
+    "--name",
+    name,
+    "--memory",
+    memory,
+    "--network",
+    "host",
+    "--user",
+    user,
+    ...environment,
+  ];
   const tests = ["node_modules/.bin/playwright", "test", "-c", config, ...args];
   const result = spawnSync(
     "docker",
