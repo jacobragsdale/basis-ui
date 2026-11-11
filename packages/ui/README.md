@@ -1433,6 +1433,11 @@ searches only for a valid identifier, which its `search` receives with its kind;
 />
 ```
 
+With `multiple`, it chooses several, as chips, and a list pasted into it, identifiers one per line or separated by
+spaces, commas or semicolons, as copied from a sheet, adds every security the list finds at once: each identifier is
+checked and searched for, the first security each finds is added, once, after those chosen, and the line under the
+picker says how many were added and why each other found none. One paste looks up at most 200.
+
 ### FileImport
 
 `FileImport` takes a CSV file or an Excel workbook through its drop zone or its file button and reads it in the

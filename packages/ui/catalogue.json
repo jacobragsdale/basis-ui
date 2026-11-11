@@ -15404,6 +15404,12 @@
           "type": "string | undefined"
         },
         {
+          "description": "Called when text is pasted into the input; `event.preventDefault()` keeps the text out of it, as SecurityPicker does with a list of identifiers.",
+          "name": "onPaste",
+          "optional": true,
+          "type": "((event: ClipboardEvent<HTMLInputElement>) => void) | undefined"
+        },
+        {
           "description": "Whether the picker chooses several items, shown as chips, in place of one.",
           "name": "multiple",
           "optional": true,
@@ -15529,6 +15535,12 @@
           "name": "className",
           "optional": true,
           "type": "string | undefined"
+        },
+        {
+          "description": "Called when text is pasted into the input; `event.preventDefault()` keeps the text out of it, as SecurityPicker does with a list of identifiers.",
+          "name": "onPaste",
+          "optional": true,
+          "type": "((event: ClipboardEvent<HTMLInputElement>) => void) | undefined"
         },
         {
           "description": "Whether the picker chooses several items, shown as chips, in place of one.",
@@ -25829,6 +25841,12 @@
           "type": "string | undefined"
         },
         {
+          "description": "Called when text is pasted into the input; `event.preventDefault()` keeps the text out of it, as SecurityPicker does with a list of identifiers.",
+          "name": "onPaste",
+          "optional": true,
+          "type": "((event: ClipboardEvent<HTMLInputElement>) => void) | undefined"
+        },
+        {
           "description": "Chooses several items, shown as chips, each with a button that removes it.",
           "name": "multiple",
           "optional": false,
@@ -26710,6 +26728,12 @@
           "name": "className",
           "optional": true,
           "type": "string | undefined"
+        },
+        {
+          "description": "Called when text is pasted into the input; `event.preventDefault()` keeps the text out of it, as SecurityPicker does with a list of identifiers.",
+          "name": "onPaste",
+          "optional": true,
+          "type": "((event: ClipboardEvent<HTMLInputElement>) => void) | undefined"
         },
         {
           "description": "Whether the picker chooses several items, shown as chips, in place of one.",

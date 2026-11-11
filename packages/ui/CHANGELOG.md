@@ -9,6 +9,10 @@ anything of an app.
 
 ## Unreleased
 
+- A `SecurityPicker` with `multiple` takes a list of identifiers pasted at once, as copied from a sheet, and adds every
+  security it finds, saying under the picker which identifiers found none. `EntityPicker` takes `onPaste`. What to do:
+  nothing.
+
 - `Tree` and `TreeSelect`, a node of a hierarchy, such as a book under its desk, chosen on the WAI-ARIA tree view's
   keys, with `TreeNode` for its nodes. What to do: nothing.
 

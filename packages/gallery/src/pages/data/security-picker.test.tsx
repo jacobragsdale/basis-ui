@@ -8,6 +8,7 @@ import { page, userEvent } from "vite-plus/test/browser";
 import { render } from "vitest-browser-react";
 
 import { SecurityPickerSection } from "./entity-picker.tsx";
+import { securities } from "./fixtures.ts";
 import type { Security } from "./fixtures.ts";
 import { WithQueryClient } from "./with-query-client.tsx";
 
@@ -26,6 +27,32 @@ function RecordingPicker({ searched }: { readonly searched: SecurityIdentifier[]
         itemLabel={(security) => security.description}
       />
     </WithQueryClient>
+  );
+}
+
+/** A SecurityPicker of several that finds the page's securities by CUSIP. */
+function PastingPicker(): ReactElement {
+  return (
+    <WithQueryClient>
+      <SecurityPicker
+        multiple
+        aria-label="Securities"
+        search={async (identifier) =>
+          Promise.resolve(securities.filter((security) => security.cusip === identifier.value))
+        }
+        itemKey={(security) => security.cusip}
+        itemLabel={(security) => security.description}
+      />
+    </WithQueryClient>
+  );
+}
+
+/** Pastes `text` into `element`, as the clipboard would. */
+function pasteInto(element: Element, text: string): void {
+  const transfer = new DataTransfer();
+  transfer.setData("text", text);
+  element.dispatchEvent(
+    new ClipboardEvent("paste", { bubbles: true, cancelable: true, clipboardData: transfer }),
   );
 }
 
@@ -88,5 +115,18 @@ describe("SecurityPicker", () => {
     await userEvent.keyboard("{ArrowDown}{Enter}");
     await expect.element(input).toHaveValue("UST 4.625% 08/15/2036");
     await expect.element(screen.getByText("91282CRF0, ISIN US91282CRF04")).toBeVisible();
+  });
+
+  test("adds every security a pasted list finds, and says which identifiers found none", async () => {
+    const screen = await render(<PastingPicker />);
+    const input = screen.getByRole("combobox", { name: "Securities" });
+    await userEvent.click(input);
+    pasteInto(input.element(), "91282CRV5\n91282CRT0\n037833100");
+    await expect.element(screen.getByText("UST 4.875% 10/31/2033")).toBeVisible();
+    await expect.element(screen.getByText("UST 4.750% 10/31/2031")).toBeVisible();
+    await expect
+      .element(screen.getByText("Added 2 securities. 037833100 matched no security."))
+      .toBeVisible();
+    await expect.element(input).toHaveValue("");
   });
 });

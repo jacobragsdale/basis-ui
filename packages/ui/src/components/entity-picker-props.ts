@@ -3,7 +3,7 @@
 
 import type { QueryKey } from "@tanstack/react-query";
 import { useState } from "react";
-import type { ReactNode } from "react";
+import type { ClipboardEvent, ReactNode } from "react";
 
 import { useEntitySearch } from "./entity-search.ts";
 import type { EntitySearch, EntitySearchState } from "./entity-search.ts";
@@ -46,6 +46,9 @@ interface EntityPickerBaseProps<TItem> {
   readonly "aria-invalid"?: boolean | undefined;
   /** Places the picker, as with `w-80`; its look is fixed. */
   readonly className?: string | undefined;
+  /** Called when text is pasted into the input; `event.preventDefault()` keeps the text out of it, as SecurityPicker
+   * does with a list of identifiers. */
+  readonly onPaste?: ((event: ClipboardEvent<HTMLInputElement>) => void) | undefined;
 }
 
 /** A picker that chooses one item, or none. */
@@ -127,12 +130,14 @@ function inputProps<TItem>(
   readonly "aria-label": string | undefined;
   readonly "aria-describedby": string | undefined;
   readonly "aria-invalid": boolean | undefined;
+  readonly onPaste: ((event: ClipboardEvent<HTMLInputElement>) => void) | undefined;
 } {
   return {
     "aria-describedby": props["aria-describedby"],
     "aria-invalid": state.status === "invalid" ? true : props["aria-invalid"],
     "aria-label": props["aria-label"],
     id: props.id,
+    onPaste: props.onPaste,
     placeholder: props.placeholder,
   };
 }

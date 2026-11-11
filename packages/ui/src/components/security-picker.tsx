@@ -9,47 +9,17 @@
  *     search={async (identifier, signal) => (await findSecurities({ [identifier.kind]: identifier.value }, { signal })).data}
  *     itemKey={(security) => security.cusip}
  *     itemLabel={(security) => security.description}
- *   /> */
+ *   />
+ *
+ * With `multiple`, a list of identifiers pasted into it, one per line or separated by spaces or commas, adds each
+ * security found at once and says which identifiers found none (security-paste.ts). */
 
 import type { ReactElement } from "react";
 
-import {
-  parseSecurityIdentifier,
-  securityIdentifierKinds,
-} from "#securities/security-identifier.ts";
-import type {
-  SecurityIdentifier,
-  SecurityIdentifierKind,
-} from "#securities/security-identifier.ts";
-
 import { EntityPicker } from "./entity-picker.tsx";
-import type { MultipleEntityPickerProps, SingleEntityPickerProps } from "./entity-picker-props.ts";
-
-/** Searches for the securities an identifier names; aborting `signal` cancels it. */
-type SecuritySearch<TItem> = (
-  identifier: SecurityIdentifier,
-  signal: AbortSignal,
-) => Promise<readonly TItem[]>;
-
-/** What SecurityPicker takes in place of EntityPicker's `search` and `validate`. */
-interface SecurityPickerOwnProps<TItem> {
-  /** Finds the securities the checked identifier names. */
-  readonly search: SecuritySearch<TItem>;
-  /** The identifiers it takes; a CUSIP, an ISIN or a SEDOL unless set. */
-  readonly kinds?: readonly SecurityIdentifierKind[] | undefined;
-}
-
-type SecurityPickerProps<TItem> =
-  | (Omit<SingleEntityPickerProps<TItem>, "search" | "validate"> & SecurityPickerOwnProps<TItem>)
-  | (Omit<MultipleEntityPickerProps<TItem>, "search" | "validate"> & SecurityPickerOwnProps<TItem>);
-
-const lengths: Readonly<Record<SecurityIdentifierKind, number>> = { cusip: 9, isin: 12, sedol: 7 };
-const names: Readonly<Record<SecurityIdentifierKind, string>> = {
-  cusip: "a CUSIP",
-  isin: "an ISIN",
-  sedol: "a SEDOL",
-};
-const either = new Intl.ListFormat("en-US", { type: "disjunction" });
+import { MultipleSecurityPicker } from "./security-picker-multiple.tsx";
+import { securityLookup } from "./security-picker-props.ts";
+import type { SecurityPickerProps } from "./security-picker-props.ts";
 
 /** A picker that searches for securities by CUSIP, ISIN or SEDOL. It waits for as many characters as the shortest
  * identifier it takes has, saying which it takes, then checks each text before searching.
@@ -78,28 +48,14 @@ const either = new Intl.ListFormat("en-US", { type: "disjunction" });
  * </Field>;
  * ```
  */
-function SecurityPicker<TItem>({
-  search,
-  kinds = securityIdentifierKinds,
-  ...props
-}: SecurityPickerProps<TItem>): ReactElement {
-  const shortest = Math.min(...kinds.map((kind) => lengths[kind]));
-  const picker = {
-    hint: `Type ${either.format(kinds.map((kind) => names[kind]))}.`,
-    minLength: shortest,
-    placeholder: kinds.map((kind) => kind.toUpperCase()).join(", "),
-    ...props,
-    search: async (text: string, signal: AbortSignal): Promise<readonly TItem[]> => {
-      const reading = parseSecurityIdentifier(text, kinds);
-      return reading.ok ? search(reading.value, signal) : [];
-    },
-    validate: (text: string): string | undefined => {
-      const reading = parseSecurityIdentifier(text, kinds);
-      return reading.ok ? undefined : reading.reason;
-    },
-  };
-  return <EntityPicker {...picker} />;
+function SecurityPicker<TItem>(props: SecurityPickerProps<TItem>): ReactElement {
+  if (props.multiple === true) {
+    return <MultipleSecurityPicker {...props} />;
+  }
+  const { search, kinds, ...rest } = props;
+  const { defaults, lookup } = securityLookup({ kinds, search });
+  return <EntityPicker {...defaults} {...rest} {...lookup} />;
 }
 
 export { SecurityPicker };
-export type { SecurityPickerProps, SecuritySearch };
+export type { SecurityPickerProps, SecuritySearch } from "./security-picker-props.ts";

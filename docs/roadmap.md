@@ -674,7 +674,9 @@ flowchart TD
    description and errors, and `submitErrors` puts a 422's on them, replacing the bindings the example's settlement
    form, the gallery's two forms and `vp run new form` each wrote by hand; `UnsavedChangesGuard` asks before a page
    with unsaved changes is left, and `TypedConfirmDialog` asks for a name to be typed before an action that cannot be
-   undone.
+   undone. 6.7.7 built on 2026-11-11: `MultiSelect` chooses several with Select all and a count,
+   `NumberField` and `Toolbar` wrap Base UI's, `Tree` and `TreeSelect` choose a node on the tree view's keys, and a
+   list of identifiers pasted into a `SecurityPicker` of several adds every security it finds.
 8. **6.8 The agent's toolbelt.** Lane Preset, in order, since preset changes land one at a time: a catalogue that
    answers, with `vp run docs NAME` (`6.8.1-catalogue`), lint that costs fewer rounds (`6.8.2-lint-limits`), the doors
    that are open (`6.8.3-closed-doors`), one verdict, `vp run verify` (`6.8.4-verify`), a shot that explains itself
