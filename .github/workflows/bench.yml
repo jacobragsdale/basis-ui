@@ -40,7 +40,9 @@ jobs:
           curl -sSL "https://github.com/wasm-bindgen/wasm-bindgen/releases/download/${version}/wasm-bindgen-${version}-x86_64-unknown-linux-musl.tar.gz" | tar xz
           sudo install -m 755 "wasm-bindgen-${version}-x86_64-unknown-linux-musl/wasm-bindgen" /usr/local/bin/
       - run: vp run @basis/ui#build
-      - run: vp exec --filter @basis/ui playwright install --with-deps chromium
+      # The bench launches the headless shell of parallax's own @playwright/test, which can pin another browser than
+      # @basis/ui's playwright: installing @basis/ui's left the one it launches missing (runs 42817708470, 43015569673).
+      - run: vp exec --filter @basis/parallax playwright install --with-deps chromium
       # Builds the package, writes the datasets, builds the harness and measures, failing on a figure over its budget.
       - run: vp run @basis/parallax#bench --modes plain --rounds 1 --budgets nightly
       - uses: actions/upload-artifact@v7
