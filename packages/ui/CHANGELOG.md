@@ -9,6 +9,9 @@ anything of an app.
 
 ## Unreleased
 
+- `Tree` and `TreeSelect`, a node of a hierarchy, such as a book under its desk, chosen on the WAI-ARIA tree view's
+  keys, with `TreeNode` for its nodes. What to do: nothing.
+
 - `MultiSelect`, several choices from a short list with "Select all" and a count; `NumberField`, Base UI's number
   field with buttons that step it; and `Toolbar`, with `ToolbarButton`, `ToolbarGroup` and `ToolbarSeparator`. What to
   do: nothing.

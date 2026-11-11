@@ -14052,6 +14052,147 @@
       "example": "import { Field, FieldLabel, NumberField } from \"@basis/ui\";\n\n<Field>\n  <FieldLabel htmlFor=\"lookback\">Look back, in days</FieldLabel>\n  <NumberField id=\"lookback\" defaultValue={30} min={1} max={365} />\n</Field>;\n"
     },
     {
+      "extends": [],
+      "family": "tree",
+      "module": "@basis/ui",
+      "name": "Tree",
+      "props": [
+        {
+          "description": "The tree's roots, each with its children.",
+          "name": "nodes",
+          "optional": false,
+          "type": "readonly TreeNode<TValue>[]"
+        },
+        {
+          "description": "The node chosen, or `null` for none, when the app controls it.",
+          "name": "value",
+          "optional": true,
+          "type": "TValue | null | undefined"
+        },
+        {
+          "description": "The node an uncontrolled tree starts with; none unless set.",
+          "name": "defaultValue",
+          "optional": true,
+          "type": "TValue | null | undefined"
+        },
+        {
+          "description": "Called with the node's value each time one is chosen.",
+          "name": "onValueChange",
+          "optional": true,
+          "type": "((value: TValue) => void) | undefined"
+        },
+        {
+          "description": "The branches expanded at first; the path to the chosen node unless set.",
+          "name": "defaultExpanded",
+          "optional": true,
+          "type": "readonly TValue[] | undefined"
+        },
+        {
+          "description": "Which nodes can be chosen: any, the default, or only leaves, whose branches Enter expands instead.",
+          "name": "selectable",
+          "optional": true,
+          "type": "\"any\" | \"leaves\" | undefined"
+        },
+        {
+          "description": "The tree's name, such as \"Books\".",
+          "name": "aria-label",
+          "optional": false,
+          "type": "string"
+        },
+        {
+          "description": "The tree's id.",
+          "name": "id",
+          "optional": true,
+          "type": "string | undefined"
+        },
+        {
+          "description": "Places the tree, as with `max-h-80`; its look is fixed.",
+          "name": "className",
+          "optional": true,
+          "type": "string | undefined"
+        }
+      ],
+      "purpose": "A tree to choose a node from. Name it with `aria-label`.",
+      "use": "For choosing from a hierarchy, such as a book under its desk or a strategy under its fund. In a form, use TreeSelect; for a flat list, Select or MultiSelect.",
+      "with": [
+        "TreeSelect",
+        "Select",
+        "MultiSelect"
+      ],
+      "variants": {},
+      "example": "import { Tree } from \"@basis/ui\";\n\nconst books = [\n  { label: \"Rates\", value: \"rates\", children: [{ label: \"Treasuries\", value: \"ust\" }] },\n  { label: \"Credit\", value: \"credit\", children: [{ label: \"High yield\", value: \"hy\" }] },\n];\n\n<Tree aria-label=\"Books\" nodes={books} defaultValue=\"hy\" />;\n"
+    },
+    {
+      "extends": [
+        "Omit<ComponentProps<\"button\">, \"value\" | \"defaultValue\" | \"onChange\" | \"children\" | \"type\">"
+      ],
+      "family": "tree-select",
+      "module": "@basis/ui",
+      "name": "TreeSelect",
+      "props": [
+        {
+          "description": "The tree's roots, each with its children.",
+          "name": "nodes",
+          "optional": false,
+          "type": "readonly TreeNode<TValue>[]"
+        },
+        {
+          "description": "The node chosen, or `null` for none, when the app controls it.",
+          "name": "value",
+          "optional": true,
+          "type": "TValue | null | undefined"
+        },
+        {
+          "description": "The node an uncontrolled select starts with; none unless set.",
+          "name": "defaultValue",
+          "optional": true,
+          "type": "TValue | null | undefined"
+        },
+        {
+          "description": "Called with the node's value each time one is chosen.",
+          "name": "onValueChange",
+          "optional": true,
+          "type": "((value: TValue) => void) | undefined"
+        },
+        {
+          "description": "Which nodes can be chosen: any, the default, or only leaves.",
+          "name": "selectable",
+          "optional": true,
+          "type": "\"any\" | \"leaves\" | undefined"
+        },
+        {
+          "description": "The button's text while none is chosen; \"Choose…\" unless set.",
+          "name": "placeholder",
+          "optional": true,
+          "type": "string | undefined"
+        },
+        {
+          "description": "The name of the tree and its popover, such as \"Books\"; \"Choose a node\" unless set.",
+          "name": "pickerLabel",
+          "optional": true,
+          "type": "string | undefined"
+        }
+      ],
+      "purpose": "A select of a node in a hierarchy. Name it with a FieldLabel's `htmlFor` and this `id`, or with `aria-label`.",
+      "use": "For choosing a book, a strategy or an account under its parents in a form. For a tree shown on the page, use Tree; for a flat list, Select or MultiSelect.",
+      "with": [
+        "Tree",
+        "Select",
+        "Field",
+        "FieldLabel"
+      ],
+      "variants": {
+        "size": {
+          "default": "default",
+          "options": [
+            "default",
+            "sm"
+          ]
+        }
+      },
+      "example": "import { Field, FieldLabel, TreeSelect } from \"@basis/ui\";\n\nconst books = [\n  { label: \"Rates\", value: \"rates\", children: [{ label: \"Treasuries\", value: \"ust\" }] },\n  { label: \"Credit\", value: \"credit\", children: [{ label: \"High yield\", value: \"hy\" }] },\n];\n\n<Field>\n  <FieldLabel htmlFor=\"book\">Book</FieldLabel>\n  <TreeSelect id=\"book\" nodes={books} pickerLabel=\"Books\" selectable=\"leaves\" defaultValue=\"hy\" />\n</Field>;\n"
+    },
+    {
       "extends": [
         "Omit<Parameters<typeof selectTriggerVariants>[0] extends undefined ? never : Parameters<typeof selectTriggerVariants>[0], \"class\" | \"className\">"
       ],
@@ -26764,6 +26905,33 @@
       "module": "@basis/ui",
       "name": "TokenSource",
       "purpose": "Supplies the signed-in user's JWT, or `null` for an anonymous user. The sign-in adapter provides it."
+    },
+    {
+      "fields": [
+        {
+          "description": "",
+          "name": "value",
+          "optional": false,
+          "type": "TValue"
+        },
+        {
+          "description": "",
+          "name": "label",
+          "optional": false,
+          "type": "string"
+        },
+        {
+          "description": "",
+          "name": "children",
+          "optional": true,
+          "type": "readonly TreeNode<TValue>[] | undefined"
+        }
+      ],
+      "exported": true,
+      "module": "@basis/ui",
+      "name": "TreeNode",
+      "parameters": "<TValue extends string>",
+      "purpose": "One node of a tree: its value, unique in the tree, the words it shows, and its children, if it has any."
     },
     {
       "fields": [

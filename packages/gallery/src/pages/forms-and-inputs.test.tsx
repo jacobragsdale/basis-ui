@@ -214,6 +214,8 @@ const sections = [
   "Select",
   "NativeSelect",
   "MultiSelect",
+  "Tree",
+  "TreeSelect",
   "Combobox",
   "Toggle",
   "ToggleGroup",

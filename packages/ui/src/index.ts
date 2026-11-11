@@ -362,6 +362,9 @@ export { AsOfDatePicker, type AsOfDatePickerProps } from "./components/as-of-dat
 export { DatePicker, type DatePickerProps } from "./components/date-picker.tsx";
 export { MonthPicker, type MonthPickerProps } from "./components/month-picker.tsx";
 export { NumberField, type NumberFieldProps } from "./components/number-field.tsx";
+export { Tree, type TreeProps } from "./components/tree.tsx";
+export { TreeSelect, type TreeSelectProps } from "./components/tree-select.tsx";
+export type { TreeNode } from "./components/tree-model.ts";
 export {
   MultiSelect,
   type MultiSelectOption,

@@ -749,6 +749,13 @@ a count stepped by its buttons, the arrow keys or the wheel within `min` and `ma
 or `25bp`, is `AmountInput`'s. `Toolbar` is a row of actions, `ToolbarButton`s, ghost and small unless set, in
 `ToolbarGroup`s between `ToolbarSeparator`s: Tab reaches it once and the arrow keys move along it.
 
+`Tree` chooses a node of a hierarchy, such as a book under its desk: its `nodes` are `TreeNode`s, each a value unique
+in the tree, its words and its children. It is the WAI-ARIA tree view: Up and Down move a row, Home and End to the
+ends, Right expands a branch or moves into it, Left collapses it or moves to its parent, and Enter or Space chooses;
+`selectable="leaves"` makes a branch expand where a leaf is chosen. `TreeSelect` is the same tree in a popover from a
+button that shows the chosen node's path, "Credit / Investment grade / Financials", for a form; it opens on the chosen
+node with the branches above it expanded, and choosing closes it.
+
 ### The theme's tokens
 
 A plain element, such as a page's own panel, takes its colours from the theme's tokens, drawn whole: no class takes an
