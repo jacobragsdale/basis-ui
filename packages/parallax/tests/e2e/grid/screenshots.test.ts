@@ -159,3 +159,15 @@ for (const ui of otherThemes) {
     });
   }
 }
+
+/* Rich cells: the book with a bar, a diverging heat fill, badges, a link and a rule, in every shipped theme. */
+for (const ui of ["default", ...otherThemes]) {
+  for (const theme of ["light", "dark"] as const) {
+    test(`the book's rich cells draw as in their screenshot in @basis/ui's ${ui} theme, ${theme} scheme`, async ({
+      page,
+    }) => {
+      const section = await book(page, `theme=${theme}&look=basis&cells=1&ui=${ui}`);
+      await sectionShot(section, `grid-book-cells-${theme}-${ui}.png`);
+    });
+  }
+}

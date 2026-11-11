@@ -191,6 +191,35 @@ keeps its place in the page. Escape does one thing at a time: it clears a
 selection or a search before it restores the grid. A grid of `height` `auto`
 fills the window too.
 
+A layout's `cells` draws a column's cells as more than text, and its `rules`
+style them by value, with a filter's operators:
+
+```tsx
+const layout = {
+  cells: {
+    market_value_usd: { kind: "bar" },                       // from zero, or from: "min"
+    daily_pnl_usd: { kind: "heat", scale: "diverging" },    // or "sequential"
+    long_short: { kind: "badge", values: { Long: "positive", Short: "negative" } },
+    prices: { kind: "sparkline" },                           // numbers written in a text column
+    ticker: { kind: "link" },
+  },
+  rules: {
+    quantity: [{ when: { op: "gt", value: 50_000 }, format: { tone: "warning", fill: true, bold: true } }],
+  },
+} satisfies LayoutInput;
+```
+
+A bar's length and a heat fill's colour are over the column's domain, its least
+and greatest value over the rows that pass the filters, which the engine gives
+each frame of a flat view; a detail view's are its loaded rows'. A signed bar
+runs from zero in the gain's and the loss's tints, a heat fill takes the
+theme's sequential scale, or its diverging one about zero, under ink that reads
+on it, and a badge says its tone with a shape as well as a colour: a dot for
+`positive`, a diamond for `negative`, a triangle for `warning`, a square for
+`info`. The first rule whose condition a cell meets gives its text a tone's ink,
+a fill in the tone's tint, or bold. Screen readers and copies read a cell's
+value, not its picture.
+
 A canvas is invisible to screen readers, so the grid is a `grid` whose name is
 `label`, whose description says how many rows and columns it holds and how to
 move about it, and whose active descendant is the focused cell, read as its

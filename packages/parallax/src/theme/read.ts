@@ -102,6 +102,14 @@ function sameChartColors(first: ChartColors, second: ChartColors): boolean {
   return JSON.stringify(first) === JSON.stringify(second);
 }
 
+/** A grid's theme: the tokens, and the charts' colours, whose scales a heat cell draws with. */
+type GridTheme = Theme & { readonly colors: ChartColors };
+
+/** Whether two grid themes are the same, tokens and colours. */
+function sameGridTheme(first: GridTheme, second: GridTheme): boolean {
+  return sameTheme(first, second) && sameChartColors(first.colors, second.colors);
+}
+
 /** Whether two themes fit a column to different widths: a font, its loading, a cell's padding or the header's icons. */
 function measuresDiffer(was: Theme, now: Theme): boolean {
   return (
@@ -112,5 +120,13 @@ function measuresDiffer(was: Theme, now: Theme): boolean {
   );
 }
 
-export { defaultTheme, measuresDiffer, readChartColors, readTheme, sameChartColors, sameTheme };
-export type { Theme };
+export {
+  defaultTheme,
+  measuresDiffer,
+  readChartColors,
+  readTheme,
+  sameChartColors,
+  sameGridTheme,
+  sameTheme,
+};
+export type { GridTheme, Theme };

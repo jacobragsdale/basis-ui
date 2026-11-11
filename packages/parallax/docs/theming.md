@@ -172,6 +172,13 @@ parameter can be a number of pixels.
 | `--px-row-height` | `rowHeight` | length | `24px` | same | A grid row. `basisTheme`'s is `--control-md-height`. |
 | `--px-muted` | `muted` | colour | `#667085` | `#8a93a3` | Secondary text: hints, counts, axis labels, resting funnels and flagged cells. |
 | `--px-negative` | `negative` | colour | `#b42318` | `#ff7b72` | Numbers below zero. |
+| `--px-positive` | `positive` | colour | `#1a7f37` | `#56d364` | A gain: a badge's and a rule's ink, a data bar above zero. |
+| `--px-warning` | `warning` | colour | `#9a6700` | `#e3b341` | A badge's and a rule's warning ink. |
+| `--px-info` | `info` | colour | `#0969da` | `#79c0ff` | A badge's and a rule's note ink. |
+| `--px-positive-subtle` | `positiveSubtle` | colour | 14 % of `positive` over `background` | 22 % | Behind a positive badge's text and a rule's fill. |
+| `--px-negative-subtle` | `negativeSubtle` | colour | 14 % of `negative` over `background` | 22 % | As above, for a loss. |
+| `--px-warning-subtle` | `warningSubtle` | colour | 14 % of `warning` over `background` | 22 % | As above, for a warning. |
+| `--px-info-subtle` | `infoSubtle` | colour | 14 % of `info` over `background` | 22 % | As above, for a note. |
 | `--px-highlight` | `highlight` | colour | `#ffe58a` | `rgba(255, 214, 10, 0.38)` | Behind text that matches a search. |
 | `--px-on-accent` | `onAccent` | colour | `#ffffff` | `#0b1220` | Text on the accent: a pressed toolbar button's, a drop target's. |
 | `--px-border-color` | `borderColor` | colour | `--px-foreground` 12% in `--px-background` | `--px-foreground` 16% in `--px-background` | Lines between parts: under the toolbar, around menus and panels, and the frame. |

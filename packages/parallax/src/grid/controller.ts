@@ -8,8 +8,8 @@ import type { ViewHandle } from "#engine/view.ts";
 import type { Viewport } from "#engine/view-types.ts";
 import type { FrameData } from "#frame/frame.ts";
 import type { Layout } from "#layout/layout.ts";
-import { measuresDiffer, sameTheme } from "#theme/read.ts";
-import type { Theme } from "#theme/read.ts";
+import { measuresDiffer, sameGridTheme } from "#theme/read.ts";
+import type { GridTheme } from "#theme/read.ts";
 
 import type { GridParts } from "./dom.ts";
 import { drillAt, toggleAt } from "./groups.ts";
@@ -111,9 +111,9 @@ class GridController {
   }
 
   /** Takes the tokens in effect, read again whenever they may have changed. Equal tokens change nothing. */
-  public setTokens(theme: Theme): void {
+  public setTokens(theme: GridTheme): void {
     const was = this.#model.theme;
-    if (was !== null && sameTheme(was, theme)) {
+    if (was !== null && sameGridTheme(was, theme)) {
       return;
     }
     this.#model.theme = theme;

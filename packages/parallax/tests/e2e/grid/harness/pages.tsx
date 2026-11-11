@@ -7,7 +7,7 @@ import type { ReactNode, RefObject } from "react";
 import { Grid, useDataset } from "#index.ts";
 import type { GridHandle, LayoutInput } from "#index.ts";
 
-import { blotter, book, datasets, referencePivot, sources } from "./data.ts";
+import { blotter, book, datasets, referencePivot, richBook, sources } from "./data.ts";
 import type { DatasetName } from "./data.ts";
 
 /** How often the drawing counters are read, as the demo's performance overlay did. */
@@ -124,9 +124,11 @@ function SinglePage({
 /** The small tables: the book and the blotter, side by side. */
 function SmallTables({
   performance,
+  cells,
   children,
 }: {
   readonly performance: boolean;
+  readonly cells: boolean;
   readonly children: ReactNode;
 }): ReactNode {
   const grid = useRef<GridHandle>(null);
@@ -140,7 +142,7 @@ function SmallTables({
           <h2>
             Book<span>300 positions, held in this page</span>
           </h2>
-          <DatasetGrid name="book" first={book} height="auto" grid={grid} />
+          <DatasetGrid name="book" first={cells ? richBook : book} height="auto" grid={grid} />
         </section>
         <section data-table="blotter">
           <h2>

@@ -22,6 +22,11 @@ class TextWidths {
     this.#font = font;
   }
 
+  /** The font last set. */
+  public get font(): string {
+    return this.#font;
+  }
+
   /** The width of `text` in the font last set. */
   public measure(context: CanvasRenderingContext2D, text: string): number {
     const widths = this.#inFont();

@@ -6,7 +6,7 @@ import type { Viewport } from "#engine/view-types.ts";
 import type { FrameData } from "#frame/frame.ts";
 import { treeWidthKey } from "#layout/layout.ts";
 import type { Layout } from "#layout/layout.ts";
-import type { Theme } from "#theme/read.ts";
+import type { GridTheme, Theme } from "#theme/read.ts";
 
 import { sortMarkOf } from "./changes.ts";
 import { isPivotLayout, searchColumns, shownColumns } from "./edit.ts";
@@ -56,7 +56,7 @@ class GridModel {
   public layout: Layout | null = null;
   public fields: readonly SourceField[] = [];
   public frame: FrameData | null = null;
-  public theme: Theme | null = null;
+  public theme: GridTheme | null = null;
   public area: Area = { height: 0, scrollLeft: 0, scrollTop: 0, width: 0 };
   public liveWidth: LiveWidth | null = null;
   /** Whether a pivot's measure headers open a menu, which the pivot gives the grid. */

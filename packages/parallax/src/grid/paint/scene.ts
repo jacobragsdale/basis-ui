@@ -7,7 +7,7 @@ import type { ColumnGeometry, RowGeometry } from "#grid/geometry.ts";
 import type { HeaderCheck } from "#grid/row-selection.ts";
 import type { CellRange, CellRef, Selection } from "#grid/selection.ts";
 import type { Layout } from "#layout/layout.ts";
-import type { Theme } from "#theme/read.ts";
+import type { GridTheme } from "#theme/read.ts";
 
 import type { Exposed, Tally } from "./damage.ts";
 import type { Metrics } from "./metrics.ts";
@@ -44,7 +44,7 @@ interface Searched {
 interface Scene {
   readonly frame: FrameData | null;
   readonly layout: Layout | null;
-  readonly theme: Theme;
+  readonly theme: GridTheme;
   readonly metrics: Metrics;
   readonly geometry: ColumnGeometry;
   readonly rows: RowGeometry;
@@ -90,7 +90,7 @@ interface Pass extends Searched {
   /** The device pixels of one CSS pixel, which the context's transform scales by and drawing snaps to. */
   readonly ratio: number;
   readonly pen: Pen;
-  readonly theme: Theme;
+  readonly theme: GridTheme;
   readonly metrics: Metrics;
   readonly geometry: ColumnGeometry;
   readonly scrollLeft: number;

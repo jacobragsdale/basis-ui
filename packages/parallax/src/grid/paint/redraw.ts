@@ -35,6 +35,8 @@ function shapeOf(scene: Scene, at: Area, ratio: number): string {
           layout.group_sort,
           layout.filters,
           layout.pinned,
+          layout.cells ?? null,
+          layout.rules ?? null,
           // The header's checkbox is drawn with the header, so a change to it draws everything again.
           scene.rowSelection?.header ?? null,
         ];

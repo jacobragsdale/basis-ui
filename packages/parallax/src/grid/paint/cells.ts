@@ -2,30 +2,19 @@
  * is. A cell whose text has not changed since it was last drawn, and whose row the selection, the choice of rows and
  * the pointer left alone, is not drawn again. */
 
-import { isNegativeText } from "#format.ts";
-import type { CellFlag } from "#frame/cell.ts";
 import type { FrameColumn } from "#frame/columns.ts";
 import type { FrameData } from "#frame/frame.ts";
-import type { RowKind } from "#frame/tree.ts";
-import { highlightRanges } from "#grid/filters.ts";
-import type { Ranges } from "#grid/filters.ts";
 import { screenX } from "#grid/geometry.ts";
 import { contains } from "#grid/selection.ts";
 
 import { fillRect, withClip } from "./canvas.ts";
+import { cellText } from "./cell-text.ts";
 import { translucent } from "./metrics.ts";
 import { cellKey } from "./scene.ts";
 import type { Pass } from "./scene.ts";
-import { clipText } from "./text.ts";
+import { lookKey, lookOf, richBehind } from "./rich.ts";
+import type { Look } from "./rich.ts";
 
-const flagNotes: Readonly<Record<CellFlag, string | null>> = {
-  mixed: "This group combines values in different units, so they are not added.",
-  ok: null,
-  overflow: "The exact result needs more than 38 digits, so it is not shown.",
-  undefined: "Undefined, such as a share of a zero total.",
-};
-
-const noMarks: Ranges = [];
 /** The ring's outer edge stops this short of the cell's right and bottom edges, clear of the column's and row's rules. */
 const ringClear = 1;
 
@@ -45,41 +34,6 @@ interface CellAt {
   readonly column: number;
   readonly x: number;
   readonly width: number;
-}
-
-/** What a cell shows: its text, its flag, and the kind of its row. */
-interface Shown {
-  readonly kind: RowKind | null;
-  readonly text: string;
-  readonly flag: CellFlag;
-}
-
-/** How a data cell's text draws: its colour, whether it aligns right, and the search's matches to mark. */
-interface Style {
-  readonly color: string;
-  readonly right: boolean;
-  readonly marks: Ranges;
-}
-
-/** A data cell's colour: muted when flagged, the negative colour for a negative number. */
-function inkOf(pass: Pass, numeric: boolean, { text, flag }: Shown): string {
-  const { theme } = pass;
-  if (flag !== "ok") {
-    return theme.muted;
-  }
-  return numeric && isNegativeText(text) ? theme.negative : theme.foreground;
-}
-
-/** How a data cell draws. A detail view's group row holds its totals, which align as numbers whatever the column
- * holds. */
-function cellStyle(pass: Pass, data: FrameColumn, shown: Shown): Style {
-  const numeric = data.total !== null && shown.kind === "group" ? data.totalNumeric : data.numeric;
-  const searched = pass.search !== "" && !numeric && pass.searched.has(data.name);
-  return {
-    color: inkOf(pass, numeric, shown),
-    marks: searched ? highlightRanges(shown.text, pass.search) : noMarks,
-    right: numeric && shown.flag === "ok",
-  };
 }
 
 /** What a cell's drawn text is kept with, so that choosing its row or leaving it draws the cell again. */
@@ -154,40 +108,6 @@ function cellLines(pass: Pass, at: RowAt, cell: CellAt): void {
   fillRect(pass, theme.columnBorder, [cell.x + cell.width - 1, at.y, 1, metrics.rowPx]);
 }
 
-/** Keeps what a cell's tooltip says, or forgets it when null. */
-function noteCell(pass: Pass, key: string, note: string | null): void {
-  if (note === null) {
-    pass.notes.delete(key);
-  } else {
-    pass.notes.set(key, note);
-  }
-}
-
-/** Draws a data cell's text in its style, keeping its tooltip: a flagged cell's note, or a cut cell's text. */
-function cellText(
-  pass: Pass,
-  at: RowAt,
-  { cell, data, key }: { readonly cell: CellAt; readonly data: FrameColumn; readonly key: string },
-): void {
-  const { local, frame } = at;
-  const text = data.text(local);
-  const shown = { flag: data.flag(local), kind: frame.tree?.kind(local) ?? null, text };
-  const style = cellStyle(pass, data, shown);
-  Object.assign(pass.context, { fillStyle: style.color });
-  const y = at.y + pass.metrics.rowPx / 2;
-  const placed = {
-    markColor: pass.theme.highlight,
-    marks: style.marks,
-    numeric: style.right,
-    text,
-    width: cell.width,
-    x: cell.x,
-    y,
-  };
-  const cut = clipText(pass.pen, placed);
-  noteCell(pass, key, flagNotes[shown.flag] ?? (cut ? text : null));
-}
-
 /** Where a cell shows, across: the checkboxes and the group column anywhere, a pinned column beside the group column,
  * and a scrolling column past the pinned ones. */
 function columnArea(pass: Pass, column: number): readonly [number, number] {
@@ -221,25 +141,45 @@ function keepCell(
   pass.tally.cell([cell.x, at.y, cell.width, metrics.rowPx], body);
 }
 
-/** Draws data column `column`'s cell in a row, if its text or its row changed. Returns whether it drew it. */
-function dataCell(pass: Pass, at: RowAt, column: number): boolean {
-  const data = at.frame.columns[column - at.frame.firstColumn];
-  const drawn = {
-    key: cellKey(at.row, column),
-    text: (data?.text(at.local) ?? "") + rowMark(at),
-  };
-  if (data === undefined || unchanged(pass, at.row, drawn)) {
-    return false;
-  }
-  const cell = {
+/** Where data column `column`'s cell is across. */
+function cellOf(pass: Pass, column: number): CellAt {
+  return {
     column,
     width: pass.geometry.width(column),
     x: screenX(pass.geometry, column, pass.scrollLeft),
   };
+}
+
+/** Paints a data cell: its background, what its look puts behind its text, its text and its lines, and remembers it. */
+function paintCell(
+  pass: Pass,
+  at: RowAt,
+  {
+    cell,
+    data,
+    drawn,
+    look,
+  }: { cell: CellAt; data: FrameColumn; drawn: { key: string; text: string }; look: Look | null },
+): void {
   cellBackground(pass, at, cell);
-  cellText(pass, at, { cell, data, key: drawn.key });
+  const ink = look === null ? null : richBehind(pass, { at, cell }, look);
+  cellText(pass, at, { cell, data, ink, key: drawn.key, look });
   cellLines(pass, at, cell);
   keepCell(pass, { at, cell, drawn });
+}
+
+/** Draws data column `column`'s cell in a row, if its text, its row or its look changed. Returns whether it drew it. */
+function dataCell(pass: Pass, at: RowAt, column: number): boolean {
+  const data = at.frame.columns[column - at.frame.firstColumn];
+  const look = data === undefined ? null : lookOf(pass, at, data);
+  const drawn = {
+    key: cellKey(at.row, column),
+    text: (data?.text(at.local) ?? "") + rowMark(at) + lookKey(look),
+  };
+  if (data === undefined || unchanged(pass, at.row, drawn)) {
+    return false;
+  }
+  paintCell(pass, at, { cell: cellOf(pass, column), data, drawn, look });
   return true;
 }
 

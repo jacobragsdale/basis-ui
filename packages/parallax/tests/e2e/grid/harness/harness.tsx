@@ -29,6 +29,8 @@ interface Search {
   readonly look: keyof typeof looks;
   readonly density: "compact" | "comfortable";
   readonly performance: boolean;
+  /** Whether the book draws rich cells: bars, heat, badges, a link and a rule. */
+  readonly cells: boolean;
 }
 
 /** One of `allowed`, from the address bar, or `otherwise`. */
@@ -43,6 +45,7 @@ function pick<TValue extends string>(
 
 function readSearch(): Search {
   return {
+    cells: pick("cells", ["1", "0"], "0") === "1",
     density: pick("density", ["compact", "comfortable"], "compact"),
     look: pick("look", ["standard", "airy", "basis"], "standard"),
     performance: pick("performance", ["on", "off"], "off") === "on",
@@ -120,7 +123,7 @@ function Harness(): ReactNode {
   return (
     <ParallaxProvider worker={startWorker} theme={looks[search.look]} scheme={scheme}>
       {search.preset === "small" ? (
-        <SmallTables performance={search.performance}>
+        <SmallTables performance={search.performance} cells={search.cells}>
           <Choice label="Scheme" value={scheme} options={["light", "dark"]} onChange={setScheme} />
           <Choice
             label="Row height"

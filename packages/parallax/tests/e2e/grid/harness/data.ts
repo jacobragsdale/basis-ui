@@ -72,6 +72,32 @@ const book: LayoutInput = {
   ],
 };
 
+/** The book with rich cells, as `cells=1` asks: market value as a bar, the day's P&L as a diverging heat fill, long or
+ * short as a badge, the ticker as a link, and a rule that marks a large quantity. */
+const richBook: LayoutInput = {
+  ...book,
+  columns: [
+    "ticker",
+    "long_short",
+    "daily_pnl_usd",
+    "quantity",
+    "market_value_usd",
+    "fund",
+    "sector",
+  ],
+  cells: {
+    daily_pnl_usd: { kind: "heat", scale: "diverging" },
+    long_short: { kind: "badge", values: { Long: "positive", Short: "negative" } },
+    market_value_usd: { kind: "bar" },
+    ticker: { kind: "link" },
+  },
+  rules: {
+    quantity: [
+      { format: { bold: true, fill: true, tone: "warning" }, when: { op: "gt", value: 50_000 } },
+    ],
+  },
+};
+
 /** The blotter: trades with their ticker pinned, counted and their quantities totalled. */
 const blotter: LayoutInput = {
   columns: [
@@ -95,5 +121,5 @@ const blotter: LayoutInput = {
   ],
 };
 
-export { blotter, book, datasets, referencePivot, sources };
+export { blotter, book, datasets, referencePivot, richBook, sources };
 export type { DatasetName };

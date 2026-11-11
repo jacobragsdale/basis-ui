@@ -38,7 +38,8 @@ function partsOf(refs: GridRefs): GridParts {
 function useTokens(controller: GridController, canvas: RefObject<HTMLCanvasElement | null>): void {
   const { read } = useParallaxTheme();
   useEffect(() => {
-    controller.setTokens(read(present(canvas, "canvas")).theme);
+    const { theme, colors } = read(present(canvas, "canvas"));
+    controller.setTokens({ ...theme, colors });
   }, [canvas, controller, read]);
 }
 

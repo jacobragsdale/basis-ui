@@ -31,6 +31,31 @@ const specs = {
   muted: { dark: "#8a93a3", light: "#667085", property: "muted", syntax: "color" },
   negative: { dark: "#ff7b72", light: "#b42318", property: "negative", syntax: "color" },
   /** The background behind text that matches a search. */
+  /** A gain's, a warning's and a note's ink, as `negative` is a loss's: a badge's, a data bar's and a rule's. */
+  positive: { dark: "#56d364", light: "#1a7f37", property: "positive", syntax: "color" },
+  warning: { dark: "#e3b341", light: "#9a6700", property: "warning", syntax: "color" },
+  info: { dark: "#79c0ff", light: "#0969da", property: "info", syntax: "color" },
+  /** Each tone's tint, behind a badge's text and a rule's fill. */
+  positiveSubtle: tinted(
+    "positive-subtle",
+    { dark: 22, light: 14, of: "positive", over: "background" },
+    "#dafbe1",
+  ),
+  negativeSubtle: tinted(
+    "negative-subtle",
+    { dark: 22, light: 14, of: "negative", over: "background" },
+    "#ffebe9",
+  ),
+  warningSubtle: tinted(
+    "warning-subtle",
+    { dark: 22, light: 14, of: "warning", over: "background" },
+    "#fff8c5",
+  ),
+  infoSubtle: tinted(
+    "info-subtle",
+    { dark: 22, light: 14, of: "info", over: "background" },
+    "#ddf4ff",
+  ),
   highlight: {
     dark: "rgba(255, 214, 10, 0.38)",
     light: "#ffe58a",
