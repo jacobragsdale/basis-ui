@@ -357,7 +357,9 @@ export {
 // Numbers and dates: the firm's own components, which show and take values by parallax's rules.
 export { AmountInput } from "./components/amount-input.tsx";
 export { amountSchema } from "./components/amount-schema.ts";
-export { AsOfDatePicker } from "./components/as-of-date-picker.tsx";
+export { AsOfDatePicker, type AsOfDatePickerProps } from "./components/as-of-date-picker.tsx";
+export { DatePicker, type DatePickerProps } from "./components/date-picker.tsx";
+export { MonthPicker, type MonthPickerProps } from "./components/month-picker.tsx";
 export { DateRangePicker } from "./components/date-range-picker.tsx";
 export {
   dateRangePresets,

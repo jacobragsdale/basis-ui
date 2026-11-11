@@ -182,8 +182,10 @@ function DateRangeControl({
                 start: Temporal.PlainDate.from(range.start),
               }
         }
-        onValueChange={({ start, end }) => {
-          onChange({ end: end.toString(), start: start.toString() });
+        onValueChange={(next) => {
+          onChange(
+            next === null ? undefined : { end: next.end.toString(), start: next.start.toString() },
+          );
         }}
         calendar={definition.calendar}
         min={definition.min}

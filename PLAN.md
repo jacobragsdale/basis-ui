@@ -49,7 +49,8 @@ building](#found-while-building) at the end of this page.
 | 6.7.1 | `1af39dc`              | `Page`, shell slots and groups, scoped shortcuts, the demo in the shell, the shell's axe fixed.  |
 | 6.7.2 | `e5edd47`              | `FilterBar`, its state in typed search parameters.                                               |
 | 6.7.3 | `6f432c8`              | `DataTable` controllable and fast at its cap; pages 50 rows by default.                          |
-| 6.7.4 | this commit            | `StatCard`: a figure, its change with arrow, sign and colour, its trend.                         |
+| 6.7.4 | `9be1fcf`              | `StatCard`: a figure, its change with arrow, sign and colour, its trend.                         |
+| 6.7.5 | this commit            | `DatePicker`, `MonthPicker`; `DateRangePicker` typed, cleared, trailing presets.                 |
 | 6.8.1 | `7e434e2`              | `vp run docs NAME` and `--search`; the catalogue complete; README split; `CHANGELOG.md`.         |
 | 6.8.2 | `bc608c0`              | Six lint limits loosened in app code; messages that name the fix.                                |
 | 6.8.3 | `3d356fe`              | The open doors closed, each an `ERROR` line.                                                     |
@@ -72,7 +73,7 @@ Everything below, in this order where one needs another, except 6.10, which is t
 3. ~~6.4.5 to 6.4.8~~ done.
 4. ~~6.5.7~~ done, its choices of look listed in "Found while building" for the maintainer's review. ~~6.5.8~~ done.
 5. **6.6.1 to 6.6.6**, the grid's features, after 6.3, 6.4 and 6.5; ~~6.6.3~~ done, by the `@basis/ui` lane.
-6. ~~6.7.4~~ done. **6.7.5 to 6.7.10**, the components. `@tanstack/react-virtual` is approved for 6.7.9.
+6. ~~6.7.4 and 6.7.5~~ done. **6.7.6 to 6.7.10**, the components. `@tanstack/react-virtual` is approved for 6.7.9.
 7. **6.8.10**, the skills.
 8. **6.9**, the showcase, last, built with only an app's tools, with `packages/showcase/BUILDING.md`.
 9. Then check CI on `main` once, and fix what is red. The nightly `bench` job failed on 2026-11-10 (run

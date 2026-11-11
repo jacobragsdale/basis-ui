@@ -2,7 +2,7 @@
  * holding the presets beside the month grid AsOfDatePicker uses (date-grid.tsx has its keys). A preset sets the range
  * at once: month, quarter or year to date, or the whole month, quarter or year before, each from its period's first
  * business day to a business day (date-range-presets.ts). In the grid, the first day picked starts the range and the
- * second ends it, in either order.
+ * second ends it, in either order. Under them, a range can be typed, From and To, and Clear empties it.
  *
  * The presets count from an as-of date: the last business day before today in New York unless the field sets one. Like
  * AsOfDatePicker, the field names its calendar, SIFMA's unless it names another, and takes business days only, up to
@@ -21,11 +21,12 @@ import { sifma } from "#dates/sifma.ts";
 import type { VariantProps } from "#vendor/cva/cva.ts";
 import { CalendarIcon } from "#vendor/lucide/calendar.tsx";
 
-import { Button } from "./button.tsx";
 import { DateGrid } from "./date-grid.tsx";
 import { defaultAsOfDate, pickRules } from "./date-picking.ts";
 import type { PickRules } from "./date-picking.ts";
-import { dateRangePresets, presetLabel, rangeForPreset } from "./date-range-presets.ts";
+import { PresetList, RangeEntry } from "./date-range-entry.tsx";
+import { rangeOf, rangeText, sameRange } from "./date-range-text.ts";
+import { dateRangePresets, rangeForPreset } from "./date-range-presets.ts";
 import type { DateRangePreset } from "./date-range-presets.ts";
 import { idList, useControlled, useGridPopover, useToday } from "./field-state.ts";
 import type { GridPopover } from "./field-state.ts";
@@ -40,8 +41,9 @@ interface DateRangePickerProps
   readonly value?: DateRange | null | undefined;
   /** The range an uncontrolled field starts with; none unless set. */
   readonly defaultValue?: DateRange | null | undefined;
-  /** Called with the range when a preset is chosen or a second day picked. */
-  readonly onValueChange?: ((value: DateRange) => void) | undefined;
+  /** Called with the range when a preset is chosen, a second day picked or a range typed, and with `null` when it is
+   * cleared. */
+  readonly onValueChange?: ((value: DateRange | null) => void) | undefined;
   /** The calendar whose business days the field takes; SIFMA's unless set. */
   readonly calendar?: Calendar | undefined;
   /** The earliest date the field takes; none unless set. */
@@ -52,32 +54,12 @@ interface DateRangePickerProps
   readonly today?: Temporal.PlainDate | undefined;
   /** The date the presets run to: the last business day before `today` unless set. */
   readonly asOf?: Temporal.PlainDate | undefined;
-  /** The presets offered, in order; all six unless set, and none when empty. */
+  /** The presets offered, in order; all nine unless set, and none when empty. */
   readonly presets?: readonly DateRangePreset[] | undefined;
   /** The button's text while there is no range; "Pick a range" unless set. */
   readonly placeholder?: string | undefined;
   /** The name of the popover's dialog; "Choose a date range" unless set. */
   readonly pickerLabel?: string | undefined;
-}
-
-/** A range as the button writes it: `2026-10-01 – 2026-11-06`. */
-function rangeText(range: DateRange): string {
-  return `${range.start.toString()} – ${range.end.toString()}`;
-}
-
-/** The range from two picked days, in either order. */
-function rangeOf(first: Temporal.PlainDate, second: Temporal.PlainDate): DateRange {
-  return Temporal.PlainDate.compare(first, second) <= 0
-    ? { end: second, start: first }
-    : { end: first, start: second };
-}
-
-/** Whether two optional ranges are the same days. */
-function sameRange(left: DateRange | null, right: DateRange | null): boolean {
-  if (left === null || right === null) {
-    return left === right;
-  }
-  return left.start.equals(right.start) && left.end.equals(right.end);
 }
 
 interface RangePopoverProps {
@@ -88,7 +70,7 @@ interface RangePopoverProps {
   readonly asOf: Temporal.PlainDate;
   readonly rules: PickRules;
   readonly today: Temporal.PlainDate;
-  readonly onChoose: (range: DateRange) => void;
+  readonly onChoose: (range: DateRange | null) => void;
 }
 
 type RangeBodyProps = Omit<RangePopoverProps, "label">;
@@ -106,37 +88,36 @@ function RangeBody({
 }: RangeBodyProps): ReactElement {
   const [anchor, setAnchor] = useState<Temporal.PlainDate | null>(null);
   return (
-    <div className="flex gap-4">
-      {presets.length === 0 ? null : (
-        <div className="flex flex-col gap-1">
-          {presets.map((preset) => (
-            <Button
-              key={preset}
-              variant="ghost"
-              size="sm"
-              className="justify-start"
-              onClick={() => {
-                onChoose(rangeForPreset(preset, asOf, rules.calendar));
-              }}
-            >
-              {presetLabel(preset)}
-            </Button>
-          ))}
-        </div>
-      )}
-      <DateGrid
-        focused={popover.focused}
-        onFocusedChange={popover.handleFocusedChange}
-        selection={anchor === null ? (current ?? undefined) : { end: anchor, start: anchor }}
-        onPick={(date) => {
-          setAnchor(anchor === null ? date : null);
-          if (anchor !== null) {
-            onChoose(rangeOf(anchor, date));
-          }
-        }}
+    <div className="flex flex-col gap-3">
+      <div className="flex gap-4">
+        <PresetList
+          presets={presets}
+          onPreset={(preset) => {
+            onChoose(rangeForPreset(preset, asOf, rules.calendar));
+          }}
+        />
+        <DateGrid
+          focused={popover.focused}
+          onFocusedChange={popover.handleFocusedChange}
+          selection={anchor === null ? (current ?? undefined) : { end: anchor, start: anchor }}
+          onPick={(date) => {
+            setAnchor(anchor === null ? date : null);
+            if (anchor !== null) {
+              onChoose(rangeOf(anchor, date));
+            }
+          }}
+          rules={rules}
+          today={today}
+          tableId={popover.tableId}
+        />
+      </div>
+      <RangeEntry
+        current={current}
         rules={rules}
-        today={today}
-        tableId={popover.tableId}
+        onChoose={onChoose}
+        onClear={() => {
+          onChoose(null);
+        }}
       />
     </div>
   );
@@ -183,16 +164,12 @@ function useRangeField({
   const until = untilFrom(day);
   const [current, change] = useControlled<DateRange | null>({
     initial: () => defaultValue,
-    onChange: (next) => {
-      if (next !== null) {
-        onValueChange?.(next);
-      }
-    },
+    onChange: onValueChange,
     same: sameRange,
     value,
   });
   const popover = useGridPopover((from) => current?.end ?? untilFrom(from), now);
-  const onChoose = (range: DateRange): void => {
+  const onChoose = (range: DateRange | null): void => {
     change(range);
     popover.close();
   };

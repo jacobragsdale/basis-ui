@@ -13405,7 +13405,7 @@
           "type": "Temporal.PlainDate | null | undefined"
         },
         {
-          "description": "The date an uncontrolled field starts at: the last business day before `today` unless set.",
+          "description": "The date an uncontrolled field starts at.",
           "name": "defaultValue",
           "optional": true,
           "type": "Temporal.PlainDate | null | undefined"
@@ -13429,7 +13429,7 @@
           "type": "Temporal.PlainDate | undefined"
         },
         {
-          "description": "The latest date the field takes: `today` unless set, and none when `null`.",
+          "description": "The latest date the field takes; none when `null`.",
           "name": "max",
           "optional": true,
           "type": "Temporal.PlainDate | null | undefined"
@@ -13454,16 +13454,162 @@
         }
       ],
       "purpose": "An as-of date field. Label it with a FieldLabel's `htmlFor` and this `id`, and put it in a `Field`.",
-      "use": "For the business day a page's data is as of. For a period, use DateRangePicker.",
+      "use": "For the business day a page's data is as of. For any other date, such as a maturity, use DatePicker; for a period, DateRangePicker.",
       "with": [
         "Field",
         "FieldLabel",
+        "DatePicker",
         "DateRangePicker",
         "defaultAsOfDate",
         "sifma"
       ],
       "variants": {},
       "example": "import { AsOfDatePicker, Field, FieldLabel } from \"@basis/ui\";\n\n<Field>\n  <FieldLabel htmlFor=\"as-of\">As of</FieldLabel>\n  <AsOfDatePicker id=\"as-of\" defaultValue={Temporal.PlainDate.from(\"2026-11-06\")} />\n</Field>;\n"
+    },
+    {
+      "extends": [
+        "Omit<ComponentProps<\"input\">, \"value\" | \"defaultValue\" | \"onChange\" | \"type\" | \"min\" | \"max\" | \"children\">"
+      ],
+      "family": "date-picker",
+      "module": "@basis/ui",
+      "name": "DatePicker",
+      "props": [
+        {
+          "description": "The date, or `null` for none. Leave it out for an uncontrolled field.",
+          "name": "value",
+          "optional": true,
+          "type": "Temporal.PlainDate | null | undefined"
+        },
+        {
+          "description": "The date an uncontrolled field starts at.",
+          "name": "defaultValue",
+          "optional": true,
+          "type": "Temporal.PlainDate | null | undefined"
+        },
+        {
+          "description": "Called with the date when one is picked or typed, and with `null` when the field is cleared or what was typed cannot be taken.",
+          "name": "onValueChange",
+          "optional": true,
+          "type": "((value: Temporal.PlainDate | null) => void) | undefined"
+        },
+        {
+          "description": "The calendar whose business days the field takes; SIFMA's unless set.",
+          "name": "calendar",
+          "optional": true,
+          "type": "Calendar | undefined"
+        },
+        {
+          "description": "The earliest date the field takes; none unless set.",
+          "name": "min",
+          "optional": true,
+          "type": "Temporal.PlainDate | undefined"
+        },
+        {
+          "description": "The latest date the field takes; none when `null`.",
+          "name": "max",
+          "optional": true,
+          "type": "Temporal.PlainDate | null | undefined"
+        },
+        {
+          "description": "Today, which the default value and the latest date count from; today in New York unless set.",
+          "name": "today",
+          "optional": true,
+          "type": "Temporal.PlainDate | undefined"
+        },
+        {
+          "description": "The form's errors for the field, such as TanStack Form's `field.state.meta.errors`, shown under the input.",
+          "name": "errors",
+          "optional": true,
+          "type": "FieldErrors | undefined"
+        },
+        {
+          "description": "The name of the button that opens the grid, and of the grid's dialog; \"Choose a date\" unless set.",
+          "name": "pickerLabel",
+          "optional": true,
+          "type": "string | undefined"
+        }
+      ],
+      "purpose": "A date field for any day. Label it with a FieldLabel's `htmlFor` and this `id`, and put it in a `Field`.",
+      "use": "For a date that need not be a business day, such as a bond's maturity or a trade date. For the date a page's data is as of, use AsOfDatePicker; for a month, MonthPicker; for a period, DateRangePicker.",
+      "with": [
+        "Field",
+        "FieldLabel",
+        "AsOfDatePicker",
+        "MonthPicker",
+        "DateRangePicker"
+      ],
+      "variants": {},
+      "example": "import { DatePicker, Field, FieldLabel } from \"@basis/ui\";\n\n<Field>\n  <FieldLabel htmlFor=\"maturity\">Maturity</FieldLabel>\n  <DatePicker id=\"maturity\" min={Temporal.PlainDate.from(\"2026-11-11\")} />\n</Field>;\n"
+    },
+    {
+      "extends": [
+        "Omit<ComponentProps<\"button\">, \"value\" | \"defaultValue\" | \"onChange\" | \"children\" | \"type\">"
+      ],
+      "family": "month-picker",
+      "module": "@basis/ui",
+      "name": "MonthPicker",
+      "props": [
+        {
+          "description": "The month, or `null` for none. Leave it out for an uncontrolled field.",
+          "name": "value",
+          "optional": true,
+          "type": "Temporal.PlainYearMonth | null | undefined"
+        },
+        {
+          "description": "The month an uncontrolled field starts with; none unless set.",
+          "name": "defaultValue",
+          "optional": true,
+          "type": "Temporal.PlainYearMonth | null | undefined"
+        },
+        {
+          "description": "Called with the month when one is chosen.",
+          "name": "onValueChange",
+          "optional": true,
+          "type": "((value: Temporal.PlainYearMonth) => void) | undefined"
+        },
+        {
+          "description": "The earliest month the field takes; none unless set.",
+          "name": "min",
+          "optional": true,
+          "type": "Temporal.PlainYearMonth | undefined"
+        },
+        {
+          "description": "The latest month the field takes; none unless set.",
+          "name": "max",
+          "optional": true,
+          "type": "Temporal.PlainYearMonth | undefined"
+        },
+        {
+          "description": "The button's text while there is no month; \"Pick a month\" unless set.",
+          "name": "placeholder",
+          "optional": true,
+          "type": "string | undefined"
+        },
+        {
+          "description": "The name of the popover's dialog; \"Choose a month\" unless set.",
+          "name": "pickerLabel",
+          "optional": true,
+          "type": "string | undefined"
+        }
+      ],
+      "purpose": "A month field. Name it with a FieldLabel's `htmlFor` and this `id`, or with `aria-label`.",
+      "use": "For a month, such as a statement's or a report's period. For a day, use DatePicker; for a range of days, DateRangePicker.",
+      "with": [
+        "Field",
+        "FieldLabel",
+        "DatePicker",
+        "DateRangePicker"
+      ],
+      "variants": {
+        "size": {
+          "default": "default",
+          "options": [
+            "default",
+            "sm"
+          ]
+        }
+      },
+      "example": "import { Field, FieldLabel, MonthPicker } from \"@basis/ui\";\n\n<Field>\n  <FieldLabel htmlFor=\"statement\">Statement month</FieldLabel>\n  <MonthPicker id=\"statement\" defaultValue={Temporal.PlainYearMonth.from(\"2026-10\")} />\n</Field>;\n"
     },
     {
       "extends": [
@@ -13486,10 +13632,10 @@
           "type": "DateRange | null | undefined"
         },
         {
-          "description": "Called with the range when a preset is chosen or a second day picked.",
+          "description": "Called with the range when a preset is chosen, a second day picked or a range typed, and with `null` when it is cleared.",
           "name": "onValueChange",
           "optional": true,
-          "type": "((value: DateRange) => void) | undefined"
+          "type": "((value: DateRange | null) => void) | undefined"
         },
         {
           "description": "The calendar whose business days the field takes; SIFMA's unless set.",
@@ -13522,7 +13668,7 @@
           "type": "Temporal.PlainDate | undefined"
         },
         {
-          "description": "The presets offered, in order; all six unless set, and none when empty.",
+          "description": "The presets offered, in order; all nine unless set, and none when empty.",
           "name": "presets",
           "optional": true,
           "type": "readonly DateRangePreset[] | undefined"
@@ -15124,7 +15270,7 @@
           "type": "StatChange | undefined"
         },
         {
-          "description": "Its recent values, oldest first, drawn as a sparkline under it.",
+          "description": "Its recent values, oldest first, drawn as a sparkline under it, coloured by its trend as the change is.",
           "name": "trend",
           "optional": true,
           "type": "readonly SparkValue[] | undefined"
@@ -15681,7 +15827,7 @@
       "kind": "function",
       "module": "@basis/ui",
       "name": "rangeForPreset",
-      "purpose": "A preset's range as of a date, on a calendar, SIFMA's unless set. To date runs from the period's first business day to the last business day on or before `asOf`; a prior period from its first business day to its last.",
+      "purpose": "A preset's range as of a date, on a calendar, SIFMA's unless set. To date runs from the period's first business day to the last business day on or before `asOf`; a prior period from its first business day to its last; a trailing one from the first business day on or after the same date its months before, to the last business day on or before `asOf`.",
       "signature": "rangeForPreset(preset: DateRangePreset, asOf: Temporal.PlainDate, calendar: Calendar = sifma): DateRange"
     },
     {
@@ -24127,7 +24273,7 @@
       "purpose": "An active date range filter: the first and last days it takes, as ISO 8601 dates such as `2026-11-09`."
     },
     {
-      "definition": "| \"month-to-date\" | \"quarter-to-date\" | \"year-to-date\" | \"prior-month\" | \"prior-quarter\" | \"prior-year\"",
+      "definition": "| \"month-to-date\" | \"quarter-to-date\" | \"year-to-date\" | \"prior-month\" | \"prior-quarter\" | \"prior-year\" | \"trailing-month\" | \"trailing-3-months\" | \"trailing-year\"",
       "exported": true,
       "module": "@basis/ui",
       "name": "DateRangePreset",

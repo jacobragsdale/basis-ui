@@ -280,8 +280,9 @@ The firm's own components cover what shadcn does not:
   writes. `AmountInput` reads `1.5m`, `250k` and `25bp`, parses the text exactly, returns it as a number, and shows the
   full number back. Each field declares the suffixes it accepts, because in bond markets `M` means thousands, so `5M`
   par is $5,000. `AsOfDatePicker` knows
-  business days on its declared calendar, SIFMA by default, and `DateRangePicker` offers month, quarter and year to
-  date.
+  business days on its declared calendar, SIFMA by default, `DatePicker` takes any date, such as a maturity,
+  `MonthPicker` a month, and `DateRangePicker` offers month, quarter and year to date, the period before and the past
+  month, three months and year, takes a range typed and clears (step 6.7.5, 2026-11-11).
 - **Forms.** Fields bind to the Zod schemas orval generates, so a form checks what the API's document declares. Errors
   the API returns land on the fields they name. Leaving a page with unsaved changes is to ask first, and a destructive
   action to ask for typed confirmation: neither is built yet (step 6.7.6). basis's contract names each field at fault in

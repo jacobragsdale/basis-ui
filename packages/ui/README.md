@@ -1070,7 +1070,7 @@ import { displayFormats } from "#api/client.ts";
 
 ## Taking amounts and dates
 
-`AmountInput`, `AsOfDatePicker` and `DateRangePicker` each go in a `Field` with a `FieldLabel` whose `htmlFor` is
+`AmountInput`, `AsOfDatePicker`, `DatePicker`, `MonthPicker` and `DateRangePicker` each go in a `Field` with a `FieldLabel` whose `htmlFor` is
 their `id`. The first two draw their field's error line themselves, so a form passes them the field's errors as
 `errors` rather than drawing a `FieldError` of its own; while what was typed cannot be taken, their own reason replaces
 those errors.
@@ -1121,12 +1121,22 @@ day or a week, Home and End to the ends of the week, PageUp and PageDown a month
 and Escape closes. Closed days are muted, holidays also struck through, and early closes dotted, with the reason in each
 day's name and title and under the grid.
 
-`DateRangePicker` holds a `DateRange` from `@basis/ui/dates`, and offers presets beside the same grid: month, quarter
-and year to date, and the prior month, quarter and year, each from its period's first business day to a business day,
-counted from `asOf`, the last business day before today unless set. `presets` picks and orders them, and
-`rangeForPreset` gives the same ranges outside the picker. Two days picked in the grid, in either order, make a range.
+`DatePicker` is the same field for any date, such as a maturity or a trade date: it takes weekends and holidays, its
+grid still marking the market's closed days, has no bounds unless `min` or `max` sets them, and starts empty, its grid
+opening on today.
 
-Pass `today` to fix the date both pickers count from, as a test does.
+`MonthPicker` holds a `Temporal.PlainYearMonth`, such as a statement's month: its button opens the year, with the year
+before and after, and its twelve months; the arrows move a month, or a quarter up and down, Enter chooses, and months
+outside `min` and `max` are disabled.
+
+`DateRangePicker` holds a `DateRange` from `@basis/ui/dates`, and offers presets beside the same grid: month, quarter
+and year to date, the prior month, quarter and year, each from its period's first business day to a business day, and
+the past month, three months and year, to a business day, counted from `asOf`, the last business day before today
+unless set. `presets` picks and orders them, and `rangeForPreset` gives the same ranges outside the picker. Two days
+picked in the grid, in either order, make a range; under the grid, From and To take a range typed, on Enter or Apply,
+and say why an end cannot be taken; Clear empties it, calling `onValueChange` with `null`.
+
+Pass `today` to fix the date the pickers count from, as a test does.
 
 ## Showing and taking data
 

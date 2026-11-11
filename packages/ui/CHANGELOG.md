@@ -9,6 +9,12 @@ anything of an app.
 
 ## Unreleased
 
+- `DatePicker`, for any date such as a maturity, and `MonthPicker`, for a month, beside `AsOfDatePicker`, whose props
+  type is now exported as `AsOfDatePickerProps`. `DateRangePicker` gains the past month, three months and year among
+  its presets, a range typed From and To, and Clear, which calls `onValueChange` with `null`. What to do: an
+  `onValueChange` on a `DateRangePicker` takes `DateRange | null`; one typed to take only a `DateRange` fails the type
+  check, and handles `null` as no range.
+
 - `StatCard`, a dashboard's figure: its value in large tabular figures, its change with an arrow, a sign and the gain
   or loss colour, `rising: "loss"` turning that round, and its recent values as a sparkline, with a skeleton while
   it loads. What to do: nothing; a KPI card built from `Card` and `Sparkline` by hand can become one.

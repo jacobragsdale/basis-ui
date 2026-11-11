@@ -657,7 +657,9 @@ flowchart TD
    alone (target 200 ms, missed: PLAN.md, "Found while building"); a key in the filter 1.0 to 1.4 s, now 96 to 159 ms;
    a change of mode 3.1 to 4.1 s, now 146 to 171 ms. 6.7.4 built on 2026-11-11: `StatCard` shows a dashboard's figure,
    its change with an arrow, a sign and a colour that `rising: "loss"` turns round, its recent values as a sparkline
-   coloured the same way, and a skeleton while it loads.
+   coloured the same way, and a skeleton while it loads. 6.7.5 built on 2026-11-11: `DatePicker` takes any date, such as a
+   maturity, on the as-of field's input and grid, `MonthPicker` a month, and `DateRangePicker` gains the past month,
+   three months and year, a range typed From and To, and Clear.
 8. **6.8 The agent's toolbelt.** Lane Preset, in order, since preset changes land one at a time: a catalogue that
    answers, with `vp run docs NAME` (`6.8.1-catalogue`), lint that costs fewer rounds (`6.8.2-lint-limits`), the doors
    that are open (`6.8.3-closed-doors`), one verdict, `vp run verify` (`6.8.4-verify`), a shot that explains itself

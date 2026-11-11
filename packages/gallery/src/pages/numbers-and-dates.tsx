@@ -1,6 +1,6 @@
 /* The numbers and dates family, the firm's own components: Num, Money, Pct, Bps, Price32 and DateTime, which show
- * values by parallax's rules so a number reads the same here as in the grid; AmountInput; AsOfDatePicker and
- * DateRangePicker on the SIFMA calendar; and a ticket on TanStack Form that uses them. Each section's module is under
+ * values by parallax's rules so a number reads the same here as in the grid; AmountInput; AsOfDatePicker, DatePicker,
+ * MonthPicker and DateRangePicker on the SIFMA calendar; and a ticket on TanStack Form that uses them. Each section's module is under
  * numbers-and-dates/, with its tests beside it. */
 
 import type { ReactElement } from "react";
@@ -8,7 +8,9 @@ import type { ReactElement } from "react";
 import { AmountInputSection } from "./numbers-and-dates/amount-input.tsx";
 import {
   AsOfDatePickerSection,
+  DatePickerSection,
   DateRangePickerSection,
+  MonthPickerSection,
 } from "./numbers-and-dates/date-pickers.tsx";
 import {
   BpsSection,
@@ -35,6 +37,8 @@ function NumbersAndDates(): ReactElement {
       <SignedSection />
       <AmountInputSection />
       <AsOfDatePickerSection />
+      <DatePickerSection />
+      <MonthPickerSection />
       <DateRangePickerSection />
       <TicketFormSection />
     </div>

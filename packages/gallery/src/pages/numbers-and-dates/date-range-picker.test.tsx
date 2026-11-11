@@ -26,10 +26,10 @@ function PeriodField(props: Partial<ComponentProps<typeof DateRangePicker>>): Re
 
 /** The ranges a change handler heard, as text. */
 function heard(onValueChange: {
-  readonly mock: { readonly calls: (readonly [DateRange])[] };
+  readonly mock: { readonly calls: (readonly [DateRange | null])[] };
 }): string[] {
-  return onValueChange.mock.calls.map(
-    ([range]) => `${range.start.toString()} – ${range.end.toString()}`,
+  return onValueChange.mock.calls.map(([range]) =>
+    range === null ? "none" : `${range.start.toString()} – ${range.end.toString()}`,
   );
 }
 
@@ -51,8 +51,11 @@ describe("DateRangePicker", () => {
     { end: "2026-10-30", label: "Prior month", start: "2026-10-01" },
     { end: "2026-09-30", label: "Prior quarter", start: "2026-07-01" },
     { end: "2025-12-31", label: "Prior year", start: "2025-01-02" },
+    { end: "2026-11-10", label: "Past month", start: "2026-10-13" },
+    { end: "2026-11-10", label: "Past 3 months", start: "2026-08-10" },
+    { end: "2026-11-10", label: "Past year", start: "2025-11-10" },
   ])("$label runs from $start to $end, a business day", async ({ end, label, start }) => {
-    const onValueChange = vi.fn<(range: DateRange) => void>();
+    const onValueChange = vi.fn<(range: DateRange | null) => void>();
     const screen = await render(<PeriodField onValueChange={onValueChange} />);
     await userEvent.click(screen.getByRole("button", { name: "Period" }));
     const dialog = page.getByRole("dialog", { name: "Choose a date range" });
@@ -77,7 +80,7 @@ describe("DateRangePicker", () => {
   });
 
   test("the keys cross into the month before, and two picks make a range", async () => {
-    const onValueChange = vi.fn<(range: DateRange) => void>();
+    const onValueChange = vi.fn<(range: DateRange | null) => void>();
     const screen = await render(<PeriodField onValueChange={onValueChange} />);
     await userEvent.click(screen.getByRole("button", { name: "Period" }));
     await keysTo("{Enter}", "Tuesday, November 10, 2026");
@@ -91,7 +94,7 @@ describe("DateRangePicker", () => {
   });
 
   test("days picked in either order make the range, and a holiday or weekend cannot be one end", async () => {
-    const onValueChange = vi.fn<(range: DateRange) => void>();
+    const onValueChange = vi.fn<(range: DateRange | null) => void>();
     const screen = await render(<PeriodField onValueChange={onValueChange} />);
     await userEvent.click(screen.getByRole("button", { name: "Period" }));
     await userEvent.click(day("Monday, November 9, 2026"));
@@ -120,7 +123,7 @@ describe("DateRangePicker", () => {
   test("counts its presets from the day it opens, not the day it was first drawn", async () => {
     // Drawn on Thursday the 12th, opened the Tuesday after, a tab left open over the weekend.
     await withToday("2026-11-12", async (moveTo) => {
-      const onValueChange = vi.fn<(range: DateRange) => void>();
+      const onValueChange = vi.fn<(range: DateRange | null) => void>();
       const screen = await render(
         <Field>
           <FieldLabel htmlFor="period">Period</FieldLabel>
@@ -150,5 +153,52 @@ describe("DateRangePicker", () => {
         })
         .toBe(24);
     });
+  });
+});
+
+describe("DateRangePicker's typed range and Clear", () => {
+  test("takes a range typed From and To, in either order, on Enter", async () => {
+    const onValueChange = vi.fn<(range: DateRange | null) => void>();
+    const screen = await render(<PeriodField onValueChange={onValueChange} />);
+    await userEvent.click(screen.getByRole("button", { name: "Period" }));
+    const dialog = page.getByRole("dialog", { name: "Choose a date range" });
+    await userEvent.fill(dialog.getByRole("textbox", { name: "From" }), "11/10/2026");
+    await userEvent.fill(dialog.getByRole("textbox", { name: "To" }), "2026-10-01");
+    await userEvent.keyboard("{Enter}");
+    await expect.element(dialog).not.toBeInTheDocument();
+    expect(heard(onValueChange)).toStrictEqual(["2026-10-01 – 2026-11-10"]);
+  });
+
+  test("says why a typed end cannot be taken, and keeps the dialog open", async () => {
+    const onValueChange = vi.fn<(range: DateRange | null) => void>();
+    const screen = await render(<PeriodField onValueChange={onValueChange} />);
+    await userEvent.click(screen.getByRole("button", { name: "Period" }));
+    const dialog = page.getByRole("dialog", { name: "Choose a date range" });
+    await userEvent.fill(dialog.getByRole("textbox", { name: "From" }), "2026-10-01");
+    await userEvent.fill(dialog.getByRole("textbox", { name: "To" }), "2026-11-11");
+    await userEvent.click(dialog.getByRole("button", { name: "Apply" }));
+    await expect.element(dialog.getByText(/^2026-11-11 is not a business day/u)).toBeVisible();
+    await expect
+      .element(dialog.getByRole("textbox", { name: "To" }))
+      .toHaveAccessibleDescription(/2026-11-11 is not a business day/u);
+    expect(onValueChange).not.toHaveBeenCalled();
+  });
+
+  test("Clear empties the range, and tells the change handler", async () => {
+    const onValueChange = vi.fn<(range: DateRange | null) => void>();
+    const screen = await render(
+      <PeriodField
+        onValueChange={onValueChange}
+        defaultValue={{ end: date("2026-11-10"), start: date("2026-10-01") }}
+      />,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Period" }));
+    const dialog = page.getByRole("dialog", { name: "Choose a date range" });
+    await expect.element(dialog.getByRole("textbox", { name: "From" })).toHaveValue("2026-10-01");
+    await userEvent.click(dialog.getByRole("button", { name: "Clear" }));
+    await expect
+      .element(screen.getByRole("button", { name: "Period" }))
+      .toHaveAccessibleDescription("Pick a range");
+    expect(heard(onValueChange)).toStrictEqual(["none"]);
   });
 });

@@ -1,15 +1,18 @@
 /* What the date pickers share: today in New York, the default as-of date, reading a typed date, the reason a date
- * cannot be picked, and the words a day's cell is named by. A picker takes business days only, on the calendar the
- * field names, SIFMA's unless it names another, between its earliest and latest dates. */
+ * cannot be picked, and the words a day's cell is named by. An as-of or a range picker takes business days only, on
+ * the calendar the field names, SIFMA's unless it names another, between its earliest and latest dates; DatePicker
+ * takes any day between them, its grid still marking the days the market closes. */
 
 import { previousBusinessDay } from "#dates/business-days.ts";
 import type { Calendar, MarketDay } from "#dates/calendar.ts";
 import { sifma } from "#dates/sifma.ts";
 import { defaultZone } from "#format/format.ts";
 
-/** What a field allows: business days on its calendar, from `min` to `max` when they are set. */
+/** What a field allows: business days on its calendar, or any day when `anyDay`, from `min` to `max` when they are
+ * set. */
 interface PickRules {
   readonly calendar: Calendar;
+  readonly anyDay?: boolean | undefined;
   readonly min: Temporal.PlainDate | undefined;
   readonly max: Temporal.PlainDate | undefined;
 }
@@ -92,13 +95,15 @@ function pickRules({
   max,
   min,
   today,
+  anyDay = false,
 }: {
   readonly calendar: Calendar;
   readonly min: Temporal.PlainDate | undefined;
   readonly max: Temporal.PlainDate | null | undefined;
   readonly today: Temporal.PlainDate;
+  readonly anyDay?: boolean | undefined;
 }): PickRules {
-  return { calendar, max: max === undefined ? today : (max ?? undefined), min };
+  return { anyDay, calendar, max: max === undefined ? today : (max ?? undefined), min };
 }
 
 /** Why a closed day cannot be picked, in the calendar's words. */
@@ -109,15 +114,18 @@ function closedReason(date: Temporal.PlainDate, reason: string, calendar: Calend
     : `${date.toString()} is not a business day on ${where}: it closes for ${reason}.`;
 }
 
-/** Why `date` cannot be picked: before the earliest date, after the latest, or a day the market is closed. `undefined`
- * when it can. */
+/** Why `date` cannot be picked: before the earliest date, after the latest, or, unless the field takes any day, a day
+ * the market is closed. `undefined` when it can. */
 function whyNotPickable(date: Temporal.PlainDate, rules: PickRules): string | undefined {
-  const { calendar, max, min } = rules;
+  const { anyDay = false, calendar, max, min } = rules;
   if (min !== undefined && Temporal.PlainDate.compare(date, min) < 0) {
     return `${date.toString()} is before ${min.toString()}, the earliest date this field takes.`;
   }
   if (max !== undefined && Temporal.PlainDate.compare(date, max) > 0) {
     return `${date.toString()} is after ${max.toString()}, the latest date this field takes.`;
+  }
+  if (anyDay) {
+    return undefined;
   }
   const day = calendar.day(date);
   return day.kind === "closed" ? closedReason(date, day.reason, calendar) : undefined;

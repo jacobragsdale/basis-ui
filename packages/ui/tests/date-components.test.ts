@@ -7,6 +7,7 @@ import { describe, expect, test } from "vite-plus/test";
 import { dateTimeShown } from "#components/date-time-text.ts";
 import { defaultAsOfDate, pickRules, readDate, whyNotPickable } from "#components/date-picking.ts";
 import { rangeForPreset } from "#components/date-range-presets.ts";
+import { typedRange } from "#components/date-range-text.ts";
 import { nyse, sifma } from "#dates/index.ts";
 
 const date = (text: string): Temporal.PlainDate => Temporal.PlainDate.from(text);
@@ -161,6 +162,53 @@ describe("what a date field takes", () => {
   });
 });
 
+describe("what a field for any date takes", () => {
+  const rules = pickRules({
+    anyDay: true,
+    calendar: sifma,
+    max: null,
+    min: date("2026-01-02"),
+    today: date("2026-11-12"),
+  });
+
+  test("takes a weekend, a holiday and a date years ahead, as a maturity is", () => {
+    expect(whyNotPickable(date("2026-11-08"), rules)).toBeUndefined();
+    expect(whyNotPickable(date("2026-11-11"), rules)).toBeUndefined();
+    expect(whyNotPickable(date("2056-11-15"), rules)).toBeUndefined();
+  });
+
+  test("still holds its bounds", () => {
+    expect(whyNotPickable(date("2025-12-31"), rules)).toBe(
+      "2025-12-31 is before 2026-01-02, the earliest date this field takes.",
+    );
+  });
+});
+
+describe(typedRange, () => {
+  const rules = pickRules({
+    calendar: sifma,
+    max: null,
+    min: undefined,
+    today: date("2026-11-12"),
+  });
+
+  test("takes two typed days in either order and in either form", () => {
+    expect(typedRange("11/10/2026", "2026-10-01", rules)).toStrictEqual({
+      range: { end: date("2026-11-10"), start: date("2026-10-01") },
+    });
+  });
+
+  test("says why one end cannot be taken", () => {
+    expect(typedRange("2026-10-01", "2026-11-11", rules)).toStrictEqual({
+      reason:
+        "2026-11-11 is not a business day on the SIFMA (US bond market) calendar: it closes for Veterans Day.",
+    });
+    expect(typedRange("first of October", "2026-11-10", rules)).toStrictEqual({
+      reason: '"first of October" is not a date: write it as 2026-11-06 or 11/06/2026.',
+    });
+  });
+});
+
 describe(defaultAsOfDate, () => {
   test.each([
     ["the day before Veterans Day, over it", "2026-11-12", "2026-11-10"],
@@ -182,6 +230,10 @@ describe(rangeForPreset, () => {
     ["prior-month", "2026-10-01", "2026-10-30"],
     ["prior-quarter", "2026-07-01", "2026-09-30"],
     ["prior-year", "2025-01-02", "2025-12-31"],
+    // A month back is Saturday 10 October, then Columbus Day; a year back, Monday 10 November.
+    ["trailing-month", "2026-10-13", "2026-11-10"],
+    ["trailing-3-months", "2026-08-10", "2026-11-10"],
+    ["trailing-year", "2025-11-10", "2026-11-10"],
   ] as const)("%s runs from %s to %s, business days both", (preset, start, end) => {
     const range = rangeForPreset(preset, asOf);
     expect([range.start.toString(), range.end.toString()]).toStrictEqual([start, end]);

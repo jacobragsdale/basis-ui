@@ -19,6 +19,8 @@ const sections = [
   "Signed and aligned",
   "AmountInput",
   "AsOfDatePicker",
+  "DatePicker",
+  "MonthPicker",
   "DateRangePicker",
   "A ticket on TanStack Form",
 ];
