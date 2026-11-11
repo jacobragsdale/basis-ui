@@ -142,7 +142,7 @@ class Snapshots {
     const { selection } = model.interaction;
     const spoken = frame === this.#frame ? this.#current.totalsText : totalsText(frame);
     this.#frame = frame;
-    const selectedRows = model.choice.select === null ? null : model.choice.keys.size;
+    const selectedRows = model.choice.select === null ? null : model.choice.count(model.totalRows);
     this.#replace({
       active:
         selection === null

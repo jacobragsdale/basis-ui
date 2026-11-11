@@ -6,8 +6,8 @@ import type { ViewHandle } from "#engine/view.ts";
 
 import type { GridHost } from "./host.ts";
 import type { GridModel } from "./model.ts";
-import { keyColumn, keysIn, maxRowsFetched, toggled, withKeys } from "./row-selection.ts";
-import type { KeyColumn, RowSelect, RowSelectionInputs } from "./row-selection.ts";
+import { isKeyList, keyColumn, keysIn, maxRowsFetched, noRows, rowsOf } from "./row-selection.ts";
+import type { KeyColumn, RowSelect, RowSelectionInputs, RowsChosen } from "./row-selection.ts";
 import type { GridInputs } from "./types.ts";
 
 /** What checking rows asks of the grid. */
@@ -62,8 +62,14 @@ class RowChecks {
     if (!sameSelect(select, choice.select)) {
       choice.select = select;
     }
-    if (rowSelection?.selected !== undefined) {
-      choice.replace(rowSelection.selected);
+    this.#takeRows(rowSelection);
+  }
+
+  /** Takes the rows the app holds, if it holds them. */
+  #takeRows(rowSelection: RowSelectionInputs | null): void {
+    const selected = rowSelection?.selected;
+    if (selected !== undefined) {
+      this.#host.model.choice.set(rowsOf(selected));
     }
   }
 
@@ -96,7 +102,7 @@ class RowChecks {
     if (range && anchor !== null && anchor !== row) {
       this.#checkRange(anchor, row).catch(reportError);
     } else {
-      this.#commit(toggled(choice.keys, key), false);
+      this.#commit(choice.toggledChoice(key), false);
     }
   }
 
@@ -110,10 +116,16 @@ class RowChecks {
     };
   }
 
-  /** Checks every row the view shows, or clears the choice when there is one, as the header's checkbox does. */
+  /** Checks every row the view shows, or clears the choice when there is one, as the header's checkbox does. A flat
+   * view chooses every row with none listed, fetching no key; a grouped view, whose header checks the open groups'
+   * rows, and an app that holds the keys as a list, fetch the keys. */
   public checkAll(): void {
-    if (this.#host.model.choice.keys.size > 0) {
-      this.#commit([], false);
+    const { model } = this.#host;
+    const selected = this.#host.inputs()?.selected;
+    if (model.choice.any) {
+      this.#commit(noRows, false);
+    } else if (model.frame?.tree === null && (selected === undefined || !isKeyList(selected))) {
+      this.#commit({ all: true, keys: [] }, false);
     } else {
       this.#checkShown().catch(reportError);
     }
@@ -128,7 +140,7 @@ class RowChecks {
       return;
     }
     this.#focusKey = key;
-    this.#commit([key], false);
+    this.#commit({ all: false, keys: [key] }, false);
   }
 
   /** The keys of view rows `first` to `first + count - 1`, fetched from the view; null when it is not open, or the
@@ -152,7 +164,7 @@ class RowChecks {
   async #checkRange(from: number, to: number): Promise<void> {
     const keys = await this.#keysOf(Math.min(from, to), Math.abs(to - from) + 1);
     if (keys !== null) {
-      this.#commit(withKeys(this.#host.model.choice.keys, keys), false);
+      this.#commit(this.#host.model.choice.withRange(keys), false);
     }
   }
 
@@ -160,25 +172,50 @@ class RowChecks {
   async #checkShown(): Promise<void> {
     const keys = await this.#keysOf(0, this.#host.model.totalRows);
     if (keys !== null) {
-      this.#commit(keys, true);
+      this.#commit({ all: false, keys }, true);
     }
   }
 
-  /** Hands the app the keys now chosen. Without keys of its own, the grid shows them at once; with them, it shows
-   * what the app gives back. `all` says the header's checkbox chose them. */
-  #commit(keys: readonly string[], all: boolean): void {
+  /** Hands an app that takes keys the keys of every row the view shows but `except`, fetched from the view. */
+  async #handKeys(
+    onChange: (keys: readonly string[]) => void,
+    except: readonly string[],
+  ): Promise<void> {
+    const keys = await this.#keysOf(0, this.#host.model.totalRows);
+    if (keys !== null) {
+      const left = new Set(except);
+      onChange(keys.filter((key) => !left.has(key)));
+    }
+  }
+
+  /** Hands the app the rows now chosen. Without rows of its own, the grid shows them at once; with them, it shows
+   * what the app gives back. `all` says the header's checkbox chose these keys. */
+  #commit(rows: RowsChosen, all: boolean): void {
     const inputs = this.#host.inputs();
     const { choice } = this.#host.model;
     if (inputs === null) {
       return;
     }
     if (inputs.selected === undefined) {
-      choice.replace(keys);
+      choice.set(rows);
     }
     // Held by the app, the keys come back on its next render, and the header shows them all checked if they are these.
-    choice.checkedAll(all ? keys : null);
-    inputs.onChange?.(keys);
+    choice.checkedAll(all && !rows.all ? rows.keys : null);
+    inputs.onRows?.(rows);
+    this.#handTo(inputs.onChange, rows);
     this.#host.update();
+  }
+
+  /** Hands an app that takes keys the keys chosen: for every row but some, once they are fetched. */
+  #handTo(onChange: RowSelectionInputs["onChange"], rows: RowsChosen): void {
+    if (onChange === undefined) {
+      return;
+    }
+    if (rows.all) {
+      this.#handKeys(onChange, rows.keys).catch(reportError);
+    } else {
+      onChange(rows.keys);
+    }
   }
 }
 

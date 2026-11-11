@@ -65,7 +65,7 @@ Everything below, in this order where one needs another, except 6.10, which is t
 
 1. ~~6.3.5, the rest.~~ Done: the browser's figures are in the spike, and the target is recorded as missed.
 2. ~~6.3.6 to 6.3.9~~ done.
-3. ~~6.4.5, 6.4.6~~ done. **6.4.7 and 6.4.8** in order: selection that does not count rows, the
+3. ~~6.4.5 to 6.4.7~~ done. **6.4.8**: the
    charts' costs.
 4. **6.5.7** the default's identity and two more themes, then **6.5.8** the studio. The plan asks the maintainer to
    review the gallery before 6.5.7's baselines are recorded. The maintainer said on 2026-11-10 to implement everything
@@ -886,6 +886,7 @@ Each stays here until a step closes it.
 | 6.3.5    | The reference pivot of 1,000,000 positions takes 867 ms throttled against 300 ms, from 1,702 ms; 205 ms plain. A tree held as arrays would leave it near 600 ms; not done.                                                                                                 | 6.10                            |
 | 6.3.7    | The memory a page gets back by unloading is not measured: the bench loads one dataset a page.                                                                                                                                                                              | 6.9                             |
 | 6.3.8    | Narrower text codes (about 30 to 40 MB of 333 at 1,000,000 positions), packed booleans and no `seq` without a key were left; `wasm-opt` needs binaryen, a new tool.                                                                                                        | The maintainer, if memory binds |
+| 6.4.7    | Every row but some follows the view, so after a filter, a key unchecked that the filter now hides still lowers the status bar's count; counting it exactly needs the engine to say which keys the view holds. A grouped view's header still fetches the open groups' keys. | A later look                    |
 | 6.4.6    | One background for a row band, text grouped by ink and a number's width as its length times one advance were left: a pass draws single cells, and a number's signs and separators are not tabular. Drawing was already within its target, 1.0 to 2.3 ms a frame against 8. | A later look, if drawing binds  |
 | 6.4.1    | The canvas's tabular digits need Chrome or Edge 139. Recorded in the design's "Not yet verified".                                                                                                                                                                          | 6.10                            |
 | 6.5.2    | The pie's legend beside it is cut off by the status line, and taller rows hide more of it.                                                                                                                                                                                 | 6.6.6                           |

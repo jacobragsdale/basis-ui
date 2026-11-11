@@ -129,8 +129,9 @@ frame for rows already on screen redraws only the cells whose text changed.
 | `ref`            | `drawStats()`, the drawing counters; `export(format)`, `xlsx` or `csv`; and `distinctValues(column, search, limit)`                         |
 | `selectable`     | `true` adds a checkbox column for choosing rows, any number of them; `"single"` makes the focused cell's row the one chosen               |
 | `rowKey`         | With `selectable`, the column whose value names a row, such as a trade id or a CUSIP: one of the view's columns, different on every row   |
-| `selected`       | The keys of the rows chosen, when the app holds them; without it, the grid keeps the choice itself                                         |
+| `selected`       | The rows chosen, when the app holds them: their keys, or a `RowsChosen`; without it, the grid keeps the choice itself                      |
 | `onSelectionChange` | Takes the keys of the rows chosen, in the order they were chosen, whenever the user changes them                                        |
+| `onRowsChange`   | Takes the rows chosen as a `RowsChosen`, `{ all, keys }`: with `all` false the keys of the rows chosen, with `all` true every row the view shows but the keys' rows |
 
 The user sorts by clicking a header, Shift adding a sort; resizes a column by
 dragging its header's edge, or fits it with a double click there; moves a column
@@ -161,8 +162,14 @@ and the status bar and screen readers say how many there are. In a grouped grid 
 table's rows can be chosen, not the groups' rows, and the header's checkbox checks
 the rows of the groups that are open. A pivot's rows are groups, so it chooses none,
 and a view that hides the key column says so in its status bar rather than choosing
-rows it cannot name. Shift ranges and the header's checkbox fetch the keys of rows
-off screen, up to 1,000,000 at once. With `selectable="single"` there are no
+rows it cannot name. In a flat view the header's checkbox chooses every row the view
+shows without fetching a key, however many rows there are: `onRowsChange` gets
+`{ all: true, keys: [] }`, and unchecking a row adds its key to `keys`. Every row
+follows the view, so a row a later filter shows is chosen, and the count in the
+status bar is the view's rows less those unchecked. An app that takes
+`onSelectionChange` still gets every key, fetched, and an app that holds `selected`
+as a list of keys gets the list. Shift ranges, a grouped view's header checkbox and
+those lists fetch the keys of rows off screen, up to 1,000,000 at once. With `selectable="single"` there are no
 checkboxes: the row chosen is the focused cell's, so a click or an arrow key chooses
 another, as a master list beside its detail does.
 

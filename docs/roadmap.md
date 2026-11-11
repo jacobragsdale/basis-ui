@@ -583,7 +583,11 @@ flowchart TD
    drew walks only the rows the selection, the pointer or the choice of rows moved over, and reads whether a row is
    chosen once for the row; each area of columns is clipped once for all the rows, not twice a row; and moving along
    the header repaints the header alone. Scrolling 1,000,000 trades draws 1.0, 1.2 and 1.4 ms a frame at 1, 1.25 and
-   1.5, from 1.1, 1.3 and 1.8, and 1.0, 1.5 and 2.3 throttled, from 1.5, 1.8 and 2.4. No pixel changed.
+   1.5, from 1.1, 1.3 and 1.8, and 1.0, 1.5 and 2.3 throttled, from 1.5, 1.8 and 2.4. No pixel changed. 6.4.7 built
+   on 2026-11-11: the grid holds every row but some as well as some rows, so the header's checkbox chooses every row
+   of a flat view without fetching a key, past 1,000,000 rows as below, and a toggle no longer rebuilds the set;
+   `onRowsChange` hands an app the choice as `RowsChosen`, while `onSelectionChange` and `selected` as keys keep their
+   contract.
 5. **6.5 Themes.** Lane Theme, one branch per item in order: tokens for what opacity fakes (`6.5.1-tokens`), density
    in whole pixels (`6.5.2-density`), `defineTheme` (`6.5.3-define-theme`), `checkTheme` (`6.5.4-check-theme`), the
    choice of theme in the cookie (`6.5.5-theme-preference`), parallax on the same theme (`6.5.6-parallax-theme`), the

@@ -15414,16 +15414,22 @@
           "type": "string"
         },
         {
-          "description": "The keys of the rows chosen, when the app holds them; without it, the grid keeps the choice itself.",
+          "description": "The rows chosen, when the app holds them: their keys, or `RowsChosen`, which can say every row but some; without it, the grid keeps the choice itself.",
           "name": "selected",
           "optional": true,
-          "type": "readonly string[] | undefined"
+          "type": "readonly string[] | RowsChosen | undefined"
         },
         {
-          "description": "Takes the keys of the rows chosen, in the order they were chosen, whenever the user changes them.",
+          "description": "Takes the keys of the rows chosen, in the order they were chosen, whenever the user changes them. For every row of a flat view, the header's checkbox, they are fetched, up to 1,000,000.",
           "name": "onSelectionChange",
           "optional": true,
           "type": "((keys: readonly string[]) => void) | undefined"
+        },
+        {
+          "description": "Takes the rows chosen whenever the user changes them: `{ all: false, keys }` for those rows, or `{ all: true, keys }` for every row the view shows but those, which the header's checkbox chooses in a flat view without fetching a key, however many rows the view has.",
+          "name": "onRowsChange",
+          "optional": true,
+          "type": "((rows: RowsChosen) => void) | undefined"
         }
       ],
       "purpose": "A data grid and pivot table on a canvas, which can fill the window: a grid of `height` `auto` fills it too.",
@@ -20819,16 +20825,22 @@
           "type": "string"
         },
         {
-          "description": "The keys of the rows chosen, when the app holds them; without it, the grid keeps the choice itself.",
+          "description": "The rows chosen, when the app holds them: their keys, or `RowsChosen`, which can say every row but some; without it, the grid keeps the choice itself.",
           "name": "selected",
           "optional": true,
-          "type": "readonly string[] | undefined"
+          "type": "readonly string[] | RowsChosen | undefined"
         },
         {
-          "description": "Takes the keys of the rows chosen, in the order they were chosen, whenever the user changes them.",
+          "description": "Takes the keys of the rows chosen, in the order they were chosen, whenever the user changes them. For every row of a flat view, the header's checkbox, they are fetched, up to 1,000,000.",
           "name": "onSelectionChange",
           "optional": true,
           "type": "((keys: readonly string[]) => void) | undefined"
+        },
+        {
+          "description": "Takes the rows chosen whenever the user changes them: `{ all: false, keys }` for those rows, or `{ all: true, keys }` for every row the view shows but those, which the header's checkbox chooses in a flat view without fetching a key, however many rows the view has.",
+          "name": "onRowsChange",
+          "optional": true,
+          "type": "((rows: RowsChosen) => void) | undefined"
         }
       ],
       "exported": true,
@@ -20837,7 +20849,7 @@
       "purpose": ""
     },
     {
-      "definition": "| { readonly selectable?: false | undefined; readonly rowKey?: undefined; readonly selected?: undefined; readonly onSelectionChange?: undefined; } | { /** Chooses rows: by checkbox, any number (`true`), or the focused cell's row alone (`\"single\"`). */ readonly selectable: true | \"single\"; /** The column whose value names a row, such as a trade id or a CUSIP: one of the view's columns, with a * different value on every row. A row's key is the column's text as a copy writes it, every digit of a number. */ readonly rowKey: string; /** The keys of the rows chosen, when the app holds them; without it, the grid keeps the choice itself. */ readonly selected?: readonly string[] | undefined; /** Takes the keys of the rows chosen, in the order they were chosen, whenever the user changes them. */ readonly onSelectionChange?: ((keys: readonly string[]) => void) | undefined; }",
+      "definition": "| { readonly selectable?: false | undefined; readonly rowKey?: undefined; readonly selected?: undefined; readonly onSelectionChange?: undefined; readonly onRowsChange?: undefined; } | { /** Chooses rows: by checkbox, any number (`true`), or the focused cell's row alone (`\"single\"`). */ readonly selectable: true | \"single\"; /** The column whose value names a row, such as a trade id or a CUSIP: one of the view's columns, with a * different value on every row. A row's key is the column's text as a copy writes it, every digit of a number. */ readonly rowKey: string; /** The rows chosen, when the app holds them: their keys, or `RowsChosen`, which can say every row but some; * without it, the grid keeps the choice itself. */ readonly selected?: readonly string[] | RowsChosen | undefined; /** Takes the keys of the rows chosen, in the order they were chosen, whenever the user changes them. For every * row of a flat view, the header's checkbox, they are fetched, up to 1,000,000. */ readonly onSelectionChange?: ((keys: readonly string[]) => void) | undefined; /** Takes the rows chosen whenever the user changes them: `{ all: false, keys }` for those rows, or * `{ all: true, keys }` for every row the view shows but those, which the header's checkbox chooses in a flat * view without fetching a key, however many rows the view has. */ readonly onRowsChange?: ((rows: RowsChosen) => void) | undefined; }",
       "fields": [
         {
           "description": "Chooses rows: by checkbox, any number (`true`), or the focused cell's row alone (`\"single\"`).",
@@ -20852,16 +20864,22 @@
           "type": "string"
         },
         {
-          "description": "The keys of the rows chosen, when the app holds them; without it, the grid keeps the choice itself.",
+          "description": "The rows chosen, when the app holds them: their keys, or `RowsChosen`, which can say every row but some; without it, the grid keeps the choice itself.",
           "name": "selected",
           "optional": true,
-          "type": "readonly string[] | undefined"
+          "type": "readonly string[] | RowsChosen | undefined"
         },
         {
-          "description": "Takes the keys of the rows chosen, in the order they were chosen, whenever the user changes them.",
+          "description": "Takes the keys of the rows chosen, in the order they were chosen, whenever the user changes them. For every row of a flat view, the header's checkbox, they are fetched, up to 1,000,000.",
           "name": "onSelectionChange",
           "optional": true,
           "type": "((keys: readonly string[]) => void) | undefined"
+        },
+        {
+          "description": "Takes the rows chosen whenever the user changes them: `{ all: false, keys }` for those rows, or `{ all: true, keys }` for every row the view shows but those, which the header's checkbox chooses in a flat view without fetching a key, however many rows the view has.",
+          "name": "onRowsChange",
+          "optional": true,
+          "type": "((rows: RowsChosen) => void) | undefined"
         }
       ],
       "exported": false,
@@ -22507,6 +22525,26 @@
       "module": "@basis/parallax",
       "name": "RowsChartProps",
       "purpose": "`<Chart>` over rows the page holds."
+    },
+    {
+      "fields": [
+        {
+          "description": "Whether every row the view shows is chosen but `keys`, or only `keys`.",
+          "name": "all",
+          "optional": false,
+          "type": "boolean"
+        },
+        {
+          "description": "With `all` false, the keys of the rows chosen, in the order they were chosen; with `all` true, of those left out.",
+          "name": "keys",
+          "optional": false,
+          "type": "readonly string[]"
+        }
+      ],
+      "exported": true,
+      "module": "@basis/parallax",
+      "name": "RowsChosen",
+      "purpose": "The rows chosen: these rows, by key, in the order they were chosen; or every row the view shows but these, which the header's checkbox chooses in a flat view without fetching a key. \"Every row\" follows the view: a row a filter later shows is chosen, and one it hides is not."
     },
     {
       "definition": "\"light\" | \"dark\" | \"auto\"",

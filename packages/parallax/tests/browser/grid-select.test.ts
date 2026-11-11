@@ -7,6 +7,8 @@ import "@basis/ui/styles.css";
 import { describe, expect, test } from "vite-plus/test";
 import { userEvent } from "vite-plus/test/browser";
 
+import type { RowsChosen } from "#grid/row-selection.ts";
+
 import { pressAt, renderGrid } from "./grid-helpers.tsx";
 import type { Rendered } from "./grid-helpers.tsx";
 
@@ -35,6 +37,18 @@ async function chooser(
   return { ...rendered, picks };
 }
 
+/** A grid of the positions whose rows are chosen by checkbox, with the rows each change handed the app. */
+async function rowsChooser(): Promise<Rendered & { readonly chosen: RowsChosen[] }> {
+  const chosen: RowsChosen[] = [];
+  const onRowsChange = (rows: RowsChosen): void => {
+    chosen.push(rows);
+  };
+  const rendered = await renderGrid({
+    grid: { onRowsChange, rowKey: "market_value", selectable: true },
+  });
+  return { ...rendered, chosen };
+}
+
 describe("Grid with rows chosen by checkbox", () => {
   test("checks a row, then with Shift every row to another, and unchecks one", async () => {
     const { grid, screen, picks } = await chooser();
@@ -56,6 +70,18 @@ describe("Grid with rows chosen by checkbox", () => {
     await expect.element(screen.getByText("6 rows selected")).toBeInTheDocument();
     await pressAt(grid, { x: checkbox, y: header });
     await expect.poll(() => picks.at(-1)).toStrictEqual([]);
+  });
+
+  test("checks every row of a flat view as every row but none, and unchecking one leaves it out", async () => {
+    const { grid, screen, chosen } = await rowsChooser();
+    await pressAt(grid, { x: checkbox, y: header });
+    await expect.poll(() => chosen.at(-1)).toStrictEqual({ all: true, keys: [] });
+    await expect.element(screen.getByText("6 selected")).toBeVisible();
+    await pressAt(grid, { x: checkbox, y: rowY(1) });
+    await expect.poll(() => chosen.at(-1)).toStrictEqual({ all: true, keys: ["200.25"] });
+    await expect.element(screen.getByText("5 selected")).toBeVisible();
+    await pressAt(grid, { x: checkbox, y: header });
+    await expect.poll(() => chosen.at(-1)).toStrictEqual({ all: false, keys: [] });
   });
 
   test("checks the focused row with Space, and says a chosen row is", async () => {

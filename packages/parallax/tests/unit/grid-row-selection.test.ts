@@ -85,6 +85,44 @@ describe("checking keys", () => {
   });
 });
 
+describe("every row but these", () => {
+  test("holds every row with none listed, so checking all of 1,000,000 rows fetches no key", () => {
+    const choice = new RowChoice();
+    expect(choice.set({ all: true, keys: [] })).toBe(true);
+    expect([choice.header, choice.has("9"), choice.count(1_000_000)]).toStrictEqual([
+      "all",
+      true,
+      1_000_000,
+    ]);
+    expect(choice.set({ all: true, keys: [] })).toBe(false);
+  });
+
+  test("unchecks a row by listing it, checks it again by dropping it, and a range drops its keys", () => {
+    const choice = new RowChoice();
+    choice.set({ all: true, keys: [] });
+    const without = choice.toggledChoice("9");
+    expect(without).toStrictEqual({ all: true, keys: ["9"] });
+    choice.set(without);
+    expect([choice.header, choice.has("9"), choice.has("8"), choice.count(10)]).toStrictEqual([
+      "some",
+      false,
+      true,
+      9,
+    ]);
+    expect(choice.toggledChoice("9")).toStrictEqual({ all: true, keys: [] });
+    choice.set({ all: true, keys: ["1", "2", "3"] });
+    expect(choice.withRange(["2", "3", "4"])).toStrictEqual({ all: true, keys: ["1"] });
+  });
+
+  test("keeps a choice of these rows as keys, in the order they were chosen", () => {
+    const choice = new RowChoice();
+    choice.set({ all: false, keys: ["7", "3"] });
+    expect(choice.toggledChoice("5")).toStrictEqual({ all: false, keys: ["7", "3", "5"] });
+    expect(choice.withRange(["3", "4"])).toStrictEqual({ all: false, keys: ["7", "3", "4"] });
+    expect([choice.count(10), choice.rows.all]).toStrictEqual([2, false]);
+  });
+});
+
 describe("the checkbox column", () => {
   const geometry = flatGeometry(
     3,

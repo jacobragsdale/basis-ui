@@ -35,31 +35,11 @@ import { StatusBar } from "./status-bar.tsx";
 import { allParts } from "./parts.ts";
 import type { ToolbarParts } from "./parts.ts";
 import { GridToolbar } from "./toolbar.tsx";
-import type { DrillRequest, GridInputs } from "./types.ts";
+import { rowSelectionOf } from "./types.ts";
+import type { DrillRequest, GridRowSelection } from "./types.ts";
 import { useHandles } from "./use-grid-handles.ts";
 import type { GridHandle } from "./use-grid-handles.ts";
 import { useGridLayout } from "./use-grid-layout.ts";
-
-/** Choosing rows: by checkbox, any number (`true`), or the focused cell's row alone (`"single"`), each named by its
- * value in the `rowKey` column. */
-type GridRowSelection =
-  | {
-      readonly selectable?: false | undefined;
-      readonly rowKey?: undefined;
-      readonly selected?: undefined;
-      readonly onSelectionChange?: undefined;
-    }
-  | {
-      /** Chooses rows: by checkbox, any number (`true`), or the focused cell's row alone (`"single"`). */
-      readonly selectable: true | "single";
-      /** The column whose value names a row, such as a trade id or a CUSIP: one of the view's columns, with a
-       * different value on every row. A row's key is the column's text as a copy writes it, every digit of a number. */
-      readonly rowKey: string;
-      /** The keys of the rows chosen, when the app holds them; without it, the grid keeps the choice itself. */
-      readonly selected?: readonly string[] | undefined;
-      /** Takes the keys of the rows chosen, in the order they were chosen, whenever the user changes them. */
-      readonly onSelectionChange?: ((keys: readonly string[]) => void) | undefined;
-    };
 
 interface GridBaseProps {
   /** The dataset to show, from `useDataset`. */
@@ -98,19 +78,6 @@ interface GridBaseProps {
 type GridProps = GridBaseProps & GridRowSelection;
 
 const defaultMaxHeight = 480;
-
-/** What the controller takes of the row selection props. */
-function rowSelectionOf(props: GridRowSelection): GridInputs["rowSelection"] {
-  if (props.selectable !== true && props.selectable !== "single") {
-    return null;
-  }
-  return {
-    key: props.rowKey,
-    mode: props.selectable === "single" ? "single" : "multiple",
-    onChange: props.onSelectionChange,
-    selected: props.selected,
-  };
-}
 
 /** The layout of a grid given none: every column, in the table's order. One value, so it never reads as a change. */
 const defaultLayout: LayoutInput = {};

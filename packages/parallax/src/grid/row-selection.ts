@@ -21,10 +21,14 @@ interface RowSelectionInputs {
   readonly mode: SelectMode;
   /** The column whose value names a row: one of the view's columns, with a different value on every row. */
   readonly key: string;
-  /** The keys the app holds, which the grid shows; `undefined` leaves the grid to keep its own. */
-  readonly selected: readonly string[] | undefined;
-  /** Takes the keys selected, in the order they were chosen, whenever the user changes them. */
+  /** The rows the app holds, which the grid shows, as keys or as every row but some; `undefined` leaves the grid to
+   * keep its own. */
+  readonly selected: readonly string[] | RowsChosen | undefined;
+  /** Takes the keys selected, in the order they were chosen, whenever the user changes them; for every row but some,
+   * the keys of the rows, fetched from the view, up to `maxRowsFetched`. */
   readonly onChange: ((keys: readonly string[]) => void) | undefined;
+  /** Takes the rows chosen, as keys or as every row but some, whenever the user changes them. */
+  readonly onRows: ((rows: RowsChosen) => void) | undefined;
 }
 
 /** Where the key column is among the view's columns, or why rows cannot be selected; an empty reason while the view
@@ -90,9 +94,44 @@ function sameKeys(set: ReadonlySet<string>, keys: readonly string[]): boolean {
   return keys.length === set.size && keys.every((key) => set.has(key));
 }
 
-/** The rows chosen, by key, in the order they were chosen, with the row a Shift range starts from. */
+/** The keys after checking or unchecking one row. */
+function toggled(keys: ReadonlySet<string>, key: string): string[] {
+  return keys.has(key) ? [...keys].filter((each) => each !== key) : [...keys, key];
+}
+
+/** The keys after checking rows, those already chosen first. */
+function withKeys(keys: ReadonlySet<string>, added: readonly string[]): string[] {
+  return [...new Set([...keys, ...added])];
+}
+
+/** The rows chosen: these rows, by key, in the order they were chosen; or every row the view shows but these, which
+ * the header's checkbox chooses in a flat view without fetching a key. "Every row" follows the view: a row a filter
+ * later shows is chosen, and one it hides is not. */
+interface RowsChosen {
+  /** Whether every row the view shows is chosen but `keys`, or only `keys`. */
+  readonly all: boolean;
+  /** With `all` false, the keys of the rows chosen, in the order they were chosen; with `all` true, of those left
+   * out. */
+  readonly keys: readonly string[];
+}
+
+const noRows: RowsChosen = { all: false, keys: [] };
+
+/** Whether the rows an app holds are a list of keys. */
+function isKeyList(rows: readonly string[] | RowsChosen): rows is readonly string[] {
+  return Array.isArray(rows);
+}
+
+/** The rows an app holds, as keys or as every row but some, as the grid holds them. */
+function rowsOf(rows: readonly string[] | RowsChosen): RowsChosen {
+  return isKeyList(rows) ? { all: false, keys: rows } : rows;
+}
+
+/** The rows chosen, by key, with the row a Shift range starts from. */
 class RowChoice {
   #keys = new Set<string>();
+  /** The rows left out of every row, when every row but these is chosen; null when the keys are those chosen. */
+  #except: Set<string> | null = null;
   /** How rows are chosen, while the app asks for it and the view shows the key column; null otherwise. */
   public select: RowSelect | null = null;
   /** The view row last checked or unchecked, which a Shift range starts from; null after a change of layout. */
@@ -102,16 +141,37 @@ class RowChoice {
    * a render later, still shows every row checked. */
   #all: ReadonlySet<string> | null = null;
 
+  /** The keys chosen, when these rows are; empty when every row but some is. */
   public get keys(): ReadonlySet<string> {
-    return this.#keys;
+    return this.#except === null ? this.#keys : new Set();
+  }
+
+  /** The rows chosen, as the app is given them. */
+  public get rows(): RowsChosen {
+    return this.#except === null
+      ? { all: false, keys: [...this.#keys] }
+      : { all: true, keys: [...this.#except] };
+  }
+
+  /** Whether anything is chosen. */
+  public get any(): boolean {
+    return this.#except !== null || this.#keys.size > 0;
   }
 
   /** What the header's checkbox shows. */
   public get header(): HeaderCheck {
+    if (this.#except !== null) {
+      return this.#except.size === 0 ? "all" : "some";
+    }
     if (this.#keys.size === 0) {
       return "none";
     }
     return this.#all !== null && sameKeys(this.#all, [...this.#keys]) ? "all" : "some";
+  }
+
+  /** How many rows are chosen, of the `rows` the view shows. */
+  public count(rows: number): number {
+    return this.#except === null ? this.#keys.size : Math.max(0, rows - this.#except.size);
   }
 
   /** Records the keys of every row the view shows, as the header's checkbox chose them, or null for a choice of some
@@ -121,7 +181,10 @@ class RowChoice {
   }
 
   public has(key: string | null): boolean {
-    return key !== null && this.#keys.has(key);
+    if (key === null) {
+      return false;
+    }
+    return this.#except === null ? this.#keys.has(key) : !this.#except.has(key);
   }
 
   /** The key of view row `row` in `frame`: null when rows are not chosen, or the row is a group's or not loaded. */
@@ -134,7 +197,8 @@ class RowChoice {
     return this.has(this.keyAt(frame, row));
   }
 
-  /** Forgets where a Shift range starts and that every row is checked, after a change of layout moves the rows. */
+  /** Forgets where a Shift range starts and that every row is checked, after a change of layout moves the rows. Every
+   * row but some stays chosen: it follows the view. */
   public moved(): void {
     this.anchor = null;
     this.#all = null;
@@ -142,23 +206,51 @@ class RowChoice {
 
   /** Takes the keys the app holds; returns whether they differ from the grid's. */
   public replace(keys: readonly string[]): boolean {
-    const same = sameKeys(this.#keys, keys);
+    return this.set({ all: false, keys });
+  }
+
+  /** Takes the rows chosen; returns whether they differ from those the grid had. */
+  public set(chosen: RowsChosen): boolean {
+    if (chosen.all) {
+      const same = this.#except !== null && sameKeys(this.#except, chosen.keys);
+      this.#except = same ? this.#except : new Set(chosen.keys);
+      return !same;
+    }
+    const same = this.#except === null && sameKeys(this.#keys, chosen.keys);
     if (!same) {
-      this.#keys = new Set(keys);
+      this.#except = null;
+      this.#keys = new Set(chosen.keys);
     }
     return !same;
   }
+
+  /** The rows chosen after checking or unchecking the row of `key`. */
+  public toggledChoice(key: string): RowsChosen {
+    return this.#except === null
+      ? { all: false, keys: toggled(this.#keys, key) }
+      : { all: true, keys: toggled(this.#except, key) };
+  }
+
+  /** The rows chosen after checking the rows of `keys`, as a Shift range does. */
+  public withRange(keys: readonly string[]): RowsChosen {
+    if (this.#except === null) {
+      return { all: false, keys: withKeys(this.#keys, keys) };
+    }
+    const checked = new Set(keys);
+    return { all: true, keys: [...this.#except].filter((key) => !checked.has(key)) };
+  }
 }
 
-/** The keys after checking or unchecking one row. */
-function toggled(keys: ReadonlySet<string>, key: string): string[] {
-  return keys.has(key) ? [...keys].filter((each) => each !== key) : [...keys, key];
-}
-
-/** The keys after checking rows, those already chosen first. */
-function withKeys(keys: ReadonlySet<string>, added: readonly string[]): string[] {
-  return [...new Set([...keys, ...added])];
-}
-
-export { keyColumn, keysIn, maxRowsFetched, RowChoice, rowKeyAt, toggled, withKeys };
-export type { HeaderCheck, KeyColumn, RowSelect, RowSelectionInputs, SelectMode };
+export {
+  isKeyList,
+  keyColumn,
+  keysIn,
+  maxRowsFetched,
+  noRows,
+  RowChoice,
+  rowKeyAt,
+  rowsOf,
+  toggled,
+  withKeys,
+};
+export type { HeaderCheck, KeyColumn, RowSelect, RowSelectionInputs, RowsChosen, SelectMode };

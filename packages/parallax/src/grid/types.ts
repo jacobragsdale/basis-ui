@@ -1,10 +1,11 @@
-/* The types a grid's controller and its React component share. */
+/* The types a grid's controller and its React component share, and how the row selection props become the
+ * controller's. */
 
 import type { Layout, LayoutScalar } from "#layout/layout.ts";
 
 import type { SourceField } from "./fields.ts";
 import type { HeaderDrag } from "./paint/scene.ts";
-import type { RowSelectionInputs } from "./row-selection.ts";
+import type { RowSelectionInputs, RowsChosen } from "./row-selection.ts";
 import type { Selection } from "./selection.ts";
 
 /** A request for the rows behind one group of a pivot, which a double click on its value makes. */
@@ -34,6 +35,48 @@ interface GridInputs {
   readonly rowSelection: RowSelectionInputs | null;
 }
 
+/** Choosing rows: by checkbox, any number (`true`), or the focused cell's row alone (`"single"`), each named by its
+ * value in the `rowKey` column. */
+type GridRowSelection =
+  | {
+      readonly selectable?: false | undefined;
+      readonly rowKey?: undefined;
+      readonly selected?: undefined;
+      readonly onSelectionChange?: undefined;
+      readonly onRowsChange?: undefined;
+    }
+  | {
+      /** Chooses rows: by checkbox, any number (`true`), or the focused cell's row alone (`"single"`). */
+      readonly selectable: true | "single";
+      /** The column whose value names a row, such as a trade id or a CUSIP: one of the view's columns, with a
+       * different value on every row. A row's key is the column's text as a copy writes it, every digit of a number. */
+      readonly rowKey: string;
+      /** The rows chosen, when the app holds them: their keys, or `RowsChosen`, which can say every row but some;
+       * without it, the grid keeps the choice itself. */
+      readonly selected?: readonly string[] | RowsChosen | undefined;
+      /** Takes the keys of the rows chosen, in the order they were chosen, whenever the user changes them. For every
+       * row of a flat view, the header's checkbox, they are fetched, up to 1,000,000. */
+      readonly onSelectionChange?: ((keys: readonly string[]) => void) | undefined;
+      /** Takes the rows chosen whenever the user changes them: `{ all: false, keys }` for those rows, or
+       * `{ all: true, keys }` for every row the view shows but those, which the header's checkbox chooses in a flat
+       * view without fetching a key, however many rows the view has. */
+      readonly onRowsChange?: ((rows: RowsChosen) => void) | undefined;
+    };
+
+/** What the controller takes of the row selection props. */
+function rowSelectionOf(props: GridRowSelection): GridInputs["rowSelection"] {
+  if (props.selectable !== true && props.selectable !== "single") {
+    return null;
+  }
+  return {
+    key: props.rowKey,
+    mode: props.selectable === "single" ? "single" : "multiple",
+    onChange: props.onSelectionChange,
+    onRows: props.onRowsChange,
+    selected: props.selected,
+  };
+}
+
 /** An open header menu: its data column, and the source column it edits or, for a pivot, the measure. */
 interface OpenMenu {
   readonly column: number;
@@ -57,4 +100,5 @@ interface Interaction {
   menu: OpenMenu | null;
 }
 
-export type { DrillRequest, GridInputs, Interaction, OpenMenu };
+export { rowSelectionOf };
+export type { DrillRequest, GridInputs, GridRowSelection, Interaction, OpenMenu };
