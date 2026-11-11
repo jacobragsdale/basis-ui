@@ -9,6 +9,12 @@ anything of an app.
 
 ## Unreleased
 
+- An app made with `vp create @basis:app` now gets its `.gitignore`. The packed template had dropped it, as a packed
+  package drops every `.gitignore`, so `vp run verify` failed its sync stage, and its lint read `node_modules` until it
+  was killed. The template holds it as `_gitignore`, which `vp create` renames, and CI now makes an app from the packed
+  template and packages and runs `vp run verify`, `vp run shot --all` and `vp build` in it. What to do: an app with no
+  `.gitignore` runs `vp run sync`, which writes it.
+
 - `vp run upgrade [VERSION]` refuses a working tree with changes not committed, then installs `@basis/ui` and
   `@basis/parallax` at the new version, the latest release or VERSION, prints this changelog's entries after the
   installed version, runs `vp run sync`, then the codemods the releases in between ship, oldest first, and `vp run

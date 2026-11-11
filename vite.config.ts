@@ -83,7 +83,9 @@ export default defineConfig({
       ...parallax,
       ...parallaxGenerated,
       ...spikeCode,
-      // The app template is checked as a generated app, by its own config, once installed (roadmap 1.7).
+      /* The template is linted as the app made from it, by that app's own configuration and @basis/ui's packed preset,
+       * which CI's `vp run @basis/create#prove` runs: here, it would take the library's limits, not an app's, and its
+       * imports of @basis/ui would resolve to the workspace's, not an app's installed package. */
       "packages/create/templates/**",
     ],
     overrides: [

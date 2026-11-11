@@ -7,6 +7,10 @@
     "templates"
   ],
   "type": "module",
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "vite-plus": "catalog:"
+  },
   "createConfig": {
     "templates": [
       {

@@ -37,6 +37,7 @@ jobs:
     outputs:
       ui: ${{ steps.filter.outputs.ui }}
       parallax: ${{ steps.filter.outputs.parallax }}
+      template: ${{ steps.filter.outputs.template }}
     steps:
       - uses: actions/checkout@v7.0.1
       - uses: dorny/paths-filter@v4.0.3
@@ -69,6 +70,14 @@ jobs:
               # The Rust SIFMA calendar is tested against the schedules SIFMA published, which `@basis/ui` keeps.
               - "packages/ui/tests/fixtures/calendars/sifma.json"
               - ".github/workflows/ci.yml"
+            # The app made from the template is installed from both packages' tarballs.
+            template:
+              - "packages/ui/**"
+              - "packages/parallax/src/**"
+              - "packages/create/**"
+              # The catalog names the versions @basis/ui's tarball depends on.
+              - "pnpm-workspace.yaml"
+              - ".github/workflows/ci.yml"
 
   ui:
     needs: changes
@@ -84,7 +93,12 @@ jobs:
       # Browser tests run in the Chromium that the preset's Playwright version pins: the gallery's and the example's,
       # and @basis/ui's own tests of shot, which pictures a page, and of budget, which weighs one; its tree-shaking test
       # bundles its build.
-      - run: vp exec --filter @basis/ui playwright install --with-deps chromium
+      # Playwright's download has hung on a runner for half an hour: three minutes, then once more.
+      - name: Install Playwright's Chromium
+        timeout-minutes: 7
+        run: |
+          timeout 3m vp exec --filter @basis/ui playwright install --with-deps chromium ||
+            timeout 3m vp exec --filter @basis/ui playwright install --with-deps chromium
       - run: vp run @basis/ui#test
       - run: vp run @basis/gallery#test
       # The gallery's render matrix again, in a Node DOM, as on a machine with no browser.
@@ -98,6 +112,56 @@ jobs:
       # The consumer app is configured by hand with the README's lines, as ctzd writes its apps, and passes verify as
       # one: its configuration, lint, types, test and build, and its budget, weighed in Chromium.
       - run: vp run @basis/consumer#verify
+
+  # The template, proven: an app made from @basis/create's packed template, outside the workspace, installed from the
+  # packed @basis/ui and @basis/parallax, whose engine comes built in its tarball, then committed through its hook and
+  # checked as its developer checks it, with `vp run verify`, `vp run shot --all` and `vp build`
+  # (packages/create/scripts/prove.ts).
+  template:
+    name: create / The template, made into an app from the packed packages
+    needs: changes
+    if: needs.changes.outputs.template == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      CARGO_BUILD_JOBS: 4
+    steps:
+      - uses: actions/checkout@v7.0.1
+        timeout-minutes: 2
+      # Its cache is pnpm's store, which the app's install takes its packages from.
+      - uses: voidzero-dev/setup-vp@v1.22.0
+        timeout-minutes: 5
+        with:
+          node-version-file: .node-version
+          cache: true
+      - run: rustup toolchain install
+        timeout-minutes: 5
+        working-directory: packages/parallax
+      - uses: Swatinem/rust-cache@v2
+        timeout-minutes: 5
+        with:
+          workspaces: packages/parallax -> target
+      - name: Install wasm-bindgen
+        timeout-minutes: 3
+        working-directory: packages/parallax
+        run: |
+          version=$(cargo metadata --format-version 1 --locked | jq -r '.packages[] | select(.name == "wasm-bindgen") | .version')
+          curl -sSL "https://github.com/wasm-bindgen/wasm-bindgen/releases/download/${version}/wasm-bindgen-${version}-x86_64-unknown-linux-musl.tar.gz" | tar xz
+          sudo install -m 755 "wasm-bindgen-${version}-x86_64-unknown-linux-musl/wasm-bindgen" /usr/local/bin/
+      - run: vp run @basis/ui#build
+        timeout-minutes: 5
+      - run: vp run @basis/parallax#build
+        timeout-minutes: 10
+      # The app's tests and shots run in the Chromium the preset's Playwright pins, as the workspace's do.
+      - name: Install Playwright's Chromium
+        timeout-minutes: 7
+        run: |
+          timeout 3m vp exec --filter @basis/ui playwright install --with-deps chromium ||
+            timeout 3m vp exec --filter @basis/ui playwright install --with-deps chromium
+      # Packs the three packages, makes the app, installs, commits, verifies, shoots every route and builds; a stage
+      # that fails names itself in its ERROR line.
+      - run: vp run @basis/create#prove
+        timeout-minutes: 10
 
   # Every gallery section's screenshot, in light and dark, comfortable and compact, and its axe check, in the pinned
   # Playwright image, against the gallery built here on @basis/ui's build. A change to either runs them.
@@ -155,7 +219,12 @@ jobs:
       - run: vp run @basis/parallax#build
       # The committed declaration of wasm-bindgen's glue, which `vp check` type-checks against, must be this build's.
       - run: git diff --exit-code -- packages/parallax/wasm/parallax_wasm.d.ts
-      - run: vp exec --filter @basis/ui playwright install --with-deps chromium
+      # Playwright's download has hung on a runner for half an hour: three minutes, then once more.
+      - name: Install Playwright's Chromium
+        timeout-minutes: 7
+        run: |
+          timeout 3m vp exec --filter @basis/ui playwright install --with-deps chromium ||
+            timeout 3m vp exec --filter @basis/ui playwright install --with-deps chromium
       - run: vp run @basis/parallax#test
       # The demo runs the package's build, as an app does: its browser tests, with the engine's real worker, and its
       # build.

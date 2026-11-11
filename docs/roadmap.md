@@ -662,6 +662,17 @@ flowchart TD
    `eslint/no-restricted-globals` to `basis/no-fetch` in disable comments, found by Oxc's parser from `vite-plus`. The
    tests run the task against a fake `vp` and a feed of folders, on a temporary git clone. Not yet: an upgrade from a
    version older than this one runs that version's `upgrade`, without codemods; none was released.
+   6.8.9 built on 2026-11-10: `vp run @basis/create#prove` packs `@basis/ui`, `@basis/parallax`, its engine built in
+   the tarball, and `@basis/create`, makes an app from the packed template in a temporary folder outside the
+   workspace, as `vp create` copies an org template, installs it from the tarballs through a pnpmfile outside the
+   app, commits it through its hook, and runs `vp run verify`, `vp run shot --all` and `vp build`, then checks git has
+   nothing left to commit; a stage that fails names itself in one `ERROR` line. CI's `template` job runs it when
+   `packages/ui`, `packages/parallax/src`, `packages/create` or the workflow changes, every step with a timeout, and
+   Playwright's install, in every job, three minutes and once more. The template failed one way: a packed package drops
+   its `.gitignore`, so the app had none, failed the sync stage, and its lint read `node_modules` until it was killed;
+   the template holds it as `_gitignore`, which `vp create` renames. The root's lint still skips the template, which is
+   linted as the app made from it, by its own configuration. Not yet: `vp create @basis:app` itself, which needs 1.8's
+   registry.
 9. **6.9 The showcase** (`6.9-showcase`, then a branch per page). `packages/showcase`, made from the template, with ten
    pages: overview, blotter, positions, relative value, P&L explain, curves, a bond, booking a trade, import, and a
    probe of the desktop. An agent builds it with only the shipped tools, and logs in `BUILDING.md` each place they fell

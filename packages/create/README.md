@@ -21,4 +21,11 @@ vp create @basis:app --directory positions-ui
   the hashed assets cached as immutable and every other path `no-cache`.
 
 The template's framework files are written by `vp run sync` itself (`node ../../../ui/src/preset/tasks.ts sync` in
-`templates/app`), and `@basis/ui`'s tests fail when they differ from what it writes.
+`templates/app`), and `@basis/ui`'s tests fail when they differ from what it writes. A packed package drops its
+`.gitignore`, so the template holds it as `_gitignore`, which `vp create` renames: after a sync in `templates/app`,
+move the `.gitignore` it writes over `_gitignore`.
+
+`vp run @basis/create#prove` proves the template: it packs the three packages, makes an app from the packed template in
+a temporary folder outside the workspace, installs it from the tarballs, commits it through its hook, and runs
+`vp run verify`, `vp run shot --all` and `vp build` in it. CI runs it when the template or either package changes;
+[`@basis/ui`'s CONTRIBUTING.md](../ui/CONTRIBUTING.md#the-template-proven) says how to run it here.

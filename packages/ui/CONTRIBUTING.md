@@ -32,6 +32,35 @@ codemod after the first up to the second, oldest release first, and a release's 
 dry run runs each on the files as the ones before it left them, and writes nothing. Its changelog entry says what it
 does, and what is left to do by hand. Test it on a fixture app, as `tests/codemods.test.ts` tests `fetch-rule-name`.
 
+## The template, proven
+
+`packages/create` holds the template an app is made from, and the root's lint skips it: it is checked as the app made
+from it, by that app's own configuration. Run, from the repo's root:
+
+```sh
+vp run @basis/create#prove           # every stage; -- --keep keeps the app when it passes
+```
+
+It builds `@basis/ui` and `@basis/parallax`, the engine's WebAssembly included, so the Rust toolchain is needed, as for
+`vp run @basis/parallax#build`, and Playwright's Chromium, as for the gallery's tests. Then, in a temporary folder
+outside the workspace, `scripts/prove.ts` runs its stages in order:
+
+- `pack`: `vp pm pack` of `@basis/ui`, `@basis/parallax` and `@basis/create`, as a release ships them;
+- `make`: the packed template copied as `vp create @basis:app` copies it, `_gitignore` renamed `.gitignore`, and a
+  git repository;
+- `install`: `vp install`, with a pnpmfile outside the app that takes both packages from their tarballs, so no
+  registry and no workspace link is involved, and pnpm's store gives the rest;
+- `commit`: the first commit, through the app's commit hook;
+- `verify`, `shot` and `build`: `vp run verify`, `vp run shot --all` with the bond route's sample value, and
+  `vp build`;
+- `clean`: nothing left for git to commit, so the `.gitignore` names what the tasks write.
+
+A stage that fails ends the run with one line, `ERROR the template's STAGE stage failed: ...`, after the command's own
+output, and keeps the app at the path it names. CI runs it when `packages/ui`, `packages/parallax/src`,
+`packages/create` or the workflow changes. A packed package drops its `.gitignore`, so the template holds it as
+`_gitignore`. After a change to the framework's files, run the sync in `packages/create/templates/app`,
+`node ../../../ui/src/preset/tasks.ts sync`, as its README says, and move the `.gitignore` it writes over `_gitignore`.
+
 ## Adding a component
 
 1. Port it from shadcn's Base UI source, keeping shadcn's names, props and parts, into

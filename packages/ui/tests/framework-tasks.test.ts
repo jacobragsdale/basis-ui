@@ -1,14 +1,16 @@
 /* The framework tasks, run as the preset runs them: Node on src/preset/tasks.ts, in an app's root. The app is a
  * temporary folder with this package linked in as `node_modules/@basis/ui`, as an installed app has it, and the
- * template in packages/create holds exactly what `vp run sync` writes. The drift check's hold on an app's own
+ * template in packages/create, made into an app, holds exactly what `vp run sync` writes. The drift check's hold on an app's own
  * configuration and dependencies, and verify's suppressions stage, are in drift-check.test.ts. */
 
 import { execFileSync, spawnSync } from "node:child_process";
 import {
+  cpSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  renameSync,
   rmSync,
   symlinkSync,
   writeFileSync,
@@ -85,8 +87,12 @@ afterEach(() => {
 });
 
 describe("vp run sync", () => {
-  test("the template holds exactly what it writes", () => {
-    const check = runIn(template, "sync", "--check");
+  test("the template, made into an app as vp create makes one, holds exactly what it writes", () => {
+    /* A packed package drops its `.gitignore`, so the template holds it as `_gitignore`, which `vp create` renames, as
+     * packages/create/scripts/prove.ts does. */
+    cpSync(template, app, { recursive: true });
+    renameSync(path.join(app, "_gitignore"), path.join(app, ".gitignore"));
+    const check = run("sync", "--check");
     expect(check.stderr).toBe("");
     expect(check.status).toBe(0);
   });
