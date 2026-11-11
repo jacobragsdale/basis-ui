@@ -11,10 +11,12 @@ import { open } from "./helpers.ts";
 import { capMemory, sheetRows } from "./files.ts";
 
 /** The limits the engine in the browser enforces, as its errors state them. */
-const maxArrowBytes = 70_000_000;
-const maxRows = 150_000;
+const maxArrowBytes = 500_000_000;
+const maxRows = 10_000_000;
 /** The engine's memory, capped at 32 MB in 64 KiB pages: room for the page's sample, not for 24 MB more. */
 const cappedPages = 512;
+/** The rows of 20 doubles that make those 24 MB, within the browser's limits. */
+const capRows = 150_000;
 const loadMs = 60_000;
 
 /** The rows the export test loads, which every export must hold exactly. */
@@ -97,21 +99,21 @@ test("loads past the limits are refused with the limit and the size, and one at 
   await openSource(page);
   await choose(page, info, { bytes: new Uint8Array(maxArrowBytes + 1), name: "too-big.arrows" });
   await expect(note(page)).toHaveText(
-    "too-big.arrows did not load: too_big is 70000001 bytes of Arrow, more than the 70000000 a table in the browser holds; have its API filter or aggregate the data to fit.",
+    "too-big.arrows did not load: too_big is 500000001 bytes of Arrow, more than the 500000000 a table in the browser holds; have its API filter or aggregate the data to fit.",
     { timeout: loadMs },
   );
   await choose(page, info, { bytes: floats(maxRows + 1, 1), name: "rows.arrows" });
   await expect(note(page)).toHaveText(
-    "rows.arrows did not load: rows has 150001 rows, more than the 150000 a table in the browser holds; have its API filter or aggregate the data to fit",
+    "rows.arrows did not load: rows has 10000001 rows, more than the 10000000 a table in the browser holds; have its API filter or aggregate the data to fit",
     { timeout: loadMs },
   );
   // Refused loads leave the grid as it was.
   await expect(grid(page)).toHaveAttribute("aria-rowcount", "2000");
   await choose(page, info, { bytes: floats(maxRows, 1), name: "limit.arrows" });
-  await expect(note(page)).toHaveText("Loaded 150,000 rows from limit.arrows.", {
+  await expect(note(page)).toHaveText("Loaded 10,000,000 rows from limit.arrows.", {
     timeout: loadMs,
   });
-  await expect(grid(page)).toHaveAttribute("aria-rowcount", "150000", { timeout: loadMs });
+  await expect(grid(page)).toHaveAttribute("aria-rowcount", "10000000", { timeout: loadMs });
 });
 
 /** The engine's module, from now on served with its memory capped. */
@@ -129,7 +131,7 @@ test("an engine that runs out of memory is replaced, and a later load works", as
   const workers: string[] = [];
   page.on("worker", (worker) => workers.push(worker.url()));
   await openSource(page);
-  await choose(page, info, { bytes: floats(maxRows, 20), name: "huge.arrows" });
+  await choose(page, info, { bytes: floats(capRows, 20), name: "huge.arrows" });
   await expect(note(page)).toHaveText(
     /^huge\.arrows did not load: The engine in this page stopped after a fatal error \(RuntimeError: unreachable\), most likely because it ran out of memory\. It has started again without its tables: load the data again\.$/u,
     { timeout: loadMs },

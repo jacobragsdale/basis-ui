@@ -4,9 +4,9 @@
 
 /** Each dataset's primary key, which makes a reload a diff, or null for none. */
 const datasetKeys = {
-  /** 150,000 positions. */
+  /** 1,000,000 positions. */
   positions: "position_id",
-  /** 150,000 trades. */
+  /** 1,000,000 trades. */
   trades: "trade_id",
   /** Daily prices for 50 tickers since 2016, about 136,000 rows. */
   prices: null,

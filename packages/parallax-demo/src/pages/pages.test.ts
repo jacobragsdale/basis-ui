@@ -10,7 +10,9 @@ describe("data from the app", () => {
     await expect
       .element(screen.getByRole("grid", { name: "orders" }))
       .toHaveAttribute("aria-rowcount", "2000");
-    await expect.element(screen.getByText("At most 150,000 rows or 70 MB of Arrow")).toBeVisible();
+    await expect
+      .element(screen.getByText("At most 10,000,000 rows or 500 MB of Arrow"))
+      .toBeVisible();
   });
 });
 

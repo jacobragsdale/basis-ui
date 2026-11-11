@@ -559,7 +559,8 @@ flowchart TD
    2026-11-10: a decimal column holds a word a value until one does not fit, so the 1,000,000 positions take 449 MB of
    WebAssembly, from 531, and the browser's build is optimised as one unit with SIMD, a module of 4.69 MB, from 5.17;
    narrower text codes, packed booleans, no sequence for a table with no key and `wasm-opt` were measured or weighed
-   and left.
+   and left. 6.3.9 built on 2026-11-10: a table holds 500 MB of Arrow, about 1,000,000 rows of 40 columns, and
+   10,000,000 rows, from 150,000 rows and 70 MB, and the demo's positions and trades are 1,000,000 rows each.
 4. **6.4 The canvas on a Citrix desktop.** Lane Grid, one branch per item in order: digits that line up
    (`6.4.1-tabular-digits`), whole device pixels (`6.4.2-device-pixels`), one draw per frame and one row step per notch
    (`6.4.3-frame-aligned`), a scroll that moves pixels (`6.4.4-scroll-blit`), rows past the scrollbar's reach

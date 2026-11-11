@@ -20,7 +20,7 @@ import type { StaticDataRouteOption } from "@tanstack/react-router";
 import type { ReactElement } from "react";
 
 /** The rows of the large generated datasets, positions and trades. */
-const largeRows = "150,000";
+const largeRows = "1,000,000";
 
 /** The sidebar's groups. */
 type PageGroup = "Tables" | "Charts";
@@ -100,7 +100,7 @@ const chartPages = {
   },
   charts: {
     about:
-      "Every chart kind, reduced by the engine to the pixels it fills: lines on trading days, candles bucketed to fit, stacked bars, a histogram, a density of 150,000 points and a heatmap that diverges around zero. Hover for values; the price charts share a crosshair. Drag to pan, scroll to zoom, double-click to show everything, and Shift-drag on the candles to list those days.",
+      "Every chart kind, reduced by the engine to the pixels it fills: lines on trading days, candles bucketed to fit, stacked bars, a histogram, a density of 1,000,000 points and a heatmap that diverges around zero. Hover for values; the price charts share a crosshair. Drag to pan, scroll to zoom, double-click to show everything, and Shift-drag on the candles to list those days.",
     group: "Charts",
     Icon: ChartLineIcon,
     path: "/charts",

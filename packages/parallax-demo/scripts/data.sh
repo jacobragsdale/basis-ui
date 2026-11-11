@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Writes the demo's datasets with parallax-datagen, as Arrow IPC streams in public/data, which the build copies beside
 # the app and each page fetches as an app fetches its API's Arrow. They are the Angular demo's datasets, with the same
-# seed and options, so the same rows: 150,000 positions and 150,000 trades at the browser's row limit, daily prices for
+# seed and options, so the same rows but more of them: 1,000,000 positions and 1,000,000 trades, daily prices for
 # 50 tickers, the small tables' 300 positions and 500 trades, and for the fixed-income page 600 bonds, October's P&L
 # explained by factor, the Treasury curve on SIFMA's days, and Treasury yields through Thanksgiving week. Every file must also be within the browser's byte limit, maxArrowBytes in @basis/parallax's
 # src/engine/limits.ts.
@@ -28,8 +28,8 @@ generate() {
     exit 1
   fi
 }
-generate positions positions --rows 150000
-generate trades trades --rows 150000
+generate positions positions --rows 1000000
+generate trades trades --rows 1000000
 generate prices prices --tickers 50
 generate book positions --rows 300
 generate blotter trades --rows 500

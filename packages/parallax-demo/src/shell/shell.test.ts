@@ -25,7 +25,7 @@ describe("the sidebar", () => {
         .map((link) => link.element().textContent),
     ).toStrictEqual([
       "Positions pivot",
-      "150,000 trades",
+      "1,000,000 trades",
       "Largest trades",
       "Daily prices",
       "Small tables",

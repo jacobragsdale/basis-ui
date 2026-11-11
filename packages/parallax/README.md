@@ -4,7 +4,8 @@ parallax is a data grid, pivot table and charting stack for portfolio managers
 and quant researchers. It is a Rust engine, compiled to WebAssembly and run in a
 Web Worker in the page, built to pivot and chart tables on GPU-less Citrix
 desktops without showing a wrong number. The app loads the data, as Arrow from
-its own API; one table holds at most 150,000 rows and 70 MB of Arrow.
+its own API; one table holds at most 500 MB of Arrow, about 1,000,000 rows of
+40 columns, and 10,000,000 rows.
 
 This package, `@basis/parallax`, is the engine with its worker built in, the
 framework-free client, and its React layer. App developers install it and never
@@ -570,8 +571,8 @@ command-line tool at the version in `Cargo.lock`, as the package's build does.
    ```
 
    The data task writes the datasets with `parallax-datagen` as Arrow streams
-   in `packages/parallax-demo/public/data`: 150,000 positions and 150,000
-   trades, at the browser's row limit, daily prices for 50 tickers, the small
+   in `packages/parallax-demo/public/data`: 1,000,000 positions and 1,000,000
+   trades, 764 MB of Arrow between them, too large to commit, daily prices for 50 tickers, the small
    tables' 300 positions and 500 trades, 600 bonds, and October's P&L
    explained by factor for four bond portfolios. The build copies them
    into `dist/` beside the app, and builds `@basis/parallax` first.

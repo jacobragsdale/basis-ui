@@ -64,7 +64,7 @@ data is for and never the load time; `94343fc`, `8aaf718` and `e1c39b5` fixed CI
 Everything below, in this order where one needs another, except 6.10, which is the maintainer's at the firm.
 
 1. ~~6.3.5, the rest.~~ Done: the browser's figures are in the spike, and the target is recorded as missed.
-2. ~~6.3.6 to 6.3.8~~ done. **6.3.9**: the new limit in bytes.
+2. ~~6.3.6 to 6.3.9~~ done.
 3. ~~6.4.5~~ done. **6.4.6 to 6.4.8** in order: less work in a pass, selection that does not count rows, the
    charts' costs.
 4. **6.5.7** the default's identity and two more themes, then **6.5.8** the studio. The plan asks the maintainer to

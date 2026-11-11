@@ -1,4 +1,4 @@
-/* The breakdowns page's charts: big pies, donuts and bars over 150,000 positions and 150,000 trades, both loaded into
+/* The breakdowns page's charts: big pies, donuts and bars over 1,000,000 positions and 1,000,000 trades, both loaded into
  * the page. Gross notional rather than market value, because short positions' market values are negative, which a pie
  * refuses. A click on a slice or bar narrows the other charts of its dataset to that group, unless they group by the
  * same column. */

@@ -101,7 +101,7 @@ describe("the engine's loads", () => {
     const { engine, worker } = engineWithWorker();
     const tooBig = new ArrayBuffer(maxArrowBytes + 1);
     await expect(engine.load("positions", tooBig)).rejects.toThrow(
-      "positions is 70000001 bytes of Arrow, more than the 70000000 a table in the browser holds; have its API filter or aggregate the data to fit.",
+      "positions is 500000001 bytes of Arrow, more than the 500000000 a table in the browser holds; have its API filter or aggregate the data to fit.",
     );
     expect(worker.sent("load")).toHaveLength(0);
     // The buffer stays the app's.

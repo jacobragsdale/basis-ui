@@ -158,7 +158,7 @@ The design envelope covers:
 
 | Quantity | Design target |
 |---|---|
-| Largest table held in the browser | 150,000 rows × 40 columns, 70 MB of Arrow (was 5 million) |
+| Largest table held in the browser | 500 MB of Arrow, about 1,000,000 rows × 40 columns, and 10,000,000 rows (was 150,000 rows and 70 MB until basis-ui's step 6.3.9) |
 | Distinct values in a text column | about 10,000 |
 
 The server's targets, 20 million rows × 60 columns held on it and 50 users at

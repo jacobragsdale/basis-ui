@@ -755,8 +755,9 @@ since the grid it replaces manages about 200,000 rows, so a limit of 150,000 is 
 day lifted the limit in a copy of the built demo: the engine as it stood loaded 2,000,000 trades, and its time and
 memory grew in a straight line with rows, so what bounds it is memory, the load and the first sort, each with a cause
 that step 6.3 removes. The limit is restated in bytes of Arrow, since memory follows bytes: step 6.3.9 sets it from the
-scale harness, expected near 500 MB, and drops the row limit or sets it far above. Until then it stays at 150,000 rows
-and 70 MB. The budgets are stated against a Citrix session of about 4 virtual CPUs and 16 GB, the maintainer's figure,
+scale harness, expected near 500 MB, and drops the row limit or sets it far above. On 2026-11-10 step 6.3.9 set it
+at 500 MB of Arrow, about 1,000,000 rows of 40 columns, which take 449 MB of WebAssembly and 1.3 GB of browser at
+their peak, and 10,000,000 rows, as many as the grid's scrollbar lands on. The budgets are stated against a Citrix session of about 4 virtual CPUs and 16 GB, the maintainer's figure,
 until step 6.10 measures a desktop; that repeat of spike 0.3 also restates parallax's 300 MB memory budget, written for
 views held on a server, for tables held in the browser. Threads, sharded workers, 64-bit memory and a remote engine
 stay out: wide tables of 5,000,000 rows do not fit in 4 GB, and a session's 16 GB binds first. The session layer stays

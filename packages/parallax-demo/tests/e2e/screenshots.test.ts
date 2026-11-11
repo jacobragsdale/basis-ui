@@ -25,8 +25,8 @@ interface Shot {
 
 const shots: readonly Shot[] = [
   { charts: 0, name: "pivot", path: "/", rows: [] },
-  { charts: 0, name: "trades", path: "/trades", rows: [150_000] },
-  { charts: 0, name: "largest-trades", path: "/largest-trades", rows: [150_000] },
+  { charts: 0, name: "trades", path: "/trades", rows: [1_000_000] },
+  { charts: 0, name: "largest-trades", path: "/largest-trades", rows: [1_000_000] },
   { charts: 0, name: "prices", path: "/prices", rows: [136_150] },
   { charts: 0, name: "small-tables", path: "/small-tables", rows: [300, 500] },
   { charts: 0, name: "data-from-the-app", path: "/data-from-the-app", rows: [2000] },

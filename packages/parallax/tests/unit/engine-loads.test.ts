@@ -89,7 +89,7 @@ describe("the engine's loads of a response's body", () => {
     const { engine, worker } = engineWithWorker();
     const body = bodyFed(maxArrowBytes + 1);
     await expect(engine.load("positions", body.response)).rejects.toThrow(
-      "positions is 70000001 bytes of Arrow, more than the 70000000 a table in the browser holds",
+      "positions is 500000001 bytes of Arrow, more than the 500000000 a table in the browser holds",
     );
     expect([worker.sent("load"), body.cancelled()]).toStrictEqual([[], true]);
   });

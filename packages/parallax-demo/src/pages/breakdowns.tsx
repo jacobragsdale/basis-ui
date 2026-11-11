@@ -24,8 +24,8 @@ interface Picks {
 }
 
 const titles: Readonly<Record<Of, string>> = {
-  positions: "150,000 positions, held in this page",
-  trades: "150,000 trades, held in this page",
+  positions: "1,000,000 positions, held in this page",
+  trades: "1,000,000 trades, held in this page",
 };
 
 /** What a click made: the chart's selection, or null when it cleared it; `chart` is null for the chip's clearing. */

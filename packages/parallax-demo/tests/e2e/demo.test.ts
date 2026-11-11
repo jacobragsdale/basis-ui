@@ -10,7 +10,7 @@ import { errorsOf, figure, gridsDrawn, inTurn, noteOf, open } from "./helpers.ts
 /** The pages, in the sidebar's order. */
 const titles = [
   "Positions pivot",
-  "150,000 trades",
+  "1,000,000 trades",
   "Largest trades",
   "Daily prices",
   "Small tables",
@@ -178,7 +178,7 @@ test("every page opens from the sidebar, with no server and nothing fetched but 
   await open(page, "/");
   await gridsDrawn(page);
   expect(await sidebar(page).getByRole("link").allTextContents()).toStrictEqual(titles);
-  await visit(page, "150,000 trades", "150000");
+  await visit(page, "1,000,000 trades", "1000000");
   await visit(page, "Daily prices", "136150");
   await visit(page, "Fixed income", "600");
   await expect(page.locator('[data-slot="grid-error"]')).toHaveCount(0);
@@ -195,14 +195,14 @@ test("the mode and the density follow the appearance menu, on this page and the 
   await choose(page, ["Dark", "Compact"]);
   await expect.poll(async () => token(page, "--_px-background")).not.toBe(light);
   await expect.poll(async () => scrolled(page)).toBeLessThan(comfortable);
-  await visit(page, "Largest trades", "150000");
+  await visit(page, "Largest trades", "1000000");
   await expect(page.locator("html")).toHaveClass(/\bdark\b/u);
   await expect(page.locator("html")).toHaveAttribute("data-density", "compact");
 });
 
 test("the performance overlay measures the page and copies its report", async ({ page }) => {
   await open(page, "/trades");
-  await gridsDrawn(page, [150_000]);
+  await gridsDrawn(page, [1_000_000]);
   await page.getByRole("button", { name: "Performance" }).click();
   await expect(figure(page, "frame")).toContainText("median", { timeout: 10_000 });
   // Scrolling draws and asks for rows, which gives the drawing and request-to-draw figures.
@@ -210,7 +210,7 @@ test("the performance overlay measures the page and copies its report", async ({
   await figuresShow(page, { draw: /[\d.]+ ms per frame/u, latency: "median", memory: "MB" });
   const report = await copiedReport(page);
   expect(report).toContain(
-    "Showing: 150,000 trades, trades, grids, light mode, comfortable density",
+    "Showing: 1,000,000 trades, trades, grids, light mode, comfortable density",
   );
   expect(report).toMatch(/Rows asked to drawn: [\d.]+ ms median/u);
 });
@@ -248,7 +248,7 @@ test("a table of a few hundred rows is held whole, so scrolling it and copying f
 
 test("a link copied from a view opens that view", async ({ page }) => {
   await open(page, "/largest-trades");
-  await gridsDrawn(page, [150_000]);
+  await gridsDrawn(page, [1_000_000]);
   await page.getByRole("button", { name: "Copy link to this view" }).click();
   await expect(page.locator("header output")).toHaveText(
     "A link to this view is on the clipboard.",

@@ -99,8 +99,12 @@ the load does; the worker's welcome is sent before any load, so it lists no
 datasets.
 
 Spike 0.3 set the limit of one such table at 150,000 rows and 70 MB of
-Arrow, where the reference pivot meets its 500 ms budget on a slow desktop;
-`MAX_ROWS` and `MAX_ARROW_BYTES` in the browser engine hold them. Bytes the app
+Arrow, where the reference pivot met its 500 ms budget on a slow desktop.
+basis-ui's step 6.3.9 restated it in bytes, since memory follows bytes, at
+500 MB of Arrow, about 1,000,000 rows of 40 columns, from the scale harness:
+1,000,000 positions take 449 MB of WebAssembly and pivot in 700 ms with the
+CPU held to 40 %; and 10,000,000 rows, as many as the grid's scrollbar lands
+on. `maxArrowBytes` and `maxRows` in `src/engine/limits.ts` hold them. Bytes the app
 holds are checked before they leave the page, and a response whose length says
 it is past the limit before its body is read; a response that does not say is
 refused as soon as its bytes pass the limit, so it costs no more memory than a

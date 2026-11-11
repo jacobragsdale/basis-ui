@@ -645,6 +645,39 @@ ratio 1, on 2026-11-10 at load averages of 1.7 to 7. What changed, and what was 
 | Reference pivot, throttled  | 833 ms                     | 731 ms             | 714 ms              |
 | The module                  | 5.17 MB                    | 5.17 MB            | 4.69 MB             |
 
+## Step 6.3.9: the new limit
+
+Step 6.3.9 restated the browser's limit from these figures, on 2026-11-10. A table may hold **500 MB of Arrow**, from 70
+MB, about 1,000,000 rows of the positions' 40 columns or 1,600,000 of the trades' 25, and **10,000,000 rows**, from
+150,000. The bytes are the limit, since memory follows them: 1,000,000 positions, 460 MB of Arrow, take 449 MB of
+WebAssembly after the load and 470 MB at its peak, and 1.0 GB of browser at rest and 1.3 GB at its peak, within a
+Citrix session's 16 GB and far within WebAssembly's 4 GB. The rows are a limit only for a narrow table, set where the
+grid's scrollbar still lands on every row, about 15,000,000 (step 6.4.5). At the limit the reference pivot builds in
+about 200 ms plain and 700 to 830 ms throttled.
+
+The limits are `maxArrowBytes` and `maxRows` in `src/engine/limits.ts`, which `@basis/parallax` exports; their errors
+are as before, with the new figures. The demo's positions and trades are now 1,000,000 rows each, which its `data.sh`
+writes and git ignores, and its end-to-end specs read; parallax's own end-to-end harnesses keep their 150,000 rows,
+which their baselines are of.
+
+Step 6.3 ends with its targets, throttled, on the build host, as its steps measured them:
+
+| Measure                                         | Target | Measured                          | Met     |
+| ----------------------------------------------- | ------ | --------------------------------- | ------- |
+| First rows, 1,000,000 trades                    | 1 s    | 1.7 s (6.3.2)                     | No      |
+| Fully loaded, 1,000,000 trades                  | 3 s    | 4.1 s (6.3.2)                     | No      |
+| Sort a column for the first time                | 250 ms | 73 to 130 ms (6.3.3)              | Yes     |
+| Toggle that sort, or a filter under it          | 50 ms  | 39 to 49 ms, 31 and 38 ms (6.3.4) | Yes     |
+| Filter or search                                | 100 ms | 31 to 71 ms (6.3.4)               | Yes     |
+| Reference pivot, 1,000,000 positions            | 300 ms | 714 to 867 ms (6.3.5, 6.3.8)      | No      |
+| Browser memory at rest, 1,000,000 trades        | 700 MB | 756 MB before 6.3.8's decimals    | Not yet |
+| Drawing per frame while scrolling, at any ratio | 8 ms   | 1.8 to 3.1 ms (6.4.4)             | Yes     |
+
+The loads miss because the quota is the whole browser's, which the download, the load and the drawing share; the
+pivot because what is left of its build is spread over the aggregation, the tree and its merge; the trades' memory was
+not measured again after the decimals, which should take about 56 MB from it, their seven decimal columns' second
+words. Each is in PLAN.md's "Found while building" for step 6.10, whose desktop figures decide them.
+
 ## Step 6.4.4: a scroll that moves pixels
 
 Step 6.4.4 made a scroll by rows, or across, copy the pixels that stay and paint only the band or strip it exposed,
