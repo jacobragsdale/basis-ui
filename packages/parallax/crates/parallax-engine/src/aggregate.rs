@@ -312,7 +312,34 @@ pub(crate) struct CompiledMeasure {
     pub show_as: ShowAs,
 }
 
+/// How a measure adds rows up in flat arrays, one entry per cell, when it needs
+/// no more than a count or an exact sum of each cell's rows.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Tally {
+    /// Every row, or with `of` its column's non-null values.
+    Count { of: Option<usize> },
+    /// The exact sum, and the count, of an integer or decimal column's values.
+    Exact { of: usize },
+}
+
 impl CompiledMeasure {
+    /// How the measure adds up in flat arrays, or `None` if it needs a cell's
+    /// own state row by row: a float's exact sum, a weight, a unit, a variance,
+    /// or values kept for later.
+    pub(crate) fn flat(&self) -> Option<Tally> {
+        if self.unit.is_some() || self.weight.is_some() {
+            return None;
+        }
+        match self.aggregate {
+            Aggregate::CountAll => Some(Tally::Count { of: None }),
+            Aggregate::Count => Some(Tally::Count { of: self.column }),
+            Aggregate::Sum | Aggregate::Mean if self.exact_input() => {
+                self.column.map(|of| Tally::Exact { of })
+            }
+            _ => None,
+        }
+    }
+
     fn exact_input(&self) -> bool {
         matches!(
             self.column_type,

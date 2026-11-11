@@ -21,6 +21,7 @@ pub mod exact;
 pub mod filter;
 pub mod format;
 pub mod indicator;
+mod leaf_key;
 pub mod order;
 pub mod profile;
 pub mod sifma;

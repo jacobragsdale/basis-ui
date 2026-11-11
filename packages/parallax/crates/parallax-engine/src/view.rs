@@ -16,18 +16,20 @@ use arrow_array::{
     ArrayRef, BooleanArray, Date32Array, Decimal128Array, Float64Array, Int32Array, Int64Array,
     RecordBatch, StringArray, TimestampMicrosecondArray, UInt8Array,
 };
+use arrow_buffer::i256;
 use arrow_schema::{DataType, Field, Schema};
 use rustc_hash::FxHashMap;
 
 use crate::aggregate::{
-    Aggregate, CompiledMeasure, Input, Measure, MeasureValue, ShowAs, State, finish, pow10,
+    Aggregate, CompiledMeasure, Input, Measure, MeasureValue, ShowAs, State, Tally, finish, pow10,
 };
 use crate::bignum::ratio_to_f64;
 use crate::bitmap::Bitmap;
-use crate::column::Column;
+use crate::column::{Column, Values};
 use crate::error::ConfigError;
 use crate::filter::{CompiledFilter, Filter};
 use crate::format::{self, Format, Formatter};
+use crate::leaf_key::LeafKeyer;
 use crate::order::{Order, Orders};
 use crate::sort::Sorted;
 use crate::table::{ChangeSet, RemovedRows, Table};
@@ -1848,7 +1850,7 @@ fn partition(keys: &[Key]) -> usize {
 
 /// A total order on keys of one column, for grouping equal keys together. It is
 /// not the display order.
-fn arrangement(key: &Key) -> (u8, i128) {
+pub(crate) fn arrangement(key: &Key) -> (u8, i128) {
     match *key {
         Key::Null => (0, 0),
         Key::Bool(b) => (1, i128::from(b)),
@@ -1895,6 +1897,83 @@ impl Leaves<'_> {
                 cells.insert(keys.as_slice().into(), cell);
             }
         }
+    }
+
+    /// The cells of the rows that pass the filters, each with its packed key,
+    /// finding each row's cell by that key, unordered.
+    fn packed(&self, keyer: &LeafKeyer<'_>) -> (Vec<u64>, Vec<Cell>) {
+        if let Some(tallies) = self
+            .measures
+            .iter()
+            .map(CompiledMeasure::flat)
+            .collect::<Option<Vec<Tally>>>()
+        {
+            return self.tallied(keyer, &tallies);
+        }
+        let source = Source::Table(self.table);
+        let mut inputs = Vec::with_capacity(self.measures.len());
+        let mut index: FxHashMap<u64, u32> = FxHashMap::default();
+        let mut packed = Vec::new();
+        let mut found: Vec<Cell> = Vec::new();
+        for slot in self.table.live_slots() {
+            if !(self.passes)(slot) {
+                continue;
+            }
+            let key = keyer.pack(slot);
+            fill_inputs(self.measures, source, slot, &mut inputs);
+            let at = *index.entry(key).or_insert_with(|| {
+                packed.push(key);
+                found.push(Cell::new(self.measures, true));
+                // A table's slots, and so its cells, stay below 2^32.
+                (found.len() - 1) as u32
+            });
+            found[at as usize].apply(self.measures, &inputs, 1);
+        }
+        (packed, found)
+    }
+
+    /// As [`Leaves::packed`], for measures that each add up in flat arrays: the
+    /// rows are given their cells first, then each measure adds its column into an
+    /// array indexed by cell in a loop of its own, so that a row touches a few
+    /// small arrays, not a cell's states on the heap.
+    fn tallied(&self, keyer: &LeafKeyer<'_>, tallies: &[Tally]) -> (Vec<u64>, Vec<Cell>) {
+        let mut index: FxHashMap<u64, u32> = FxHashMap::default();
+        let mut packed = Vec::new();
+        let mut rows: Vec<(u32, u32)> = Vec::new();
+        for slot in self.table.live_slots() {
+            if !(self.passes)(slot) {
+                continue;
+            }
+            let key = keyer.pack(slot);
+            let at = *index.entry(key).or_insert_with(|| {
+                packed.push(key);
+                // A table's slots, and so its cells, stay below 2^32.
+                (packed.len() - 1) as u32
+            });
+            rows.push((slot as u32, at));
+        }
+        let mut counts = vec![0i64; packed.len()];
+        for &(_, at) in &rows {
+            counts[at as usize] += 1;
+        }
+        let mut states: Vec<std::vec::IntoIter<State>> = tallies
+            .iter()
+            .map(|tally| tally_states(self.table, *tally, &rows, &counts).into_iter())
+            .collect();
+        let cells = counts
+            .into_iter()
+            .map(|rows| {
+                let mut cell = Cell::new(self.measures, true);
+                cell.rows = rows;
+                for (state, column) in cell.states.iter_mut().zip(&mut states) {
+                    if let Some(next) = column.next() {
+                        *state = next;
+                    }
+                }
+                cell
+            })
+            .collect();
+        (packed, cells)
     }
 
     /// Whether the first rows hold at most [`FEW_LEAVES`] distinct keys.
@@ -1966,6 +2045,59 @@ impl Leaves<'_> {
     }
 }
 
+/// One measure's state in each cell, from the cell of each row, `rows`, as
+/// (slot, cell), and each cell's count of rows, `counts`: what applying each
+/// row's input to the cell's state in turn gives.
+fn tally_states(table: &Table, tally: Tally, rows: &[(u32, u32)], counts: &[i64]) -> Vec<State> {
+    match tally {
+        Tally::Count { of: None } => counts.iter().map(|&c| State::Count(c)).collect(),
+        Tally::Count { of: Some(c) } => {
+            let valid = &table.column(c).valid;
+            let mut present = vec![0i64; counts.len()];
+            for &(slot, at) in rows {
+                present[at as usize] += i64::from(valid.get(slot as usize));
+            }
+            present.into_iter().map(State::Count).collect()
+        }
+        Tally::Exact { of } => {
+            let column = table.column(of);
+            let mut sums = vec![i256::ZERO; counts.len()];
+            let mut ns = vec![0i64; counts.len()];
+            let mut add = |at: u32, x: i128| {
+                let at = at as usize;
+                sums[at] = sums[at].wrapping_add(i256::from_i128(x));
+                ns[at] += 1;
+            };
+            match &column.values {
+                Values::Int64(values) => {
+                    for &(slot, at) in rows {
+                        if column.valid.get(slot as usize) {
+                            add(at, i128::from(values[slot as usize]));
+                        }
+                    }
+                }
+                Values::Decimal(values) => {
+                    for &(slot, at) in rows {
+                        if column.valid.get(slot as usize) {
+                            add(at, values[slot as usize]);
+                        }
+                    }
+                }
+                _ => unreachable!("an exact sum's column is an integer or a decimal"),
+            }
+            sums.into_iter()
+                .zip(ns)
+                .map(|(sum, n)| State::Exact {
+                    sum,
+                    squares: i256::ZERO,
+                    n,
+                    huge: 0,
+                })
+                .collect()
+        }
+    }
+}
+
 /// One cell for every distinct key over `columns` among the rows `passes`
 /// accepts, with the keys, sorted by [`arrangement`] key by key.
 fn leaf_cells(
@@ -1981,6 +2113,22 @@ fn leaf_cells(
         passes,
     };
     let aggregating = crate::profile::span("pivot: aggregate");
+    if let Some(keyer) = LeafKeyer::new(table, columns) {
+        // One pass finds every cell by its packed key, which sorts as the keys do.
+        let (packed, cells) = leaves.packed(&keyer);
+        drop(aggregating);
+        let _phase = crate::profile::span("pivot: leaf sort");
+        let mut order: Vec<u32> = (0..packed.len() as u32).collect();
+        order.sort_unstable_by_key(|&i| packed[i as usize]);
+        let mut cells: Vec<Option<Cell>> = cells.into_iter().map(Some).collect();
+        return order
+            .into_iter()
+            .filter_map(|i| {
+                let cell = cells[i as usize].take()?;
+                Some((keyer.unpack(packed[i as usize]), cell))
+            })
+            .collect();
+    }
     // WebAssembly runs on one thread, so one pass over the rows does it.
     #[cfg(target_arch = "wasm32")]
     let maps = {

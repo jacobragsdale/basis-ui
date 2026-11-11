@@ -548,7 +548,10 @@ flowchart TD
    own cost, which 6.3.4 takes on. 6.3.4 built on 2026-11-10: a flat view's filters test a column's rows in a loop for
    each type and operator into words of bits, a text column deciding each dictionary code once, and the table keeps the
    last filters' words, so a filter of 1,000,000 trades takes 31 to 71 ms throttled, from 72 to 170 ms, a search 32
-   to 40 ms, from 331 ms, and a filter under a sort 31 and 38 ms, from 108 ms, meeting 100 and 50 ms.
+   to 40 ms, from 331 ms, and a filter under a sort 31 and 38 ms, from 108 ms, meeting 100 and 50 ms. 6.3.5 built on
+   2026-11-10, its browser figures still to come: a leaf key of text and boolean columns packs into one integer, and
+   counts and exact sums add up in flat arrays a measure at a time, so the reference pivot of 1,000,000 positions builds
+   natively in 0.14 to 0.22 s, from 0.55 s, its aggregation in 0.04 to 0.07 s, from 0.38 s.
 4. **6.4 The canvas on a Citrix desktop.** Lane Grid, one branch per item in order: digits that line up
    (`6.4.1-tabular-digits`), whole device pixels (`6.4.2-device-pixels`), one draw per frame and one row step per notch
    (`6.4.3-frame-aligned`), a scroll that moves pixels (`6.4.4-scroll-blit`), rows past the scrollbar's reach

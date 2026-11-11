@@ -496,6 +496,38 @@ load.** Natively the filters now take under a millisecond, so a throttled figure
 the reply's trip. The host budgets for the 1,000,000 trades' filter, filter under a sort and search are now about
 twice the slowest median.
 
+## Step 6.3.5: a typed group-by
+
+Step 6.3.5 changed how a pivot adds its rows into leaf cells. Its browser figures are still to come: the bench of
+2026-11-10 was stopped part of the way, with the host short of memory beside other sessions' work, so the figures below
+are the native phase profile's, one thread, 1,000,000 generated positions, the reference pivot (`examples/measure.rs`).
+What changed:
+
+- Before, each row built its leaf key as a boxed slice of keys, one for each group and split column, hashed and
+  compared it key by key, built an input for each measure, and applied the inputs to its cell's states, a vector on
+  the heap for each of some 152,000 cells, so a row met several cache misses.
+- When every leaf column is text or boolean, a row's leaf key now packs into one `u64` in mixed radix from the
+  dictionaries' codes (`src/leaf_key.rs`), so a row hashes and compares one integer, and the boxed keys are built once
+  for each cell. The digits order their values as the leaf sort does, so the cells come out sorted by their packed keys
+  and the comparison sort of the boxed keys goes.
+- When every measure is a count or an exact sum of an integer or decimal column (`Tally`), the rows are given their
+  cells first, then each measure adds its column into flat arrays indexed by cell in a loop of its own. Other measures,
+  such as a float's exact sum, a weighted mean, a variance or a distinct count, keep a cell's state row by row, on the
+  packed key.
+- Unit tests check that a packed key unpacks to the row's keys and sorts as they do; `tests/oracle.rs`,
+  `tests/incremental.rs`, the transcript's fingerprint and the WebAssembly tests pass unchanged.
+
+| The reference pivot, 1,000,000 positions, native | Before  | After         |
+| ------------------------------------------------ | ------- | ------------- |
+| Build                                            | 0.548 s | 0.144–0.221 s |
+| Aggregate                                        | 0.381 s | 0.036–0.070 s |
+| Leaf sort                                        | 0.045 s | 0.024 s       |
+| Tree build                                       | 0.081 s | 0.071 s       |
+| Merge                                            | 0.025 s | 0.041 s       |
+
+The tree, a node and a hash map of children for each group, and its merge upward are now most of a build, and are what
+the plan's "a tree held as arrays" would take on. The 300 ms throttled target is not yet measured.
+
 ## Step 6.4.4: a scroll that moves pixels
 
 Step 6.4.4 made a scroll by rows, or across, copy the pixels that stay and paint only the band or strip it exposed,
