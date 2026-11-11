@@ -9,6 +9,111 @@ or in the files this page names.
 The plan adds a Phase 6 to [the roadmap](docs/roadmap.md). Its steps follow the roadmap's rules: one step per branch
 and git worktree, named after the step's id, and a pull request whose checks are green.
 
+## Status on 2026-11-10, and how to carry on
+
+**Read this section first.** Steps 6.0 to 6.3.5, 6.4.1 to 6.4.4, 6.5.1 to 6.5.6, 6.7.1 to 6.7.3 and 6.8.1 to 6.8.9 are
+built and on `main`, each marked "Built on …" in [the roadmap](docs/roadmap.md#phase-6-demo-readiness) with its
+figures. CI was green on every push from `ccb961b` to `1825ac4`. What a step found and left open is in [Found while
+building](#found-while-building) at the end of this page.
+
+### Done
+
+| Step  | Commit(s)            | In short                                                                                         |
+| ----- | -------------------- | ------------------------------------------------------------------------------------------------ |
+| 6.0   | `80c5aa5`            | The decisions in the design, Phase 6 in the roadmap, untrue claims marked "not yet".             |
+| 6.1a  | `f057f33`            | 13 component defects.                                                                            |
+| 6.1b  | `c316761`            | 14 preset task defects.                                                                          |
+| 6.1c  | `d296ebc`, `7de3884` | 11 defects in parallax's TypeScript.                                                             |
+| 6.1d  | `ec348f6`            | The engine's three defects.                                                                      |
+| 6.2a  | `e656e9a`            | The gallery's 336 section screenshots and axe, `vp run @basis/gallery#shots`.                    |
+| 6.2b  | `05cd559`            | The scale harness and its budgets, and the engine's phase profile; `docs/spikes/scale-1m.md`.    |
+| 6.2c  | `4588ea0`            | `@basis/ui` shakes, `vp run budget`, motion for a CPU-drawn desktop, the `motion` preference.    |
+| 6.3.1 | `0b175cf`            | A load that copies once.                                                                         |
+| 6.3.2 | `fd7ddee`, `7de3884` | A progressive load and `useDataset`'s `progress`.                                                |
+| 6.3.3 | `e07fa21`            | Sorts on integer keys, orders kept.                                                              |
+| 6.3.4 | `bcb09d4`            | Filters as bitmap kernels.                                                                       |
+| 6.3.5 | `1825ac4`            | Packed leaf keys and flat tallies. Partly done: see below.                                       |
+| 6.4.1 | `3520cd1`, `f2658d4` | Tabular digits on the canvas, at the DOM's sizes.                                                |
+| 6.4.2 | `ddaa01f`            | Whole device pixels, baselines at 1.25 and 1.5.                                                  |
+| 6.4.3 | `0a20957`            | One draw per frame, three rows a notch.                                                          |
+| 6.4.4 | `c328d0b`, `a83ab6e` | A scroll copies the pixels that stay.                                                            |
+| 6.5.1 | `e257d8c`            | Tokens for what opacity faked; a solid focus outline.                                            |
+| 6.5.2 | `755ec40`, `c46544b` | Control sizes in whole pixels per density; compact is the stylesheet's base.                     |
+| 6.5.3 | `9b692b1`            | `defineTheme` and `ThemeInputs`; `vp run @basis/ui#theme [new NAME]`.                            |
+| 6.5.4 | `ee2eeb5`            | `checkTheme` in `vp check`; the default theme fixed to pass.                                     |
+| 6.5.5 | `dd19320`            | The theme in the cookie and head script, `preferencesDomain`, following another app's change.    |
+| 6.5.6 | `731086d`            | Parallax on `@basis/ui`'s theme, 13 dead tokens gone, rows by control size, `basis:themechange`. |
+| 6.7.1 | `1af39dc`            | `Page`, shell slots and groups, scoped shortcuts, the demo in the shell, the shell's axe fixed.  |
+| 6.7.2 | `e5edd47`            | `FilterBar`, its state in typed search parameters.                                               |
+| 6.7.3 | `6f432c8`            | `DataTable` controllable and fast at its cap; pages 50 rows by default.                          |
+| 6.8.1 | `7e434e2`            | `vp run docs NAME` and `--search`; the catalogue complete; README split; `CHANGELOG.md`.         |
+| 6.8.2 | `bc608c0`            | Six lint limits loosened in app code; messages that name the fix.                                |
+| 6.8.3 | `3d356fe`            | The open doors closed, each an `ERROR` line.                                                     |
+| 6.8.4 | `5659229`, `b9e1088` | `vp run verify`, `--json`; the fast commit hook and the push hook.                               |
+| 6.8.5 | `9c22362`            | `shot`'s network and axe reports, `--all`, `--compare`, `--selector`, `--step`.                  |
+| 6.8.6 | `5a4fb5f`            | `vp run new table\|page\|form`, `vp run fixtures new\|check`.                                    |
+| 6.8.7 | `34ec6b2`            | `checkRoutes` and `expectAccessible` in `@basis/ui/testing`.                                     |
+| 6.8.8 | `716c84d`            | `vp run upgrade`, the changelog's format, codemods.                                              |
+| 6.8.9 | `ccb961b`            | CI makes an app from the packed template and verifies it.                                        |
+
+Off the plan: `8358a51` gave the grid and pivot an `asOf` prop, asked for by ctzd, so the status bar shows the date the
+data is for and never the load time; `94343fc`, `8aaf718` and `e1c39b5` fixed CI.
+
+### Remaining
+
+Everything below, in this order where one needs another, except 6.10, which is the maintainer's at the firm.
+
+1. **6.3.5, the rest.** The packed keys and flat tallies are in. Left: the browser bench before and after (the run of
+   2026-11-10 was stopped for want of memory), and, if the throttled reference pivot of 1,000,000 positions misses 300
+   ms, the plan's "tree held as arrays" for the tree build and merge, now most of a build natively (0.07 and 0.04 s of
+   0.14 to 0.22 s), and float sums in an inline window.
+2. **6.3.6 to 6.3.9** in order: no rebuild where the order alone changes, memory that comes back, narrower storage and
+   build flags, the new limit in bytes.
+3. **6.4.5 to 6.4.8** in order: rows past the scrollbar's reach, less work in a pass, selection that does not count
+   rows, the charts' costs.
+4. **6.5.7** the default's identity and two more themes, then **6.5.8** the studio. The plan asks the maintainer to
+   review the gallery before 6.5.7's baselines are recorded. The maintainer said on 2026-11-10 to implement everything
+   but 6.10, so record them, and list each choice of look in "Found while building" for a later review.
+5. **6.6.1 to 6.6.6**, the grid's features, after 6.3, 6.4 and 6.5.
+6. **6.7.4 to 6.7.10**, the components. `@tanstack/react-virtual` is approved for 6.7.9.
+7. **6.8.10**, the skills.
+8. **6.9**, the showcase, last, built with only an app's tools, with `packages/showcase/BUILDING.md`.
+9. Then check CI on `main` once, and fix what is red. The nightly `bench` job failed on 2026-11-10 (run
+   `42817708470`); find why.
+
+Leave 6.10 as written below, for the maintainer.
+
+### How to work, as the maintainer decided on 2026-11-10
+
+These replace the plan's and the roadmap's rules on branches, worktrees and pull requests for the rest of Phase 6.
+
+- Work in the main checkout, on `main`. No branches, worktrees, pull requests or subagents.
+- One step at a time. Run its checks locally, commit, `git fetch && git rebase origin/main`, and `git push origin
+  HEAD:main`. Other sessions push to `main` too. Don't wait for CI between steps: check it once at the end.
+- After each push, run `~/dev/basis-ui-dist/pack.sh`, which packs the main checkout for ctzd's apps, and when a change
+  touches ctzd's surface (an API, a lint rule, a check, a behaviour an app sees), tell its session with `hc send t18
+  "…"`.
+- Keep the plan's other rules: a failing test first, a performance step bracketed by the harness with both figures in
+  its commit, a missed target recorded with its figure and reason, baselines regenerated only for intended changes, the
+  design edited in the same commit as a decision it changes, and each step marked "Built on …" in the roadmap.
+- `axe-core` and `@tanstack/react-virtual` are approved. Ask before any other dependency.
+
+What the earlier steps learned about this machine:
+
+- `vp` is not on a script's `PATH`: `export PATH="$HOME/.local/share/vite-plus/bin:$PATH"`. After a pull, run `vp
+  install` before committing, or the commit hook's type check fails on a dependency a step added.
+- Build Rust with `CARGO_BUILD_JOBS=1`. The host has 27 GB shared with other sessions; a 1,000,000-row bench needs 2 to
+  3 GB of browser and was stopped once for want of memory. Check `free -g` first.
+- Run the bench as `node tests/perf/bench.ts --datasets positions --sizes 150000,1000000 --ratios 1 --budgets none --out
+  FILE` from `packages/parallax`, after `vp run @basis/parallax#build`; `vp run @basis/parallax#bench -- …` refuses the
+  flags. Record the load average with each figure.
+- A change to `@basis/ui`'s look can change parallax's Docker end-to-end screenshots, which draw `@basis/ui`'s menus.
+  Run the grid, pivot, charts and demo suites when `@basis/ui` or parallax's look changes. Run them on a fresh build:
+  `PARALLAX_PREBUILT=1` takes whatever `dist/` holds, and a stale one gave false failures.
+- `@basis/ui`'s catalogue lists parallax's exports, so a change to parallax's API needs `vp run @basis/ui#catalogue`.
+- Screenshot and browser suites fail now and then while the host is busy: a run of the gallery's shots that took five
+  minutes failed six and passed whole when run again. Run a failure again before chasing it.
+
 ## Where it ends
 
 A showcase app, a fixed-income workbench built from the template as any app is, runs on a Citrix desktop with no GPU
@@ -114,7 +219,9 @@ test confirms it.
 
 ## Working rules
 
-[AGENTS.md](AGENTS.md) and the roadmap's rules for working in parallel apply. Beyond them:
+For the rest of Phase 6, [How to work](#how-to-work-as-the-maintainer-decided-on-2026-11-10) above replaces the
+rules here on branches, worktrees and pull requests. [AGENTS.md](AGENTS.md) and the roadmap's rules for working in
+parallel apply otherwise. Beyond them:
 
 - Read [docs/design.md](docs/design.md) first. A step that changes a decision edits the design in the same commit.
 - Other sessions push to `main`. Fetch before starting a step and again before pushing, and rebase onto
