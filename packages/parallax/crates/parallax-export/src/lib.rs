@@ -15,6 +15,8 @@
 //! difference to be found later.
 
 use std::collections::BTreeSet;
+
+mod cells;
 use std::io::{Seek, Write};
 
 use arrow_array::cast::AsArray;
@@ -663,6 +665,8 @@ pub fn write_xlsx<T: ReadTable + ?Sized, W: Write + Seek + Send>(
         );
     }
     let chunk = chunk_rows(fit);
+    // The exported data columns by name, for the layout's cells and rules.
+    let mut named: Vec<(u16, String)> = Vec::new();
     for start in (0..rows.max(1)).step_by(chunk) {
         // Each chunk holds the read lock only while it is read, so a reload can
         // run between chunks; one that did ends the export.
@@ -687,6 +691,7 @@ pub fn write_xlsx<T: ReadTable + ?Sized, W: Write + Seek + Send>(
                     )
                 }));
                 sheet.write_string_with_format(0, col, &column.title, &header)?;
+                named.push((col, column.name.clone()));
                 let key = column
                     .measure
                     .map_or_else(|| column.name.clone(), |m| format!("__measure:{m}"));
@@ -727,6 +732,10 @@ pub fn write_xlsx<T: ReadTable + ?Sized, W: Write + Seek + Send>(
                 )?;
             }
         }
+    }
+    if !grouped || layout.detail {
+        let last = u32::try_from(rows).unwrap_or(u32::MAX);
+        cells::write(sheet, layout, (&named, last), &mut notes)?;
     }
     if footer > 0 {
         let table = read_at(tables, version)?;

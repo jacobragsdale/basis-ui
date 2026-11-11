@@ -632,7 +632,11 @@ flowchart TD
    (`6.6.6-chart-finish`) 6.6.3 built on 2026-11-11: `SavedViews`, in `@basis/ui`, applies, saves, updates,
    renames, deletes and makes default a named view of any JSON state, over `browserViewStore` or `apiViewStore`, each
    reading a view back through the page's own parse; it sits in a filter bar's `actions` or beside a grid, pivot or
-   chart, whose layouts are its state.
+   chart, whose layouts are its state. 6.6.1 built on 2026-11-11: a layout's `cells` draws a column as a data bar, a
+   heat fill, a badge, a sparkline or a link, and its `rules` give a cell a tone's ink, tint or bold by a filter's
+   condition; the engine gives each frame of a flat view its bar and heat columns' domains, the theme gains
+   positive, warning and info inks and tints, and the Excel export writes them as data bars, colour scales and cell
+   formats, with a Notes line for a badge's shape, a sparkline and a rule Excel cannot test.
 7. **6.7 Components for real apps.** Lane Components, after 6.5.1 and 6.5.2, one family per branch in order: the shell
    (`6.7.1-shell`), the filter bar (`6.7.2-filter-bar`), `DataTable` (`6.7.3-data-table`), `StatCard`
    (`6.7.4-stat-card`), dates (`6.7.5-dates`), forms (`6.7.6-forms`), choosing (`6.7.7-choosing`), display

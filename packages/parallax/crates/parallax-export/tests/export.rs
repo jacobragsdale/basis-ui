@@ -852,3 +852,44 @@ fn rates_in_basis_points_prices_in_32nds_and_par_amounts_keep_their_values() {
         );
     }
 }
+
+#[test]
+fn rich_cells_and_rules_export_as_conditional_formats_and_notes() {
+    let table = positions(40);
+    let layout = r#"{
+        "columns": ["ticker", "long_short", "daily_pnl_usd", "market_value_usd", "quantity"],
+        "cells": {"market_value_usd": {"kind": "bar"}, "daily_pnl_usd": {"kind": "heat", "scale": "diverging"},
+                  "long_short": {"kind": "badge", "values": {"Long": "positive", "Short": "negative"}}},
+        "rules": {"quantity": [{"when": {"op": "gt", "value": 1000}, "format": {"tone": "warning", "bold": true}},
+                               {"when": {"op": "in", "values": [1, 2]}, "format": {"fill": true}}]}
+    }"#;
+    let mut out = Cursor::new(Vec::new());
+    let summary = write_xlsx(
+        &table,
+        &Layout::from_json(layout).unwrap(),
+        &ExportSource::default(),
+        None,
+        &mut out,
+    )
+    .unwrap();
+    let xml = zipped(&out.into_inner(), "xl/worksheets/sheet1.xml");
+    assert!(xml.contains("<dataBar"), "no data bar");
+    assert_eq!(xml.matches("<colorScale>").count(), 1, "one colour scale");
+    assert!(
+        xml.contains("operator=\"equal\""),
+        "badge values as cell formats"
+    );
+    assert!(
+        xml.contains("operator=\"greaterThan\""),
+        "the rule Excel can test"
+    );
+    let notes = summary.notes.join("\n");
+    assert!(
+        notes.contains("long_short's badges keep their colours"),
+        "{notes}"
+    );
+    assert!(
+        notes.contains("A rule on quantity has a condition Excel"),
+        "{notes}"
+    );
+}

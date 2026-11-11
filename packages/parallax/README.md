@@ -218,7 +218,10 @@ on it, and a badge says its tone with a shape as well as a colour: a dot for
 `positive`, a diamond for `negative`, a triangle for `warning`, a square for
 `info`. The first rule whose condition a cell meets gives its text a tone's ink,
 a fill in the tone's tint, or bold. Screen readers and copies read a cell's
-value, not its picture.
+value, not its picture. The Excel export writes bars as data bars, heat as
+colour scales, and badges and rules as cell formats, and its Notes sheet says
+what Excel cannot show: a badge's shape, a sparkline, and a rule such as `in`
+that its conditional formats cannot test.
 
 A canvas is invisible to screen readers, so the grid is a `grid` whose name is
 `label`, whose description says how many rows and columns it holds and how to
