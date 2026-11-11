@@ -95,6 +95,7 @@ class ChartScene {
     this.zoom = new ChartZoom({
       ask: (range): void => {
         this.#ask(range);
+        this.#view.preview(range);
       },
       extent: (): Range | null => this.#gestures.extent(),
       record: (range): void => {
@@ -243,9 +244,7 @@ class ChartScene {
       this.schedule();
     });
     const detachPointer = new ChartPointer(this.#gestures, elements.plot).attach();
-    const unsubscribe = chartSync.subscribe(() => {
-      this.schedule();
-    });
+    const unsubscribe = chartSync.follow(this.#model, this);
     const observer = new ResizeObserver(() => {
       this.#host.resized(sizeOf(elements.plot), sizeOf(elements.root));
     });

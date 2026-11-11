@@ -17,6 +17,7 @@ import type { SceneElements } from "./scene.ts";
 import { asOfLine, chartSummary, chartWords } from "./summary.ts";
 import { chartSync } from "./sync.ts";
 import type { ChartZoom } from "./zoom.ts";
+import { ZoomPreview } from "./zoom-preview.ts";
 
 /** What a render reads besides the model. */
 interface RenderParts {
@@ -45,6 +46,7 @@ class SceneView {
   #described: { readonly model: ChartModel; readonly zoomed: boolean } | null = null;
   /** The drawings changed since the words were written: how many cannot be placed may have. */
   #redescribe = true;
+  readonly #preview = new ZoomPreview();
 
   public constructor(model: SceneModel) {
     this.#model = model;
@@ -68,6 +70,14 @@ class SceneView {
   /** The drawings changed: the canvas is painted again even if the model did not. */
   public repaint(): void {
     [this.#dirty, this.#redescribe] = [true, true];
+  }
+
+  /** Shows the chart as last painted moved to `range` at once, until the engine's answer paints it. */
+  public preview(range: Range | null): void {
+    const canvas = this.#elements?.canvas;
+    if (canvas !== undefined) {
+      this.#preview.show(canvas, range, this.#model.theme.background);
+    }
   }
 
   /** The legend's entries if they changed since last taken, else null. */
@@ -110,6 +120,7 @@ class SceneView {
     if (model !== null && device !== null && (model !== this.#painted || this.#dirty)) {
       paintCanvas(canvas, model, { device, editor, theme: this.#model.theme });
       [this.#painted, this.#dirty] = [model, false];
+      this.#preview.painted(model);
     }
   }
 

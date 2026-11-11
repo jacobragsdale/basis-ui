@@ -587,7 +587,9 @@ flowchart TD
    on 2026-11-11: the grid holds every row but some as well as some rows, so the header's checkbox chooses every row
    of a flat view without fetching a key, past 1,000,000 rows as below, and a toggle no longer rebuilds the set;
    `onRowsChange` hands an app the choice as `RowsChosen`, while `onSelectionChange` and `selected` as keys keep their
-   contract.
+   contract. 6.4.8 built on 2026-11-11: a pan or a zoom moves the plot as last painted at once, stretched to the range
+   asked for, and the engine's answer then paints it, however long the worker is busy; a move of the shared pointer
+   draws again only the charts of its group; a drawing being dragged still repaints the whole canvas.
 5. **6.5 Themes.** Lane Theme, one branch per item in order: tokens for what opacity fakes (`6.5.1-tokens`), density
    in whole pixels (`6.5.2-density`), `defineTheme` (`6.5.3-define-theme`), `checkTheme` (`6.5.4-check-theme`), the
    choice of theme in the cookie (`6.5.5-theme-preference`), parallax on the same theme (`6.5.6-parallax-theme`), the

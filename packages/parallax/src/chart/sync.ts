@@ -10,10 +10,33 @@ interface SyncedPointer {
   readonly source: object;
 }
 
+/** Who hears the shared pointer move: where it is now, and where it was. */
+type PointerListener = (now: SyncedPointer | null, was: SyncedPointer | null) => void;
+
+/** Whether a move of the shared pointer concerns a chart of `group`: the pointer is over its group, or was. A chart in
+ * no group, or another, draws nothing for it. */
+function concerns(
+  group: string | null,
+  now: SyncedPointer | null,
+  was: SyncedPointer | null,
+): boolean {
+  return group !== null && (now?.group === group || was?.group === group);
+}
+
+/** A listener that calls `act` only for a move that concerns the chart of `group`, which only such a move's crosshair
+ * changes. */
+function groupMoves(group: () => string | null, act: () => void): PointerListener {
+  return (now, was) => {
+    if (concerns(group(), now, was)) {
+      act();
+    }
+  };
+}
+
 /** The pointer shared by the charts of the page, and who listens to it. */
 class PointerSync {
   #pointer: SyncedPointer | null = null;
-  readonly #listeners = new Set<() => void>();
+  readonly #listeners = new Set<PointerListener>();
 
   /** The pointer, or null when it is over no chart of a group. */
   public get pointer(): SyncedPointer | null {
@@ -25,9 +48,10 @@ class PointerSync {
     if (pointer === null && this.#pointer === null) {
       return;
     }
+    const was = this.#pointer;
     this.#pointer = pointer;
     for (const listener of this.#listeners) {
-      listener();
+      listener(pointer, was);
     }
   }
 
@@ -38,8 +62,24 @@ class PointerSync {
     }
   }
 
+  /** Draws `chart` again whenever the pointer moves over the group of `model`, or off it, until the returned function
+   * is called: a move elsewhere changes nothing it draws. */
+  public follow(
+    model: { readonly group: string | null },
+    chart: { readonly schedule: () => void },
+  ): () => void {
+    return this.subscribe(
+      groupMoves(
+        () => model.group,
+        () => {
+          chart.schedule();
+        },
+      ),
+    );
+  }
+
   /** Calls `listener` whenever the pointer moves, until the returned function is called. */
-  public subscribe(listener: () => void): () => void {
+  public subscribe(listener: PointerListener): () => void {
     this.#listeners.add(listener);
     return (): void => {
       this.#listeners.delete(listener);
@@ -50,5 +90,5 @@ class PointerSync {
 /** The page's shared pointer. */
 const chartSync = new PointerSync();
 
-export { PointerSync, chartSync };
-export type { SyncedPointer };
+export { PointerSync, chartSync, concerns, groupMoves };
+export type { PointerListener, SyncedPointer };
