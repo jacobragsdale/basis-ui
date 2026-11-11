@@ -1,6 +1,6 @@
 /* The gallery's entry point. The head script that `basisPlugins()` writes into index.html has already applied the
- * stored mode and density; a query that names either replaces them for this page alone, and otherwise the page follows
- * the stored choice as it changes. */
+ * stored theme, mode and density; a query that names any of them replaces them for this page alone, and otherwise the
+ * page follows the stored choice as it changes. */
 
 import "./styles.css";
 
@@ -35,6 +35,7 @@ createRoot(root).render(
       search={search}
       mode={resolveMode(shown.mode, systemDark)}
       density={shown.density}
+      theme={shown.theme}
     />
   </StrictMode>,
 );

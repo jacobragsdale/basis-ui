@@ -5,11 +5,12 @@
  *
  * The base every icon in this folder renders through, copied from the npm package lucide-react@1.70.0
  * (dist/esm/Icon.mjs and dist/esm/shared/src/build/defaultAttributes.mjs; source at
- * https://github.com/lucide-icons/lucide) and changed by basis-ui. An icon is a 24-unit SVG drawn with a 2-unit
- * stroke in the current text colour, and hidden from assistive technology unless an `aria-*` prop or `role` names it,
- * as in lucide. Unlike lucide, it takes no `size`, `color`, `strokeWidth` or `absoluteStrokeWidth`, and no context
- * sets them: the component an icon sits in sizes it, and its colour is the text's. It adds no `lucide` classes, takes
- * no children, since each icon brings its own shapes, and no `title`, which React's SVG props lack.
+ * https://github.com/lucide-icons/lucide) and changed by basis-ui. An icon is a 24-unit SVG drawn with a stroke in the
+ * current text colour, and hidden from assistive technology unless an `aria-*` prop or `role` names it, as in lucide.
+ * Its stroke is 1.75 units where lucide's is 2, which reads heavier than Inter's regular weight beside it at 12 to 16
+ * pixels. Unlike lucide, it takes no `size`, `color`, `strokeWidth` or `absoluteStrokeWidth`, and no context sets
+ * them: the component an icon sits in sizes it, and its colour is the text's. It adds no `lucide` classes, takes no
+ * children, since each icon brings its own shapes, and no `title`, which React's SVG props lack.
  */
 
 import type { ComponentProps, ReactElement, ReactNode } from "react";
@@ -31,7 +32,7 @@ type IconProps = Omit<
 
 /** lucide's canvas: every icon is drawn on a 24 by 24 grid, and renders 24 px square unless something sizes it. */
 const canvas = 24;
-const stroke = 2;
+const stroke = 1.75;
 
 /** Whether the props name the icon for assistive technology, as lucide-react's `hasA11yProp` decides. */
 function isNamed(props: IconProps): boolean {

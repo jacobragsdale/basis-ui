@@ -1,10 +1,10 @@
-/* The gallery's frame: links to each family's page and to each mode and density, and the current page. Every link is
+/* The gallery's frame: links to each family's page and to each theme, mode and density, and the current page. Every link is
  * a plain query, so a screenshot can open any page in any combination directly. The links are ButtonLinks, links drawn
  * as buttons. A query that names a section, as `&section=button` does, shows that section alone, with no frame, as its
  * screenshot pictures it (pages/shot.ts). */
 
-import { ButtonLink } from "@basis/ui";
-import type { Density, ResolvedMode } from "@basis/ui";
+import { ButtonLink, themeNames } from "@basis/ui";
+import type { Density, ResolvedMode, ThemeName } from "@basis/ui";
 import type { ReactElement } from "react";
 
 import { ShownSection } from "./pages/shot.ts";
@@ -17,6 +17,7 @@ interface GalleryProps {
   readonly search: string;
   readonly mode: ResolvedMode;
   readonly density: Density;
+  readonly theme: ThemeName;
   /** The section shown alone, or `null` for the whole page. */
   readonly section?: string | null;
 }
@@ -56,6 +57,40 @@ function Choice({ label, parameter, options, current, search }: ChoiceProps): Re
   );
 }
 
+/** The links to each theme, mode and density. */
+function Choices({
+  search,
+  theme,
+  mode,
+  density,
+}: Pick<GalleryProps, "search" | "theme" | "mode" | "density">): ReactElement {
+  return (
+    <div className="flex flex-wrap gap-6">
+      <Choice
+        label="Theme"
+        parameter="theme"
+        options={themeNames}
+        current={theme}
+        search={search}
+      />
+      <Choice
+        label="Mode"
+        parameter="mode"
+        options={["light", "dark"]}
+        current={mode}
+        search={search}
+      />
+      <Choice
+        label="Density"
+        parameter="density"
+        options={["comfortable", "compact"]}
+        current={density}
+        search={search}
+      />
+    </div>
+  );
+}
+
 /** One section of `page` alone, with no frame, as its screenshot shows it. */
 function SectionAlone({
   page,
@@ -75,7 +110,14 @@ function SectionAlone({
   );
 }
 
-function Gallery({ page, search, mode, density, section = null }: GalleryProps): ReactElement {
+function Gallery({
+  page,
+  search,
+  mode,
+  density,
+  theme,
+  section = null,
+}: GalleryProps): ReactElement {
   const { Content } = page;
   if (section !== null) {
     return <SectionAlone page={page} section={section} />;
@@ -97,22 +139,7 @@ function Gallery({ page, search, mode, density, section = null }: GalleryProps):
             </ButtonLink>
           ))}
         </nav>
-        <div className="flex flex-wrap gap-6">
-          <Choice
-            label="Mode"
-            parameter="mode"
-            options={["light", "dark"]}
-            current={mode}
-            search={search}
-          />
-          <Choice
-            label="Density"
-            parameter="density"
-            options={["comfortable", "compact"]}
-            current={density}
-            search={search}
-          />
-        </div>
+        <Choices search={search} theme={theme} mode={mode} density={density} />
       </header>
       <main className="flex flex-col gap-8">
         <h1 className="text-2xl font-semibold">{page.title}</h1>

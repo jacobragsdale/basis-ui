@@ -5,9 +5,11 @@
 import type { ThemeInputs } from "#theme/inputs.ts";
 
 import { theme as defaultTheme } from "./default.ts";
+import { theme as desk } from "./desk.ts";
+import { theme as highContrast } from "./high-contrast.ts";
 
 /** Every shipped theme, the default first. */
-const themes: readonly [ThemeInputs, ...ThemeInputs[]] = [defaultTheme];
+const themes: readonly [ThemeInputs, ...ThemeInputs[]] = [defaultTheme, desk, highContrast];
 
 export { themes };
 export { theme as defaultTheme } from "./default.ts";

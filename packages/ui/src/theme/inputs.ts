@@ -32,12 +32,19 @@ interface StepTone {
   readonly chromaShare: number;
 }
 
+/** The text on a solid fill: white, or the page's darkest neutral. */
+type Ink = "dark" | "white";
+
 /** A hue in OKLCH: its angle in degrees, the chroma its solid steps reach, and its ramp's curve, the twelve steps in
- * order. Each hue has a curve of its own, so a bright hue need not sit at the lightness of a dark one. */
+ * order. Each hue has a curve of its own, so a bright hue need not sit at the lightness of a dark one: amber's solid,
+ * a banner's fill, can be the colour of amber, with dark text on it, while its text step stays dark enough to read.
+ * `ink` is the text on its solid steps in each mode: white in light mode and dark in dark mode unless it says
+ * otherwise. */
 interface Hue {
   readonly hue: number;
   readonly chroma: number;
   readonly curve: readonly StepTone[];
+  readonly ink?: Readonly<Partial<Record<Mode, Ink>>>;
 }
 
 /** The six hues every theme's ramps are built from: the neutral, the brand and four status hues. */
@@ -220,6 +227,7 @@ export type {
   DivergingArmName,
   Hue,
   HueName,
+  Ink,
   Mode,
   RadiusName,
   SequentialName,

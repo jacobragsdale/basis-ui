@@ -79,6 +79,7 @@ async function shown({ page, mode, density, section = null }: View): Promise<str
       search={`?${query.toString()}`}
       mode={mode}
       density={density}
+      theme="default"
       section={section}
     />,
   );

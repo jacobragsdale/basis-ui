@@ -338,10 +338,14 @@ theme and a user who needs it one of high contrast, while every app still looks 
 library's and not an app's. The default theme gets a look of its own, decided the same day, since the components read as
 shadcn's defaults: status colours with their own lightness, a neutral whose tint shows, elevation that reads, a dark
 primary that is not pastel, and a considered look for numbers. The firm's brand is ported onto the generator's inputs
-later, when the maintainer has its guidelines, and its values stay out of this public repo. Not yet: the generator is
-built (step 6.5.3, 2026-11-09), and so is the choice of theme (step 6.5.5, 2026-11-09), but it ships one theme, the
-default, which still reads as shadcn's; the default's identity with the two more themes, dense dark and high contrast,
-is step 6.5.7.
+later, when the maintainer has its guidelines, and its values stay out of this public repo. Three themes ship (step
+6.5.7, 2026-11-11). The default is a cool slate whose tint shows, its light page a step below white cards that an edge
+and a shadow in the slate lift, its brand a deep blue that in dark mode is vivid with dark text on it, and its amber
+the colour of amber where a banner fills with it. `desk` is dense and dark-first, for desks that live in the grid: a
+graphite near-black page, a teal brand, type a step smaller, tighter corners and shorter controls, and a dim grey
+light mode. `high-contrast` sets text near black on white and near white on black, edges and outlines dark enough to
+tell each surface by its line, and a wider focus ring set off its control. The choices of look await the maintainer's
+review.
 
 A theme is one file of values and no code: `packages/ui/src/theme/themes/NAME.ts` exports a typed `ThemeInputs`
 through `defineTheme`, which checks what the type cannot, and the generator, pure functions of those inputs, writes
@@ -371,7 +375,10 @@ theme.
 1. **Ramps.** Twelve-step OKLCH scales for a neutral, the brand, and four status hues (red, amber, green and blue). Each
    step has one job: steps 1 and 2 are page backgrounds, 3 to 5 control fills at rest, hovered and pressed, 6 to 8
    borders, 9 and 10 solid fills, and 11 and 12 text. A dark ramp has the same steps at different lightness, so the dark
-   mode is designed rather than inverted. `vp run @basis/ui#theme` generates the ramps from each theme's hues and
+   mode is designed rather than inverted. Each hue has its own curve, so its solid sits at its own lightness: a status's
+   token is its text step, 11, readable on every surface and dark enough for white text on it, while its solid, step 9,
+   fills its environment banner, so amber's can be amber with dark text on it rather than brown with white. A hue's
+   `ink` names the text on its solid in each mode, white or the neutral's darkest (step 6.5.7, 2026-11-11). `vp run @basis/ui#theme` generates the ramps from each theme's hues and
    curves and commits the CSS. Porting the firm's existing theme means a theme's file of inputs, which
    `vp run @basis/ui#theme new NAME` starts from the default's.
 2. **Semantic tokens.** These are the only colours Tailwind exposes, and each one is a ramp step in each mode.
@@ -404,7 +411,9 @@ theme.
    which an item's indent past an icon follows (step 6.5.2, 2026-11-09). The heights are 24, 26, 28 and 30 pixels
    compact and 24, 28, 32 and 36 comfortable; an icon is 12 pixels beside `text-xs` and 14 or 16 beside `text-sm`. The
    rule for an icon or a check is that its glyph reaches the capitals beside it: lucide draws in 20 of its 24 units
-   and Inter's capitals are 0.727 em, so the box is at least 0.873 em. They are variables, read as
+   and Inter's capitals are 0.727 em, so the box is at least 0.873 em; its stroke is 1.75 units, where lucide's 2 reads
+   heavier than the text (step 6.5.7). The heights are the default's: `desk`'s are 24, 25, 26 and 28 compact and 24,
+   26, 28 and 32 comfortable. They are variables, read as
    `h-(--control-md-height)` and `size-(--control-md-icon)`, rather than named utilities, because `cn` merges an app's
    `h-9` over a variable and would keep both of two named classes; a gallery test measures every control in both
    densities for whole pixels and the rule. The stylesheet's base is the compact density, the default, and
@@ -412,10 +421,10 @@ theme.
    One spacing value stays fixed, `--spacing-target` at 24 pixels, WCAG 2.2's minimum target size: no control's
    height is less, and `min-h-target` and `min-w-target` hold it on a control that could be shorter, such as Button's
    `xs`, and on a control drawn smaller, such as Checkbox's box. Type runs down to `text-2xs`, for axes and dense labels, and number components use
-   tabular figures. There are two shadows, both subtle, `shadow-sm` for a control raised off its surface and
+   tabular figures, as does the body, so that any number above another lines up by place (step 6.5.7). There are two shadows, both subtle, `shadow-sm` for a control raised off its surface and
    `shadow-md` for a popup, each a variable (`--shadow-raised`, `--shadow-floating`) rather than a value written into
    the utility, so a theme can change it. The focus ring is an outline in `ring`, drawn whole, whose width and gap
-   are the variables `--focus-width` (2 pixels) and `--focus-offset` (none): `focus-visible:outline-solid
+   are the variables `--focus-width` (2 pixels in the default) and `--focus-offset` (1 pixel; `high-contrast` has 3 and 2): `focus-visible:outline-solid
    focus-visible:outline focus-visible:outline-offset-(--focus-offset) focus-visible:outline-ring`. An outline rather
    than a ring, since an outline's gap is transparent on any surface where a ring's would need the surface's colour,
    and Windows' forced colours keep an outline and drop a ring; a field that is invalid takes `outline-destructive`

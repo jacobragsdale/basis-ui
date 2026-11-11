@@ -85,7 +85,7 @@ function SortableHead({
       variant={variant}
       aria-sort={sorted === false ? undefined : ariaSort[sorted]}
     >
-      <Button variant="ghost" onClick={onSort} className={numeric ? "-mr-2.5" : "-ml-2.5"}>
+      <Button variant="ghost" size="xs" onClick={onSort} className={numeric ? "-mr-2" : "-ml-2"}>
         {numeric ? icon : null}
         {header}
         {numeric ? null : icon}

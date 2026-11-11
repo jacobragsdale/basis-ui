@@ -178,6 +178,7 @@ async function check(
       search={`?${query.toString()}`}
       mode="light"
       density={density}
+      theme="default"
       section={section}
     />,
   );

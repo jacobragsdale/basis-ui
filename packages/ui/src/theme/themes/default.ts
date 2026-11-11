@@ -5,37 +5,64 @@
 import { defineTheme } from "#theme/inputs.ts";
 import type { Step, StepTone } from "#theme/inputs.ts";
 
-/** The twelve steps every hue shares here, so a step means the same thing on every ramp. Light solids are dark enough
- * for white text, and dark solids light enough for dark text, so a solid is also readable as text on its mode's
- * surfaces. Chroma is quiet on backgrounds, full on solids and slightly calmer on text. */
+/** The twelve steps the status hues share here, so a step means the same thing on every ramp. Step 9, the solid, is a
+ * banner's fill; step 11, the text, is also a status's fill under white text in light mode, so it is dark enough for
+ * both. Chroma is quiet on backgrounds, full on solids and slightly calmer on text. */
 const curve: readonly StepTone[] = [
   // Steps 1 and 2: page backgrounds.
   { chromaShare: 0.04, dark: 0.178, light: 0.993, step: 1 },
-  { chromaShare: 0.08, dark: 0.213, light: 0.981, step: 2 },
-  // Steps 3 to 5: control fills at rest, hovered and pressed.
-  { chromaShare: 0.16, dark: 0.252, light: 0.958, step: 3 },
-  { chromaShare: 0.24, dark: 0.283, light: 0.935, step: 4 },
-  { chromaShare: 0.32, dark: 0.312, light: 0.91, step: 5 },
+  { chromaShare: 0.1, dark: 0.213, light: 0.979, step: 2 },
+  // Steps 3 to 5: control fills at rest, hovered and pressed; a status's tint.
+  { chromaShare: 0.2, dark: 0.26, light: 0.957, step: 3 },
+  { chromaShare: 0.28, dark: 0.29, light: 0.934, step: 4 },
+  { chromaShare: 0.36, dark: 0.32, light: 0.909, step: 5 },
   // Steps 6 to 8: borders. Step 8 is the darkest and clears 3:1 against the page, for control outlines and rings.
-  { chromaShare: 0.4, dark: 0.348, light: 0.87, step: 6 },
-  { chromaShare: 0.52, dark: 0.42, light: 0.79, step: 7 },
-  { chromaShare: 0.72, dark: 0.56, light: 0.62, step: 8 },
+  { chromaShare: 0.44, dark: 0.36, light: 0.87, step: 6 },
+  { chromaShare: 0.56, dark: 0.43, light: 0.79, step: 7 },
+  { chromaShare: 0.76, dark: 0.57, light: 0.62, step: 8 },
   // Steps 9 and 10: solid fills.
-  { chromaShare: 1, dark: 0.74, light: 0.47, step: 9 },
-  { chromaShare: 1, dark: 0.79, light: 0.42, step: 10 },
+  { chromaShare: 1, dark: 0.7, light: 0.5, step: 9 },
+  { chromaShare: 1, dark: 0.75, light: 0.45, step: 10 },
   // Steps 11 and 12: text.
-  { chromaShare: 0.82, dark: 0.8, light: 0.47, step: 11 },
-  { chromaShare: 0.45, dark: 0.95, light: 0.24, step: 12 },
+  { chromaShare: 0.9, dark: 0.8, light: 0.47, step: 11 },
+  { chromaShare: 0.5, dark: 0.95, light: 0.24, step: 12 },
 ];
 
 /** `curve` with some steps at other lightnesses, for a hue that WCAG's contrast weighs otherwise than OKLCH's
- * lightness: at one lightness green reads lighter than blue, so its solid, which is also text, sits lower, and red and
- * amber read darker on a dark fill, so theirs sit higher. */
+ * lightness, or whose solid is meant to be light. */
 function curveWith(
-  changes: Readonly<Partial<Record<Step, Partial<Pick<StepTone, "dark" | "light">>>>>,
+  changes: Readonly<
+    Partial<Record<Step, Partial<Pick<StepTone, "chromaShare" | "dark" | "light">>>>
+  >,
 ): readonly StepTone[] {
-  return curve.map((row) => ({ ...row, ...changes[row.step] }));
+  return curve.map(({ chromaShare, dark, light, step }) => {
+    const change = changes[step];
+    return {
+      chromaShare: change?.chromaShare ?? chromaShare,
+      dark: change?.dark ?? dark,
+      light: change?.light ?? light,
+      step,
+    };
+  });
 }
+
+/** The neutral's own steps: surfaces, borders and text. Its tint shows on the surfaces, a cool slate rather than a
+ * grey, and its page sits a clear step below the cards on it in light mode, where dark mode lifts each surface by
+ * lightness. */
+const neutral: readonly StepTone[] = [
+  { chromaShare: 0.25, dark: 0.172, light: 1, step: 1 },
+  { chromaShare: 0.3, dark: 0.198, light: 0.971, step: 2 },
+  { chromaShare: 0.34, dark: 0.232, light: 0.95, step: 3 },
+  { chromaShare: 0.38, dark: 0.264, light: 0.928, step: 4 },
+  { chromaShare: 0.42, dark: 0.294, light: 0.904, step: 5 },
+  { chromaShare: 0.46, dark: 0.336, light: 0.868, step: 6 },
+  { chromaShare: 0.5, dark: 0.41, light: 0.795, step: 7 },
+  { chromaShare: 0.55, dark: 0.565, light: 0.615, step: 8 },
+  { chromaShare: 0.6, dark: 0.68, light: 0.5, step: 9 },
+  { chromaShare: 0.6, dark: 0.74, light: 0.45, step: 10 },
+  { chromaShare: 0.6, dark: 0.79, light: 0.47, step: 11 },
+  { chromaShare: 0.45, dark: 0.955, light: 0.215, step: 12 },
+];
 
 const theme = defineTheme({
   /** Chart series in their fixed order: blue, orange, aqua, yellow, green, magenta, violet, red. They start from a
@@ -46,13 +73,13 @@ const theme = defineTheme({
   charts: {
     categorical: [
       { dark: "#3c7dde", light: "#2a78d6" },
-      { dark: "#d54f00", light: "#f06350" },
-      { dark: "#2fa172", light: "#1ea471" },
-      { dark: "#c68610", light: "#c88100" },
-      { dark: "#008300", light: "#018200" },
-      { dark: "#d04782", light: "#cc74a4" },
+      { dark: "#d54f00", light: "#ea5e4c" },
+      { dark: "#2fa172", light: "#18a06e" },
+      { dark: "#c68610", light: "#c57f00" },
+      { dark: "#008300", light: "#018000" },
+      { dark: "#d04782", light: "#c870a0" },
       { dark: "#9188eb", light: "#5d44d4" },
-      { dark: "#e96865", light: "#db4848" },
+      { dark: "#e96865", light: "#d54344" },
     ],
     diverging: {
       high: "red",
@@ -98,7 +125,7 @@ const theme = defineTheme({
   disabled: "50%",
   /** An outline's gap is transparent, so it shows the surface under it on any surface, and Windows' forced colours
    * keep it. */
-  focus: { offset: "0px", width: "2px" },
+  focus: { offset: "1px", width: "2px" },
   /** Both faces are bundled with `@basis/ui`, so text renders alike on every desktop. `num` is the sans face with
    * tabular figures as its default, for text a canvas draws, such as parallax's grids and axes: a canvas's font cannot
    * ask for `tabular-nums`, so `--font-num` names a face that has them on. The DOM's numbers keep the sans stack and
@@ -109,34 +136,57 @@ const theme = defineTheme({
     sans: '"Inter Variable", ui-sans-serif, system-ui, sans-serif',
   },
   hues: {
-    amber: { chroma: 0.17, curve: curveWith({ 9: { dark: 0.745 } }), hue: 65 },
-    blue: { chroma: 0.16, curve, hue: 245 },
-    /** The firm's brand: the main action, focus rings and selections. A sober blue until the firm's own replaces it. */
-    brand: { chroma: 0.17, curve: curveWith({ 8: { dark: 0.58 } }), hue: 258 },
-    green: { chroma: 0.16, curve: curveWith({ 9: { light: 0.46 } }), hue: 150 },
-    /** Surfaces, borders and text: a cool grey with a faint tint. */
-    neutral: { chroma: 0.014, curve, hue: 255 },
-    red: { chroma: 0.2, curve: curveWith({ 9: { dark: 0.75 } }), hue: 25 },
+    /** Amber's solid is the colour of amber, in both modes, with dark text on it: the QA banner is amber, not brown.
+     * Its text step leans toward orange, which stays a colour at the darkness text needs. */
+    amber: {
+      chroma: 0.17,
+      curve: curveWith({
+        9: { dark: 0.8, light: 0.81 },
+        10: { dark: 0.84, light: 0.77 },
+        11: { dark: 0.81, light: 0.47 },
+      }),
+      hue: 68,
+      ink: { light: "dark" },
+    },
+    blue: { chroma: 0.16, curve: curveWith({ 11: { light: 0.46 } }), hue: 245 },
+    /** The firm's brand: the main action, focus rings and selections. A deep, saturated blue until the firm's own
+     * replaces it; in dark mode a vivid one with dark text on it, rather than a pastel. */
+    brand: {
+      chroma: 0.2,
+      curve: curveWith({
+        8: { dark: 0.6, light: 0.605 },
+        9: { dark: 0.72, light: 0.475 },
+        10: { dark: 0.77, light: 0.43 },
+        11: { dark: 0.78, light: 0.47 },
+      }),
+      hue: 262,
+    },
+    green: { chroma: 0.16, curve: curveWith({ 11: { light: 0.45 } }), hue: 152 },
+    /** Surfaces, borders and text: a cool slate whose tint shows. */
+    neutral: { chroma: 0.028, curve: neutral, hue: 255 },
+    red: { chroma: 0.21, curve, hue: 25 },
   },
   motion: { control: "120ms", panel: "150ms", popup: "100ms" },
   name: "default",
   overlay: 0.7,
   /** Past step 10 in light mode and dark, where the ramp has no step left for a fill. */
-  pressed: { dark: 0.84, hue: "brand", light: 0.37 },
+  pressed: { dark: 0.82, hue: "brand", light: 0.385 },
   radius: { base: "0.375rem", scale: { lg: 1, md: 0.8, sm: 0.6, xl: 1.4 } },
+  /** Shadows in the neutral's own slate in light mode, and black in dark mode, where a shadow must be deep to show at
+   * all. A popup's is two layers: a wide one that lifts it, and a tight one that seats it. */
   shadows: {
     dark: {
-      floating: "0 2px 6px -1px oklch(0 0 0 / 0.1)",
-      raised: "0 1px 2px 0 oklch(0 0 0 / 0.06)",
+      floating: "0 8px 24px -6px oklch(0 0 0 / 0.6), 0 2px 6px -2px oklch(0 0 0 / 0.45)",
+      raised: "0 1px 2px 0 oklch(0 0 0 / 0.45)",
     },
     light: {
-      floating: "0 2px 6px -1px oklch(0 0 0 / 0.1)",
-      raised: "0 1px 2px 0 oklch(0 0 0 / 0.06)",
+      floating: "0 8px 24px -6px oklch(0.3 0.03 255 / 0.2), 0 2px 6px -2px oklch(0 0 0 / 0.1)",
+      raised: "0 1px 2px 0 oklch(0.3 0.03 255 / 0.1)",
     },
   },
   signed: {
-    gain: { dark: 0.86, hue: "green", light: 0.46 },
-    loss: { dark: 0.75, hue: "red", light: 0.36 },
+    gain: { dark: 0.86, hue: "green", light: 0.45 },
+    loss: { dark: 0.75, hue: "red", light: 0.345 },
   },
   /** The compact density shrinks the layout's gaps and paddings by a quarter; a control's own lengths are `controls`. */
   spacing: { comfortable: "0.25rem", compact: "0.1875rem" },

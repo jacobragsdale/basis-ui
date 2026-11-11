@@ -31,8 +31,27 @@ function both(source: Source): Token {
   return { dark: source, light: source };
 }
 
+const white: Source = { css: "oklch(1 0 0)" };
+
+/** Dark text on a light solid: the neutral's darkest step in each mode, its text step in light mode and its page step
+ * in dark mode. */
+const darkInk: Token = { dark: { hue: "neutral", step: 1 }, light: { hue: "neutral", step: 12 } };
+
 // Text on a solid fill: white on light mode's dark solids, the page's darkest neutral on dark mode's light ones.
-const onSolid: Token = { dark: { hue: "neutral", step: 1 }, light: { css: "oklch(1 0 0)" } };
+const onSolid: Token = { dark: darkInk.dark, light: white };
+
+/** Text on a hue's solid steps, 9 and 10, in each mode: its `ink`, or `onSolid`'s. */
+function inkOn(theme: ThemeInputs, hue: HueName): Token {
+  const { ink } = theme.hues[hue];
+  const source = (mode: Mode): Source => {
+    const chosen = ink?.[mode];
+    if (chosen === undefined) {
+      return onSolid[mode];
+    }
+    return chosen === "white" ? white : darkInk[mode];
+  };
+  return { dark: source("dark"), light: source("light") };
+}
 
 /** The neutral's step for a surface in each mode, from the theme's elevation steps. */
 function surface(theme: ThemeInputs, name: keyof Surfaces): Token {
@@ -76,7 +95,7 @@ function actions(theme: ThemeInputs): readonly Entry[] {
     ["primary", both({ hue: "brand", step: 9 })],
     ["primary-hover", both({ hue: "brand", step: 10 })],
     ["primary-active", shade(theme.pressed)],
-    ["primary-foreground", onSolid],
+    ["primary-foreground", inkOn(theme, "brand")],
     ["border", both({ hue: "neutral", step: 6 })],
     // The outline of a card or a popup, a step lighter than a border, as quiet as the page's own lines.
     ["edge", both({ hue: "neutral", step: 5 })],
@@ -104,7 +123,7 @@ function sidebar(theme: ThemeInputs): readonly Entry[] {
     ["sidebar", surface(theme, "sidebar")],
     ["sidebar-foreground", both({ hue: "neutral", step: 12 })],
     ["sidebar-primary", both({ hue: "brand", step: 9 })],
-    ["sidebar-primary-foreground", onSolid],
+    ["sidebar-primary-foreground", inkOn(theme, "brand")],
     ["sidebar-accent", surface(theme, "sidebarAccent")],
     ["sidebar-accent-foreground", both({ hue: "neutral", step: 12 })],
     ["sidebar-border", both({ hue: "neutral", step: 6 })],
@@ -112,13 +131,15 @@ function sidebar(theme: ThemeInputs): readonly Entry[] {
   ];
 }
 
-/** A status. Its colour is a solid fill, and text on the page; `-subtle` is the tint behind an alert or a badge, and
- * `-edge` the outline of an alert or a toast on it. Hovered, a tint steps away from its text, toward the page, since a
+/** A status. Its colour is its ramp's text step, 11, which is text on the page and also a fill, as under a failed
+ * grid's message or a market's dot, with white on it in light mode; `-subtle` is the tint behind an alert or a badge,
+ * and `-edge` the outline of an alert or a toast on it. The status's solid, step 9, is left to its banner, at its
+ * hue's own lightness. Hovered, a tint steps away from its text, toward the page, since a
  * step toward it costs the text its 5.5:1 (light `success` text is 5.38:1 on step 4); pressed, it returns to rest, since
  * steps 1 and 2 are too close to tell apart in light mode. */
 function status(name: string, hue: HueName): readonly Entry[] {
   return [
-    [name, both({ hue, step: 9 })],
+    [name, both({ hue, step: 11 })],
     [`${name}-foreground`, onSolid],
     [`${name}-subtle`, both({ hue, step: 3 })],
     [`${name}-subtle-hover`, both({ hue, step: 2 })],
@@ -126,11 +147,11 @@ function status(name: string, hue: HueName): readonly Entry[] {
   ];
 }
 
-/** An environment banner's fill and the text on it. */
-function banner(name: string, hue: HueName): readonly Entry[] {
+/** An environment banner's fill, its hue's solid, and the text on it, the hue's ink. */
+function banner(theme: ThemeInputs, name: string, hue: HueName): readonly Entry[] {
   return [
     [name, both({ hue, step: 9 })],
-    [`${name}-foreground`, onSolid],
+    [`${name}-foreground`, inkOn(theme, hue)],
   ];
 }
 
@@ -215,9 +236,9 @@ function tokensOf(theme: ThemeInputs): Readonly<Record<string, Token>> {
     ["loss", shade(theme.signed.loss)],
     ...selection,
     // The environment banner.
-    ...banner("env-dev", "green"),
-    ...banner("env-qa", "amber"),
-    ...banner("env-prod", "red"),
+    ...banner(theme, "env-dev", "green"),
+    ...banner(theme, "env-qa", "amber"),
+    ...banner(theme, "env-prod", "red"),
     // Data: chart series in order, a sequential scale and a diverging scale.
     ...charts(theme),
   ]);

@@ -24,11 +24,11 @@ interface ChartColors {
 const chartColors: Readonly<Record<ResolvedScheme, ChartColors>> = {
   dark: {
     down: "oklch(0.75 0.1505 25)",
-    middle: "oklch(0.348 0.0056 255)",
+    middle: "oklch(0.336 0.0129 255)",
     negativeRamp: [
       "oklch(0.42 0.1703 25)",
-      "oklch(0.52 0.2 25)",
-      "oklch(0.62 0.2 25)",
+      "oklch(0.52 0.21 25)",
+      "oklch(0.62 0.21 25)",
       "oklch(0.72 0.1742 25)",
       "oklch(0.82 0.1008 25)",
     ],
@@ -53,16 +53,16 @@ const chartColors: Readonly<Record<ResolvedScheme, ChartColors>> = {
       "#9188eb",
       "#e96865",
     ],
-    up: "oklch(0.86 0.16 150)",
+    up: "oklch(0.86 0.16 152)",
   },
   light: {
-    down: "oklch(0.36 0.1459 25)",
-    middle: "oklch(0.935 0.0034 255)",
+    down: "oklch(0.345 0.1398 25)",
+    middle: "oklch(0.928 0.0106 255)",
     negativeRamp: [
       "oklch(0.82 0.1008 25)",
       "oklch(0.72 0.1742 25)",
-      "oklch(0.62 0.2 25)",
-      "oklch(0.52 0.2 25)",
+      "oklch(0.62 0.21 25)",
+      "oklch(0.52 0.21 25)",
       "oklch(0.42 0.1703 25)",
     ],
     ramp: [
@@ -78,15 +78,15 @@ const chartColors: Readonly<Record<ResolvedScheme, ChartColors>> = {
     ],
     series: [
       "#2a78d6",
-      "#f06350",
-      "#1ea471",
-      "#c88100",
-      "#018200",
-      "#cc74a4",
+      "#ea5e4c",
+      "#18a06e",
+      "#c57f00",
+      "#018000",
+      "#c870a0",
       "#5d44d4",
-      "#db4848",
+      "#d54344",
     ],
-    up: "oklch(0.46 0.1267 150)",
+    up: "oklch(0.45 0.1184 152)",
   },
 };
 

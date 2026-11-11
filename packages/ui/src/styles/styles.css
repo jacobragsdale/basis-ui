@@ -14,7 +14,9 @@
     @apply border-border outline-ring/50;
   }
 
+  /* Figures are tabular everywhere, so that any number that sits above another, in a table, a card or a list, lines
+     up by place without each component asking. */
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground tabular-nums;
   }
 }

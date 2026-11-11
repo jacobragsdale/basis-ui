@@ -114,7 +114,7 @@ describe(optionsOf, () => {
       ],
       [
         ["/", "--theme", "ocean"],
-        "ERROR --theme takes the name of a theme @basis/ui ships (default), such as --theme default.",
+        "ERROR --theme takes the name of a theme @basis/ui ships (default, desk or high-contrast), such as --theme default.",
       ],
       [
         ["/", "--selector"],

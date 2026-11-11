@@ -15830,7 +15830,7 @@
       "module": "@basis/ui",
       "name": "themeNames",
       "purpose": "Every shipped theme's name, the default first.",
-      "signature": "const themeNames = [\"default\"] as const"
+      "signature": "const themeNames = [\"default\", \"desk\", \"high-contrast\"] as const"
     },
     {
       "kind": "constant",

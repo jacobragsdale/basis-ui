@@ -1,10 +1,11 @@
 import "#styles.css";
 
-import { defaultPreferences } from "@basis/ui";
+import { defaultPreferences, themeNames } from "@basis/ui";
 import { describe, expect, test } from "vite-plus/test";
 import { render } from "vitest-browser-react";
 
 import { Gallery } from "./gallery.tsx";
+import { themeIds } from "./manifest.ts";
 import { pageFor, pages } from "./pages.ts";
 import { queryPreferences } from "./preferences.ts";
 
@@ -39,8 +40,19 @@ describe(queryPreferences, () => {
     });
   });
 
+  test("takes the theme the query names, among the shipped themes", () => {
+    const theme = themeNames.at(-1) ?? "default";
+    expect(queryPreferences(`?theme=${theme}`, stored)).toStrictEqual({ ...stored, theme });
+  });
+
   test("ignores values it does not know", () => {
-    expect(queryPreferences("?mode=sepia&density=roomy", stored)).toBeNull();
+    expect(queryPreferences("?mode=sepia&density=roomy&theme=paisley", stored)).toBeNull();
+  });
+});
+
+describe("the screenshots' themes", () => {
+  test("are the themes @basis/ui ships, in its order", () => {
+    expect(themeIds).toStrictEqual(themeNames);
   });
 });
 
@@ -61,7 +73,7 @@ describe("the gallery", () => {
   test("links to every family's page, and marks the current one", async () => {
     const page = pageFor(search);
     const screen = await render(
-      <Gallery page={page} search={search} mode="dark" density="comfortable" />,
+      <Gallery page={page} search={search} mode="dark" density="comfortable" theme="default" />,
     );
     const families = screen.getByRole("navigation", { name: "Component families" });
     const titles = families
@@ -77,7 +89,13 @@ describe("the gallery", () => {
 
   test("its mode and density links keep the page and change one preference", async () => {
     const screen = await render(
-      <Gallery page={pageFor(search)} search={search} mode="dark" density="comfortable" />,
+      <Gallery
+        page={pageFor(search)}
+        search={search}
+        mode="dark"
+        density="comfortable"
+        theme="default"
+      />,
     );
     const density = screen.getByRole("navigation", { name: "Density" });
     await expect

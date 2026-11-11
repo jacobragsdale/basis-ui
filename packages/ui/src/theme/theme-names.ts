@@ -2,6 +2,6 @@
 // first. The preferences, the user menu and `vp run shot` read these, so that no app ships the themes' inputs.
 
 /** Every shipped theme's name, the default first. */
-const themeNames = ["default"] as const;
+const themeNames = ["default", "desk", "high-contrast"] as const;
 
 export { themeNames };

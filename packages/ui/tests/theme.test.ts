@@ -79,13 +79,12 @@ describe("checkTheme", () => {
       signed: { ...signed, loss: { ...signed.loss, dark: 0.7 } },
     }));
     expect(messagesOf(theme)).toStrictEqual([
-      "ERROR the default theme's dark loss on popover is 5.46:1, under the 5.5:1 text needs: set signed.loss.dark to 0.702 (5.51:1).",
-      "ERROR the default theme's dark loss on muted is 4.96:1, under the 5.5:1 text needs: set signed.loss.dark to 0.725 (5.50:1).",
-      "ERROR the default theme's dark loss on accent is 4.48:1, under the 5.5:1 text needs: set signed.loss.dark to 0.75 (5.51:1).",
-      "ERROR the default theme's dark loss on secondary is 4.48:1, under the 5.5:1 text needs: set signed.loss.dark to 0.75 (5.51:1).",
-      "ERROR the default theme's dark loss on selection is 4.96:1, under the 5.5:1 text needs: set signed.loss.dark to 0.725 (5.51:1).",
-      "ERROR the default theme's dark loss on highlight is 5.00:1, under the 5.5:1 text needs: set signed.loss.dark to 0.723 (5.50:1).",
-      "ERROR the default theme's dark loss on sidebar-accent is 4.96:1, under the 5.5:1 text needs: set signed.loss.dark to 0.725 (5.50:1).",
+      "ERROR the default theme's dark loss on muted is 5.27:1, under the 5.5:1 text needs: set signed.loss.dark to 0.711 (5.52:1).",
+      "ERROR the default theme's dark loss on accent is 4.78:1, under the 5.5:1 text needs: set signed.loss.dark to 0.734 (5.50:1).",
+      "ERROR the default theme's dark loss on secondary is 4.78:1, under the 5.5:1 text needs: set signed.loss.dark to 0.734 (5.50:1).",
+      "ERROR the default theme's dark loss on selection is 4.86:1, under the 5.5:1 text needs: set signed.loss.dark to 0.73 (5.51:1).",
+      "ERROR the default theme's dark loss on highlight is 4.89:1, under the 5.5:1 text needs: set signed.loss.dark to 0.729 (5.51:1).",
+      "ERROR the default theme's dark loss on sidebar-accent is 5.27:1, under the 5.5:1 text needs: set signed.loss.dark to 0.711 (5.52:1).",
     ]);
   });
 
@@ -94,7 +93,8 @@ describe("checkTheme", () => {
       hues: { ...hues, brand: { ...hues.brand, curve: curveWith(hues.brand, 8, 0.56) } },
     }));
     expect(messagesOf(theme)).toStrictEqual([
-      "ERROR the default theme's dark ring on accent is 2.78:1, under the 3:1 a focus ring needs: set hues.brand's step 8 dark to 0.578 (3.00:1).",
+      "ERROR the default theme's dark ring on accent is 2.93:1, under the 3:1 a focus ring needs: set hues.brand's step 8 dark to 0.566 (3.00:1).",
+      "ERROR the default theme's dark ring on selection is 2.98:1, under the 3:1 a focus ring needs: set hues.brand's step 8 dark to 0.562 (3.01:1).",
     ]);
   });
 
@@ -106,9 +106,9 @@ describe("checkTheme", () => {
       },
     }));
     expect(messagesOf(theme)).toStrictEqual([
-      "ERROR the default theme's light chart-4 on background is 2.05:1, under the 3:1 a chart's marks need: set charts.categorical[3].light to #c38400 (3.00:1).",
-      "ERROR the default theme's light chart-4 on card is 2.12:1, under the 3:1 a chart's marks need: set charts.categorical[3].light to #c78600 (3.00:1).",
-      "ERROR the default theme's light chart-4 on popover is 2.12:1, under the 3:1 a chart's marks need: set charts.categorical[3].light to #c78600 (3.00:1).",
+      "ERROR the default theme's light chart-4 on background is 1.99:1, under the 3:1 a chart's marks need: set charts.categorical[3].light to #c08200 (3.00:1).",
+      "ERROR the default theme's light chart-4 on card is 2.16:1, under the 3:1 a chart's marks need: set charts.categorical[3].light to #c88800 (3.00:1).",
+      "ERROR the default theme's light chart-4 on popover is 2.16:1, under the 3:1 a chart's marks need: set charts.categorical[3].light to #c88800 (3.00:1).",
     ]);
   });
 
@@ -131,7 +131,7 @@ describe("checkTheme", () => {
     }));
     expect(messagesOf(theme)).toStrictEqual([
       "ERROR the default theme's dark gain and loss differ by 0.05 in lightness, under the 0.1 that tells them apart without hue: set signed.loss.dark to 0.699 (0.10).",
-      "ERROR the default theme's dark gain and loss are 4.8 apart in OKLab ×100 under deuteranopia, under the 8 signed values need: set signed.loss.dark to 0.727 (8.1).",
+      "ERROR the default theme's dark gain and loss are 4.5 apart in OKLab ×100 under deuteranopia, under the 8 signed values need: set signed.loss.dark to 0.725 (8.1).",
     ]);
   });
 
@@ -140,7 +140,7 @@ describe("checkTheme", () => {
       surfaces: { ...surfaces, light: { ...surfaces.light, secondaryHover: 4 } },
     }));
     expect(messagesOf(theme)).toStrictEqual([
-      "ERROR the default theme's light secondary-hover and secondary are 0.0 apart in OKLab ×100, under the 2 a hovered fill needs to show: set surfaces.light.secondaryHover to 3 (2.3).",
+      "ERROR the default theme's light secondary-hover and secondary are 0.0 apart in OKLab ×100, under the 2 a hovered fill needs to show: set surfaces.light.secondaryHover to 3 (2.2).",
     ]);
   });
 
@@ -150,7 +150,10 @@ describe("checkTheme", () => {
     }));
     expect(
       checkTheme(theme).map(({ mode, theme: name, tokens }) => ({ mode, name, tokens })),
-    ).toStrictEqual([{ mode: "dark", name: "default", tokens: ["ring", "accent"] }]);
+    ).toStrictEqual([
+      { mode: "dark", name: "default", tokens: ["ring", "accent"] },
+      { mode: "dark", name: "default", tokens: ["ring", "selection"] },
+    ]);
   });
 });
 

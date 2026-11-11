@@ -21,9 +21,10 @@ import {
 } from "#index.ts";
 import type { IconProps } from "#index.ts";
 
-// The attributes lucide-react 1.70.0 gives every icon, in its order, then `aria-hidden` for an unnamed one.
+// The attributes lucide-react 1.70.0 gives every icon, in its order, with basis-ui's 1.75-unit stroke for its 2, then
+// `aria-hidden` for an unnamed one.
 const svgOpening =
-  '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">';
+  '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">';
 
 /** Whether an export is a component, as every `*Icon` export should be. */
 function isComponent(value: unknown): value is ComponentType<IconProps> {

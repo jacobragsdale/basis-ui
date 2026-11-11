@@ -6,7 +6,7 @@ import { cva } from "#vendor/cva/cva.ts";
 
 /** A column heading. `numeric` aligns it right, over the numbers of its column. */
 const tableHeadVariants = cva(
-  "h-10 px-2 align-middle font-medium whitespace-nowrap text-foreground [&:has([role=checkbox])]:pr-0",
+  "h-10 px-2 align-middle text-xs font-medium whitespace-nowrap text-muted-foreground [&:has([role=checkbox])]:pr-0",
   {
     variants: {
       variant: {
@@ -44,6 +44,6 @@ const tableCellClasses = {
 
 /** A row's classes, as TableRow's but without its rule for an open menu inside it: the row is told, and adds
  * `bg-muted` itself. Its hover shows at once, with no fade. */
-const tableRowClasses = "border-b hover:bg-muted data-[state=selected]:bg-selection";
+const tableRowClasses = "border-b border-edge hover:bg-muted data-[state=selected]:bg-selection";
 
 export { tableCellClasses, tableCellVariants, tableHeadVariants, tableRowClasses };

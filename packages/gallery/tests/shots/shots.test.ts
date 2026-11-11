@@ -1,8 +1,9 @@
-/* Every gallery section's screenshot, in light and dark, comfortable and compact, compared pixel for pixel with those
- * in `screenshots/`, and the axe check on every section in the same pass. A section is shot alone, on the page its
- * query opens (`&section=`), with its overlays open; its hovered, focused and pressed examples, marked with
- * `data-pictured`, have the state forced on them through Chromium's DevTools protocol, so no pointer moves. A
- * screenshot is named by its page and section, so a diff names the component.
+/* Every gallery section's screenshot, in every shipped theme, light and dark, comfortable and compact, compared pixel
+ * for pixel with those in `screenshots/`, and the axe check on every section in the same pass. A section is shot
+ * alone, on the page its query opens (`&section=`), with its overlays open; its hovered, focused and pressed examples,
+ * marked with `data-pictured`, have the state forced on them through Chromium's DevTools protocol, so no pointer
+ * moves. A screenshot is named by its page and section, and by its theme unless it is the default, so a diff names
+ * the component.
  *
  * Text renders differently from one machine to the next, so these run only in the pinned Playwright image: run them
  * with `vp run @basis/gallery#shots`, and record them again with `--update`. */
@@ -15,8 +16,8 @@ import type { CDPSession, Page } from "@playwright/test";
 import type axeCore from "axe-core";
 import type { RunOptions } from "axe-core";
 
-import { expectedErrors, pageIds } from "#manifest.ts";
-import type { PageId } from "#manifest.ts";
+import { expectedErrors, pageIds, themeIds } from "#manifest.ts";
+import type { PageId, ThemeId } from "#manifest.ts";
 import { axeOptions } from "./axe.ts";
 import server from "./server.json" with { type: "json" };
 
@@ -69,18 +70,21 @@ async function inTurn<TItem>(
 
 interface View {
   readonly id: PageId;
+  readonly theme: ThemeId;
   readonly mode: Mode;
   readonly density: Density;
   readonly section?: string;
 }
 
-/** Opens a gallery page in a mode and density, stored as @basis/ui's cookie holds them for every app and named in the
+/** Opens a gallery page in a theme, mode and density, stored as @basis/ui's cookie holds them for every app and named in the
  * query, as a screenshot opens it. */
-async function open(page: Page, { id, mode, density, section }: View): Promise<void> {
+async function open(page: Page, { id, theme, mode, density, section }: View): Promise<void> {
   await page
     .context()
-    .addCookies([{ name: "basis-ui-preferences", url: server.url, value: `${mode}.${density}` }]);
-  const query = new URLSearchParams({ density, mode, page: id });
+    .addCookies([
+      { name: "basis-ui-preferences", url: server.url, value: `${mode}.${density}.full.${theme}` },
+    ]);
+  const query = new URLSearchParams({ density, mode, page: id, theme });
   if (section !== undefined) {
     query.set("section", section);
   }
@@ -234,9 +238,11 @@ async function picture(page: Page, view: View): Promise<CDPSession> {
 async function shoot(page: Page, view: View & { readonly section: string }): Promise<void> {
   const session = await picture(page, view);
   const clip = await shotArea(page, view.section);
+  // The default theme's screenshots carry no theme in their names, as `vp run shot` names them.
+  const theme = view.theme === themeIds[0] ? "" : `-${view.theme}`;
   await expect
-    .soft(page, `${view.section}, ${view.mode}, ${view.density}`)
-    .toHaveScreenshot([view.id, `${view.section}-${view.mode}-${view.density}.png`], {
+    .soft(page, `${view.section}, ${view.theme}, ${view.mode}, ${view.density}`)
+    .toHaveScreenshot([view.id, `${view.section}-${view.mode}-${view.density}${theme}.png`], {
       ...exactly,
       clip,
       fullPage: true,
@@ -246,34 +252,36 @@ async function shoot(page: Page, view: View & { readonly section: string }): Pro
 }
 
 for (const id of pageIds) {
-  for (const mode of modes) {
-    for (const density of densities) {
-      test(`${id}: every section, ${mode}, ${density}`, async ({ page }) => {
-        const errors: string[] = [];
-        page.on("pageerror", (error) => errors.push(error.message));
-        page.on("console", (message) => {
-          if (message.type() === "error") {
-            errors.push(message.text());
-          }
-        });
-        await page.clock.setFixedTime(now);
-        await open(page, { density, id, mode });
-        const sections = await page
-          .locator("[data-shot]")
-          .evaluateAll((elements) =>
-            elements.map((element) =>
-              element instanceof HTMLElement ? (element.dataset["shot"] ?? "") : "",
-            ),
+  for (const theme of themeIds) {
+    for (const mode of modes) {
+      for (const density of densities) {
+        test(`${id}: every section, ${theme}, ${mode}, ${density}`, async ({ page }) => {
+          const errors: string[] = [];
+          page.on("pageerror", (error) => errors.push(error.message));
+          page.on("console", (message) => {
+            if (message.type() === "error") {
+              errors.push(message.text());
+            }
+          });
+          await page.clock.setFixedTime(now);
+          await open(page, { density, id, mode, theme });
+          const sections = await page
+            .locator("[data-shot]")
+            .evaluateAll((elements) =>
+              elements.map((element) =>
+                element instanceof HTMLElement ? (element.dataset["shot"] ?? "") : "",
+              ),
+            );
+          expect(sections.length, `the sections on ${id}`).toBeGreaterThan(0);
+          await inTurn(sections, async (section) => {
+            await shoot(page, { density, id, mode, section, theme });
+          });
+          const unexpected = errors.filter(
+            (error) => !expectedErrors.some((expected) => expected.test(error)),
           );
-        expect(sections.length, `the sections on ${id}`).toBeGreaterThan(0);
-        await inTurn(sections, async (section) => {
-          await shoot(page, { density, id, mode, section });
+          expect(unexpected, `errors on ${id}`).toStrictEqual([]);
         });
-        const unexpected = errors.filter(
-          (error) => !expectedErrors.some((expected) => expected.test(error)),
-        );
-        expect(unexpected, `errors on ${id}`).toStrictEqual([]);
-      });
+      }
     }
   }
 }
