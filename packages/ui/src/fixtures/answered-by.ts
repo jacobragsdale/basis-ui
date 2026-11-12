@@ -14,7 +14,7 @@ const fileHeader = "x-basis-fixture-file";
 
 /** Where fixture mode serves the files that fixtures' `body_file` names, from the page's base: the file
  * `fixtures/data/trades.arrows` at `__basis/fixture-body/fixtures/data/trades.arrows`, which `vp dev` serves from
- * disk. */
+ * disk and a build in fixture mode (`vp build --mode fixtures`) copies there. */
 const bodyFilesPath = "__basis/fixture-body/";
 
 export { bodyFilesPath, fileHeader, sourceHeader };

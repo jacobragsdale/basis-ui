@@ -376,6 +376,12 @@ The app writes no code for it. In `vp dev`, the preset's plugin rewrites `index.
 worker, with the fixtures it read and the handlers in `src/api/generated/client.msw.ts`, before the app's entry module
 runs. `vp build` and `vp test` leave the page alone, and `BASIS_API_URL` turns fixture mode off.
 
+`vp build --mode fixtures` builds the app in fixture mode, for a demonstration or a desktop with no API to call: static
+files that any server serves, whose `/api` MSW's service worker answers from the fixtures in `fixtures/`, then orval's
+handlers, as `vp dev` does. MSW's worker script goes beside the page, and the files fixtures' `body_file` names under
+`__basis/fixture-body/`. The records in `.fixtures/` hold client data and are never built in. The build needs an
+absolute `base`, `/` unless `vite.config.ts` or `--base` says otherwise.
+
 `vp dev` serves each app on a port of its own, from 20000 to 29999, derived from the app's folder: the same port on
 every run, and another in another git worktree, so worktrees running at once never collide. If another program holds
 the port, Vite takes the next free one. `vp dev --port 5173`, or `server.port` in `vite.config.ts`, chooses one. It
@@ -445,7 +451,7 @@ last arrive:
 
 The file stays in the fixture's folder or below it. Keep a large one out of git, in a folder the app's `.gitignore`
 names, and write it with a task of the app's own; `vp dev` and `vp run verify` name a fixture whose file is missing.
-`vp dev` serves the files at `__basis/fixture-body/`, under the page's base. In a
+`vp dev` serves the files at `__basis/fixture-body/`, under the app's base, and a build in fixture mode copies them there. In a
 Node DOM (`BASIS_TEST_DOM=node`), `checkRoutes` cannot read one, and its route fails with the reason.
 
 When `vp dev` starts, and whenever a file in `fixtures/` or `.fixtures/`, or `openapi.json`, changes, every file is

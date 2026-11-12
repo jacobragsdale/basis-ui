@@ -36,21 +36,23 @@ interface FixtureHandlersOptions {
   /** Where each answer is reported; the console by default. */
   readonly telemetry?: Telemetry;
   /** Reads the file a fixture's `body_file` names, by its path from the app's root, as a response whose body streams;
-   * by default, from where `vp dev` serves it, `bodyFilesPath` under the page's base. */
+   * by default, from where `vp dev` serves it, `bodyFilesPath` under `/`. */
   readonly bodyFiles?: BodyFiles;
 }
 
 /** Reads a body file, by its path from the app's root. */
 type BodyFiles = (file: string) => Promise<Response>;
 
-/** A body file, from where fixture mode serves it beside the page. */
-async function servedBodyFile(file: string): Promise<Response> {
-  const encoded = file
-    .split("/")
-    .map((part) => encodeURIComponent(part))
-    .join("/");
-  // oxlint-disable-next-line basis/no-fetch -- fixture mode reads its own files from beside the page, no API.
-  return fetch(new URL(`${bodyFilesPath}${encoded}`, document.baseURI));
+/** Reads body files from where fixture mode serves them, `bodyFilesPath` under the app's `base`, as `/`. */
+function servedBodyFiles(base: string): BodyFiles {
+  return async (file) => {
+    const encoded = file
+      .split("/")
+      .map((part) => encodeURIComponent(part))
+      .join("/");
+    // oxlint-disable-next-line basis/no-fetch -- fixture mode reads its own files from beside the page, no API.
+    return fetch(`${base}${bodyFilesPath}${encoded}`);
+  };
 }
 
 /** A request as fixture mode matches it: its method, its path without `/api`, and its query. */
@@ -225,7 +227,7 @@ function fixtureHandlers({
   fixtures,
   generated,
   telemetry = consoleTelemetry,
-  bodyFiles = servedBodyFile,
+  bodyFiles = servedBodyFiles("/"),
 }: FixtureHandlersOptions): RequestHandler[] {
   const held = [...records, ...fixtures];
   return [
@@ -253,5 +255,5 @@ function fixtureHandlers({
   ];
 }
 
-export { fixtureHandlers };
+export { fixtureHandlers, servedBodyFiles };
 export type { BodyFiles, FixtureHandlersOptions };

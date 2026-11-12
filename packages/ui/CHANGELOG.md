@@ -9,6 +9,10 @@ anything of an app.
 
 ## Unreleased
 
+- `vp build --mode fixtures` builds the app in fixture mode, as static files whose `/api` MSW's worker answers from
+  `fixtures/` and orval's handlers, with the fixtures' body files beside the page, for a demonstration with no backend.
+  `.fixtures/` is never built in. What to do: nothing.
+
 - A fixture's response can hold its body in a file beside it, `"body_file": "data/trades.arrows"`, with its
   `media_type`, for a body too large for base64 in JSON; fixture mode streams it, and `vp dev` and `vp run verify`
   name a fixture whose file is missing. The record format's JSON Schema gains the form, an additive change. What to

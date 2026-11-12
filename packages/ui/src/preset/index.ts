@@ -190,7 +190,8 @@ function parallaxWorkerPlugin(): Plugin {
 /** React with the React Compiler, which fails the build on any component it cannot optimize, Tailwind, the head
  * script that applies the stored mode, density, motion and theme before the first paint, written into the app's index.html, and, in
  * `vp dev` and `vp test` only, MSW's service worker at `/mockServiceWorker.js`, so tests serve the generated client's
- * handlers; in `vp dev`, a port of the app's own and fixture mode (fixture-mode.ts); in `vp test`, every dependency of
+ * handlers; in `vp dev`, a port of the app's own and fixture mode (fixture-mode.ts), and in `vp build --mode fixtures`
+ * a static build in fixture mode (fixture-build.ts); in `vp test`, every dependency of
  * the app's modules is pre-bundled before the tests start. They load only when a command needs them, so `vp lint` and
  * `vp fmt` stay fast. */
 function basisPlugins(): PluginOption[] {
@@ -202,12 +203,14 @@ function basisPlugins(): PluginOption[] {
         { default: tailwindcss },
         { msw },
         { fixtureModePlugin },
+        { fixtureBuildPlugin },
       ] = await Promise.all([
         import("@vitejs/plugin-react"),
         import("@rolldown/plugin-babel"),
         import("@tailwindcss/vite"),
         import("msw/vite"),
         import("./fixture-mode.ts"),
+        import("./fixture-build.ts"),
       ]);
       return [
         headScriptPlugin(),
@@ -219,6 +222,7 @@ function basisPlugins(): PluginOption[] {
         // Worker-only: a test starts the worker itself, and fixture mode's script does in vp dev; no build carries it.
         { ...msw({ mode: "worker-only" }), apply: "serve" },
         fixtureModePlugin({ liveApi: liveApi() }),
+        fixtureBuildPlugin(),
         testDependenciesPlugin(),
         parallaxWorkerPlugin(),
         precompressPlugin(),

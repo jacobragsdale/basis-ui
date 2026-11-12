@@ -25,13 +25,15 @@ import { fixtureFolders } from "#fixtures/load.ts";
 
 import { serveBodyFiles } from "./fixture-bodies.ts";
 import { fixtureParameters, readFixtures } from "./fixture-files.ts";
+import {
+  fixturesModule,
+  generatedHandlersFile,
+  resolvedFixturesModule,
+  withFixtureMode,
+} from "./fixture-page.ts";
 import type { ReadFixtures } from "./fixture-files.ts";
-import { documentFile, generatedFolder } from "./orval-options.ts";
+import { documentFile } from "./orval-options.ts";
 import { fixturesSetup } from "./test-setup.ts";
-
-/** The module the page imports the fixtures from, which the plugin makes from the files. */
-const fixturesModule = "virtual:basis/fixtures";
-const resolvedFixturesModule = `\0${fixturesModule}`;
 
 /** The module `checkRoutes` in `@basis/ui/testing` loads the app's fixtures from in `vp test`, through the setup file
  * `basisTest()` adds (src/testing/fixtures-setup.ts): the synthetic ones, every problem with them, and a loader of the
@@ -49,9 +51,6 @@ function testConfig(config: UserConfig): UserConfig {
   };
 }
 
-/** orval's MSW handlers in an app, from its root. */
-const generatedHandlersFile = `${generatedFolder}/client.msw.ts`;
-
 /** Where `vp dev` answers with the app's root, so `vp run shot` can tell the app's own `vp dev` on its port from
  * another app's, which Vite moved there when its own port was taken, or from another program. */
 const rootPath = "/__basis/root";
@@ -65,40 +64,6 @@ const portCount = 10_000;
 function devPort(root: string): number {
   const digest = createHash("sha256").update(path.resolve(root)).digest();
   return firstPort + (digest.readUInt32BE(0) % portCount);
-}
-
-/** A module script of the app's own that a page loads, such as `<script type="module" src="/src/main.tsx">`. */
-const scriptTag = /<script\b(?<attributes>[^>]*)>\s*<\/script>/giu;
-const sourceAttribute = /\bsrc=["'](?<source>(?:\/(?!\/)|\.\/)[^"']+)["']/iu;
-const moduleType = /\btype=["']module["']/iu;
-
-/** The page, its own module scripts replaced by one that starts fixture mode and then imports them, in order. */
-function withFixtureMode(html: string, root: string): string | undefined {
-  const entries: string[] = [];
-  const rest = html.replaceAll(scriptTag, (tag: string, attributes: string) => {
-    const source = sourceAttribute.exec(attributes)?.groups?.["source"];
-    if (source === undefined || !moduleType.test(attributes)) {
-      return tag;
-    }
-    entries.push(source);
-    return entries.length === 1 ? "<!-- basis:fixture-mode -->" : "";
-  });
-  if (entries.length === 0) {
-    return undefined;
-  }
-  const generated = existsSync(path.join(root, generatedHandlersFile))
-    ? `import * as generated from "/${generatedHandlersFile}";`
-    : "const generated = {};";
-  const script = [
-    '<script type="module">',
-    'import { startFixtureMode } from "@basis/ui/fixtures";',
-    `import fixtures from "${fixturesModule}";`,
-    generated,
-    "await startFixtureMode({ ...fixtures, generated });",
-    ...entries.map((entry) => `await import(${JSON.stringify(entry)});`),
-    "</script>",
-  ].join("\n");
-  return rest.replace("<!-- basis:fixture-mode -->", () => script);
 }
 
 /** How many `items` there are, as `1 record` or `2 records`. */
@@ -295,5 +260,5 @@ function fixtureModePlugin({ liveApi }: FixtureModePluginOptions): Plugin {
   };
 }
 
-export { devPort, fixtureModePlugin, rootPath, withFixtureMode };
+export { devPort, fixtureModePlugin, fixturesModuleCode, rootPath };
 export type { FixtureModePluginOptions };

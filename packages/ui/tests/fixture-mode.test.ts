@@ -11,7 +11,8 @@ import { createLogger, createServer, resolveConfig } from "vite-plus";
 import type { Plugin, ViteDevServer } from "vite-plus";
 import { afterAll, beforeAll, describe, expect, test } from "vite-plus/test";
 
-import { devPort, fixtureModePlugin, rootPath, withFixtureMode } from "#preset/fixture-mode.ts";
+import { devPort, fixtureModePlugin, rootPath } from "#preset/fixture-mode.ts";
+import { withFixtureMode } from "#preset/fixture-page.ts";
 
 import { bondAnswer, example, makeApp, record, removeApp, writeIn } from "./fixture-app.ts";
 
