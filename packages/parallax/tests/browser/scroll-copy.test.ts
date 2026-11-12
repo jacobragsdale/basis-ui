@@ -44,12 +44,24 @@ test("a scroll by rows copies the rows that stay and paints only the rows it exp
   await expectPaintedWhole(shown);
 });
 
+/** The widest column of the wide rows, in CSS pixels: a strip a scroll exposes is repainted to its cells' edges. */
+const widestColumn = 200;
+
+/** Expects a draw that copied once and painted the strip a scroll across exposed, widened to the edge of the cell it
+ * starts in, so that no clip cuts through a cell's text, by less than a column. */
+function expectStrip(draw: OneDraw, shown: Shown, strip: number): void {
+  const column = widestColumn * globalThis.devicePixelRatio * shown.canvas.height;
+  expect([draw.copies, draw.fullDraws]).toStrictEqual([1, 0]);
+  expect(draw.paintedPx).toBeGreaterThanOrEqual(strip);
+  expect(draw.paintedPx).toBeLessThan(strip + column);
+}
+
 test("a scroll across copies the columns that stay and paints only the strip it exposed", async () => {
   const shown = await showGrid();
   const strip = across * globalThis.devicePixelRatio * shown.canvas.height;
-  expect(await scrollBy(shown, { left: across })).toStrictEqual(copied(strip));
+  expectStrip(await scrollBy(shown, { left: across }), shown, strip);
   await expectPaintedWhole(shown);
-  expect(await scrollBy(shown, { left: -across })).toStrictEqual(copied(strip));
+  expectStrip(await scrollBy(shown, { left: -across }), shown, strip);
   await expectPaintedWhole(shown);
 });
 

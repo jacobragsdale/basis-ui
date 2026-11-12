@@ -15,7 +15,7 @@ import type { Draw, Mode, Painted } from "./passes.ts";
 import { Memory, hoverRows, moved, nothingShown, selectionRows, shapeOf } from "./redraw.ts";
 import type { Shown } from "./redraw.ts";
 import type { Area, Pass, Scene } from "./scene.ts";
-import { scrollCopy } from "./scroll.ts";
+import { columnEdges, scrollCopy } from "./scroll.ts";
 import type { Board, Copy, Place } from "./scroll.ts";
 import { DrawCounter } from "./stats.ts";
 import type { DrawStats } from "./stats.ts";
@@ -109,6 +109,7 @@ function boardOf({ context, ratio }: Prepared, scene: Scene, bodyBottom: number)
     bodyTop: Math.round(metrics.headerPx * ratio),
     frozen: Math.round(geometry.frozenPx * ratio),
     height: canvas.height,
+    edges: columnEdges(geometry, { ratio, scrollLeft: scene.scrollLeft, width: scene.width }),
     pinnedEdge: geometry.pinned > 0,
     ratio,
     rowPx: metrics.rowPx,

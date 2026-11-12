@@ -4,6 +4,9 @@
  * a row whose height is a whole number of them, and a distance across that is, copy to exactly what painting them
  * would draw. Anything else, and a distance as large as the area it moves, is painted whole. */
 
+import { screenX, scrolledColumns } from "#grid/geometry.ts";
+import type { ColumnGeometry } from "#grid/geometry.ts";
+
 import type { Exposed } from "./damage.ts";
 
 /** How near a whole number of device pixels a distance must be to be copied, for floating point's error. */
@@ -27,6 +30,8 @@ interface Board {
   readonly ratio: number;
   readonly rowPx: number;
   readonly pinnedEdge: boolean;
+  /** Where the scrolling columns' cells begin, in device pixels across, as the view now stands. */
+  readonly edges: readonly number[];
 }
 
 /** A copy of the canvas onto itself, `width` by `height` device pixels from `from` to `to`, and what it exposes. */
@@ -82,16 +87,20 @@ function columnsCopy(across: number, board: Board, scrolled: boolean): Copy | nu
   const distance = Math.abs(moved);
   const kept = strip - distance;
   const [left, right] = [board.frozen, board.width];
+  // The strip repainted reaches to the edge of the cell it starts or ends in: a clip that cut through a cell's text
+  // would smooth its glyphs' edge otherwise than the copied half beside it, under subpixel antialiasing.
+  const cellStart = Math.max(left, ...board.edges.filter((edge) => edge <= right - distance));
+  const cellEnd = Math.min(right, ...board.edges.filter((edge) => edge >= left + distance));
   return moved > 0
     ? {
-        exposed: { axis: "columns", end: right, start: right - distance },
+        exposed: { axis: "columns", end: right, start: cellStart },
         from: [left + distance, 0],
         height: board.height,
         to: [left, 0],
         width: kept,
       }
     : {
-        exposed: { axis: "columns", end: left + distance, start: left },
+        exposed: { axis: "columns", end: cellEnd, start: left },
         from: [left, 0],
         height: board.height,
         to: [left + distance, 0],
@@ -165,5 +174,19 @@ function blit(
   return true;
 }
 
-export { blit, scrollCopy };
+/** Where the scrolling columns' cells begin across the canvas, in device pixels, scrolled `scrollLeft` CSS pixels. */
+function columnEdges(
+  geometry: ColumnGeometry,
+  {
+    scrollLeft,
+    width,
+    ratio,
+  }: { readonly scrollLeft: number; readonly width: number; readonly ratio: number },
+): readonly number[] {
+  return scrolledColumns(geometry, scrollLeft, width).map((column) =>
+    Math.round(screenX(geometry, column, scrollLeft) * ratio),
+  );
+}
+
+export { blit, columnEdges, scrollCopy };
 export type { Board, Copy, Place };
