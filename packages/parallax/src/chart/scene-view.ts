@@ -192,9 +192,9 @@ class SceneView {
     flag(plot, "pick", pickable);
   }
 
-  /** Notes the legend's entries if they changed: a compact chart has no room for a legend. */
+  /** Notes the legend's entries if they changed; a compact chart shows them small, where its marks need naming. */
   #noteLegend(model: ChartModel): void {
-    const legend = this.#model.compact ? [] : model.legend;
+    const { legend } = model;
     const text = JSON.stringify(legend);
     if (text !== this.#legendText) {
       [this.#legendText, this.#legend] = [text, legend];

@@ -331,7 +331,10 @@ with technical-analysis indicators and panes, drawings, a compare mode and
 events. Give it a dataset that `useDataset` loads and a layout whose `chart`
 section says what to draw. A chart takes its parent's height, in a block or a
 flex column alike, and is at least 120 pixels tall, so give its parent a
-height, such as a card's `h-80`:
+height, such as a card's `h-80`. A chart smaller than 260 by 200 pixels, a
+tile's, draws with less padding and names its marks in a small legend where they
+need it, a pie's slices or more than one series, the first four and how many
+more:
 
 ```tsx
 import { Chart } from "@basis/parallax";

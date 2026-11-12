@@ -20,7 +20,7 @@ import { ChartScene } from "./scene.ts";
 import type { ChartSelection } from "./scene.ts";
 import { drawsGroups, groupsViewport, withGroupsFromXY } from "./source.ts";
 
-/** Below this size a chart is compact: less padding, and no legend. */
+/** Below this size a chart is compact: less padding, and a small legend only where its marks need naming. */
 const compactWidth = 260;
 const compactHeight = 200;
 /** A pie at least this wide lists its slices beside it, as Excel does, rather than above it. */
@@ -72,7 +72,7 @@ interface Own {
 
 const noSizes: Sizes = { outer: { height: 0, width: 0 }, plot: { height: 0, width: 0 } };
 
-/** Whether a chart of this size is compact: a small tile's, with less padding and no legend. */
+/** Whether a chart of this size is compact: a small tile's, with less padding and a small legend. */
 function isCompact(outer: PlotSize): boolean {
   return outer.width > 0 && (outer.width < compactWidth || outer.height < compactHeight);
 }

@@ -9,7 +9,7 @@ import { MaximizeContext, useMaximize } from "#react/maximize.ts";
 import { MaximizeBefore, MaximizeButton } from "#react/maximize-parts.tsx";
 import type { Dataset } from "#react/use-dataset.ts";
 
-import { ChartLegend, ChartStatus, ChartTools } from "./chart-chrome.tsx";
+import { ChartLegend, ChartStatus, ChartTools, CompactLegend } from "./chart-chrome.tsx";
 import { ChartPlot } from "./chart-plot.tsx";
 import { describeChart } from "./describe.ts";
 import type { CategoryData } from "./model-types.ts";
@@ -76,8 +76,10 @@ function ChartHead({
   readonly chart: ChartState;
   readonly maximize: boolean;
 }): ReactNode {
-  const { scene, legend, editor, beside } = chart;
-  const shown = legend.length > 0 && !chart.compact;
+  const { scene, legend, editor, beside, compact } = chart;
+  // A small chart names its marks too, where they need it: a pie's slices, or more than one series.
+  const named = chart.layout?.chart?.kind === "pie" || legend.length > 1;
+  const shown = legend.length > 0 && (!compact || named);
   const drawable = hasDrawingTools(chart.layout?.chart ?? null);
   if (!shown && !drawable) {
     return null;
@@ -91,7 +93,8 @@ function ChartHead({
         maximize && (beside ? "pt-9" : "pr-9"),
       )}
     >
-      {shown ? (
+      {shown && compact ? <CompactLegend entries={legend} /> : null}
+      {shown && !compact ? (
         <ChartLegend
           entries={legend}
           beside={beside}

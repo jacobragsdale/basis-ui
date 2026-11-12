@@ -76,6 +76,41 @@ function ChartLegend({ entries, onToggle, beside }: ChartLegendProps): ReactNode
   );
 }
 
+/** How many entries a small chart's legend lists before it says how many more there are. */
+const compactEntries = 4;
+
+/** A small chart's legend: each series' or slice's key and label in small type, the first few and how many more, so a
+ * tile's chart still says what its marks are. It toggles nothing: a tile has no room for buttons. */
+function CompactLegend({ entries }: { readonly entries: readonly LegendEntry[] }): ReactNode {
+  const listed = entries.slice(0, compactEntries);
+  const more = entries.length - listed.length;
+  return (
+    <ul
+      data-slot="chart-legend"
+      aria-label="Series"
+      className="flex min-w-0 flex-wrap gap-x-2 text-xs text-muted-foreground"
+    >
+      {listed.map((entry) => (
+        <li key={entry.label} className="flex min-w-0 items-center gap-1">
+          <span
+            aria-hidden="true"
+            style={{ "--key": entry.color }}
+            className={cn(
+              "shrink-0 bg-(--key)",
+              entry.shape === "line" ? "h-0.5 w-2.5 rounded-full" : "size-2 rounded-full",
+            )}
+          />
+          <span className="truncate text-foreground">{entry.label}</span>
+          {entry.note === undefined || entry.note === "" ? null : (
+            <span className="tabular-nums">{entry.note}</span>
+          )}
+        </li>
+      ))}
+      {more > 0 ? <li>+{more} more</li> : null}
+    </ul>
+  );
+}
+
 interface ChartToolsProps {
   readonly tool: Tool | null;
   readonly selected: boolean;
@@ -218,4 +253,4 @@ function ChartStatus({ dataset, summaryRef, asOfRef }: ChartStatusProps): ReactN
   );
 }
 
-export { ChartLegend, ChartMeasureCard, ChartNote, ChartStatus, ChartTools };
+export { ChartLegend, ChartMeasureCard, ChartNote, ChartStatus, ChartTools, CompactLegend };

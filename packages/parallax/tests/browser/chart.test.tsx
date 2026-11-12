@@ -82,6 +82,20 @@ describe("Chart's small-data form", () => {
     expect(order.every((at) => at >= 0)).toBe(true);
   });
 
+  test("names a small donut's slices in a small legend, as a tile has no room for labels", async () => {
+    const screen = await render(
+      <ParallaxProvider worker={startWorker}>
+        <Chart rows={exposures} kind="pie" x="sector" y="exposure" className="h-44 w-60" />
+      </ParallaxProvider>,
+    );
+    await expect.poll(() => summaryOf(screen.container)).toBe("3 groups");
+    const legend = (): string =>
+      screen.container.querySelector("ul[data-slot=chart-legend]")?.textContent ?? "";
+    await expect.poll(legend).toMatch(/Rates/u);
+    expect(legend()).toMatch(/Credit/u);
+    expect(legend()).toMatch(/Agency/u);
+  });
+
   test("reads dates written as text, and draws a line of them", async () => {
     const screen = await render(
       <ParallaxProvider worker={startWorker}>

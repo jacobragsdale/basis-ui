@@ -653,6 +653,8 @@ flowchart TD
    every `LayoutInput` field has a doc comment, and about 40 internals moved to `@basis/parallax/internals`. 6.6.5
    built on 2026-11-11: the body draws a still skeleton while the first rows load and says when no row matches, and
    a column without a title is headed by its name made readable, `Market value (USD)`, in the grid and its exports.
+   6.6.6 built on 2026-11-11: a chart at a tile's size names its marks in a small legend where they need it, a pie's
+   slices or more than one series, rather than showing none.
 7. **6.7 Components for real apps.** Lane Components, after 6.5.1 and 6.5.2, one family per branch in order: the shell
    (`6.7.1-shell`), the filter bar (`6.7.2-filter-bar`), `DataTable` (`6.7.3-data-table`), `StatCard`
    (`6.7.4-stat-card`), dates (`6.7.5-dates`), forms (`6.7.6-forms`), choosing (`6.7.7-choosing`), display
