@@ -643,6 +643,7 @@ export {
   ApiError,
   apiFetch,
   apiPrefix,
+  arrowResponse,
   arrowStream,
   isApiError,
   setTokenSource,

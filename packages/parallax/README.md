@@ -568,11 +568,12 @@ load's rows show batch by batch, the first long before the last has come.
 On the build host, 1,000,000 trades show their first rows in about a third of
 the time the whole table takes. A source that returns bytes shows them once they have all
 come. The generated client's Arrow calls answer with a `Blob`, which has
-already arrived whole, so a page that wants the first rows sooner fetches the
-route itself for now.
+already arrived whole, so a page that wants the first rows sooner asks for the
+route with `@basis/ui`'s `arrowResponse`, which leaves the body unread, given
+the route's URL from the generated client:
 
 ```tsx
-const trades = useDataset("trades", async () => fetch("/api/trades"), {
+const trades = useDataset("trades", async () => arrowResponse(getTradesUrl()), {
   primaryKey: "trade_id",
 });
 ```

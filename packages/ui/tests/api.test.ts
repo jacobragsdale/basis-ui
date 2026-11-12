@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import {
   apiFetch,
+  arrowResponse,
   arrowStream,
   fieldErrors,
   fieldName,
@@ -99,6 +100,38 @@ describe("apiFetch", () => {
     });
     expect(response.data).toBeInstanceOf(Blob);
     expect(new Uint8Array(await response.data.arrayBuffer())).toEqual(new Uint8Array([1, 2, 3]));
+  });
+});
+
+describe("arrowResponse", () => {
+  test("asks for Arrow under /api with the user's token, and leaves the body to stream", async () => {
+    setTokenSource(tokenSource("token-1"));
+    const stub = answer(
+      new Response(new Uint8Array([1, 2, 3]), {
+        headers: { "content-type": arrowStream },
+        status: 200,
+      }),
+    );
+    const response = await arrowResponse("/trades?book=rates");
+    const { headers, url } = firstRequest(stub);
+    expect(url).toBe("/api/trades?book=rates");
+    expect(headers.get("accept")).toBe(arrowStream);
+    expect(headers.get("authorization")).toBe("Bearer token-1");
+    expect(response.bodyUsed).toBe(false);
+    expect(new Uint8Array(await response.arrayBuffer())).toEqual(new Uint8Array([1, 2, 3]));
+  });
+
+  test("throws a failure's problem details as an ApiError", async () => {
+    answer(
+      json(
+        404,
+        { status: 404, title: "No such book", type: "not-found" },
+        "application/problem+json",
+      ),
+    );
+    const error = await failureOf(arrowResponse("/trades"));
+    expect(error.status).toBe(404);
+    expect(error.problem.title).toBe("No such book");
   });
 });
 

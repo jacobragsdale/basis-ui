@@ -17371,6 +17371,13 @@
       "signature": "const apiPrefix = \"/api\""
     },
     {
+      "kind": "function",
+      "module": "@basis/ui",
+      "name": "arrowResponse",
+      "purpose": "A dataset route's response, its Arrow body unread, for `@basis/parallax`'s `useDataset` to stream batch by batch: `useDataset(\"trades\", async () => arrowResponse(getTradesUrl()))`, with the URL from the generated client. It asks for Arrow under `/api` with the user's token, as the generated call does, whose `Blob` has arrived whole before the engine sees a byte; a failure throws the same `ApiError`.",
+      "signature": "arrowResponse(url: string, init: RequestInit = {}): Promise<Response>"
+    },
+    {
       "kind": "constant",
       "module": "@basis/ui",
       "name": "arrowStream",

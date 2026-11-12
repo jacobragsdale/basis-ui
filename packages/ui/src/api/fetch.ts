@@ -128,5 +128,19 @@ async function apiFetch<TResponse>(url: string, init: ApiRequestInit = {}): Prom
   return result as TResponse;
 }
 
-export { ApiError, apiFetch, apiPrefix, arrowStream, isApiError, setTokenSource };
+/** A dataset route's response, its Arrow body unread, for `@basis/parallax`'s `useDataset` to stream batch by batch:
+ * `useDataset("trades", async () => arrowResponse(getTradesUrl()))`, with the URL from the generated client. It asks
+ * for Arrow under `/api` with the user's token, as the generated call does, whose `Blob` has arrived whole before the
+ * engine sees a byte; a failure throws the same `ApiError`. */
+async function arrowResponse(url: string, init: RequestInit = {}): Promise<Response> {
+  const headers = await headersFor(init);
+  headers.set("Accept", arrowStream);
+  const response = await fetch(`${apiPrefix}${url}`, { ...init, headers });
+  if (!response.ok) {
+    throw failure(response, await readBody(response, false));
+  }
+  return response;
+}
+
+export { ApiError, apiFetch, apiPrefix, arrowResponse, arrowStream, isApiError, setTokenSource };
 export type { AnyProblem, ApiRequestInit, ApiResponse, ErrorType, TokenSource };

@@ -9,6 +9,11 @@ anything of an app.
 
 ## Unreleased
 
+- `arrowResponse(url)` asks a dataset route for Arrow as the generated client does, under `/api` with the user's
+  token, and returns the response with its body unread, for `@basis/parallax`'s `useDataset` to stream:
+  `useDataset("trades", async () => arrowResponse(getTradesUrl()))`. A failure throws the same `ApiError`. What to
+  do: nothing; a page that read a large table through the generated call's `Blob` may move to it.
+
 - Three more skills, which `vp run sync` writes into the app beside `drive-the-app`: `build-a-page`, `show-data` and
   `verify-the-app`, and `AGENTS.md`'s block names them. What to do: run `vp run sync`.
 

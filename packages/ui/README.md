@@ -307,7 +307,15 @@ useCreatePosition({ mutation: { meta: { errorToast: false } } });
 `describeError(error)` gives the same words, `{ title, detail, fields, reference }`, for a display of an app's own.
 
 A dataset route, one whose success lists Arrow, is generated to ask for Arrow, and its hook's data is a `Blob` of the
-Arrow IPC stream.
+Arrow IPC stream. A `Blob` has arrived whole, so a grid of a large table loads it through `arrowResponse` instead, with
+the route's URL from the generated client, and `@basis/parallax`'s `useDataset` streams it, showing the first rows long
+before the last arrive:
+
+```ts
+const trades = useDataset("trades", async () => arrowResponse(getTradesUrl()), {
+  primaryKey: "trade_id",
+});
+```
 
 In tests, MSW stands in for the API: `basisPlugins()` serves its service worker's script in `vp dev` and `vp test`
 only, and `mockApi` from `@basis/ui/testing` starts it, or MSW's Node server where there is no browser, as [Testing the
