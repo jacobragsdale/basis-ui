@@ -487,7 +487,7 @@ fn csv_holds_every_digit() {
         .strip_prefix('\u{feff}')
         .expect("a byte-order mark for Excel");
     let lines: Vec<&str> = text.lines().collect();
-    assert_eq!(lines[0], "notional,rate");
+    assert_eq!(lines[0], "Notional,Rate");
     assert_eq!(lines[1], "123456789012345678.90,0.30000000000000004");
     assert_eq!(lines[2], "-0.05,1e300");
     assert_eq!("0.30000000000000004".parse::<f64>().unwrap(), 0.1 + 0.2);
@@ -651,7 +651,7 @@ fn titles_head_the_columns_and_pinned_columns_stay_in_view() {
     let header: Vec<String> = (0..3)
         .map(|c| range.get((0, c)).unwrap().to_string())
         .collect();
-    assert_eq!(header, ["Ticker", "position_id", "Fund"]);
+    assert_eq!(header, ["Ticker", "Position ID", "Fund"]);
     // The header row and the pinned column are frozen.
     let xml = zipped(&bytes, "xl/worksheets/sheet1.xml");
     assert!(

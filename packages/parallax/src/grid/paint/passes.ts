@@ -15,6 +15,7 @@ import type { InView, Memory } from "./redraw.ts";
 import { drawFooter, drawRows } from "./rows.ts";
 import type { Area, Pass, Scene } from "./scene.ts";
 import { blit } from "./scroll.ts";
+import { drawState } from "./states.ts";
 import type { Copy } from "./scroll.ts";
 
 /** How one of a draw's passes draws: whether it redraws everything it draws over, the exposed rows or columns it paints
@@ -108,6 +109,7 @@ function paintWhole(draw: Draw): Painted {
   fillRect(pass, scene.theme.background, [0, 0, area.width, area.height]);
   drawHeader(pass);
   const cells = scene.frame === null ? 0 : drawRows(pass, scene.frame, area);
+  drawState(pass, area.height);
   drawEdges(draw, pass);
   return { cells, painted: context.canvas.width * context.canvas.height };
 }

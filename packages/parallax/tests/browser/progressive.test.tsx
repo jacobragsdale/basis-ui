@@ -147,9 +147,9 @@ describe("a grid of a first load from a response", () => {
     await expect.element(grid).toHaveAttribute("aria-rowcount", "1000");
     await pressAt(grid, { x: 40, y: firstRow });
     const first = screen.getByRole("gridcell");
-    await expect.element(first).toHaveTextContent("value: 999.00");
+    await expect.element(first).toHaveTextContent("Value: 999.00");
     body.release();
-    await expect.element(first).toHaveTextContent("value: 2,999.00");
+    await expect.element(first).toHaveTextContent("Value: 2,999.00");
   });
 });
 

@@ -42,7 +42,7 @@ describe("Grid", () => {
     await pressAt(grid, { x: 40, y: header });
     await pressAt(grid, { x: 40, y: firstRow });
     // Sorted by desk, Credit comes first.
-    await expect.element(screen.getByRole("gridcell")).toHaveTextContent("desk: Credit");
+    await expect.element(screen.getByRole("gridcell")).toHaveTextContent("Desk: Credit");
   });
 
   test("says the focused cell as the grid's active descendant, and the selection's size", async () => {
@@ -50,7 +50,7 @@ describe("Grid", () => {
     await pressAt(grid, { x: 40, y: firstRow });
     await userEvent.keyboard("{ArrowRight}");
     const cell = screen.getByRole("gridcell");
-    await expect.element(cell).toHaveTextContent("fund: Atlas");
+    await expect.element(cell).toHaveTextContent("Fund: Atlas");
     await expect.element(grid).toHaveAttribute("aria-activedescendant", cell.element().id);
     await userEvent.keyboard("{Shift>}{ArrowDown}{ArrowRight}{/Shift}");
     await expect.element(screen.getByText("2 rows by 2 columns selected")).toBeInTheDocument();

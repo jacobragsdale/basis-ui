@@ -92,7 +92,7 @@ describe("Grid with rows chosen by checkbox", () => {
     await userEvent.keyboard("{ArrowRight}");
     await expect
       .element(screen.getByRole("gridcell"))
-      .toHaveTextContent("Row selected. fund: Atlas");
+      .toHaveTextContent("Row selected. Fund: Atlas");
   });
 
   test("shows the keys the app holds", async () => {

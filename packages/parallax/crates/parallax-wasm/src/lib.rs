@@ -1477,7 +1477,7 @@ mod tests {
         let layout = r#"{"version":1,"dataset":"app"}"#;
         let mut whole = Vec::new();
         worker.write_csv_to(layout, None, &mut whole).unwrap();
-        assert!(whole.starts_with("\u{feff}id,ticker,price\n".as_bytes()));
+        assert!(whole.starts_with("\u{feff}ID,Ticker,Price\n".as_bytes()));
         let mut chunks: Vec<Vec<u8>> = Vec::new();
         let mut writer = Chunks::new(1_024, |chunk: &[u8]| {
             chunks.push(chunk.to_vec());

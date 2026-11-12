@@ -53,7 +53,8 @@ async function differing(section: Locator, file: string, rect: Rect): Promise<nu
 /** Opens the small tables' page, waits for both grids' rows, and moves the pointer away, as the Angular screenshots
  * did. */
 async function small(page: Page, query: string): Promise<void> {
-  await page.goto(`/?preset=small&${query}`);
+  // The Angular grid headed columns by their names, so the React grid is given those as titles.
+  await page.goto(`/?preset=small&raw=1&${query}`);
   await expect(page.locator('section[data-table="book"]').getByRole("grid")).toHaveAttribute(
     "aria-rowcount",
     String(bookRows),

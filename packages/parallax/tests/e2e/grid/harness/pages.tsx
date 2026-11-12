@@ -122,15 +122,26 @@ function SinglePage({
 }
 
 /** The small tables: the book and the blotter, side by side. */
+/** A layout whose columns are headed by their names, as the Angular grid's were, not by readable titles. */
+function headedByName(layout: LayoutInput): LayoutInput {
+  return {
+    ...layout,
+    titles: Object.fromEntries((layout.columns ?? []).map((name) => [name, name])),
+  };
+}
+
 function SmallTables({
   performance,
   cells,
+  raw,
   children,
 }: {
   readonly performance: boolean;
   readonly cells: boolean;
+  readonly raw: boolean;
   readonly children: ReactNode;
 }): ReactNode {
+  const named = (layout: LayoutInput): LayoutInput => (raw ? headedByName(layout) : layout);
   const grid = useRef<GridHandle>(null);
   return (
     <>
@@ -142,13 +153,18 @@ function SmallTables({
           <h2>
             Book<span>300 positions, held in this page</span>
           </h2>
-          <DatasetGrid name="book" first={cells ? richBook : book} height="auto" grid={grid} />
+          <DatasetGrid
+            name="book"
+            first={named(cells ? richBook : book)}
+            height="auto"
+            grid={grid}
+          />
         </section>
         <section data-table="blotter">
           <h2>
             Blotter<span>500 trades, held in this page</span>
           </h2>
-          <DatasetGrid name="blotter" first={blotter} height="auto" />
+          <DatasetGrid name="blotter" first={named(blotter)} height="auto" />
         </section>
       </main>
     </>

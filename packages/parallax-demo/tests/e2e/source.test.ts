@@ -183,7 +183,7 @@ test("an Excel export is written in the browser and read back cell for cell", as
   const xlsx = await exported(page, "xlsx");
   expect(xlsx.name).toMatch(/^export-\d{4}-\d{2}-\d{2}-\d{4}\.xlsx$/u);
   const [heading, ...rows] = sheetRows(xlsx.bytes);
-  expect(heading).toStrictEqual(["id", "desk", "amount"]);
+  expect(heading).toStrictEqual(["ID", "Desk", "Amount"]);
   expect(rows.map(([id, desk, amount]) => [Number(id), desk, Number(amount)])).toStrictEqual(
     expected,
   );
@@ -195,7 +195,7 @@ test("a CSV export holds every digit as the engine writes it", async ({ page }, 
   const csv = await exported(page, "csv");
   expect(csv.name).toMatch(/^export-\d{4}-\d{2}-\d{2}-\d{4}\.csv$/u);
   const [heading, ...lines] = csv.bytes.toString("utf8").trimEnd().split("\n");
-  expect(heading).toBe("\uFEFFid,desk,amount");
+  expect(heading).toBe("\uFEFFID,Desk,Amount");
   // Such as 247.0 for a whole double, which Number reads back exactly.
   expect(
     lines

@@ -97,11 +97,11 @@ describe("Grid in an app's page", () => {
     await pressAt(grid, { x: 40, y: header });
     await pressAt(grid, { x: 40, y: firstRow });
     // Sorted by desk, Credit comes first.
-    await expect.element(screen.getByRole("gridcell")).toHaveTextContent("desk: Credit");
+    await expect.element(screen.getByRole("gridcell")).toHaveTextContent("Desk: Credit");
     // The page renders again, with a new layout object that says the same.
     await screen.rerender(sortablePage());
     await pressAt(grid, { x: 40, y: firstRow });
-    await expect.element(screen.getByRole("gridcell")).toHaveTextContent("desk: Credit");
+    await expect.element(screen.getByRole("gridcell")).toHaveTextContent("Desk: Credit");
   });
 
   test("shows every row checked in the header once the page holding the keys takes every row's", async () => {

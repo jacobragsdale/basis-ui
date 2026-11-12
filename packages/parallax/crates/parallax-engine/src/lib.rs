@@ -27,6 +27,7 @@ pub mod profile;
 pub mod sifma;
 mod sort;
 pub mod table;
+pub mod titles;
 pub mod types;
 pub mod view;
 

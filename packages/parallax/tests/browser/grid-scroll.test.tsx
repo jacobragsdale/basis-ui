@@ -116,7 +116,7 @@ test("keeps the focused row above the totals row as the keyboard moves it down",
   });
   await expect
     .element(screen.getByRole("status", { name: "Totals row" }))
-    .toHaveTextContent("Totals. value: 4,950.00");
+    .toHaveTextContent("Totals. Value: 4,950.00");
   const scroll = grid.element();
   // The rows that show whole above the totals row, which takes the body's last row.
   const above = Math.floor((scroll.clientHeight - compactHeaderPx) / compactRowPx) - 1;

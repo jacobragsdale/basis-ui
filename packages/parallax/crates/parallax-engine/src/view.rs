@@ -1272,7 +1272,7 @@ impl View {
         let mut out = FrameBuilder::default();
         for (index, &c) in shown[cols].iter().enumerate() {
             let field = table.schema().field(c);
-            let title = title_of(&self.config, field.name());
+            let title = column_title(&self.config, field.name());
             match total_of(&self.config, field.name()) {
                 Some(m) => {
                     let measure = grouped.measures[m].clone();
@@ -1319,7 +1319,7 @@ impl View {
         let mut out = FrameBuilder::default();
         for (index, &c) in shown[cols].iter().enumerate() {
             let field = table.schema().field(c);
-            let title = title_of(&self.config, field.name());
+            let title = column_title(&self.config, field.name());
             let formatter = &self.formatters.columns[c];
             match self.config.domains.iter().position(|d| d == field.name()) {
                 Some(d) => {
@@ -1693,7 +1693,7 @@ fn flat_window(
         out.data_column(
             index,
             field,
-            title_of(config, field.name()),
+            column_title(config, field.name()),
             table.column(c).to_arrow(slots),
             None,
             formatter,
@@ -1761,7 +1761,11 @@ impl FrameBuilder {
         let name = source.name().as_str();
         let data_type = values.data_type().clone();
         let title = match &data_type {
-            DataType::Timestamp(_, Some(_)) => format!("{title} ({})", formatter.zone_name()),
+            DataType::Timestamp(_, Some(_)) => {
+                // A UTC instant is shown in its zone, which the header names in place of UTC.
+                let title = title.strip_suffix(" (UTC)").unwrap_or(&title);
+                format!("{title} ({})", crate::titles::place(formatter.zone_name()))
+            }
             _ => title,
         };
         let at = [(meta::INDEX, index.to_string())];
@@ -1843,7 +1847,11 @@ impl FrameBuilder {
         let name = source.name().as_str();
         let at = [(meta::INDEX, index.to_string())];
         let title = match source.data_type() {
-            DataType::Timestamp(_, Some(_)) => format!("{title} ({})", formatter.zone_name()),
+            DataType::Timestamp(_, Some(_)) => {
+                // A UTC instant is shown in its zone, which the header names in place of UTC.
+                let title = title.strip_suffix(" (UTC)").unwrap_or(&title);
+                format!("{title} ({})", crate::titles::place(formatter.zone_name()))
+            }
             _ => title,
         };
         let rows_text = formatter.texts(&values);
@@ -3421,7 +3429,7 @@ impl Grouped {
             let nullable = Field::new(field.name(), field.data_type().clone(), true)
                 .with_metadata(field.metadata().clone());
             let values = table.column(c).to_arrow_or_null(&slots);
-            let title = title_of(config, field.name());
+            let title = column_title(config, field.name());
             let Some(m) = total_of(config, field.name()) else {
                 out.data_column(
                     index,
@@ -3480,7 +3488,17 @@ fn total_of(config: &ViewConfig, name: &str) -> Option<usize> {
         .position(|m| m.column.as_deref() == Some(name))
 }
 
-/// The header text of a flat view's column: its title, else its name.
+/// The header text of a flat or detail view's data column: its title, else its
+/// name made readable.
+fn column_title(config: &ViewConfig, name: &str) -> String {
+    config
+        .titles
+        .get(name)
+        .cloned()
+        .unwrap_or_else(|| crate::titles::readable(name))
+}
+
+/// The header text of a measure, by its label: its title, else the label.
 fn title_of(config: &ViewConfig, name: &str) -> String {
     config
         .titles

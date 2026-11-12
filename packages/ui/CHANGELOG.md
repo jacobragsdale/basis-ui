@@ -9,6 +9,13 @@ anything of an app.
 
 ## Unreleased
 
+- `@basis/parallax`'s grid heads a column the layout gives no title by its name made readable, `market_value_usd` as
+  `Market value (USD)` and `position_id` as `Position ID`, and a zoned time by its place, `(New York)` for
+  `(America/New_York)`; the Excel and CSV exports' headers and copies with headers say the same. Its body shows a
+  skeleton while the first rows load, and says when no row matches. What to do: a test or a tool that reads an
+  export's header row, or a grid's header or spoken cell by a column's name, reads the readable title, or the layout
+  gives that column a `titles` entry of its own name.
+
 - A `SecurityPicker` with `multiple` takes a list of identifiers pasted at once, as copied from a sheet, and adds every
   security it finds, saying under the picker which identifiers found none. `EntityPicker` takes `onPaste`. What to do:
   nothing.

@@ -161,7 +161,7 @@ fn labels_and_measures_use_the_formats() {
     assert_eq!(text_of(batch, 1), ["4", "1", "2", "1"]);
     // The instant shows in New York, and the header says so.
     assert_eq!(text_of(batch, 2)[0], "2026-03-08 01:59:59");
-    assert_eq!(title_of(batch, 2), "max(at) (America/New_York)");
+    assert_eq!(title_of(batch, 2), "max(at) (New York)");
     // Timestamps also carry every digit for copying.
     assert_eq!(fields_with(batch, role::COPY).len(), 1);
 }
@@ -315,10 +315,10 @@ fn totals_read_as_the_pivot_grand_total_and_titles_rename_headers() {
     )
     .unwrap();
     let window = flat.window(&t, 0..10, 0..10);
-    assert_eq!(title_of(&window.batch, 0), "desk");
+    assert_eq!(title_of(&window.batch, 0), "Desk");
     assert_eq!(title_of(&window.batch, 2), "P&L");
     // A renamed instant keeps its zone in the header.
-    assert_eq!(title_of(&window.batch, 3), "Traded (America/New_York)");
+    assert_eq!(title_of(&window.batch, 3), "Traded (New York)");
     let totals = flat.totals_window(&t, 0..10).unwrap();
     assert_eq!(totals.num_rows(), 1);
     assert_eq!(title_of(&totals, 2), "P&L");

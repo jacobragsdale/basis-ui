@@ -44,7 +44,7 @@ describe("Grid's menus and tools", () => {
       .toStrictEqual([["desk", "count"]]);
     await expect
       .element(screen.getByRole("status", { name: "Totals row" }))
-      .toHaveTextContent("Totals. desk: 6");
+      .toHaveTextContent("Totals. Desk: 6");
   });
 
   test("reads the numbers selected in the status bar: their mean, extremes, exact sum and count", async () => {

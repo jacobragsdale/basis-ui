@@ -201,6 +201,13 @@ Totals adds a totals row that counts the rows, and sums nothing on its own,
 since most of a desk's numbers, its prices, yields, spreads and durations, do
 not add; a column's menu picks its total, a sum among them.
 
+A column a layout gives no title is headed by its name made readable, in the grid,
+its copies and its exports: `market_value_usd` is `Market value (USD)`,
+`position_id` is `Position ID`, and a time shown in New York says so,
+`Trade time (New York)`. While the first rows load, the body shows a still
+skeleton of rows, and once a view holds none it says so, and whether the filters
+or the search left none.
+
 A right click on a cell opens the grid's menu at the pointer, in place of the
 browser's: Copy, Copy with headers, Filter by the cell's value or Exclude it,
 sort its column either way, pin or unpin it, fit it or every column, and export,

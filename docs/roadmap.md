@@ -650,7 +650,9 @@ flowchart TD
    grid gains `onCellClick`, `onRowActivate` and `onContextMenu`, `GridHandle` gains `scrollTo`, `getSelection` and
    `copy`, and a drag that selects past the edge scrolls. 6.6.4 built on 2026-11-11: `useDataset<TRow>` types its
    views' layouts, so `Grid`, `Pivot`, `Chart` and `useView` take only the rows' column names (`LayoutFor<TRow>`),
-   every `LayoutInput` field has a doc comment, and about 40 internals moved to `@basis/parallax/internals`.
+   every `LayoutInput` field has a doc comment, and about 40 internals moved to `@basis/parallax/internals`. 6.6.5
+   built on 2026-11-11: the body draws a still skeleton while the first rows load and says when no row matches, and
+   a column without a title is headed by its name made readable, `Market value (USD)`, in the grid and its exports.
 7. **6.7 Components for real apps.** Lane Components, after 6.5.1 and 6.5.2, one family per branch in order: the shell
    (`6.7.1-shell`), the filter bar (`6.7.2-filter-bar`), `DataTable` (`6.7.3-data-table`), `StatCard`
    (`6.7.4-stat-card`), dates (`6.7.5-dates`), forms (`6.7.6-forms`), choosing (`6.7.7-choosing`), display

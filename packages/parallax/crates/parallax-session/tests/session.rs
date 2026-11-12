@@ -185,7 +185,7 @@ fn frames_carry_display_text_in_the_layouts_formats() {
     let flat = decode_batches(&frames[3].batch).unwrap().remove(0);
     let (_, _, dates) = text_columns(&flat)
         .into_iter()
-        .find(|(title, _, _)| title == "as_of_date")
+        .find(|(title, _, _)| title == "As of date")
         .unwrap();
     assert!(
         dates
@@ -306,7 +306,7 @@ fn chart_frames_carry_reduced_data_and_exact_text() {
 
 /// The WebAssembly test suite checks the same value, so both builds must answer
 /// byte for byte the same.
-pub const TRANSCRIPT_FINGERPRINT: u64 = 6_907_957_008_114_493_598;
+pub const TRANSCRIPT_FINGERPRINT: u64 = 304_102_198_831_162_544;
 
 #[test]
 fn transcript_fingerprint_is_stable() {

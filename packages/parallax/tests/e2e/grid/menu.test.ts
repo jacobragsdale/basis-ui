@@ -139,7 +139,7 @@ test.describe("columns", () => {
     const totals = section.getByRole("button", { name: "Totals" });
     await expect(totals).toHaveAttribute("aria-pressed", "true");
     const spoken = section.getByRole("status", { name: "Totals row" });
-    await expect(spoken).toContainText(/^Totals\. trade_id: 500; quantity: [\d,.]+/u);
+    await expect(spoken).toContainText(/^Totals\. Trade ID: 500; Quantity: [\d,.]+/u);
     await totals.click();
     await expect(spoken).toHaveCount(0);
     await totals.click();
