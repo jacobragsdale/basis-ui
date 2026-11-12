@@ -37,9 +37,6 @@ const next: Readonly<Record<Phase, Phase>> = {
   sort: "pivot",
 };
 
-/** Before any frame: the React Compiler cannot compile a BigInt literal inside a component. */
-const noVersion = BigInt(-1);
-
 /** The trades, under a name of the probe's own, so their load is timed even after the blotter loaded them. */
 async function trades(): Promise<Response> {
   return arrowResponse(getTradesUrl());
@@ -82,24 +79,23 @@ function useTimings(): {
   const dataset = useDataset<Trade>("probe-trades", trades, { primaryKey: "trade_id" });
   const [phase, setPhase] = useState<Phase>("load");
   const [timings, setTimings] = useState<Readonly<Partial<Record<Phase, number>>>>({});
-  const asked = useRef({ at: 0, version: noVersion });
+  const opened = useRef(0);
   useEffect(() => {
-    asked.current.at = performance.now();
+    opened.current = performance.now();
   }, []);
+  // A frame that first answers a layout change carries when the change was asked for, so a sort or a pivot is timed
+  // from its request to the engine's answer.
   const onFrame = (frame: FrameData): void => {
-    if (phase === "load" || phase === "done" || frame.configVersion <= asked.current.version) {
-      asked.current.version = frame.configVersion;
-      return;
+    const { changedAtMs } = frame;
+    if ((phase === "sort" || phase === "pivot") && changedAtMs !== undefined) {
+      setTimings((done) => ({ ...done, [phase]: performance.now() - changedAtMs }));
+      setPhase(next[phase]);
     }
-    setTimings((done) => ({ ...done, [phase]: performance.now() - asked.current.at }));
-    asked.current = { at: performance.now(), version: frame.configVersion };
-    setPhase(next[phase]);
   };
   useView(dataset, layouts[phase], { onFrame });
   useEffect(() => {
     if (dataset.status === "loaded" && phase === "load") {
-      setTimings({ load: performance.now() - asked.current.at });
-      asked.current.at = performance.now();
+      setTimings({ load: performance.now() - opened.current });
       setPhase("sort");
     }
   }, [dataset.status, phase]);
