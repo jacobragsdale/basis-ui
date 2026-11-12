@@ -1,0 +1,35 @@
+{
+  "name": "@basis/showcase",
+  "version": "0.0.0",
+  "private": true,
+  "description": "The showcase: a fixed-income workbench made from the @basis/create template as an app is, on 1,000,000 generated trades and positions, with no backend.",
+  "license": "MIT",
+  "type": "module",
+  "imports": {
+    "#*": "./src/*"
+  },
+  "scripts": {
+    "prepare": "vp config",
+    "dev": "vp dev",
+    "build": "vp build",
+    "test": "vp test"
+  },
+  "dependencies": {
+    "@basis/parallax": "workspace:*",
+    "@basis/ui": "workspace:*",
+    "@tanstack/react-form": "catalog:",
+    "@tanstack/react-query": "catalog:",
+    "@tanstack/react-router": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@faker-js/faker": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "msw": "catalog:",
+    "typescript": "catalog:",
+    "vite-plus": "catalog:"
+  }
+}

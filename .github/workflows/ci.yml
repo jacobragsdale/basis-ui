@@ -67,6 +67,8 @@ jobs:
             parallax:
               - "packages/parallax/**"
               - "packages/parallax-demo/**"
+              - "packages/showcase/**"
+              - "packages/showcase-data/**"
               # The Rust SIFMA calendar is tested against the schedules SIFMA published, which `@basis/ui` keeps.
               - "packages/ui/tests/fixtures/calendars/sifma.json"
               - ".github/workflows/ci.yml"
@@ -230,6 +232,10 @@ jobs:
       # build.
       - run: vp run @basis/parallax-demo#test
       - run: vp run @basis/parallax-demo#build
+      # The showcase, an app made from the template, verified as an app is, on small tables of its generated data: the
+      # 1,000,000-row tables are too large for a runner's every push.
+      - run: vp run @basis/showcase-data#data 5000
+      - run: vp run @basis/showcase#verify
 
   # The React chart's end-to-end specs and screenshots, in the pinned Playwright image, against the harness built from
   # the package's source and the datasets parallax-datagen writes. Its chrome is @basis/ui's, so a change to either runs

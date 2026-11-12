@@ -66,6 +66,7 @@ building](#found-while-building) at the end of this page.
 | 6.8.7  | `34ec6b2`                          | `checkRoutes` and `expectAccessible` in `@basis/ui/testing`.                                        |
 | 6.8.8  | `716c84d`                          | `vp run upgrade`, the changelog's format, codemods.                                                 |
 | 6.8.9  | `ccb961b`                          | CI makes an app from the packed template and verifies it.                                           |
+| 6.9    | in progress                        | `packages/showcase`, its ten pages on 1,000,000 rows; `BUILDING.md` lists what is fixed and left.   |
 
 Off the plan: `8358a51` gave the grid and pivot an `asOf` prop, asked for by ctzd, so the status bar shows the date the
 data is for and never the load time; `94343fc`, `8aaf718` and `e1c39b5` fixed CI.

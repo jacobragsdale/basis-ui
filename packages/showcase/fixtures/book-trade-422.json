@@ -1,0 +1,39 @@
+{
+  "format": "basis-ui-fixture/1",
+  "operation_id": "book_trade",
+  "recorded_at": "2026-10-30T21:00:00Z",
+  "request": {
+    "method": "POST",
+    "path": "/trades",
+    "body": {
+      "cusip": "ATL000A02",
+      "side": "Buy",
+      "face": 250000000,
+      "price": 99.1875,
+      "trade_date": "2026-10-30",
+      "settle_date": "2026-11-11",
+      "book": "Credit",
+      "counterparty": "Northwind Securities"
+    }
+  },
+  "response": {
+    "status": 422,
+    "media_type": "application/problem+json",
+    "body": {
+      "type": "invalid-request",
+      "title": "The trade breaks the desk's checks",
+      "status": 422,
+      "detail": "Two fields break the desk's checks.",
+      "errors": [
+        {
+          "pointer": "#/face",
+          "detail": "250,000,000 face is over the book's limit of 100,000,000 for one trade."
+        },
+        {
+          "pointer": "#/settle_date",
+          "detail": "2026-11-11 is Veterans Day, when the bond market is closed: settle on 2026-11-12."
+        }
+      ]
+    }
+  }
+}

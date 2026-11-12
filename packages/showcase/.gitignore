@@ -1,0 +1,10 @@
+# This file is managed by basis-ui: `vp run sync` rewrites it from the installed @basis/ui, and `vp run verify` fails when it differs.
+node_modules/
+dist/
+# Records exported from an API's run store: they hold client data.
+.fixtures/
+# Body files that a task of the app's own writes for its fixtures' body_file, too large for git.
+fixtures/generated/
+# vp run shot's pictures of the app.
+.shots/
+.vite-hooks/_

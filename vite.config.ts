@@ -37,7 +37,7 @@ const parallaxGenerated = ["packages/parallax/src/proto/**", "packages/parallax/
 const generatedFixtures = "packages/*/tests/fixtures/*.json";
 /* The two apps, written as an app's agent or ctzd writes one, take the app's limits; the rest of the repo keeps
  * basis-ui's own, as strict as before they were loosened for apps. */
-const apps = ["packages/example/**", "packages/consumer/**"];
+const apps = ["packages/example/**", "packages/consumer/**", "packages/showcase/**"];
 // A spike's reference code runs in the spike's own throwaway project, whose dependencies this workspace lacks.
 const spikeCode = ["docs/spikes/**/*.ts", "docs/spikes/**/*.mjs"];
 /* Every shipped theme passes `checkTheme`, reported at its file by the repo's own rule (check-themes-plugin.ts): a lint

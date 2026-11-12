@@ -1,0 +1,1370 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "workbench",
+    "version": "0.1.0",
+    "description": "The showcase's fixed-income workbench: an API it imagines, answered by its fixtures."
+  },
+  "paths": {
+    "/overview": {
+      "get": {
+        "summary": "Overview",
+        "description": "The desk's day: its figures, P&L by fund, exposure by sector and rating, and its alerts.",
+        "operationId": "overview",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Overview"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "invalid-request: The request is not valid",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "service-failed: A call the request made failed",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "service-unavailable: A service or database the request calls is unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "service-timeout: A call took longer than its deadline",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/trades": {
+      "get": {
+        "summary": "Trades",
+        "description": "Every trade booked over two years, as a table: 1,000,000 rows.",
+        "operationId": "trades",
+        "responses": {
+          "200": {
+            "description": "The trades, as an Arrow IPC stream",
+            "content": {
+              "application/vnd.apache.arrow.stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "invalid-request: The request is not valid",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "service-failed: A call the request made failed",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "service-unavailable: A service or database the request calls is unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "service-timeout: A call took longer than its deadline",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Book a trade",
+        "description": "Books a trade on the desk, after the desk's checks.",
+        "operationId": "book_trade",
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookedTrade"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "unknown-bond: No bond has that CUSIP",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "invalid-request: The request is not valid",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "service-failed: A call the request made failed",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "service-unavailable: A service or database the request calls is unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "service-timeout: A call took longer than its deadline",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TradeTicket"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/positions": {
+      "get": {
+        "summary": "Positions",
+        "description": "Every position lot on the day, as a table: 1,000,000 rows.",
+        "operationId": "positions",
+        "responses": {
+          "200": {
+            "description": "The positions, as an Arrow IPC stream",
+            "content": {
+              "application/vnd.apache.arrow.stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "invalid-request: The request is not valid",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "service-failed: A call the request made failed",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "service-unavailable: A service or database the request calls is unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "service-timeout: A call took longer than its deadline",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/bonds": {
+      "get": {
+        "summary": "Bonds",
+        "description": "The book's bonds with their spreads and each sector's fitted curve, as a table.",
+        "operationId": "bonds",
+        "responses": {
+          "200": {
+            "description": "The bonds, as an Arrow IPC stream",
+            "content": {
+              "application/vnd.apache.arrow.stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "invalid-request: The request is not valid",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "service-failed: A call the request made failed",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "service-unavailable: A service or database the request calls is unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "service-timeout: A call took longer than its deadline",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/attribution": {
+      "get": {
+        "summary": "P&L explain",
+        "description": "October's P&L by portfolio, explained by factor, as a table.",
+        "operationId": "attribution",
+        "responses": {
+          "200": {
+            "description": "The attribution, as an Arrow IPC stream",
+            "content": {
+              "application/vnd.apache.arrow.stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "invalid-request: The request is not valid",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "service-failed: A call the request made failed",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "service-unavailable: A service or database the request calls is unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "service-timeout: A call took longer than its deadline",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/curves": {
+      "get": {
+        "summary": "Treasury curves",
+        "description": "The Treasury curve on each trading day of 2026, with each point's change on the day, as a table.",
+        "operationId": "curves",
+        "responses": {
+          "200": {
+            "description": "The curves, as an Arrow IPC stream",
+            "content": {
+              "application/vnd.apache.arrow.stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "invalid-request: The request is not valid",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "service-failed: A call the request made failed",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "service-unavailable: A service or database the request calls is unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "service-timeout: A call took longer than its deadline",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/bonds/{cusip}": {
+      "get": {
+        "summary": "Bond",
+        "description": "A bond's terms and its price at the close.",
+        "operationId": "bond",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Bond"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "unknown-bond: No bond has that CUSIP",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "invalid-request: The request is not valid",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "service-failed: A call the request made failed",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "service-unavailable: A service or database the request calls is unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "service-timeout: A call took longer than its deadline",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "cusip",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9A-Z]{9}$",
+              "title": "Cusip",
+              "description": "The bond's CUSIP."
+            },
+            "description": "The bond's CUSIP."
+          }
+        ]
+      }
+    },
+    "/bonds/{cusip}/coupons": {
+      "get": {
+        "summary": "Coupons",
+        "description": "The bond's coupon schedule, from its first coupon to maturity.",
+        "operationId": "coupons",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CouponRow"
+                  },
+                  "title": "Response Coupons"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "unknown-bond: No bond has that CUSIP",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "invalid-request: The request is not valid",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "service-failed: A call the request made failed",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "service-unavailable: A service or database the request calls is unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "service-timeout: A call took longer than its deadline",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "cusip",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9A-Z]{9}$",
+              "title": "Cusip",
+              "description": "The bond's CUSIP."
+            },
+            "description": "The bond's CUSIP."
+          }
+        ]
+      }
+    },
+    "/securities": {
+      "get": {
+        "summary": "Find securities",
+        "description": "The securities an identifier names: a CUSIP, an ISIN or a SEDOL.",
+        "operationId": "securities",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Security"
+                  },
+                  "title": "Response Securities"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "invalid-request: The request is not valid",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "service-failed: A call the request made failed",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "service-unavailable: A service or database the request calls is unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "service-timeout: A call took longer than its deadline",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 6,
+              "title": "Id"
+            },
+            "description": "A CUSIP, ISIN or SEDOL."
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Alert": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "info",
+              "warning",
+              "critical"
+            ],
+            "title": "Severity"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "detail": {
+            "type": "string",
+            "title": "Detail"
+          },
+          "raised_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Raised At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "severity",
+          "title",
+          "detail",
+          "raised_at"
+        ],
+        "title": "Alert",
+        "description": "Something on the book that wants a look today."
+      },
+      "Bond": {
+        "properties": {
+          "cusip": {
+            "type": "string",
+            "title": "CUSIP",
+            "pattern": "^[0-9A-Z]{9}$"
+          },
+          "isin": {
+            "type": "string",
+            "title": "ISIN",
+            "pattern": "^[A-Z0-9]{12}$"
+          },
+          "issuer": {
+            "type": "string",
+            "title": "Issuer"
+          },
+          "ticker": {
+            "type": "string",
+            "title": "Ticker"
+          },
+          "sector": {
+            "type": "string",
+            "title": "Sector"
+          },
+          "rating": {
+            "type": "string",
+            "title": "Rating"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency"
+          },
+          "coupon_rate": {
+            "type": "number",
+            "title": "Coupon",
+            "x-basis-format": {
+              "kind": "pct",
+              "decimals": 3
+            }
+          },
+          "frequency": {
+            "type": "integer",
+            "enum": [
+              1,
+              2,
+              4,
+              12
+            ],
+            "title": "Frequency"
+          },
+          "day_count": {
+            "type": "string",
+            "enum": [
+              "30/360",
+              "ACT/360",
+              "ACT/365",
+              "ACT/ACT"
+            ],
+            "title": "Day Count"
+          },
+          "issued": {
+            "type": "string",
+            "format": "date",
+            "title": "Issued"
+          },
+          "maturity": {
+            "type": "string",
+            "format": "date",
+            "title": "Maturity"
+          },
+          "amount_outstanding": {
+            "type": "number",
+            "title": "Amount outstanding",
+            "x-basis-format": {
+              "kind": "money",
+              "currency": "USD",
+              "decimals": 0
+            }
+          },
+          "price": {
+            "type": "number",
+            "title": "Price",
+            "x-basis-format": {
+              "kind": "price32",
+              "step": "quarter"
+            }
+          },
+          "yield": {
+            "type": "number",
+            "title": "Yield",
+            "x-basis-format": {
+              "kind": "pct",
+              "decimals": 3
+            }
+          },
+          "spread": {
+            "type": "number",
+            "title": "Spread",
+            "x-basis-format": {
+              "kind": "bps",
+              "decimals": 1
+            }
+          },
+          "duration": {
+            "type": "number",
+            "title": "Duration",
+            "x-basis-format": {
+              "kind": "number",
+              "decimals": 2
+            }
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "cusip",
+          "isin",
+          "issuer",
+          "ticker",
+          "sector",
+          "rating",
+          "currency",
+          "coupon_rate",
+          "frequency",
+          "day_count",
+          "issued",
+          "maturity",
+          "amount_outstanding",
+          "price",
+          "yield",
+          "spread",
+          "duration"
+        ],
+        "title": "Bond",
+        "description": "A bond's terms and its price at the close."
+      },
+      "BookedTrade": {
+        "properties": {
+          "trade_id": {
+            "type": "integer",
+            "title": "Trade Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "trade_id",
+          "status"
+        ],
+        "title": "BookedTrade",
+        "description": "A trade the desk booked."
+      },
+      "CouponRow": {
+        "properties": {
+          "payment_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Payment Date"
+          },
+          "accrual_start": {
+            "type": "string",
+            "format": "date",
+            "title": "Accrual Start"
+          },
+          "rate": {
+            "type": "number",
+            "title": "Rate",
+            "x-basis-format": {
+              "kind": "pct",
+              "decimals": 3
+            }
+          },
+          "amount_per_100": {
+            "type": "number",
+            "title": "Per 100",
+            "x-basis-format": {
+              "kind": "price",
+              "decimals": 4
+            }
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "payment_date",
+          "accrual_start",
+          "rate",
+          "amount_per_100"
+        ],
+        "title": "CouponRow",
+        "description": "One coupon of a bond's schedule."
+      },
+      "Exposure": {
+        "properties": {
+          "group": {
+            "type": "string",
+            "title": "Group"
+          },
+          "market_value_usd": {
+            "type": "number",
+            "title": "Market value (USD)",
+            "x-basis-format": {
+              "kind": "money",
+              "currency": "USD",
+              "decimals": 0
+            }
+          },
+          "dv01_usd": {
+            "type": "number",
+            "title": "DV01 (USD)",
+            "x-basis-format": {
+              "kind": "money",
+              "currency": "USD",
+              "decimals": 0
+            }
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "group",
+          "market_value_usd",
+          "dv01_usd"
+        ],
+        "title": "Exposure",
+        "description": "The book's exposure to a sector or a rating."
+      },
+      "FundPnl": {
+        "properties": {
+          "fund": {
+            "type": "string",
+            "title": "Fund"
+          },
+          "pnl_usd": {
+            "type": "number",
+            "title": "P&L (USD)",
+            "x-basis-format": {
+              "kind": "money",
+              "currency": "USD",
+              "decimals": 0
+            }
+          },
+          "aum_usd": {
+            "type": "number",
+            "title": "AUM (USD)",
+            "x-basis-format": {
+              "kind": "money",
+              "currency": "USD",
+              "decimals": 0
+            }
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "fund",
+          "pnl_usd",
+          "aum_usd"
+        ],
+        "title": "FundPnl",
+        "description": "A fund's P&L on the day."
+      },
+      "JsonValue": {},
+      "Kpi": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "value": {
+            "type": "number",
+            "title": "Value"
+          },
+          "change": {
+            "type": "number",
+            "title": "Change",
+            "description": "Its change on the day, as a fraction of the day before's value."
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "money",
+              "pct",
+              "bps",
+              "number"
+            ],
+            "title": "Kind"
+          },
+          "trend": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "title": "Trend"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "label",
+          "value",
+          "change",
+          "kind",
+          "trend"
+        ],
+        "title": "Kpi",
+        "description": "A figure for the overview's cards: its value, its change on the day, its kind, and its last 20 days."
+      },
+      "Overview": {
+        "properties": {
+          "as_of": {
+            "type": "string",
+            "format": "date",
+            "title": "As Of"
+          },
+          "kpis": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Kpi"
+            },
+            "title": "Kpis"
+          },
+          "pnl_by_fund": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FundPnl"
+            },
+            "title": "Pnl By Fund"
+          },
+          "exposure_by_sector": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Exposure"
+            },
+            "title": "Exposure By Sector"
+          },
+          "exposure_by_rating": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Exposure"
+            },
+            "title": "Exposure By Rating"
+          },
+          "alerts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Alert"
+            },
+            "title": "Alerts"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "as_of",
+          "kpis",
+          "pnl_by_fund",
+          "exposure_by_sector",
+          "exposure_by_rating",
+          "alerts"
+        ],
+        "title": "Overview",
+        "description": "The desk's day at a glance."
+      },
+      "ParameterError": {
+        "properties": {
+          "detail": {
+            "type": "string",
+            "title": "Detail"
+          },
+          "parameter": {
+            "type": "string",
+            "title": "Parameter",
+            "description": "The parameter's name, as the request gives it."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "detail",
+          "parameter"
+        ],
+        "title": "ParameterError",
+        "description": "A query, path or header parameter at fault."
+      },
+      "PointerError": {
+        "properties": {
+          "detail": {
+            "type": "string",
+            "title": "Detail"
+          },
+          "pointer": {
+            "type": "string",
+            "title": "Pointer",
+            "description": "An RFC 6901 JSON Pointer to the field in the body, in URI fragment form, as `#/legs/0/rate`; `#` is the whole\nbody. `pointer` makes one."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "detail",
+          "pointer"
+        ],
+        "title": "PointerError",
+        "description": "A field of the request's body at fault."
+      },
+      "Problem": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "title": "Type"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "status": {
+            "type": "integer",
+            "title": "Status"
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "instance": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instance",
+            "description": "`urn:uuid:` and the request's id, which every log line of the request carries."
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JsonValue"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The detail of an `HTTPException` that is not a sentence, such as a dict, as it was given."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "type",
+          "title",
+          "status"
+        ],
+        "title": "Problem",
+        "description": "RFC 9457 problem details."
+      },
+      "Security": {
+        "properties": {
+          "cusip": {
+            "type": "string",
+            "title": "CUSIP"
+          },
+          "isin": {
+            "type": "string",
+            "title": "ISIN"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "cusip",
+          "isin",
+          "description"
+        ],
+        "title": "Security",
+        "description": "A security a search found."
+      },
+      "TradeTicket": {
+        "properties": {
+          "cusip": {
+            "type": "string",
+            "title": "CUSIP",
+            "pattern": "^[0-9A-Z]{9}$"
+          },
+          "side": {
+            "type": "string",
+            "enum": [
+              "Buy",
+              "Sell"
+            ],
+            "title": "Side"
+          },
+          "face": {
+            "type": "number",
+            "title": "Face",
+            "exclusiveMinimum": 0.0
+          },
+          "price": {
+            "type": "number",
+            "title": "Price",
+            "exclusiveMinimum": 0.0
+          },
+          "trade_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Trade Date"
+          },
+          "settle_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Settle Date"
+          },
+          "book": {
+            "type": "string",
+            "title": "Book"
+          },
+          "counterparty": {
+            "type": "string",
+            "title": "Counterparty"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "cusip",
+          "side",
+          "face",
+          "price",
+          "trade_date",
+          "settle_date",
+          "book",
+          "counterparty"
+        ],
+        "title": "TradeTicket",
+        "description": "A trade to book."
+      },
+      "ValidationProblem": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "title": "Type"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "status": {
+            "type": "integer",
+            "title": "Status"
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "instance": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instance",
+            "description": "`urn:uuid:` and the request's id, which every log line of the request carries."
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JsonValue"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The detail of an `HTTPException` that is not a sentence, such as a dict, as it was given."
+          },
+          "errors": {
+            "items": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/PointerError"
+                },
+                {
+                  "$ref": "#/components/schemas/ParameterError"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Errors",
+            "description": "Each field at fault, which may be none: a 422 that names no field says why in its `detail`."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "type",
+          "title",
+          "status",
+          "errors"
+        ],
+        "title": "ValidationProblem",
+        "description": "RFC 9457 problem details for a 422, a request basis or the handler refuses, which names each field at fault."
+      }
+    }
+  }
+}

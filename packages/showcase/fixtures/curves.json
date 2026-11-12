@@ -1,0 +1,14 @@
+{
+  "format": "basis-ui-fixture/1",
+  "operation_id": "curves",
+  "recorded_at": "2026-10-30T21:00:00Z",
+  "request": {
+    "method": "GET",
+    "path": "/curves"
+  },
+  "response": {
+    "status": 200,
+    "media_type": "application/vnd.apache.arrow.stream",
+    "body_file": "generated/curves.arrows"
+  }
+}

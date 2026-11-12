@@ -1,0 +1,17 @@
+{
+  "name": "@basis/showcase-data",
+  "version": "0.0.0",
+  "private": true,
+  "description": "The data of the API the showcase imagines: parallax-datagen's tables and the fixtures they answer, written into packages/showcase/fixtures/generated/.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "data": "bash scripts/data.sh"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "apache-arrow": "catalog:",
+    "typescript": "catalog:",
+    "vite-plus": "catalog:"
+  }
+}
