@@ -3,7 +3,6 @@
  * parallax sit under one layout, which starts its engine, so parallax loads only with the first of them. */
 
 import {
-  AppShell,
   ChartColumnIcon,
   ChartLineIcon,
   ChartScatterIcon,
@@ -16,13 +15,9 @@ import {
   filterSearchSchema,
 } from "@basis/ui";
 import { createRootRoute, createRoute, lazyRouteComponent } from "@tanstack/react-router";
-import { createElement } from "react";
 
 import { tradeFilters } from "#data/trade-filters.ts";
-
-function Shell(): ReturnType<typeof AppShell> {
-  return createElement(AppShell, { appName: "Workbench", collapsible: "icon", environment: "dev" });
-}
+import { Shell } from "#shell/shell.tsx";
 
 const rootRoute = createRootRoute({ component: Shell });
 
