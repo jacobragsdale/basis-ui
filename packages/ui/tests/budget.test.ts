@@ -13,7 +13,7 @@ import { budgetArgs, budgetOf, verdict } from "#preset/budget-options.ts";
 import { budgetTask, fileFor } from "#preset/budget.ts";
 import { basisPreset } from "#preset/index.ts";
 
-const example = 'basisPreset({ budget: { "/": { css: 25, js: 180 } } })';
+const example = 'basisPreset({ budget: { "/": { css: 30, js: 180 } } })';
 
 describe(budgetOf, () => {
   test("reads back the arguments the preset writes for each route", () => {
@@ -23,10 +23,10 @@ describe(budgetOf, () => {
   });
 
   test("the preset's task builds, then weighs the routes its budget names", () => {
-    const task = basisPreset({ budget: { "/": { css: 25, js: 180 } } }).run?.tasks?.["budget"];
+    const task = basisPreset({ budget: { "/": { css: 30, js: 180 } } }).run?.tasks?.["budget"];
     expect(task).toMatchObject({
       cache: false,
-      command: ["vp build", expect.stringMatching(/tasks\.ts" budget "\/=180,25"$/u)],
+      command: ["vp build", expect.stringMatching(/tasks\.ts" budget "\/=180,30"$/u)],
     });
   });
 

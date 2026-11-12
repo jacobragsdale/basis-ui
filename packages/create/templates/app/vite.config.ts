@@ -5,9 +5,9 @@ export default defineConfig({
   // What each route may load, in kilobytes gzipped, which `vp run budget` holds the build to.
   ...basisPreset({
     budget: {
-      "/": { css: 25, js: 250 },
-      "/bonds/US91282CRF04": { css: 25, js: 255 },
-      "/conventions": { css: 25, js: 250 },
+      "/": { css: 30, js: 250 },
+      "/bonds/US91282CRF04": { css: 30, js: 255 },
+      "/conventions": { css: 30, js: 250 },
     },
   }),
   plugins: basisPlugins(),

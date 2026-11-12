@@ -77,11 +77,14 @@ describe("Table", () => {
     ]);
   });
 
-  test("text headings align left and text cells to the start, in the font's own figures", async () => {
+  test("text headings align left and text cells to the start, in tabular figures as the body is", async () => {
     await render(<Positions />);
     const styles = ["Security", "UST 4.250% 2034"].map((text) => styleOf(text));
     expect(styles.map((style) => style.textAlign)).toStrictEqual(["left", "start"]);
-    expect(styles.map((style) => style.fontVariantNumeric)).toStrictEqual(["normal", "normal"]);
+    expect(styles.map((style) => style.fontVariantNumeric)).toStrictEqual([
+      "tabular-nums",
+      "tabular-nums",
+    ]);
   });
 
   test("a numeric column's digits line up by place", async () => {

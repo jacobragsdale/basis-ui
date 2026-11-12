@@ -43,7 +43,7 @@ To set the app up:
    import { defineConfig } from "vite-plus";
 
    export default defineConfig({
-     ...basisPreset({ budget: { "/": { css: 25, js: 180 } } }),
+     ...basisPreset({ budget: { "/": { css: 30, js: 180 } } }),
      plugins: basisPlugins(),
      test: await basisTest(),
    });

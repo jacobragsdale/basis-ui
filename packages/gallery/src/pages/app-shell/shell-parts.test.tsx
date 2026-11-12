@@ -87,12 +87,11 @@ describe("the app shell's parts", () => {
     expect(document.documentElement.dataset["theme"]).toBe("default");
   });
 
-  test("the user menu offers no choice of theme while one ships", async () => {
+  test("the user menu offers the choice of theme, as more than one ships", async () => {
     const screen = await render(<AppShellSection />);
     const app = screen.getByRole("region", { name: "An app on the shell" });
     await app.getByRole("button", { name: "Dev User" }).click();
-    await expect.element(page.getByRole("group", { name: "Motion" })).toBeVisible();
-    expect(page.getByRole("group", { name: "Theme" }).query()).toBeNull();
+    await expect.element(page.getByRole("group", { name: "Theme" })).toBeVisible();
   });
 
   test("the banner names each environment", async () => {

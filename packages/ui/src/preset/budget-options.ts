@@ -1,5 +1,5 @@
 /* `vp run budget`'s budgets and verdict, without a browser, so that tests can check them. An app gives each route a
- * budget in its `vite.config.ts`, as `basisPreset({ budget: { "/": { css: 25, js: 180 } } })`: the kilobytes of
+ * budget in its `vite.config.ts`, as `basisPreset({ budget: { "/": { css: 30, js: 180 } } })`: the kilobytes of
  * JavaScript and of CSS, gzipped, that opening the route may load. The preset passes them to the task as arguments,
  * one a route, such as `/=180,25`. */
 
@@ -21,7 +21,7 @@ interface RouteWeight {
   readonly css: number;
 }
 
-const example = 'basisPreset({ budget: { "/": { css: 25, js: 180 } } })';
+const example = 'basisPreset({ budget: { "/": { css: 30, js: 180 } } })';
 const bytesPerKilobyte = 1000;
 
 /** The task's arguments for `budget`, one a route, as `ROUTE=JS,CSS`. */
