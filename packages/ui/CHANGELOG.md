@@ -15,8 +15,9 @@ anything of an app.
 
 - A fixture's response can hold its body in a file beside it, `"body_file": "data/trades.arrows"`, with its
   `media_type`, for a body too large for base64 in JSON; fixture mode streams it, and `vp dev` and `vp run verify`
-  name a fixture whose file is missing. The record format's JSON Schema gains the form, an additive change. What to
-  do: nothing.
+  name a fixture whose file is missing. The record format's JSON Schema gains the form, an additive change. The
+  framework's `.gitignore` names `fixtures/generated/`, the folder for such files that a task of the app's own writes.
+  What to do: run `vp run sync`.
 
 - `arrowResponse(url)` asks a dataset route for Arrow as the generated client does, under `/api` with the user's
   token, and returns the response with its body unread, for `@basis/parallax`'s `useDataset` to stream:

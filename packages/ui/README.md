@@ -446,11 +446,11 @@ A body too large for base64 in JSON, such as a generated table of 1,000,000 rows
 last arrive:
 
 ```json
-"response": { "status": 200, "media_type": "application/vnd.apache.arrow.stream", "body_file": "data/trades.arrows" }
+"response": { "status": 200, "media_type": "application/vnd.apache.arrow.stream", "body_file": "generated/trades.arrows" }
 ```
 
-The file stays in the fixture's folder or below it. Keep a large one out of git, in a folder the app's `.gitignore`
-names, and write it with a task of the app's own; `vp dev` and `vp run verify` name a fixture whose file is missing.
+The file stays in the fixture's folder or below it. Keep a large one in `fixtures/generated/`, which the framework's
+`.gitignore` keeps out of git, as `"body_file": "generated/trades.arrows"`, and write it with a task of the app's own; `vp dev` and `vp run verify` name a fixture whose file is missing.
 `vp dev` serves the files at `__basis/fixture-body/`, under the app's base, and a build in fixture mode copies them there. In a
 Node DOM (`BASIS_TEST_DOM=node`), `checkRoutes` cannot read one, and its route fails with the reason.
 
