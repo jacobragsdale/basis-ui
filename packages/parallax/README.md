@@ -65,9 +65,8 @@ on at its own version.
    ```tsx
    import { useDataset, useView } from "@basis/parallax";
 
-   // The generated client's call for an Arrow endpoint answers with a Blob.
-   const positionsBytes = async (): Promise<ArrayBuffer> =>
-     (await listPositions()).data.arrayBuffer();
+   // An Arrow route's response, streamed: @basis/ui's arrowResponse, with the route's URL from the generated client.
+   const positionsBytes = async (): Promise<Response> => arrowResponse(getPositionsUrl());
 
    function Positions(): ReactNode {
      const positions = useDataset("positions", positionsBytes, {

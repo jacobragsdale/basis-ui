@@ -12,21 +12,18 @@ LayoutInput` print each one's props and fields.
 
 ```tsx
 import { Grid, ParallaxProvider, useDataset } from "@basis/parallax";
+import { arrowResponse } from "@basis/ui";
 
 // Once, around the pages that use it: it starts the engine's worker.
 <ParallaxProvider prewarm>{children}</ParallaxProvider>;
 
-// In the page: the dataset, typed by the generated client's row type, from an Arrow endpoint's bytes.
-const positions = useDataset<Position>(
-  "positions",
-  async () => (await listPositions()).data.arrayBuffer(),
-  {
-    primaryKey: "position_id",
-  },
-);
+// In the page: the dataset, typed by its rows' type, streamed from an Arrow route whose URL the generated client gives.
+const positions = useDataset<Position>("positions", async () => arrowResponse(getPositionsUrl()), {
+  primaryKey: "position_id",
+});
 <Grid
   dataset={positions}
-  layout={{ sort: [{ column: "market_value_usd", desc: true }] }}
+  layout={{ sort: [{ column: "market_value_usd", descending: true }] }}
   asOf="2026-11-06"
 />;
 ```
