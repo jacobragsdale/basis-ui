@@ -12,10 +12,10 @@ and git worktree, named after the step's id, and a pull request whose checks are
 ## Status on 2026-11-11, and how to carry on
 
 **Read this section first.** Every step of Phase 6 but 6.10 is built and on `main`, each marked "Built on …" in [the
-roadmap](docs/roadmap.md#phase-6-demo-readiness) with its figures. 6.10 is the maintainer's, on a Citrix desktop. A first look on `winbox`, a
-Windows machine made to resemble one, was not done on 2026-11-11: it was unreachable, and no stand-in figures are
-recorded. What a step found and left open is in [Found while
-building](#found-while-building) at the end of this page, and the showcase's own findings in
+roadmap](docs/roadmap.md#phase-6-demo-readiness) with its figures. 6.10 is the maintainer's, on a Citrix desktop. A
+first look on `winbox`, a Windows machine made to resemble one, was taken on 2026-11-11 in headless Edge: its figures
+are under [step 6.10](#a-first-look-on-winbox-2026-11-11), and it validates nothing. What a step found and left open is
+in [Found while building](#found-while-building) at the end of this page, and the showcase's own findings in
 `packages/showcase/BUILDING.md`.
 
 ### Done
@@ -861,6 +861,70 @@ run and what to send back:
 The limit of 6.3.9, the budgets and the motion defaults are then set from the desktop's figures, and the design's
 "Not yet verified" list is brought up to date. This is spike 0.3's Citrix repeat, on the new engine.
 
+#### A first look on `winbox`, 2026-11-11
+
+A stand-in run, so that the validation starts from figures; it is not the validation. `winbox` is a Windows 11 mini PC
+set up to resemble the firm's desktop: 5 logical processors and 12 GB, the GPU disabled so that Windows draws through
+the Microsoft Basic Display Adapter, and Defender scanning in real time. The showcase built from `746295c` was served
+there as static files on `127.0.0.1`, and Edge 157 ran it headless at 1920 by 1080, driven over its debugging port by a
+script kept with `winbox`'s harness. The script loads the probe three times, then opens the blotter and the pivot with
+the performance overlay and makes each change below: once with the overlay reopened before it, so that the overlay's
+"Input to screen" is that change's alone, and once more in a row before it copies the report.
+
+The `winbox` figures are from a run seven minutes after a boot, with the range over two earlier runs that evening where
+they differed. Beside them is the same script in headless Chromium 156 and 158 on the development server, which has 16
+logical processors and its GPU off too.
+
+| Measure                                                                  | `winbox`                                                                          | Development server                                   |
+| ------------------------------------------------------------------------ | --------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| Probe: load 1,000,000 trades                                             | 2.2 s on the first load in a fresh browser, 3.3 to 4.0 s on the two after it      | 1.3 s                                                |
+| Probe: sort by net amount, to the engine's first answer                  | 43 to 57 ms                                                                       | 45 to 52 ms                                          |
+| Probe: pivot by fund and asset class, by side, to the first answer       | 41 to 46 ms                                                                       | 46 to 58 ms                                          |
+| Probe: WebGL's renderer                                                  | Microsoft Basic Render Driver, through Direct3D 11                                | SwiftShader                                          |
+| Blotter: first rows, from the page starting to load                      | 1.0 s                                                                             | 0.5 s                                                |
+| Blotter: all 1,000,000 rows, by the script's clock                       | 4.1 to 4.7 s                                                                      | 1.8 s                                                |
+| Pivot: first rows, from the page starting to load                        | 1.1 to 1.4 s                                                                      | 0.7 to 0.8 s                                         |
+| Pivot: all 1,000,000 positions loaded, by the script's clock             | 5.6 to 7.1 s                                                                      | 2.3 to 2.5 s                                         |
+| Scrolling either page, 240 steps of 3 rows and of 40 rows, a frame each  | 16.7 ms mean, 17.5 to 18.2 ms at the 95th percentile; one frame of 56 ms in 2,880 | 16.6 ms mean, 17.4 to 17.7 ms at the 95th percentile |
+| Grid drawing, as the overlay reports it                                  | 0.3 to 2.8 ms a frame                                                             | 0.9 to 2.2 ms a frame                                |
+| Rows asked to drawn                                                      | 19 to 34 ms median, 21 to 51 ms at the 95th percentile                            | 18 to 20 ms median                                   |
+| Long frames                                                              | 0 to 2 in 10 s                                                                    | none                                                 |
+| Blotter: sort by net amount, a click on the header                       | 377 ms                                                                            | 302 ms                                               |
+| Blotter: the same sort chosen from the column's menu as soon as it opens | 2.2 and 4.2 s                                                                     | 1.7 to 1.8 s                                         |
+| Blotter: sort by ticker, from its menu                                   | 374 ms                                                                            | 301 ms                                               |
+| Blotter: filter to tickers containing "A", 77,466 rows                   | 126 ms                                                                            | 47 ms                                                |
+| Blotter: filter to one side, 34,755 rows                                 | 92 ms                                                                             | 34 ms                                                |
+| Blotter: clear the ticker filter, 449,648 rows                           | 167 ms                                                                            | 130 ms                                               |
+| Blotter: group by asset class                                            | 71 ms                                                                             | 35 ms                                                |
+| Pivot: add `sector` to the rows                                          | 171 ms                                                                            | 129 ms                                               |
+| Pivot: remove `asset_class` from the rows                                | 124 ms                                                                            | 132 ms                                               |
+| Pivot: add `region` to the columns                                       | 123 ms                                                                            | 150 ms                                               |
+| Pivot: add `ticker` to the rows                                          | 1,555 ms                                                                          | 313 ms                                               |
+| Pivot: open every level, 64,657 rows                                     | 87 ms                                                                             | 45 ms                                                |
+
+What it says:
+
+- Scrolling holds 60 frames a second on both pages, and the grid draws in under 3 ms a frame against a target of 8.
+- The blotter's first rows arrive at the harness's 1 s. All 1,000,000 rows take 4.1 to 4.7 s against its 3 s. The
+  harness measures on a page of its own, so these are like figures, not the same ones.
+- A sort takes about 0.4 s from a click on the header. Chosen from the column's menu it waits for the menu's list of
+  values, which for a column of 1,000,000 distinct values takes 3.9 s there.
+- Adding `ticker` to the pivot's rows takes 1.6 s, five times the development server's time; every other change of
+  the pivot is within 0.2 s.
+- Edge asks for `/favicon.ico` on a first visit and logs a 404. No other console error.
+
+What it does not say:
+
+- A headless browser draws to no screen, so there is no display scaling and no remote display protocol in any figure.
+  Steps 3 and 5 are untouched. One picture of the blotter at 1x has sharp text and rules, which says nothing of a
+  scaled desktop.
+- `winbox` has Windows' animations on, ClearType on and 100% scaling, and the probe reads "Reduced motion: off". The
+  firm's desktop may differ, so the motion defaults wait for it.
+- Only Edge ran: Chrome is not installed there.
+- The files came from the same machine, so no network and no proxy is in a load time.
+- The tab's memory was not measured. The page is not cross-origin isolated, so the overlay reports the page's
+  JavaScript heap alone, 24 to 72 MB, without the engine's worker.
+
 ## Not planned
 
 | Left out                                                | Why                                                                                                              |
@@ -914,6 +978,9 @@ Each stays here until a step closes it.
 | 6.4.7    | Every row but some follows the view, so after a filter, a key unchecked that the filter now hides still lowers the status bar's count; counting it exactly needs the engine to say which keys the view holds. A grouped view's header still fetches the open groups' keys.                                                                                                                                                                                                                                                                                                                                                                      | A later look                                                          |
 | 6.4.6    | One background for a row band, text grouped by ink and a number's width as its length times one advance were left: a pass draws single cells, and a number's signs and separators are not tabular. Drawing was already within its target, 1.0 to 2.3 ms a frame against 8.                                                                                                                                                                                                                                                                                                                                                                      | A later look, if drawing binds                                        |
 | 6.4.1    | The canvas's tabular digits need Chrome or Edge 139. Recorded in the design's "Not yet verified".                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               | 6.10                                                                  |
+| 6.10     | On `winbox`, the stand-in for the firm's desktop: all 1,000,000 trades take 4.1 to 4.7 s from the page starting to load against the harness's 3 s, and adding `ticker` to the pivot's rows takes 1.6 s. First rows, scrolling and drawing meet their targets. Figures under step 6.10.                                                                                                                                                                                                                                                                                                                                                          | 6.10, on the firm's desktop                                           |
+| 6.10     | A sort chosen from a column's menu reaches the screen only after the menu's list of values has loaded. For `net_amount_local`, 1,000,000 distinct values, the list takes 1.8 s on the development server and 3.9 s on `winbox`, so the sort takes 1.7 s and 2.2 to 4.2 s, against 0.3 and 0.4 s from a click on the header, or from the menu once its list is there.                                                                                                                                                                                                                                                                            | Open                                                                  |
+| 6.10     | No `index.html` names an icon, so a browser asks for `/favicon.ico` and logs a 404 on a first visit: the showcase, the template, the gallery and the demos.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | The maintainer's review                                               |
 | 6.5.2    | The pie's legend beside it is cut off by the status line, and taller rows hide more of it.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | A later look: 6.6.6 named small charts' marks, and did not reach this |
 | 6.8.1    | Doc comments pushed seven library files past `max-lines` (300), and were trimmed to fit. Letting `max-lines` skip comments is a design change.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | The maintainer's decision                                             |
 | 6.8.2    | `max-statements` (10) will be the next limit an app's page hits; the plan does not loosen it.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   | The maintainer's decision                                             |
