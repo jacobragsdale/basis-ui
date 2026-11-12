@@ -770,7 +770,20 @@ flowchart TD
 9. **6.9 The showcase** (`6.9-showcase`, then a branch per page). `packages/showcase`, made from the template, with ten
    pages: overview, blotter, positions, relative value, P&L explain, curves, a bond, booking a trade, import, and a
    probe of the desktop. An agent builds it with only the shipped tools, and logs in `BUILDING.md` each place they fell
-   short.
+   short. Built on 2026-11-11: `packages/showcase` is the template copied as `vp create` copies it, with its own
+   `openapi.json` and generated client, and no backend: `packages/showcase-data` writes parallax-datagen's 1,000,000
+   trades and positions, 600 bonds, the attribution and the curves into `fixtures/generated/`, which git ignores, with
+   the fixtures derived from them, and the committed fixtures name the tables by `body_file`. Its ten pages pass `vp run
+   verify`, its route checks render each in Chromium, and a test drives the booking through its typed confirmation to
+   the desk's 422 on its fields, in Chromium and in a Node DOM; CI's parallax job verifies it on 5,000 rows. The
+   chrome: the user menu's theme, mode, density and motion, the command palette, `?`'s shortcuts, and the performance
+   overlay as a palette command. `vp build --mode fixtures` builds it as static files; on this host, in headless
+   Chromium, 1,000,000 trades show their first rows in 0.8 s, sort in 44 ms and pivot in 48 ms. The tools fell short
+   eight times, each fixed in a package: `arrowResponse`, `body_file`, the build in fixture mode, `fixtures/generated/`
+   in the framework's `.gitignore`, the grid's resize observer, the catalogue's union schemas and spreads, the
+   show-data skill, `PerformanceOverlay` and `FormSecurityField`; `BUILDING.md` lists five left, each with its reason.
+   Not yet: the shipped tools alone, since the maintainer chose on 2026-11-11 a verified showcase over a measure of
+   the skills, so the library's source was read where that was quicker.
 10. **6.10 Citrix validation (work).** The maintainer runs the built showcase on a Citrix desktop and sends back the
     probe's and the performance overlay's reports and screenshots. The limit, the budgets and the motion defaults are
     then set from the desktop's figures. This is spike 0.3's Citrix repeat, on the new engine.
