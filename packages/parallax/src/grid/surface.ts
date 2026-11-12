@@ -17,6 +17,7 @@ import { PointerInput } from "./pointer.ts";
 import type { CellRef, Selection } from "./selection.ts";
 import { wheelTop } from "./wheel.ts";
 import { searchIn } from "./window.ts";
+import { observeNextFrame } from "./next-frame-resize.ts";
 
 /** How tall a horizontal scrollbar is until one shows and is measured: the widest a browser draws. */
 const widestScrollbar = 14;
@@ -45,6 +46,7 @@ function onWheel(target: HTMLElement, listener: (event: WheelEvent) => void): ()
 }
 
 /** A grid's canvas and the elements around it. */
+
 class GridSurface {
   public readonly dom: GridDom;
   public readonly context: CanvasRenderingContext2D | null;
@@ -83,8 +85,7 @@ class GridSurface {
       pointer.hoverAt();
       changed();
     };
-    const observer = new ResizeObserver(scrolled);
-    observer.observe(scroll);
+    const stopObserving = observeNextFrame(scroll, scrolled);
     // The canvas's box in device pixels, or the ratio, changed: it is sized and drawn again.
     const device = new DevicePixels(canvas, changed);
     this.#device = device;
@@ -103,7 +104,7 @@ class GridSurface {
     ];
     this.#measure();
     return () => {
-      observer.disconnect();
+      stopObserving();
       device.dispose();
       this.#device = null;
       pointer.clearTooltip();
