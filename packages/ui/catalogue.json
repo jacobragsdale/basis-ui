@@ -16042,6 +16042,89 @@
     },
     {
       "extends": [],
+      "family": "form-security-field",
+      "module": "@basis/ui",
+      "name": "FormSecurityField",
+      "props": [
+        {
+          "description": "The field's label.",
+          "name": "label",
+          "optional": false,
+          "type": "string"
+        },
+        {
+          "description": "A line under the control that says what to enter, such as \"Twelve capital letters and digits\".",
+          "name": "description",
+          "optional": true,
+          "type": "string | undefined"
+        },
+        {
+          "description": "The control's id; one made from the field's name unless set.",
+          "name": "id",
+          "optional": true,
+          "type": "string | undefined"
+        },
+        {
+          "description": "The control's height: the select's default, or `sm` for a dense form.",
+          "name": "size",
+          "optional": true,
+          "type": "\"default\" | \"sm\" | undefined"
+        },
+        {
+          "description": "The TanStack Form field, `form.Field`'s render argument, holding the chosen security's identifier.",
+          "name": "field",
+          "optional": false,
+          "type": "FormFieldApi<string>"
+        },
+        {
+          "description": "Finds the securities the checked identifier names.",
+          "name": "search",
+          "optional": false,
+          "type": "SecuritySearch<TItem>"
+        },
+        {
+          "description": "An item's stable id.",
+          "name": "itemKey",
+          "optional": false,
+          "type": "(item: TItem) => string"
+        },
+        {
+          "description": "An item as text, in the input once chosen and in the list.",
+          "name": "itemLabel",
+          "optional": false,
+          "type": "(item: TItem) => string"
+        },
+        {
+          "description": "What the field holds for a chosen item, such as its CUSIP; `itemKey` unless set.",
+          "name": "itemValue",
+          "optional": true,
+          "type": "((item: TItem) => string) | undefined"
+        },
+        {
+          "description": "What a result shows in the list; its label unless set.",
+          "name": "renderItem",
+          "optional": true,
+          "type": "((item: TItem) => ReactNode) | undefined"
+        },
+        {
+          "description": "The identifiers it takes; a CUSIP, an ISIN or a SEDOL unless set.",
+          "name": "kinds",
+          "optional": true,
+          "type": "readonly SecurityIdentifierKind[] | undefined"
+        }
+      ],
+      "purpose": "A security found by its CUSIP, ISIN or SEDOL, held as the identifier `itemValue` gives, `\"\"` while none is chosen.",
+      "use": "For the security of a trade or an order in a form on TanStack Form. Outside a form, use SecurityPicker.",
+      "with": [
+        "SecurityPicker",
+        "FormTextField",
+        "FormAmountField"
+      ],
+      "variants": {},
+      "example": "import { FormSecurityField } from \"@basis/ui\";\n\ninterface Security {\n  readonly cusip: string;\n  readonly description: string;\n}\n\n// In a page, the field is `form.Field`'s render argument.\nconst field = {\n  handleBlur: () => undefined,\n  handleChange: (_value: string) => undefined,\n  name: \"cusip\",\n  state: { meta: { errors: [], isTouched: false }, value: \"\" },\n};\n\n<FormSecurityField\n  field={field}\n  label=\"Bond\"\n  search={async () => Promise.resolve<readonly Security[]>([])}\n  itemKey={(security) => security.cusip}\n  itemLabel={(security) => security.description}\n/>;\n"
+    },
+    {
+      "extends": [],
       "family": "unsaved-changes-guard",
       "module": "@basis/ui",
       "name": "UnsavedChangesGuard",

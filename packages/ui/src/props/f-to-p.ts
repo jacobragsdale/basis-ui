@@ -18,6 +18,7 @@ import type {
   Formatted,
   FormCheckboxField,
   FormDateField,
+  FormSecurityField,
   FormSelectField,
   FormTextField,
   HoverCard,
@@ -90,6 +91,7 @@ type FormAmountFieldProps = ComponentProps<typeof FormAmountField>;
 type FormattedProps = ComponentProps<typeof Formatted>;
 type FormCheckboxFieldProps = ComponentProps<typeof FormCheckboxField>;
 type FormDateFieldProps = ComponentProps<typeof FormDateField>;
+type FormSecurityFieldProps = ComponentProps<typeof FormSecurityField>;
 type FormSelectFieldProps = ComponentProps<typeof FormSelectField>;
 type FormTextFieldProps = ComponentProps<typeof FormTextField>;
 type HoverCardProps = ComponentProps<typeof HoverCard>;
@@ -162,6 +164,7 @@ export type {
   FormattedProps,
   FormCheckboxFieldProps,
   FormDateFieldProps,
+  FormSecurityFieldProps,
   FormSelectFieldProps,
   FormTextFieldProps,
   HoverCardProps,

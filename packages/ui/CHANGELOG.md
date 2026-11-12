@@ -9,6 +9,9 @@ anything of an app.
 
 ## Unreleased
 
+- `FormSecurityField`, SecurityPicker bound to a TanStack Form field as the other form fields are, holding the chosen
+  security's identifier, `itemKey`'s unless `itemValue` says otherwise. What to do: nothing.
+
 - `@basis/parallax` exports `PerformanceOverlay`, the demo's performance overlay, for an app to show from a tool such as
   a palette command; every grid's drawing counters reach it with no `ref`. What to do: nothing.
 
