@@ -39,6 +39,7 @@ const plainNumbers = [-1, 0, 1, 2, 100];
 /** The six limits as basis-ui's own code keeps them, and the checks only an app has, off, since its code is what they
  * send an app to: the root vite.config.ts sets them for all but its apps, packages/example and packages/consumer. */
 const libraryLimits: Rules = {
+  "basis/no-as-child": "off",
   "basis/no-hand-rounding": "off",
   "basis/no-suppressions": "off",
   "basis/theme-classes": "off",
@@ -72,10 +73,10 @@ const appLimits: Rules = {
   "basis/no-magic-numbers": "error",
   // A handler's or a local helper's type is inferred; `explicit-module-boundary-types` still types every export.
   "typescript/explicit-function-return-type": "off",
-  /* The holes probes found open on 2026-11-09, closed in app code (lint-plugin.ts): every network API, src/api's
-   * `fetch` among them; rounding to decimals by hand; a comment that turns a check off, but one suppressions.ts
-   * allows; and a plain element's dark: variant, !important, selector, filter, black or white, or class built at run
-   * time. */
+  /* The holes probes found open, closed in app code (lint-plugin.ts): every network API, src/api's `fetch` too;
+   * rounding by hand; a comment that turns a check off, but one suppressions.ts allows; Radix's asChild; and a plain
+   * element's dark: variant, !important, selector, filter, black or white, or class built at run time. */
+  "basis/no-as-child": "error",
   "basis/no-fetch": "error",
   "basis/no-hand-rounding": "error",
   "basis/no-suppressions": "error",

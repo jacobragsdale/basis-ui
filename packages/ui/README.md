@@ -718,6 +718,10 @@ import { ButtonLink } from "@basis/ui";
 </ButtonLink>;
 ```
 
+shadcn's Radix examples write `asChild` for this, which no component here takes: the lint's `basis/no-as-child` says to
+pass the element through `render` instead. Each component's props type is exported beside it, named for it, as
+`ButtonProps`, for a component that wraps one or passes its props on.
+
 With `render` on any other component, put the rendered element's text inside it, as in
 `<Badge render={<a href="/trades">Trades</a>} />`, which is where `jsx-a11y/control-has-associated-label` looks for
 it.

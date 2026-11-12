@@ -1,8 +1,8 @@
 /* The preset's own lint rules, as the Oxlint JS plugin `basis`, for the checks no stock rule makes or whose stock rule
  * could not say what an app should do (docs/design.md, The toolchain, at its strictest): `fetch` and the browser's
  * other network APIs, which `eslint/no-restricted-globals` followed with advice to shadow them; a number with no name,
- * which an app may write inside JSX; rounding by hand to decimals; a comment that turns a check off; and a plain
- * element's classes (lint-classes.ts). Each message is one line that starts with `ERROR` and ends with its fix. lint.ts
+ * which an app may write inside JSX; rounding by hand to decimals; a comment that turns a check off; Radix's `asChild`,
+ * which Base UI's `render` replaces; and a plain element's classes (lint-classes.ts). Each message is one line that starts with `ERROR` and ends with its fix. lint.ts
  * applies them, to app code only. */
 
 import { definePlugin, defineRule } from "vite-plus/lint/plugins";
@@ -211,9 +211,35 @@ const noMagicNumbers = defineRule({
   },
 });
 
+/** What `asChild` is refused with: shadcn's Radix prop, which Base UI's components, and so @basis/ui's, replace with
+ * `render`. */
+const asChildMessage =
+  "ERROR asChild is Radix's prop, which @basis/ui's components do not take: they are Base UI's, so pass the element to render as, as <DialogTrigger render={<Button variant=\"outline\" />}>Open</DialogTrigger>, with the text inside the component.";
+
+/** `asChild` on any element, as shadcn's Radix examples write it. */
+const noAsChild = defineRule({
+  create(context) {
+    return {
+      JSXAttribute(node): void {
+        if (node.name.type === "JSXIdentifier" && node.name.name === "asChild") {
+          context.report({ message: asChildMessage, node });
+        }
+      },
+    };
+  },
+  meta: {
+    docs: {
+      description:
+        "A component renders as another element through `render`, not Radix's `asChild`.",
+    },
+    type: "problem",
+  },
+});
+
 const plugin = definePlugin({
   meta: { name: "basis" },
   rules: {
+    "no-as-child": noAsChild,
     "no-fetch": noFetch,
     "no-hand-rounding": noHandRounding,
     "no-magic-numbers": noMagicNumbers,

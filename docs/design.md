@@ -191,7 +191,8 @@ basis-ui adds one lint plugin, `@shadcn/lint`, described below:
   `[&>*]:`, a filter such as `grayscale` or `brightness-50`, black and white, and a class built from a template
   string; `basis/no-hand-rounding`, for `Math.ceil(n * 100) / 100` and its `floor` and `trunc` forms, and
   `toLocaleDateString`, `toLocaleTimeString`, `Intl.DateTimeFormat` and `Intl.RelativeTimeFormat` beside the number
-  bans; `basis/no-fetch`, which also refuses `XMLHttpRequest`, `WebSocket`, `EventSource` and `navigator.sendBeacon`,
+  bans; `basis/no-as-child`, which refuses Radix's `asChild`, which shadcn's examples write, with the line that says to
+  pass the element through `render` (step 6.7.10, 2026-11-11); `basis/no-fetch`, which also refuses `XMLHttpRequest`, `WebSocket`, `EventSource` and `navigator.sendBeacon`,
   and `fetch` in `src/api`, and which basis-ui's own code keeps, its client layers aside; and imports of the libraries [Decided against](#decided-against) names. The messages that
   sent an app to declare a class, a colour or a CSS rule in its stylesheet, `no-unknown-classes`',
   `no-arbitrary-values`' and `no-inline-styles`', name the theme's classes and tokens instead.

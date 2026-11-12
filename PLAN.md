@@ -18,52 +18,53 @@ building](#found-while-building) at the end of this page.
 
 ### Done
 
-| Step  | Commit(s)                          | In short                                                                                            |
-| ----- | ---------------------------------- | --------------------------------------------------------------------------------------------------- |
-| 6.0   | `80c5aa5`                          | The decisions in the design, Phase 6 in the roadmap, untrue claims marked "not yet".                |
-| 6.1a  | `f057f33`                          | 13 component defects.                                                                               |
-| 6.1b  | `c316761`                          | 14 preset task defects.                                                                             |
-| 6.1c  | `d296ebc`, `7de3884`               | 11 defects in parallax's TypeScript.                                                                |
-| 6.1d  | `ec348f6`                          | The engine's three defects.                                                                         |
-| 6.2a  | `e656e9a`                          | The gallery's 336 section screenshots and axe, `vp run @basis/gallery#shots`.                       |
-| 6.2b  | `05cd559`                          | The scale harness and its budgets, and the engine's phase profile; `docs/spikes/scale-1m.md`.       |
-| 6.2c  | `4588ea0`                          | `@basis/ui` shakes, `vp run budget`, motion for a CPU-drawn desktop, the `motion` preference.       |
-| 6.3.1 | `0b175cf`                          | A load that copies once.                                                                            |
-| 6.3.2 | `fd7ddee`, `7de3884`               | A progressive load and `useDataset`'s `progress`.                                                   |
-| 6.3.3 | `e07fa21`                          | Sorts on integer keys, orders kept.                                                                 |
-| 6.3.4 | `bcb09d4`                          | Filters as bitmap kernels.                                                                          |
-| 6.3.5 | `1825ac4`                          | Packed leaf keys and flat tallies. Partly done: see below.                                          |
-| 6.4.1 | `3520cd1`, `f2658d4`               | Tabular digits on the canvas, at the DOM's sizes.                                                   |
-| 6.4.2 | `ddaa01f`                          | Whole device pixels, baselines at 1.25 and 1.5.                                                     |
-| 6.4.3 | `0a20957`                          | One draw per frame, three rows a notch.                                                             |
-| 6.4.4 | `c328d0b`, `a83ab6e`               | A scroll copies the pixels that stay.                                                               |
-| 6.5.1 | `e257d8c`                          | Tokens for what opacity faked; a solid focus outline.                                               |
-| 6.5.2 | `755ec40`, `c46544b`               | Control sizes in whole pixels per density; compact is the stylesheet's base.                        |
-| 6.5.3 | `9b692b1`                          | `defineTheme` and `ThemeInputs`; `vp run @basis/ui#theme [new NAME]`.                               |
-| 6.5.4 | `ee2eeb5`                          | `checkTheme` in `vp check`; the default theme fixed to pass.                                        |
-| 6.5.5 | `dd19320`                          | The theme in the cookie and head script, `preferencesDomain`, following another app's change.       |
-| 6.5.6 | `731086d`                          | Parallax on `@basis/ui`'s theme, 13 dead tokens gone, rows by control size, `basis:themechange`.    |
-| 6.5.7 | `09342aa` to `abf4de5`             | The default's look, `desk` and `high-contrast`; every baseline in every theme.                      |
-| 6.5.8 | `afd85af`                          | The theme studio in the gallery on `@basis/ui/theming`; the demo's studio gone.                     |
-| 6.6.3 | `6c9dfff`                          | `SavedViews`, `browserViewStore` and `apiViewStore`; its gallery section in every theme.            |
-| 6.7.1 | `1af39dc`                          | `Page`, shell slots and groups, scoped shortcuts, the demo in the shell, the shell's axe fixed.     |
-| 6.7.2 | `e5edd47`                          | `FilterBar`, its state in typed search parameters.                                                  |
-| 6.7.3 | `6f432c8`                          | `DataTable` controllable and fast at its cap; pages 50 rows by default.                             |
-| 6.7.4 | `9be1fcf`                          | `StatCard`: a figure, its change with arrow, sign and colour, its trend.                            |
-| 6.7.5 | `0845966`                          | `DatePicker`, `MonthPicker`; `DateRangePicker` typed, cleared, trailing presets.                    |
-| 6.7.6 | `0bfee2d`                          | Form fields bound to TanStack Form, `submitErrors`, `UnsavedChangesGuard`, `TypedConfirmDialog`.    |
-| 6.7.7 | `8d3eee6`, `a52d83f` and `f3d58c8` | `MultiSelect`, `NumberField`, `Toolbar`, `Tree`, `TreeSelect`; a list pasted into `SecurityPicker`. |
-| 6.7.8 | `b327628`                          | `DescriptionList`; `HeatCell` on the theme's scales, its ink measured per theme and mode.           |
-| 6.7.9 | this commit                        | `Combobox` capped at 100 with a line to type to narrow; a long `Select` reports itself.             |
-| 6.8.1 | `7e434e2`                          | `vp run docs NAME` and `--search`; the catalogue complete; README split; `CHANGELOG.md`.            |
-| 6.8.2 | `bc608c0`                          | Six lint limits loosened in app code; messages that name the fix.                                   |
-| 6.8.3 | `3d356fe`                          | The open doors closed, each an `ERROR` line.                                                        |
-| 6.8.4 | `5659229`, `b9e1088`               | `vp run verify`, `--json`; the fast commit hook and the push hook.                                  |
-| 6.8.5 | `9c22362`                          | `shot`'s network and axe reports, `--all`, `--compare`, `--selector`, `--step`.                     |
-| 6.8.6 | `5a4fb5f`                          | `vp run new table\|page\|form`, `vp run fixtures new\|check`.                                       |
-| 6.8.7 | `34ec6b2`                          | `checkRoutes` and `expectAccessible` in `@basis/ui/testing`.                                        |
-| 6.8.8 | `716c84d`                          | `vp run upgrade`, the changelog's format, codemods.                                                 |
-| 6.8.9 | `ccb961b`                          | CI makes an app from the packed template and verifies it.                                           |
+| Step   | Commit(s)                          | In short                                                                                            |
+| ------ | ---------------------------------- | --------------------------------------------------------------------------------------------------- |
+| 6.0    | `80c5aa5`                          | The decisions in the design, Phase 6 in the roadmap, untrue claims marked "not yet".                |
+| 6.1a   | `f057f33`                          | 13 component defects.                                                                               |
+| 6.1b   | `c316761`                          | 14 preset task defects.                                                                             |
+| 6.1c   | `d296ebc`, `7de3884`               | 11 defects in parallax's TypeScript.                                                                |
+| 6.1d   | `ec348f6`                          | The engine's three defects.                                                                         |
+| 6.2a   | `e656e9a`                          | The gallery's 336 section screenshots and axe, `vp run @basis/gallery#shots`.                       |
+| 6.2b   | `05cd559`                          | The scale harness and its budgets, and the engine's phase profile; `docs/spikes/scale-1m.md`.       |
+| 6.2c   | `4588ea0`                          | `@basis/ui` shakes, `vp run budget`, motion for a CPU-drawn desktop, the `motion` preference.       |
+| 6.3.1  | `0b175cf`                          | A load that copies once.                                                                            |
+| 6.3.2  | `fd7ddee`, `7de3884`               | A progressive load and `useDataset`'s `progress`.                                                   |
+| 6.3.3  | `e07fa21`                          | Sorts on integer keys, orders kept.                                                                 |
+| 6.3.4  | `bcb09d4`                          | Filters as bitmap kernels.                                                                          |
+| 6.3.5  | `1825ac4`                          | Packed leaf keys and flat tallies. Partly done: see below.                                          |
+| 6.4.1  | `3520cd1`, `f2658d4`               | Tabular digits on the canvas, at the DOM's sizes.                                                   |
+| 6.4.2  | `ddaa01f`                          | Whole device pixels, baselines at 1.25 and 1.5.                                                     |
+| 6.4.3  | `0a20957`                          | One draw per frame, three rows a notch.                                                             |
+| 6.4.4  | `c328d0b`, `a83ab6e`               | A scroll copies the pixels that stay.                                                               |
+| 6.5.1  | `e257d8c`                          | Tokens for what opacity faked; a solid focus outline.                                               |
+| 6.5.2  | `755ec40`, `c46544b`               | Control sizes in whole pixels per density; compact is the stylesheet's base.                        |
+| 6.5.3  | `9b692b1`                          | `defineTheme` and `ThemeInputs`; `vp run @basis/ui#theme [new NAME]`.                               |
+| 6.5.4  | `ee2eeb5`                          | `checkTheme` in `vp check`; the default theme fixed to pass.                                        |
+| 6.5.5  | `dd19320`                          | The theme in the cookie and head script, `preferencesDomain`, following another app's change.       |
+| 6.5.6  | `731086d`                          | Parallax on `@basis/ui`'s theme, 13 dead tokens gone, rows by control size, `basis:themechange`.    |
+| 6.5.7  | `09342aa` to `abf4de5`             | The default's look, `desk` and `high-contrast`; every baseline in every theme.                      |
+| 6.5.8  | `afd85af`                          | The theme studio in the gallery on `@basis/ui/theming`; the demo's studio gone.                     |
+| 6.6.3  | `6c9dfff`                          | `SavedViews`, `browserViewStore` and `apiViewStore`; its gallery section in every theme.            |
+| 6.7.1  | `1af39dc`                          | `Page`, shell slots and groups, scoped shortcuts, the demo in the shell, the shell's axe fixed.     |
+| 6.7.2  | `e5edd47`                          | `FilterBar`, its state in typed search parameters.                                                  |
+| 6.7.3  | `6f432c8`                          | `DataTable` controllable and fast at its cap; pages 50 rows by default.                             |
+| 6.7.4  | `9be1fcf`                          | `StatCard`: a figure, its change with arrow, sign and colour, its trend.                            |
+| 6.7.5  | `0845966`                          | `DatePicker`, `MonthPicker`; `DateRangePicker` typed, cleared, trailing presets.                    |
+| 6.7.6  | `0bfee2d`                          | Form fields bound to TanStack Form, `submitErrors`, `UnsavedChangesGuard`, `TypedConfirmDialog`.    |
+| 6.7.7  | `8d3eee6`, `a52d83f` and `f3d58c8` | `MultiSelect`, `NumberField`, `Toolbar`, `Tree`, `TreeSelect`; a list pasted into `SecurityPicker`. |
+| 6.7.8  | `b327628`                          | `DescriptionList`; `HeatCell` on the theme's scales, its ink measured per theme and mode.           |
+| 6.7.9  | `67544d9`                          | `Combobox` capped at 100 with a line to type to narrow; a long `Select` reports itself.             |
+| 6.7.10 | this commit, part 1                | Every component's props type exported; `basis/no-as-child`. Sizes on the inputs follow.             |
+| 6.8.1  | `7e434e2`                          | `vp run docs NAME` and `--search`; the catalogue complete; README split; `CHANGELOG.md`.            |
+| 6.8.2  | `bc608c0`                          | Six lint limits loosened in app code; messages that name the fix.                                   |
+| 6.8.3  | `3d356fe`                          | The open doors closed, each an `ERROR` line.                                                        |
+| 6.8.4  | `5659229`, `b9e1088`               | `vp run verify`, `--json`; the fast commit hook and the push hook.                                  |
+| 6.8.5  | `9c22362`                          | `shot`'s network and axe reports, `--all`, `--compare`, `--selector`, `--step`.                     |
+| 6.8.6  | `5a4fb5f`                          | `vp run new table\|page\|form`, `vp run fixtures new\|check`.                                       |
+| 6.8.7  | `34ec6b2`                          | `checkRoutes` and `expectAccessible` in `@basis/ui/testing`.                                        |
+| 6.8.8  | `716c84d`                          | `vp run upgrade`, the changelog's format, codemods.                                                 |
+| 6.8.9  | `ccb961b`                          | CI makes an app from the packed template and verifies it.                                           |
 
 Off the plan: `8358a51` gave the grid and pivot an `asOf` prop, asked for by ctzd, so the status bar shows the date the
 data is for and never the load time; `94343fc`, `8aaf718` and `e1c39b5` fixed CI.

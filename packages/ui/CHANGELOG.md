@@ -9,6 +9,11 @@ anything of an app.
 
 ## Unreleased
 
+- Every component's props type is exported, named for it, as `ButtonProps`, `DialogContentProps` and
+  `DataTableProps`. The lint refuses Radix's `asChild` with `basis/no-as-child`, whose line says to pass the element
+  through `render`. What to do: replace `asChild` with `render={<Element />}`, and `ComponentProps<typeof X>` with
+  `XProps` where it reads better.
+
 - `Combobox`, and `EntityPicker` and `SecurityPicker` on it, draw at most 100 items unless `limit` says otherwise, and
   say under the list to type to narrow them once they reach it; a `Select` with more than 100 `items` reports an
   `ERROR` line to telemetry naming `Combobox`. What to do: a combobox that must show more sets `limit`; a long select
