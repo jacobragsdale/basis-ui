@@ -14,66 +14,26 @@
  *
  * A record never holds the bearer token: a request keeps no headers, a response refuses the headers that carry
  * credentials, and no string anywhere in a record may hold a JWT, nor may a key, a path, the operation's id, or the
- * bytes of a base64 body. */
+ * bytes of a base64 body.
+ *
+ * A body too large for JSON, such as 300 MB of Arrow, is a file beside the record, named by `body_file`, which fixture
+ * mode streams: `"response": { "status": 200, "media_type": "application/vnd.apache.arrow.stream", "body_file":
+ * "data/trades.arrows" }`. */
 
 import { z } from "zod";
 
+import {
+  described,
+  documentation,
+  jsonValueSchema,
+  jwtRefused,
+  keySchema,
+  noJwt,
+  textSchema,
+} from "./record-text.ts";
+
 /** The format's name and version, the first member of every record. */
 const fixtureFormat = "basis-ui-fixture/1";
-
-/** What the JSON Schema says of each part of the format: its descriptions, and the names of the parts it reuses. */
-const documentation = z.registry<{ readonly id?: string; readonly description?: string }>();
-
-function described<TSchema extends z.ZodType>(
-  schema: TSchema,
-  meta: { readonly id?: string; readonly description: string },
-): TSchema {
-  documentation.add(schema, meta);
-  return schema;
-}
-
-/** A JWT: a base64url header and payload, each a JSON object and so starting `eyJ`, then the signature. */
-const jwt = String.raw`eyJ[A-Za-z0-9_-]*\.eyJ[A-Za-z0-9_-]*\.`;
-
-/** What every string of a record, and the text of its base64 bytes, must not match. */
-const noJwt = new RegExp(String.raw`^(?![\s\S]*${jwt})`, "u");
-const jwtRefused = { error: "holds a JWT, which a record never does: remove the token" };
-
-/** Text of any kind but a JWT, so that a token copied into a body or a header is refused. */
-const textSchema = described(z.string().regex(noJwt, jwtRefused), {
-  description: "Any text that holds no JWT.",
-  id: "Text",
-});
-
-/** Whether `text` holds a JWT, which a record's issue lines never repeat. */
-function holdsJwt(text: string): boolean {
-  return !noJwt.test(text);
-}
-
-/** An object's key, which holds no JWT either. */
-const keySchema = z.string().regex(noJwt, {
-  error: "has a key that holds a JWT, which a record never does: remove the token",
-});
-
-type JsonValue = boolean | number | string | null | readonly JsonValue[] | JsonObject;
-interface JsonObject {
-  readonly [key: string]: JsonValue;
-}
-
-/** Any JSON value, with no JWT in any of its strings. */
-const jsonValueSchema: z.ZodType<JsonValue> = described(
-  z.lazy(() =>
-    z.union([
-      textSchema,
-      z.number(),
-      z.boolean(),
-      z.null(),
-      z.array(jsonValueSchema),
-      z.record(keySchema, jsonValueSchema),
-    ]),
-  ),
-  { description: "Any JSON value whose strings hold no JWT.", id: "JsonValue" },
-);
 
 const methodSchema = z.enum(["GET", "POST", "PUT", "PATCH", "DELETE"]);
 
@@ -208,6 +168,22 @@ const base64BodySchema = described(z.base64().refine(bytesHoldNoJwt, jwtRefused)
     "The body's bytes in base64, as RFC 4648 section 4 writes them, such as an Arrow IPC stream.",
 });
 
+/** A body file's name: parts of letters, digits, `.`, `_` and `-`, separated by `/`, none of them `.` or `..`, so it
+ * stays in the record's folder or below it. */
+const bodyFilePattern =
+  /^(?!\.\.?(?:\/|$))(?!.*\/\.\.?(?:\/|$))[A-Za-z0-9._-]+(?:\/[A-Za-z0-9._-]+)*$/u;
+
+const bodyFileSchema = described(
+  z.string().regex(bodyFilePattern, {
+    error:
+      "is a file in the record's folder or below it, such as data/trades.arrows: parts of letters, digits, ., _ and -, separated by /, with no leading / and no . or .. part",
+  }),
+  {
+    description:
+      "The body's bytes, in a file beside the record, by its path from the record's folder, such as data/trades.arrows, for a body too large to hold in JSON. Fixture mode streams it.",
+  },
+);
+
 const responseSchema = described(
   z.union([
     z.strictObject({
@@ -222,11 +198,17 @@ const responseSchema = described(
       media_type: mediaTypeSchema,
       body_base64: base64BodySchema,
     }),
+    z.strictObject({
+      status: bodyStatusSchema,
+      headers,
+      media_type: mediaTypeSchema,
+      body_file: bodyFileSchema,
+    }),
     z.strictObject({ status: statusSchema, headers }),
   ]),
   {
     description:
-      "The response: a JSON body as body, with its media_type; other bytes, such as an Arrow IPC stream, as body_base64, with theirs; or no body, and no media_type.",
+      "The response: a JSON body as body, with its media_type; other bytes, such as an Arrow IPC stream, as body_base64, with theirs, or in a file beside the record, as body_file; or no body, and no media_type.",
   },
 );
 
@@ -272,6 +254,15 @@ interface LoadedFixture {
   readonly record: FixtureRecord;
 }
 
+/** The file a fixture's `body_file` names, from the app's root, as `fixtures/data/trades.arrows` for
+ * `fixtures/trades.json`'s `data/trades.arrows`. */
+function bodyFileOf({ file, record }: LoadedFixture): string | undefined {
+  if (!("body_file" in record.response)) {
+    return undefined;
+  }
+  return `${file.slice(0, file.lastIndexOf("/") + 1)}${record.response.body_file}`;
+}
+
 /** The format's JSON Schema, which `schema/fixture-record.schema.json` holds for basis to test its export against. */
 function fixtureRecordJsonSchema(): Record<string, unknown> {
   const { $schema, ...schema } = z.toJSONSchema(fixtureRecordSchema, {
@@ -286,12 +277,5 @@ function fixtureRecordJsonSchema(): Record<string, unknown> {
   };
 }
 
-export { fixtureFormat, fixtureRecordJsonSchema, fixtureRecordSchema, holdsJwt };
-export type {
-  FixtureRecord,
-  FixtureRequest,
-  FixtureResponse,
-  FixtureSource,
-  JsonValue,
-  LoadedFixture,
-};
+export { bodyFileOf, fixtureFormat, fixtureRecordJsonSchema, fixtureRecordSchema };
+export type { FixtureRecord, FixtureRequest, FixtureResponse, FixtureSource, LoadedFixture };

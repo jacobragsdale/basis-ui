@@ -148,6 +148,45 @@
           "type": "object",
           "properties": {
             "status": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 200,
+                  "maximum": 203
+                },
+                {
+                  "type": "integer",
+                  "minimum": 206,
+                  "maximum": 303
+                },
+                {
+                  "type": "integer",
+                  "minimum": 305,
+                  "maximum": 599
+                }
+              ]
+            },
+            "headers": {
+              "$ref": "#/$defs/Headers"
+            },
+            "media_type": {
+              "type": "string",
+              "pattern": "^[a-z0-9!#$&^_.+-]+\\/[a-z0-9!#$&^_.+-]+$",
+              "description": "The body's media type, with no parameters, such as application/vnd.apache.arrow.stream."
+            },
+            "body_file": {
+              "type": "string",
+              "pattern": "^(?!\\.\\.?(?:\\/|$))(?!.*\\/\\.\\.?(?:\\/|$))[A-Za-z0-9._-]+(?:\\/[A-Za-z0-9._-]+)*$",
+              "description": "The body's bytes, in a file beside the record, by its path from the record's folder, such as data/trades.arrows, for a body too large to hold in JSON. Fixture mode streams it."
+            }
+          },
+          "required": ["status", "media_type", "body_file"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "status": {
               "type": "integer",
               "minimum": 200,
               "maximum": 599
@@ -160,7 +199,7 @@
           "additionalProperties": false
         }
       ],
-      "description": "The response: a JSON body as body, with its media_type; other bytes, such as an Arrow IPC stream, as body_base64, with theirs; or no body, and no media_type."
+      "description": "The response: a JSON body as body, with its media_type; other bytes, such as an Arrow IPC stream, as body_base64, with theirs, or in a file beside the record, as body_file; or no body, and no media_type."
     }
   },
   "required": ["format", "operation_id", "recorded_at", "request", "response"],

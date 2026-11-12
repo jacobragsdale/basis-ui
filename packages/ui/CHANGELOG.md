@@ -9,6 +9,11 @@ anything of an app.
 
 ## Unreleased
 
+- A fixture's response can hold its body in a file beside it, `"body_file": "data/trades.arrows"`, with its
+  `media_type`, for a body too large for base64 in JSON; fixture mode streams it, and `vp dev` and `vp run verify`
+  name a fixture whose file is missing. The record format's JSON Schema gains the form, an additive change. What to
+  do: nothing.
+
 - `arrowResponse(url)` asks a dataset route for Arrow as the generated client does, under `/api` with the user's
   token, and returns the response with its body unread, for `@basis/parallax`'s `useDataset` to stream:
   `useDataset("trades", async () => arrowResponse(getTradesUrl()))`. A failure throws the same `ApiError`. What to

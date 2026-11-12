@@ -23,6 +23,7 @@ import type { Logger, Plugin, UserConfig, ViteDevServer } from "vite-plus";
 
 import { fixtureFolders } from "#fixtures/load.ts";
 
+import { serveBodyFiles } from "./fixture-bodies.ts";
 import { fixtureParameters, readFixtures } from "./fixture-files.ts";
 import type { ReadFixtures } from "./fixture-files.ts";
 import { documentFile, generatedFolder } from "./orval-options.ts";
@@ -258,6 +259,8 @@ function fixtureModePlugin({ liveApi }: FixtureModePluginOptions): Plugin {
       state.logger = config.logger;
     },
     configureServer: (server) => {
+      // The files fixtures' body_file names, which fixture mode's handler streams, in the browser's tests too.
+      serveBodyFiles(server, state.root);
       if (state.test) {
         return;
       }

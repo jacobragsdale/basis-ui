@@ -4,7 +4,8 @@
 
 import type { z } from "zod";
 
-import { fixtureRecordSchema, holdsJwt } from "./record.ts";
+import { holdsJwt } from "./record-text.ts";
+import { fixtureRecordSchema } from "./record.ts";
 import type { FixtureRecord, FixtureSource, LoadedFixture } from "./record.ts";
 
 /** A member's place in a record, as a reader finds it: `response.body[2].year_days`. */

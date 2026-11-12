@@ -12,5 +12,10 @@ const sourceHeader = "x-basis-fixture-source";
  * fixture. */
 const fileHeader = "x-basis-fixture-file";
 
-export { fileHeader, sourceHeader };
+/** Where fixture mode serves the files that fixtures' `body_file` names, from the page's base: the file
+ * `fixtures/data/trades.arrows` at `__basis/fixture-body/fixtures/data/trades.arrows`, which `vp dev` serves from
+ * disk. */
+const bodyFilesPath = "__basis/fixture-body/";
+
+export { bodyFilesPath, fileHeader, sourceHeader };
 export type { AnswerSource };

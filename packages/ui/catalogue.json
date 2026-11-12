@@ -18133,7 +18133,14 @@
       "module": "@basis/ui/fixtures",
       "name": "fixtureHandlers",
       "purpose": "The MSW handlers of fixture mode: one, for every request under `/api`.",
-      "signature": "fixtureHandlers({ records, fixtures, generated, telemetry = consoleTelemetry, }: FixtureHandlersOptions): RequestHandler[]"
+      "signature": "fixtureHandlers({ records, fixtures, generated, telemetry = consoleTelemetry, bodyFiles = servedBodyFile, }: FixtureHandlersOptions): RequestHandler[]"
+    },
+    {
+      "kind": "constant",
+      "module": "@basis/ui/fixtures",
+      "name": "bodyFilesPath",
+      "purpose": "Where fixture mode serves the files that fixtures' `body_file` names, from the page's base: the file `fixtures/data/trades.arrows` at `__basis/fixture-body/fixtures/data/trades.arrows`, which `vp dev` serves from disk.",
+      "signature": "const bodyFilesPath = \"__basis/fixture-body/\""
     },
     {
       "kind": "constant",
@@ -18155,6 +18162,13 @@
       "name": "loadFixtureFiles",
       "purpose": "`files`, each file's name from the app's root and its parsed JSON, as fixtures of `source`, in the order of their names, which is the order fixture mode tries them in.",
       "signature": "loadFixtureFiles(source: FixtureSource, files: Readonly<Record<string, unknown>>): LoadedFixtures"
+    },
+    {
+      "kind": "function",
+      "module": "@basis/ui/fixtures",
+      "name": "bodyFileOf",
+      "purpose": "The file a fixture's `body_file` names, from the app's root, as `fixtures/data/trades.arrows` for `fixtures/trades.json`'s `data/trades.arrows`.",
+      "signature": "bodyFileOf({ file, record }: LoadedFixture): string | undefined"
     },
     {
       "kind": "constant",
@@ -27637,6 +27651,13 @@
       "purpose": "A tenor's unit: days, weeks, months or years."
     },
     {
+      "definition": "(file: string) => Promise<Response>",
+      "exported": true,
+      "module": "@basis/ui/fixtures",
+      "name": "BodyFiles",
+      "purpose": "Reads a body file, by its path from the app's root."
+    },
+    {
       "fields": [
         {
           "description": "The records exported into `.fixtures/`, in the order to try them.",
@@ -27661,6 +27682,12 @@
           "name": "telemetry",
           "optional": true,
           "type": "Telemetry"
+        },
+        {
+          "description": "Reads the file a fixture's `body_file` names, by its path from the app's root, as a response whose body streams; by default, from where `vp dev` serves it, `bodyFilesPath` under the page's base.",
+          "name": "bodyFiles",
+          "optional": true,
+          "type": "BodyFiles"
         }
       ],
       "exported": true,

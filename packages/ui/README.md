@@ -435,6 +435,19 @@ dataset route's fixture holds an Arrow IPC stream, in base64, as `body_base64`, 
 `ipc.new_stream`, with the column types basis's contract gives a dataset (`date32` for a date, `float64` for a
 number, and so on), and encode the bytes in base64.
 
+A body too large for base64 in JSON, such as a generated table of 1,000,000 rows, is a file beside the fixture, named by
+`body_file` from the fixture's folder, which fixture mode streams, so `useDataset` shows its first rows before the
+last arrive:
+
+```json
+"response": { "status": 200, "media_type": "application/vnd.apache.arrow.stream", "body_file": "data/trades.arrows" }
+```
+
+The file stays in the fixture's folder or below it. Keep a large one out of git, in a folder the app's `.gitignore`
+names, and write it with a task of the app's own; `vp dev` and `vp run verify` name a fixture whose file is missing.
+`vp dev` serves the files at `__basis/fixture-body/`, under the page's base. In a
+Node DOM (`BASIS_TEST_DOM=node`), `checkRoutes` cannot read one, and its route fails with the reason.
+
 When `vp dev` starts, and whenever a file in `fixtures/` or `.fixtures/`, or `openapi.json`, changes, every file is
 checked and the page reloads. Each problem is one `ERROR` line in the terminal, ending with its fix, and the page shows
 them over itself until they are fixed:

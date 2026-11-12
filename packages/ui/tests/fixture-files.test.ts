@@ -80,8 +80,47 @@ describe(readFixtures, () => {
       "ERROR fixtures/2.json: operation_id bonds is not an operation in openapi.json, whose operations are accrued_interest, bond, bond_yield, conventions, coupons, dirty_price, record_settlement",
       "ERROR fixtures/3.json: GET /api/bonds/US91282CRF04 is not operation bond, which is GET /bonds/{security}, and a path leaves out /api",
       "ERROR fixtures/4.json: POST /bonds/US91282CRF04 is not operation bond, which is GET /bonds/{security}",
-      "ERROR fixtures/5.json: answers dataset operation coupons with application/json, but basis-ui's client asks a dataset route only for Arrow: its response is the Arrow IPC stream, as body_base64 with media_type application/vnd.apache.arrow.stream",
+      "ERROR fixtures/5.json: answers dataset operation coupons with application/json, but basis-ui's client asks a dataset route only for Arrow: its response is the Arrow IPC stream, as body_base64 or body_file with media_type application/vnd.apache.arrow.stream",
       "ERROR fixtures/6.json: answers 200 as application/vnd.apache.arrow.stream, but operation conventions answers 200 as application/json",
+    ]);
+  });
+});
+
+describe("a body in a file", () => {
+  const arrowFile = {
+    body_file: "data/coupons.arrows",
+    media_type: "application/vnd.apache.arrow.stream",
+    status: 200,
+  };
+
+  test("passes when the file is beside the fixture", () => {
+    const withFile = makeApp({
+      "fixtures/coupons.json": record("coupons", "GET /bonds/US91282CRF04/coupons", arrowFile),
+      "fixtures/data/coupons.arrows": "ARROW1",
+    });
+    try {
+      expect(readFixtures(withFile, { records: false }).problems).toStrictEqual([]);
+    } finally {
+      removeApp(withFile);
+    }
+  });
+
+  test("names the file that is missing, and how to write it", () => {
+    expect(
+      problemsOfApp([record("coupons", "GET /bonds/US91282CRF04/coupons", arrowFile)]),
+    ).toStrictEqual([
+      "ERROR fixtures/1.json: its body_file names fixtures/data/coupons.arrows, which does not exist: write it, as the app's own task for its data says, or correct body_file.",
+    ]);
+  });
+
+  test("refuses a file outside the fixture's folder", () => {
+    const outside = { ...arrowFile, body_file: "../secrets.arrows" };
+    expect(
+      problemsOfApp([record("coupons", "GET /bonds/US91282CRF04/coupons", outside)]),
+    ).toStrictEqual([
+      expect.stringMatching(
+        /^ERROR fixtures\/1\.json: response\.body_file: is a file in the record's folder or below it/u,
+      ),
     ]);
   });
 });

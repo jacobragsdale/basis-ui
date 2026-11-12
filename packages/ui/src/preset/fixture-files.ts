@@ -7,6 +7,7 @@ import { stat } from "node:fs/promises";
 import path from "node:path";
 
 import { fixtureFolders, fixtureProblem, loadFixtureFiles } from "#fixtures/load.ts";
+import { bodyFileOf } from "#fixtures/record.ts";
 import type { FixtureSource, LoadedFixture } from "#fixtures/record.ts";
 
 import { documentProblems, operationsOf, pathParameters } from "./fixture-document.ts";
@@ -31,6 +32,18 @@ function jsonFiles(root: string, folder: string): string[] {
     .map((name) => [folder, ...name.split(path.sep)].join("/"));
 }
 
+/** A line for each fixture whose `body_file` is not on disk. */
+function missingBodyFiles(root: string, fixtures: readonly LoadedFixture[]): string[] {
+  return fixtures.flatMap((fixture) => {
+    const file = bodyFileOf(fixture);
+    return file === undefined || existsSync(path.join(root, file))
+      ? []
+      : [
+          `ERROR ${fixture.file}: its body_file names ${file}, which does not exist: write it, as the app's own task for its data says, or correct body_file.`,
+        ];
+  });
+}
+
 /** The fixtures of `source` in the app at `root`, and what is wrong with any of them. */
 function readSource(
   root: string,
@@ -47,7 +60,10 @@ function readSource(
     }
   }
   const loaded = loadFixtureFiles(source, parsed);
-  return { fixtures: loaded.fixtures, problems: [...unreadable, ...loaded.problems] };
+  return {
+    fixtures: loaded.fixtures,
+    problems: [...unreadable, ...loaded.problems, ...missingBodyFiles(root, loaded.fixtures)],
+  };
 }
 
 /** A file's JSON, or `undefined` when it holds none. */

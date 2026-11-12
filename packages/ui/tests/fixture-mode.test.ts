@@ -35,6 +35,7 @@ beforeAll(() => {
     ".fixtures/conventions.json": record("conventions", "GET /conventions"),
     "fixtures/a.json": record("conventions", "GET /conventions"),
     "fixtures/b/bond.json": record("bond", "GET /bonds/US91282CRF04", bondAnswer),
+    "fixtures/data/trades.arrows": "ARROW1",
     "index.html": page,
     "src/main.tsx": 'document.title = "App";\n',
   });
@@ -219,6 +220,27 @@ describe("vp dev in fixture mode", () => {
     try {
       const [address = ""] = server.resolvedUrls?.local ?? [];
       expect(await textOf(new URL(rootPath, address).href)).toBe(app);
+    } finally {
+      await server.close();
+    }
+  });
+
+  test("streams the files fixtures' body_file names, and nothing outside the fixture folders", async () => {
+    const { server } = await devServer();
+    try {
+      const [address = ""] = server.resolvedUrls?.local ?? [];
+      const at = (file: string): string => new URL(`__basis/fixture-body/${file}`, address).href;
+      expect(await textOf(at("fixtures/data/trades.arrows"))).toBe("ARROW1");
+      const refused = await Promise.all(
+        ["index.html", "fixtures/missing.arrows", "fixtures/%2E%2E/index.html"].map(
+          async (file) => {
+            const answered: unknown[] = await once(get(at(file)), "response");
+            const [response] = answered;
+            return response instanceof IncomingMessage ? response.statusCode : undefined;
+          },
+        ),
+      );
+      expect(refused).toStrictEqual([404, 404, 404]);
     } finally {
       await server.close();
     }

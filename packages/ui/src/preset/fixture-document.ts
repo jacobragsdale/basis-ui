@@ -125,7 +125,7 @@ function bodyMisfit(fixture: LoadedFixture, operation: Operation): string | unde
   // A 2xx: its status in hundreds is 2.
   const success = Math.floor(status / 100) === 2;
   if (operation.dataset && success && mediaType !== arrowStream) {
-    return `answers dataset operation ${operation.id} with ${mediaType ?? "no body"}, but basis-ui's client asks a dataset route only for Arrow: its response is the Arrow IPC stream, as body_base64 with media_type ${arrowStream}`;
+    return `answers dataset operation ${operation.id} with ${mediaType ?? "no body"}, but basis-ui's client asks a dataset route only for Arrow: its response is the Arrow IPC stream, as body_base64 or body_file with media_type ${arrowStream}`;
   }
   const declared = operation.responses[String(status)] ?? [];
   if (mediaType !== undefined && declared.length > 0 && !declared.includes(mediaType)) {
