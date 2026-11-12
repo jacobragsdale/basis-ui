@@ -9,7 +9,7 @@ import { Convention } from './convention.zod.ts';
 
 export const Bond = zod.object({
   "security_id": zod.string(),
-  "coupon_rate": zod.number(),
+  "coupon_rate": zod.number().nullable(),
   "convention": Convention,
   "frequency": zod.union([zod.literal(1),zod.literal(2),zod.literal(4),zod.literal(12)]),
   "issued": zod.iso.date(),

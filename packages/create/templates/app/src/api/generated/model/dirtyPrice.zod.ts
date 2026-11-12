@@ -9,10 +9,10 @@ import * as zod from 'zod';
 export const DirtyPrice = zod.object({
   "security_id": zod.string(),
   "settle": zod.iso.date(),
-  "face": zod.number(),
-  "clean": zod.number(),
-  "accrued": zod.number(),
-  "dirty": zod.number()
+  "face": zod.number().nullable(),
+  "clean": zod.number().nullable(),
+  "accrued": zod.number().nullable(),
+  "dirty": zod.number().nullable()
 });
 
 export type DirtyPrice = zod.input<typeof DirtyPrice>;

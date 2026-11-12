@@ -916,14 +916,29 @@ export type recordSettlementResponse201 = {
   status: 201
 }
 
+export type recordSettlementResponse401 = {
+  data: Problem
+  status: 401
+}
+
 export type recordSettlementResponse404 = {
   data: Problem
   status: 404
 }
 
+export type recordSettlementResponse413 = {
+  data: Problem
+  status: 413
+}
+
 export type recordSettlementResponse422 = {
   data: ValidationProblem
   status: 422
+}
+
+export type recordSettlementResponse500 = {
+  data: Problem
+  status: 500
 }
 
 export type recordSettlementResponse502 = {
@@ -944,7 +959,7 @@ export type recordSettlementResponse504 = {
 export type recordSettlementResponseSuccess = (recordSettlementResponse201) & {
   headers: Headers;
 };
-export type recordSettlementResponseError = (recordSettlementResponse404 | recordSettlementResponse422 | recordSettlementResponse502 | recordSettlementResponse503 | recordSettlementResponse504) & {
+export type recordSettlementResponseError = (recordSettlementResponse401 | recordSettlementResponse404 | recordSettlementResponse413 | recordSettlementResponse422 | recordSettlementResponse500 | recordSettlementResponse502 | recordSettlementResponse503 | recordSettlementResponse504) & {
   headers: Headers;
 };
 
@@ -958,7 +973,8 @@ export const getRecordSettlementUrl = () => {
 
 /**
  * Record a settlement, with the interest accrued to its date, and book it with the ledger: the row and the booking
- * commit once the response validates, and the ledger is called after, by its id, as many times as it takes.
+ * commit once the response validates, and the ledger is called after, by its id, as many times as it takes. Only a
+ * signed-in user records one, whom the request's log line names.
  * @summary Record Settlement
  */
 export const recordSettlement = async (settlementRequest: SettlementRequest, options?: Parameters<typeof apiFetch>[1]): Promise<recordSettlementResponseSuccess> => {

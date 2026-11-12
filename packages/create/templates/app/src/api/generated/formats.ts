@@ -9,6 +9,25 @@ export const displayFormats = {
     "interest": {
       "decimals": 4,
       "kind": "price"
+    },
+    "interest_32nds": {
+      "kind": "price32"
+    },
+    "rate": {
+      "decimals": 3,
+      "kind": "pct"
+    },
+    "period_rate": {
+      "decimals": 1,
+      "kind": "bps"
+    },
+    "per_million": {
+      "currency": "USD",
+      "kind": "money"
+    },
+    "year_fraction": {
+      "decimals": 6,
+      "kind": "number"
     }
   }
 } as const satisfies Readonly<

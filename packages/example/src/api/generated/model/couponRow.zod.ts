@@ -9,8 +9,13 @@ import * as zod from 'zod';
 export const CouponRow = zod.object({
   "starts": zod.iso.date(),
   "pays": zod.iso.date(),
-  "interest": zod.number()
-}).describe('A row of a bond\'s coupons as a UI\'s grid shows them: the domain\'s `Coupon`, with each number\'s display format,\nwhich is how the API presents it, not a rule of the domain\'s.');
+  "interest": zod.number().nullable(),
+  "interest_32nds": zod.number().nullable(),
+  "rate": zod.number().nullable(),
+  "period_rate": zod.number().nullable(),
+  "per_million": zod.number().nullable(),
+  "year_fraction": zod.number().nullable()
+}).describe('A row of a bond\'s coupons as a UI\'s grid shows them: the domain\'s `Coupon`, and what it comes to, with each\nnumber\'s display format, which is how the API presents it, not a rule of the domain\'s. Between them the columns\nshow every kind of display format, so the sample basis-ui pins holds each.');
 
 export type CouponRow = zod.input<typeof CouponRow>;
 export type CouponRowOutput = zod.output<typeof CouponRow>;

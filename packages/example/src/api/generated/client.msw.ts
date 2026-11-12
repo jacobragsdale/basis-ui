@@ -34,10 +34,10 @@ import type {
 } from './model';
 
 
-export const getAccruedInterestResponseMock = (overrideResponse: Partial<Extract<Accrual, object>> = {}): Accrual => ({start: faker.date.past().toISOString().slice(0, 10), end: faker.date.past().toISOString().slice(0, 10), convention: faker.helpers.arrayElement(Convention.options), days: faker.number.int(), year_days: faker.number.int(), interest: faker.number.float({fractionDigits: 2}), ...overrideResponse})
+export const getAccruedInterestResponseMock = (overrideResponse: Partial<Extract<Accrual, object>> = {}): Accrual => ({start: faker.date.past().toISOString().slice(0, 10), end: faker.date.past().toISOString().slice(0, 10), convention: faker.helpers.arrayElement(Convention.options), days: faker.number.int(), year_days: faker.number.int(), interest: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), ...overrideResponse})
 
 
-export const getAccruedInterestResponseMock200 = (overrideResponse: Partial<Extract<Accrual, object>> = {}): Accrual => ({start: faker.date.past().toISOString().slice(0, 10), end: faker.date.past().toISOString().slice(0, 10), convention: faker.helpers.arrayElement(Convention.options), days: faker.number.int(), year_days: faker.number.int(), interest: faker.number.float({fractionDigits: 2}), ...overrideResponse})
+export const getAccruedInterestResponseMock200 = (overrideResponse: Partial<Extract<Accrual, object>> = {}): Accrual => ({start: faker.date.past().toISOString().slice(0, 10), end: faker.date.past().toISOString().slice(0, 10), convention: faker.helpers.arrayElement(Convention.options), days: faker.number.int(), year_days: faker.number.int(), interest: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), ...overrideResponse})
 
 
 export const getAccruedInterestResponseMock422 = (overrideResponse: Partial<Extract<ValidationProblem, object>> = {}): ValidationProblem => ({type: faker.string.alpha({length: {min: 10, max: 20}}), title: faker.string.alpha({length: {min: 10, max: 20}}), status: faker.number.int(), detail: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), instance: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), data: faker.helpers.arrayElement([null,]), errors: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.helpers.arrayElement([{detail: faker.string.alpha({length: {min: 10, max: 20}}), pointer: faker.string.alpha({length: {min: 10, max: 20}})},{detail: faker.string.alpha({length: {min: 10, max: 20}}), parameter: faker.string.alpha({length: {min: 10, max: 20}})},]))), ...overrideResponse})
@@ -50,10 +50,10 @@ export const getConventionsResponseMock200 = (): DayCount[] => (Array.from({ len
 
 export const getConventionsResponseMock422 = (overrideResponse: Partial<Extract<ValidationProblem, object>> = {}): ValidationProblem => ({type: faker.string.alpha({length: {min: 10, max: 20}}), title: faker.string.alpha({length: {min: 10, max: 20}}), status: faker.number.int(), detail: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), instance: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), data: faker.helpers.arrayElement([null,]), errors: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.helpers.arrayElement([{detail: faker.string.alpha({length: {min: 10, max: 20}}), pointer: faker.string.alpha({length: {min: 10, max: 20}})},{detail: faker.string.alpha({length: {min: 10, max: 20}}), parameter: faker.string.alpha({length: {min: 10, max: 20}})},]))), ...overrideResponse})
 
-export const getBondResponseMock = (overrideResponse: Partial<Extract<Bond, object>> = {}): Bond => ({security_id: faker.string.alpha({length: {min: 10, max: 20}}), coupon_rate: faker.number.float({fractionDigits: 2}), convention: faker.helpers.arrayElement(Convention.options), frequency: faker.helpers.arrayElement([1,2,4,12] as const), issued: faker.date.past().toISOString().slice(0, 10), maturity: faker.date.past().toISOString().slice(0, 10), ...overrideResponse})
+export const getBondResponseMock = (overrideResponse: Partial<Extract<Bond, object>> = {}): Bond => ({security_id: faker.string.alpha({length: {min: 10, max: 20}}), coupon_rate: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), convention: faker.helpers.arrayElement(Convention.options), frequency: faker.helpers.arrayElement([1,2,4,12] as const), issued: faker.date.past().toISOString().slice(0, 10), maturity: faker.date.past().toISOString().slice(0, 10), ...overrideResponse})
 
 
-export const getBondResponseMock200 = (overrideResponse: Partial<Extract<Bond, object>> = {}): Bond => ({security_id: faker.string.alpha({length: {min: 10, max: 20}}), coupon_rate: faker.number.float({fractionDigits: 2}), convention: faker.helpers.arrayElement(Convention.options), frequency: faker.helpers.arrayElement([1,2,4,12] as const), issued: faker.date.past().toISOString().slice(0, 10), maturity: faker.date.past().toISOString().slice(0, 10), ...overrideResponse})
+export const getBondResponseMock200 = (overrideResponse: Partial<Extract<Bond, object>> = {}): Bond => ({security_id: faker.string.alpha({length: {min: 10, max: 20}}), coupon_rate: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), convention: faker.helpers.arrayElement(Convention.options), frequency: faker.helpers.arrayElement([1,2,4,12] as const), issued: faker.date.past().toISOString().slice(0, 10), maturity: faker.date.past().toISOString().slice(0, 10), ...overrideResponse})
 
 
 export const getBondResponseMock404 = (overrideResponse: Partial<Extract<Problem, object>> = {}): Problem => ({type: faker.string.alpha({length: {min: 10, max: 20}}), title: faker.string.alpha({length: {min: 10, max: 20}}), status: faker.number.int(), detail: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), instance: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), data: faker.helpers.arrayElement([null,]), ...overrideResponse})
@@ -70,10 +70,10 @@ export const getBondResponseMock503 = (overrideResponse: Partial<Extract<Problem
 
 export const getBondResponseMock504 = (overrideResponse: Partial<Extract<Problem, object>> = {}): Problem => ({type: faker.string.alpha({length: {min: 10, max: 20}}), title: faker.string.alpha({length: {min: 10, max: 20}}), status: faker.number.int(), detail: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), instance: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), data: faker.helpers.arrayElement([null,]), ...overrideResponse})
 
-export const getDirtyPriceResponseMock = (overrideResponse: Partial<Extract<DirtyPrice, object>> = {}): DirtyPrice => ({security_id: faker.string.alpha({length: {min: 10, max: 20}}), settle: faker.date.past().toISOString().slice(0, 10), face: faker.number.float({fractionDigits: 2}), clean: faker.number.float({fractionDigits: 2}), accrued: faker.number.float({fractionDigits: 2}), dirty: faker.number.float({fractionDigits: 2}), ...overrideResponse})
+export const getDirtyPriceResponseMock = (overrideResponse: Partial<Extract<DirtyPrice, object>> = {}): DirtyPrice => ({security_id: faker.string.alpha({length: {min: 10, max: 20}}), settle: faker.date.past().toISOString().slice(0, 10), face: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), clean: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), accrued: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), dirty: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), ...overrideResponse})
 
 
-export const getDirtyPriceResponseMock200 = (overrideResponse: Partial<Extract<DirtyPrice, object>> = {}): DirtyPrice => ({security_id: faker.string.alpha({length: {min: 10, max: 20}}), settle: faker.date.past().toISOString().slice(0, 10), face: faker.number.float({fractionDigits: 2}), clean: faker.number.float({fractionDigits: 2}), accrued: faker.number.float({fractionDigits: 2}), dirty: faker.number.float({fractionDigits: 2}), ...overrideResponse})
+export const getDirtyPriceResponseMock200 = (overrideResponse: Partial<Extract<DirtyPrice, object>> = {}): DirtyPrice => ({security_id: faker.string.alpha({length: {min: 10, max: 20}}), settle: faker.date.past().toISOString().slice(0, 10), face: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), clean: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), accrued: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), dirty: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), ...overrideResponse})
 
 
 export const getDirtyPriceResponseMock404 = (overrideResponse: Partial<Extract<Problem, object>> = {}): Problem => ({type: faker.string.alpha({length: {min: 10, max: 20}}), title: faker.string.alpha({length: {min: 10, max: 20}}), status: faker.number.int(), detail: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), instance: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), data: faker.helpers.arrayElement([null,]), ...overrideResponse})
@@ -90,10 +90,10 @@ export const getDirtyPriceResponseMock503 = (overrideResponse: Partial<Extract<P
 
 export const getDirtyPriceResponseMock504 = (overrideResponse: Partial<Extract<Problem, object>> = {}): Problem => ({type: faker.string.alpha({length: {min: 10, max: 20}}), title: faker.string.alpha({length: {min: 10, max: 20}}), status: faker.number.int(), detail: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), instance: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), data: faker.helpers.arrayElement([null,]), ...overrideResponse})
 
-export const getBondYieldResponseMock = (overrideResponse: Partial<Extract<Yield, object>> = {}): Yield => ({security_id: faker.string.alpha({length: {min: 10, max: 20}}), settle: faker.date.past().toISOString().slice(0, 10), clean: faker.number.float({fractionDigits: 2}), dirty: faker.number.float({fractionDigits: 2}), annual_yield: faker.number.float({fractionDigits: 2}), ...overrideResponse})
+export const getBondYieldResponseMock = (overrideResponse: Partial<Extract<Yield, object>> = {}): Yield => ({security_id: faker.string.alpha({length: {min: 10, max: 20}}), settle: faker.date.past().toISOString().slice(0, 10), clean: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), dirty: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), annual_yield: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), ...overrideResponse})
 
 
-export const getBondYieldResponseMock200 = (overrideResponse: Partial<Extract<Yield, object>> = {}): Yield => ({security_id: faker.string.alpha({length: {min: 10, max: 20}}), settle: faker.date.past().toISOString().slice(0, 10), clean: faker.number.float({fractionDigits: 2}), dirty: faker.number.float({fractionDigits: 2}), annual_yield: faker.number.float({fractionDigits: 2}), ...overrideResponse})
+export const getBondYieldResponseMock200 = (overrideResponse: Partial<Extract<Yield, object>> = {}): Yield => ({security_id: faker.string.alpha({length: {min: 10, max: 20}}), settle: faker.date.past().toISOString().slice(0, 10), clean: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), dirty: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), annual_yield: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), ...overrideResponse})
 
 
 export const getBondYieldResponseMock404 = (overrideResponse: Partial<Extract<Problem, object>> = {}): Problem => ({type: faker.string.alpha({length: {min: 10, max: 20}}), title: faker.string.alpha({length: {min: 10, max: 20}}), status: faker.number.int(), detail: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), instance: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), data: faker.helpers.arrayElement([null,]), ...overrideResponse})
@@ -130,16 +130,25 @@ export const getCouponsResponseMock503 = (overrideResponse: Partial<Extract<Prob
 
 export const getCouponsResponseMock504 = (overrideResponse: Partial<Extract<Problem, object>> = {}): Problem => ({type: faker.string.alpha({length: {min: 10, max: 20}}), title: faker.string.alpha({length: {min: 10, max: 20}}), status: faker.number.int(), detail: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), instance: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), data: faker.helpers.arrayElement([null,]), ...overrideResponse})
 
-export const getRecordSettlementResponseMock = (overrideResponse: Partial<Extract<Settlement, object>> = {}): Settlement => ({settlement_id: faker.string.uuid(), security_id: faker.string.alpha({length: {min: 10, max: 20}}), face: faker.number.float({fractionDigits: 2}), settle: faker.date.past().toISOString().slice(0, 10), accrued: faker.number.float({fractionDigits: 2}), recorded_at: faker.date.past().toISOString().slice(0, 19) + 'Z', ...overrideResponse})
+export const getRecordSettlementResponseMock = (overrideResponse: Partial<Extract<Settlement, object>> = {}): Settlement => ({settlement_id: faker.string.uuid(), security_id: faker.string.alpha({length: {min: 10, max: 20}}), face: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), settle: faker.date.past().toISOString().slice(0, 10), accrued: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), recorded_at: faker.date.past().toISOString().slice(0, 19) + 'Z', ...overrideResponse})
 
 
-export const getRecordSettlementResponseMock201 = (overrideResponse: Partial<Extract<Settlement, object>> = {}): Settlement => ({settlement_id: faker.string.uuid(), security_id: faker.string.alpha({length: {min: 10, max: 20}}), face: faker.number.float({fractionDigits: 2}), settle: faker.date.past().toISOString().slice(0, 10), accrued: faker.number.float({fractionDigits: 2}), recorded_at: faker.date.past().toISOString().slice(0, 19) + 'Z', ...overrideResponse})
+export const getRecordSettlementResponseMock201 = (overrideResponse: Partial<Extract<Settlement, object>> = {}): Settlement => ({settlement_id: faker.string.uuid(), security_id: faker.string.alpha({length: {min: 10, max: 20}}), face: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), settle: faker.date.past().toISOString().slice(0, 10), accrued: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), recorded_at: faker.date.past().toISOString().slice(0, 19) + 'Z', ...overrideResponse})
+
+
+export const getRecordSettlementResponseMock401 = (overrideResponse: Partial<Extract<Problem, object>> = {}): Problem => ({type: faker.string.alpha({length: {min: 10, max: 20}}), title: faker.string.alpha({length: {min: 10, max: 20}}), status: faker.number.int(), detail: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), instance: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), data: faker.helpers.arrayElement([null,]), ...overrideResponse})
 
 
 export const getRecordSettlementResponseMock404 = (overrideResponse: Partial<Extract<Problem, object>> = {}): Problem => ({type: faker.string.alpha({length: {min: 10, max: 20}}), title: faker.string.alpha({length: {min: 10, max: 20}}), status: faker.number.int(), detail: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), instance: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), data: faker.helpers.arrayElement([null,]), ...overrideResponse})
 
 
+export const getRecordSettlementResponseMock413 = (overrideResponse: Partial<Extract<Problem, object>> = {}): Problem => ({type: faker.string.alpha({length: {min: 10, max: 20}}), title: faker.string.alpha({length: {min: 10, max: 20}}), status: faker.number.int(), detail: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), instance: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), data: faker.helpers.arrayElement([null,]), ...overrideResponse})
+
+
 export const getRecordSettlementResponseMock422 = (overrideResponse: Partial<Extract<ValidationProblem, object>> = {}): ValidationProblem => ({type: faker.string.alpha({length: {min: 10, max: 20}}), title: faker.string.alpha({length: {min: 10, max: 20}}), status: faker.number.int(), detail: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), instance: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), data: faker.helpers.arrayElement([null,]), errors: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.helpers.arrayElement([{detail: faker.string.alpha({length: {min: 10, max: 20}}), pointer: faker.string.alpha({length: {min: 10, max: 20}})},{detail: faker.string.alpha({length: {min: 10, max: 20}}), parameter: faker.string.alpha({length: {min: 10, max: 20}})},]))), ...overrideResponse})
+
+
+export const getRecordSettlementResponseMock500 = (overrideResponse: Partial<Extract<Problem, object>> = {}): Problem => ({type: faker.string.alpha({length: {min: 10, max: 20}}), title: faker.string.alpha({length: {min: 10, max: 20}}), status: faker.number.int(), detail: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), instance: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), data: faker.helpers.arrayElement([null,]), ...overrideResponse})
 
 
 export const getRecordSettlementResponseMock502 = (overrideResponse: Partial<Extract<Problem, object>> = {}): Problem => ({type: faker.string.alpha({length: {min: 10, max: 20}}), title: faker.string.alpha({length: {min: 10, max: 20}}), status: faker.number.int(), detail: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), instance: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), data: faker.helpers.arrayElement([null,]), ...overrideResponse})
@@ -615,6 +624,19 @@ export const getRecordSettlementMockHandler201 = (overrideResponse?: Settlement 
 }
 
 
+export const getRecordSettlementMockHandler401 = (overrideResponse?: Problem | ((info: Parameters<HttpResponseResolver<PathParams, SettlementRequest>>[0]) => Promise<Problem> | Problem), options?: RequestHandlerOptions) => {
+  return http.post<PathParams, SettlementRequest>('*/settlements', async (info: Parameters<HttpResponseResolver<PathParams, SettlementRequest>>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getRecordSettlementResponseMock401(),
+      { status: 401, headers: { 'Content-Type': 'application/problem+json' }
+      })
+  }, options)
+}
+
+
 export const getRecordSettlementMockHandler404 = (overrideResponse?: Problem | ((info: Parameters<HttpResponseResolver<PathParams, SettlementRequest>>[0]) => Promise<Problem> | Problem), options?: RequestHandlerOptions) => {
   return http.post<PathParams, SettlementRequest>('*/settlements', async (info: Parameters<HttpResponseResolver<PathParams, SettlementRequest>>[0]) => {
 
@@ -628,6 +650,19 @@ export const getRecordSettlementMockHandler404 = (overrideResponse?: Problem | (
 }
 
 
+export const getRecordSettlementMockHandler413 = (overrideResponse?: Problem | ((info: Parameters<HttpResponseResolver<PathParams, SettlementRequest>>[0]) => Promise<Problem> | Problem), options?: RequestHandlerOptions) => {
+  return http.post<PathParams, SettlementRequest>('*/settlements', async (info: Parameters<HttpResponseResolver<PathParams, SettlementRequest>>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getRecordSettlementResponseMock413(),
+      { status: 413, headers: { 'Content-Type': 'application/problem+json' }
+      })
+  }, options)
+}
+
+
 export const getRecordSettlementMockHandler422 = (overrideResponse?: ValidationProblem | ((info: Parameters<HttpResponseResolver<PathParams, SettlementRequest>>[0]) => Promise<ValidationProblem> | ValidationProblem), options?: RequestHandlerOptions) => {
   return http.post<PathParams, SettlementRequest>('*/settlements', async (info: Parameters<HttpResponseResolver<PathParams, SettlementRequest>>[0]) => {
 
@@ -636,6 +671,19 @@ export const getRecordSettlementMockHandler422 = (overrideResponse?: ValidationP
     ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
     : getRecordSettlementResponseMock422(),
       { status: 422, headers: { 'Content-Type': 'application/problem+json' }
+      })
+  }, options)
+}
+
+
+export const getRecordSettlementMockHandler500 = (overrideResponse?: Problem | ((info: Parameters<HttpResponseResolver<PathParams, SettlementRequest>>[0]) => Promise<Problem> | Problem), options?: RequestHandlerOptions) => {
+  return http.post<PathParams, SettlementRequest>('*/settlements', async (info: Parameters<HttpResponseResolver<PathParams, SettlementRequest>>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getRecordSettlementResponseMock500(),
+      { status: 500, headers: { 'Content-Type': 'application/problem+json' }
       })
   }, options)
 }

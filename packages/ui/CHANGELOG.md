@@ -9,6 +9,10 @@ anything of an app.
 
 ## Unreleased
 
+- The template's sample, and the example, pin basis's example API at its release, `v0.1.0`: its numbers may be null,
+  and its coupons show every kind of display format. What to do: nothing; an app made from the template before has
+  its own API's document.
+
 - `FormSecurityField`, SecurityPicker bound to a TanStack Form field as the other form fields are, holding the chosen
   security's identifier, `itemKey`'s unless `itemValue` says otherwise. What to do: nothing.
 
