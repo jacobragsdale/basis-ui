@@ -1,11 +1,14 @@
-/* The small charts and query states family: StatCard, a dashboard's figure, Sparkline on KPI cards, CellBar in a table's cells, and QueryState in each
- * of a query's states, loading, failed, empty, current and stale. */
+/* The small charts and query states family: StatCard, a dashboard's figure, Sparkline on KPI cards, CellBar and
+ * HeatCell in a table's cells, and QueryState in each of a query's states, loading, failed, empty, current and
+ * stale. */
 
 import { Bps, CellBar, Money, QueryState, Sparkline, StatCard } from "@basis/ui";
 import type { QueryLike } from "@basis/ui";
 import type { ReactElement } from "react";
 
 import { Section } from "#pages/section.tsx";
+
+import { HeatCellSection } from "./small-charts/heat-cell.tsx";
 
 /** Ten days of a series, written as the values separated by spaces, "-" where a day is missing. */
 function days(written: string): readonly (number | null)[] {
@@ -200,6 +203,7 @@ function SmallChartsAndStates(): ReactElement {
       <StatCardSection />
       <SparklineSection />
       <CellBarSection />
+      <HeatCellSection />
       <QueryStateSection />
     </>
   );

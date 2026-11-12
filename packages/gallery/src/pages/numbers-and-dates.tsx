@@ -22,6 +22,7 @@ import {
   Price32Section,
   SignedSection,
 } from "./numbers-and-dates/display.tsx";
+import { DescriptionListSection } from "./numbers-and-dates/description-list.tsx";
 import { TicketFormSection } from "./numbers-and-dates/ticket-form.tsx";
 
 function NumbersAndDates(): ReactElement {
@@ -35,6 +36,7 @@ function NumbersAndDates(): ReactElement {
       <DateTimeSection />
       <FormattedSection />
       <SignedSection />
+      <DescriptionListSection />
       <AmountInputSection />
       <AsOfDatePickerSection />
       <DatePickerSection />

@@ -16279,6 +16279,99 @@
       "example": "import { Sparkline } from \"@basis/ui\";\n\n// A KPI's last ten days, a day missing, coloured by its trend.\n<Sparkline\n  label=\"NAV over ten days, up\"\n  values={[101.2, 101.5, 101.1, null, 102, 102.4, 102.1, 102.8, 103, 103.3]}\n  trend\n  area\n/>;\n"
     },
     {
+      "extends": [],
+      "family": "heat-cell",
+      "module": "@basis/ui",
+      "name": "HeatCell",
+      "props": [
+        {
+          "description": "The scale: sequential, from near zero to the largest, or diverging, either side of a midpoint.",
+          "name": "scale",
+          "optional": false,
+          "type": "\"sequential\" | \"diverging\""
+        },
+        {
+          "description": "The least value, such as the column's; a value below it takes the scale's first step.",
+          "name": "min",
+          "optional": false,
+          "type": "number"
+        },
+        {
+          "description": "The greatest value, such as the column's; a value above it takes the scale's last step.",
+          "name": "max",
+          "optional": false,
+          "type": "number"
+        },
+        {
+          "description": "The diverging scale's midpoint; 0 unless set.",
+          "name": "mid",
+          "optional": true,
+          "type": "number | undefined"
+        },
+        {
+          "description": "The value whose heat it shows; `null` shows no heat.",
+          "name": "value",
+          "optional": false,
+          "type": "number | null"
+        },
+        {
+          "description": "The text, such as `<Pct value={row.change} signed />`.",
+          "name": "children",
+          "optional": false,
+          "type": "ReactNode"
+        }
+      ],
+      "purpose": "A value's heat behind its text, filling a table's cell: on the sequential scale from `min` to `max`, or on the diverging scale either side of `mid`, 0 unless set. Give every cell of a column the same domain, such as the column's least and greatest values.",
+      "use": "For a column whose values read best as a heatmap, such as returns by month or spreads by rating. For a value's size beside its text, use CellBar; for a whole matrix, parallax's Chart.",
+      "with": [
+        "CellBar",
+        "DataTable",
+        "Table",
+        "Pct"
+      ],
+      "variants": {},
+      "example": "import { HeatCell, Pct } from \"@basis/ui\";\n\n<HeatCell value={-0.012} scale=\"diverging\" min={-0.05} max={0.05}>\n  <Pct value={-0.012} signed />\n</HeatCell>;\n"
+    },
+    {
+      "extends": [
+        "Omit<ComponentProps<\"dl\">, \"children\">"
+      ],
+      "family": "description-list",
+      "module": "@basis/ui",
+      "name": "DescriptionList",
+      "props": [
+        {
+          "description": "The facts, in order.",
+          "name": "items",
+          "optional": false,
+          "type": "readonly DescriptionItem[]"
+        },
+        {
+          "description": "How many columns of facts it lays out in; one unless set, and at most three.",
+          "name": "columns",
+          "optional": true,
+          "type": "keyof typeof columnClasses | undefined"
+        },
+        {
+          "description": "Each term beside its value, the default, or above it, for long values or a narrow panel.",
+          "name": "layout",
+          "optional": true,
+          "type": "\"beside\" | \"above\" | undefined"
+        }
+      ],
+      "purpose": "A list of facts, each a term and its value.",
+      "use": "For a detail page's facts, such as a bond's coupon, maturity and issuer, or an order's fields once placed. For rows of like things, use Table or DataTable; for a figure with its change, StatCard.",
+      "with": [
+        "Table",
+        "StatCard",
+        "Card",
+        "Money",
+        "DateTime"
+      ],
+      "variants": {},
+      "example": "import { DescriptionList, Money, Pct } from \"@basis/ui\";\n\n<DescriptionList\n  columns={2}\n  items={[\n    { term: \"Coupon\", description: <Pct value={0.04125} decimals={3} /> },\n    { term: \"Maturity\", description: \"2036-05-15\" },\n    { term: \"Outstanding\", description: <Money value={42_000_000_000} abbreviate=\"B\" /> },\n    { term: \"Day count\", description: \"30/360\" },\n  ]}\n/>;\n"
+    },
+    {
       "extends": [
         "Omit<ComponentProps<\"div\">, \"children\">"
       ],
@@ -25107,6 +25200,32 @@
       "purpose": ""
     },
     {
+      "fields": [
+        {
+          "description": "",
+          "name": "term",
+          "optional": false,
+          "type": "ReactNode"
+        },
+        {
+          "description": "",
+          "name": "description",
+          "optional": false,
+          "type": "ReactNode"
+        },
+        {
+          "description": "A stable key, where the term is not text; the term's text unless set.",
+          "name": "key",
+          "optional": true,
+          "type": "string | undefined"
+        }
+      ],
+      "exported": true,
+      "module": "@basis/ui",
+      "name": "DescriptionItem",
+      "purpose": "One fact: its term, and its value."
+    },
+    {
       "definition": "z.output<typeof displayFormatSchema>",
       "exported": true,
       "module": "@basis/ui",
@@ -25671,6 +25790,38 @@
       "module": "@basis/ui",
       "name": "FormFieldProps",
       "purpose": "What every form field takes besides its field."
+    },
+    {
+      "fields": [
+        {
+          "description": "The scale: sequential, from near zero to the largest, or diverging, either side of a midpoint.",
+          "name": "scale",
+          "optional": false,
+          "type": "\"sequential\" | \"diverging\""
+        },
+        {
+          "description": "The least value, such as the column's; a value below it takes the scale's first step.",
+          "name": "min",
+          "optional": false,
+          "type": "number"
+        },
+        {
+          "description": "The greatest value, such as the column's; a value above it takes the scale's last step.",
+          "name": "max",
+          "optional": false,
+          "type": "number"
+        },
+        {
+          "description": "The diverging scale's midpoint; 0 unless set.",
+          "name": "mid",
+          "optional": true,
+          "type": "number | undefined"
+        }
+      ],
+      "exported": true,
+      "module": "@basis/ui",
+      "name": "HeatDomain",
+      "purpose": "How a value maps to a step: from `min` to `max` on the sequential scale, or either side of `mid` on the diverging scale, as far as the larger of `min` and `max` from it."
     },
     {
       "definition": "Omit< ComponentProps<\"svg\">, | \"children\" | \"color\" | \"fill\" | \"stroke\" | \"strokeLinecap\" | \"strokeLinejoin\" | \"strokeWidth\" | \"viewBox\" | \"xmlns\" >",

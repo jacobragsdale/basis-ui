@@ -688,7 +688,9 @@ flowchart TD
    with unsaved changes is left, and `TypedConfirmDialog` asks for a name to be typed before an action that cannot be
    undone. 6.7.7 built on 2026-11-11: `MultiSelect` chooses several with Select all and a count,
    `NumberField` and `Toolbar` wrap Base UI's, `Tree` and `TreeSelect` choose a node on the tree view's keys, and a
-   list of identifiers pasted into a `SecurityPicker` of several adds every security it finds.
+   list of identifiers pasted into a `SecurityPicker` of several adds every security it finds. 6.7.8 built on 2026-11-11:
+   `DescriptionList` lays out a detail page's facts, and `HeatCell` fills a `DataTable`'s cell on the theme's scales,
+   its ink measured from the stylesheet so it reads on every step it can in each theme and mode.
 8. **6.8 The agent's toolbelt.** Lane Preset, in order, since preset changes land one at a time: a catalogue that
    answers, with `vp run docs NAME` (`6.8.1-catalogue`), lint that costs fewer rounds (`6.8.2-lint-limits`), the doors
    that are open (`6.8.3-closed-doors`), one verdict, `vp run verify` (`6.8.4-verify`), a shot that explains itself

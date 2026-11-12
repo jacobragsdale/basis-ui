@@ -17,6 +17,7 @@ const sections = [
   "DateTime",
   "Formatted",
   "Signed and aligned",
+  "DescriptionList",
   "AmountInput",
   "AsOfDatePicker",
   "DatePicker",

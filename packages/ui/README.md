@@ -1619,6 +1619,20 @@ magnitude, growing both ways from the middle when `signed`:
 </CellBar>
 ```
 
+`HeatCell` fills a table's cell with its value's heat, on the theme's sequential scale from `min` to `max`, or on the
+diverging scale either side of `mid`, 0 unless set; give every cell of a column the same domain. Its text takes the
+ink that reads better on its step, the page's text or its background, measured from the stylesheet in the theme and
+mode shown and again when either changes, since the scales' middle steps favour one ink in light mode and the other in
+dark. It fills the cell to its edges, as a `DataTable` column's `cell`:
+
+```tsx
+{ id: "october", header: "Oct", variant: "numeric", value: (row) => row.october,
+  cell: (row) => <HeatCell value={row.october} scale="diverging" min={-0.04} max={0.04}><Pct value={row.october} signed /></HeatCell> }
+```
+
+`DescriptionList` is a detail page's facts, such as a bond's terms: `items` of a `term` and its `description`, each term
+in the muted colour beside its value, or above it with `layout="above"`, in one, two or three `columns`.
+
 ## Using the icons
 
 `@basis/ui` exports a set of lucide's icons under lucide-react's names with the `Icon` suffix: each icon's current

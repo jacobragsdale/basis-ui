@@ -9,6 +9,10 @@ anything of an app.
 
 ## Unreleased
 
+- `HeatCell`, a value's heat filling a table's cell on the theme's sequential or diverging scale, its ink measured to
+  read on its step in the theme and mode shown; and `DescriptionList`, a detail page's facts, each term beside or
+  above its value. What to do: nothing.
+
 - `@basis/parallax`'s grid heads a column the layout gives no title by its name made readable, `market_value_usd` as
   `Market value (USD)` and `position_id` as `Position ID`, and a zoned time by its place, `(New York)` for
   `(America/New_York)`; the Excel and CSV exports' headers and copies with headers say the same. Its body shows a

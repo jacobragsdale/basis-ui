@@ -669,6 +669,13 @@ export {
 export { CellBar, type CellBarProps } from "./components/cell-bar.tsx";
 export { QueryState, type QueryLike, type QueryStateProps } from "./components/query-state.tsx";
 export { Sparkline, type SparklineProps } from "./components/sparkline.tsx";
+export { HeatCell, type HeatCellProps } from "./components/heat-cell.tsx";
+export type { HeatDomain } from "./components/heat.ts";
+export {
+  DescriptionList,
+  type DescriptionItem,
+  type DescriptionListProps,
+} from "./components/description-list.tsx";
 export { StatCard, type StatCardProps, type StatChange } from "./components/stat-card.tsx";
 export type { SparkValue } from "./components/sparkline-geometry.ts";
 
