@@ -9,6 +9,11 @@ anything of an app.
 
 ## Unreleased
 
+- `Combobox`, and `EntityPicker` and `SecurityPicker` on it, draw at most 100 items unless `limit` says otherwise, and
+  say under the list to type to narrow them once they reach it; a `Select` with more than 100 `items` reports an
+  `ERROR` line to telemetry naming `Combobox`. What to do: a combobox that must show more sets `limit`; a long select
+  becomes a combobox.
+
 - `HeatCell`, a value's heat filling a table's cell on the theme's sequential or diverging scale, its ink measured to
   read on its step in the theme and mode shown; and `DescriptionList`, a detail page's facts, each term beside or
   above its value. What to do: nothing.

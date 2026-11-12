@@ -741,6 +741,11 @@ so it keeps shadcn's look.
 
 ### Choosing
 
+A long list stays fast: `Combobox` draws at most 100 items unless its `limit` says otherwise, and once it reaches them
+a line under the list says "Showing the first 100. Type to narrow them."; `EntityPicker` and `SecurityPicker`, on it,
+do the same with an API's results. A `Select` cannot be typed into, so past 100 `items` it reports one `ERROR` line to
+telemetry that names `Combobox`. A list longer than its cap is a reason to filter, not to scroll.
+
 `MultiSelect` chooses several of a short list the page holds, such as books: give it `options`, each a value and its
 words, and a `noun` for the count. Its trigger names the one choice, counts several, "3 of 8 books", or says "All
 books"; its list opens with "Select all", which chooses every option and, chosen again, clears them, and stays open

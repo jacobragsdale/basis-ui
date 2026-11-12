@@ -17,7 +17,10 @@
  *   unless an `aria-label` says otherwise.
  *
  * The chips are in combobox-chips.tsx and `useComboboxAnchor` in combobox-anchor.ts, which keeps each file under
- * `eslint/max-lines` and the hook out of a file of components. */
+ * `eslint/max-lines` and the hook out of a file of components.
+ *
+ * Added: the combobox draws at most 100 items unless its `limit` says otherwise, and its content says how many of the
+ * matches it shows and to type to narrow them (combobox-limit.ts). */
 
 import { Combobox as ComboboxPrimitive } from "@base-ui/react/combobox";
 import { cn } from "cn";
@@ -27,38 +30,11 @@ import { CheckIcon } from "#vendor/lucide/check.tsx";
 import { ChevronDownIcon } from "#vendor/lucide/chevron-down.tsx";
 import { XIcon } from "#vendor/lucide/x.tsx";
 
+import { ComboboxLimitNotice } from "./combobox-limit-notice.tsx";
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "./input-group.tsx";
 
 /** The gap between the input and the popup, in pixels, as shadcn's. */
 const popupOffset = 6;
-
-/** A combobox: an input and the list it filters. Give it `items`, and render each in ComboboxList's child function;
- * `multiple` chooses several, shown as ComboboxChips.
- *
- * @use For a list the page holds that is too long to scan. For a short list, use Select; for a search, EntityPicker.
- * @see Field, FieldLabel, Select, EntityPicker
- * @example
- * ```tsx
- * import { Combobox, ComboboxContent, ComboboxEmpty, ComboboxInput, ComboboxItem, ComboboxList } from "@basis/ui";
- *
- * const issuers = ["Treasury", "Fannie Mae", "Freddie Mac", "World Bank"];
- *
- * <Combobox items={issuers}>
- *   <ComboboxInput placeholder="Issuer" aria-label="Issuer" />
- *   <ComboboxContent>
- *     <ComboboxEmpty>No issuer matches.</ComboboxEmpty>
- *     <ComboboxList>
- *       {(issuer: string) => (
- *         <ComboboxItem key={issuer} value={issuer}>
- *           {issuer}
- *         </ComboboxItem>
- *       )}
- *     </ComboboxList>
- *   </ComboboxContent>
- * </Combobox>;
- * ```
- */
-const Combobox = ComboboxPrimitive.Root;
 
 /** The chosen value as text, or a render function of the chosen items. */
 function ComboboxValue(props: ComboboxPrimitive.Value.Props): ReactElement {
@@ -176,7 +152,10 @@ function ComboboxContent({
             className,
           )}
           {...props}
-        />
+        >
+          {props.children}
+          <ComboboxLimitNotice />
+        </ComboboxPrimitive.Popup>
       </ComboboxPrimitive.Positioner>
     </ComboboxPrimitive.Portal>
   );
@@ -281,8 +260,8 @@ function ComboboxSeparator({
   );
 }
 
+export { Combobox } from "./combobox-root.tsx";
 export {
-  Combobox,
   ComboboxCollection,
   ComboboxContent,
   ComboboxEmpty,

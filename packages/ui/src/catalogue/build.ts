@@ -25,12 +25,18 @@ import { describeTypes } from "./types.ts";
 /** Files that hold parts of another file's family, which that family's one example covers. */
 const familyOfFile: Readonly<Record<string, string>> = {
   "combobox-chips": "combobox",
+  "combobox-root": "combobox",
   "command-dialog": "command",
+  "form-choice-fields": "form-fields",
+  "select-root": "select",
   "command-item": "command",
+  "security-picker-multiple": "security-picker",
   "sidebar-group": "sidebar",
   "sidebar-menu": "sidebar",
   "sidebar-menu-button": "sidebar",
   "sidebar-sections": "sidebar",
+  "tree-row": "tree",
+  "tree-select": "tree",
 };
 
 function familyOf(path: string): string {

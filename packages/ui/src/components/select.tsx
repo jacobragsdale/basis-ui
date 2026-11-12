@@ -21,42 +21,6 @@ import { selectTriggerVariants } from "./select-variants.ts";
 /** The gap between the trigger and the list, in pixels, as shadcn's. */
 const popupOffset = 4;
 
-/** A select: its trigger and its content, which holds the items. Give it `items` to show an item's label as the
- * value, and `value` with `onValueChange`, or `defaultValue`.
- *
- * @use For one choice from a list the page holds, short enough to scan. For a long list, use Combobox; for a search an
- * API answers, EntityPicker; for the browser's own control, NativeSelect.
- * @see Field, FieldLabel, Combobox, NativeSelect, EntityPicker
- *
- * @example
- * ```tsx
- * import { Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@basis/ui";
- *
- * const tenors = [
- *   { label: "2Y", value: "2y" },
- *   { label: "5Y", value: "5y" },
- *   { label: "10Y", value: "10y" },
- * ];
- *
- * <>
- *   <Label htmlFor="tenor">Tenor</Label>
- *   <Select items={tenors} defaultValue="5y">
- *     <SelectTrigger id="tenor">
- *       <SelectValue />
- *     </SelectTrigger>
- *     <SelectContent>
- *       {tenors.map((tenor) => (
- *         <SelectItem key={tenor.value} value={tenor.value}>
- *           {tenor.label}
- *         </SelectItem>
- *       ))}
- *     </SelectContent>
- *   </Select>
- * </>;
- * ```
- */
-const Select = SelectPrimitive.Root;
-
 /** Items under one SelectLabel. */
 function SelectGroup({
   className,
@@ -247,8 +211,8 @@ function SelectSeparator({
   );
 }
 
+export { Select } from "./select-root.tsx";
 export {
-  Select,
   SelectContent,
   SelectGroup,
   SelectItem,

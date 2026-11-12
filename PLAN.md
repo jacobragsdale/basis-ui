@@ -53,7 +53,8 @@ building](#found-while-building) at the end of this page.
 | 6.7.5 | `0845966`                          | `DatePicker`, `MonthPicker`; `DateRangePicker` typed, cleared, trailing presets.                    |
 | 6.7.6 | `0bfee2d`                          | Form fields bound to TanStack Form, `submitErrors`, `UnsavedChangesGuard`, `TypedConfirmDialog`.    |
 | 6.7.7 | `8d3eee6`, `a52d83f` and `f3d58c8` | `MultiSelect`, `NumberField`, `Toolbar`, `Tree`, `TreeSelect`; a list pasted into `SecurityPicker`. |
-| 6.7.8 | this commit                        | `DescriptionList`; `HeatCell` on the theme's scales, its ink measured per theme and mode.           |
+| 6.7.8 | `b327628`                          | `DescriptionList`; `HeatCell` on the theme's scales, its ink measured per theme and mode.           |
+| 6.7.9 | this commit                        | `Combobox` capped at 100 with a line to type to narrow; a long `Select` reports itself.             |
 | 6.8.1 | `7e434e2`                          | `vp run docs NAME` and `--search`; the catalogue complete; README split; `CHANGELOG.md`.            |
 | 6.8.2 | `bc608c0`                          | Six lint limits loosened in app code; messages that name the fix.                                   |
 | 6.8.3 | `3d356fe`                          | The open doors closed, each an `ERROR` line.                                                        |
@@ -76,7 +77,7 @@ Everything below, in this order where one needs another, except 6.10, which is t
 3. ~~6.4.5 to 6.4.8~~ done.
 4. ~~6.5.7~~ done, its choices of look listed in "Found while building" for the maintainer's review. ~~6.5.8~~ done.
 5. ~~6.6.1 to 6.6.6~~ done; 6.6.3 by the `@basis/ui` lane.
-6. ~~6.7.4 to 6.7.8~~ done. **6.7.9 and 6.7.10**, the components. `@tanstack/react-virtual` is approved for 6.7.9.
+6. ~~6.7.4 to 6.7.9~~ done. **6.7.10**, the components. `@tanstack/react-virtual` is approved for 6.7.9.
 7. **6.8.10**, the skills.
 8. **6.9**, the showcase, last, built with only an app's tools, with `packages/showcase/BUILDING.md`.
 9. Then check CI on `main` once, and fix what is red. The nightly `bench` job failed on 2026-11-10 (run
@@ -919,3 +920,5 @@ Each stays here until a step closes it.
 | 6.5.7    | In `high-contrast`'s dark mode a secondary fill pressed returns to rest, as a status's tint does: steps 1 to 4 are its only fills, since step 5 is an edge there.                                                                                                                                                                                                                                                                                           | The maintainer's review                                               |
 | 6.5.7    | A status's token moved from ramp step 9 to step 11, so `text-warning` and its kin stay readable while step 9 is free to be a light solid; `bg-warning`, a market's dot, is now the darker step.                                                                                                                                                                                                                                                             | Apps that used `bg-*` statuses                                        |
 | 6.5.7    | The gallery's density test, which measures controls for whole pixels, runs in the default theme only; `desk`'s control lengths are whole pixels by their inputs but not measured.                                                                                                                                                                                                                                                                           | A later step                                                          |
+| 6.7.9    | `@tanstack/react-virtual`, approved for this step, was not added: capped at 100 items, no list draws enough to need it, and the bundle stays as it was. `Command` is left uncapped: its items filter themselves, so a cap would need each to know its place among the matches, and its lists, an app's routes and commands, are short.                                                                                                                      | The maintainer's review                                               |
+| 6.7.9    | Base UI gives a combobox's matches already capped, so the line under a capped list says "Showing the first 100" and cannot count the rest.                                                                                                                                                                                                                                                                                                                  | A later look                                                          |
