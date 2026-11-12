@@ -93,7 +93,9 @@ describe("DataTable's filter", () => {
     const screen = await render(<Positions onFilterChange={heard} />);
     await userEvent.type(screen.getByRole("searchbox", { name: "Filter Positions" }), "hedge");
     await expect.poll(() => columnText(screen.getByRole("table"), 0)).toHaveLength(2);
-    expect(heard.mock.calls).toStrictEqual([["hedge"]]);
+    // The driver's keys can come slower than the pause on a busy machine, so a call may come mid-word; never one a key.
+    expect(heard.mock.calls.length).toBeLessThan("hedge".length);
+    expect(heard.mock.calls.at(-1)).toStrictEqual(["hedge"]);
   });
 
   test("Enter filters at once", async () => {

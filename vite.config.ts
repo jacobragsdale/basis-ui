@@ -37,7 +37,7 @@ const parallaxGenerated = ["packages/parallax/src/proto/**", "packages/parallax/
 const generatedFixtures = "packages/*/tests/fixtures/*.json";
 /* The two apps, written as an app's agent or ctzd writes one, take the app's limits; the rest of the repo keeps
  * basis-ui's own, as strict as before they were loosened for apps. */
-const apps = ["packages/example/**", "packages/consumer/**", "packages/showcase/**"];
+const apps = ["packages/example/**", "packages/consumer/**"];
 // A spike's reference code runs in the spike's own throwaway project, whose dependencies this workspace lacks.
 const spikeCode = ["docs/spikes/**/*.ts", "docs/spikes/**/*.mjs"];
 /* Every shipped theme passes `checkTheme`, reported at its file by the repo's own rule (check-themes-plugin.ts): a lint
@@ -87,6 +87,10 @@ export default defineConfig({
        * which CI's `vp run @basis/create#prove` runs: here, it would take the library's limits, not an app's, and its
        * imports of @basis/ui would resolve to the workspace's, not an app's installed package. */
       "packages/create/templates/**",
+      /* The showcase is linted and type-checked by its own vp run verify, in CI's parallax job, after @basis/parallax's
+       * build: here its imports of @basis/parallax would resolve to a build the check job does not make, since it needs
+       * the Rust toolchain, and an app's tsconfig.json may not point them at parallax's source, as the demo's does. */
+      "packages/showcase/**",
     ],
     overrides: [
       // Before the preset's overrides, so that a test in an app still turns off what tests turn off.
