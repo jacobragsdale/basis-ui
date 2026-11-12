@@ -106,10 +106,11 @@ output, and keeps the app at the path it names. CI runs it when `packages/ui`, `
    test file: its role and accessible name, its variants, and, for a control, its 24 px target in the compact density.
    Leave no popup open on the page: an open Base UI Select or Combobox hides the rest of the page from assistive
    technology, and an open Select takes the focus, so the page would load scrolled to it. The tests open them instead.
-   The screenshots open them: give an overlay `defaultOpen={usePictured()}`, true when the page shows its section
-   alone, and spread `hovered`, `focused` or `pressed` from `pages/shot.ts` onto an example of that state. Then run `vp
-   run @basis/gallery#shots --update`, look at the section's new screenshots, and commit them; `vp run
-   @basis/gallery#shots` compares every section's with them, in both modes and densities, and runs axe on it.
+   The axe check opens them: give an overlay `defaultOpen={usePictured()}`, true when the page shows its section
+   alone, and spread `hovered`, `focused` or `pressed` from `pages/shot.ts` onto an example of that state. `vp run
+   @basis/gallery#shots` runs axe on every section that way, recording no picture, and compares eleven whole pages
+   with their baselines. A new component gets no screenshot baseline: its tests prove it. Where only the eye can judge,
+   take one shot of the section in the default theme, one mode and one density, look at it, and commit nothing.
 8. Give each exported component a doc comment saying what it is for, and each prop one saying what it does. Give the
    family's main component `@use`, `@see` and an `@example`: a module that imports from `@basis/ui` and ends in the
    component's JSX, with `//` comments only, since `*/` would end the doc comment. Then run
@@ -192,9 +193,8 @@ inputs file, which takes the place of steps 1 and 3.
    several pairs.
 6. Run the theme's tests, `vp test tests/theme.test.ts tests/themes.test.ts tests/theme-selectors.test.ts
    tests/controls.test.ts` in `packages/ui`, then `vp run @basis/ui#build` and the gallery's screenshots,
-   `vp run @basis/gallery#shots`, which shoots every section in every shipped theme. A new theme, or a change to one,
-   moves the baselines it touches: record them again with `--update` and show the before and after, then parallax's
-   grid, pivot, charts and demo suites, which draw in every theme as well.
+   `vp run @basis/gallery#shots`, whose eleven whole-page baselines include one page in each theme. A new theme adds
+   one; a change to one moves those it touches: record them again with `--update` and show the before and after.
 
 A change to the default's values that should not change how anything looks, such as moving a value into the inputs,
 leaves `theme.css` as it was: diff it before committing.

@@ -323,13 +323,18 @@ The firm's own components cover what shadcn does not:
 
 A gallery in this repo shows every component in both modes and both densities, and a page of the theme's tokens read
 from the generated stylesheet: each colour with its contrast against the surfaces it sits on, the type scale, the
-radii, the shadows, the motion and the chart palettes. Its screenshots are the components' visual tests. `vp run
-@basis/gallery#shots` opens each section alone, its menus, dialogs, popovers, tooltips and toasts open and its hovered,
-focused and pressed examples forced through Chromium's DevTools protocol, so no pointer moves, and compares a
-screenshot of it in light and dark, comfortable and compact, with its baseline pixel for pixel, in the pinned Playwright
-image; CI runs it when `@basis/ui` or the gallery changes. A screenshot is named by its section, so a diff names the
-component. Every shot runs an axe accessibility check, WCAG 2.2's levels A and AA and axe's best practices, that a
-violation fails, naming the section, the rule and the element; a rule off for a section is listed with its reason
+radii, the shadows, the motion and the chart palettes. Screenshots are few, by the maintainer's decision of 2026-11-11,
+which replaces step 6.2a's matrix of every section in every theme, mode and density, 1,200 pictures that cost on every
+change: `vp run @basis/gallery#shots` compares eleven whole pages with their baselines pixel for pixel in the pinned
+Playwright image, the busiest four in the default theme, light and dark, the theme's tokens, and one page in each other
+theme, and CI runs it when `@basis/ui` or the gallery changes. A new component, state or feature gets no baseline as a
+matter of course: unit and DOM tests prove its behaviour, and `checkTheme` that every theme holds. A screenshot is taken
+where the eye is the only judge, such as a change of theme or layout or a visual defect, and then the narrowest that
+answers, one section or page in the default theme, one mode and one density, looked at and not committed. The same
+command runs an axe accessibility check on every section, alone, its menus, dialogs, popovers, tooltips and toasts open
+and its hovered, focused and pressed examples forced through Chromium's DevTools protocol, in the default theme, light
+and dark, at the compact density, recording no picture: WCAG 2.2's levels A and AA and axe's best practices, a violation
+failing it with the section, the rule and the element; a rule off for a section is listed with its reason
 beside the spec. The maintainer approved `axe-core` for it on 2026-11-09. A render matrix renders every section, on its
 page and alone, in Chromium and in a Node DOM, in both modes and densities, with no console error. `vp run shot` runs
 the same check on an app's pages, with Base UI's exceptions that hold in every app, each by its rule and a selector.

@@ -1,12 +1,12 @@
-/* Every gallery section's screenshot, in every shipped theme, light and dark, comfortable and compact, compared pixel
- * for pixel with those in `screenshots/`, and the axe check on every section in the same pass. A section is shot
- * alone, on the page its query opens (`&section=`), with its overlays open; its hovered, focused and pressed examples,
- * marked with `data-pictured`, have the state forced on them through Chromium's DevTools protocol, so no pointer
- * moves. A screenshot is named by its page and section, and by its theme unless it is the default, so a diff names
- * the component.
+/* The gallery's visual and accessibility checks, as the maintainer cut them on 2026-11-11: a small set of whole-page
+ * screenshots, a few busy pages in the default theme, light and dark, and one page in each other theme, compared pixel
+ * for pixel with those in `screenshots/`; and the axe check on every section of every page, alone, with its overlays
+ * open and its hovered, focused and pressed examples, marked with `data-pictured`, forced through Chromium's DevTools
+ * protocol, in the default theme, light and dark, at the compact density, recording no picture. `checkTheme` is the
+ * check that every theme passes; a new component, state or feature is proved by unit and DOM tests, not a baseline.
  *
  * Text renders differently from one machine to the next, so these run only in the pinned Playwright image: run them
- * with `vp run @basis/gallery#shots`, and record them again with `--update`. */
+ * with `vp run @basis/gallery#shots`, and record the baselines again with `--update`. */
 
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
@@ -37,7 +37,6 @@ type Mode = "light" | "dark";
 type Density = "comfortable" | "compact";
 
 const modes: readonly Mode[] = ["light", "dark"];
-const densities: readonly Density[] = ["comfortable", "compact"];
 
 /** The time the page's clock is held at: a Friday afternoon in New York, after the close. */
 const now = new Date("2026-11-06T21:30:00Z");
@@ -169,41 +168,6 @@ async function forceStates(page: Page): Promise<CDPSession> {
   return session;
 }
 
-/** A box in whole pixels, in the page's coordinates. */
-type Box = Record<"x" | "y" | "width" | "height", number>;
-
-/** The part of the page a section's screenshot shows: the section, and whatever it has open over the page, such as a
- * menu or a dialog, which Base UI portals to the body beside the gallery's root. */
-async function shotArea(page: Page, section: string): Promise<Box> {
-  return page.evaluate((id) => {
-    const element = document.querySelector(`[data-shot="${id}"]`);
-    if (element === null) {
-      throw new Error(`No element has data-shot="${id}".`);
-    }
-    // Overlays are portalled to the body, beside the gallery's root.
-    const portalled = [
-      ...document.querySelectorAll("body > :not(#root, script), body > :not(#root, script) *"),
-    ];
-    const rects = [element, ...portalled]
-      .map((part) => part.getBoundingClientRect())
-      .filter((rect) => rect.width > 0 && rect.height > 0);
-    const area = {
-      bottom: Math.max(...rects.map((rect) => rect.bottom)),
-      left: Math.min(...rects.map((rect) => rect.left)),
-      right: Math.max(...rects.map((rect) => rect.right)),
-      top: Math.min(...rects.map((rect) => rect.top)),
-    };
-    const left = Math.max(0, Math.floor(area.left));
-    const top = Math.max(0, Math.floor(area.top));
-    return {
-      height: Math.ceil(area.bottom) - top,
-      width: Math.ceil(area.right) - left,
-      x: left + globalThis.scrollX,
-      y: top + globalThis.scrollY,
-    };
-  }, section);
-}
-
 /** Axe's violations on the page, which shows one section alone, one line per element at fault. */
 async function violations(page: Page, section: string): Promise<string[]> {
   await page.addScriptTag({ content: axeSource });
@@ -234,54 +198,79 @@ async function picture(page: Page, view: View): Promise<CDPSession> {
   return session;
 }
 
-/** Shoots one section alone and checks it with axe. Both are soft, so one run lists every section that fails. */
-async function shoot(page: Page, view: View & { readonly section: string }): Promise<void> {
+/** Checks one section alone with axe, as its screenshot used to picture it. Soft, so one run lists every section that
+ * fails. */
+async function check(page: Page, view: View & { readonly section: string }): Promise<void> {
   const session = await picture(page, view);
-  const clip = await shotArea(page, view.section);
-  // The default theme's screenshots carry no theme in their names, as `vp run shot` names them.
-  const theme = view.theme === themeIds[0] ? "" : `-${view.theme}`;
-  await expect
-    .soft(page, `${view.section}, ${view.theme}, ${view.mode}, ${view.density}`)
-    .toHaveScreenshot([view.id, `${view.section}-${view.mode}-${view.density}${theme}.png`], {
-      ...exactly,
-      clip,
-      fullPage: true,
-    });
   expect.soft(await violations(page, view.section), `axe on ${view.section}`).toStrictEqual([]);
   await session.detach();
 }
 
-for (const id of pageIds) {
-  for (const theme of themeIds) {
-    for (const mode of modes) {
-      for (const density of densities) {
-        test(`${id}: every section, ${theme}, ${mode}, ${density}`, async ({ page }) => {
-          const errors: string[] = [];
-          page.on("pageerror", (error) => errors.push(error.message));
-          page.on("console", (message) => {
-            if (message.type() === "error") {
-              errors.push(message.text());
-            }
-          });
-          await page.clock.setFixedTime(now);
-          await open(page, { density, id, mode, theme });
-          const sections = await page
-            .locator("[data-shot]")
-            .evaluateAll((elements) =>
-              elements.map((element) =>
-                element instanceof HTMLElement ? (element.dataset["shot"] ?? "") : "",
-              ),
-            );
-          expect(sections.length, `the sections on ${id}`).toBeGreaterThan(0);
-          await inTurn(sections, async (section) => {
-            await shoot(page, { density, id, mode, section, theme });
-          });
-          const unexpected = errors.filter(
-            (error) => !expectedErrors.some((expected) => expected.test(error)),
-          );
-          expect(unexpected, `errors on ${id}`).toStrictEqual([]);
-        });
-      }
+/** Collects the errors a page logs, which a test holds to the ones it logs on purpose. */
+function errorsOf(page: Page): string[] {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  page.on("console", (message) => {
+    if (message.type() === "error") {
+      errors.push(message.text());
     }
+  });
+  return errors;
+}
+
+/** The pages compared whole, each in one theme and mode, at the compact density: the busiest pages in the default
+ * theme, light and dark, the theme's tokens, and one page in each other theme. */
+const baselines: readonly Omit<View, "density" | "section">[] = [
+  ...(["light", "dark"] as const).flatMap((mode) =>
+    (["forms-and-inputs", "data", "feedback-and-display", "app-in-shell"] as const).map((id) => ({
+      id,
+      mode,
+      theme: themeIds[0],
+    })),
+  ),
+  { id: "tokens", mode: "light", theme: themeIds[0] },
+  { id: "data", mode: "dark", theme: "desk" },
+  { id: "forms-and-inputs", mode: "light", theme: "high-contrast" },
+];
+
+for (const view of baselines) {
+  // The default theme's screenshots carry no theme in their names, as `vp run shot` names them.
+  const theme = view.theme === themeIds[0] ? "" : `-${view.theme}`;
+  test(`${view.id} draws as in its screenshot, ${view.theme}, ${view.mode}`, async ({ page }) => {
+    await page.clock.setFixedTime(now);
+    await open(page, { ...view, density: "compact" });
+    await page.mouse.move(0, 0);
+    await settled(page);
+    await paintAfresh(page);
+    await expect(page).toHaveScreenshot(`${view.id}-${view.mode}${theme}.png`, {
+      ...exactly,
+      fullPage: true,
+    });
+  });
+}
+
+for (const id of pageIds) {
+  for (const mode of modes) {
+    test(`${id}: axe on every section, ${mode}`, async ({ page }) => {
+      const errors = errorsOf(page);
+      await page.clock.setFixedTime(now);
+      const view = { density: "compact", id, mode, theme: themeIds[0] } as const;
+      await open(page, view);
+      const sections = await page
+        .locator("[data-shot]")
+        .evaluateAll((elements) =>
+          elements.map((element) =>
+            element instanceof HTMLElement ? (element.dataset["shot"] ?? "") : "",
+          ),
+        );
+      expect(sections.length, `the sections on ${id}`).toBeGreaterThan(0);
+      await inTurn(sections, async (section) => {
+        await check(page, { ...view, section });
+      });
+      const unexpected = errors.filter(
+        (error) => !expectedErrors.some((expected) => expected.test(error)),
+      );
+      expect(unexpected, `errors on ${id}`).toStrictEqual([]);
+    });
   }
 }

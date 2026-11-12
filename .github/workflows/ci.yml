@@ -163,8 +163,8 @@ jobs:
       - run: vp run @basis/create#prove
         timeout-minutes: 10
 
-  # Every gallery section's screenshot, in light and dark, comfortable and compact, and its axe check, in the pinned
-  # Playwright image, against the gallery built here on @basis/ui's build. A change to either runs them.
+  # The gallery's eleven whole-page screenshots and the axe check on every section, in the pinned Playwright image,
+  # against the gallery built here on @basis/ui's build. A change to either runs them.
   gallery-shots:
     name: ui / Gallery screenshots and axe (Playwright image)
     needs: changes
@@ -176,7 +176,7 @@ jobs:
         with:
           node-version-file: .node-version
           cache: true
-      # Builds @basis/ui and the gallery, and runs every section's screenshot and axe check in the image.
+      # Builds @basis/ui and the gallery, and runs the whole-page screenshots and every section's axe check in the image.
       - run: vp run @basis/gallery#shots
       - uses: actions/upload-artifact@v7
         if: failure()

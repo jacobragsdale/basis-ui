@@ -19,7 +19,7 @@ const pageIds = [
 
 type PageId = (typeof pageIds)[number];
 
-/** The themes @basis/ui ships, the default first, which every section is shot in; a test holds them to the
+/** The themes @basis/ui ships, the default first, which the whole-page baselines name; a test holds them to the
  * library's `themeNames`. */
 const themeIds = ["default", "desk", "high-contrast"] as const;
 

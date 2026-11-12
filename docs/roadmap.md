@@ -522,7 +522,10 @@ flowchart TD
      with baselines in the pinned Playwright image by `vp run @basis/gallery#shots`, an axe check on each, a render
      matrix test, and a gallery page of the tokens. Built on 2026-11-09: each of the gallery's 84 sections is shot
      alone, its overlays open and its hovered, focused and pressed examples forced, in light and dark, comfortable and
-     compact, against 336 baselines, with axe on each, `axe-core` pinned with the maintainer's approval;
+     compact, against 336 baselines, with axe on each, `axe-core` pinned with the maintainer's approval. Cut on
+     2026-11-11 by the maintainer's decision, which replaces the matrix: eleven whole-page baselines, the busiest four
+     pages in the default theme, light and dark, the tokens, and one page in each other theme, and axe on every section
+     in the default theme, light and dark, recording no picture; a new component, state or feature gets no baseline;
    - **6.2b** (`6.2b-scale-harness`): `vp run @basis/parallax#bench`, a harness that measures load, sort, filter,
      search, pivots and drawing at 150,000, 1,000,000 and 2,000,000 rows against budgets, with a phase profile of the
      engine, written up in `docs/spikes/scale-1m.md`. Built on 2026-11-09: the harness runs the package's build with
