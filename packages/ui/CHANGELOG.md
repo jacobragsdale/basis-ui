@@ -9,6 +9,9 @@ anything of an app.
 
 ## Unreleased
 
+- `@basis/parallax` exports `PerformanceOverlay`, the demo's performance overlay, for an app to show from a tool such as
+  a palette command; every grid's drawing counters reach it with no `ref`. What to do: nothing.
+
 - `vp build --mode fixtures` builds the app in fixture mode, as static files whose `/api` MSW's worker answers from
   `fixtures/` and orval's handlers, with the fixtures' body files beside the page, for a demonstration with no backend.
   `.fixtures/` is never built in. What to do: nothing.

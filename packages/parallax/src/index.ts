@@ -3,6 +3,7 @@
 
 // The React layer.
 export { ParallaxProvider, type ParallaxProviderProps } from "./react/provider.tsx";
+export { PerformanceOverlay } from "./tools/performance-overlay.tsx";
 export { useParallaxClient, type ParallaxThemeState } from "./react/context.ts";
 export {
   useDataset,

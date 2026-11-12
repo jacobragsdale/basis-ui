@@ -12,7 +12,6 @@ import type { ReactNode } from "react";
 import { datasetDates } from "#api/datasets.ts";
 import { useDemoDataset } from "#shell/datasets.ts";
 import type { DemoPage } from "#shell/pages.ts";
-import { trackGrid } from "#tools/grid-stats.ts";
 
 import { grouped } from "./layouts.ts";
 import type { OpenedView } from "./view-link.ts";
@@ -86,7 +85,6 @@ function ViewPage({
   const [note, setNote] = useState(opened.note);
   const view = grouped(layout) ? (
     <Pivot
-      ref={trackGrid(opened.dataset)}
       dataset={dataset}
       layout={layout}
       onLayoutChange={setLayout}
@@ -94,7 +92,6 @@ function ViewPage({
     />
   ) : (
     <Grid
-      ref={trackGrid(opened.dataset)}
       dataset={dataset}
       layout={layout}
       onLayoutChange={setLayout}

@@ -9,7 +9,6 @@ import type { ReactNode } from "react";
 
 import { useDemoDataset } from "#shell/datasets.ts";
 import { pages } from "#shell/pages.ts";
-import { trackGrid } from "#tools/grid-stats.ts";
 
 import { TechnicalControls } from "./technical-controls.tsx";
 import type { Apply, Change } from "./technical-controls.tsx";
@@ -93,7 +92,6 @@ function TechnicalPage(): ReactNode {
             : "The days brushed on the chart"}
         </h2>
         <Grid
-          ref={trackGrid("prices")}
           dataset={prices}
           layout={daysLayout(page.settings, page.brush)}
           toolbar={{ group: false }}

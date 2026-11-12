@@ -18220,6 +18220,19 @@
       "signature": "basisTest({ browser = process.env[\"BASIS_TEST_DOM\"] !== \"node\", }: BasisTestOptions = {}): Promise<NonNullable<ViteUserConfig[\"test\"]>>"
     },
     {
+      "kind": "function",
+      "module": "@basis/parallax",
+      "name": "PerformanceOverlay",
+      "purpose": "The performance overlay, a card fixed at the window's corner: the frame time as the median and 95th percentile of the last few seconds, the main-thread time long frames blocked, each grid's drawing time, row latency, input to screen and first rows, and the tab's memory, with a button that copies them as a report with the browser, the processors and the window. It samples only while shown, so show it from a tool, such as a command in the palette.",
+      "signature": "PerformanceOverlay(): ReactNode",
+      "use": "For checking an app on a slow desktop, such as a Citrix session: show it, use the page, and copy the report.",
+      "with": [
+        "Grid",
+        "ParallaxProvider"
+      ],
+      "example": "import { PerformanceOverlay } from \"@basis/parallax\";\n\n// Shown while a tool, such as a command in the palette, has turned it on.\n<PerformanceOverlay />;\n"
+    },
+    {
       "kind": "hook",
       "module": "@basis/parallax",
       "name": "useParallaxClient",

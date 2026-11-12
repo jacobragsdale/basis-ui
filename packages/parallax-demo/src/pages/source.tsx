@@ -8,7 +8,6 @@ import { useState } from "react";
 import type { ReactNode } from "react";
 
 import { pages } from "#shell/pages.ts";
-import { trackGrid } from "#tools/grid-stats.ts";
 
 import { firstSlots, newestFirst, noteOf, shownOf, withFile } from "./source-loads.ts";
 import type { Slots } from "./source-loads.ts";
@@ -57,12 +56,7 @@ function SourcePage(): ReactNode {
         </output>
       </div>
       {shown === null ? null : (
-        <Grid
-          key={shown.load.name}
-          ref={trackGrid(shown.load.name)}
-          dataset={shown.dataset}
-          layout={{ dataset: shown.load.name }}
-        />
+        <Grid key={shown.load.name} dataset={shown.dataset} layout={{ dataset: shown.load.name }} />
       )}
     </Page>
   );

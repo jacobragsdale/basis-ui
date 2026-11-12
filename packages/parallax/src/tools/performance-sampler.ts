@@ -3,7 +3,7 @@
  * the tab's memory. While open it asks for a frame at every vsync to time them, which costs a little main-thread time
  * of its own. */
 
-import type { DrawStats } from "@basis/parallax";
+import type { DrawStats } from "#grid/paint/stats.ts";
 import { useEffect, useState } from "react";
 
 import { gridStats } from "./grid-stats.ts";

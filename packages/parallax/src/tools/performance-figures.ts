@@ -1,7 +1,7 @@
 /* The performance overlay's figures, from what it samples: frame times, long frames, each grid's drawing counters and
  * the tab's memory, as the lines it shows and the report it copies. */
 
-import type { DrawStats } from "@basis/parallax";
+import type { DrawStats } from "#grid/paint/stats.ts";
 import { numberText } from "@basis/ui";
 
 import type { GridStats } from "./grid-stats.ts";

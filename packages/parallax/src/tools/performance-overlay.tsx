@@ -1,4 +1,4 @@
-/* The performance overlay, for checking the demo on a Citrix desktop. It shows the figures parallax's budgets name and
+/* The performance overlay, for checking an app on a desktop such as a Citrix session's. It shows the figures parallax's budgets name and
  * copies them as a report: frame time, as the median and 95th percentile of the last few seconds the tab was visible;
  * main-thread time blocked by long frames; for each grid on the page, its drawing time per frame, the time from asking
  * for rows to drawing them, the time from an input such as a click or a keystroke to drawing the change it made, and
@@ -7,20 +7,17 @@
  * Chromium's main-thread JavaScript heap. */
 
 import { Button, Card, CardContent, CardHeader, CardTitle, readPreferences } from "@basis/ui";
-import { useLocation } from "@tanstack/react-router";
 import { useState } from "react";
 import type { ReactNode } from "react";
-
-import { pageList } from "#shell/pages.ts";
 
 import { gridStats } from "./grid-stats.ts";
 import { figureLines, report } from "./performance-figures.ts";
 import type { Line } from "./performance-figures.ts";
 import { usePerformance } from "./performance-sampler.ts";
 
-/** What the page shows, for the report: the page, its grids, and the mode and density. */
-function showing(path: string): string {
-  const title = pageList.find((page) => page.path === path)?.title ?? path;
+/** What the page shows, for the report: its title, its grids, and the mode and density. */
+function showing(): string {
+  const title = document.title === "" ? location.pathname : document.title;
   const names = gridStats().map((grid) => grid.name);
   const grids = names.length === 0 ? "no grids" : `${names.join(" and ")}, grids`;
   const { density } = readPreferences();
@@ -29,16 +26,13 @@ function showing(path: string): string {
 }
 
 /** Copies the report of `lines`, taken now on this machine, saying how it went. */
-async function copyReport(
-  lines: readonly Line[],
-  { path, setNote }: { readonly path: string; readonly setNote: (note: string) => void },
-): Promise<void> {
+async function copyReport(lines: readonly Line[], setNote: (note: string) => void): Promise<void> {
   const text = report(lines, {
     browser: navigator.userAgent,
     isolated: crossOriginIsolated,
     page: location.href,
     processors: navigator.hardwareConcurrency,
-    showing: showing(path),
+    showing: showing(),
     taken: new Date().toISOString(),
     window: `${String(innerWidth)} x ${String(innerHeight)} at ${String(devicePixelRatio)}x`,
   });
@@ -66,9 +60,24 @@ function Figures({ lines }: { readonly lines: readonly Line[] }): ReactNode {
   );
 }
 
+/**
+ * The performance overlay, a card fixed at the window's corner: the frame time as the median and 95th percentile of the
+ * last few seconds, the main-thread time long frames blocked, each grid's drawing time, row latency, input to screen
+ * and first rows, and the tab's memory, with a button that copies them as a report with the browser, the processors
+ * and the window. It samples only while shown, so show it from a tool, such as a command in the palette.
+ *
+ * @use For checking an app on a slow desktop, such as a Citrix session: show it, use the page, and copy the report.
+ * @see Grid, ParallaxProvider
+ * @example
+ * ```tsx
+ * import { PerformanceOverlay } from "@basis/parallax";
+ *
+ * // Shown while a tool, such as a command in the palette, has turned it on.
+ * <PerformanceOverlay />;
+ * ```
+ */
 function PerformanceOverlay(): ReactNode {
   const { figures, memory } = usePerformance();
-  const path = useLocation({ select: (location) => location.pathname });
   const [note, setNote] = useState("");
   const lines = figures === null ? [] : figureLines(figures, memory);
   return (
@@ -85,7 +94,7 @@ function PerformanceOverlay(): ReactNode {
                 size="sm"
                 variant="outline"
                 onClick={() => {
-                  copyReport(lines, { path, setNote }).catch(reportError);
+                  copyReport(lines, setNote).catch(reportError);
                 }}
               >
                 Copy report

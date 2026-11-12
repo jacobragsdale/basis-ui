@@ -552,6 +552,7 @@ them.
 | `<Grid>` | A data grid and pivot table of a dataset as a layout describes it; see [Show a grid](#show-a-grid) |
 | `<Pivot>` | A pivot table with its settings beside it, and the rows behind a value; see [Pivot a table](#pivot-a-table) |
 | `<Chart>` | A chart of a dataset as a layout describes it, or of rows the page holds; see [Draw a chart](#draw-a-chart) |
+| `<PerformanceOverlay>` | The performance overlay, for checking an app on a slow desktop: frame times, long frames, each grid's drawing and latency, and memory, and a button that copies them as a report. Show it from a tool, such as a palette command; it samples only while shown |
 | `useParallaxTheme()`             | The theme a component draws in, the `attributes` its element carries, and `read(element)`, which reads the tokens in effect and changes whenever they may have                                                                                     |
 
 A changed layout updates the open view in place, and a changed viewport or chart
@@ -633,7 +634,7 @@ The demo, in [`packages/parallax-demo`](../parallax-demo), is a React app on
 the positions' pivot, grids of trades and prices, the small tables, data the app
 makes itself, a dashboard, the breakdowns, every chart kind, the
 technical-analysis page, small charts and the fixed-income page, in the user's
-theme, mode and density, with the performance overlay. It needs
+theme, mode and density, with the performance overlay, which the package exports as `PerformanceOverlay`. It needs
 the Rust toolchain that `rust-toolchain.toml` names and the `wasm-bindgen`
 command-line tool at the version in `Cargo.lock`, as the package's build does.
 

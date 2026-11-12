@@ -84,7 +84,7 @@ class GridController {
     this.#surface = surface;
     const stop = surface.listen(() => {
       this.#update();
-    });
+    }, this);
     this.#painter.opening(performance.now());
     this.#update();
     return () => {

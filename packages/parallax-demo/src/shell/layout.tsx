@@ -3,13 +3,11 @@
  * Ctrl+K's command palette and ?'s list of shortcuts. The sidebar's footer holds the demo's tools in the user menu's
  * place, and the palette opens them too; the tools open over the page. */
 
-import { ParallaxProvider } from "@basis/parallax";
+import { ParallaxProvider, PerformanceOverlay } from "@basis/parallax";
 import { AppShell, GaugeIcon } from "@basis/ui";
 import type { PaletteCommand } from "@basis/ui";
 import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
-
-import { PerformanceOverlay } from "#tools/performance.tsx";
 
 import { DemoDatasets } from "./demo-datasets.tsx";
 import { ToolButtons } from "./tool-buttons.tsx";

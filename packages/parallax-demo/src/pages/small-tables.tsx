@@ -11,7 +11,6 @@ import type { ReactNode } from "react";
 
 import { useDemoDataset } from "#shell/datasets.ts";
 import { pages } from "#shell/pages.ts";
-import { trackGrid } from "#tools/grid-stats.ts";
 
 import { blotter, book } from "./small-table-layouts.ts";
 
@@ -49,7 +48,6 @@ function SmallTable({
     <section data-table={name} className="flex min-h-0 flex-col gap-1.5">
       <TableHeading name={name === "book" ? "Book" : "Blotter"} holds={holds} />
       <Grid
-        ref={trackGrid(name)}
         dataset={dataset}
         layout={layout}
         onLayoutChange={setLayout}

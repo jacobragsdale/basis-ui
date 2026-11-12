@@ -10,7 +10,6 @@ import type { ReactNode } from "react";
 import { datasetDates } from "#api/datasets.ts";
 import { useDemoDataset } from "#shell/datasets.ts";
 import { pages } from "#shell/pages.ts";
-import { trackGrid } from "#tools/grid-stats.ts";
 
 import { largestFirst, withSelection, withShare } from "./layouts.ts";
 import { blotter, book } from "./small-table-layouts.ts";
@@ -139,7 +138,6 @@ function DashboardGrid({
     <section data-table={name} className="flex min-h-120 flex-col gap-1.5">
       <TableHeading name={name === "book" ? "Book" : "Blotter"} holds={holds} />
       <Grid
-        ref={trackGrid(name)}
         dataset={dataset}
         layout={layout}
         onLayoutChange={onLayoutChange}

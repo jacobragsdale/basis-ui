@@ -1,9 +1,15 @@
-/* The tools' arithmetic and text: the performance overlay's figures and report. */
+/* The performance overlay's arithmetic and text: its figures and its report. */
 
-import type { DrawStats } from "@basis/parallax";
+import type { DrawStats } from "#grid/paint/stats.ts";
 import { describe, expect, test } from "vite-plus/test";
 
-import { drawTime, figureLines, inputToScreen, percentile, report } from "./performance-figures.ts";
+import {
+  drawTime,
+  figureLines,
+  inputToScreen,
+  percentile,
+  report,
+} from "#tools/performance-figures.ts";
 
 const stats = (frames: number, drawMs: number): DrawStats => ({
   cellDraws: 0,

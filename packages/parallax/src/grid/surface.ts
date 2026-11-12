@@ -18,6 +18,8 @@ import type { CellRef, Selection } from "./selection.ts";
 import { wheelTop } from "./wheel.ts";
 import { searchIn } from "./window.ts";
 import { observeNextFrame } from "./next-frame-resize.ts";
+import { trackGrid } from "#tools/grid-stats.ts";
+import type { DrawStats } from "./paint/stats.ts";
 
 /** How tall a horizontal scrollbar is until one shows and is measured: the widest a browser draws. */
 const widestScrollbar = 14;
@@ -76,8 +78,9 @@ class GridSurface {
     this.#copier = new Copier(host);
   }
 
-  /** Listens to the elements, calling `changed` after a scroll or a resize; returns a function that stops. */
-  public listen(changed: () => void): () => void {
+  /** Listens to the elements, calling `changed` after a scroll or a resize, and gives the performance overlay the
+   * grid's counters; returns a function that stops. */
+  public listen(changed: () => void, counted: { readonly drawStats: DrawStats }): () => void {
     const { scroll, canvas } = this.dom.parts;
     const pointer = this.#pointer;
     const scrolled = (): void => {
@@ -101,6 +104,7 @@ class GridSurface {
       on(canvas, "pointercancel", pointer.cancel),
       on(canvas, "lostpointercapture", pointer.cancel),
       on(canvas, "dblclick", pointer.doubleClick),
+      trackGrid(scroll, () => counted.drawStats),
     ];
     this.#measure();
     return () => {
