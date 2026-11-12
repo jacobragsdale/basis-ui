@@ -763,7 +763,10 @@ flowchart TD
    its `.gitignore`, so the app had none, failed the sync stage, and its lint read `node_modules` until it was killed;
    the template holds it as `_gitignore`, which `vp create` renames. The root's lint still skips the template, which is
    linted as the app made from it, by its own configuration. Not yet: `vp create @basis:app` itself, which needs 1.8's
-   registry.
+   registry. 6.8.10 built on 2026-11-11: beside `drive-the-app`,
+   which now names the three themes, `build-a-page` starts a page from an operation and names the components to reach
+   for, `show-data` shows a large table, a pivot or a chart with `@basis/parallax`, and `verify-the-app` runs and reads
+   `vp run verify`; `vp run sync` writes each into an app, and the block of `AGENTS.md` it writes names them.
 9. **6.9 The showcase** (`6.9-showcase`, then a branch per page). `packages/showcase`, made from the template, with ten
    pages: overview, blotter, positions, relative value, P&L explain, curves, a bond, booking a trade, import, and a
    probe of the desktop. An agent builds it with only the shipped tools, and logs in `BUILDING.md` each place they fell

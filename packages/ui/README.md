@@ -1566,9 +1566,10 @@ files are still written, so the picture shows the page as it stood.
 
 It needs the Chromium that `@basis/ui`'s Playwright pins, which `vp dlx playwright@1.65.0 install chromium` installs, as
 `vp run doctor` says. It trusts only the `vp dev` that answers on the app's port with the app's own folder, and one it
-starts writes its output to the task's, so a fixture's `ERROR` line shows there. The skill in
-`skills/drive-the-app` says how an agent looks at its pages and clicks through them; the UI repo template copies it
-into each app.
+starts writes its output to the task's, so a fixture's `ERROR` line shows there. The skills in `skills/`, which `vp
+run sync` writes into each app at `.agents/skills/` and `.claude/skills/`, tell an app's agent how: `drive-the-app` to
+look at its pages and click through them, `build-a-page` to start a page from an operation, `show-data` to use the
+grid, pivot and charts, and `verify-the-app` to run and read `vp run verify`.
 
 ## Weighing the build: `vp run budget`
 

@@ -70,6 +70,8 @@ nothing.
 - `vp run shot ROUTE`, such as `vp run shot /` or `vp run shot "/positions?book=rates" --dark`, pictures a route of
   the running `vp dev` in headless Chromium and writes its screenshot, accessibility tree and console errors to
   `.shots/`. The drive-the-app skill says how to click through the app with Playwright CLI.
+- Skills: build-a-page starts a page from an operation, show-data shows a large table, a pivot or a chart with
+  `@basis/parallax`, verify-the-app runs and reads `vp run verify`, and drive-the-app looks at a page.
 
 ### Writing the app
 

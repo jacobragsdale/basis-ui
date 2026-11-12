@@ -55,7 +55,8 @@ building](#found-while-building) at the end of this page.
 | 6.7.7  | `8d3eee6`, `a52d83f` and `f3d58c8` | `MultiSelect`, `NumberField`, `Toolbar`, `Tree`, `TreeSelect`; a list pasted into `SecurityPicker`. |
 | 6.7.8  | `b327628`                          | `DescriptionList`; `HeatCell` on the theme's scales, its ink measured per theme and mode.           |
 | 6.7.9  | `67544d9`                          | `Combobox` capped at 100 with a line to type to narrow; a long `Select` reports itself.             |
-| 6.7.10 | `369d655` and this commit          | Every props type exported; `basis/no-as-child`; Select's two sizes on every input.                  |
+| 6.7.10 | `369d655` and `f737a4b`            | Every props type exported; `basis/no-as-child`; Select's two sizes on every input.                  |
+| 6.8.10 | this commit                        | `build-a-page`, `show-data`, `verify-the-app` beside `drive-the-app`, in every app through sync.    |
 | 6.8.1  | `7e434e2`                          | `vp run docs NAME` and `--search`; the catalogue complete; README split; `CHANGELOG.md`.            |
 | 6.8.2  | `bc608c0`                          | Six lint limits loosened in app code; messages that name the fix.                                   |
 | 6.8.3  | `3d356fe`                          | The open doors closed, each an `ERROR` line.                                                        |
@@ -79,7 +80,7 @@ Everything below, in this order where one needs another, except 6.10, which is t
 4. ~~6.5.7~~ done, its choices of look listed in "Found while building" for the maintainer's review. ~~6.5.8~~ done.
 5. ~~6.6.1 to 6.6.6~~ done; 6.6.3 by the `@basis/ui` lane.
 6. ~~6.7.4 to 6.7.10~~ done.
-7. **6.8.10**, the skills.
+7. ~~6.8.10~~ done.
 8. **6.9**, the showcase, last, built with only an app's tools, with `packages/showcase/BUILDING.md`.
 9. Then check CI on `main` once, and fix what is red. The nightly `bench` job failed on 2026-11-10 (run
    `42817708470`); find why.

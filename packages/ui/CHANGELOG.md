@@ -9,6 +9,9 @@ anything of an app.
 
 ## Unreleased
 
+- Three more skills, which `vp run sync` writes into the app beside `drive-the-app`: `build-a-page`, `show-data` and
+  `verify-the-app`, and `AGENTS.md`'s block names them. What to do: run `vp run sync`.
+
 - Every input takes Select's two sizes, `size="sm"` and the default: `Input`, `InputGroup`, `AmountInput`, the date
   pickers, `NumberField`, `ComboboxInput`, `EntityPicker`, `SecurityPicker` and the form fields. `Input`'s `size` is
   no longer the HTML attribute's width in characters. What to do: an `<Input size={20}>` gives its width with a class,

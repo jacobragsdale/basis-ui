@@ -19,8 +19,8 @@ vp run shot --all                                       # every route of the rou
 vp run shot /bonds/US91282CRF04 --all --json            # with a page for /bonds/$security, as one line of JSON
 ```
 
-`--theme` takes only `default` until @basis/ui lets the user choose a theme. The mode and density are set through the
-preferences cookie, as the user menu sets them.
+`--theme` takes `default`, `desk` or `high-contrast`, as `vp run shot /positions --theme desk`. The theme, mode and
+density are set through the preferences cookie, as the user menu sets them.
 
 It uses the `vp dev` already running, or starts one in fixture mode and stops it after, and writes five files to
 `.shots/` for each route, named after it, with `-dark`, `-comfortable` and `--SELECTOR` added when asked for:
