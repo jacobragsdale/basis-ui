@@ -20,6 +20,12 @@ const byFund: LayoutFor<Position> = {
     { aggregate: "sum", column: "dv01_usd" },
   ],
   split_by: ["long_short"],
+  // A measure's header is its label, `sum(market_value_usd)`, unless titled here.
+  titles: {
+    "sum(daily_pnl_usd)": "P&L on the day",
+    "sum(dv01_usd)": "DV01",
+    "sum(market_value_usd)": "Market value",
+  },
 };
 
 function PositionsPage(): ReactElement {

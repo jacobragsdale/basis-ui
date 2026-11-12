@@ -5,16 +5,13 @@
 import {
   Button,
   ErrorAlert,
-  Field,
-  FieldError,
   FieldGroup,
-  FieldLabel,
   FormAmountField,
   FormDateField,
+  FormSecurityField,
   FormSelectField,
   FormTextField,
   Page,
-  SecurityPicker,
   TypedConfirmDialog,
   UnsavedChangesGuard,
   amountSchema,
@@ -117,21 +114,15 @@ function TicketFields({ form }: { readonly form: ReturnType<typeof useTicketForm
     <FieldGroup>
       <form.Field name="cusip">
         {(field) => (
-          <Field>
-            <FieldLabel htmlFor="ticket-cusip">Bond</FieldLabel>
-            <SecurityPicker
-              id="ticket-cusip"
-              itemKey={(security) => security.cusip}
-              itemLabel={(security) => security.description}
-              kinds={["cusip"]}
-              aria-invalid={field.state.meta.errors.length > 0}
-              onValueChange={(security) => {
-                field.handleChange(security?.cusip ?? "");
-              }}
-              search={search}
-            />
-            <FieldError errors={field.state.meta.errors} />
-          </Field>
+          <FormSecurityField
+            field={field}
+            label="Bond"
+            description="Its CUSIP, such as ATL000A02."
+            itemKey={(security) => security.cusip}
+            itemLabel={(security) => security.description}
+            kinds={["cusip"]}
+            search={search}
+          />
         )}
       </form.Field>
       <form.Field name="side">
