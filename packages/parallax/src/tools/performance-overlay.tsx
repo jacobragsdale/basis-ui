@@ -15,9 +15,11 @@ import { figureLines, report } from "./performance-figures.ts";
 import type { Line } from "./performance-figures.ts";
 import { usePerformance } from "./performance-sampler.ts";
 
-/** What the page shows, for the report: its title, its grids, and the mode and density. */
+/** What the page shows, for the report: its heading, as `@basis/ui`'s Page writes it, or the document's title, its
+ * grids, and the mode and density. */
 function showing(): string {
-  const title = document.title === "" ? location.pathname : document.title;
+  const heading = document.querySelector("h1")?.textContent.trim() ?? "";
+  const title = heading === "" ? document.title : heading;
   const names = gridStats().map((grid) => grid.name);
   const grids = names.length === 0 ? "no grids" : `${names.join(" and ")}, grids`;
   const { density } = readPreferences();
