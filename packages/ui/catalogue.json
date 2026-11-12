@@ -850,7 +850,7 @@
     },
     {
       "extends": [
-        "ComponentProps<\"input\">"
+        "Omit<ComponentProps<\"input\">, \"size\">"
       ],
       "family": "combobox",
       "module": "@basis/ui",
@@ -883,6 +883,12 @@
           "name": "disabled",
           "optional": true,
           "type": "boolean | undefined"
+        },
+        {
+          "description": "The field's height: the select's default, or `sm` for a dense row.",
+          "name": "size",
+          "optional": true,
+          "type": "\"default\" | \"sm\" | undefined"
         },
         {
           "description": "Whether the input ends in a button that opens the list; true by default.",
@@ -1431,13 +1437,13 @@
     },
     {
       "extends": [
-        "ComponentProps<\"input\">"
+        "Omit<ComponentProps<\"input\">, \"size\">"
       ],
       "family": "input",
       "module": "@basis/ui",
       "name": "Input",
       "props": [],
-      "purpose": "A text input. With `aria-invalid` its outline turns the destructive colour; a `FieldError` beside it says why.",
+      "purpose": "A text input, at the select's two sizes: `size=\"sm\"` for a dense row. With `aria-invalid` its outline turns the destructive colour; a `FieldError` beside it says why.",
       "use": "For a line of text, such as a name or a CUSIP. For an amount or a rate, use AmountInput; for a date, AsOfDatePicker; for several lines, Textarea; for a search an API answers, EntityPicker.",
       "with": [
         "Field",
@@ -1447,7 +1453,15 @@
         "AmountInput",
         "Textarea"
       ],
-      "variants": {},
+      "variants": {
+        "size": {
+          "default": "default",
+          "options": [
+            "default",
+            "sm"
+          ]
+        }
+      },
       "example": "import { Field, FieldLabel, Input } from \"@basis/ui\";\n\n<Field>\n  <FieldLabel htmlFor=\"book\">Book</FieldLabel>\n  <Input id=\"book\" placeholder=\"Rates\" />\n</Field>;\n"
     },
     {
@@ -1457,7 +1471,14 @@
       "family": "input-group",
       "module": "@basis/ui",
       "name": "InputGroup",
-      "props": [],
+      "props": [
+        {
+          "description": "The group's height: the select's default, or `sm` for a dense row.",
+          "name": "size",
+          "optional": true,
+          "type": "\"default\" | \"sm\" | undefined"
+        }
+      ],
       "purpose": "An input's outline holding the input and its addons. Name the input itself, with a `<label>` or `aria-label`.",
       "use": "For an input with an icon, a unit, text or a button inside its outline, such as a search box with its icon. For a plain input, use Input; for controls side by side, ButtonGroup.",
       "with": [
@@ -13567,12 +13588,18 @@
     },
     {
       "extends": [
-        "Omit<ComponentProps<\"input\">, \"value\" | \"defaultValue\" | \"onChange\" | \"type\" | \"children\">"
+        "Omit<ComponentProps<\"input\">, \"value\" | \"defaultValue\" | \"onChange\" | \"type\" | \"children\" | \"size\">"
       ],
       "family": "amount-input",
       "module": "@basis/ui",
       "name": "AmountInput",
       "props": [
+        {
+          "description": "The field's height: the select's default, or `sm` for a dense row.",
+          "name": "size",
+          "optional": true,
+          "type": "\"default\" | \"sm\" | undefined"
+        },
         {
           "description": "The number, `null` for an empty field, or the text while it reads as no number. Leave it out for an uncontrolled field.",
           "name": "value",
@@ -13620,12 +13647,18 @@
     },
     {
       "extends": [
-        "Omit<ComponentProps<\"input\">, \"value\" | \"defaultValue\" | \"onChange\" | \"type\" | \"min\" | \"max\" | \"children\">"
+        "Omit<ComponentProps<\"input\">, \"value\" | \"defaultValue\" | \"onChange\" | \"type\" | \"min\" | \"max\" | \"children\" | \"size\">"
       ],
       "family": "as-of-date-picker",
       "module": "@basis/ui",
       "name": "AsOfDatePicker",
       "props": [
+        {
+          "description": "The field's height: the select's default, or `sm` for a dense row.",
+          "name": "size",
+          "optional": true,
+          "type": "\"default\" | \"sm\" | undefined"
+        },
         {
           "description": "The date, or `null` for none. Leave it out for an uncontrolled field.",
           "name": "value",
@@ -13696,12 +13729,18 @@
     },
     {
       "extends": [
-        "Omit<ComponentProps<\"input\">, \"value\" | \"defaultValue\" | \"onChange\" | \"type\" | \"min\" | \"max\" | \"children\">"
+        "Omit<ComponentProps<\"input\">, \"value\" | \"defaultValue\" | \"onChange\" | \"type\" | \"min\" | \"max\" | \"children\" | \"size\">"
       ],
       "family": "date-picker",
       "module": "@basis/ui",
       "name": "DatePicker",
       "props": [
+        {
+          "description": "The field's height: the select's default, or `sm` for a dense row.",
+          "name": "size",
+          "optional": true,
+          "type": "\"default\" | \"sm\" | undefined"
+        },
         {
           "description": "The date, or `null` for none. Leave it out for an uncontrolled field.",
           "name": "value",
@@ -14008,6 +14047,12 @@
           "name": "inputRef",
           "optional": true,
           "type": "React.Ref<HTMLInputElement> | undefined"
+        },
+        {
+          "description": "The field's height: the select's default, or `sm` for a dense row.",
+          "name": "size",
+          "optional": true,
+          "type": "\"default\" | \"sm\" | undefined"
         },
         {
           "description": "The input's name for assistive technology, where no label names it.",
@@ -15404,6 +15449,12 @@
           "type": "string | undefined"
         },
         {
+          "description": "The input's height, the select's default or `sm` for a dense row; a picker of several grows with its chips.",
+          "name": "size",
+          "optional": true,
+          "type": "\"default\" | \"sm\" | undefined"
+        },
+        {
           "description": "Called when text is pasted into the input; `event.preventDefault()` keeps the text out of it, as SecurityPicker does with a list of identifiers.",
           "name": "onPaste",
           "optional": true,
@@ -15535,6 +15586,12 @@
           "name": "className",
           "optional": true,
           "type": "string | undefined"
+        },
+        {
+          "description": "The input's height, the select's default or `sm` for a dense row; a picker of several grows with its chips.",
+          "name": "size",
+          "optional": true,
+          "type": "\"default\" | \"sm\" | undefined"
         },
         {
           "description": "Called when text is pasted into the input; `event.preventDefault()` keeps the text out of it, as SecurityPicker does with a list of identifiers.",
@@ -15722,6 +15779,12 @@
           "type": "string | undefined"
         },
         {
+          "description": "The control's height: the select's default, or `sm` for a dense form.",
+          "name": "size",
+          "optional": true,
+          "type": "\"default\" | \"sm\" | undefined"
+        },
+        {
           "description": "The TanStack Form field, `form.Field`'s render argument.",
           "name": "field",
           "optional": false,
@@ -15772,6 +15835,12 @@
           "name": "id",
           "optional": true,
           "type": "string | undefined"
+        },
+        {
+          "description": "The control's height: the select's default, or `sm` for a dense form.",
+          "name": "size",
+          "optional": true,
+          "type": "\"default\" | \"sm\" | undefined"
         },
         {
           "description": "The TanStack Form field, `form.Field`'s render argument.",
@@ -15836,6 +15905,12 @@
           "name": "id",
           "optional": true,
           "type": "string | undefined"
+        },
+        {
+          "description": "The control's height: the select's default, or `sm` for a dense form.",
+          "name": "size",
+          "optional": true,
+          "type": "\"default\" | \"sm\" | undefined"
         },
         {
           "description": "The TanStack Form field, `form.Field`'s render argument.",
@@ -15930,6 +16005,12 @@
           "name": "id",
           "optional": true,
           "type": "string | undefined"
+        },
+        {
+          "description": "The control's height: the select's default, or `sm` for a dense form.",
+          "name": "size",
+          "optional": true,
+          "type": "\"default\" | \"sm\" | undefined"
         },
         {
           "description": "The TanStack Form field, `form.Field`'s render argument.",
@@ -25784,6 +25865,12 @@
           "name": "id",
           "optional": true,
           "type": "string | undefined"
+        },
+        {
+          "description": "The control's height: the select's default, or `sm` for a dense form.",
+          "name": "size",
+          "optional": true,
+          "type": "\"default\" | \"sm\" | undefined"
         }
       ],
       "exported": true,
@@ -25990,6 +26077,12 @@
           "name": "className",
           "optional": true,
           "type": "string | undefined"
+        },
+        {
+          "description": "The input's height, the select's default or `sm` for a dense row; a picker of several grows with its chips.",
+          "name": "size",
+          "optional": true,
+          "type": "\"default\" | \"sm\" | undefined"
         },
         {
           "description": "Called when text is pasted into the input; `event.preventDefault()` keeps the text out of it, as SecurityPicker does with a list of identifiers.",
@@ -26879,6 +26972,12 @@
           "name": "className",
           "optional": true,
           "type": "string | undefined"
+        },
+        {
+          "description": "The input's height, the select's default or `sm` for a dense row; a picker of several grows with its chips.",
+          "name": "size",
+          "optional": true,
+          "type": "\"default\" | \"sm\" | undefined"
         },
         {
           "description": "Called when text is pasted into the input; `event.preventDefault()` keeps the text out of it, as SecurityPicker does with a list of identifiers.",

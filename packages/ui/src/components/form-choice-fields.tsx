@@ -9,6 +9,21 @@ import { useFieldParts } from "./form-field-parts.ts";
 import type { FormFieldApi, FormFieldProps } from "./form-field-parts.ts";
 import { NativeSelect, NativeSelectOption } from "./native-select.tsx";
 
+/** The option that stands for no choice, shown while the field holds none of the options. */
+function NoChoice<TValue extends string>({
+  options,
+  value,
+  placeholder,
+}: {
+  readonly options: readonly { readonly value: TValue }[];
+  readonly value: TValue;
+  readonly placeholder: string;
+}): ReactElement | null {
+  return options.some((option) => option.value === value) ? null : (
+    <NativeSelectOption value={value}>{placeholder}</NativeSelectOption>
+  );
+}
+
 /** A choice of a few options, on the browser's own select, such as an enum a generated schema declares. A field that
  * starts with no choice holds `""`, which the placeholder stands for until an option is chosen.
  *
@@ -42,6 +57,7 @@ function FormSelectField<TValue extends string>({
   label,
   description,
   id,
+  size,
   options,
   placeholder = "Choose…",
 }: FormFieldProps & {
@@ -53,12 +69,12 @@ function FormSelectField<TValue extends string>({
   readonly placeholder?: string | undefined;
 }): ReactElement {
   const parts = useFieldParts(field, id);
-  const chosen = options.some((option) => option.value === field.state.value);
   return (
     <Field data-invalid={parts.invalid}>
       <FieldLabel htmlFor={parts.id}>{label}</FieldLabel>
       <NativeSelect
         id={parts.id}
+        size={size}
         name={field.name}
         value={field.state.value}
         onBlur={field.handleBlur}
@@ -71,9 +87,7 @@ function FormSelectField<TValue extends string>({
         aria-invalid={parts.invalid}
         aria-describedby={parts.describedBy}
       >
-        {chosen ? null : (
-          <NativeSelectOption value={field.state.value}>{placeholder}</NativeSelectOption>
-        )}
+        <NoChoice options={options} value={field.state.value} placeholder={placeholder} />
         {options.map((option) => (
           <NativeSelectOption key={option.value} value={option.value}>
             {option.label}
@@ -99,7 +113,7 @@ function FormCheckboxField({
   label,
   description,
   id,
-}: FormFieldProps & {
+}: Omit<FormFieldProps, "size"> & {
   /** The TanStack Form field, `form.Field`'s render argument. */
   readonly field: FormFieldApi<boolean>;
 }): ReactElement {

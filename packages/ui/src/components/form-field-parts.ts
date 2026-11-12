@@ -28,6 +28,8 @@ interface FormFieldProps {
   readonly description?: string | undefined;
   /** The control's id; one made from the field's name unless set. */
   readonly id?: string | undefined;
+  /** The control's height: the select's default, or `sm` for a dense form. */
+  readonly size?: "default" | "sm" | undefined;
 }
 
 /** The ids and state every form field shares: its control's id, its description's and error's, and whether it shows

@@ -89,16 +89,21 @@ function ComboboxInput({
   disabled = false,
   showTrigger = true,
   showClear = false,
+  size,
   ...props
-}: ComboboxPrimitive.Input.Props & {
+}: Omit<ComboboxPrimitive.Input.Props, "size"> & {
   readonly className?: string;
+  /** The field's height: the select's default, or `sm` for a dense row. */
+  readonly size?: "default" | "sm" | undefined;
   /** Whether the input ends in a button that opens the list; true by default. */
   readonly showTrigger?: boolean;
   /** Whether the input ends in a button that clears it; false by default. */
   readonly showClear?: boolean;
 }): ReactElement {
   return (
-    <ComboboxPrimitive.InputGroup render={<InputGroup className={cn("w-auto", className)} />}>
+    <ComboboxPrimitive.InputGroup
+      render={<InputGroup className={cn("w-auto", className)} size={size} />}
+    >
       <ComboboxPrimitive.Input render={<InputGroupInput disabled={disabled} />} {...props} />
       <InputGroupAddon align="inline-end">
         {showTrigger ? (

@@ -41,6 +41,7 @@ function FormTextField({
   label,
   description,
   id,
+  size,
   type = "text",
   placeholder,
 }: FormFieldProps & {
@@ -57,6 +58,7 @@ function FormTextField({
       <FieldLabel htmlFor={parts.id}>{label}</FieldLabel>
       <Input
         id={parts.id}
+        size={size}
         name={field.name}
         type={type}
         placeholder={placeholder}
@@ -86,6 +88,7 @@ function FormAmountField({
   label,
   description,
   id,
+  size,
   suffixes,
   placeholder,
 }: FormFieldProps & {
@@ -102,6 +105,7 @@ function FormAmountField({
       <FieldLabel htmlFor={parts.id}>{label}</FieldLabel>
       <AmountInput
         id={parts.id}
+        size={size}
         name={field.name}
         value={field.state.value}
         suffixes={suffixes}
@@ -139,6 +143,7 @@ function FormDateField({
   label,
   description,
   id,
+  size,
   asOf = false,
   min,
   max,
@@ -162,6 +167,7 @@ function FormDateField({
       <FieldLabel htmlFor={parts.id}>{label}</FieldLabel>
       <Picker
         id={parts.id}
+        size={size}
         name={field.name}
         value={dateOf(field.state.value)}
         min={min}

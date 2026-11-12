@@ -738,6 +738,11 @@ beside it. A page's own control-sized element, such as a toolbar's spacer, reads
 `h-(--control-md-height)`, `px-(--control-md-inset)`, `size-(--control-md-icon)` and `gap-(--control-md-gap)`, for
 the sizes `xs`, `sm`, `md` and `lg`.
 
+Every input takes Select's two sizes, `size="sm"` for a dense row and the default: `Input`, `InputGroup`,
+`AmountInput`, `AsOfDatePicker`, `DatePicker`, `NumberField`, `ComboboxInput`, `EntityPicker` and `SecurityPicker`, and
+the form fields, beside `Select`, `NativeSelect`, `MultiSelect`, `DateRangePicker`, `MonthPicker` and `TreeSelect`'s
+triggers; each stands as tall as a select of its size, so a filter row lines up.
+
 The components keep WCAG 2.2's 24 px minimum target in either density: no control is shorter, and those that can be,
 such as Button's `xs` and `sm` under another theme, carry `min-h-target` and `min-w-target`. A control drawn smaller
 than that, such as Checkbox's box, Switch's track or Slider's thumb, is a 24 px target with its shape drawn inside it,

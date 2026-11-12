@@ -5,9 +5,12 @@ import { Input as InputPrimitive } from "@base-ui/react/input";
 import { cn } from "cn";
 import type { ComponentProps, ReactElement } from "react";
 
+import type { VariantProps } from "#vendor/cva/cva.ts";
+
 import { inputVariants } from "./input-variants.ts";
 
-/** A text input. With `aria-invalid` its outline turns the destructive colour; a `FieldError` beside it says why.
+/** A text input, at the select's two sizes: `size="sm"` for a dense row. With `aria-invalid` its outline turns the
+ * destructive colour; a `FieldError` beside it says why.
  *
  * @use For a line of text, such as a name or a CUSIP. For an amount or a rate, use AmountInput; for a date,
  * AsOfDatePicker; for several lines, Textarea; for a search an API answers, EntityPicker.
@@ -23,12 +26,18 @@ import { inputVariants } from "./input-variants.ts";
  * </Field>;
  * ```
  */
-function Input({ className, type, ...props }: ComponentProps<"input">): ReactElement {
+function Input({
+  className,
+  type,
+  size = "default",
+  ...props
+}: Omit<ComponentProps<"input">, "size"> & VariantProps<typeof inputVariants>): ReactElement {
   return (
     <InputPrimitive
       type={type}
       data-slot="input"
-      className={cn(inputVariants(), className)}
+      data-size={size}
+      className={cn(inputVariants({ size }), className)}
       {...props}
     />
   );

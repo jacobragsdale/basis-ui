@@ -692,7 +692,8 @@ flowchart TD
    `DescriptionList` lays out a detail page's facts, and `HeatCell` fills a `DataTable`'s cell on the theme's scales,
    its ink measured from the stylesheet so it reads on every step it can in each theme and mode. 6.7.9 built on
    2026-11-11: `Combobox`, and the pickers on it, draw at most 100 items with a line that says to type to narrow them,
-   and a `Select` past 100 items reports an error naming `Combobox`; TanStack Virtual was not needed.
+   and a `Select` past 100 items reports an error naming `Combobox`; TanStack Virtual was not needed. 6.7.10 built on 2026-11-11: every input takes Select's two sizes, every component's props type is exported, named
+   for it, and the lint refuses Radix's `asChild` with a line that says `render`.
 8. **6.8 The agent's toolbelt.** Lane Preset, in order, since preset changes land one at a time: a catalogue that
    answers, with `vp run docs NAME` (`6.8.1-catalogue`), lint that costs fewer rounds (`6.8.2-lint-limits`), the doors
    that are open (`6.8.3-closed-doors`), one verdict, `vp run verify` (`6.8.4-verify`), a shot that explains itself

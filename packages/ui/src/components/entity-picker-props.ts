@@ -46,6 +46,8 @@ interface EntityPickerBaseProps<TItem> {
   readonly "aria-invalid"?: boolean | undefined;
   /** Places the picker, as with `w-80`; its look is fixed. */
   readonly className?: string | undefined;
+  /** The input's height, the select's default or `sm` for a dense row; a picker of several grows with its chips. */
+  readonly size?: "default" | "sm" | undefined;
   /** Called when text is pasted into the input; `event.preventDefault()` keeps the text out of it, as SecurityPicker
    * does with a list of identifiers. */
   readonly onPaste?: ((event: ClipboardEvent<HTMLInputElement>) => void) | undefined;

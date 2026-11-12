@@ -54,6 +54,7 @@ function SingleEntityPicker<TItem>({
       >
         <ComboboxInput
           {...inputProps(props, search.state)}
+          size={props.size}
           disabled={props.disabled ?? false}
           showTrigger={false}
           showClear

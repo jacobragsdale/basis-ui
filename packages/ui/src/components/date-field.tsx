@@ -28,8 +28,10 @@ type FieldErrors = NonNullable<ComponentProps<typeof FieldError>["errors"]>;
 
 interface DateFieldProps extends Omit<
   ComponentProps<"input">,
-  "value" | "defaultValue" | "onChange" | "type" | "min" | "max" | "children"
+  "value" | "defaultValue" | "onChange" | "type" | "min" | "max" | "children" | "size"
 > {
+  /** The field's height: the select's default, or `sm` for a dense row. */
+  readonly size?: "default" | "sm" | undefined;
   /** The date, or `null` for none. Leave it out for an uncontrolled field. */
   readonly value?: Temporal.PlainDate | null | undefined;
   /** The date an uncontrolled field starts at. */
@@ -172,7 +174,7 @@ function DatePopover({
   );
 }
 
-type FieldProps = Omit<DateFieldProps, "className" | "errors" | "pickerLabel">;
+type FieldProps = Omit<DateFieldProps, "className" | "errors" | "pickerLabel" | "size">;
 
 /** The props of the field's input: the app's, then the typed text and the handlers that commit it. */
 function inputPropsOf(
@@ -262,12 +264,13 @@ function DateField({
   errors,
   pickerLabel = "Choose a date",
   behaviour,
+  size,
   ...props
 }: DateFieldProps & { readonly behaviour: DateFieldBehaviour }): ReactElement {
   const field = useDateField(props, behaviour);
   return (
     <div data-slot="field-content" className="flex min-w-0 flex-1 flex-col gap-2">
-      <InputGroup className={className}>
+      <InputGroup className={className} size={size}>
         <InputGroupInput {...field.input} />
         <InputGroupAddon align="inline-end">
           <DatePopover label={pickerLabel} {...field.popover} />

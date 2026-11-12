@@ -14,6 +14,8 @@ import { InputGroup, InputGroupButton } from "./input-group.tsx";
 import { inputVariants } from "./input-variants.ts";
 
 interface NumberFieldProps extends Omit<NumberFieldPrimitive.Root.Props, "className" | "render"> {
+  /** The field's height: the select's default, or `sm` for a dense row. */
+  readonly size?: "default" | "sm" | undefined;
   /** The input's id, which a `FieldLabel`'s `htmlFor` names. */
   readonly id?: string | undefined;
   /** The input's name for assistive technology, where no label names it. */
@@ -52,6 +54,7 @@ function NumberField({
   "aria-describedby": describedBy,
   placeholder,
   className,
+  size,
   ...props
 }: NumberFieldProps): ReactElement {
   return (
@@ -62,7 +65,7 @@ function NumberField({
       className={cn("min-w-0", className)}
       {...props}
     >
-      <NumberFieldPrimitive.Group render={<InputGroup />}>
+      <NumberFieldPrimitive.Group render={<InputGroup size={size} />}>
         <NumberFieldPrimitive.Decrement
           aria-label="Decrease"
           render={<InputGroupButton size="icon-xs" className="ml-(--control-xs-inset-icon)" />}
@@ -77,7 +80,7 @@ function NumberField({
           placeholder={placeholder}
           className={cn(
             inputVariants(),
-            "flex-1 rounded-none border-0 bg-transparent text-center tabular-nums shadow-none ring-0 focus-visible:outline-none disabled:bg-transparent aria-invalid:ring-0",
+            "h-full flex-1 rounded-none border-0 bg-transparent text-center tabular-nums shadow-none ring-0 focus-visible:outline-none disabled:bg-transparent aria-invalid:ring-0",
           )}
         />
         <NumberFieldPrimitive.Increment

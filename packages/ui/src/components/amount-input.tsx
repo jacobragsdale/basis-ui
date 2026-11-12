@@ -28,8 +28,10 @@ type FieldErrors = NonNullable<ComponentProps<typeof FieldError>["errors"]>;
 
 interface AmountInputProps extends Omit<
   ComponentProps<"input">,
-  "value" | "defaultValue" | "onChange" | "type" | "children"
+  "value" | "defaultValue" | "onChange" | "type" | "children" | "size"
 > {
+  /** The field's height: the select's default, or `sm` for a dense row. */
+  readonly size?: "default" | "sm" | undefined;
   /** The number, `null` for an empty field, or the text while it reads as no number. Leave it out for
    * an uncontrolled field. */
   readonly value?: number | string | null | undefined;
@@ -131,7 +133,7 @@ function useAmountText({
   };
 }
 
-type FieldProps = Omit<AmountInputProps, "className" | "errors">;
+type FieldProps = Omit<AmountInputProps, "className" | "errors" | "size">;
 
 /** The field's state, with the props of its input: the app's, then the text and the handlers that read it. */
 function useAmountField({
@@ -194,11 +196,11 @@ function useAmountField({
  * </Field>;
  * ```
  */
-function AmountInput({ className, errors, ...props }: AmountInputProps): ReactElement {
+function AmountInput({ className, errors, size, ...props }: AmountInputProps): ReactElement {
   const field = useAmountField(props);
   return (
     <div data-slot="field-content" className="flex min-w-0 flex-1 flex-col gap-2">
-      <InputGroup className={className}>
+      <InputGroup className={className} size={size}>
         <InputGroupInput {...field.input} />
       </InputGroup>
       {field.echo === undefined ? null : (

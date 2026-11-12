@@ -9,6 +9,11 @@ anything of an app.
 
 ## Unreleased
 
+- Every input takes Select's two sizes, `size="sm"` and the default: `Input`, `InputGroup`, `AmountInput`, the date
+  pickers, `NumberField`, `ComboboxInput`, `EntityPicker`, `SecurityPicker` and the form fields. `Input`'s `size` is
+  no longer the HTML attribute's width in characters. What to do: an `<Input size={20}>` gives its width with a class,
+  as `w-48`.
+
 - Every component's props type is exported, named for it, as `ButtonProps`, `DialogContentProps` and
   `DataTableProps`. The lint refuses Radix's `asChild` with `basis/no-as-child`, whose line says to pass the element
   through `render`. What to do: replace `asChild` with `render={<Element />}`, and `ComponentProps<typeof X>` with

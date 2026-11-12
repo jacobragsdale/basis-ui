@@ -37,14 +37,22 @@ import { textareaVariants } from "./textarea-variants.ts";
  * </InputGroup>;
  * ```
  */
-function InputGroup({ className, ...props }: ComponentProps<"div">): ReactElement {
+function InputGroup({
+  className,
+  size = "default",
+  ...props
+}: ComponentProps<"div"> & {
+  /** The group's height: the select's default, or `sm` for a dense row. */
+  readonly size?: "default" | "sm" | undefined;
+}): ReactElement {
   return (
     <div
       data-slot="input-group"
+      data-size={size}
       // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- shadcn's markup: the group is one input and its addons, not a `<fieldset>`'s set of fields with a legend.
       role="group"
       className={cn(
-        "group/input-group relative flex h-(--control-md-height) w-full min-w-0 items-center rounded-lg border border-input transition-colors outline-none in-data-[slot=combobox-content]:focus-within:border-inherit in-data-[slot=combobox-content]:focus-within:outline-none has-[[data-slot=input-group-control]:disabled]:bg-disabled has-[[data-slot=input-group-control]:disabled]:opacity-disabled has-[[data-slot=input-group-control]:focus-visible]:border-ring has-[[data-slot=input-group-control]:focus-visible]:outline-solid has-[[data-slot=input-group-control]:focus-visible]:outline has-[[data-slot=input-group-control]:focus-visible]:outline-offset-(--focus-offset) has-[[data-slot=input-group-control]:focus-visible]:outline-ring has-[[data-slot][aria-invalid=true]]:border-destructive has-[[data-slot][aria-invalid=true]]:outline-destructive has-[>[data-align=block-end]]:h-auto has-[>[data-align=block-end]]:flex-col has-[>[data-align=block-start]]:h-auto has-[>[data-align=block-start]]:flex-col has-[>textarea]:h-auto has-[>[data-align=block-end]]:[&>input]:pt-3 has-[>[data-align=block-start]]:[&>input]:pb-3 has-[>[data-align=inline-end]]:[&>input]:pr-(--control-xs-inset-icon) has-[>[data-align=inline-start]]:[&>input]:pl-(--control-xs-inset-icon)",
+        "group/input-group relative flex h-(--control-md-height) data-[size=sm]:h-(--control-sm-height) data-[size=sm]:rounded-md w-full min-w-0 items-center rounded-lg border border-input transition-colors outline-none in-data-[slot=combobox-content]:focus-within:border-inherit in-data-[slot=combobox-content]:focus-within:outline-none has-[[data-slot=input-group-control]:disabled]:bg-disabled has-[[data-slot=input-group-control]:disabled]:opacity-disabled has-[[data-slot=input-group-control]:focus-visible]:border-ring has-[[data-slot=input-group-control]:focus-visible]:outline-solid has-[[data-slot=input-group-control]:focus-visible]:outline has-[[data-slot=input-group-control]:focus-visible]:outline-offset-(--focus-offset) has-[[data-slot=input-group-control]:focus-visible]:outline-ring has-[[data-slot][aria-invalid=true]]:border-destructive has-[[data-slot][aria-invalid=true]]:outline-destructive has-[>[data-align=block-end]]:h-auto has-[>[data-align=block-end]]:flex-col has-[>[data-align=block-start]]:h-auto has-[>[data-align=block-start]]:flex-col has-[>textarea]:h-auto has-[>[data-align=block-end]]:[&>input]:pt-3 has-[>[data-align=block-start]]:[&>input]:pb-3 has-[>[data-align=inline-end]]:[&>input]:pr-(--control-xs-inset-icon) has-[>[data-align=inline-start]]:[&>input]:pl-(--control-xs-inset-icon)",
         className,
       )}
       {...props}
@@ -131,7 +139,7 @@ function InputGroupInput({ className, ...props }: ComponentProps<"input">): Reac
       data-slot="input-group-control"
       className={cn(
         inputVariants(),
-        "flex-1 rounded-none border-0 bg-transparent shadow-none ring-0 focus-visible:outline-none disabled:bg-transparent aria-invalid:ring-0",
+        "h-full flex-1 rounded-none border-0 bg-transparent shadow-none ring-0 focus-visible:outline-none disabled:bg-transparent aria-invalid:ring-0",
         className,
       )}
       {...props}
