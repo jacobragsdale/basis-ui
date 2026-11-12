@@ -22308,6 +22308,18 @@
           "name": "orders",
           "optional": true,
           "type": "Record<string, LayoutOrder>"
+        },
+        {
+          "description": "How a flat or detail view's cells draw, by source column, such as `{ pnl: { kind: \"bar\" } }`. The engine gives each frame the domain of a flat view's bar and heat columns.",
+          "name": "cells",
+          "optional": true,
+          "type": "Record<string, LayoutCell>"
+        },
+        {
+          "description": "Conditional formats by source column, such as `{ price: [{ when: { op: \"lt\", value: 95 }, format: { tone: \"negative\" } }] }`: the first rule whose condition a cell's value meets styles it.",
+          "name": "rules",
+          "optional": true,
+          "type": "Record<string, LayoutRule[]>"
         }
       ],
       "exported": true,
@@ -22336,7 +22348,7 @@
       "purpose": "A point a drawing is anchored to."
     },
     {
-      "definition": "z.output<typeof cellSchema>",
+      "definition": "{ kind: \"bar\"; from: \"zero\" | \"min\" } | { kind: \"heat\"; scale: \"sequential\" | \"diverging\" } | { kind: \"badge\"; values: Record<string, \"positive\" | \"negative\" | \"warning\" | \"info\" | \"neutral\"> } | { kind: \"sparkline\" } | { kind: \"link\" }",
       "exported": true,
       "module": "@basis/parallax",
       "name": "LayoutCell",
@@ -22582,7 +22594,7 @@
       "purpose": "The result of checking a layout: the layout with its defaults, or what is wrong with it."
     },
     {
-      "definition": "z.output<typeof drawingSchema>",
+      "definition": "{ kind: \"trend\"; from: LayoutAnchor; to: LayoutAnchor } | { kind: \"horizontal\"; y: number } | { kind: \"fibonacci\"; from: LayoutAnchor; to: LayoutAnchor } | { kind: \"rectangle\"; from: LayoutAnchor; to: LayoutAnchor } | { kind: \"note\"; at: LayoutAnchor; text: string }",
       "exported": true,
       "module": "@basis/parallax",
       "name": "LayoutDrawing",
@@ -22713,7 +22725,7 @@
       "purpose": "A display format."
     },
     {
-      "definition": "z.output<typeof indicatorSchema>",
+      "definition": "{ kind: \"sma\"; period: unknown } | { kind: \"ema\"; period: unknown } | { kind: \"wma\"; period: unknown } | { kind: \"bollinger\"; period: unknown; deviations: number } | { kind: \"rsi\"; period: unknown } | { kind: \"macd\"; fast: unknown; slow: unknown; signal: unknown } | { kind: \"atr\"; period: unknown } | { kind: \"stochastic\"; k: unknown; k_smooth: unknown; d: unknown } | { kind: \"vwap\" } | { kind: \"volume\" }",
       "exported": true,
       "module": "@basis/parallax",
       "name": "LayoutIndicator",
@@ -22837,7 +22849,7 @@
           "description": "Draws the view as a chart: its kind, columns, axis, indicators, panes and drawings, which `<Chart>` reads.",
           "name": "chart",
           "optional": true,
-          "type": "{ kind: \"line\" | \"area\" | \"bar\" | \"scatter\" | \"heatmap\" | \"histogram\" | \"candlestick\" | \"ohlc\" | \"pie\" | \"waterfall\"; x?: string; y?: string[]; y_right?: string[]; series?: string | null; ohlc?: { open: string; high: string; low: string; close: string } | null; axis?: \"value\" | \"trading\" | \"tenor\"; log_y?: boolean; stacked?: boolean; horizontal?: boolean; range?: { from: number; to: number } | null; hidden?: string[]; indicators?: z.discriminatedUnion(…)[]; volume?: string | null; drawings?: z.discriminatedUnion(…)[]; compare?: boolean; events?: string | null; donut?: boolean; labels?: boolean; size?: string; id?: string; tooltip?: string[]; fit?: string; tenor_spacing?: \"even\" | \"length\"; calendar?: \"nyse\" | \"sifma\"; session?: { opens: string; closes: string }; panes?: ({ columns: string[]; kind?: \"line\" | \"bar\"; title?: string; reverse?: boolean })[]; reverse_y?: boolean; reverse_y_right?: boolean; rising?: \"gain\" | \"loss\"; drawing_tools?: boolean } | null"
+          "type": "{ kind: \"line\" | \"area\" | \"bar\" | \"scatter\" | \"heatmap\" | \"histogram\" | \"candlestick\" | \"ohlc\" | \"pie\" | \"waterfall\"; x?: string; y?: string[]; y_right?: string[]; series?: string | null; ohlc?: { open: string; high: string; low: string; close: string } | null; axis?: \"value\" | \"trading\" | \"tenor\"; log_y?: boolean; stacked?: boolean; horizontal?: boolean; range?: { from: number; to: number } | null; hidden?: string[]; indicators?: ({ kind: \"sma\"; period: unknown } | { kind: \"ema\"; period: unknown } | { kind: \"wma\"; period: unknown } | { kind: \"bollinger\"; period: unknown; deviations?: number } | { kind: \"rsi\"; period: unknown } | { kind: \"macd\"; fast: unknown; slow: unknown; signal: unknown } | { kind: \"atr\"; period: unknown } | { kind: \"stochastic\"; k: unknown; k_smooth: unknown; d: unknown } | { kind: \"vwap\" } | { kind: \"volume\" })[]; volume?: string | null; drawings?: ({ kind: \"trend\"; from: { x: string | number | boolean; y: number }; to: { x: string | number | boolean; y: number } } | { kind: \"horizontal\"; y: number } | { kind: \"fibonacci\"; from: { x: string | number | boolean; y: number }; to: { x: string | number | boolean; y: number } } | { kind: \"rectangle\"; from: { x: string | number | boolean; y: number }; to: { x: string | number | boolean; y: number } } | { kind: \"note\"; at: { x: string | number | boolean; y: number }; text: string })[]; compare?: boolean; events?: string | null; donut?: boolean; labels?: boolean; size?: string; id?: string; tooltip?: string[]; fit?: string; tenor_spacing?: \"even\" | \"length\"; calendar?: \"nyse\" | \"sifma\"; session?: { opens: string; closes: string }; panes?: ({ columns: string[]; kind?: \"line\" | \"bar\"; title?: string; reverse?: boolean })[]; reverse_y?: boolean; reverse_y_right?: boolean; rising?: \"gain\" | \"loss\"; drawing_tools?: boolean } | null"
         },
         {
           "default": "\"\"",
@@ -22879,6 +22891,18 @@
           "name": "orders",
           "optional": true,
           "type": "Record<string, \"text\" | \"tenor\" | \"rating\" | { values: string[] } | { by: string }>"
+        },
+        {
+          "description": "How a flat or detail view's cells draw, by source column, such as `{ pnl: { kind: \"bar\" } }`. The engine gives each frame the domain of a flat view's bar and heat columns.",
+          "name": "cells",
+          "optional": true,
+          "type": "Record<string, { kind: \"bar\"; from?: \"zero\" | \"min\" } | { kind: \"heat\"; scale?: \"sequential\" | \"diverging\" } | { kind: \"badge\"; values?: Record<string, \"positive\" | \"negative\" | \"warning\" | \"info\" | \"neutral\"> } | { kind: \"sparkline\" } | { kind: \"link\" }>"
+        },
+        {
+          "description": "Conditional formats by source column, such as `{ price: [{ when: { op: \"lt\", value: 95 }, format: { tone: \"negative\" } }] }`: the first rule whose condition a cell's value meets styles it.",
+          "name": "rules",
+          "optional": true,
+          "type": "Record<string, ({ when: { op: \"eq\" | \"ne\" | \"lt\" | \"le\" | \"gt\" | \"ge\" | \"in\" | \"not_in\" | \"is_null\" | \"is_not_null\" | \"contains\" | \"not_contains\" | \"starts_with\" | \"ends_with\"; value?: string | number | boolean | z.null(…); values?: (string | number | boolean | z.null(…))[] }; format: { tone?: \"positive\" | \"negative\" | \"warning\" | \"info\" | \"neutral\" | null; fill?: boolean; bold?: boolean } })[]>"
         }
       ],
       "exported": true,
@@ -22943,7 +22967,7 @@
       "purpose": "One measure of a layout."
     },
     {
-      "definition": "z.output<typeof orderSchema>",
+      "definition": "\"text\" | \"tenor\" | \"rating\" | { values: string[] } | { by: string }",
       "exported": true,
       "module": "@basis/parallax",
       "name": "LayoutOrder",
@@ -22970,7 +22994,7 @@
       "purpose": "A conditional format."
     },
     {
-      "definition": "z.output<typeof scalar>",
+      "definition": "string | number | boolean | z.null(…)",
       "exported": true,
       "module": "@basis/parallax",
       "name": "LayoutScalar",
@@ -24248,7 +24272,7 @@
           "description": "Draws the view as a chart: its kind, columns, axis, indicators, panes and drawings, which `<Chart>` reads.",
           "name": "chart",
           "optional": true,
-          "type": "{ kind: \"line\" | \"area\" | \"bar\" | \"scatter\" | \"heatmap\" | \"histogram\" | \"candlestick\" | \"ohlc\" | \"pie\" | \"waterfall\"; x?: string; y?: string[]; y_right?: string[]; series?: string | null; ohlc?: { open: string; high: string; low: string; close: string } | null; axis?: \"value\" | \"trading\" | \"tenor\"; log_y?: boolean; stacked?: boolean; horizontal?: boolean; range?: { from: number; to: number } | null; hidden?: string[]; indicators?: z.discriminatedUnion(…)[]; volume?: string | null; drawings?: z.discriminatedUnion(…)[]; compare?: boolean; events?: string | null; donut?: boolean; labels?: boolean; size?: string; id?: string; tooltip?: string[]; fit?: string; tenor_spacing?: \"even\" | \"length\"; calendar?: \"nyse\" | \"sifma\"; session?: { opens: string; closes: string }; panes?: ({ columns: string[]; kind?: \"line\" | \"bar\"; title?: string; reverse?: boolean })[]; reverse_y?: boolean; reverse_y_right?: boolean; rising?: \"gain\" | \"loss\"; drawing_tools?: boolean } | null"
+          "type": "{ kind: \"line\" | \"area\" | \"bar\" | \"scatter\" | \"heatmap\" | \"histogram\" | \"candlestick\" | \"ohlc\" | \"pie\" | \"waterfall\"; x?: string; y?: string[]; y_right?: string[]; series?: string | null; ohlc?: { open: string; high: string; low: string; close: string } | null; axis?: \"value\" | \"trading\" | \"tenor\"; log_y?: boolean; stacked?: boolean; horizontal?: boolean; range?: { from: number; to: number } | null; hidden?: string[]; indicators?: ({ kind: \"sma\"; period: unknown } | { kind: \"ema\"; period: unknown } | { kind: \"wma\"; period: unknown } | { kind: \"bollinger\"; period: unknown; deviations?: number } | { kind: \"rsi\"; period: unknown } | { kind: \"macd\"; fast: unknown; slow: unknown; signal: unknown } | { kind: \"atr\"; period: unknown } | { kind: \"stochastic\"; k: unknown; k_smooth: unknown; d: unknown } | { kind: \"vwap\" } | { kind: \"volume\" })[]; volume?: string | null; drawings?: ({ kind: \"trend\"; from: { x: string | number | boolean; y: number }; to: { x: string | number | boolean; y: number } } | { kind: \"horizontal\"; y: number } | { kind: \"fibonacci\"; from: { x: string | number | boolean; y: number }; to: { x: string | number | boolean; y: number } } | { kind: \"rectangle\"; from: { x: string | number | boolean; y: number }; to: { x: string | number | boolean; y: number } } | { kind: \"note\"; at: { x: string | number | boolean; y: number }; text: string })[]; compare?: boolean; events?: string | null; donut?: boolean; labels?: boolean; size?: string; id?: string; tooltip?: string[]; fit?: string; tenor_spacing?: \"even\" | \"length\"; calendar?: \"nyse\" | \"sifma\"; session?: { opens: string; closes: string }; panes?: ({ columns: string[]; kind?: \"line\" | \"bar\"; title?: string; reverse?: boolean })[]; reverse_y?: boolean; reverse_y_right?: boolean; rising?: \"gain\" | \"loss\"; drawing_tools?: boolean } | null"
         },
         {
           "default": "\"\"",
@@ -24292,16 +24316,16 @@
           "type": "Record<string, \"text\" | \"tenor\" | \"rating\" | { values: string[] } | { by: string }>"
         },
         {
-          "description": "",
+          "description": "How a flat or detail view's cells draw, by source column, such as `{ pnl: { kind: \"bar\" } }`. The engine gives each frame the domain of a flat view's bar and heat columns.",
           "name": "cells",
           "optional": true,
-          "type": "Partial<Record<TColumn, ValueOf<\"cells\">>>"
+          "type": "Record<string, { kind: \"bar\"; from?: \"zero\" | \"min\" } | { kind: \"heat\"; scale?: \"sequential\" | \"diverging\" } | { kind: \"badge\"; values?: Record<string, \"positive\" | \"negative\" | \"warning\" | \"info\" | \"neutral\"> } | { kind: \"sparkline\" } | { kind: \"link\" }>"
         },
         {
-          "description": "",
+          "description": "Conditional formats by source column, such as `{ price: [{ when: { op: \"lt\", value: 95 }, format: { tone: \"negative\" } }] }`: the first rule whose condition a cell's value meets styles it.",
           "name": "rules",
           "optional": true,
-          "type": "Partial<Record<TColumn, ValueOf<\"rules\">>>"
+          "type": "Record<string, ({ when: { op: \"eq\" | \"ne\" | \"lt\" | \"le\" | \"gt\" | \"ge\" | \"in\" | \"not_in\" | \"is_null\" | \"is_not_null\" | \"contains\" | \"not_contains\" | \"starts_with\" | \"ends_with\"; value?: string | number | boolean | z.null(…); values?: (string | number | boolean | z.null(…))[] }; format: { tone?: \"positive\" | \"negative\" | \"warning\" | \"info\" | \"neutral\" | null; fill?: boolean; bold?: boolean } })[]>"
         }
       ],
       "exported": false,
@@ -25328,11 +25352,11 @@
       "purpose": "One fact: its term, and its value."
     },
     {
-      "definition": "z.output<typeof displayFormatSchema>",
+      "definition": "{ decimals: number; kind: \"number\" } | { currency: string; decimals: number; kind: \"money\" } | { decimals: number; kind: \"pct\" } | { decimals: number; kind: \"bps\" } | { decimals: number; kind: \"price\" } | { kind: \"price32\"; step?: \"32nd\" | \"half\" | \"quarter\" | \"eighth\" }",
       "exported": true,
       "module": "@basis/ui",
       "name": "DisplayFormat",
-      "purpose": ""
+      "purpose": "How a number is shown, by its `kind`: a plain number, money in a currency, a fraction as a percentage or in basis points, a price, or a Treasury price in 32nds. An API declares one for a field under `x-basis-format`."
     },
     {
       "definition": "(text: string, signal: AbortSignal) => Promise<readonly TItem[]>",
@@ -26446,14 +26470,14 @@
       "purpose": "The parts of the page's root element that the preferences set. An `HTMLElement` has them all; its document's window, when there is one, lets a change hold transitions off until it is drawn."
     },
     {
-      "definition": "z.infer<typeof problemSchema>",
+      "definition": "z.looseObject(…)",
       "exported": true,
       "module": "@basis/ui",
       "name": "Problem",
       "purpose": ""
     },
     {
-      "definition": "z.infer<typeof fieldErrorSchema>",
+      "definition": "{ detail: string; pointer: string } | { detail: string; parameter: string }",
       "exported": true,
       "module": "@basis/ui",
       "name": "ProblemFieldError",
@@ -27255,7 +27279,7 @@
       "purpose": "The signed-in user. `id` is the token's subject, its `sub` claim."
     },
     {
-      "definition": "z.infer<typeof validationProblemSchema>",
+      "definition": "Problem",
       "exported": true,
       "module": "@basis/ui",
       "name": "ValidationProblem",
@@ -27734,7 +27758,7 @@
       "purpose": ""
     },
     {
-      "definition": "z.infer<typeof fixtureRecordSchema>",
+      "definition": "unknown",
       "exported": true,
       "module": "@basis/ui/fixtures",
       "name": "FixtureRecord",

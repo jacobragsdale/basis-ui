@@ -103,9 +103,26 @@ function presence(node: Node, read: ZodRead): { optional: boolean; default?: str
   return target === undefined ? { optional: false } : presence(target, read);
 }
 
+/** The fields an object spread into a schema's shape holds, as `...cellFields` from `const cellFields = { ... }`, read
+ * in the file that declares it. */
+function spreadFields(
+  entry: Node,
+  read: ZodRead,
+  fieldsOf: (shape: Node, read: ZodRead) => CatalogueProp[],
+): CatalogueProp[] {
+  const argument = child(entry, "argument");
+  const found = argument?.type === "Identifier" ? schemaInit(read.file, argument) : undefined;
+  return found?.init.type === "ObjectExpression"
+    ? fieldsOf(found.init, { ...read, file: found.file })
+    : [];
+}
+
 /** An object schema's shape, `{ name: schema, ... }`, as its fields. */
 function zodObjectFields(shape: Node | undefined, read: ZodRead): CatalogueProp[] {
   return children(shape, "properties").flatMap((entry) => {
+    if (entry.type === "SpreadElement") {
+      return spreadFields(entry, read, zodObjectFields);
+    }
     const name = nameOf(child(entry, "key"));
     const value = child(entry, "value");
     if (name === undefined || value === undefined) {
@@ -143,6 +160,11 @@ function baseType(method: string, args: readonly Node[], read: ZodRead): string 
     object: () => objectType(first, read),
     record: () => `Record<string, ${typeOf(second)}>`,
     strictObject: () => objectType(first, read),
+    // A discriminated union's members follow its key, as `z.discriminatedUnion("kind", [...])`.
+    discriminatedUnion: () =>
+      children(second, "elements")
+        .map((element) => typeOf(element))
+        .join(" | "),
     union: () =>
       children(first, "elements")
         .map((element) => typeOf(element))
@@ -211,4 +233,35 @@ function zodFields(
   return ["object", "strictObject"].includes(method) ? zodObjectFields(args[0], read) : undefined;
 }
 
-export { zodFields };
+/** The schema `reference`, `z.input<typeof schema>` or its kin, names, with the side it reads; `undefined` when it is
+ * no such type. */
+function schemaOf(
+  file: ParsedFile,
+  reference: Node,
+): { readonly found: { file: ParsedFile; init: Node }; readonly side: Side } | undefined {
+  const name = text(file, child(reference, "typeName") ?? reference);
+  if (!/^z\.(?:input|output|infer)$/u.test(name)) {
+    return undefined;
+  }
+  const [argument] = children(child(reference, "typeArguments"), "params");
+  const query = argument?.type === "TSTypeQuery" ? child(argument, "exprName") : undefined;
+  const found = query === undefined ? undefined : schemaInit(file, query);
+  return found === undefined ? undefined : { found, side: name === "z.input" ? "input" : "output" };
+}
+
+/** `z.input<typeof schema>` or `z.output<typeof schema>` of a schema that is not an object, such as a discriminated
+ * union, written as TypeScript; `undefined` when `reference` is no such type. */
+function zodDefinition(
+  file: ParsedFile,
+  reference: Node,
+  references: References,
+): string | undefined {
+  const schema = schemaOf(file, reference);
+  if (schema === undefined) {
+    return undefined;
+  }
+  const { found, side } = schema;
+  return zodType(found.init, { depth: 0, file: found.file, references, side, type: zodType });
+}
+
+export { zodDefinition, zodFields };

@@ -127,15 +127,37 @@ describe("what the component catalogue lists", () => {
     const layout = catalogue.types.find((type) => type.name === "LayoutInput");
     const fields = layout?.fields ?? [];
     expect(fields.map((field) => field.name)).toStrictEqual(
-      expect.arrayContaining(["group_by", "measures", "filters", "sort", "formats", "pinned"]),
+      expect.arrayContaining([
+        "group_by",
+        "measures",
+        "filters",
+        "sort",
+        "formats",
+        "pinned",
+        "cells",
+        "rules",
+      ]),
     );
     expect(fields.filter((field) => field.description === "")).toStrictEqual([]);
+    expect(fields.find((field) => field.name === "cells")?.type).toContain('{ kind: "heat"');
     expect(fields.find((field) => field.name === "group_by")).toMatchObject({
       default: "[]",
       optional: true,
       type: "string[]",
     });
   });
+});
+
+/** A type's definition, as the catalogue writes it. */
+function definition(name: string): string | undefined {
+  return catalogue.types.find((type) => type.name === name)?.definition;
+}
+
+test("defines a type inferred from a union schema by its members, each kind of display format and of cell", () => {
+  expect(definition("DisplayFormat")).toContain(
+    '{ kind: "price32"; step?: "32nd" | "half" | "quarter" | "eighth" }',
+  );
+  expect(definition("LayoutCell")).toContain('{ kind: "bar"; from: "zero" | "min" }');
 });
 
 describe("the component catalogue's examples and probes", () => {

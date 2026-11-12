@@ -28,6 +28,8 @@ const displayFormatSchema = z.discriminatedUnion("kind", [
   }),
 ]);
 
+/** How a number is shown, by its `kind`: a plain number, money in a currency, a fraction as a percentage or in basis
+ * points, a price, or a Treasury price in 32nds. An API declares one for a field under `x-basis-format`. */
 type DisplayFormat = z.output<typeof displayFormatSchema>;
 
 /** The display format `declared` holds: an object, or the JSON text Arrow metadata holds. `undefined` for anything

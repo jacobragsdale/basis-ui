@@ -10,6 +10,7 @@ import { declarationFields } from "./props.ts";
 import { libraryOf } from "./shape.ts";
 import { recordReferences } from "./references.ts";
 import type { Reference, References } from "./references.ts";
+import { zodDefinition } from "./zod.ts";
 
 /** Where a type's declaration is, as the references key it. */
 function keyOf(reference: Pick<Reference, "declaration" | "file">): string {
@@ -56,7 +57,10 @@ function shapeOf(reference: Reference, references: References): Partial<Catalogu
   );
   const hasFields = shape.props.length > 0;
   const extended = [...new Set(shape.extends)];
-  const definition = text(file, written ?? declaration);
+  const definition =
+    (written?.type === "TSTypeReference" && !hasFields
+      ? zodDefinition(file, written, library === undefined ? references : new Map())
+      : undefined) ?? text(file, written ?? declaration);
   return {
     ...(hasFields && written?.type !== "TSUnionType" ? {} : { definition }),
     ...(hasFields && extended.length > 0 ? { extends: extended } : {}),
