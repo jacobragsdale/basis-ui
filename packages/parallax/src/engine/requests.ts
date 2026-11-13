@@ -45,8 +45,12 @@ class ViewRequests {
     return this.#lists.ask(() => this.#channel.send({ case: "distinctValues", value }));
   }
 
-  public async measure(from: number, to: number, series: string): Promise<Measurement | null> {
-    const value = { from, series, to, viewId: this.#viewId };
+  public async measure(
+    from: number,
+    to: number,
+    { series, y }: { readonly series: string; readonly y: string },
+  ): Promise<Measurement | null> {
+    const value = { from, series, to, viewId: this.#viewId, y };
     return this.#measures.ask(() => this.#channel.send({ case: "measureChart", value }));
   }
 

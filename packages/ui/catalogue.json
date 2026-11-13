@@ -23643,6 +23643,26 @@
       "purpose": "What a pivot's measure menu is given."
     },
     {
+      "fields": [
+        {
+          "description": "",
+          "name": "series",
+          "optional": true,
+          "type": "string"
+        },
+        {
+          "description": "",
+          "name": "y",
+          "optional": true,
+          "type": "string"
+        }
+      ],
+      "exported": true,
+      "module": "@basis/parallax",
+      "name": "MeasureOf",
+      "purpose": "What a measurement measures: the series by its value's text, the first by default, and the y column whose line it is, the chart's first by default, or an OHLC chart's close; a column the chart does not draw finds nothing."
+    },
+    {
       "extends": [
         "Omit<NonNullable<LayoutInput[\"measures\"]> extends readonly (infer TItem)[] ? TItem : never, \"column\" | \"unit_column\" | \"weight\">"
       ],
@@ -24863,7 +24883,7 @@
           "description": "Measures a chart between two axis positions; null when the engine found no row to measure.",
           "name": "measure",
           "optional": false,
-          "type": "(from: number, to: number, series?: string) => Promise<Measurement | null>"
+          "type": "(from: number, to: number, of?: MeasureOf) => Promise<Measurement | null>"
         },
         {
           "description": "Replaces the view's layout, answered with the window `window` gives, if any.",

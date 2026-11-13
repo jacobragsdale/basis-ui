@@ -50,6 +50,13 @@ interface ChartWindow {
   readonly height: number;
 }
 
+/** What a measurement measures: the series by its value's text, the first by default, and the y column whose line it
+ * is, the chart's first by default, or an OHLC chart's close; a column the chart does not draw finds nothing. */
+interface MeasureOf {
+  readonly series?: string;
+  readonly y?: string;
+}
+
 /** What changed between two rows of a chart's series, as the engine measured and wrote it. */
 type Measurement = Omit<ChartMeasure, "$typeName" | "$unknown" | "viewId" | "found" | "rows"> & {
   readonly rows: number;
@@ -144,7 +151,7 @@ interface ViewHandle {
   /** Lists a column's values, with the view's other filters applied, for a filter pick-list. */
   distinctValues: (column: string, search: string, limit: number) => Promise<DistinctValues>;
   /** Measures a chart between two axis positions; null when the engine found no row to measure. */
-  measure: (from: number, to: number, series?: string) => Promise<Measurement | null>;
+  measure: (from: number, to: number, of?: MeasureOf) => Promise<Measurement | null>;
   /** Replaces the view's layout, answered with the window `window` gives, if any. */
   update: (layoutJson: string, window?: (() => Viewport | null) | null) => void;
   /** The layout the view was opened or last updated with at `configVersion`, if it is still remembered. */
@@ -160,6 +167,7 @@ export type {
   ChartWindow,
   ClientBody,
   DistinctValues,
+  MeasureOf,
   Measurement,
   ViewChannel,
   ViewHandle,

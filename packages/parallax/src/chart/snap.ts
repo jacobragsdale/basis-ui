@@ -18,8 +18,6 @@ const maxDecimals = 12;
 interface SnapAt {
   readonly point: Point;
   readonly hidden?: readonly string[];
-  /** The column the engine measures, the chart's first y column: a measurement chooses among its series only. */
-  readonly price?: string;
 }
 
 /** `value` rounded to what one pixel of the scale can show: no more digits than a pixel tells apart. */
@@ -121,10 +119,11 @@ function snap(
   };
 }
 
-/** A series a measurement measures: its legend label, and the engine's key, its series value as text. */
+/** A series a measurement measures: its legend label, the engine's key, its series value as text, and its y column. */
 interface SeriesChoice {
   readonly label: string;
   readonly key: string;
+  readonly column: string;
 }
 
 /** How far, in pixels, a series' line at axis position `at` is from `point`'s height, or null where it has no value. */
@@ -150,10 +149,10 @@ function nearestSeries(
   for (const line of series) {
     const distance = lineDistance(model, line, near);
     if (distance !== null && (best === null || distance < best.distance)) {
-      best = { distance, key: line.key, label: line.label };
+      best = { column: line.column, distance, key: line.key, label: line.label };
     }
   }
-  return best === null ? null : { key: best.key, label: best.label };
+  return best === null ? null : { column: best.column, key: best.key, label: best.label };
 }
 
 /**
@@ -163,16 +162,14 @@ function nearestSeries(
 function seriesAt(
   frame: ChartFrameData,
   model: ChartModel,
-  { point, hidden = [], price }: SnapAt,
+  { point, hidden = [] }: SnapAt,
 ): SeriesChoice | null {
   const { content } = frame;
   const { x } = model;
   if (content.kind !== "series" || x === null || content.series.length < 2) {
     return null;
   }
-  const shown = content.series.filter(
-    (line) => !hidden.includes(line.label) && (price === undefined || line.column === price),
-  );
+  const shown = content.series.filter((line) => !hidden.includes(line.label));
   return nearestSeries(model, shown, { at: x.invert(point.x), point });
 }
 

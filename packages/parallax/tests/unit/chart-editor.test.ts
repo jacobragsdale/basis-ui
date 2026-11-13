@@ -53,7 +53,6 @@ function editor(start: readonly LayoutDrawing[] = [], editable = true): Editing 
     editable: (): boolean => editable,
     frame: (): ChartFrameData => frame,
     hidden: (): readonly string[] => [],
-    price: (): string => "close",
     measure,
     measureChart: async (from, to): Promise<Measurement> => {
       asked.push([from, to]);

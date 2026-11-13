@@ -29,8 +29,10 @@ is stopped after two seconds.
 Done in Charts: a series is hidden and measured by the engine's key, and a layout that hid it by label still does: the measure tool asks for the pressed series by the engine's `key`, and chooses only among the
 series of the chart's first y column, the one the engine measures, so the card names the series it measured. Held by
 `tests/browser/chart-series-keys.test.ts`, whose frames and measurement the engine makes; the hand-built
-`seriesAt` unit test is gone. Not changed: the engine measures only the first y column, so a second column's line
-cannot be measured; it would need `parallax-session`'s `measure` to take a column, which is the engine lane's.
+`seriesAt` unit test is gone. Then, once the engine lane's
+`MeasureChart.y` landed, done in Charts: the Measure tool measures the line pressed, on any of a chart's y columns:
+the press sends the series' key and its column, and `ViewHandle.measure` takes them as `{ series, y }`; the browser
+test measures BCN's open on a chart of closes and opens.
 
 **3. `packages/parallax/src/chart/indicators.ts:208` and `packages/parallax/src/chart/model-overlays.ts:152`** — An indicator's and an event's "series it follows" is built as `` `${y[0]} ${series}` ``, which never equals the legend label.
 
@@ -196,3 +198,7 @@ The defects cluster in three places the pixel-parity port could not catch:
   plot and goes to `onError`, where it threw from render or drew from 1970. Text dates are dates on every chart, a
   waterfall's included. Each chart keeps its own table, so a page of many small charts loads each once. What to do:
   nothing; a line of text tenors gives `settings={{ axis: "tenor" }}`, as the chart now says.
+
+- `ViewHandle.measure(from, to, of)` takes `{ series, y }`, the series by its value and the y column whose line it
+  measures, where it took the series as a string; the Measure tool measures the line pressed, on any y column. What
+  to do: a page that called `measure(from, to, "AAPL")` passes `{ series: "AAPL" }`.

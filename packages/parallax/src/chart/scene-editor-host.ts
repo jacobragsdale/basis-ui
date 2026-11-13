@@ -35,10 +35,11 @@ function editorHostOf(parts: EditorParts): DrawingHost {
     measure: (text) => parts.measurer()?.measure(text, model.theme.font) ?? 0,
     measureChart: async (from, to, series): Promise<Measurement | null> => {
       const handle = parts.handle();
-      return handle === null ? null : handle.measure(from, to, series);
+      return handle === null
+        ? null
+        : handle.measure(from, to, { series: series.key, y: series.column });
     },
     model: parts.drawn,
-    price: () => model.chart?.y[0] ?? "",
     save: (drawings) => {
       model.drawn(drawings, parts.changeLayout);
     },

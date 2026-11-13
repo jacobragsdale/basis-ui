@@ -114,9 +114,10 @@ function answered(asking: Measuring, measurement: Measurement | null): Measuring
 
 /** Asks the engine what changed across a measurement's band, of the series under its start, and settles it with the answer. */
 function askMeasure(host: DrawingHost, asking: Measuring, settle: (next: Measuring) => void): void {
-  const key = seriesUnder(host, pointOf(host, asking.from))?.key ?? "";
+  // On a chart of one series, the engine measures it: its first y column, or an OHLC chart's close.
+  const series = seriesUnder(host, pointOf(host, asking.from)) ?? { column: "", key: "" };
   host
-    .measureChart(asking.from.x, asking.to.x, key)
+    .measureChart(asking.from.x, asking.to.x, series)
     .then((measurement) => {
       settle(answered(asking, measurement));
       return measurement;

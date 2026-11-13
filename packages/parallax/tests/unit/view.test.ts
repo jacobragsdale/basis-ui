@@ -61,6 +61,17 @@ describe("a connection", () => {
 });
 
 describe("a view's measurements", () => {
+  test("name the series and the y column they measure", () => {
+    const { connection, sent } = recorded();
+    const view = connection.open("prices", "{}", { frame: ignore });
+    view.measure(10, 20, { series: "BCN", y: "open" }).catch(() => null);
+    const [named] = decoded(sent.slice(-1));
+    expect(named?.body.case === "measureChart" && named.body.value).toMatchObject({
+      series: "BCN",
+      y: "open",
+    });
+  });
+
   test("are what the engine wrote", async () => {
     const { connection, sent } = recorded();
     const view = connection.open("prices", "{}", { frame: ignore });
@@ -68,7 +79,9 @@ describe("a view's measurements", () => {
     const [request] = decoded(sent.slice(-1));
     expect(request?.body.case === "measureChart" && request.body.value).toMatchObject({
       from: 10,
+      series: "",
       to: 20,
+      y: "",
     });
     const value = {
       change: "10.00",

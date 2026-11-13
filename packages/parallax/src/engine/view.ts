@@ -26,6 +26,7 @@ import { chartWindowMessage, gridWindow, sameChartWindow, sameViewport } from ".
 import type {
   ChartWindow,
   DistinctValues,
+  MeasureOf,
   Measurement,
   ViewChannel,
   ViewHandle,
@@ -115,13 +116,11 @@ class OpenView implements ViewHandle {
   }
 
   /**
-   * Measures a chart between two axis positions: the rows nearest each with a price, the change between them and the
-   * bars from one to the other, every value as the engine writes it. `series` picks a series by its value's text.
-   * Null when the engine found no row to measure.
-   */
-  public async measure(from: number, to: number, series = ""): Promise<Measurement | null> {
+   * Measures the series and y column `of` names between two axis positions: the rows nearest each with a price, the
+   * change and the bars between them, as the engine writes them. Null when the engine found no row to measure. */
+  public async measure(from: number, to: number, of: MeasureOf = {}): Promise<Measurement | null> {
     this.#checkOpen();
-    return this.#requests.measure(from, to, series);
+    return this.#requests.measure(from, to, { series: of.series ?? "", y: of.y ?? "" });
   }
 
   /**

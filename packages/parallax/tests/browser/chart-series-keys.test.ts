@@ -111,12 +111,11 @@ describe("a chart's series, as the engine names them", () => {
     const { frame, handle } = await reduced({ chart: closes });
     const model = modelOf(chartOf({ chart: closes }), frame);
     const pressed = seriesOf(frame, "BCN");
-    const choice = seriesAt(frame, model, {
-      point: pointOn(model, pressed, { index: late }),
-      price: "close",
+    const choice = seriesAt(frame, model, { point: pointOn(model, pressed, { index: late }) });
+    expect(choice).toStrictEqual({ column: "close", key: "BCN", label: "BCN" });
+    const measured = await handle.measure(pressed.x[early] ?? 0, pressed.x[late] ?? 0, {
+      series: choice?.key ?? "",
     });
-    expect(choice).toStrictEqual({ key: "BCN", label: "BCN" });
-    const measured = await handle.measure(pressed.x[early] ?? 0, pressed.x[late] ?? 0, choice?.key);
     // BCN's closes, not ATLS's.
     expect([measured?.fromValue, measured?.toValue]).toStrictEqual(["305.00", "320.00"]);
   });
@@ -163,14 +162,19 @@ describe("a chart's series, as the engine names them", () => {
     expect(toggledHidden([], entry)).toStrictEqual(["close BCN"]);
   });
 
-  test("of several columns measure the price column, the one the engine measures", async () => {
-    const { frame } = await reduced(titled);
+  test("of several columns are measured on the line pressed, its column and its key", async () => {
+    const { frame, handle } = await reduced(titled);
     const model = modelOf(chartOf(titled), frame);
-    // Pressed on BCN's open, under its close, a measurement measures BCN's close.
-    const point = pointOn(model, seriesOf(frame, "Open BCN"), { below: 2, index: late });
-    expect(seriesAt(frame, model, { point, price: "close" })).toStrictEqual({
-      key: "BCN",
-      label: "Close BCN",
+    // Pressed on BCN's open, half a point under its close, a measurement measures BCN's open.
+    const open = seriesOf(frame, "Open BCN");
+    const point = pointOn(model, open, { below: 1, index: late });
+    const choice = seriesAt(frame, model, { point });
+    expect(choice).toStrictEqual({ column: "open", key: "BCN", label: "Open BCN" });
+    const at = (index: number): number => open.x[index] ?? 0;
+    const measured = await handle.measure(at(early), at(late), {
+      series: choice?.key ?? "",
+      y: choice?.column ?? "",
     });
+    expect([measured?.fromValue, measured?.toValue]).toStrictEqual(["304.50", "319.50"]);
   });
 });
