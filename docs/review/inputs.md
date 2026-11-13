@@ -104,6 +104,13 @@ of an instant, an offset, a bracketed zone, a wall-clock time and a date.
 - **Severity:** fix before release.
 - **Confidence:** confirmed by reading.
 
+Done in AmountInput, date fields: what was typed survives a parent that keeps only numbers or dates, and a reset clears a refused date: a reset that leaves the value as it was, `""` to `""`, cannot reach a controlled field through its
+value, so FormDateField keys its picker by the field's resets, which TanStack Form shows as the field no longer
+touched (`useResets` in `form-field-parts.ts`). A refused draft is no longer keyed to `over: null`: it stays while the
+value is `null`, or, until the value has once been `null`, the one it was typed over (`date-typed.ts`). DateField's
+`onValueChange` doc says to give the field a new `key` to clear a refused text where the value stays the same. Held by
+a gallery test of a form reset after `13/45/2026`.
+
 **10. `packages/ui/src/components/typed-confirm-dialog.tsx:49`**
 
 - **Defect:** an empty `confirmText` matches at once.
@@ -134,6 +141,13 @@ ends trimmed, as the label shows them, and an empty `confirmText` never matches,
 - **Scenario:** `onValueChange={(v) => setPar(typeof v === "number" ? v : null)}` makes `-`, `(`, and `1,` vanish as typed, so a negative or grouped number cannot be entered. An as-of page that ignores `null` reverts a holiday date with no reason shown.
 - **Severity:** polish, but a public contract that is costly to change later.
 - **Confidence:** confirmed by reading.
+
+Done in AmountInput, date fields: what was typed survives a parent that keeps only numbers or dates, and a reset clears a refused date: the value's type is unchanged, and no second callback is needed. What was typed now stays while
+the value is what it reads as, and text that reads as no number, or a refused date, also while the value is `null` or
+the one it was typed over, until the value has once taken it. So a parent that maps text to `null`, or ignores it,
+keeps `-1,234` and `(1,000)` key by key, and a refused date with its reason, and a value set otherwise replaces them.
+The props' docs and the README's "Taking amounts and dates" give the pattern. Held by gallery tests of both kinds of
+parent typing key by key, a parent that ignores a refused date and then sets another, and a form reset of an amount.
 
 **14. `packages/ui/src/components/multi-select.tsx:92,142`**
 
@@ -200,3 +214,10 @@ Not read: the `*-variants.ts` style files, `src/dates`, `src/securities`, `forma
 
 - `FormSecurityField` shows the form's value: an edit form opened on an identifier finds its security through
   `search`, and `form.reset()` empties the picker with the field. What to do: nothing.
+
+- `AmountInput` keeps what was typed while a parent that keeps only numbers maps text to `null` or ignores it, so `-`,
+  `(` and `1,` no longer vanish on the way to a number; a date field keeps a refused date and its reason while its
+  parent ignores `null`. A value the parent sets otherwise replaces them. What to do: nothing; a page that kept an
+  AmountInput uncontrolled to avoid this may hold its number.
+
+- `FormDateField` clears a date it refused, and its reason, on `form.reset()`. What to do: nothing.

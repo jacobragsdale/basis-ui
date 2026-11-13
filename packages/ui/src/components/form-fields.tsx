@@ -11,7 +11,7 @@ import { AmountInput } from "./amount-input.tsx";
 import { AsOfDatePicker } from "./as-of-date-picker.tsx";
 import { DatePicker } from "./date-picker.tsx";
 import { Field, FieldDescription, FieldError, FieldLabel } from "./field.tsx";
-import { emptyOf, holdText, useFieldParts } from "./form-field-parts.ts";
+import { emptyOf, holdText, useFieldParts, useResets } from "./form-field-parts.ts";
 import type { Emptiness, FormFieldApi, FormFieldProps } from "./form-field-parts.ts";
 import { Input } from "./input.tsx";
 
@@ -202,11 +202,13 @@ function FormDateField<TValue extends string | null | undefined = string>({
   ...emptiness
 }: FormDateFieldProps<TValue>): ReactElement {
   const parts = useFieldParts(field, id);
+  const resets = useResets(field.state.meta.isTouched);
   const Picker = asOf ? AsOfDatePicker : DatePicker;
   return (
     <Field data-invalid={parts.invalid}>
       <FieldLabel htmlFor={parts.id}>{label}</FieldLabel>
       <Picker
+        key={resets}
         id={parts.id}
         size={size}
         name={field.name}

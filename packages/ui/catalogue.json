@@ -13601,7 +13601,7 @@
           "type": "\"default\" | \"sm\" | undefined"
         },
         {
-          "description": "The number, `null` for an empty field, or the text while it reads as no number. Leave it out for an uncontrolled field.",
+          "description": "The number, `null` for an empty field, or the text while it reads as no number. Leave it out for an uncontrolled field. A parent that keeps only numbers may pass `null`, or its last number, for text: the text stays as typed.",
           "name": "value",
           "optional": true,
           "type": "number | string | null | undefined"
@@ -13672,7 +13672,7 @@
           "type": "Temporal.PlainDate | null | undefined"
         },
         {
-          "description": "Called with the date when one is picked or typed, and with `null` when the field is cleared or what was typed cannot be taken.",
+          "description": "Called with the date when one is picked or typed, and with `null` when the field is cleared or what was typed cannot be taken. A parent that keeps only dates may ignore `null`: the refused text and its reason stay until the parent sets another date. To clear them while the value stays the same, as a form's reset does, give the field a new `key`; FormDateField does so on a reset.",
           "name": "onValueChange",
           "optional": true,
           "type": "((value: Temporal.PlainDate | null) => void) | undefined"
@@ -13754,7 +13754,7 @@
           "type": "Temporal.PlainDate | null | undefined"
         },
         {
-          "description": "Called with the date when one is picked or typed, and with `null` when the field is cleared or what was typed cannot be taken.",
+          "description": "Called with the date when one is picked or typed, and with `null` when the field is cleared or what was typed cannot be taken. A parent that keeps only dates may ignore `null`: the refused text and its reason stay until the parent sets another date. To clear them while the value stays the same, as a form's reset does, give the field a new `key`; FormDateField does so on a reset.",
           "name": "onValueChange",
           "optional": true,
           "type": "((value: Temporal.PlainDate | null) => void) | undefined"

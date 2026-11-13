@@ -12,7 +12,11 @@
  * is the field's error: AmountInput shows it once the field has been left, and `amountSchema` gives a form's check the
  * same reason. AmountInput draws the field's error line, so a form passes it the field's errors rather than drawing a
  * FieldError of its own; while the text reads as no number, the reason replaces them. The input, the echo and the
- * error line stack in a column of their own, so a horizontal Field sets the column beside its label. */
+ * error line stack in a column of their own, so a horizontal Field sets the column beside its label.
+ *
+ * A parent that keeps only numbers may map the text to `null`, or ignore it: what was typed stays while the value is
+ * `null` or the one it was typed over, so `-`, `(` and `1,` survive on the way to a number, and a value the parent
+ * sets otherwise replaces it. */
 
 import { useId, useState } from "react";
 import type { ComponentProps, FocusEvent, ReactElement } from "react";
@@ -34,7 +38,8 @@ interface AmountInputProps extends Omit<
   /** The field's height: the select's default, or `sm` for a dense row. */
   readonly size?: "default" | "sm" | undefined;
   /** The number, `null` for an empty field, or the text while it reads as no number. Leave it out for
-   * an uncontrolled field. */
+   * an uncontrolled field. A parent that keeps only numbers may pass `null`, or its last number, for text: the text
+   * stays as typed. */
   readonly value?: number | string | null | undefined;
   /** The value an uncontrolled field starts with, as `value` takes it. */
   readonly defaultValue?: number | string | null | undefined;
@@ -111,9 +116,32 @@ interface AmountText {
   readonly leave: () => void;
 }
 
-/** The text the field shows, which is what was typed while it still reads as the value; a value set from outside
- * replaces it. The parse reason waits until the field has been left once, so it does not flash while a number is
- * half typed. */
+/** What was typed, the value it was typed over, and whether the value has since been what it reads as. */
+interface Typed {
+  readonly text: string;
+  readonly over: number | string | null;
+  readonly taken: boolean;
+}
+
+/** Whether the field still shows what was typed. It does while the value is what the text reads as. Text that reads
+ * as no number also stays while the value is `null` or the one it was typed over, until the value has once been the
+ * text: so a parent that keeps only numbers, mapping text to `null` or ignoring it, keeps `-` and `1,` as they are
+ * typed, and a value set from outside, such as a form's reset, replaces it. */
+function keeps(
+  typed: Typed,
+  reading: number | string | null,
+  current: number | string | null,
+): boolean {
+  if (reading === current) {
+    return true;
+  }
+  return (
+    !typed.taken && typeof reading === "string" && (current === null || current === typed.over)
+  );
+}
+
+/** The text the field shows, which is what was typed while `keeps` holds; a value set from outside replaces it. The
+ * parse reason waits until the field has been left once, so it does not flash while a number is half typed. */
 function useAmountText({
   value,
   defaultValue = null,
@@ -128,10 +156,13 @@ function useAmountText({
     same: (left, right) => left === right,
     value,
   });
-  const [typed, setTyped] = useState<string | null>(null);
+  const [typed, setTyped] = useState<Typed | null>(null);
   const [left, setLeft] = useState(false);
-  const shown = valueText(current);
-  const text = typed !== null && valueOf(typed, suffixes) === current ? typed : shown;
+  const reading = typed === null ? null : valueOf(typed.text, suffixes);
+  if (typed !== null && !typed.taken && reading === current) {
+    setTyped({ ...typed, taken: true });
+  }
+  const text = typed !== null && keeps(typed, reading, current) ? typed.text : valueText(current);
   return {
     echo: echoOf(text, suffixes),
     leave: () => {
@@ -140,7 +171,7 @@ function useAmountText({
     reason: left ? reasonOf(text, suffixes) : undefined,
     text,
     type: (next) => {
-      setTyped(next);
+      setTyped({ over: current, taken: false, text: next });
       change(valueOf(next, suffixes));
     },
   };

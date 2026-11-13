@@ -1228,6 +1228,23 @@ const ticketSchema = z.object({
 </form.Field>;
 ```
 
+A page that keeps only numbers or dates may hold its own state: `AmountInput`'s text that reads as no number, and a
+date field's refused text, stay while the page holds `null` or ignores the change, so `-`, `(` and `1,` survive
+typing, and go when the page sets another value:
+
+```tsx
+const [par, setPar] = useState<number | null>(null);
+
+<AmountInput
+  id="par"
+  suffixes={parSuffixes}
+  value={par}
+  onValueChange={(next) => {
+    setPar(typeof next === "number" ? next : null);
+  }}
+/>;
+```
+
 `AsOfDatePicker` holds a `Temporal.PlainDate`. It takes business days on its `calendar`, SIFMA's unless set, from
 `min` to `max`, where `max` is today in New York unless set and `null` leaves the future open. Uncontrolled, it starts
 at the last business day before today, which `defaultAsOfDate()` also gives a form's default values. A typed

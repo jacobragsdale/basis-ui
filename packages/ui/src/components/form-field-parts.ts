@@ -1,7 +1,7 @@
 /* What the form fields share: the shape of a TanStack Form field they read, the props every one takes, what an empty
  * field holds, and the ids and state of a field's parts. */
 
-import { useId } from "react";
+import { useId, useState } from "react";
 import type { ComponentProps } from "react";
 
 import type { FieldError } from "./field.tsx";
@@ -89,5 +89,16 @@ function useFieldParts<TValue>(
   };
 }
 
-export { emptyOf, holdText, useFieldParts };
+/** How many times the field has been reset, which TanStack Form shows as the field no longer touched. A control that
+ * keeps a draft of its own, such as a date the field refused, is keyed by it, so a reset clears the draft even where
+ * the value it resets to is the one the field already held. */
+function useResets(isTouched: boolean): number {
+  const [seen, setSeen] = useState({ resets: 0, touched: isTouched });
+  if (seen.touched !== isTouched) {
+    setSeen({ resets: seen.resets + (isTouched ? 0 : 1), touched: isTouched });
+  }
+  return seen.resets;
+}
+
+export { emptyOf, holdText, useFieldParts, useResets };
 export type { Emptiness, FieldErrors, FormFieldApi, FormFieldProps };

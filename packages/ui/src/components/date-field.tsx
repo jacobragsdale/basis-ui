@@ -9,15 +9,17 @@
  * own. The input and the error line stack in a column of their own, so a horizontal Field sets the column beside its
  * label. */
 
-import { useId, useState } from "react";
+import { useId } from "react";
 import type { ComponentProps, FocusEvent, KeyboardEvent, ReactElement } from "react";
 
 import type { Calendar } from "#dates/calendar.ts";
 import { CalendarIcon } from "#vendor/lucide/calendar.tsx";
 
 import { DateGrid } from "./date-grid.tsx";
-import { readDate, sameDate, whyNotPickable } from "./date-picking.ts";
+import { sameDate } from "./date-picking.ts";
 import type { PickRules } from "./date-picking.ts";
+import { useTypedDate } from "./date-typed.ts";
+import type { TypedDate } from "./date-typed.ts";
 import { idList, useControlled, useGridPopover, useToday } from "./field-state.ts";
 import type { GridPopover } from "./field-state.ts";
 import { FieldError } from "./field.tsx";
@@ -37,7 +39,9 @@ interface DateFieldProps extends Omit<
   /** The date an uncontrolled field starts at. */
   readonly defaultValue?: Temporal.PlainDate | null | undefined;
   /** Called with the date when one is picked or typed, and with `null` when the field is cleared or what was typed
-   * cannot be taken. */
+   * cannot be taken. A parent that keeps only dates may ignore `null`: the refused text and its reason stay until
+   * the parent sets another date. To clear them while the value stays the same, as a form's reset does, give the
+   * field a new `key`; FormDateField does so on a reset. */
   readonly onValueChange?: ((value: Temporal.PlainDate | null) => void) | undefined;
   /** The calendar whose business days the field takes; SIFMA's unless set. */
   readonly calendar?: Calendar | undefined;
@@ -68,67 +72,6 @@ interface DateFieldBehaviour {
     calendar: Calendar | undefined,
     today: Temporal.PlainDate,
   ) => Temporal.PlainDate;
-}
-
-/** What was typed and not yet taken, with the value it was typed over and, once committed, why it cannot be taken. */
-interface Draft {
-  readonly text: string;
-  readonly over: Temporal.PlainDate | null;
-  readonly reason: string | undefined;
-}
-
-/** What a typed text gives: a date, `null` for an empty field, or the reason it cannot be taken. */
-function takeText(
-  text: string,
-  rules: PickRules,
-): { readonly date: Temporal.PlainDate | null; readonly reason: string | undefined } {
-  if (text.trim() === "") {
-    return { date: null, reason: undefined };
-  }
-  const reading = readDate(text);
-  if (!reading.ok) {
-    return { date: null, reason: reading.reason };
-  }
-  const reason = whyNotPickable(reading.value, rules);
-  return { date: reason === undefined ? reading.value : null, reason };
-}
-
-interface TypedDate {
-  readonly text: string;
-  readonly reason: string | undefined;
-  readonly type: (text: string) => void;
-  /** Takes what was typed, as the field is left or Enter pressed. */
-  readonly commit: () => void;
-  readonly clear: () => void;
-}
-
-/** The text the field shows: what was typed while the value is still the one it was typed over, and otherwise the
- * value. A value set from outside replaces the draft, and its reason with it. */
-function useTypedDate(
-  current: Temporal.PlainDate | null,
-  change: (next: Temporal.PlainDate | null) => void,
-  rulesNow: () => PickRules,
-): TypedDate {
-  const [draft, setDraft] = useState<Draft | null>(null);
-  const live = draft !== null && sameDate(draft.over, current) ? draft : null;
-  return {
-    clear: () => {
-      setDraft(null);
-    },
-    commit: () => {
-      if (live === null || live.reason !== undefined) {
-        return;
-      }
-      const taken = takeText(live.text, rulesNow());
-      setDraft(taken.reason === undefined ? null : { ...live, over: null, reason: taken.reason });
-      change(taken.date);
-    },
-    reason: live?.reason,
-    text: live === null ? (current?.toString() ?? "") : live.text,
-    type: (text) => {
-      setDraft({ over: current, reason: undefined, text });
-    },
-  };
 }
 
 interface DatePopoverProps {
