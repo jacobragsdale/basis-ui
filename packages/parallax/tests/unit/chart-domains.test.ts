@@ -5,8 +5,10 @@ import { afterAll, describe, expect, test } from "vite-plus/test";
 
 import type { Answer } from "./chart-domains.worker.ts";
 
-/** How long one model may take; a loop that never ends is stopped here. */
+/** How long one model may take, once the worker is up; a loop that never ends is stopped here. */
 const limit = 2000;
+/** How long the worker may take to start and load its modules, which a busy runner can make slow. */
+const startLimit = 60_000;
 
 /** Value ranges no round step can walk in floating point, or none at all. */
 const domains: Readonly<Record<string, readonly number[]>> = {
@@ -33,17 +35,19 @@ const cases = Object.entries(domains).flatMap(([name, values]) =>
   forms.flatMap((form) => styles.map((style) => ({ form, name, style, values }))),
 );
 
-/** The worker's heap is held small, so that a loop that fills it ends there and not in the host's memory. */
-function started(): Worker {
-  return new Worker(new URL("chart-domains.worker.ts", import.meta.url), {
+/** A worker, and its first message, which says its modules are loaded. Its heap is held small, so that a loop that
+ * fills it ends there and not in the host's memory. */
+function started(): { readonly thread: Worker; readonly ready: Promise<unknown> } {
+  const thread = new Worker(new URL("chart-domains.worker.ts", import.meta.url), {
     resourceLimits: { maxOldGenerationSizeMb: 128 },
   });
+  return { ready: once(thread, "message", { signal: AbortSignal.timeout(startLimit) }), thread };
 }
 
 let worker = started();
 
 afterAll(async () => {
-  await worker.terminate();
+  await worker.thread.terminate();
 });
 
 function isAnswer(value: unknown): value is Answer {
@@ -57,15 +61,16 @@ async function answer(
   style: string,
   values: readonly number[],
 ): Promise<Answer | null> {
-  worker.postMessage({ form, style, values }, []);
+  await worker.ready;
+  worker.thread.postMessage({ form, style, values }, []);
   try {
-    const replies: unknown[] = await once(worker, "message", {
+    const replies: unknown[] = await once(worker.thread, "message", {
       signal: AbortSignal.timeout(limit),
     });
     const [reply] = replies;
     return isAnswer(reply) ? reply : null;
   } catch {
-    await worker.terminate();
+    await worker.thread.terminate();
     worker = started();
     return null;
   }

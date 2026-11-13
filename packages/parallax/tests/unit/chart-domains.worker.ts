@@ -94,4 +94,7 @@ parentPort?.on("message", (message: { form: string; style: string; values: numbe
   }
 });
 
+// Its modules are loaded: the test times each model from here, not the worker's start, which a busy runner makes slow.
+parentPort?.postMessage({ ready: true }, []);
+
 export type { Answer };
