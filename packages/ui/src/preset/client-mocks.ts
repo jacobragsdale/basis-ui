@@ -6,11 +6,48 @@
  *   failed its own schema. A Zod 4 enum lists its values in `options`.
  * - a property the schema leaves out of `required`, picked as `notes: faker.helpers.arrayElement([TEXT, undefined])`:
  *   under `exactOptionalPropertyTypes` a model's `notes?: string` takes no `undefined`, so the mock failed `tsc`. It
- *   becomes `...faker.helpers.arrayElement([{ notes: TEXT }, {}])`, which leaves the property out instead. */
+ *   becomes `...faker.helpers.arrayElement([{ notes: TEXT }, {}])`, which leaves the property out instead.
+ * - a string with a `pattern`, mocked by `faker.helpers.fromRegExp`, which writes `^`, `$` and `\d` as they stand,
+ *   so the text never matched: it becomes a pick between the first and the last text the pattern matches, as
+ *   `vp run fixtures new` makes them (schema-text.ts).
+ *
+ * And `formatMocks`, which orval-options.ts gives orval for the formats whose default mock fails the check orval's Zod
+ * output makes: `time`, `time-local` and `date-time-local`, which it mocked as random letters. orval writes such an
+ * option's text as a quoted string, and only a function's as code, which the preset, holding no faker, cannot write;
+ * so each is unquoted here back into the code it is. */
 
 import { existsSync } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+
+import { textMatching } from "./schema-text.ts";
+
+/** The mock of each string format whose orval default fails its Zod check, as code orval writes into the mock. */
+const formatMocks: Readonly<Record<string, string>> = {
+  "date-time-local": "faker.date.past().toISOString().slice(0, 19)",
+  time: "faker.date.anytime().toISOString().slice(11, 19)",
+  "time-local": "faker.date.anytime().toISOString().slice(11, 19)",
+};
+
+const patternMock = /faker\.helpers\.fromRegExp\((?<pattern>"(?:[^"\\]|\\.)*")\)/gu;
+
+/** A pick between the first and the last text `pattern`, as a JSON string, matches, or `undefined` for one that
+ * `textMatching` cannot read. */
+function patternPick(quoted: string): string | undefined {
+  let pattern: unknown = undefined;
+  try {
+    pattern = JSON.parse(quoted);
+  } catch {
+    return undefined;
+  }
+  if (typeof pattern !== "string") {
+    return undefined;
+  }
+  const texts = [textMatching(pattern), textMatching(pattern, true)];
+  return texts.every((text) => text !== undefined)
+    ? `faker.helpers.arrayElement(${JSON.stringify([...new Set(texts)])})`
+    : undefined;
+}
 
 const zodEnumMock =
   /faker\.helpers\.arrayElement\(Object\.values\((?<schema>[A-Za-z_$][\w$]*)\)\)/gu;
@@ -105,7 +142,13 @@ function withOptionalPick(text: string, match: RegExpExecArray): string {
  * leaving the property out rather than setting it to `undefined`. The last pick is rewritten first, so a pick inside
  * another's value is rewritten before the one that holds it. */
 function repairedMocks(text: string): string {
-  let written = text.replaceAll(zodEnumMock, "faker.helpers.arrayElement($<schema>.options)");
+  let written = text;
+  for (const code of Object.values(formatMocks)) {
+    written = written.replaceAll(`'${code}'`, code).replaceAll(`"${code}"`, code);
+  }
+  written = written
+    .replaceAll(zodEnumMock, "faker.helpers.arrayElement($<schema>.options)")
+    .replaceAll(patternMock, (call: string, quoted: string) => patternPick(quoted) ?? call);
   for (const match of [...written.matchAll(propertyPick)].toReversed()) {
     written = withOptionalPick(written, match);
   }
@@ -125,4 +168,4 @@ async function repairMocks(output: string): Promise<void> {
   }
 }
 
-export { repairMocks, repairedMocks };
+export { formatMocks, repairMocks, repairedMocks };

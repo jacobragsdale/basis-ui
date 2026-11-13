@@ -35,4 +35,18 @@ describe("repairedMocks", () => {
       repairedMocks("({memo: faker.helpers.arrayElement([faker.lorem.word(), null, undefined])})"),
     ).toBe("({...faker.helpers.arrayElement([{ memo: faker.lorem.word() }, { memo: null }, {}])})");
   });
+
+  test("mocks a pattern with text it matches, and leaves one the preset cannot read to orval", () => {
+    expect(
+      repairedMocks(String.raw`({isin: faker.helpers.fromRegExp("^[A-Z]{2}[A-Z0-9]{9}\\d$")})`),
+    ).toBe('({isin: faker.helpers.arrayElement(["AAAAAAAAAAA0","ZZ9999999999"])})');
+    const unread = 'faker.helpers.fromRegExp("^(?!N)[A-Z]{3}$")';
+    expect(repairedMocks(unread)).toBe(unread);
+  });
+
+  test("writes a format's mock as code, where orval quoted the option's text", () => {
+    expect(repairedMocks("({time: 'faker.date.anytime().toISOString().slice(11, 19)'})")).toBe(
+      "({time: faker.date.anytime().toISOString().slice(11, 19)})",
+    );
+  });
 });

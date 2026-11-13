@@ -173,7 +173,9 @@ to it by the orchestrator.)
 - Where: `src/api/generated/client.msw.ts`, as `vp run client-pull` writes it from orval 8.46.
 - Scenario: a 200 schema with `notes` not in `required` generates `notes: faker.helpers.arrayElement([TEXT, undefined])`, and the model's `notes?: string` refuses `undefined` under `exactOptionalPropertyTypes` (TS2375), so verify's types stage fails on the app's own generated client.
 
-Done in Client: a response property left out of required leaves the generated mocks passing tsc: `client-pull` rewrites each such pick, beside the enum picks, into `...faker.helpers.arrayElement([{ notes: TEXT }, {}])`, which leaves the property out (`src/preset/client-mocks.ts`, which the enum repair moved into). The desk document's `Trade` gains an optional `notes` and an optional nullable `memo`, and `tests/scaffold-desk.test.ts` type-checks the client generated from it; orval writes the nullable one as text or `null`, which its type takes. The tsconfig and the generated client's checks are unchanged. Not done: orval's mock of a `format: time` string is random letters, which the client's `zod.iso.time` refuses, so a generated handler's answer for such a field fails its parse in fixture mode; a fixture answers it.
+Done in Client: a response property left out of required leaves the generated mocks passing tsc: `client-pull` rewrites each such pick, beside the enum picks, into `...faker.helpers.arrayElement([{ notes: TEXT }, {}])`, which leaves the property out (`src/preset/client-mocks.ts`, which the enum repair moved into). The desk document's `Trade` gains an optional `notes` and an optional nullable `memo`, and `tests/scaffold-desk.test.ts` type-checks the client generated from it; orval writes the nullable one as text or `null`, which its type takes. The tsconfig and the generated client's checks are unchanged.
+
+Done in Client: every string format the generated client checks is mocked with text it accepts: orval's mock of `time`, `time-local` and `date-time-local` was random letters, and of any `pattern` `faker.helpers.fromRegExp`, which writes `^`, `$` and `\d` as they stand, so a generated handler's answer failed the client's own parse in fixture mode. The three formats get mocks through orval's `override.mock.format`, unquoted into code by `client-mocks.ts`, and a pattern's mock becomes a pick between the first and last text `textMatching` makes for it. The desk document's `Formats` uses each format orval's Zod output checks (`date`, `time`, `time-local`, `date-time`, `date-time-local`, `email`, `uri`, `hostname`, `uuid`) and two patterns, and the desk app's own test parses each success's mock with the client's schema 200 times. Not done: a pattern `textMatching` cannot read, as a lookahead, keeps orval's mock, which may fail; a fixture answers it, as for `vp run fixtures new`. The showcase's generated client is regenerated for its two patterns.
 
 ## Checked and found sound
 
@@ -236,4 +238,8 @@ The area is better than its age suggests: modules are small and pure, every fail
 
 - `vp run client-pull` writes mocks that pass `tsc` for an API whose response leaves a property out of `required`:
   the mock leaves it out, where it set it to `undefined`, which the model's type refuses. What to do: run
+  `vp run client-pull`.
+
+- A generated handler's answer passes the generated client's own schema for every string format the client checks:
+  `time`, `time-local`, `date-time-local` and a `pattern` were mocked with text the client refused. What to do: run
   `vp run client-pull`.

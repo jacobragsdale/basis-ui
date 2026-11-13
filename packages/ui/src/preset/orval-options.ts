@@ -18,6 +18,8 @@ import path from "node:path";
 import type { Options } from "orval";
 import { z } from "zod";
 
+import { formatMocks } from "./client-mocks.ts";
+
 /** Where an app keeps its pinned copy of the API's document, and where its generated client goes, from its root. */
 const documentFile = "openapi.json";
 const generatedFolder = "src/api/generated";
@@ -108,6 +110,8 @@ function orvalOptions(root: string, output: string): Options {
       mode: "split",
       override: {
         fetch: { forceSuccessResponse: true, runtimeValidation: true },
+        // Each format's mock that orval's own fails the check its Zod output makes (client-mocks.ts).
+        mock: { format: formatMocks },
         includeZodSchemaInArguments: true,
         mutator: { name: "apiFetch", path: "@basis/ui/mutator" },
         operations: datasetOperations(readDocument(input)),

@@ -1,8 +1,6 @@
-/* `vp run new` on a second document, the desk's (scaffold-desk-api.ts), in an app made from the template with its
- * sample removed, its own route tree holding a nested layout, and packages/example's node_modules linked in. Each kind
- * of page is scaffolded from an operation the example's document has nothing like, and the app's own checks then
- * pass on what was written, as written: its fixtures, its lint and formatting, its types, and its tests, in a Node
- * DOM, as on a machine with no browser. */
+/* `vp run new` on the desk's document (scaffold-desk-api.ts), in an app from the template with a nested layout and
+ * packages/example's node_modules: each kind of page, from operations unlike the example's, then the app's own
+ * fixtures, lint, types and tests, in a Node DOM, pass on what was written, its generated client and mocks included. */
 
 import { spawn } from "node:child_process";
 import { once } from "node:events";
@@ -24,7 +22,7 @@ import { afterAll, beforeAll, describe, expect, test } from "vite-plus/test";
 import { z } from "zod";
 
 import { example } from "./fixture-app.ts";
-import { deskDocument } from "./scaffold-desk-api.ts";
+import { deskDocument, deskMocksTest } from "./scaffold-desk-api.ts";
 
 const script = fileURLToPath(new URL("../src/preset/tasks.ts", import.meta.url));
 const clientScript = fileURLToPath(new URL("../src/preset/client.ts", import.meta.url));
@@ -180,6 +178,7 @@ function makeDeskApp(): string {
     // The desk's note, which no example can be made for, answered by a fixture written by hand.
     "fixtures/desk-note.json": `${JSON.stringify(handNote, undefined, 2)}\n`,
     "openapi.json": `${JSON.stringify(deskDocument, undefined, 2)}\n`,
+    "src/api/mocks.test.ts": deskMocksTest,
     "src/pages/audit.tsx": plainPage("AuditPage", "Audit"),
     "src/pages/home.tsx": plainPage("HomePage", "Home"),
     "src/pages/users.tsx": plainPage("UsersPage", "Users"),
@@ -257,6 +256,17 @@ describe("vp run new on the desk's document", () => {
       /memo: faker\.helpers\.arrayElement\(\[faker\.string\.alpha\([^\]]*\),null,\]\)/u,
     );
     expect(mocks).not.toContain(", undefined])");
+  });
+
+  test("mocks every string format orval's Zod output checks, and a pattern, with text it accepts", () => {
+    const mocks = read("src/api/generated/client.msw.ts");
+    expect(mocks).toContain("time: faker.date.anytime().toISOString().slice(11, 19)");
+    expect(mocks).toContain('code: faker.helpers.arrayElement(["AAA-00","ZZZ-99"])');
+    // Only the desk note's lookahead, which no text the preset makes can match, is left to orval's own mock.
+    expect([...new Set(mocks.match(/fromRegExp\("[^"]*"\)/gu))]).toStrictEqual([
+      'fromRegExp("^(?!N)[A-Z]{3}$")',
+    ]);
+    expect(read("src/api/generated/model/formats.zod.ts")).toContain('"uuid": zod.uuid()');
   });
 
   test("imports a model by the name orval gives it", () => {

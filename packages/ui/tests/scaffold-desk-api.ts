@@ -28,6 +28,19 @@ const json = (reference: string, description = "Successful Response"): unknown =
 
 const side = { $ref: "#/components/schemas/Side" };
 
+/** The string formats orval 8.46's Zod output checks, each by a schema of its own. */
+const checkedFormats = [
+  "date",
+  "time",
+  "time-local",
+  "date-time",
+  "date-time-local",
+  "email",
+  "uri",
+  "hostname",
+  "uuid",
+];
+
 const deskDocument = {
   components: {
     schemas: {
@@ -39,6 +52,22 @@ const deskDocument = {
         },
         required: ["code", "text"],
         title: "DeskNote",
+        type: "object",
+      },
+      // Every string format orval's Zod output checks, and a pattern with and without a format of its own.
+      Formats: {
+        properties: {
+          ...Object.fromEntries(
+            checkedFormats.map((format) => [
+              format.replaceAll("-", "_"),
+              { format, type: "string" },
+            ]),
+          ),
+          code: { pattern: String.raw`^[A-Z]{3}-\d{2}$`, type: "string" },
+          isin: { format: "isin", pattern: String.raw`^[A-Z]{2}[A-Z0-9]{9}\d$`, type: "string" },
+        },
+        required: [...checkedFormats.map((format) => format.replaceAll("-", "_")), "code", "isin"],
+        title: "Formats",
         type: "object",
       },
       Order: {
@@ -135,6 +164,9 @@ const deskDocument = {
         summary: "List Orders",
       },
     },
+    "/formats": {
+      get: { operationId: "formats", responses: { "200": json("Formats") }, summary: "Formats" },
+    },
     "/desk-notes/latest": {
       get: {
         operationId: "latest_desk_note",
@@ -199,4 +231,36 @@ const deskDocument = {
   },
 };
 
-export { deskDocument };
+/* The app's own test of the generated mocks: each success's mock, as fixture mode's generated handlers answer with
+ * it, parses with the client's schema of that answer, many times over, since faker picks each value at random. The desk
+ * note's is left out: its pattern is one the preset cannot make text for, so its mock is orval's own, and a fixture
+ * written by hand answers it, as for vp run fixtures new. */
+const deskMocksTest = `import { describe, expect, test } from "vite-plus/test";
+
+import { Formats, Order, PageTrade, Trade } from "#api/client.ts";
+import {
+  getFormatsResponseMock,
+  getGetTradeResponseMock,
+  getLatestTradePageResponseMock,
+  getListOrdersResponseMock,
+} from "#api/mocks.ts";
+
+const tries = Array.from({ length: 200 }, (_slot, index) => index);
+
+describe("the generated mocks", () => {
+  test.each([
+    ["formats", () => Formats.safeParse(getFormatsResponseMock())],
+    ["get_trade", () => Trade.safeParse(getGetTradeResponseMock())],
+    ["latest_trade_page", () => PageTrade.safeParse(getLatestTradePageResponseMock())],
+    ["list_orders", () => Order.array().safeParse(getListOrdersResponseMock())],
+  ])("answer %s with a body the client's schema parses", (_operation, parse) => {
+    const issues = tries.flatMap(() => {
+      const parsed = parse();
+      return parsed.success ? [] : parsed.error.issues.map(({ path }) => path.join("."));
+    });
+    expect([...new Set(issues)]).toStrictEqual([]);
+  });
+});
+`;
+
+export { checkedFormats, deskDocument, deskMocksTest };
