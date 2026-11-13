@@ -17,7 +17,8 @@ import type { Finding } from "./verify-report.ts";
 
 /** The most a tool may print, 256 MiB: far more than any report. */
 const largestOutput = 268_435_456;
-const environment = { ...process.env, FORCE_COLOR: "0", NO_COLOR: "1" };
+/** Colour off, so no line is read through it. */
+const noColour = { FORCE_COLOR: "0", NO_COLOR: "1" };
 
 interface Ran {
   readonly status: number | null;
@@ -30,7 +31,7 @@ function runNode(root: string, args: readonly string[], env: NodeJS.ProcessEnv =
   const result = spawnSync(process.execPath, args, {
     cwd: root,
     encoding: "utf8",
-    env: { ...environment, ...env },
+    env: { ...process.env, ...noColour, ...env },
     maxBuffer: largestOutput,
   });
   return { status: result.status, stderr: result.stderr, stdout: result.stdout };
@@ -134,31 +135,43 @@ function lintFinding(root: string, diagnostic: Diagnostic): Finding {
   });
 }
 
-/** Each file `vp fmt` would rewrite, and each error the lint reports but the compiler's. */
-function lintFindings(root: string): readonly Finding[] {
+/** Each file `vp fmt` would rewrite, or the one finding that `vp fmt` failed with no list to read. */
+function formatFindings(root: string): readonly Finding[] {
   const format = vp(root, ["fmt", "--list-different"]);
   const unformatted = format.stdout.split("\n").filter((line) => /^\S+$/u.test(line.trim()));
-  const formatting =
-    format.status !== 0 && unformatted.length === 0
-      ? unread("vp fmt --check", format)
-      : unformatted.map((file) =>
-          findingOf({
-            file: fromRoot(root, file.trim()),
-            fix: "run vp check --fix, which formats it as the commit hook's vp staged does.",
-            line: null,
-            message: "the file is not formatted as vp fmt writes it",
-            rule: null,
-          }),
-        );
+  if (format.status !== 0 && unformatted.length === 0) {
+    return unread("vp fmt --check", format);
+  }
+  return unformatted.map((file) =>
+    findingOf({
+      file: fromRoot(root, file.trim()),
+      fix: "run vp check --fix, which formats it as the commit hook's vp staged does.",
+      line: null,
+      message: "the file is not formatted as vp fmt writes it",
+      rule: null,
+    }),
+  );
+}
+
+/** Each error the lint reports but the compiler's, which the types stage reports from tsc; or, for a lint that failed
+ * with no error in its report, as a type-aware pass that crashed after printing it, the one finding that says so. */
+function lintErrors(root: string): readonly Finding[] {
   const lint = vp(root, ["lint", "--format", "json"]);
   const report = lintReportSchema.safeParse(jsonIn(lint.stdout));
-  if (!report.success) {
-    return [...formatting, ...(lint.status === 0 ? [] : unread("vp lint", lint))];
+  const errors = report.success
+    ? report.data.diagnostics.filter(({ severity }) => severity === "error")
+    : [];
+  if (lint.status !== 0 && errors.length === 0) {
+    return unread("vp lint", lint);
   }
-  const errors = report.data.diagnostics.filter(
-    ({ code, severity }) => severity === "error" && !compilerCode.test(code),
-  );
-  return [...formatting, ...errors.map((diagnostic) => lintFinding(root, diagnostic))];
+  return errors
+    .filter(({ code }) => !compilerCode.test(code))
+    .map((diagnostic) => lintFinding(root, diagnostic));
+}
+
+/** Each file `vp fmt` would rewrite, and each error the lint reports but the compiler's. */
+function lintFindings(root: string): readonly Finding[] {
+  return [...formatFindings(root), ...lintErrors(root)];
 }
 
 const compilerLine =

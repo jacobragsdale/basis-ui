@@ -36,6 +36,11 @@
    - Severity: fix before release.
    - Confidence: confirmed by running. With `openapi.json` holding invalid JSON and the child unable to start, `verify --stage client` returned `ok client … passed 1 of 1 stages`.
 
+   Done in "Preset: verify fails a client check or a lint that failed without a report": the client stage reads the
+   child's exit status, and a child that fails with no `ERROR` line is one finding, "vp run client-check failed (exit N)
+   with no report to read", with what it said. `tests/verify-tools.test.ts` starts the check with a `NODE_OPTIONS` that
+   cannot load, which passed before. The tools' environment is now read at each run, not when the module loads.
+
 6. **`src/preset/upgrade-steps.ts:24-29, 46-51`, `dev-server.ts:59`** — `vp` is spawned by bare name with no shell.
    - Scenario: on Windows, Node finds only `vp.exe` or `vp.com`. If `vp` is reachable only as the `.cmd` shim (local CLI, or a global npm install from the internal feed), `upgrade` and `shot` fail with ENOENT and the advice "check that vp is on the PATH", where it is.
    - `verify-tools.ts:28-53` already avoids this by running `vite-plus/bin/vp` through `process.execPath`; these two did not follow.
@@ -52,6 +57,11 @@
    - Scenario: a non-zero exit with no `error`-severity, non-compiler diagnostics reports ok. That covers a type-aware pass that fails after the report is printed, or compiler errors in a file outside `tsconfig`'s `include`, which the types stage never sees.
    - Severity: fix before release.
    - Confidence: plausible; the code path is read, but I could not produce the trigger without running `vp`.
+
+   Done in "Preset: verify fails a client check or a lint that failed without a report": a `vp lint` that exits non-zero
+   with no error in its report is the stage's `unread` finding. A report that holds only compiler errors still leaves
+   them to the types stage, which runs `tsc` on the same `tsconfig.json`. `tests/verify-tools.test.ts` holds it with a
+   fake `vp` whose lint prints an empty report and exits 1.
 
 9. **`src/preset/upgrade.ts:96-137`** — `upgrade` does not reinstall after sync, and moves only `@basis/*`.
    - Scenario: a release that changes `overrides` in the synced `pnpm-workspace.yaml` (TypeScript 7.1, say) is verified against the old `node_modules`. The commit it tells you to make then fails `vp install --frozen-lockfile`.
@@ -128,3 +138,6 @@ What `docs/release-plan.md`'s "On winbox" gives step 7.6.
 
 - `vp run verify` and `vp run budget` end, with their `ERROR` line, when Chromium cannot start; before, the budget's
   server held the task open and the push hook hung with it. What to do: nothing.
+
+- `vp run verify`'s client and lint stages fail when their tool fails with no report to read, as a client check whose
+  child cannot start, or a lint whose type-aware pass crashes; before, both passed. What to do: nothing.

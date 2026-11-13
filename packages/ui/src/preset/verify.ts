@@ -22,7 +22,7 @@ import { buildFindings } from "./verify-build.ts";
 import { findingOfLine, reportOf, reportText, stageNames } from "./verify-report.ts";
 import type { Finding, StageName, StageRun } from "./verify-report.ts";
 import { testFindings } from "./verify-tests.ts";
-import { lintFindings, runNode, typeFindings } from "./verify-tools.ts";
+import { lintFindings, runNode, typeFindings, unread } from "./verify-tools.ts";
 
 /** The client tasks' script, beside this module, as the preset names it. */
 const clientScript = fileURLToPath(
@@ -73,12 +73,15 @@ async function drift(root: string, part: "config" | "sync"): Promise<readonly Fi
   return problems[part].map(({ file, text }) => findingOfLine(text, file));
 }
 
+/** The client check's ERROR lines, or, when it fails without one, as a child that cannot start or crashes, the one
+ * finding that says it could not be read: a check that did not finish never passes. */
 function clientFindings(root: string): readonly Finding[] {
   const ran = runNode(root, [clientScript, "check"]);
-  return ran.stderr
+  const found = ran.stderr
     .split("\n")
     .filter((line) => line.startsWith("ERROR "))
     .map((line) => findingOfLine(line));
+  return ran.status !== 0 && found.length === 0 ? unread("vp run client-check", ran) : found;
 }
 
 const notWeighed =
