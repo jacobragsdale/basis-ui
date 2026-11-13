@@ -940,11 +940,14 @@ focus-visible:outline-offset-(--focus-offset) focus-visible:outline-ring`. The s
 `duration-popup` and `duration-panel`, `z-raised`, `z-popup` and `z-notice` (the toasts), `rounded-pill`, `opacity-disabled`, and `shadow-sm`
 and `shadow-md`.
 
-On a plain element, `basis/theme-classes` refuses what would step outside the theme: a `dark:` variant, since every
-token follows the mode; `!` for `!important`; a selector variant such as `[&>*]:`, which styles elements no check sees;
-a filter such as `grayscale` or `brightness-50`; `black` and `white`, which are `foreground` and `background`; and a
-class built from a template string, which no check can read, so `cn("p-2", wide && "p-4")` chooses between whole
-classes.
+On a plain element, and on an app's own components, `basis/theme-classes` refuses what would step outside the theme:
+a `dark:` variant, since every token follows the mode; `!` for `!important`; a selector variant such as `[&>*]:`, which
+styles elements no check sees; a filter such as `grayscale` or `brightness-50`; `black` and `white`, which are
+`foreground` and `background`; and a class built from a template string, which no check can read. `cn` from
+`@basis/ui` chooses between whole classes, as `cn("tabular-nums", pnl < 0 && "text-loss")`. The rule follows a
+`className` to where the file writes its classes, a constant, an object of classes looked up by a key, such as a
+status's, or what a helper of the file returns, and reports a class there; classes from another module or from a
+function's result are refused, since no check can read them, so write them in the file that uses them.
 
 Text takes its look from the Typography components (`TypographyH1` to `TypographyH4`, `TypographyP`, `TypographyLead`,
 `TypographyMuted`, `TypographyInlineCode` and `TypographyList`), never from classes on a plain element. `render`

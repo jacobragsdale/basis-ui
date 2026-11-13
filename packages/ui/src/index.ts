@@ -645,6 +645,7 @@ export {
   type ResolvedMode,
   type ThemeName,
 } from "./theme/preferences.ts";
+export { cn, type ClassValue } from "./components/cn.ts";
 export { themeNames } from "./theme/theme-names.ts";
 export { tokenNames } from "./theme/tokens.ts";
 export {

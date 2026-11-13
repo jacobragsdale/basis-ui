@@ -15,6 +15,8 @@ Fifteen real defects, one of them a release blocker on native Windows. I did not
 - Severity: release blocker for native Windows; WSL is unaffected.
 - Confidence: confirmed by reading (libuv's `uv_kill`), plus a simulation where a no-op stop kept the parent alive until the child exited. Not run on Windows.
 
+Done in Preset: the vp dev that shot starts is stopped on Windows, and when shot is interrupted: step 7.6 (W5 of the plan) landed it in the `ui-preset` lane.
+
 **2. `basis/theme-classes` reports a comparison inside `cn()` as "a class built at run time", and its fix names a `cn` no app can import.**
 
 - Where: `packages/ui/src/preset/lint-classes.ts:119` (any `BinaryExpression`), `:148` (reads `&&`'s left side), `:80-81` (message), and `packages/ui/README.md:815`.
@@ -22,6 +24,8 @@ Fifteen real defects, one of them a release blocker on native Windows. I did not
 - `cn` is not in `dist/index.d.mts`, `catalogue.json` or `dependencies.ts`'s allowed list, so an agent that follows the message first hits a missing import, writes its own helper, then hits the false positive.
 - Severity: fix before release.
 - Confidence: confirmed by running the rule's visitors; no test lints a `cn(...)` call.
+
+Done in Theme classes: a comparison in cn() passes, cn is @basis/ui's, and a class is read where the file writes it: `cn` is exported from `@basis/ui`'s main entry (`src/components/cn.ts`, over the `cn` package the components use) and is in the catalogue; the rule reads only the right side of `&&`, the classes a condition chooses and never the condition, and treats only `+` as building a class, so a comparison passes. Held by `tests/preset-errors-classes.test.ts`, whose ordinary page passes the whole lint with no finding.
 
 **3. The class rules only read literals written inline on a lowercase element.**
 
@@ -37,6 +41,8 @@ Fifteen real defects, one of them a release blocker on native Windows. I did not
 - With a computed key or a helper call, the `@shadcn/lint` colour and arbitrary-value rules see nothing either, so `bg-[#16a34a]` in a status-to-class map ships.
 - Severity: fix before release.
 - Confidence: confirmed by running `theme-classes` and by reading `@shadcn/lint`.
+
+Done in Theme classes: a comparison in cn() passes, cn is @basis/ui's, and a class is read where the file writes it: the rule follows a `className` through a `const`, an object or array of classes at a written or a computed key, nested members, what a helper of the file returns, `as` and `satisfies`, and an object spread onto the element, and reports each class where it is written. It checks an app's own components as plain elements, leaving only `@basis/*` imports to `@shadcn/lint`. A value from another module or a function's result is refused at the `className` with a line that says to write the classes in the file; a parameter, as a forwarded `className` prop or a row in `map`, passes, since its classes are written at the call. Behind a key chosen at run time or a helper, which `@shadcn/lint` cannot see, the rule also refuses palette colours, hex values and arbitrary values, with `@shadcn/lint`'s words. Not covered: classes passed as a function's argument to a helper that returns them, as `cell("dark:bg-x")`.
 
 **4. A multi-line block comment ending in `@ts-expect-error` or `@ts-ignore` evades both `basis/no-suppressions` and verify's text scan.**
 
@@ -120,6 +126,8 @@ Fifteen real defects, one of them a release blocker on native Windows. I did not
 - Severity: fix before release for native Windows.
 - Confidence: plausible; this is standard MSYS argument conversion, not run here.
 
+Done in Preset: doctor checks Node, the registry's certificate and that Chromium starts, and shot reads Git Bash's routes: step 7.6 (W6 of the plan) landed it in the `ui-preset` lane.
+
 **14. `vp run shot` reports `ok: true` for a path no route matches.**
 
 - Where: `shot-route.ts:209-234`.
@@ -162,3 +170,15 @@ The area is better than its age suggests: modules are small and pure, every fail
 - Read only as far as `devPort`: `fixture-mode.ts`.
 - Test names only, not bodies: `shot-parts`, `shot-steps`, `shot-options`, `fixtures`, `fixture-check`, `fixture-files`, `display-formats`, `route-samples`.
 - Read in full: the lint files, `suppressions.ts`, every `scaffold*.ts`, `schema-*.ts`, `fixture-new.ts`, `fixture-document.ts`, `fixture-files.ts`, `fixture-bodies.ts`, `display-formats.ts`, `api-operations.ts`, every `shot*.ts`, and `dev-server.ts`.
+
+## Changelog
+
+- `cn` from `@basis/ui`, the class helper its components use, for an app's own elements: `cn("tabular-nums", pnl < 0
+  && "text-loss")`. What to do: import it from `@basis/ui` in place of any helper of the app's own that joins classes.
+
+- `basis/theme-classes` passes a comparison inside `cn(...)`, follows a `className` to the constant, object or helper
+  of the file that writes its classes and reports a class there, checks an app's own components as it checks a plain
+  element, and refuses classes from another module or a function's result, which no check can read. Behind a key
+  chosen at run time or a helper it also refuses a palette colour, a hex value and an arbitrary value, which
+  `@shadcn/lint` cannot see there. What to do: write a page's classes in its own file, and fix what `vp check` now
+  reports where they are written.

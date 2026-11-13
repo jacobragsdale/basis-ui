@@ -194,7 +194,9 @@ basis-ui adds one lint plugin, `@shadcn/lint`, described below:
   reads `src/` as text, since a comment that turns off every rule hides from the lint, and `vp run review`'s count;
   `basis/theme-classes`, which refuses on a plain element a `dark:` variant, `!important`, a selector variant such as
   `[&>*]:`, a filter such as `grayscale` or `brightness-50`, black and white, and a class built from a template
-  string; `basis/no-hand-rounding`, for `Math.ceil(n * 100) / 100` and its `floor` and `trunc` forms, and
+  string, and since 2026-11-13 follows a `className` to the constant, object or helper of the file that writes it,
+  reads `cn(...)` as clsx does, checks an app's own components as plain elements, and refuses classes from another
+  module or a function's result, which no check can read; `basis/no-hand-rounding`, for `Math.ceil(n * 100) / 100` and its `floor` and `trunc` forms, and
   `toLocaleDateString`, `toLocaleTimeString`, `Intl.DateTimeFormat` and `Intl.RelativeTimeFormat` beside the number
   bans; `basis/no-as-child`, which refuses Radix's `asChild`, which shadcn's examples write, with the line that says to
   pass the element through `render` (step 6.7.10, 2026-11-11); `basis/no-fetch`, which also refuses `XMLHttpRequest`, `WebSocket`, `EventSource` and `navigator.sendBeacon`,

@@ -17447,6 +17447,19 @@
       "signature": "writePreferences(preferences: Preferences, options: CookieOptions = {}): void"
     },
     {
+      "kind": "function",
+      "module": "@basis/ui",
+      "name": "cn",
+      "purpose": "The classes given, as one `className`: strings, and arrays and objects of them as clsx reads them, with `false`, `null` and `undefined` dropped and a later Tailwind class winning over an earlier one it conflicts with.",
+      "signature": "cn(...classes: Parameters<typeof merge>): string",
+      "use": "To choose between whole classes with a condition on an app's own element, such as a loss's colour, so that every class stays written where the lint and Tailwind can read it. A component's look is its variant, not a class.",
+      "with": [
+        "Num",
+        "Badge"
+      ],
+      "example": "import { cn } from \"@basis/ui\";\n\n<td className={cn(\"tabular-nums\", pnl < 0 && \"text-loss\")}>{pnl}</td>;\n"
+    },
+    {
       "kind": "constant",
       "module": "@basis/ui",
       "name": "themeNames",

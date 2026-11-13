@@ -129,7 +129,7 @@ describe("the preset's lint against a plain element's classes the theme lacks", 
 
   test("refuses a class built from a template string on a plain element", () => {
     expect(at("basis(theme-classes)", "p-${")).toStrictEqual([
-      'ERROR a class built at run time, as from a template string, is one no check can read and Tailwind may never generate: write each class whole and choose between them with a condition, as cn("p-2", wide && "p-4").',
+      'ERROR a class built at run time, as from a template string, is one no check can read and Tailwind may never generate: write each class whole and choose between them with a condition, as cn("p-2", wide && "p-4") with cn from @basis/ui.',
     ]);
   });
 
