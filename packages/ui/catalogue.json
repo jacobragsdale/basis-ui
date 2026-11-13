@@ -13358,7 +13358,7 @@
           "type": "React.CSSProperties | ((state: ToastViewportState) => React.CSSProperties | undefined) | undefined"
         }
       ],
-      "purpose": "Where the toasts appear: the bottom right corner, or across the bottom on a narrow screen.",
+      "purpose": "Where the toasts appear: the bottom right corner, or across the bottom on a narrow screen, over every popup and dialog's veil, so a toast raised while a dialog is open is read and clicked.",
       "variants": {}
     },
     {
@@ -17185,7 +17185,7 @@
       "kind": "hook",
       "module": "@basis/ui",
       "name": "useRouteEntries",
-      "purpose": "The app's pages, in the order its route tree declares them.",
+      "purpose": "The app's pages, in the order its route tree declares them, each once, by the path a link reaches it at.",
       "signature": "useRouteEntries(): readonly RouteEntry[]"
     },
     {
