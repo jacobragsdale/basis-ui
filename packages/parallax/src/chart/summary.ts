@@ -7,6 +7,7 @@ import type { LayoutChart } from "#layout/chart.ts";
 
 import { bucketTitle } from "./model-candles.ts";
 import type { CategoryData } from "./model-types.ts";
+import { unreadProblem } from "./group-limits.ts";
 
 const count = new Intl.NumberFormat("en-US");
 
@@ -69,7 +70,10 @@ function drawnOf(frame: ChartFrameData): string {
 /** What the chart draws, or that it is loading. */
 function drawn({ chart, frame, categories }: SummaryInput): string {
   if (categories !== null && groupsKind(chart)) {
-    return `${count.format(categories.categories.length)} groups`;
+    return (
+      unreadProblem(chart.kind, categories.unread) ??
+      `${count.format(categories.categories.length)} groups`
+    );
   }
   return frame === null ? "loading…" : drawnOf(frame);
 }
@@ -161,7 +165,7 @@ function frameWords(frame: ChartFrameData | null): readonly string[] {
 /** What the chart shows, for a screen reader: its summary, then its values. */
 function chartWords(input: SummaryInput): string {
   const { chart, frame, categories } = input;
-  const grouped = categories !== null && groupsKind(chart);
+  const grouped = categories !== null && groupsKind(chart) && categories.unread === undefined;
   const values = grouped ? groupWords(categories) : frameWords(frame);
   return [chartSummary(input), ...values].join(". ");
 }

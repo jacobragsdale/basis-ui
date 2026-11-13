@@ -6,7 +6,6 @@
  * engine reduces the other kinds to the plot's pixels. Changing only how a chart is drawn, such as hidden series or
  * the scale, changes nothing the engine computes. */
 
-import type { Viewport } from "#engine/view-types.ts";
 import { pathValue } from "#format.ts";
 import type { CellValue } from "#frame/cell.ts";
 import type { FrameColumn } from "#frame/columns.ts";
@@ -15,22 +14,11 @@ import { groupedKinds } from "#layout/chart.ts";
 import { parseLayout } from "#layout/layout.ts";
 import type { Layout } from "#layout/layout.ts";
 
+import { unreadOf } from "./group-limits.ts";
 import type { CategoryData, CategorySeries } from "./model-types.ts";
 
 /** The most slices a pie draws; past them, the engine's top-N puts the rest in one "Other" slice. */
 const pieSlices = 7;
-
-/** The most groups a bar chart or heatmap draws, and the most columns it reads. */
-const maxGroups = 500;
-const maxColumns = 400;
-
-/** The window of a grouped view a bar chart, heatmap or pie draws: its first groups and their columns. */
-const groupsViewport: Viewport = {
-  columnCount: maxColumns,
-  firstColumn: 0,
-  firstRow: 0,
-  rowCount: maxGroups,
-};
 
 /** A decimal's unscaled digits are in tens. */
 const decimalBase = 10;
@@ -262,6 +250,7 @@ function categoriesOf(frame: FrameData): CategoryData {
       totalValue: total === null ? Number.NaN : toNumber(column.value(total)),
       values: rows.map((row) => toNumber(column.value(row))),
     })),
+    ...unreadOf(frame, rows.length),
   };
 }
 
@@ -270,7 +259,6 @@ export {
   computedPart,
   drawsGroups,
   groupsProblem,
-  groupsViewport,
   pieSlices,
   rowsPart,
   shapeOf,

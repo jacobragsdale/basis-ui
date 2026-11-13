@@ -181,6 +181,7 @@ function rowOrder(rows: readonly ChartRow[], x: string): (data: CategoryData) =>
       .map((_category, group) => group)
       .toSorted((first, second) => rank(first) - rank(second));
     return {
+      ...data,
       categories: inOrder(data.categories, order),
       keys: inOrder(data.keys, order),
       others: inOrder(data.others, order),

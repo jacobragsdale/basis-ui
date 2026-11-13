@@ -21,6 +21,9 @@ interface CategoryData {
   /** Which groups are the top-N's "Other", which stands for several and can't be selected. */
   readonly others: readonly boolean[];
   readonly series: readonly CategorySeries[];
+  /** What the view holds past what a chart draws, which it then refuses to draw rather than draw part of: more
+   * groups, or more series; null when it read them all. */
+  readonly unread?: "groups" | "series";
 }
 
 export type { CategoryData, CategorySeries };

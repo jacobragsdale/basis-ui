@@ -521,7 +521,10 @@ fraction, as an API sends it, so `{ bps: true }` writes 0.0025 as `25 bp`,
 A bar chart, heatmap, pie or waterfall draws the layout's grouped view: give
 the layout `group_by` and `measures`, or give the chart `x` and `y`, which
 group by `x` and sum each `y`, split by `series`, as the small-data form does.
-One given neither says so in place of the plot.
+One given neither says so in place of the plot. It draws every group, up to
+2,000 groups and 400 series; past them it draws none, and says in place of the
+plot what to change: filter the rows, group by a coarser column, or keep the
+largest with `top_n`.
 
 A layout's `titles` name columns in a chart's legend as in a grid's headers,
 and a series split from one plotted column is named by its value alone: a line

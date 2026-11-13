@@ -153,15 +153,19 @@ function measure(
 
 describe(categoriesOf, () => {
   test("reads the top-level groups, their keys, which is Other, and a series per measure with its total's text and value", () => {
-    const frame = decodeFrame(
-      frameMessage(
-        [
-          ...tree(["Rates", "Credit", "Other"]),
-          ...measure(0, { title: "sum(mv)", values: [60, 30, 20, 10] }),
-        ],
-        4,
+    // One measure: the view's one data column.
+    const frame = {
+      ...decodeFrame(
+        frameMessage(
+          [
+            ...tree(["Rates", "Credit", "Other"]),
+            ...measure(0, { title: "sum(mv)", values: [60, 30, 20, 10] }),
+          ],
+          4,
+        ),
       ),
-    );
+      totalColumns: 1,
+    };
     expect(categoriesOf(frame)).toStrictEqual({
       categories: ["Rates", "Credit", "Other"],
       keys: ["Rates", "Credit", "Other"],
@@ -176,6 +180,15 @@ describe(categoriesOf, () => {
         },
       ],
     });
+  });
+
+  test("says what the view holds past what it read: more groups, or more series", () => {
+    const frame = decodeFrame(
+      frameMessage([...tree(["Rates"]), ...measure(0, { title: "sum(mv)", values: [5, 5] })], 2),
+    );
+    expect(categoriesOf({ ...frame, totalColumns: 1 }).unread).toBeUndefined();
+    expect(categoriesOf({ ...frame, totalColumns: 1, totalRows: 3 }).unread).toBe("groups");
+    expect(categoriesOf({ ...frame, totalColumns: 2 }).unread).toBe("series");
   });
 
   test("names a column pivot's series by their pivot values when they share one measure", () => {

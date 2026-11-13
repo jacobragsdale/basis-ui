@@ -18,7 +18,8 @@ import type { CategoryData, LegendEntry } from "./model-types.ts";
 import type { PlotSize } from "./scene-inputs.ts";
 import { ChartScene } from "./scene.ts";
 import type { ChartSelection } from "./scene.ts";
-import { drawsGroups, groupsViewport, withGroupsFromXY } from "./source.ts";
+import { groupsViewport } from "./group-limits.ts";
+import { drawsGroups, withGroupsFromXY } from "./source.ts";
 
 /** Below this size a chart is compact: less padding, and a small legend only where its marks need naming. */
 const compactWidth = 260;

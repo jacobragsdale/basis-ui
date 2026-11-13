@@ -17,6 +17,7 @@ import { groupedKinds } from "#layout/chart.ts";
 import type { ChartModel, ModelInput } from "./model-types.ts";
 import { pieModel } from "./model-pie.ts";
 import { waterfallModel } from "./model-waterfall.ts";
+import { unreadProblem } from "./group-limits.ts";
 
 /** The smallest plot worth drawing, each way, in pixels. */
 const smallest = 40;
@@ -25,6 +26,10 @@ const smallest = 40;
 function groupedModel(input: ModelInput): ChartModel {
   if (input.categories === null) {
     return emptyModel(input, "Loading…");
+  }
+  const unread = unreadProblem(input.chart.kind, input.categories.unread);
+  if (unread !== null) {
+    return emptyModel(input, unread);
   }
   if (input.chart.kind === "heatmap") {
     return heatmapModel(input, input.categories);

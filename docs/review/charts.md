@@ -56,6 +56,12 @@ over the engine's frames, and the one pane test left keeps its frame in the engi
 - A waterfall past 499 groups refuses with "show every group", which the user cannot do.
 - Severity: fix before release. Confidence: confirmed by reading.
 
+Done in Charts: a grouped chart draws every group up to 2,000, and past them says what to change: a bar chart, heatmap, pie or waterfall reads the grand total's row and up to 2,000 groups and 400
+series (`src/chart/group-limits.ts`). A view with more, by its `totalRows` or `totalColumns`, draws none: the plot,
+the status line and the text alternative say the limit and what to change (filter the rows, group by a coarser
+column, or keep the largest with `top_n`). The README says so. `tests/browser/chart-groups.test.tsx` draws 504 days
+as bars and as a waterfall, and refuses 2,100, through the engine.
+
 **5. `packages/parallax/src/chart/chart.tsx:83-95`** — The one `Chart` example published to agents (`packages/ui/catalogue.json:16873`) cannot draw.
 
 - Scenario: `<Chart rows={curve} kind="line" x="tenor" y="yield" />` with tenors `"2Y"`, `"10Y"`. `smallLayout` sets no axis, so it is `value`, and the engine refuses text on a value axis (`crates/parallax-engine/src/chart.rs:505-532`).
@@ -157,3 +163,7 @@ The defects cluster in three places the pixel-parity port could not catch:
   AAPL"`, on a chart of several. A series hidden by its legend label, as saved layouts hold them, is still hidden.
   Hiding a series hides its indicators and events with it, and the measure tool measures the series pressed. What to
   do: nothing; a layout written by hand may name its series by key.
+
+- A bar chart, heatmap, pie or waterfall draws every group of its grouped view, up to 2,000 groups and 400 series,
+  where it drew the first 499 groups without a word. Past the limit it draws none and says what to change in place
+  of the plot. What to do: nothing; a chart of more groups filters its rows or keeps the largest with `top_n`.
