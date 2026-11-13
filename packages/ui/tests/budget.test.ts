@@ -2,9 +2,11 @@
  * line for a route over its budget, and, in the preset's headless Chromium, what it counts as a route's weight: every
  * script and stylesheet the page asks for, lazy chunks and workers included, gzipped. */
 
+import { spawnSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { gzipSync } from "node:zlib";
 
 import { afterAll, describe, expect, test } from "vite-plus/test";
@@ -165,5 +167,19 @@ describe(budgetTask, () => {
     await expect(budgetTask(path.join(root, "nothing"), ["/=180,25"])).rejects.toThrow(
       "ERROR dist/index.html is missing, so there is no build to weigh: run vp build, then vp run budget again.",
     );
+  });
+
+  test("ends, with the fix, when Chromium cannot start, rather than holding its server open", () => {
+    const script = fileURLToPath(new URL("../src/preset/tasks.ts", import.meta.url));
+    const browsers = mkdtempSync(path.join(tmpdir(), "basis-ui-no-browsers-"));
+    const ran = spawnSync(process.execPath, [script, "budget", "/=180,25"], {
+      cwd: root,
+      encoding: "utf8",
+      env: { ...process.env, PLAYWRIGHT_BROWSERS_PATH: browsers },
+      timeout: 30_000,
+    });
+    rmSync(browsers, { force: true, recursive: true });
+    expect({ signal: ran.signal, status: ran.status }).toStrictEqual({ signal: null, status: 1 });
+    expect(ran.stderr).toMatch(/^ERROR Playwright's Chromium is not installed: run /u);
   });
 });

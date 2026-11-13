@@ -114,3 +114,17 @@ The gaps are in what they never simulate:
 - Test bodies of `verify-report`, `codemods`, `changelog`, `precompress`, `docs-task`, `sync-workspace`, `budget` and `client-tasks`; I read only their titles and a few cases.
 
 The probe scripts are in `(a scratch folder)`; nothing in the repo was touched.
+
+## On winbox
+
+What `docs/release-plan.md`'s "On winbox" gives step 7.6.
+
+- **W3**, `vp run verify` never exits when Chromium cannot start.
+  Done in "Preset: the budget ends when Chromium cannot start": `weighRoutes` launches the browser inside the `try`
+  that closes its server, so a launch that fails ends the task with its `ERROR` line. `tests/budget.test.ts` runs the
+  task with an empty `PLAYWRIGHT_BROWSERS_PATH` and expects it to exit 1 within 30 s; before, it was killed at 30 s.
+
+## Changelog
+
+- `vp run verify` and `vp run budget` end, with their `ERROR` line, when Chromium cannot start; before, the budget's
+  server held the task open and the push hook hung with it. What to do: nothing.

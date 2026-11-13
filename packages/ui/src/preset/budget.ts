@@ -138,13 +138,18 @@ async function weighRoute(
 /** What opening each route of `budget` loads, against the build in `dist` served on a free port. */
 async function weighRoutes(dist: string, budget: Budget): Promise<RouteWeight[]> {
   const { server, origin } = await serveDist(dist);
-  const browser = await launch("budget");
   try {
-    return await Promise.all(
-      Object.keys(budget).map(async (route) => weighRoute(browser, { dist, origin }, route)),
-    );
+    const browser = await launch("budget");
+    try {
+      return await Promise.all(
+        Object.keys(budget).map(async (route) => weighRoute(browser, { dist, origin }, route)),
+      );
+    } finally {
+      await browser.close();
+    }
   } finally {
-    await browser.close();
+    // Closed whatever happens, the browser's launch included, so a failure ends the task rather than its server
+    // holding it open.
     server.close();
   }
 }
