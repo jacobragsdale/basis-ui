@@ -3412,7 +3412,7 @@
           "from": "@base-ui/react",
           "name": "children",
           "optional": true,
-          "type": "React.ReactNode | PayloadChildRenderFunction<iption>>"
+          "type": "React.ReactNode | PayloadChildRenderFunction<ger ren>"
         },
         {
           "description": "ID of the trigger that the dialog is associated with. This is useful in conjunction with the `open` prop to create a controlled dialog. There's no need to specify this prop when the dialog is uncontrolled (that is, when the `open` prop is not set).",
@@ -3447,7 +3447,7 @@
           "from": "@base-ui/react",
           "name": "handle",
           "optional": true,
-          "type": "AlertDialogHandle<iption>> | undefined"
+          "type": "AlertDialogHandle<ger ren> | undefined"
         }
       ],
       "purpose": "An alert dialog: a dialog that asks the user to confirm or cancel an action. Unlike Dialog, a click outside does not close it; Escape and its cancel button do, and focus returns to the trigger.",
@@ -3457,7 +3457,7 @@
         "Button"
       ],
       "variants": {},
-      "example": "import {\n  AlertDialog,\n  AlertDialogAction,\n  AlertDialogCancel,\n  AlertDialogContent,\n  AlertDialogDescription,\n  AlertDialogFooter,\n  AlertDialogHeader,\n  AlertDialogTitle,\n  AlertDialogTrigger,\n  Button,\n} from \"@basis/ui\";\n\n<AlertDialog>\n  <AlertDialogTrigger render={<Button variant=\"destructive\" />}>Cancel order</AlertDialogTrigger>\n  <AlertDialogContent>\n    <AlertDialogHeader>\n      <AlertDialogTitle>Cancel this order?</AlertDialogTitle>\n      <AlertDialogDescription>The order leaves the book and cannot be restored.</AlertDialogDescription>\n    </AlertDialogHeader>\n    <AlertDialogFooter>\n      <AlertDialogCancel>Keep it</AlertDialogCancel>\n      <AlertDialogAction>Cancel order</AlertDialogAction>\n    </AlertDialogFooter>\n  </AlertDialogContent>\n</AlertDialog>;\n"
+      "example": "import {\n  AlertDialog,\n  AlertDialogAction,\n  AlertDialogCancel,\n  AlertDialogContent,\n  AlertDialogDescription,\n  AlertDialogFooter,\n  AlertDialogHeader,\n  AlertDialogTitle,\n  AlertDialogTrigger,\n  Button,\n} from \"@basis/ui\";\nimport { useState } from \"react\";\n\n// The action does not close the dialog by itself: hold `open`, and close it once the action has run.\nconst [open, setOpen] = useState(false);\n\n<AlertDialog open={open} onOpenChange={setOpen}>\n  <AlertDialogTrigger render={<Button variant=\"destructive\" />}>Cancel order</AlertDialogTrigger>\n  <AlertDialogContent>\n    <AlertDialogHeader>\n      <AlertDialogTitle>Cancel this order?</AlertDialogTitle>\n      <AlertDialogDescription>The order leaves the book and cannot be restored.</AlertDialogDescription>\n    </AlertDialogHeader>\n    <AlertDialogFooter>\n      <AlertDialogCancel>Keep it</AlertDialogCancel>\n      <AlertDialogAction onClick={() => { setOpen(false); }}>Cancel order</AlertDialogAction>\n    </AlertDialogFooter>\n  </AlertDialogContent>\n</AlertDialog>;\n"
     },
     {
       "extends": [

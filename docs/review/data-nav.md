@@ -211,6 +211,11 @@ Two weak spots in what agents are shown:
 - `packages/gallery/src/pages/data/saved-views.test.tsx:102-113` ("stops opening the view shown by default") only polls the store, so it passes while the UI deselects the view (finding 5A).
 - The `AlertDialog` `@example` (`alert-dialog.tsx:28-56`) shows an uncontrolled dialog whose action never closes it, against `README.md:893`.
 
+Done in SavedViews, AlertDialog: a view's name dialog never submits its parent form, and the example closes its
+dialog: the `@example` holds `open` and closes it in the action's handler, as the README says. The saved views'
+name dialog also stops its submit, step 7.3's finding 7 in this lane's file, held by a gallery test of SavedViews
+inside a form. The "stops opening" test was made to check the menu in the saved views commit.
+
 ### Not read in full
 
 - **Only skimmed:** `popover`, `hover-card`, `context-menu`, `menubar`, `navigation-menu`, `accordion`, `collapsible`, `scroll-area`, `breadcrumb`, `toolbar`, `sidebar-menu`, `sidebar-group`, `sidebar-sections`.
@@ -257,3 +262,6 @@ Two weak spots in what agents are shown:
   breadcrumbs'. What to do: nothing; an app that titled a layout route to hide its index loses the extra item.
 
 - In a window under 768 px, choosing a page from the sidebar's sheet closes it. What to do: nothing.
+
+- SavedViews' name dialog no longer submits a `<form>` SavedViews sits in when a view is saved by Enter. What to do:
+  nothing.

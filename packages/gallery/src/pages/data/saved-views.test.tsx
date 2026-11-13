@@ -5,8 +5,8 @@ import type { SavedViewList, SavedViewStore } from "@basis/ui";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
 import type { ReactElement } from "react";
-import { describe, expect, test } from "vite-plus/test";
-import { page } from "vite-plus/test/browser";
+import { describe, expect, test, vi } from "vite-plus/test";
+import { page, userEvent } from "vite-plus/test/browser";
 import { render } from "vitest-browser-react";
 
 import { WithQueryClient } from "./with-query-client.tsx";
@@ -199,5 +199,25 @@ describe("SavedViews", () => {
     await expect.element(screen.getByRole("button", { name: "Views" })).toBeVisible();
     const { views } = await store.list();
     expect(views.map((view) => view.name)).toStrictEqual(["By book"]);
+  });
+
+  test("inside a form, saving a view by Enter does not submit the form", async () => {
+    const onSubmit = vi.fn<() => void>();
+    const screen = await render(
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          onSubmit();
+        }}
+      >
+        <SortPage store={storeWith()} />
+      </form>,
+    );
+    await screen.getByRole("button", { name: "Views" }).click();
+    await page.getByRole("menuitem", { name: "Save as a new view…" }).click();
+    await page.getByLabelText("Name").fill("Issuers");
+    await userEvent.keyboard("{Enter}");
+    await expect.element(screen.getByRole("button", { name: "Issuers" })).toBeVisible();
+    expect(onSubmit).not.toHaveBeenCalled();
   });
 });

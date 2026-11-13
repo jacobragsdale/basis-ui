@@ -51,7 +51,9 @@ function NameForm({
     <form
       className="flex flex-col gap-4"
       onSubmit={(event) => {
+        // The dialog is portaled, but React bubbles its submit to a form SavedViews sits in, which it must not send.
         event.preventDefault();
+        event.stopPropagation();
         if (trimmed !== "") {
           onConfirm(trimmed);
         }

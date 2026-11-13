@@ -40,8 +40,12 @@ import {
  *   AlertDialogTrigger,
  *   Button,
  * } from "@basis/ui";
+ * import { useState } from "react";
  *
- * <AlertDialog>
+ * // The action does not close the dialog by itself: hold `open`, and close it once the action has run.
+ * const [open, setOpen] = useState(false);
+ *
+ * <AlertDialog open={open} onOpenChange={setOpen}>
  *   <AlertDialogTrigger render={<Button variant="destructive" />}>Cancel order</AlertDialogTrigger>
  *   <AlertDialogContent>
  *     <AlertDialogHeader>
@@ -50,7 +54,7 @@ import {
  *     </AlertDialogHeader>
  *     <AlertDialogFooter>
  *       <AlertDialogCancel>Keep it</AlertDialogCancel>
- *       <AlertDialogAction>Cancel order</AlertDialogAction>
+ *       <AlertDialogAction onClick={() => { setOpen(false); }}>Cancel order</AlertDialogAction>
  *     </AlertDialogFooter>
  *   </AlertDialogContent>
  * </AlertDialog>;
