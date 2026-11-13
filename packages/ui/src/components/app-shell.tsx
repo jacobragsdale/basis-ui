@@ -1,6 +1,7 @@
 /* AppShell: the page every app's routes sit in, its root route's component. It holds the sidebar of the app's pages,
  * a header with the breadcrumbs, the environment banner, the command palette and the keyboard shortcuts with their `?`
- * list, so an app's pages hold only their own content, each in a Page.
+ * list, so an app's pages hold only their own content, each in a Page. It keeps the browser's tab titled by the page
+ * shown and the app (document-title.ts).
  *
  * It is one column the window's height: the banner, then the sidebar and the page, which scrolls inside it. The
  * sidebar's row contains its layout, so the sidebar's fixed panel is placed in the row, below the banner, rather than
@@ -19,6 +20,7 @@ import type { ReactElement, ReactNode } from "react";
 import { AppSidebar } from "./app-sidebar.tsx";
 import { CommandPalette } from "./command-palette.tsx";
 import type { PaletteCommand } from "./command-palette.tsx";
+import { useDocumentTitle } from "./document-title.ts";
 import { EnvironmentBanner } from "./environment-banner.tsx";
 import { PageCrumbContext } from "./page-crumb.ts";
 import type { PageCrumb } from "./page-crumb.ts";
@@ -31,7 +33,7 @@ import { TooltipProvider } from "./tooltip.tsx";
 const tooltipDelay = 400;
 
 interface AppShellProps {
-  /** The app's name, at the top of the sidebar. */
+  /** The app's name, at the top of the sidebar and in the browser's tab, after the page's title. */
   readonly appName: string;
   /** The environment the app runs in, which a banner names; none unless set. */
   readonly environment?: "dev" | "qa" | "prod" | undefined;
@@ -133,6 +135,7 @@ function AppShell({
   children,
 }: AppShellProps): ReactElement {
   const pageCrumb = usePageCrumbState();
+  useDocumentTitle(appName);
   return (
     <TooltipProvider delay={tooltipDelay}>
       <ShortcutProvider>

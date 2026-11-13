@@ -5,8 +5,10 @@ with what the app is for and which API it calls. The block below is basis-ui's, 
 
 ## Naming the app
 
-The template calls it "basis-ui app". Give it its name in three places: `name` in `package.json`; the `<title>` in
-`index.html`, which the browser's tab shows; and `appName` in `src/routes.ts`, which the sidebar's header shows. The icon in `index.html` is the template's; replace it with the app's.
+`@basis/create` names the package, in `package.json`, and the page's `<title>`, in `index.html`, after the app's
+folder, such as `positions-ui`. Give the app the name people read in `appName` in `src/routes.ts`, which the
+sidebar's header and the browser's tab show, as "Positions · Positions UI" on the positions page; the template calls it
+"basis-ui app". Put the same name in `index.html`'s `<title>`, which the tab shows until the app has drawn. The icon in `index.html` is the template's; replace it with the app's.
 
 ## The sample API
 

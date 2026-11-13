@@ -123,7 +123,8 @@ A new developer cannot get from nothing to a deployed, signed-in app today, and 
     - Where: `packages/create/templates/app/index.html:6` and `src/routes.ts:13` say "basis-ui app". `vp create` renames only `package.json`, and `AGENTS.md` does not mention either.
     - The shell never sets `document.title`, and the showcase still ships the placeholder.
     - Severity: polish. Confidence: confirmed.
-    - Done in Template: its pages are Pages, the app is named in one list, and every app's page has an icon: the template's `AGENTS.md` gains "Naming the app", the three places a name goes (`package.json`, `index.html`'s `<title>`, `appName` in `src/routes.ts`); the showcase's title is "Workbench", its `appName`. Not done: the shell setting `document.title` from the route's title, a change to `AppShell` in the components' lane; told to `t4`.
+    - Done in Template: its pages are Pages, the app is named in one list, and every app's page has an icon: the template's `AGENTS.md` gains "Naming the app", the three places a name goes (`package.json`, `index.html`'s `<title>`, `appName` in `src/routes.ts`); the showcase's title is "Workbench", its `appName`.
+    - Done in Shell: the browser's tab names the page shown, then the app: `AppShell` keeps `document.title` to the route's `staticData` title and its `appName`, "Positions · Workbench", or `appName` alone on a route with no title (`src/components/document-title.ts`, given to this lane by `t4` once the components' lane finished). `tests/document-title.test.tsx` follows a navigation from a titled route to an untitled one in a Node DOM, and failed without the hook; the gallery's `route-trail.test.tsx` checks it in Chromium. The template's "Naming the app" says `@basis/create` names the package and the page's `<title>` after the folder, and `appName` is the name people read.
 
 18. **The template models patterns its own skill steers away from.**
     - Where: `packages/create/templates/app/src/sample/bond.tsx:32-41` hand-rolls a `<dl>` with colour classes. The pages use `TypographyH1`, where `build-a-page` says `Page` and `DescriptionList`.
@@ -223,3 +224,7 @@ The two check scripts are `(a scratch folder)` and `(a scratch folder)`.
 
 - `@basis/ui`'s package carries culori's licence, in `licenses/culori/LICENSE`, beside the code its build bundles from
   it. What to do: nothing.
+
+- `AppShell` titles the browser's tab by the page shown and the app: the route's `staticData` title, then `appName`,
+  as "Positions · Workbench", or `appName` alone on a route with no title. What to do: give `appName` the name people
+  read, and remove any code of the app's own that sets `document.title`.

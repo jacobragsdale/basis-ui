@@ -1217,7 +1217,8 @@ Ctrl+K's command palette (`CommandPalette`) from them, names the environment in 
 user menu (`UserMenu`: mode, density, motion, the theme once more than one ships, sign in and out) in the sidebar's
 footer, and keeps the keyboard shortcuts, which a component declares with `useShortcut(keys, description, run)` and
 `?` lists. A route with path parameters, such as `/bonds/$security`, keeps its breadcrumb but stays out of the sidebar
-and the palette; `inNavigation: false` leaves any route out.
+and the palette; `inNavigation: false` leaves any route out. The browser's tab takes the page's `title`, then the app's
+`appName`, as "Positions · Workbench", or `appName` alone on a route with no title.
 
 ```tsx
 const commands: readonly PaletteCommand[] = [

@@ -108,6 +108,12 @@ describe("the shell's navigation", () => {
       .not.toHaveAttribute("data-active");
   });
 
+  test("the window's title names the page shown, then the app", async () => {
+    const screen = await render(<BondsApp path="/" />);
+    await expect.element(screen.getByRole("heading", { name: "Positions" })).toBeVisible();
+    await expect.poll(() => document.title).toBe("Positions · Bonds");
+  });
+
   test("a page's breadcrumb can be titled by its data", async () => {
     const screen = await render(<BondsApp path={`/bonds/${bond.cusip}`} />);
     const trail = screen.getByRole("navigation", { name: "breadcrumb" });

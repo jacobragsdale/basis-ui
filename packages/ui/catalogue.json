@@ -14819,7 +14819,7 @@
       "name": "AppShell",
       "props": [
         {
-          "description": "The app's name, at the top of the sidebar.",
+          "description": "The app's name, at the top of the sidebar and in the browser's tab, after the page's title.",
           "name": "appName",
           "optional": false,
           "type": "string"
