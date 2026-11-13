@@ -251,10 +251,12 @@ function CellMenu({ controller, layout, events, onExport, children }: CellMenuPr
   const actions = useMemo(() => new GridActions(controller.host()), [controller]);
   useCellEvents(element, controller, events);
   const opened = (event: MouseEvent): void => {
-    const box = controller.host().dom.parts.canvas.getBoundingClientRect();
-    const cell = actions.cellAt(event.clientX - box.left, event.clientY - box.top);
-    const focus = controller.host().model.interaction.selection?.focus.column ?? null;
-    setAt({ cell, column: cell === null ? null : focus });
+    const host = controller.host();
+    const box = host.dom.parts.canvas.getBoundingClientRect();
+    const [x, y] = [event.clientX - box.left, event.clientY - box.top];
+    const cell = actions.cellAt(x, y);
+    // The column the menu opened on, which its Fit this column fits, whatever the selection's focus.
+    setAt({ cell, column: cell === null ? null : (host.hit(x, y)?.column ?? null) });
     events.onContextMenu?.(cell);
   };
   return (

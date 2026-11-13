@@ -163,9 +163,14 @@ percentage is 5%. A value the engine still cannot read, such as a time without
 an offset in a column of instants, shows its reason beside the box. "Filter by"
 and "Exclude" in a cell's menu send the cell's exact value, never its text. The arrow keys, Page Up and Down, Home and End
 move the focused cell, Ctrl to the edge and Shift extending the selection;
-Ctrl+A selects everything, Enter or Space opens or closes a group, Ctrl+F
-searches the grid, and Ctrl+C copies the selection as tab-separated text with
-every digit, which pastes into Excel as cells. Rows the grid does not hold are
+with nothing selected, the first key selects the first cell. Ctrl+A selects
+everything, Enter or Space opens or closes a group, Enter on a link cell clicks
+it and on another cell activates its row, Space checks the focused row and
+Ctrl+Space every row, as the header's checkbox does, Shift+F10 or the Menu key
+opens the focused cell's menu, Ctrl+F searches the grid, and Ctrl+C copies the
+selection as tab-separated text with every digit, which pastes into Excel as
+cells, a text cell that starts like a formula made text. Alt with an arrow is
+left to the browser. Rows the grid does not hold are
 fetched first. Export writes an Excel workbook or a CSV file in the engine, of
 the load the screen shows.
 
@@ -646,6 +651,24 @@ the diverging scale's red arm. When the page's theme, mode or density changes,
 on the root or on any element around a component, or `@basis/ui`'s
 `themeChangeEvent` reaches the document, `useParallaxTheme()`'s `read` changes,
 and the canvases read their tokens again and draw whole.
+
+### What a screen reader gets
+
+The grid is one tab stop, a `grid` with a name, a description of its view and
+its row and column counts. Its canvas draws the rows, so only the focused cell
+is in the page, as the grid's active descendant: a reader says its column's
+title and its text, whether its row is chosen, and how its column sorts and
+filters, and says it again when a cell reached before its rows loaded gets
+them. Live notes say the selection's size, the rows chosen, the status bar's
+messages and the totals row. There is no table to browse, no column headers to
+read on their own, and no group level or open state; the toolbar, the column
+chooser, the menus and the pivot's settings are real controls. That serves a
+sighted keyboard user fully, and a blind user as a way to check cells one at a
+time, not to read a table.
+
+When the engine refuses a layout, such as a saved one whose sort or pin names a
+column the data dropped, the grid says why where its rows would be, with a
+button that clears its sorts, filters, groups and pins.
 
 ### Memory, from page to page
 

@@ -83,6 +83,9 @@ I found no stale-frame or wrong-cell drawing bug, but two release blockers: one 
 - Done in Parallax: a refused view opens once its layout is corrected, and tells the app (step 7.9): a corrected layout opens the refused view anew, and `Grid`, `Pivot` and `Chart` take
   `onError`, called with the reason they show and with null once it clears. A sort or pin on a missing column still
   has no control to remove it in the grid: that is the grid's, for 7.10.
+- The rest done in Grid: the keyboard reaches the checkbox, a link and the cell menu, and a refused layout can be cleared (step 7.10): when the engine refuses a layout, the grid's error carries "Clear sorts,
+  filters, groups and pins", which clears what arranges the rows or names the columns and keeps widths, titles and
+  formats. Held by `tests/browser/grid-states.test.tsx`.
 
 **8. Condition filters take engine literals, not what the column shows.** `src/grid/labels.ts:71-101`, `src/grid/column-filter.tsx:136-145`
 
@@ -141,6 +144,10 @@ I found no stale-frame or wrong-cell drawing bug, but two release blockers: one 
 - `onCellClick`, and so a link cell, is pointer-only.
 - Severity: polish.
 - Confidence: confirmed by reading.
+- Done in Grid: the keyboard reaches the checkbox, a link and the cell menu, and a refused layout can be cleared: with nothing selected, a key that moves, Enter or Space selects the first cell and does nothing
+  else; Alt with an arrow is left to the browser; Ctrl+Space works the header's checkbox; Enter on a link cell sends
+  its click; and Shift+F10 or the Menu key opens the cell menu at the focused cell, by a right click at its middle.
+  Held by `tests/browser/grid-keyboard.test.ts`.
 
 **14. Tests that do not test what they claim.**
 
@@ -158,6 +165,8 @@ I found no stale-frame or wrong-cell drawing bug, but two release blockers: one 
 - Hiding the last column shows every column (`src/grid/edit.ts:54-57`).
 - `pointermove` never checks `buttons`, and the edge-scroll interval is not stopped on unmount, so a lost pointerup leaves a drag running (plausible on Citrix).
 - `height="auto"` with a very large `maxHeight` is not capped at canvas limits.
+- In part, in Grid: the keyboard reaches the checkbox, a link and the cell menu, and a refused layout can be cleared: "Fit this column" fits the column the menu opened on. The rest of this list is below,
+  each with its own line.
 
 ## Overall quality
 
@@ -174,6 +183,11 @@ The defects sit at seams rather than in the drawing: row identity against view i
 - Shift+F10 probably opens the menu for the cell at the grid's centre rather than the focused one, since Chrome places keyboard context menus at the element's centre.
 
 **Screen reader.** A reader gets a `grid` with a name, a description and row and column counts. The focused cell is the active descendant, read as "Title: text". There are live notes for selection size, rows chosen and status messages, and the totals row as text. That is all: only one cell exists in the DOM. There is no browse-mode table, no column headers or sort and filter state, and no group level or expanded state. A cell reached by a jump reads "Loading…" and is not re-announced when its rows arrive. It is workable for a sighted keyboard user, and no more than a spot-check tool for a blind one.
+
+Done in Grid: the keyboard reaches the checkbox, a link and the cell menu, and a refused layout can be cleared: the small fixes the brief names, a key for the header's checkbox (Ctrl+Space), a key for a link cell
+(Enter), the menu at the focused cell (Shift+F10), and the focused cell's description saying how its column sorts and
+filters, with a cell first read as loading read again once its rows come. The rest stands as this section says, and
+the README's "What a screen reader gets" says so.
 
 ## Not read
 
@@ -219,3 +233,11 @@ Everything else in `src/grid` and `src/pivot` was read in full. The scripts are 
 
 - A cut cell's tooltip goes when the grid scrolls, rather than staying beside another row's cell with the number of
   the one it was about, and rows a late frame fills are drawn rather than left blank. What to do: nothing.
+
+- The grid's keyboard: Ctrl+Space checks every row, as the header's checkbox does; Enter on a link cell clicks it;
+  Shift+F10 or the Menu key opens the focused cell's menu; with nothing selected the first key selects the first cell
+  rather than activating or moving from row 0; Alt with an arrow is the browser's again. A screen reader hears how the
+  focused cell's column sorts and filters. What to do: nothing.
+
+- A layout the engine refuses, such as a saved one whose sort or pin names a column the data dropped, shows its reason
+  with a button that clears its sorts, filters, groups and pins. What to do: nothing.

@@ -3,6 +3,7 @@
  * controller sizes and places them without a render. Screen readers, which cannot read the canvas, read the focused
  * cell as the grid's active descendant, the selection's size, the totals, and a description of the view. */
 
+import { Button } from "@basis/ui";
 import type { ReactNode, RefObject } from "react";
 
 import type { ViewHandle } from "#engine/view.ts";
@@ -13,6 +14,7 @@ import type { ExportFormat } from "#engine/messages.ts";
 import { CellMenu } from "./cell-menu.tsx";
 import type { GridEvents } from "./cell-menu.tsx";
 import type { GridController } from "./controller.ts";
+import { arranged, withoutArrangement } from "./edit.ts";
 import type { SourceField } from "./fields.ts";
 import { GridMenu } from "./grid-menu.tsx";
 import type { MeasureMenuProps } from "./grid-menu.tsx";
@@ -52,6 +54,8 @@ function describe(rows: number | null, columns: number): string {
 
 /** The focused cell, the grid's active descendant, inside its row; a canvas grid has no table for them to sit in. */
 function Active({ cell }: { readonly cell: ActiveCell | null }): ReactNode {
+  // How the cell's column sorts and filters, which a column header would say.
+  const described = cell !== null && cell.description !== "";
   return (
     <div
       // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- the canvas draws the rows; this row only holds the focused cell for screen readers, inside the grid's scroll element, where a <tr> cannot be.
@@ -65,9 +69,11 @@ function Active({ cell }: { readonly cell: ActiveCell | null }): ReactNode {
         id={cell?.id}
         aria-colindex={cell?.columnIndex}
         aria-selected={cell?.selected}
+        aria-describedby={described ? `${cell.id}-state` : undefined}
       >
         {cell?.text}
       </div>
+      {described ? <span id={`${cell.id}-state`}>{cell.description}</span> : null}
     </div>
   );
 }
@@ -117,13 +123,25 @@ function Scroll({
   );
 }
 
-/** The tooltip of a cut cell, and why the view failed. */
+/** What clears a layout's arrangement, when it has one to clear. */
+function clearing(layout: Layout | null, onChange: (layout: Layout) => void): (() => void) | null {
+  return layout === null || !arranged(layout)
+    ? null
+    : () => {
+        onChange(withoutArrangement(layout));
+      };
+}
+
+/** The tooltip of a cut cell, and why the view failed, with a way to clear a layout the engine refused when it has
+ * anything to clear. */
 function Overlays({
   tooltip,
   error,
+  onClear,
 }: {
   readonly tooltip: GridRefs["tooltip"];
   readonly error: string | null;
+  readonly onClear: (() => void) | null;
 }): ReactNode {
   return (
     <>
@@ -140,6 +158,11 @@ function Overlays({
           className="absolute inset-x-0 bottom-0 bg-destructive px-2.5 py-1.5 text-sm text-destructive-foreground"
         >
           {error}
+          {onClear === null ? null : (
+            <Button variant="secondary" size="xs" className="ml-2" onClick={onClear}>
+              Clear sorts, filters, groups and pins
+            </Button>
+          )}
         </div>
       )}
     </>
@@ -199,7 +222,7 @@ function GridBody(props: GridBodyProps): ReactNode {
         error={error}
       />
       <Spoken snapshot={snapshot} />
-      <Overlays tooltip={tooltip} error={error} />
+      <Overlays tooltip={tooltip} error={error} onClear={clearing(layout, onChange)} />
     </div>
   );
 }

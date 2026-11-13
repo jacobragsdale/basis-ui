@@ -13,20 +13,40 @@ interface ActiveCell {
   readonly columnIndex: number;
   readonly text: string;
   readonly selected: boolean;
+  /** How its column orders and filters the rows, such as `Sorted descending. Filtered.`; empty when it does neither. */
+  readonly description: string;
 }
+
+/** How the view orders and filters by data column `column`: what a column header's `aria-sort` and filter mark say,
+ * which a canvas grid has no header for. */
+function columnState(model: GridModel, column: number): string {
+  const name = model.frame?.columns[column - model.frame.firstColumn]?.name;
+  const { layout } = model;
+  if (name === undefined || layout === null) {
+    return "";
+  }
+  const sort = layout.sort.find((entry) => entry.column === name);
+  const sorted =
+    sort === undefined ? "" : `Sorted ${sort.descending ? "descending" : "ascending"}.`;
+  const filtered = layout.filters.some((filter) => filter.column === name) ? "Filtered." : "";
+  return [sorted, filtered].filter((part) => part !== "").join(" ");
+}
+
+/** What a cell says while its rows load. */
+const loadingSpeech = "Loading…";
 
 /** What the focused cell says: its column's title and its text, or that its rows are still loading. */
 function cellSpeech(model: GridModel, focus: CellRef): string {
   const { frame } = model;
   const local = frame === null ? -1 : focus.row - frame.firstRow;
   if (frame === null || local < 0 || local >= frame.rowCount) {
-    return "Loading…";
+    return loadingSpeech;
   }
   if (focus.column === -1) {
     return frame.tree === null ? "" : groupText(frame.tree, local);
   }
   const data = frame.columns[focus.column - frame.firstColumn];
-  return data === undefined ? "Loading…" : `${data.title}: ${data.text(local)}`;
+  return data === undefined ? loadingSpeech : `${data.title}: ${data.text(local)}`;
 }
 
 /** The focused cell as a screen reader reads it, as the grid's active descendant. Each cell has its own id, so a
@@ -40,12 +60,16 @@ function describeCell(
   const before = (geometry.selectPx > 0 ? 1 : 0) + (geometry.treePx > 0 ? 1 : 0);
   const { selection } = model.interaction;
   const chosen = model.choice.chosen(model.frame, focus.row) ? "Row selected. " : "";
+  const speech = cellSpeech(model, focus);
+  // A cell read while its rows load has an id of its own, so that it is read again once they come.
+  const loading = speech === loadingSpeech ? "-loading" : "";
   return {
     columnIndex: focus.column + before + 1,
-    id: `${id}-cell-${String(focus.row)}-${String(focus.column)}`,
+    description: columnState(model, focus.column),
+    id: `${id}-cell-${String(focus.row)}-${String(focus.column)}${loading}`,
     rowIndex: focus.row + 1,
     selected: selection !== null,
-    text: chosen + cellSpeech(model, focus),
+    text: chosen + speech,
   };
 }
 

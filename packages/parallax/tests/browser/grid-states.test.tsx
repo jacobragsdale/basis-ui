@@ -119,3 +119,13 @@ test("tells the app why the engine refused its layout, and shows the rows once t
   await expect.poll(() => errors).toStrictEqual([errors[0], null]);
   await expect.element(screen.getByRole("grid")).toHaveAttribute("aria-rowcount", "6");
 });
+
+test("offers to clear a layout the engine refused, such as a sort and a pin on a column the data dropped", async () => {
+  const { grid, screen, changes } = await renderGrid(
+    { layout: { pinned: ["region"], sort: [{ column: "region", descending: false }] } },
+    "0",
+  );
+  await screen.getByRole("button", { name: "Clear sorts, filters, groups and pins" }).click();
+  await expect.element(grid).toHaveAttribute("aria-rowcount", "6");
+  expect([changes.at(-1)?.sort, changes.at(-1)?.pinned]).toStrictEqual([[], []]);
+});

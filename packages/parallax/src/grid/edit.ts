@@ -192,7 +192,32 @@ function withAllExpanded(layout: Layout, expanded: boolean): Layout {
   return { ...layout, expand_depth: expanded ? layout.group_by.length : 0, expanded: [] };
 }
 
+/** A layout with nothing that arranges its rows or names its columns: no sort, filter, search, group, split, measure,
+ * pin or chosen columns, keeping its widths, titles, formats and cells. It is what the grid offers when the engine
+ * refuses a layout, as one whose sort or pin names a column the data dropped, which no other control can remove. */
+
+function withoutArrangement(layout: Layout): Layout {
+  return {
+    ...layout,
+    columns: [],
+    filters: [],
+    group_by: [],
+    measures: [],
+    pinned: [],
+    search: "",
+    sort: [],
+    split_by: [],
+  };
+}
+
+/** Whether a layout arranges its rows or names its columns, which `withoutArrangement` would clear. */
+function arranged(layout: Layout): boolean {
+  return JSON.stringify(withoutArrangement(layout)) !== JSON.stringify(layout);
+}
+
 export {
+  arranged,
+  withoutArrangement,
   defaultTotals,
   isGroupedLayout,
   isPivotLayout,

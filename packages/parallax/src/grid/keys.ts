@@ -2,11 +2,14 @@
  * and Shift extending the selection; Ctrl+A selects everything and Escape nothing, leaving an Escape with no selection
  * to drop to the page, which restores a maximized grid with it; Space checks the focused row when rows are chosen by
  * checkbox, and with Shift every row from the last one checked; Enter or Space on a group opens or
- * closes it; Ctrl+F searches the grid rather than the page; and Alt+Down opens the focused cell's column menu, as a
- * spreadsheet's filter does. */
+ * closes it; Ctrl+Space checks every row, as the header's checkbox does; Enter on a link cell clicks it; Ctrl+F
+ * searches the grid rather than the page; Alt+Down opens the focused cell's column menu, as a spreadsheet's filter
+ * does; and Shift+F10 or the Menu key opens the focused cell's menu. Alt with an arrow is left to the browser, and with
+ * nothing selected a key that moves first selects the first cell. */
 
-import { rowActivateEvent, send } from "./events.ts";
+import { cellClickEvent, cellOf, rowActivateEvent, send } from "./events.ts";
 import type { GridHost } from "./host.ts";
+import { asksForMenu, openMenuAt } from "./keyboard-menu.ts";
 import { moveFocus, selectAll } from "./selection.ts";
 import type { Extent, Selection } from "./selection.ts";
 
@@ -32,6 +35,12 @@ function stepOf(
   return steps[key] ?? null;
 }
 
+/** Whether a key starts a selection when none is: one that moves, Enter or Space. */
+function startsSelection(event: KeyboardEvent): boolean {
+  const moves = stepOf(event.key, { jump: false, page: 1 }) !== null;
+  return moves || event.key === "Enter" || (event.key === " " && !event.ctrlKey && !event.metaKey);
+}
+
 /** Handles the keyboard on a grid. */
 class KeyInput {
   readonly #host: GridHost;
@@ -47,10 +56,19 @@ class KeyInput {
     }
   };
 
-  /** Handles a key that changes the selection or a group. Returns whether it did. */
+  /** Handles a key that changes the selection or a group. Returns whether it did. With nothing selected, a key that
+   * moves, Enter or Space selects the first cell, and does nothing else: no row is activated, and no move made from a
+   * cell the user never chose. */
   #act(event: KeyboardEvent, extent: Extent): boolean {
     const start = { column: extent.tree ? -1 : 0, row: 0 };
-    const selection = this.#host.model.interaction.selection ?? { anchor: start, focus: start };
+    const { selection } = this.#host.model.interaction;
+    if (selection === null && !event.altKey && startsSelection(event)) {
+      return this.#move({ anchor: start, focus: start });
+    }
+    return this.#actOn(event, selection ?? { anchor: start, focus: start }, extent);
+  }
+
+  #actOn(event: KeyboardEvent, selection: Selection, extent: Extent): boolean {
     // Space checks a table row first; on a group's row, which has no checkbox, it opens or closes the group.
     if (this.#escape(event) || this.#check(event, selection)) {
       return true;
@@ -72,7 +90,9 @@ class KeyInput {
       return true;
     }
     if (event.key === "Enter" && focus.column >= 0) {
-      send(this.#host, rowActivateEvent, focus);
+      // A link cell's Enter is its click, as a link's is; any other activates the row.
+      const link = cellOf(this.#host, focus)?.link === true;
+      send(this.#host, link ? cellClickEvent : rowActivateEvent, focus);
       return true;
     }
     return false;
@@ -102,6 +122,14 @@ class KeyInput {
    * checkbox, and Space opens or closes it instead. Returns whether it checked one. */
   #check(event: KeyboardEvent, selection: Selection): boolean {
     const focused = this.#host.model.interaction.selection !== null;
+    if (event.key === " " && (event.ctrlKey || event.metaKey)) {
+      // Ctrl+Space is the header's checkbox: every row the view shows, or none once some are.
+      const checking = this.#host.model.choice.select?.mode === "multiple";
+      if (checking) {
+        this.#host.checkAll();
+      }
+      return checking;
+    }
     return event.key === " " && focused && this.#host.checkRow(selection.focus.row, event.shiftKey);
   }
 
@@ -120,6 +148,9 @@ class KeyInput {
       return this.#host.focusSearch();
     }
     const focus = this.#host.model.interaction.selection?.focus;
+    if (asksForMenu(event) && focus !== undefined) {
+      return openMenuAt(this.#host, focus);
+    }
     if (
       event.altKey &&
       event.key === "ArrowDown" &&
@@ -138,7 +169,8 @@ class KeyInput {
     const rowPx = metrics?.rowPx ?? 1;
     const page = Math.max(1, Math.floor(this.#host.model.area.height / rowPx) - pageOverlap);
     const jump = event.ctrlKey || event.metaKey;
-    const step = stepOf(event.key, { jump, page });
+    // Alt with an arrow is the browser's, back and forward through the history.
+    const step = event.altKey ? null : stepOf(event.key, { jump, page });
     return step === null
       ? null
       : moveFocus(selection, { columns: step[1], extend: event.shiftKey, rows: step[0] }, extent);
