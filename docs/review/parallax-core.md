@@ -46,6 +46,11 @@ No release blocker in the strict sense, but 1–7 should be fixed before tens of
    - On a route change inside one provider, the new page's load becomes a reload of the old page's table: old rows stay visible until it applies, and the old primary key is kept.
    - The show-data skill's example uses the fixed name `"positions"` and no doc mentions parameters in names. A wrong number under the wrong heading is what the package promises not to show.
    - Severity: fix before release (at least an error when two live holders disagree). Confidence: confirmed by reading.
+   - Done in Parallax: a dataset's name is the page's key, its reloads are shared, and a load nobody waits for is cancelled: each component claims the name with the data it gives it; two live claims with different data
+     both fail with a reason that names the dataset and says to put the parameter in the name, and neither loads
+     until one goes. A dataset no component shows any more, which a component new to it gives other data, as the next
+     page does on a route change, is unloaded at once and loads afresh with its own key. The README and the
+     `show-data` skill say so (its synced copies rewritten). Held by `tests/browser/datasets.test.tsx`.
 
 6. **`packages/parallax/src/theme/page.ts:77` — `ParallaxProvider` cannot mount in the preset's Node DOM.**
    - `document.fonts` is undefined in happy-dom 21, so the page watcher's `subscribe` throws. `Worker` is undefined there too, so `prewarm` throws next.
@@ -64,6 +69,10 @@ No release blocker in the strict sense, but 1–7 should be fixed before tens of
    - Two components asking for the same data stop sharing once they have heard different numbers of restarts or reloads.
    - Scenario: a card mounted before a planned restart and a drawer opened after it fetch and load the same table twice. After every later restart, both reload it at once. One hook's `reload()` leaves the other's `rows` and `failed` state stale.
    - Severity: fix before release. Confidence: confirmed by running (`check1.ts` d: two runs).
+   - Done in Parallax: a dataset's name is the page's key, its reloads are shared, and a load nobody waits for is cancelled: a shared load is keyed by its data, its reloads and the client's engine, not each hook's count
+     of restarts; `reload()` raises a count every component of the name shares, so all of them reload together. Held
+     by `tests/browser/datasets.test.tsx` and `tests/browser/restarts.test.tsx` (components shown on either side of a
+     restart share one load).
 
 9. **`packages/parallax/src/engine/client.ts:160-171` — the give-up rule is a 60 s window, so it never fires when a load-trap cycle takes 30 s or more.**
    - Scenario: a pivot layout that runs a loaded 1M-row table out of memory, against an API that takes over 30 s to serve it. Recovery reloads the table, the view reopens with the same layout, and it traps again, indefinitely, refetching up to 500 MB each time.
@@ -77,10 +86,17 @@ No release blocker in the strict sense, but 1–7 should be fixed before tens of
     - `source` gets no `AbortSignal`, and a superseded or unmounted load downloads and parses to the end.
     - Scenario: five quick changes of a date parameter queue five full loads; the grid steps through each. A stalled body blocks every dataset's load and unload behind it.
     - Severity: fix before release (cancel superseded readers; pass `{ signal }`). Confidence: confirmed by reading.
+    - Done in Parallax: a dataset's name is the page's key, its reloads are shared, and a load nobody waits for is cancelled: a function source is given `{ signal }`, which aborts once no component waits for the load,
+      after the rest of the commit, so StrictMode's second run keeps it; the signal also reaches the engine, which
+      refuses bytes that arrive after it and cancels a body on its way, telling the worker to give the load up. The
+      README shows `async ({ signal }) => arrowResponse(url, { signal })`. Held by `tests/browser/datasets.test.tsx`.
+      Not done here: `packages/ui/README.md`'s sample of the same call, which is the `ui-shell` lane's.
 
 11. **`packages/parallax/src/react/dataset-load.ts:80` — bytes the app holds are `structuredClone`d before the byte limit is checked.**
     - A 1.5 GB buffer is copied on the main thread and then refused.
     - Severity: polish. Confidence: confirmed by reading.
+    - Done in Parallax: a dataset's name is the page's key, its reloads are shared, and a load nobody waits for is cancelled: bytes the app holds are checked against the byte limit before they are copied. Held by
+      `tests/browser/datasets.test.tsx`.
 
 12. **`packages/parallax/src/engine/answers.ts:24-31` — a `postMessage` that throws leaves its request waiting forever.**
     - Scenario: a function source returns the same `ArrayBuffer` twice; the second is detached. `idle` is never true again, so planned restarts stop, and the progress listener leaks.
@@ -154,3 +170,18 @@ Nothing documents this, and none of it was run in a browser; it is from reading 
 - Parallax gives up recovering from an engine that keeps running out of memory after the third restart in a run, each
   within five minutes of the one before, where it was three within a minute, so a large table that traps the engine
   each time it loads again stops being fetched. What to do: nothing.
+
+- A dataset's name is the page's key for its rows: two components that give one name different data both fail, with
+  a reason that says to put what tells them apart in the name, where each showed whichever load finished last. A
+  dataset whose page goes, and whose name the next page loads with other data, loads afresh rather than as a reload.
+  What to do: a dataset that takes a parameter, such as a fund, puts it in its name: `` `positions-${fund}` ``.
+
+- `reload()` reloads a dataset for every component that shows it, and components that show the same data share one
+  load however many restarts each has seen. What to do: nothing.
+
+- `useDataset`'s function source is given `{ signal }`, which aborts once nothing waits for the load, as when the
+  source changes again or the component unmounts first; `SourceContext` is its type. What to do: pass it on,
+  `async ({ signal }) => arrowResponse(url, { signal })`, so the download stops. Run `vp run sync` for the
+  `show-data` skill's new sample.
+
+- Bytes past the byte limit are refused before they are copied. What to do: nothing.

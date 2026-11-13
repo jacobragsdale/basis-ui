@@ -550,7 +550,7 @@ them.
 | Export                           | What it does                                                                                                                                                                                                                                       |
 | -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `<ParallaxProvider>`             | Starts the engine's worker for the tree inside it (`worker`, `prewarm`), and gives parallax its theme (`theme`, `basisTheme` by default) and scheme (`scheme`, the page's mode by default)                                                         |
-| `useDataset(name, source, opts)` | Loads Arrow IPC stream bytes, or a function that returns them or the response itself, as `name`, and returns the load's `status` (`idle`, `loading`, `loaded` or `failed`), `rows`, `error`, `progress` and `reload()`. `opts` are the load's primary key and times |
+| `useDataset(name, source, opts)` | Loads Arrow IPC stream bytes, or a function that returns them or the response itself and is given `{ signal }`, as `name`, and returns the load's `status` (`idle`, `loading`, `loaded` or `failed`), `rows`, `error`, `progress` and `reload()`, which reloads it for every component that shows it. `opts` are the load's primary key and times |
 | `useView(dataset, layout, opts)` | Opens a view of the dataset as the layout describes it, and returns its `status` (`waiting`, `opening`, `open` or `failed`), its latest `frame` and `chart`, its table's status, its `error`, and its `handle`. `opts` are the viewport (null for a chart the engine reduces, which has no rows), the chart window, `onFrame`, which takes each frame in place of `frame`, and `onChart`, which takes each reduction in place of `chart`, so a canvas can paint them without a React render |
 | `<Grid>` | A data grid and pivot table of a dataset as a layout describes it; see [Show a grid](#show-a-grid) |
 | `<Pivot>` | A pivot table with its settings beside it, and the rows behind a value; see [Pivot a table](#pivot-a-table) |
@@ -576,10 +576,18 @@ route with `@basis/ui`'s `arrowResponse`, which leaves the body unread, given
 the route's URL from the generated client:
 
 ```tsx
-const trades = useDataset("trades", async () => arrowResponse(getTradesUrl()), {
-  primaryKey: "trade_id",
-});
+const trades = useDataset(
+  "trades",
+  async ({ signal }) => arrowResponse(getTradesUrl(), { signal }),
+  { primaryKey: "trade_id" },
+);
 ```
+
+A function source is given `{ signal }`, which aborts once nothing waits for
+the load: when the source changes again before it has arrived, as five quick
+changes of a date do, or when the last component that shows the dataset
+unmounts first. Pass it to the request, as above, so the download stops; the
+engine stops reading a body that is on its way either way.
 
 While a load is under way, `progress` says where it stands:
 
@@ -611,7 +619,15 @@ and the canvases read their tokens again and draw whole.
 ### Memory, from page to page
 
 Components that call `useDataset` with the same name and the same source share
-one load: a page whose cards and grid show one dataset fetches it once. When
+one load: a page whose cards and grid show one dataset fetches it once, and a
+`reload()` from one reloads it for all. A dataset's name is the page's key for
+its rows, so two components that give one name different data, such as two
+cards of one fund each, both fail with a reason that says so, until one of them
+goes: a dataset that takes a parameter puts it in its name,
+`` useDataset(`positions-${fund}`, …) ``. When the page that showed a name
+goes and the next brings other data under it, as on a route change, the
+dataset loads afresh, with the next page's key, rather than as a reload of the
+rows before. When
 the last component that shows a dataset unmounts, the engine drops it, and its
 memory goes to later loads. WebAssembly's memory never shrinks, so once the
 engine's memory has grown past 1 GiB while its tables take less than half of

@@ -2,10 +2,18 @@
  * while the effect that started it holds. */
 
 import type { ParallaxClient } from "#engine/client.ts";
+import { loadLimits } from "#engine/limits.ts";
 import type { LoadOptions, LoadProgress } from "#engine/limits.ts";
+import { checkBytes } from "#engine/stream.ts";
 
 import { applyWhenCurrent } from "./current.ts";
 import { sharedLoad } from "./dataset-share.ts";
+
+/** What a dataset's source is given each time it is called: `signal` aborts once no component waits for the load,
+ * as when the source changes again or the component unmounts first, so pass it to the fetch. */
+interface SourceContext {
+  readonly signal: AbortSignal;
+}
 
 /**
  * Where a dataset's Arrow IPC stream comes from: bytes the app holds, or a function that fetches them. A function that
@@ -19,7 +27,7 @@ import { sharedLoad } from "./dataset-share.ts";
  */
 type DatasetSource =
   | ArrayBuffer
-  | (() => ArrayBuffer | Response | PromiseLike<ArrayBuffer | Response>);
+  | ((context: SourceContext) => ArrayBuffer | Response | PromiseLike<ArrayBuffer | Response>);
 
 /** Where a dataset's load stands. `idle` has no source yet. */
 type DatasetStatus = "idle" | "loading" | "loaded" | "failed";
@@ -47,6 +55,12 @@ interface LoadRequest {
   readonly sourceAsOfMicros: number | undefined;
 }
 
+/** The data a component gives a dataset: where it comes from, and what it loads with. */
+type DatasetData = Pick<
+  LoadRequest,
+  "primaryKey" | "receivedAtMicros" | "source" | "sourceAsOfMicros"
+>;
+
 /** A load's outcome, with the request it answered. */
 interface Settled {
   readonly request: LoadRequest;
@@ -69,19 +83,33 @@ function optionsOf({ primaryKey, receivedAtMicros, sourceAsOfMicros }: LoadReque
   };
 }
 
+/** A copy of bytes the app holds, once they are known to be within the byte limit, so a buffer too large is refused
+ * before it is copied. */
+function copyOf(name: string, bytes: ArrayBuffer): ArrayBuffer {
+  checkBytes(name, bytes, loadLimits().maxArrowBytes);
+  return structuredClone(bytes);
+}
+
+/** How a load runs: who hears where it stands, and what says nobody waits for it any more. */
+interface Running {
+  readonly progress: (state: LoadProgress) => void;
+  readonly signal: AbortSignal;
+}
+
 /** Loads a request's source, telling `progress` where it stands, and settling to the load's state. */
 async function load(
   client: ParallaxClient,
   request: LoadRequest,
-  progress: (state: LoadProgress) => void,
+  { progress, signal }: Running,
 ): Promise<LoadState> {
   const { name, source } = request;
   try {
     // A copy of the app's bytes, or what its function returns.
-    const bytes = typeof source === "function" ? source() : structuredClone(source);
+    const bytes = typeof source === "function" ? source({ signal }) : copyOf(name, source);
     const { rows } = await client.load(name, bytes, {
       ...optionsOf(request),
       onProgress: progress,
+      signal,
     });
     return { error: null, progress: null, rows, status: "loaded" };
   } catch (error: unknown) {
@@ -105,15 +133,24 @@ function start(
       apply({ ...loading, progress: state });
     }
   };
-  const outcome = sharedLoad(client, request, {
+  const { outcome, leave } = sharedLoad(client, request, {
     progress,
-    run: async (heard) => load(client, request, heard),
+    run: async (heard, signal) => load(client, request, { progress: heard, signal }),
   });
   applyWhenCurrent(outcome, () => live, apply).catch(reportError);
   return () => {
     live = false;
+    leave();
   };
 }
 
 export { idle, loading, start };
-export type { DatasetSource, DatasetStatus, LoadRequest, LoadState, Settled };
+export type {
+  DatasetData,
+  DatasetSource,
+  DatasetStatus,
+  LoadRequest,
+  LoadState,
+  Settled,
+  SourceContext,
+};

@@ -5,6 +5,7 @@
  * download. */
 
 import { streamedTooManyBytes, tooManyBytes } from "./limits.ts";
+import { cancelled } from "./running.ts";
 import type { ToWorker } from "./messages.ts";
 
 function describe(error: unknown): string {
@@ -81,6 +82,8 @@ interface Pipe {
   readonly mostBytes: number;
   /** Posts a message to the worker, moving the buffers in `transfer`. */
   readonly post: (message: ToWorker, transfer: Transferable[]) => void;
+  /** What cancels the load, once nothing waits for it: the body is cancelled, and the worker gives the load up. */
+  readonly signal: AbortSignal | null;
 }
 
 /** A chunk's bytes as a buffer of their own, to move: the chunk's own buffer when it holds nothing else, as the
@@ -117,12 +120,18 @@ async function postAll(
   pipe: Pipe,
   answered: () => boolean,
 ): Promise<string | null> {
+  const stop = (): void => {
+    reader.cancel().catch(() => null);
+  };
+  pipe.signal?.addEventListener("abort", stop);
   try {
     await postChunks(reader, pipe, answered);
-    return null;
+    return pipe.signal?.aborted === true ? cancelled(pipe.dataset).message : null;
   } catch (error: unknown) {
-    reader.cancel().catch(() => null);
+    stop();
     return describe(error);
+  } finally {
+    pipe.signal?.removeEventListener("abort", stop);
   }
 }
 

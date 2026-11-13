@@ -12,6 +12,10 @@ const microsPerMilli = 1000;
 /** What a load reads: Arrow IPC stream bytes the app holds, or a response whose body streams them. */
 type LoadBody = ArrayBuffer | Response;
 
+/** How the page asks for a load: its options, who hears its progress, and what cancels it, once nobody waits for it:
+ * bytes that arrive after it load nothing, and a body on its way is cancelled. */
+type LoadRun = LoadCall & { readonly signal?: AbortSignal | undefined };
+
 /** Hears where a load stands as the engine reads its rows. */
 type ProgressListener = (progress: LoadProgress) => void;
 
@@ -21,6 +25,8 @@ interface Job {
   readonly dataset: string;
   readonly options: LoadOptions;
   readonly hear: ProgressListener;
+  /** What cancels the load, if anything does. */
+  readonly signal: AbortSignal | null;
   readonly shown: Promise<null>;
   readonly heldByShowing: () => boolean;
 }
@@ -63,7 +69,7 @@ class Holdings {
   #underWay = 0;
 
   /** A load of `dataset`, whose progress `onProgress` hears; it holds the dataset once its first rows show. */
-  public job(dataset: string, { onProgress, ...options }: LoadCall): Job {
+  public job(dataset: string, { onProgress, signal, ...options }: LoadRun): Job {
     const shown = Promise.withResolvers<null>();
     let holding = false;
     const hear = (progress: LoadProgress): void => {
@@ -80,6 +86,7 @@ class Holdings {
       heldByShowing: (): boolean => holding,
       options,
       shown: shown.promise,
+      signal: signal ?? null,
     };
     const jobs = this.#jobs.get(dataset) ?? new Set<Job>();
     jobs.add(job);
@@ -193,4 +200,4 @@ class Holdings {
 }
 
 export { Holdings, loadRequest };
-export type { Job, LoadBody, Pending, ProgressListener };
+export type { Job, LoadBody, LoadRun, Pending, ProgressListener };

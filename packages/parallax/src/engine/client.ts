@@ -11,7 +11,8 @@
 import { BrowserEngine } from "./browser-engine.ts";
 import type { EngineOptions, Unloaded } from "./memory.ts";
 import type { Connection } from "./connection.ts";
-import type { LoadCall, Loaded } from "./limits.ts";
+import type { LoadRun } from "./holdings.ts";
+import type { Loaded } from "./limits.ts";
 import type { ExportFormat } from "./messages.ts";
 import type { WorkerPort } from "./port.ts";
 
@@ -107,7 +108,7 @@ class ParallaxClient {
   public async load(
     dataset: string,
     bytes: ArrayBuffer | Response | PromiseLike<ArrayBuffer | Response>,
-    options: LoadCall = {},
+    options: LoadRun = {},
   ): Promise<Loaded> {
     return this.#current().load(dataset, bytes, options);
   }

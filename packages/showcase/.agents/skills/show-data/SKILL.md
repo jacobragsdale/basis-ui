@@ -20,9 +20,12 @@ import { arrowResponse } from "@basis/ui";
 <ParallaxProvider prewarm>{children}</ParallaxProvider>;
 
 // In the page: the dataset, typed by its rows' type, streamed from an Arrow route whose URL the generated client gives.
-const positions = useDataset<Position>("positions", async () => arrowResponse(getPositionsUrl()), {
-  primaryKey: "position_id",
-});
+// The signal cancels the request once nothing waits for it, as when the user leaves the page first.
+const positions = useDataset<Position>(
+  "positions",
+  async ({ signal }) => arrowResponse(getPositionsUrl(), { signal }),
+  { primaryKey: "position_id" },
+);
 <Grid
   dataset={positions}
   layout={{ sort: [{ column: "market_value_usd", descending: true }] }}
@@ -30,6 +33,9 @@ const positions = useDataset<Position>("positions", async () => arrowResponse(ge
 />;
 ```
 
+- **The name** is the page's key for the rows: components that give one name the same source share one load, and two
+  that give it different data both fail, saying so. A dataset that takes a parameter puts it in the name,
+  ``useDataset(`positions-${fund}`, …)``, so that each fund's rows are their own.
 - **The layout** is the view: columns, sorts, filters, groups, pivots, formats, widths, pinned columns, `titles` and
   totals. Its column names are the row type's, so a typo is a type error. It is plain JSON: keep it in state, the
   address, or a `SavedViews` store.

@@ -1,6 +1,6 @@
 /* `useDataset()`: a table the app loads into the page's engine, and its load's state. */
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
 import type { RefObject } from "react";
 
 import type { ParallaxClient, Restart } from "#engine/client.ts";
@@ -9,7 +9,8 @@ import type { AnyRow } from "#layout/typed.ts";
 
 import { useParallaxClient } from "./context.ts";
 import { idle, loading, start } from "./dataset-load.ts";
-import { holdDataset } from "./dataset-share.ts";
+import { claimDataset, reloadDataset, sharedOf, watchDataset } from "./dataset-share.ts";
+import type { DatasetShared } from "./dataset-share.ts";
 import type { DatasetSource, LoadRequest, LoadState, Settled } from "./dataset-load.ts";
 
 /** A dataset as `useDataset` returns it, for `useView`, `Grid`, `Pivot` and `Chart`. `TRow`, the type of its rows
@@ -111,6 +112,15 @@ function useTracked(
   return [tracked, settle];
 }
 
+/** What the components that show dataset `name` share of it: its reloads, and why none can load it, if one cannot. */
+function useShared(client: ParallaxClient, name: string): DatasetShared {
+  const subscribe = useCallback(
+    (listener: () => void) => watchDataset(client, name, listener),
+    [client, name],
+  );
+  return useSyncExternalStore(subscribe, () => sharedOf(client, name));
+}
+
 /** A load's options as a request holds them. */
 function wantedOptions({
   primaryKey = null,
@@ -127,14 +137,26 @@ type Wanted = Omit<LoadRequest, "source"> & {
   readonly stopped: string | null;
 };
 
+/** Counts the component as one that shows the dataset, with the data it gives it, while it does: the last to show
+ * it unloads it as it unmounts, and two that give its name different data both fail. */
+function useClaim(client: ParallaxClient, wanted: Wanted): void {
+  const owner = useId();
+  const { name, primaryKey, receivedAtMicros, source, sourceAsOfMicros } = wanted;
+  useEffect(() => {
+    const data =
+      source === null ? null : { primaryKey, receivedAtMicros, source, sourceAsOfMicros };
+    return claimDataset(client, name, { data, owner });
+  }, [client, name, owner, primaryKey, receivedAtMicros, source, sourceAsOfMicros]);
+}
+
 /** Loads what is wanted whenever any of it changes, handing each outcome to `settle`. */
 function useLoad(client: ParallaxClient, wanted: Wanted, settle: (settled: Settled) => void): void {
   const { engine, name, primaryKey, receivedAtMicros, reloads, source, sourceAsOfMicros, stopped } =
     wanted;
-  // The last component to show the dataset unloads it as it unmounts.
-  useEffect(() => holdDataset(client, name), [client, name]);
+  useClaim(client, wanted);
   useEffect(() => {
-    if (source === null || stopped !== null) {
+    // A claim just made, in this commit, may have found that another component gives the name other data.
+    if (source === null || stopped !== null || sharedOf(client, name).conflict !== null) {
       return (): void => undefined;
     }
     const request = {
@@ -178,9 +200,13 @@ function useLoad(client: ParallaxClient, wanted: Wanted, settle: (settled: Settl
  * the reason until `reload` is called or the source changes, as does every dataset once the engine keeps stopping.
  *
  * Components that ask for the same name and the same source share one load, so a page whose cards and grid show one
- * dataset fetches it once. When the last component that shows a dataset unmounts, the engine drops it and its memory
- * goes to later loads; once the engine's memory, which never shrinks, has grown past what its tables need, it starts
- * again with what is still shown, which loads again as after a restart.
+ * dataset fetches it once, and `reload` reloads it for all of them. The name is the page's key for the rows: two
+ * components that give it different data both fail, saying so, so a dataset that takes a parameter puts it in the
+ * name, as `` `positions-${fund}` ``. A function source is given `{ signal }`, which aborts once nothing waits for the
+ * load, when the source changes again or the last component unmounts first: pass it to the fetch. When the last
+ * component that shows a dataset unmounts, the engine drops it and its memory goes to later loads; once the engine's
+ * memory, which never shrinks, has grown past what its tables need, it starts again with what is still shown, which
+ * loads again as after a restart.
  *
  * @use Once for each table a page shows, inside a ParallaxProvider; give the dataset to a Grid, a Pivot or a Chart.
  * @see ParallaxProvider, Grid, Pivot, Chart, useView, LayoutInput
@@ -207,7 +233,7 @@ function useDataset<TRow extends AnyRow = AnyRow>(
   options: LoadOptions = {},
 ): Dataset<TRow> {
   const client = useParallaxClient();
-  const [reloads, setReloads] = useState(0);
+  const { conflict, reloads } = useShared(client, name);
   const wanted = { name, reloads, ...wantedOptions(options) };
   // The request the dataset wants, for a restart to judge after this render.
   const requestRef = useRef<LoadRequest | null>(null);
@@ -216,18 +242,18 @@ function useDataset<TRow extends AnyRow = AnyRow>(
   useEffect(() => {
     requestRef.current = request;
   });
-  const reason = request === null ? null : stoppedFor(stopped, request);
+  const reason = request === null ? null : (conflict ?? stoppedFor(stopped, request));
   useLoad(client, { ...wanted, engine, source, stopped: reason }, settle);
   return {
     ...(request === null ? idle : stateOf(request, settled, reason)),
     engine,
     name,
     reload: () => {
-      setReloads((count) => count + 1);
+      reloadDataset(client, name);
     },
   };
 }
 
 export { useDataset };
 export type { Dataset };
-export type { DatasetSource, DatasetStatus } from "./dataset-load.ts";
+export type { DatasetSource, DatasetStatus, SourceContext } from "./dataset-load.ts";

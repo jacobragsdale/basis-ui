@@ -9,10 +9,10 @@ import { Answers } from "./answers.ts";
 import type { Answered } from "./answers.ts";
 import type { Connection } from "./connection.ts";
 import { Holdings, loadRequest } from "./holdings.ts";
-import type { Job, LoadBody } from "./holdings.ts";
+import type { Job, LoadBody, LoadRun } from "./holdings.ts";
 import { exportRequest, exportedFile } from "./exported.ts";
 import { loadLimits, trapReason } from "./limits.ts";
-import type { LoadCall, Loaded } from "./limits.ts";
+import type { Loaded } from "./limits.ts";
 import type { ExportFormat, LoadRequest, ToWorker } from "./messages.ts";
 import { MemoryWatch, plannedReason } from "./memory.ts";
 import type { EngineOptions, Unloaded } from "./memory.ts";
@@ -74,14 +74,14 @@ class BrowserEngine {
   public async load(
     dataset: string,
     bytes: LoadBody | PromiseLike<LoadBody>,
-    options: LoadCall = {},
+    options: LoadRun = {},
   ): Promise<Loaded> {
     const job = this.#holdings.job(dataset, options);
     const running = this.#running;
     const done = arriving(bytes)
       ? Promise.resolve(bytes).then(async (body) => {
           // Unless its dataset was unloaded, or its worker replaced, while the body was on its way.
-          await checkArrival(running, { dataset, dropped: this.#holdings.dropped(job) }, body);
+          await checkArrival(running, { dropped: this.#holdings.dropped(job), job }, body);
           return this.#sendBody(job, body);
         })
       : this.#sendBody(job, bytes);
@@ -204,7 +204,7 @@ class BrowserEngine {
       this.#running.worker.postMessage(message, { transfer });
     };
     // The answer may come first, as a refusal; a body that fails tells the worker, which answers with the reason.
-    const pipe = { answer, dataset: job.dataset, id, mostBytes, post };
+    const pipe = { answer, dataset: job.dataset, id, mostBytes, post, signal: job.signal };
     streamBody(response.body, pipe).catch(() => null);
     return this.#loaded(job, await answer);
   }

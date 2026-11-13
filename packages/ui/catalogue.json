@@ -18389,7 +18389,7 @@
       "kind": "hook",
       "module": "@basis/parallax",
       "name": "useDataset",
-      "purpose": "Loads a table into the page's engine as `name`, from `source`, and reports the load's state. It loads again when `name`, `source` or the options change, so give it a stable source: bytes held in state or a query, or a function the React Compiler keeps. A null source waits, as `idle`. Views of the dataset, opened with `useView`, may open while it loads: they wait for its first rows. A first load shows as it arrives, from a source that streams: its views open on its first rows and see more each time the rows read have grown fourfold, while `progress` says how many have been read of how many are expected, and a grid's status bar how many are still to come. Sorts, filters and pivots apply to the rows so far and update as more arrive; a chart waits for the whole load, and an export is refused until it is done. A reload is read whole and checked before anything changes: its views keep the rows before it until it applies, and a refused reload leaves them so, while `progress` says how far it has read. When the engine runs out of memory it starts again empty and fails every view; a dataset that was loaded then loads its source again, and its views reopen. A dataset whose load was under way, most likely the one that ran the engine out of memory, fails with the reason until `reload` is called or the source changes, as does every dataset once the engine keeps stopping. Components that ask for the same name and the same source share one load, so a page whose cards and grid show one dataset fetches it once. When the last component that shows a dataset unmounts, the engine drops it and its memory goes to later loads; once the engine's memory, which never shrinks, has grown past what its tables need, it starts again with what is still shown, which loads again as after a restart.",
+      "purpose": "Loads a table into the page's engine as `name`, from `source`, and reports the load's state. It loads again when `name`, `source` or the options change, so give it a stable source: bytes held in state or a query, or a function the React Compiler keeps. A null source waits, as `idle`. Views of the dataset, opened with `useView`, may open while it loads: they wait for its first rows. A first load shows as it arrives, from a source that streams: its views open on its first rows and see more each time the rows read have grown fourfold, while `progress` says how many have been read of how many are expected, and a grid's status bar how many are still to come. Sorts, filters and pivots apply to the rows so far and update as more arrive; a chart waits for the whole load, and an export is refused until it is done. A reload is read whole and checked before anything changes: its views keep the rows before it until it applies, and a refused reload leaves them so, while `progress` says how far it has read. When the engine runs out of memory it starts again empty and fails every view; a dataset that was loaded then loads its source again, and its views reopen. A dataset whose load was under way, most likely the one that ran the engine out of memory, fails with the reason until `reload` is called or the source changes, as does every dataset once the engine keeps stopping. Components that ask for the same name and the same source share one load, so a page whose cards and grid show one dataset fetches it once, and `reload` reloads it for all of them. The name is the page's key for the rows: two components that give it different data both fail, saying so, so a dataset that takes a parameter puts it in the name, as `` `positions-${fund}` ``. A function source is given `{ signal }`, which aborts once nothing waits for the load, when the source changes again or the last component unmounts first: pass it to the fetch. When the last component that shows a dataset unmounts, the engine drops it and its memory goes to later loads; once the engine's memory, which never shrinks, has grown past what its tables need, it starts again with what is still shown, which loads again as after a restart.",
       "signature": "useDataset<TRow extends AnyRow = AnyRow>(name: string, source: DatasetSource | null, options: LoadOptions = {}): Dataset<TRow>",
       "use": "Once for each table a page shows, inside a ParallaxProvider; give the dataset to a Grid, a Pivot or a Chart.",
       "with": [
@@ -21334,7 +21334,7 @@
       "purpose": "`<Chart>` over a dataset, whose layout names only its columns when its rows are of a known type."
     },
     {
-      "definition": "| ArrayBuffer | (() => ArrayBuffer | Response | PromiseLike<ArrayBuffer | Response>)",
+      "definition": "| ArrayBuffer | ((context: SourceContext) => ArrayBuffer | Response | PromiseLike<ArrayBuffer | Response>)",
       "exported": true,
       "module": "@basis/parallax",
       "name": "DatasetSource",
@@ -23986,6 +23986,20 @@
       "module": "@basis/parallax",
       "name": "SeriesData",
       "purpose": "A line or area series: points in order, with NaN y values at breaks."
+    },
+    {
+      "fields": [
+        {
+          "description": "",
+          "name": "signal",
+          "optional": false,
+          "type": "AbortSignal"
+        }
+      ],
+      "exported": true,
+      "module": "@basis/parallax",
+      "name": "SourceContext",
+      "purpose": "What a dataset's source is given each time it is called: `signal` aborts once no component waits for the load, as when the source changes again or the component unmounts first, so pass it to the fetch."
     },
     {
       "fields": [

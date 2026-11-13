@@ -10,6 +10,7 @@ export {
   type Dataset,
   type DatasetSource,
   type DatasetStatus,
+  type SourceContext,
 } from "./react/use-dataset.ts";
 export { useView, type View, type ViewOptions } from "./react/use-view.ts";
 export type { ViewState, ViewStatus } from "./react/view-state.ts";
