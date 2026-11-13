@@ -29,7 +29,10 @@ describe("the shipped CHANGELOG.md", () => {
     const sections = parseChangelog(shipped);
     expect(sections.length).toBeGreaterThan(0);
     for (const section of sections) {
-      expect(section.entries.length).toBeGreaterThan(0);
+      // Unreleased is empty from a release until the next change lands; a release lists what it brings.
+      if (section.version !== undefined) {
+        expect(section.entries.length).toBeGreaterThan(0);
+      }
       for (const entry of section.entries) {
         expect(entry).toMatch(/^- \S/u);
       }
