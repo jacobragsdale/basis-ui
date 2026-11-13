@@ -30,7 +30,6 @@ type Step<TValue> =
   | { readonly ok: false; readonly reason: string };
 
 const byteOrderMark = "﻿";
-const quotedField = /"(?<text>(?:[^"]+|"")*)"/uy;
 const plainField = /[^\r\n,"]*/uy;
 const lineBreak = /\r\n|\n|\r/uy;
 const lineBreaks = /\r\n|\n|\r/gu;
@@ -53,17 +52,38 @@ function atFieldEnd(cursor: Cursor): boolean {
   return fieldEnd.test(cursor.text);
 }
 
+/** The text of the quoted field that opens at `start`, its doubled quotes as they are written, and where its closing
+ * quote is; `undefined` when it never closes. A scan from quote to quote, so a field cut short is found at once: a
+ * pattern such as `"(?:[^"]+|"")*"` backtracks exponentially when the closing quote is missing. */
+function quotedAt(
+  text: string,
+  start: number,
+): { readonly raw: string; readonly close: number } | undefined {
+  let from = start + 1;
+  for (;;) {
+    const quote = text.indexOf('"', from);
+    if (quote === -1) {
+      return undefined;
+    }
+    if (text.charAt(quote + 1) !== '"') {
+      return { close: quote, raw: text.slice(start + 1, quote) };
+    }
+    from = quote + 2;
+  }
+}
+
 /** A field wrapped in double quotes, whose doubled quotes stand for one, and whose line breaks are part of it. */
 function readQuoted(cursor: Cursor): Step<string> {
   const opened = cursor.line;
-  const found = take(quotedField, cursor);
-  if (found === null) {
+  const found = quotedAt(cursor.text, cursor.position);
+  if (found === undefined) {
     return {
       ok: false,
       reason: `Line ${String(opened)} opens a quoted field that never closes: add its closing double quote.`,
     };
   }
-  const text = found.groups?.["text"] ?? "";
+  cursor.position = found.close + 1;
+  const text = found.raw;
   cursor.line += text.match(lineBreaks)?.length ?? 0;
   if (!atFieldEnd(cursor)) {
     return {

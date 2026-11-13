@@ -44,12 +44,21 @@ interface CellResult {
   readonly problem?: string;
 }
 
+/** How many fields the sheet's records hold so far, and how many of its cells hold something: a row's empty columns
+ * before a cell are filled in, so the fields may run ahead of the cells only by a bounded amount, or a few cells at
+ * column XFD would take gigabytes. */
+interface SheetSize {
+  fields: number;
+  cells: number;
+}
+
 /** A row as it is read: its number and the column it is at, its fields so far, and their problems. */
 interface RowState {
   readonly line: number;
   readonly context: SheetContext;
   readonly fields: string[];
   readonly problems: Map<number, string>;
+  readonly size: SheetSize;
   column: number;
 }
 
@@ -63,11 +72,14 @@ interface Gathered {
 /** Excel's largest sheet: 1,048,576 rows of 16,384 columns. */
 const maxColumns = 16_384;
 const maxRows = 1_048_576;
-const letters = 26;
+const lettersInAlphabet = 26;
 /** A column letter's value is its code point less this: 1 for A, 26 for Z. */
 const beforeA = 64;
 /** A lower-case letter's code point is this much more than its capital's. */
 const lowerCase = 32;
+/** The empty fields a sheet may hold for each cell with something in it, beyond one row as wide as Excel's: a sheet
+ * of real data holds a few, and one of a few cells at column XFD holds thousands. */
+const emptyFieldsPerCell = 16;
 
 const uncalculated: CellResult = {
   problem:
@@ -85,10 +97,10 @@ function columnIndex(reference: string | undefined, previous: number): number {
   for (const character of reference) {
     const point = character.codePointAt(0) ?? 0;
     const letter = point > beforeA + lowerCase ? point - lowerCase : point;
-    if (letter <= beforeA || letter > beforeA + letters) {
+    if (letter <= beforeA || letter > beforeA + lettersInAlphabet) {
       break;
     }
-    index = index * letters + letter - beforeA;
+    index = index * lettersInAlphabet + letter - beforeA;
   }
   return index - 1;
 }
@@ -117,9 +129,9 @@ function cellContent(scanner: XmlScanner, tag: XmlTag): CellContent {
   return { ...into, style: Number(attribute(tag, "s") ?? "0"), type: attribute(tag, "t") };
 }
 
-/** A shared string cell's text, by its index. */
+/** A shared string cell's text, by its index; an empty or malformed index names no string. */
 function sharedText(index: string, context: SheetContext): CellResult {
-  const text = context.strings[Number(index)];
+  const text = /^\d+$/u.test(index.trim()) ? context.strings[Number(index)] : undefined;
   return text === undefined
     ? { problem: "The workbook lacks the shared string this cell refers to.", text: "" }
     : { text };
@@ -155,11 +167,33 @@ function cellResult(cell: CellContent, context: SheetContext): CellResult {
   return read === undefined ? numberResult(cell, value, context) : read(value, context);
 }
 
-/** Puts a cell's result in its column, filling the columns before it that hold nothing. */
+/** The letters of a column, by its index: `A` for 0, `XFD` for 16,383. */
+function columnLetters(index: number): string {
+  let letters = "";
+  for (let rest = index + 1; rest > 0; rest = Math.floor((rest - 1) / lettersInAlphabet)) {
+    letters = String.fromCodePoint(beforeA + ((rest - 1) % lettersInAlphabet) + 1) + letters;
+  }
+  return letters;
+}
+
+/** Counts a cell with something in it, and the fields its row grows by to reach it, refusing a sheet whose fields run
+ * too far ahead of its cells. */
+function grow(row: RowState): void {
+  row.size.cells += 1;
+  row.size.fields += Math.max(0, row.column + 1 - row.fields.length);
+  if (row.size.fields > maxColumns + emptyFieldsPerCell * row.size.cells) {
+    throw new ZipError(
+      `Row ${String(row.line)} has a cell at ${columnLetters(row.column)}${String(row.line)}, far past the cells the sheet holds: delete the empty columns between them in Excel, save it, and import it again.`,
+    );
+  }
+}
+
+/** Puts a cell's result in its column, filling the columns before it that hold nothing, within the sheet's bound. */
 function place(row: RowState, result: CellResult): void {
   if (result.text === "" && result.problem === undefined) {
     return;
   }
+  grow(row);
   while (row.fields.length < row.column) {
     row.fields.push("");
   }
@@ -181,10 +215,13 @@ function readCell(scanner: XmlScanner, tag: XmlTag, row: RowState): void {
 /** A row's cells, up to its closing tag, as a record; `undefined` for a blank row. */
 function rowRecord(
   scanner: XmlScanner,
-  line: number,
-  context: SheetContext,
+  {
+    line,
+    context,
+    size,
+  }: { readonly line: number; readonly context: SheetContext; readonly size: SheetSize },
 ): SheetRecord | undefined {
-  const row: RowState = { column: -1, context, fields: [], line, problems: new Map() };
+  const row: RowState = { column: -1, context, fields: [], line, problems: new Map(), size };
   let tag = scanner.next();
   while (tag !== undefined && !(tag.closing && tag.name === "row")) {
     if (tag.name === "c" && !tag.closing) {
@@ -212,6 +249,7 @@ function rowNumber(tag: XmlTag, previous: number): number {
 /** A worksheet part's rows, by a scanner over its XML, leaving out blank ones. */
 function sheetRecords(scanner: XmlScanner, context: SheetContext): SheetRecord[] {
   const records: SheetRecord[] = [];
+  const size: SheetSize = { cells: 0, fields: 0 };
   let line = 0;
   for (
     let tag = scanner.next();
@@ -220,7 +258,7 @@ function sheetRecords(scanner: XmlScanner, context: SheetContext): SheetRecord[]
   ) {
     if (tag.name === "row" && !tag.closing) {
       line = rowNumber(tag, line);
-      const record = tag.empty ? undefined : rowRecord(scanner, line, context);
+      const record = tag.empty ? undefined : rowRecord(scanner, { context, line, size });
       if (record !== undefined) {
         records.push(record);
       }

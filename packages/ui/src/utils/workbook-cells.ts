@@ -29,6 +29,9 @@ const builtInKinds: ReadonlyMap<number, NumberKind> = new Map([
 const millisecondsPerDay = 86_400_000;
 /** Serial 60 is 29 February 1900, which Excel keeps for Lotus 1-2-3's sake, though that day never was. */
 const leapBugSerial = 60;
+/** Excel's last day, 31 December 9999, as a serial in the 1900 date system and in the 1904 one, which starts 1,462
+ * days later. Past it Excel shows `#####`. */
+const lastSerial = { date1900: 2_958_465, date1904: 2_957_003 } as const;
 const significantDigits = 15;
 
 // A format's literal text and its padding, which name no part of a date: "text", \x, _x and *x.
@@ -116,6 +119,9 @@ function dayText(days: number, date1904: boolean): string {
 function dateRefusal(serial: number, days: number, date1904: boolean): string | undefined {
   if (serial < 0) {
     return "A negative date, which Excel cannot show.";
+  }
+  if (days > (date1904 ? lastSerial.date1904 : lastSerial.date1900)) {
+    return "A date past 31 December 9999, which Excel cannot show: the cell holds a number formatted as a date.";
   }
   return !date1904 && days === leapBugSerial
     ? "29 February 1900, a day Excel counts that never was."

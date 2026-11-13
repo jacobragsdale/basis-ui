@@ -6,14 +6,11 @@ import { readFileSync } from "node:fs";
 import { describe, expect, test } from "vite-plus/test";
 
 import { zipBytes } from "#testing/zip-file.ts";
-import type { ZipPart } from "#testing/zip-file.ts";
 import { workbookFile } from "#testing/workbook-file.ts";
 import { readWorkbook } from "#utils/index.ts";
 import type { SheetRecord, Workbook } from "#utils/index.ts";
 
-const main = "http://schemas.openxmlformats.org/spreadsheetml/2006/main";
-const officeRelationships = "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
-const packageRelationships = "http://schemas.openxmlformats.org/package/2006/relationships";
+import { main, officeRelationships, packageRelationships, rawWorkbook } from "./workbook-fakes.ts";
 
 /** The workbook, failing the test when it is refused. */
 async function open(bytes: Uint8Array | ArrayBuffer): Promise<Workbook> {
@@ -31,26 +28,6 @@ async function records(workbook: Workbook, sheet: string): Promise<readonly Shee
     throw new Error(reading.reason);
   }
   return reading.records;
-}
-
-/** A workbook of one sheet whose part is `sheet`, with the other parts given, as an archive. */
-async function rawWorkbook(
-  sheet: string,
-  parts: Readonly<Record<string, ZipPart>> = {},
-): Promise<Uint8Array> {
-  return zipBytes({
-    "_rels/.rels": {
-      text: `<Relationships xmlns="${packageRelationships}"><Relationship Id="r1" Type="${officeRelationships}/officeDocument" Target="xl/workbook.xml"/></Relationships>`,
-    },
-    "xl/_rels/workbook.xml.rels": {
-      text: `<Relationships xmlns="${packageRelationships}"><Relationship Id="s1" Type="${officeRelationships}/worksheet" Target="/xl/worksheets/one.xml"/><Relationship Id="t" Type="${officeRelationships}/sharedStrings" Target="strings.xml"/><Relationship Id="y" Type="${officeRelationships}/styles" Target="styles.xml"/></Relationships>`,
-    },
-    "xl/workbook.xml": {
-      text: `<workbook xmlns="${main}" xmlns:r="${officeRelationships}"><sheets><sheet name="One" sheetId="1" r:id="s1"/></sheets></workbook>`,
-    },
-    "xl/worksheets/one.xml": { deflate: true, text: sheet },
-    ...parts,
-  });
 }
 
 /** Where the sheet's central directory entry, the fourth of rawWorkbook's, starts: past three entries of 46 bytes

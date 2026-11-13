@@ -41,10 +41,19 @@ function* tagsOf(scanner: XmlScanner): Generator<XmlTag> {
   }
 }
 
+/** A target's text, percent-decoded, or as written when it holds a `%` that encodes nothing, as `100%.xml` does. */
+function decodedTarget(target: string): string {
+  try {
+    return decodeURIComponent(target);
+  } catch {
+    return target;
+  }
+}
+
 /** A part's name from a relationship's target, which is relative to the part that holds the relationship. */
 function resolvePart(base: string, target: string): string {
   const segments = target.startsWith("/") ? [] : base.split("/").slice(0, -1);
-  for (const segment of decodeURIComponent(target).split("/")) {
+  for (const segment of decodedTarget(target).split("/")) {
     if (segment === "..") {
       segments.pop();
     } else if (segment !== "." && segment !== "") {

@@ -84,6 +84,30 @@ describe("parseCsv's refusals", () => {
     });
   });
 
+  /* A file a user drops must never freeze the tab: a quoted field cut short is refused at once, however long it runs,
+   * where a backtracking pattern took a second at 28 characters and doubled with each. */
+  test.each([
+    ["an unclosed quote of 100,000 characters", `a,b\n1,"${"x".repeat(100_000)}`],
+    ["a truncated record", 'cusip,name\n037833100,"APPLE INC 3.85 05/04/43\n'],
+    ["an unclosed quote among doubled quotes", `a\n"${'x""'.repeat(30_000)}`],
+  ])("refuses %s at once", (_name, text) => {
+    const started = performance.now();
+    const reading = parseCsv(text);
+    expect(performance.now() - started).toBeLessThan(100);
+    expect(!reading.ok && reading.reason).toBe(
+      "Line 2 opens a quoted field that never closes: add its closing double quote.",
+    );
+  });
+
+  test("reads a quoted field of 100,000 characters, its doubled quotes and line breaks among them", () => {
+    const long = `${'x""\r\n'.repeat(20_000)}end`;
+    expect(fieldsOf(parseCsv(`a,b\n"${long}",2\nc,3`))).toStrictEqual([
+      ["a", "b"],
+      [long.replaceAll('""', '"'), "2"],
+      ["c", "3"],
+    ]);
+  });
+
   test("refuses text after a closing quote", () => {
     const reading = parseCsv('a,b\r\n"quoted"tail,c\r\n');
     expect(reading.ok).toBe(false);

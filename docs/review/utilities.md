@@ -10,28 +10,33 @@ All source in the area was read in full; the tests were skimmed (names and selec
    - The existing test only uses a 16-character tail.
    - Severity: release blocker. Confidence: confirmed by running.
 
+   - Done in Utilities: a dropped file never freezes the tab, and a workbook from anywhere never throws: a quoted field is found by a scan from quote to quote (`quotedAt`), linear in its length, so a field cut short is refused at once. Timed in `tests/parse-csv.test.ts`: an unclosed quote of 100,000 characters, the review's truncated record, and 30,000 doubled quotes left open are each refused in under 100 ms; a closed field of 100,000 characters still reads.
 2. **`packages/ui/src/format/parse.ts:44`** (with `components/amount-input.tsx:59-65`) — a bare number in a rate field is taken as the fraction, and the echo does not reveal it.
    - Input → actual: `parseAmount("5.25", rateSuffixes)` → `5.25`, i.e. 525%, echoed as `= 5.25`. `"5.25%"` → `0.0525`.
    - Expected: refuse a suffix-less rate, or echo it as a percentage.
    - "Rates are fractions" is recorded; this input behaviour is not, so it is a decision to make rather than a code bug.
    - Severity: fix before release. Confidence: parse confirmed by running, echo by reading.
 
+   - Done in AmountInput: a rate needs its unit, and digits too many for a double are refused (`760a598`, step 7.3, inputs.md 3, by decision 3): a rate field refuses a bare number other than zero, naming the units, and AmountInput echoes a rate as a percentage.
 3. **`packages/ui/src/utils/workbook-cells.ts:101-123`** — a date-formatted cell has no upper bound on its serial.
    - Input → actual: `numericCellText("20261109", "date", false)` → `"+057373-01-10"`; `"2958466"` → `"+010000-01-01"`; `"250000000"` throws `RangeError: epoch days exceed maximum range`.
    - The throw escapes `readSheet`, because `zipReason` at `read-workbook.ts:92-97` rethrows it, so one such cell rejects the whole sheet.
    - Expected: a per-cell problem past serial 2958465, where Excel shows `#####`.
    - Severity: fix before release. Confidence: confirmed by running.
 
+   - Done in Utilities: a dropped file never freezes the tab, and a workbook from anywhere never throws: a date serial past 31 December 9999, 2,958,465 in the 1900 system and 2,957,003 in the 1904 one, is a problem of its cell ("A date past 31 December 9999, which Excel cannot show"), before Temporal is asked, so `250000000` no longer throws. Anything else a damaged sheet makes the reader meet is a refusal too (finding 5).
 4. **`packages/ui/src/utils/workbook-sheet.ts:159-170`** — `place` pads every row out to its last cell, so `maxPartBytes` does not bound memory.
    - Input → actual: 400 rows of `<c r="XFD…"><v>1</v></c>` (17.8 KB XML, 3.5 KB zip) grew the heap by 72.6 MB. That extrapolates to about 3.6 GB from a roughly 70 KB file at 20,000 rows.
    - Expected: a cap on cells or width, or sparse rows. FileImport's row cap applies only after the read.
    - Severity: fix before release. Confidence: confirmed by running; the 3.6 GB figure is extrapolated.
 
+   - Done in Utilities: a dropped file never freezes the tab, and a workbook from anywhere never throws: a sheet's records may hold at most 16,384 fields plus 16 for each cell with something in it; past that the sheet is refused, naming the row and the cell, such as `XFD12`, and saying to delete the empty columns. The review's 400 rows at XFD are refused at the second row; a row of a few cells with a note at column CV still reads. Memory is bounded by what the sheet holds; FileImport's row cap still applies after the read.
 5. **`packages/ui/src/utils/read-zip.ts:134`** — `readWorkbook` rejects with a raw exception on damaged archives instead of returning `{ ok: false }`.
    - `zip64Values` reads past the buffer, and `readZip` is called outside the `try` at `read-workbook.ts:202`. 68 of 6,000 random byte-flips of the fixture workbook threw `RangeError: Offset is outside the bounds of the DataView`. Setting one entry's extra-field length to `0xFFFF` does it deterministically.
    - `workbook-parts.ts:47`: a relationship `Target="worksheets/100%.xml"` throws `URIError: URI malformed` from `decodeURIComponent`.
    - Severity: fix before release. Confidence: confirmed by running.
 
+   - Done in Utilities: a dropped file never freezes the tab, and a workbook from anywhere never throws: `zip64Values` reads nothing past the extra fields or the archive's end, whatever their lengths claim; `resolvePart` keeps a target as written when `decodeURIComponent` refuses it, so `worksheets/100%.xml` reads; and `readZip` runs inside `readWorkbook`'s `try`, where anything but a `ZipError` becomes a reason to open the file in Excel and save it again. `tests/read-workbook-hostile.test.ts` flips one to four random bytes of the openpyxl fixture 3,000 times, with a fixed seed, reading every sheet: no throw, and the slowest reading under a second (the whole run takes about 1.5 s). Run against the old readers it fails with the review's `RangeError`.
 6. **`packages/ui/src/utils/equal.ts:90-93`** — the cycle memo also remembers pairs that compared unequal, and `#sets` (lines 141-147) keeps comparing after a miss.
    - Input → actual: with `X={v:1}`, `Y={v:2}`, `deepEqual(new Set([{k:X,id:1},{k:X,id:2}]), new Set([{k:Y,id:2},{k:Y,id:1}]))` → `true`. The same data without shared references → `false`.
    - Only Sets of objects with shared sub-objects are affected.
@@ -74,6 +79,8 @@ All source in the area was read in full; the tests were skimmed (names and selec
     - Related: `<c t="s"><v></v></c>` reads as shared string 0, because `Number("")` is 0 (`workbook-sheet.ts:122`).
     - Severity: polish. Confidence: confirmed by running.
 
+- Done in Utilities: a dropped file never freezes the tab, and a workbook from anywhere never throws: `attribute` reads a tag's attributes one by one, name, `=` and quoted value, so a name inside another attribute's value is never taken for one, and the sheet `P&L id='s2' x` reads its own part; a shared-string cell whose value is empty or not a whole number is the cell's problem, "The workbook lacks the shared string this cell refers to", not string 0.
+
 15. **`packages/ui/src/format/parse.ts:164-167` and `packages/ui/src/numbers/derive.ts:30-35`** — non-finite results are returned as good values.
     - `parseAmount("9".repeat(400))` → `{ ok: true, value: Infinity }`.
     - `percentChange(NaN, 5)` → `{ defined: true, value: NaN }`, against the module's "says so by name rather than with NaN".
@@ -107,3 +114,12 @@ The weak spot is hostile or malformed file input (findings 1, 3, 4, 5, 14), whic
 - Fixture transcriptions were not checked against the live SIFMA and NYSE pages.
 - `downloadBlob` and `rafThrottle` were read but not run.
 - Components were only peeked at where they consume this area (AmountInput's echo, FileImport's read path, DataTable's sort and export).
+
+## Changelog
+
+- `parseCsv` refuses a quoted field that never closes at once, however long it runs, where a truncated file froze the
+  tab. What to do: nothing.
+- `readWorkbook` never rejects: a damaged archive, a part name with a stray `%`, a date past 9999 or a sheet whose few
+  cells sit far apart (at column XFD) is `{ ok: false }` with a reason, or a problem of its cell, and a sheet's records
+  hold no more fields than its cells bound. A sheet named with what looks like an attribute reads its own cells. What
+  to do: nothing.

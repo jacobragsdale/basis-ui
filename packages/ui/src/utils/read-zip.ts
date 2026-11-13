@@ -124,15 +124,17 @@ function directoryOf(
     : undefined;
 }
 
-/** The ZIP64 extra field's 64-bit values among an entry's extra fields, which start at `start`. */
+/** The ZIP64 extra field's 64-bit values among an entry's extra fields, which start at `start`, reading nothing past
+ * the extra fields or the archive's end, whatever their lengths claim. */
 function zip64Values(data: Bytes, start: number, length: number): number[] {
+  const stop = Math.min(start + length, data.bytes.byteLength);
   for (
     let field = start;
-    field + extraField.header <= start + length;
+    field + extraField.header <= stop;
     field += extraField.header + u16(data, field + extraField.size)
   ) {
     if (u16(data, field) === extraField.zip64) {
-      const size = u16(data, field + extraField.size);
+      const size = Math.min(u16(data, field + extraField.size), stop - field - extraField.header);
       const words = Math.floor(size / extraField.word);
       return Array.from({ length: words }, (_unused, index) =>
         u64(data, field + extraField.header + index * extraField.word),

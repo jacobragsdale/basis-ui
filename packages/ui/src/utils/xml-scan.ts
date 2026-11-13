@@ -105,16 +105,44 @@ function quotedAfter(attributes: string, from: number): number {
   return character === code.doubleQuote || character === code.singleQuote ? quote + 1 : -1;
 }
 
-/** Where the value of an attribute named `name`, with or without a prefix, starts in a tag's attributes, or -1. */
+/** Where an attribute's name ends: at white space, `=`, or the end of the text. */
+function nameEnd(attributes: string, from: number): number {
+  let at = from;
+  while (
+    at < attributes.length &&
+    !isSpace(attributes.codePointAt(at)) &&
+    attributes.codePointAt(at) !== code.equals
+  ) {
+    at += 1;
+  }
+  return at;
+}
+
+/** The attribute that starts at `at`: its name as written, where its value starts, and where the next attribute may
+ * start; `undefined` when the attributes are not written as `name="value"`. */
+function attributeAt(
+  attributes: string,
+  at: number,
+): { readonly written: string; readonly start: number; readonly next: number } | undefined {
+  const end = nameEnd(attributes, at);
+  const start = quotedAfter(attributes, end);
+  const close = start === -1 ? -1 : attributes.indexOf(attributes.charAt(start - 1), start);
+  return close === -1
+    ? undefined
+    : { next: skipSpace(attributes, close + 1), start, written: attributes.slice(at, end) };
+}
+
+/** Where the value of an attribute named `name`, with or without a prefix, starts in a tag's attributes, or -1. It
+ * reads the attributes one by one, name, `=` and quoted value, so a name that appears inside another attribute's
+ * value, as in a sheet named `P&L id='s2'`, is never taken for one. */
 function valueStart(attributes: string, name: string): number {
-  for (let at = attributes.indexOf(name); at !== -1; at = attributes.indexOf(name, at + 1)) {
-    const before = attributes.codePointAt(at - 1);
-    const start =
-      at === 0 || isSpace(before) || before === code.colon
-        ? quotedAfter(attributes, at + name.length)
-        : -1;
-    if (start !== -1) {
-      return start;
+  for (
+    let found = attributeAt(attributes, skipSpace(attributes, 0));
+    found !== undefined;
+    found = found.next < attributes.length ? attributeAt(attributes, found.next) : undefined
+  ) {
+    if (found.written === name || found.written.endsWith(`:${name}`)) {
+      return found.start;
     }
   }
   return -1;

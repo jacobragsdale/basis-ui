@@ -88,12 +88,13 @@ function notZipReason(view: DataView, bytes: Uint8Array): string {
   return "It is damaged, or it is another kind of file under a workbook's name.";
 }
 
-/** The reason a ZipError gives, or the error rethrown when it is not one. */
+/** The reason a ZipError gives, or, for anything else a damaged file made the reader meet, one the user can act on:
+ * a file from anywhere never rejects the reading. */
 function zipReason(error: unknown): string {
   if (error instanceof ZipError) {
     return error.message;
   }
-  throw error;
+  return "It is written in a way this reader does not follow: open it in Excel, save it as an Excel workbook (.xlsx), and import it again.";
 }
 
 /** A worksheet's records, or why it cannot be read. */
@@ -199,11 +200,11 @@ async function readWorkbook(
   if (view.byteLength < 2 || words.getUint16(0, true) !== zipSignature) {
     return { ok: false, reason: notZipReason(words, view) };
   }
-  const zip = readZip(view);
-  if (!zip.ok) {
-    return { ok: false, reason: `It is damaged: ${zip.reason}` };
-  }
   try {
+    const zip = readZip(view);
+    if (!zip.ok) {
+      return { ok: false, reason: `It is damaged: ${zip.reason}` };
+    }
     return await openWorkbook(zip.archive, maxPartBytes);
   } catch (error) {
     return { ok: false, reason: `It is damaged: ${zipReason(error)}` };
