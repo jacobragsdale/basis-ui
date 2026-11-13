@@ -1090,6 +1090,27 @@ mod tests {
         out
     }
 
+    /// `bytes` with every record batch's body overwritten with 0xFF, its headers
+    /// left as they were.
+    fn garbled(mut bytes: Vec<u8>) -> Vec<u8> {
+        let mut at = 0;
+        while at + 8 <= bytes.len() {
+            let size = u32::from_le_bytes(bytes[at + 4..at + 8].try_into().unwrap()) as usize;
+            if size == 0 {
+                break;
+            }
+            let header = at + 8..at + 8 + size;
+            let message = arrow_ipc::root_as_message(&bytes[header.clone()]).unwrap();
+            let body = usize::try_from(message.bodyLength()).unwrap();
+            let batch = message.header_as_record_batch().is_some();
+            if batch {
+                bytes[header.end..header.end + body].fill(0xFF);
+            }
+            at = header.end + body;
+        }
+        bytes
+    }
+
     fn load(max_rows: u64) -> Load {
         Load {
             primary_key: None,
@@ -1202,11 +1223,19 @@ mod tests {
             error,
             "past has 2501 rows, more than the 2500 a table in the browser holds; have its API filter or aggregate the data to fit"
         );
-        // A stream whose headers claim more rows than its data holds is refused
-        // by its headers alone.
-        let mut cut = stream(3_000, None);
-        cut.truncate(cut.len() / 2);
-        assert!(worker.load("cut", cut, &load(2_500)).is_err());
+        // A stream counted whole is refused by its headers alone: its bodies
+        // here are garbage, which decoding would refuse for another reason.
+        assert_eq!(
+            worker.load("garbled", garbled(stream(3_000, None)), &load(2_500)),
+            Err("garbled has 3000 rows, more than the 2500 a table in the browser holds; have its API filter or aggregate the data to fit".to_owned())
+        );
+        assert!(
+            worker
+                .load("garbled", garbled(stream(2_000, None)), &load(2_500))
+                .unwrap_err()
+                .starts_with("garbled: "),
+            "within the limit, the same garbage is read, and refused"
+        );
         assert!(
             worker
                 .load("garbage", b"not arrow".to_vec(), &load(10))

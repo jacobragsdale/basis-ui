@@ -192,3 +192,66 @@ fn a_weighted_average_of_a_long_period_is_right_where_usize_has_32_bits() {
     assert_eq!(averages[period - 1], 2.5);
     assert_eq!(averages[period + 9], 2.5);
 }
+
+#[wasm_bindgen_test]
+fn a_stream_the_page_posts_in_pieces_loads_through_the_calls_its_worker_makes() {
+    let bytes = stream_bytes(150_000);
+    let mut worker = Worker::new();
+    worker
+        .begin_load(
+            "positions",
+            Some("id".into()),
+            1_000.0,
+            None,
+            200_000,
+            Some(bytes.len() as f64),
+        )
+        .unwrap();
+    let mut shown = false;
+    for piece in bytes.chunks(100_000) {
+        worker
+            .add_load_bytes("positions", &js_sys::Uint8Array::from(piece))
+            .unwrap();
+        loop {
+            let progress = worker.step_load("positions").unwrap();
+            let field = |name: &str| js_sys::Reflect::get(&progress, &name.into()).unwrap();
+            shown |= field("shown").as_bool().unwrap();
+            if field("waiting").as_bool().unwrap() || field("ended").as_bool().unwrap() {
+                break;
+            }
+        }
+    }
+    assert!(shown, "a first load shows as it arrives");
+    worker.end_load_bytes("positions").unwrap();
+    while !js_sys::Reflect::get(&worker.step_load("positions").unwrap(), &"ended".into())
+        .unwrap()
+        .as_bool()
+        .unwrap()
+    {}
+    assert_eq!(worker.finish_load("positions").unwrap(), 150_000);
+    // Bytes after the end, and a step of no load, are errors the page reads.
+    assert!(worker.add_load_bytes("positions", &stream(1)).is_err());
+    assert_eq!(
+        message(worker.step_load("positions").unwrap_err()),
+        "positions has no load under way"
+    );
+    // The table it built exports as the one a whole load builds.
+    let mut whole = Worker::new();
+    whole
+        .load_table(
+            "positions",
+            &stream(150_000),
+            Some("id".into()),
+            1_000.0,
+            None,
+            200_000,
+        )
+        .unwrap();
+    let layout = r#"{"version":1,"dataset":"positions"}"#;
+    let csv = |worker: &Worker| {
+        let mut out = Vec::new();
+        worker.write_csv_to(layout, None, &mut out).unwrap();
+        out
+    };
+    assert_eq!(csv(&worker), csv(&whole));
+}

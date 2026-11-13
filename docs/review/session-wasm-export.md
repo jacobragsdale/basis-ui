@@ -73,6 +73,8 @@ No release blocker in these four crates, but 13 findings: one trap on spec-valid
 - Scenario: CI sets `RUSTFLAGS=-D warnings` globally. Cargo treats `RUSTFLAGS` and target rustflags as mutually exclusive, so `CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUSTFLAGS=+simd128` is ignored in every CI build. The shipped tarball is built on a dev machine by `/home/jacob/dev/basis-ui-dist/pack.sh` with SIMD.
 - Confidence: config confirmed. The local wasm's `target_features` section does list `simd128`. The precedence is from Cargo's documentation.
 
+- Not done here: CI's flags are step 7.13's, by the brief; `ci.yml` is left to it.
+
 **8. Hostile IPC bytes can still panic inside arrow** — polish
 
 - Where: arrow-ipc 60.1 `reader.rs:66`, reached from `packages/parallax/crates/parallax-protocol/src/ipc.rs:511`.
@@ -120,6 +122,9 @@ No release blocker in these four crates, but 13 findings: one trap on spec-valid
 - `packages/parallax/crates/parallax-wasm/tests/load.rs`: every wasm test drives `loadTable`, which no TypeScript calls. `beginLoad`, `addLoadBytes`, `stepLoad` and `finishLoad` have no wasm-level test.
 - `crates/parallax-export/tests/export.rs`: the cell-exactness tests run the native `constant_memory` writer. The in-memory writer the browser uses for flat sheets (`crates/parallax-export/src/lib.rs:565-569`) gets only a "starts with PK" check.
 - The wasm transcript test runs the dev profile in Node, not the shipped fat-LTO SIMD build.
+
+- Done in Engine: each named test tests what it says, the browser's Excel writer included: the headers-alone case now loads a stream whose batch bodies are garbage: past the limit it is refused with the row count, within it the same garbage is refused by decoding, so the count comes first. `a_stream_the_page_posts_in_pieces_loads_through_the_calls_its_worker_makes` drives `beginLoad`, `addLoadBytes`, `stepLoad`, `endLoadBytes` and `finishLoad` in wasm32, with the stream in pieces, and checks the table against a whole load's. The xlsx writer's sheet held in memory, as the browser writes it, is reachable natively as `write_xlsx_in_memory`, and every export test that writes a workbook checks its cells equal the streamed one's.
+- Not done in CI: the transcript test in the shipped build, fat LTO with SIMD, is CI's, step 7.13, with finding 7. Run here once on 2026-11-13, it passed; the command is `RUSTFLAGS='-C target-feature=+simd128' cargo test --profile wasm -p parallax-wasm --target wasm32-unknown-unknown --locked --test transcript`.
 
 ## Overall quality
 

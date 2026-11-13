@@ -553,18 +553,17 @@ fn read_at<T: ReadTable + ?Sized>(source: &T, version: u64) -> Result<T::Guard<'
 const NOTE_CELL: usize = 30_000;
 
 /// A sheet that streams its rows to a temporary file, so that a large export
-/// needs little memory.
-#[cfg(not(target_arch = "wasm32"))]
-fn streamed_sheet(workbook: &mut Workbook) -> Result<&mut Worksheet, XlsxError> {
-    workbook.add_worksheet_with_constant_memory()
-}
-
-/// WebAssembly in the browser has no file system for rust_xlsxwriter's temporary
-/// files, so the sheet is held in memory, about 190 bytes a cell. Callers there
-/// cap the cells with `max_cells`.
-#[cfg(target_arch = "wasm32")]
+/// needs little memory, unless `in_memory`. WebAssembly in the browser has no
+/// file system for rust_xlsxwriter's temporary files, so there the sheet is
+/// always held in memory, about 190 bytes a cell; callers cap the cells with
+/// `max_cells`.
 #[allow(clippy::unnecessary_wraps)]
-fn streamed_sheet(workbook: &mut Workbook) -> Result<&mut Worksheet, XlsxError> {
+fn streamed_sheet(workbook: &mut Workbook, in_memory: bool) -> Result<&mut Worksheet, XlsxError> {
+    #[cfg(not(target_arch = "wasm32"))]
+    if !in_memory {
+        return workbook.add_worksheet_with_constant_memory();
+    }
+    let _ = in_memory;
     Ok(workbook.add_worksheet())
 }
 
@@ -583,6 +582,41 @@ pub fn write_xlsx<T: ReadTable + ?Sized, W: Write + Seek + Send>(
     source: &ExportSource,
     max_cells: Option<usize>,
     out: W,
+) -> Result<ExportSummary, ExportError> {
+    write_sheet(
+        tables,
+        layout,
+        source,
+        max_cells,
+        out,
+        cfg!(target_arch = "wasm32"),
+    )
+}
+
+/// Writes the workbook as [`write_xlsx`] does in the browser, its sheet held in
+/// memory, so that native tests check the cells the browser writes.
+///
+/// # Errors
+///
+/// Returns the errors [`write_xlsx`] does.
+#[doc(hidden)]
+pub fn write_xlsx_in_memory<T: ReadTable + ?Sized, W: Write + Seek + Send>(
+    tables: &T,
+    layout: &Layout,
+    source: &ExportSource,
+    max_cells: Option<usize>,
+    out: W,
+) -> Result<ExportSummary, ExportError> {
+    write_sheet(tables, layout, source, max_cells, out, true)
+}
+
+fn write_sheet<T: ReadTable + ?Sized, W: Write + Seek + Send>(
+    tables: &T,
+    layout: &Layout,
+    source: &ExportSource,
+    max_cells: Option<usize>,
+    out: W,
+    in_memory: bool,
 ) -> Result<ExportSummary, ExportError> {
     let first = tables.read().map_err(ExportError::Read)?;
     let version = check_load(&first, source)?;
@@ -617,7 +651,7 @@ pub fn write_xlsx<T: ReadTable + ?Sized, W: Write + Seek + Send>(
     let sheet = if outlined {
         workbook.add_worksheet()
     } else {
-        streamed_sheet(&mut workbook)?
+        streamed_sheet(&mut workbook, in_memory)?
     };
     sheet.set_name("View")?;
     let header = Format::new()

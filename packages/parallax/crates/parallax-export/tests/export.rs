@@ -50,7 +50,23 @@ fn xlsx(table: &Table, layout: &str) -> Vec<u8> {
         &mut out,
     )
     .unwrap();
-    out.into_inner()
+    let streamed = out.into_inner();
+    // The browser holds its sheet in memory: the same cells, whichever writes.
+    let mut out = Cursor::new(Vec::new());
+    parallax_export::write_xlsx_in_memory(
+        table,
+        &Layout::from_json(layout).unwrap(),
+        &ExportSource::default(),
+        None,
+        &mut out,
+    )
+    .unwrap();
+    let held = out.into_inner();
+    assert!(
+        sheet(&held) == sheet(&streamed),
+        "the sheet held in memory has the cells the streamed one has"
+    );
+    streamed
 }
 
 fn sheet(bytes: &[u8]) -> calamine::Range<Data> {
