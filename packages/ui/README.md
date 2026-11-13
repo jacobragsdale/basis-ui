@@ -33,8 +33,9 @@ On Windows, read [On Windows](#on-windows) first: a desktop behind the firm's pr
    a clone of the API's repo and a tag, copies the API's document and generates the client; then delete the sample,
    as `AGENTS.md` says. [Calling the API](#calling-the-api) says how a page uses the client.
 7. **Add a page**: `vp run new table trades --operation list_trades`, with an operation from the API's document,
-   writes the page, its test, a fixture and its route, and prints what to run next. `vp run shot /trades`, with
-   `vp dev` running, writes the page's screenshot to `.shots/`.
+   writes the page, its test and its route, and a fixture where none answers the operation yet, and prints what to
+   run next. `vp run shot /trades` writes the page's screenshot, its accessibility tree and its console to `.shots/`,
+   starting `vp dev` itself when it is not running.
 8. **Sign in**: the template's `src/sign-in.ts` signs in with the firm's Windows sign-in in production, and with a fake
    user in `vp dev`; set its token endpoint as [Sign-in](#sign-in) says.
 9. **Check it**: `vp run verify` runs every check and ends `vp run verify passed 10 of 10 stages`, or with one
