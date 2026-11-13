@@ -2,6 +2,8 @@
  * `lazyRouteComponent` as its own chunk, its title in `staticData` for the sidebar, the breadcrumbs and the command
  * palette, and its name added to the root's children. A routes file in another shape fails with the route to add. */
 
+import { parseSync } from "vite-plus";
+
 import { camel } from "./api-operations.ts";
 import type { Scaffold } from "./scaffold-plan.ts";
 import { TaskError } from "./task-error.ts";
@@ -56,10 +58,74 @@ function hasRoute(text: string, scaffold: Scaffold): boolean {
   return hasVariable;
 }
 
-/** `text` with `code` put at the start of the line that holds `marker`. */
-function beforeLineOf(text: string, marker: string, code: string): string {
-  const start = text.lastIndexOf("\n", text.indexOf(marker)) + 1;
-  return `${text.slice(0, start)}${code}${text.slice(start)}`;
+/** A node of Oxc's syntax tree, as far as the routes file is read. */
+interface SyntaxNode {
+  readonly type: string;
+  readonly start: number;
+  readonly end: number;
+  readonly [key: string]: unknown;
+}
+
+function isNode(value: unknown): value is SyntaxNode {
+  return (
+    typeof value === "object" && value !== null && typeof Reflect.get(value, "type") === "string"
+  );
+}
+
+/** Whether `node` is `rootRoute.addChildren([...])`. */
+function isRootChildren(node: SyntaxNode): boolean {
+  const { callee, arguments: given } = node;
+  return (
+    node.type === "CallExpression" &&
+    isNode(callee) &&
+    callee.type === "MemberExpression" &&
+    isNode(callee["object"]) &&
+    callee["object"]["name"] === "rootRoute" &&
+    isNode(callee["property"]) &&
+    callee["property"]["name"] === "addChildren" &&
+    Array.isArray(given) &&
+    isNode(given[0]) &&
+    given[0].type === "ArrayExpression"
+  );
+}
+
+/** The list of the root's children in the routes file, `[...]` of `rootRoute.addChildren([...])`, and the call. */
+function rootChildren(
+  node: unknown,
+): { readonly call: SyntaxNode; readonly list: SyntaxNode } | undefined {
+  if (Array.isArray(node)) {
+    return node.map((item) => rootChildren(item)).find((found) => found !== undefined);
+  }
+  if (!isNode(node)) {
+    return undefined;
+  }
+  const given: unknown = node["arguments"];
+  if (isRootChildren(node) && Array.isArray(given) && isNode(given[0])) {
+    return { call: node, list: given[0] };
+  }
+  return Object.entries(node)
+    .filter(([key]) => key !== "parent")
+    .map(([, value]) => rootChildren(value))
+    .find((found) => found !== undefined);
+}
+
+/** `text` with `variable` added as the last of the root's own children, after the last one listed, so a child's own
+ * `addChildren` and a comment after the last are kept as they are; or `undefined` for a file with no such list. */
+function withChild(
+  text: string,
+  variable: string,
+): { readonly text: string; readonly at: number } | undefined {
+  const found = rootChildren(parseSync(routesFile, text).program);
+  if (found === undefined) {
+    return undefined;
+  }
+  const elements: unknown = found.list["elements"];
+  const last = Array.isArray(elements)
+    ? elements.findLast((element) => isNode(element))
+    : undefined;
+  const after = isNode(last) ? last.end : found.list.start + 1;
+  const added = isNode(last) ? `, ${variable}` : variable;
+  return { at: found.call.start, text: `${text.slice(0, after)}${added}${text.slice(after)}` };
 }
 
 /** The routes file with the scaffold's route added, or `undefined` when it holds that route already. */
@@ -67,23 +133,19 @@ function withRoute(text: string, scaffold: Scaffold): string | undefined {
   if (hasRoute(text, scaffold)) {
     return undefined;
   }
-  const children = /rootRoute\.addChildren\(\[(?<listed>[^\]]*)\]\)/u.exec(text);
   const imported = withLazyImport(text);
-  if (children === null || imported === undefined) {
+  const added =
+    imported === undefined ? undefined : withChild(imported, `${camel(scaffold.name)}Route`);
+  if (added === undefined) {
     throw cannotAdd(
       scaffold,
-      children === null
+      rootChildren(parseSync(routesFile, text).program) === undefined
         ? "has no rootRoute.addChildren([...])"
         : "imports nothing from @tanstack/react-router",
     );
   }
-  const listed = (children.groups?.["listed"] ?? "").trim().replace(/,$/u, "");
-  const variable = `${camel(scaffold.name)}Route`;
-  const added = imported.replace(
-    children[0],
-    `rootRoute.addChildren([${listed === "" ? "" : `${listed}, `}${variable}])`,
-  );
-  return beforeLineOf(added, "rootRoute.addChildren(", `${routeCode(scaffold)}\n\n`);
+  const start = added.text.lastIndexOf("\n", added.at) + 1;
+  return `${added.text.slice(0, start)}${routeCode(scaffold)}\n\n${added.text.slice(start)}`;
 }
 
 export { routesFile, withRoute };

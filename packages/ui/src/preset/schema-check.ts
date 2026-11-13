@@ -15,8 +15,12 @@ const jsonSchema = z.custom<z.core.JSONSchema.JSONSchema>(
   (value) => typeof value === "object" && value !== null,
 );
 
-/** `value` with each component `$ref` pointed at `$defs`, and no `additionalProperties: false`, which the client's
- * schemas never hold. */
+/* A time as the generated client reads one, `zod.iso.time({})`: `14:30:00` or `14:30`, with no offset, where JSON
+ * Schema's `time`, which Zod's `fromJSONSchema` follows, requires one. */
+const clientTime = z.core.regexes.time({}).source;
+
+/** `value` with each component `$ref` pointed at `$defs`, no `additionalProperties: false`, which the client's
+ * schemas never hold, and each `format: time` read as the client reads it. */
 function loosened(value: unknown): unknown {
   if (Array.isArray(value)) {
     return value.map((item) => loosened(item));
@@ -28,6 +32,9 @@ function loosened(value: unknown): unknown {
     Object.entries(value).flatMap(([key, held]) => {
       if (key === "additionalProperties" && held === false) {
         return [];
+      }
+      if (key === "format" && held === "time") {
+        return [["pattern", clientTime]];
       }
       if (key === "$ref" && typeof held === "string" && held.startsWith(componentPrefix)) {
         return [[key, `#/$defs/${held.slice(componentPrefix.length)}`]];

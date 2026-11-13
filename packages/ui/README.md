@@ -451,15 +451,21 @@ vp run new form new-trade --operation book_trade        # a form for the body an
 
 Each writes four things: `src/pages/NAME.tsx`; its test, `src/pages/NAME.test.ts`, written with `@basis/ui/testing`
 and served the fixture's body by the generated client's handler; `fixtures/NAME.json`, whose body the schema accepts,
-unless a fixture in `fixtures/` answers that request already; and the route `/NAME` in `src/routes.ts`, with a segment
-for each path parameter, as `/bond/$security`, its page loaded with `lazyRouteComponent`. Each page is a `Page`, titled by
-NAME. A table has a column for
-each field of a row, and a page a line for each field, each number shown by the display format the API declares,
-through `displayFormats`. A form has a field for each one the body requires, on `@basis/ui`'s form fields: an amount
+unless a fixture in `fixtures/` answers that request already, whose body the test then takes, so a fixture written by
+hand unblocks a schema no example can be made from; and the route `/NAME` in `src/routes.ts`, with a segment for each
+path parameter, as `/bond/$security`, its page loaded with `lazyRouteComponent`, added to the root's own children. The
+router gives a parameter as text, so the page passes it to the hook as the API declares it: a number through
+`Number(...)`, a choice through a function that names the choices, and text as it is. Each page is a `Page`, titled by
+NAME. A table has a column for each field of a row, and a page a line for each field, each number shown by the display
+format the API declares, through `displayFormats`. A table names a row by its `id`, else by every field whose name says
+it holds an identifier, as a position's book and security; with none, by the whole row, which its comment says to
+replace with the row's key. A form has a field for each value the body takes, on `@basis/ui`'s form fields: an amount
 in `FormAmountField`, a date in `FormDateField`, a choice in `FormSelectField`, a flag in `FormCheckboxField`, text in
-`FormTextField`; its schema is the generated one,
-a 422 lands on the fields it names, and a success raises a toast. A field that holds an object or a list is left out,
-and the page's opening comment names it. Then it prints what to run next:
+`FormTextField`, each `optional` or `nullable` as the body declares it; its schema is the generated one, a field left
+empty that the body may leave out is not sent, a 422 lands on the fields it names, and a success raises a toast. A
+field that holds an object or a list, and a flag the body does not require, is left out, and the page's opening comment
+names it. A form imports `@tanstack/react-form`, which the template holds; in an app without it, the next steps name
+`vp add @tanstack/react-form`. Then it prints what to run next:
 
 ```text
 Wrote src/pages/positions.tsx, src/pages/positions.test.ts and fixtures/positions.json, and added the route /positions to src/routes.ts.

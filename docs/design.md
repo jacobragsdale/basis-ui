@@ -729,7 +729,9 @@ details at another path parameter than the success's.
 passes the app's checks: the page, from the schema of the rows or the object a GET answers or of the body an operation
 takes, in a `Page`, with each number by its display format, a DataTable for a table, QueryState over a card for a page, and the
 generated Zod schema under TanStack Form for a form; its test, on `@basis/ui/testing`; a fixture, unless one answers the
-request already; and its route in `src/routes.ts`. It formats what it writes with `vp fmt`, never overwrites a file
+request already, whose body the test then takes; and its route in `src/routes.ts`. It proves itself on a second
+document as well as the example's, so that what it writes passes `tsc` and the lint for integer and choice path
+parameters, optional and nullable fields and text with quotes and braces. It formats what it writes with `vp fmt`, never overwrites a file
 without `--force`, and refuses what it cannot make, a dataset route's rows, which are parallax's grid's, or an
 operation whose query a page would have to choose, with what to do instead.
 

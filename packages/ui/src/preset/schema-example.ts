@@ -13,6 +13,9 @@ interface ExampleOptions {
   readonly every: boolean;
   /** The name of the field the value is for, which text is made from. */
   readonly name: string;
+  /** Which of a list's items the value is, from 0, so that a list whose items must differ gets different ones: the
+   * next choice, number or text. */
+  readonly variant?: number;
 }
 
 /** The deepest an example nests, so a schema that refers to itself ends. */
@@ -20,11 +23,21 @@ const deepest = 6;
 
 /** The values each format of text takes, as the client's Zod schemas check them. */
 const formatted: Readonly<Record<string, string>> = {
+  byte: "AAAA",
   date: "2026-11-06",
   "date-time": "2026-11-06T14:30:00Z",
+  duration: "P1D",
   email: "name@example.com",
+  hostname: "example.com",
+  "idn-email": "name@example.com",
+  "idn-hostname": "example.com",
+  ipv4: "192.0.2.10",
+  ipv6: "2001:db8::10",
+  iri: "https://example.com",
+  "iri-reference": "https://example.com",
   time: "14:30:00",
   uri: "https://example.com",
+  "uri-reference": "https://example.com",
   url: "https://example.com",
   uuid: "019a5c3e-0000-7000-8000-000000000001",
 };
@@ -40,14 +53,17 @@ const byKind: Readonly<Record<string, number>> = {
 const plainNumber = 1234.5;
 const plainInteger = 12;
 
-/** The value the schema itself gives, if it gives one. */
-function givenValue(schema: Schema): unknown {
+/** The value the schema itself gives, if it gives one: for a list's later items, its next choice. */
+function givenValue(schema: Schema, variant = 0): unknown {
   if ("const" in schema) {
     return schema["const"];
   }
   const examples = Array.isArray(schema["examples"]) ? schema["examples"] : [];
   const choices = Array.isArray(schema["enum"]) ? schema["enum"] : [];
-  return schema["example"] ?? examples[0] ?? schema["default"] ?? choices[0];
+  const choice: unknown = choices[variant % Math.max(1, choices.length)];
+  return variant > 0 && choices.length > 0
+    ? choice
+    : (schema["example"] ?? examples[0] ?? schema["default"] ?? choice);
 }
 
 /** A field's name as words, as `Security id` for `security_id`. */
@@ -60,7 +76,7 @@ function wordsOf(name: string): string {
   return words === "" ? "text" : `${words.charAt(0).toUpperCase()}${words.slice(1)}`;
 }
 
-function textFor(schema: Schema, name: string): string | undefined {
+function textFor(schema: Schema, name: string, variant = 0): string | undefined {
   const { format, pattern, minLength, maxLength } = schema;
   if (typeof format === "string" && format in formatted) {
     return formatted[format];
@@ -73,7 +89,7 @@ function textFor(schema: Schema, name: string): string | undefined {
   }
   const shortest = typeof minLength === "number" ? minLength : 0;
   const longest = typeof maxLength === "number" ? maxLength : Number.POSITIVE_INFINITY;
-  return `${wordsOf(name)} 1`.padEnd(shortest, "x").slice(0, longest);
+  return `${wordsOf(name)} ${String(variant + 1)}`.padEnd(shortest, "x").slice(0, longest);
 }
 
 function numberOrNothing(value: unknown): number | undefined {
@@ -91,11 +107,20 @@ function boundsOf(schema: Schema): {
   };
 }
 
-function numberFor(schema: Schema, integer: boolean): number {
+/** `value` moved up to a multiple of `step`, as `multipleOf` asks, or as it is with no step. */
+function onStep(value: number, step: number | undefined): number {
+  return step === undefined || step <= 0 ? value : Math.ceil(value / step) * step;
+}
+
+/** The number a schema's type and display format suggest, before its bounds: an integer, or a number of its kind. */
+function suggested(schema: Schema, integer: boolean): number {
   const { kind } = objectOf(schema["x-basis-format"]);
-  const wanted = integer
-    ? plainInteger
-    : (byKind[typeof kind === "string" ? kind : ""] ?? plainNumber);
+  return integer ? plainInteger : (byKind[typeof kind === "string" ? kind : ""] ?? plainNumber);
+}
+
+function numberFor(schema: Schema, integer: boolean, variant = 0): number {
+  const step = numberOrNothing(schema["multipleOf"]);
+  const wanted = onStep(suggested(schema, integer), step) + variant * (step ?? 1);
   const { lower, upper } = boundsOf(schema);
   const above = lower === undefined || wanted > lower;
   const below = upper === undefined || wanted < upper;
@@ -106,7 +131,7 @@ function numberFor(schema: Schema, integer: boolean): number {
     lower !== undefined && upper !== undefined
       ? (lower + upper) / 2
       : (lower ?? upper ?? 0) + (lower === undefined ? -1 : 1);
-  return integer ? Math.ceil(middle) : middle;
+  return onStep(integer ? Math.ceil(middle) : middle, step) + variant * (step ?? 1);
 }
 
 function typeOf(schema: Schema): string | undefined {
@@ -142,10 +167,13 @@ function objectFor(example: Example, schema: Schema, state: State): unknown {
   return Object.fromEntries(entries);
 }
 
+/** A list of as few items as it allows, at least one, each a different variant, so that `uniqueItems` holds. */
 function arrayFor(example: Example, schema: Schema, state: State): unknown {
   const fewest = typeof schema["minItems"] === "number" ? Math.max(1, schema["minItems"]) : 1;
-  const item = example(objectOf(schema["items"]), { ...state, depth: state.depth + 1 });
-  return item === undefined ? [] : Array.from({ length: fewest }, () => item);
+  const items = Array.from({ length: fewest }, (_slot, variant) =>
+    example(objectOf(schema["items"]), { ...state, depth: state.depth + 1, variant }),
+  );
+  return items.includes(undefined) ? [] : items;
 }
 
 /** The first member of a union that is not `null` and gives a value. */
@@ -181,10 +209,10 @@ function typedFor(example: Example, schema: Schema, state: State): unknown {
     return containerFor(example, schema, state);
   }
   if (type === "integer" || type === "number") {
-    return numberFor(schema, type === "integer");
+    return numberFor(schema, type === "integer", state.variant);
   }
   if (type === "string") {
-    return textFor(schema, state.name);
+    return textFor(schema, state.name, state.variant);
   }
   if (type === "boolean") {
     return true;
@@ -195,7 +223,7 @@ function typedFor(example: Example, schema: Schema, state: State): unknown {
 function exampleIn(document: Schema): Example {
   const example: Example = (given, state) => {
     const schema = resolved(document, given);
-    const own = givenValue(schema);
+    const own = givenValue(schema, state.variant);
     if (own !== undefined || state.depth > deepest) {
       return own;
     }

@@ -4,7 +4,7 @@
  * request, submits, and checks what was sent. */
 
 import { literalOf } from "./scaffold-fields.ts";
-import { buttonText } from "./scaffold-form.ts";
+import { buttonText, emptiness, formFields } from "./scaffold-form.ts";
 import type { Field } from "./scaffold-fields.ts";
 import { opening } from "./scaffold-plan.ts";
 import type { Scaffold } from "./scaffold-plan.ts";
@@ -74,21 +74,59 @@ ${finds.join("\n")}
 `;
 }
 
-/** The steps that fill a field with the value the fixture's request gives it. */
-function fillLines(field: Field, value: unknown, first: boolean): string[] {
-  const found = first
-    ? `await screen.findByLabelText(${JSON.stringify(field.label)})`
-    : `screen.getByLabelText(${JSON.stringify(field.label)})`;
+/** What the form sends for a field the test leaves as it starts: a required flag unticked, a required choice's first
+ * option, `null` for a field that may be null, and nothing for one the body may leave out. */
+function startingValue(field: Field): readonly (readonly [string, unknown])[] {
+  const empty = emptiness(field);
+  if (empty === "optional") {
+    return [];
+  }
+  if (empty === "nullable") {
+    return [[field.name, null]];
+  }
+  return [[field.name, field.kind === "boolean" ? false : (field.options[0] ?? null)]];
+}
+
+/** Whether the test fills a field with `value`: it is given, and for a flag, ticked. */
+function fills(field: Field, value: unknown): boolean {
+  return value !== undefined && value !== null && (field.kind !== "boolean" || value === true);
+}
+
+/** What the form sends once the test has filled each field the fixture's request gives a value. */
+function sentBody(fields: readonly Field[], values: ReadonlyMap<string, unknown>): unknown {
+  return Object.fromEntries(
+    fields.flatMap((field) => {
+      const value = values.get(field.name);
+      return value === undefined || value === null ? startingValue(field) : [[field.name, value]];
+    }),
+  );
+}
+
+/** The step that fills a field with the value the fixture's request gives it, as a function `inTurn` takes. */
+function fillStep(field: Field, value: unknown): string {
+  const label = JSON.stringify(field.label);
   if (field.kind === "boolean") {
-    return value === true ? [`  await user.click(${found});`] : [];
+    return `    async () => user.click(screen.getByRole("checkbox", { name: ${label} })),`;
   }
   if (field.kind === "choice") {
-    return [`  await user.selectOptions(${found}, ${JSON.stringify(value)});`];
+    return `    async () => user.selectOptions(screen.getByLabelText(${label}), ${JSON.stringify(value)}),`;
   }
-  const typed = `  await user.type(${found}, ${JSON.stringify(String(value))});`;
+  const typed = `user.type(screen.getByLabelText(${label}), ${JSON.stringify(String(value))})`;
   // A date is taken as the field is left.
-  return field.kind === "date" ? [typed, "  await user.tab();"] : [typed];
+  return field.kind === "date"
+    ? `    async () => {\n      await ${typed};\n      await user.tab();\n    },`
+    : `    async () => ${typed},`;
 }
+
+/* Each step taken once the one before has finished, so that a form of many fields stays one test of few statements. */
+const inTurnLines = `/** Takes each step once the one before has finished. */
+async function inTurn(steps: readonly (() => Promise<unknown>)[]): Promise<void> {
+  const [step, ...rest] = steps;
+  if (step !== undefined) {
+    await step();
+    await inTurn(rest);
+  }
+}`;
 
 /** A form's test. */
 function formTest(scaffold: Scaffold): string {
@@ -97,10 +135,10 @@ function formTest(scaffold: Scaffold): string {
     typeof sent === "object" && sent !== null
       ? new Map(Object.entries(sent))
       : new Map<string, unknown>();
-  const fields = scaffold.fields.fields.filter(({ required }) => required);
-  const fills = fields.flatMap((field, index) =>
-    fillLines(field, values.get(field.name), index === 0),
-  );
+  const fields = formFields(scaffold);
+  const steps = fields
+    .filter((field) => fills(field, values.get(field.name)))
+    .map((field) => fillStep(field, values.get(field.name)));
   return `${header(scaffold, "form")}
 
 import { mockApi, renderApp, screen, userEvent } from "@basis/ui/testing";
@@ -121,14 +159,15 @@ const api = await mockApi(
 afterAll(async () => {
   await api.close();
 });
-
+${steps.length === 0 ? "" : `\n${inTurnLines}\n`}
 test(${JSON.stringify(`the ${scaffold.title.toLowerCase()} form sends what it is given`)}, async () => {
   renderApp(routeTree, ${JSON.stringify(scaffold.openPath)});
   const user = userEvent.setup();
-${fills.length === 0 ? `  await screen.findByRole("form", { name: ${JSON.stringify(scaffold.title)} });` : fills.join("\n")}
+  await screen.findByRole("form", { name: ${JSON.stringify(scaffold.title)} });
+${steps.length === 0 ? "" : `  await inTurn([\n${steps.join("\n")}\n  ]);\n`}
   await user.click(screen.getByRole("button", { name: ${JSON.stringify(buttonText(scaffold))} }));
   expect(await screen.findByText(${JSON.stringify(`${scaffold.title}: sent`)})).toBeTruthy();
-  expect(sent).toStrictEqual([${literalOf(sent ?? {})}]);
+  expect(sent).toStrictEqual([${literalOf(sentBody(fields, values))}]);
 });
 `;
 }

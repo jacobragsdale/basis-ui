@@ -2,6 +2,7 @@
  * rows, or a card with each field of the response, each number shown by the display format the API declares. The
  * query's loading, error and retry are the DataTable's, or QueryState's. */
 
+import { choiceReader, jsxText, parameterArgument } from "./scaffold-code.ts";
 import { access } from "./scaffold-fields.ts";
 import type { Field } from "./scaffold-fields.ts";
 import { opening, skippedNote } from "./scaffold-plan.ts";
@@ -44,14 +45,26 @@ function typeLine(scaffold: Scaffold, row: boolean): string {
   return `\n/** What operation ${scaffold.operation.id} answers${row ? ", a row of it" : ""}. */\ntype ${scaffold.model.name} = Awaited<ReturnType<typeof ${scaffold.client.call}>>["data"]${element};\n`;
 }
 
-/** The hook's call, with the route's parameters, and the line that reads them. */
+/** The line that reads the route's parameters, or none for a route with none. */
+function paramsLine(scaffold: Scaffold): string {
+  const names = scaffold.parameters.map(({ variable }) => variable);
+  return names.length === 0
+    ? ""
+    : `  const { ${names.join(", ")} } = useParams({ from: ${JSON.stringify(scaffold.routePath)} });\n`;
+}
+
+/** The functions that read the route's choice parameters, as the API's choices. */
+function choiceReaders(scaffold: Scaffold): string {
+  return scaffold.parameters
+    .filter(({ kind }) => kind === "choice")
+    .map((parameter) => choiceReader(parameter))
+    .join("");
+}
+
+/** The hook's call, with the route's parameters as the API declares them, and the line that reads them. */
 function queryLines(scaffold: Scaffold, variable: string): string {
-  const names = scaffold.parameters.map(({ variable: name }) => name);
-  const params =
-    names.length === 0
-      ? ""
-      : `  const { ${names.join(", ")} } = useParams({ from: ${JSON.stringify(scaffold.routePath)} });\n`;
-  return `${params}  const ${variable} = ${scaffold.client.hook}(${names.join(", ")});`;
+  const passed = scaffold.parameters.map((parameter) => parameterArgument(parameter));
+  return `${paramsLine(scaffold)}  const ${variable} = ${scaffold.client.hook}(${passed.join(", ")});`;
 }
 
 /** The value a row's field gives its column: as the API sends it, a yes or no for a flag. */
@@ -87,20 +100,42 @@ function columnLine(field: Field): string {
   return `  { ${parts.join(", ")} },`;
 }
 
-/** The field that names a row: an id, else the first text, else the first field. */
-function rowId(fields: readonly Field[]): string {
-  const textual = fields.filter(
-    ({ kind, required, nullable }) => required && !nullable && kind !== "boolean",
+/** Whether a field's name says it holds an identifier. */
+function namesAnIdentifier({ name }: Field): boolean {
+  return identifierName.test(name) || camelIdentifierName.test(name);
+}
+
+/** The fields that together name a row: `id` where there is one, else every field whose name says it holds an
+ * identifier, as a position's book and security; none when no field does, since a column of values, as a side or a
+ * book, repeats from row to row. */
+function keyFields(fields: readonly Field[]): readonly Field[] {
+  const present = fields.filter(
+    ({ kind, required, nullable }) =>
+      required && !nullable && (kind === "text" || kind === "choice" || kind === "number"),
   );
-  const named =
-    textual.find(({ name }) => name === "id" || /(?:_id|Id)$/u.test(name)) ??
-    textual.find(({ kind }) => kind === "text" || kind === "choice") ??
-    textual[0];
-  if (named === undefined) {
+  const id = present.find(({ name }) => name === "id");
+  return id === undefined ? present.filter((field) => namesAnIdentifier(field)) : [id];
+}
+
+/** What names a row for `getRowId`: its key fields, joined where there are several, or the whole row where no field
+ * names one. */
+function rowId(fields: readonly Field[]): string {
+  const reads = keyFields(fields).map((field) => {
+    const read = `row${access(field.name)}`;
+    return field.kind === "number" ? `String(${read})` : read;
+  });
+  const [only] = reads;
+  if (only === undefined) {
     return "JSON.stringify(row)";
   }
-  const read = `row${access(named.name)}`;
-  return named.kind === "number" ? `String(${read})` : read;
+  return reads.length === 1 ? only : `[${reads.join(", ")}].join(":")`;
+}
+
+/** What the table's comment says when no field names a row. */
+function rowIdNote(fields: readonly Field[]): string {
+  return keyFields(fields).length > 0
+    ? ""
+    : " No field names a row, so each row is named by its whole value: give getRowId the row's key once the API has one.";
 }
 
 /** `vp run new table`: a DataTable of the rows the operation answers. */
@@ -111,12 +146,12 @@ function tablePage(scaffold: Scaffold): string {
   );
   const ui = ["DataTable", "Page", "useTelemetry", ...(instants ? ["DateTime"] : [])];
   const comment = opening(
-    `${scaffold.title}: a table of what operation ${scaffold.operation.id} answers (${scaffold.operation.method} ${scaffold.operation.template}), as vp run new table wrote it, a column for each field of a row, each number shown by the display format the API declares.${skippedNote(scaffold)}`,
+    `${scaffold.title}: a table of what operation ${scaffold.operation.id} answers (${scaffold.operation.method} ${scaffold.operation.template}), as vp run new table wrote it, a column for each field of a row, each number shown by the display format the API declares.${skippedNote(scaffold)}${rowIdNote(fields)}`,
   );
   return `${comment}
 
 ${importLines(scaffold, ui, ["DataTableColumn"])}
-${typeLine(scaffold, true)}
+${typeLine(scaffold, true)}${choiceReaders(scaffold)}
 const columns: readonly DataTableColumn<${scaffold.model.name}>[] = [
 ${fields.map((field) => columnLine(field)).join("\n")}
 ];
@@ -184,7 +219,7 @@ function detailPage(scaffold: Scaffold): string {
   const rows = shown
     .map(
       ({ field, shown: { code } }) =>
-        `          <dt className="text-muted-foreground">${field.label}</dt>\n          <dd>${code}</dd>`,
+        `          <dt className="text-muted-foreground">${jsxText(field.label)}</dt>\n          <dd>${code}</dd>`,
     )
     .join("\n");
   const comment = opening(
@@ -193,7 +228,7 @@ function detailPage(scaffold: Scaffold): string {
   return `${comment}
 
 ${importLines(scaffold, ui, [])}
-${typeLine(scaffold, false)}
+${typeLine(scaffold, false)}${choiceReaders(scaffold)}
 function Details({ value }: { readonly value: ${scaffold.model.name} }): ReactElement {
   return (
     <Card>
@@ -219,4 +254,4 @@ export { ${scaffold.component} };
 `;
 }
 
-export { columnLine, detailPage, tablePage };
+export { choiceReaders, columnLine, detailPage, paramsLine, tablePage };

@@ -13,7 +13,7 @@ import { arrowStream } from "#api/fetch.ts";
 
 import { operationNamed, readApi, successOf } from "./api-operations.ts";
 import type { ApiDocument, ApiOperation, ApiParameter, ApiResponse } from "./api-operations.ts";
-import { checkFixtures, readFixtures } from "./fixture-files.ts";
+import { checkFixtures, sameRequest } from "./fixture-files.ts";
 import { exampleOf } from "./schema-example.ts";
 import { schemaIssues } from "./schema-check.ts";
 import { textMatching } from "./schema-text.ts";
@@ -167,21 +167,6 @@ function fixtureFor(api: ApiDocument, operation: ApiOperation, status?: string):
   };
 }
 
-/** The other fixtures in `fixtures/` that answer the same request as `fixture`, which the first by name answers. */
-function sameRequest(root: string, fixture: NewFixture, file: string): string[] {
-  const { method, path, query = {} } = fixture.request;
-  const key = JSON.stringify([method, path, query]);
-  return readFixtures(root, { records: false })
-    .fixtures.filter(({ record, file: other }) => {
-      const { request } = record;
-      return (
-        other !== file &&
-        JSON.stringify([request.method, request.path, request.query ?? {}]) === key
-      );
-    })
-    .map(({ file: other }) => other);
-}
-
 /** What writing a fixture prints: the file and its request, and any other fixture answering the same request. */
 function writtenLine(root: string, fixture: NewFixture, file: string): string {
   const status = String(fixture.response["status"]);
@@ -279,5 +264,5 @@ async function fixturesTask(root: string, args: readonly string[]): Promise<stri
   throw new TaskError(`ERROR ${verb} is no command of vp run fixtures: ${usage}.`);
 }
 
-export { fixtureFor, fixturesTask, parameterValue, sameRequest };
-export type { NewFixture };
+export { fixtureFor, fixturesTask, parameterValue, requestFor };
+export type { FixtureRequest, NewFixture };

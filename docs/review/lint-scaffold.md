@@ -62,6 +62,8 @@ Done in Suppressions: a directive on a block comment's later line is refused, an
 - Severity: fix before release.
 - Confidence: confirmed by running the scaffolder's functions and reading orval's `getParams`.
 
+Done in Scaffold: what vp run new writes passes tsc and the lint on a second document: the plan records each path parameter's kind from its schema; a page passes a number as `Number(tradeId)` and a choice through a `sideOf` function written into the page, which names the API's choices and throws a line naming them for an address that names none; a form passes them to the mutation the same way.
+
 **6. `vp run new form` imports `@tanstack/react-form`, which a template app does not have.**
 
 - Where: `scaffold-form.ts:78`; `packages/create/templates/app/package.json`.
@@ -69,6 +71,8 @@ Done in Suppressions: a directive on a block comment's later line is refused, an
 - Scenario: in a fresh app the form page fails with TS2307, and the task's "Next, run" names no `vp add`. `scaffold.test.ts` passes because it copies `packages/example`.
 - Severity: fix before release.
 - Confidence: confirmed by reading.
+
+Done in Scaffold: what vp run new writes passes tsc and the lint on a second document: the template's `package.json` gains `@tanstack/react-form` at the catalog's 1.33.5, and `vp run new form` adds `vp add @tanstack/react-form` to its next steps when the app's `package.json` lacks it. `packages/consumer` and `@basis/ui`'s own dependencies are unchanged: a form is the app's choice.
 
 **7. The form scaffold writes schema strings into JSX unescaped.**
 
@@ -78,6 +82,8 @@ Done in Suppressions: a directive on a block comment's later line is refused, an
 - Cosmetic: `buttonText` lower-cases the summary ("Book FX trade" becomes "Book fx trade") and `wordsOf` turns the title "P&L Book" into "P l book".
 - Severity: fix before release.
 - Confidence: scenario A confirmed by running (oxc reports parse errors); the lint failure in B is by reasoning.
+
+Done in Scaffold: what vp run new writes passes tsc and the lint on a second document: attributes go through `jsxAttribute` (double quotes, single quotes for text holding a double quote, braces only for both quotes or a line break, as the formatter and `react/jsx-curly-brace-presence` want), JSX text through `jsxText`, which writes `'`, `"`, `{`, `}`, `<`, `>` and `&` as entities, and comments through `commentText`. The button keeps the summary's own case, lowered only from Title Case; a label is the schema's title as written unless it is only the name in Title Case, so `P&L Note` stays. A `$ref` property's own description, beside the reference, is kept.
 
 **8. The fixture check and the generated client disagree on `format: time`, and the example generator cannot satisfy several formats.**
 
@@ -89,6 +95,8 @@ Done in Suppressions: a directive on a block comment's later line is refused, an
 - Severity: fix before release.
 - Confidence: confirmed by running.
 
+Done in Scaffold: what vp run new writes passes tsc and the lint on a second document: the check reads `format: time` with Zod's own `iso.time` pattern, as the client does, so `14:30:00` passes and `14:30:00Z` fails; the generator makes `duration`, `ipv4`, `ipv6`, `hostname`, `uri-reference`, `byte` and the `idn-` and `iri` forms, an integer on its `multipleOf`, and distinct items for a list of unique items; and `vp run new` takes the body of a fixture that answers its request already instead of making one, so a fixture written by hand unblocks it.
+
 **9. The table scaffold picks a non-unique column as `getRowId`.**
 
 - Where: `scaffold-view.ts:81-94`.
@@ -97,12 +105,16 @@ Done in Suppressions: a directive on a block comment's later line is refused, an
 - Severity: fix before release.
 - Confidence: confirmed by running.
 
+Done in Scaffold: what vp run new writes passes tsc and the lint on a second document: `getRowId` takes `id` where there is one, else every field whose name says it holds an identifier, joined, as a position's book and security, else the whole row through `JSON.stringify`, which the page's comment says to replace with the row's key. A row whose every field repeats another's still repeats.
+
 **10. The form's generated test asserts fields the form never sends.**
 
 - Where: `scaffold-tests.ts:95-131`, `schema-example.ts:44-51`.
 - Scenario: a body schema with its own `examples: [{side, quantity, notes}]` and `required: [side, quantity]`. The test fills two fields and expects `sent` to equal all three, so it fails as written.
 - Severity: fix before release.
 - Confidence: confirmed by running.
+
+Done in Scaffold: what vp run new writes passes tsc and the lint on a second document: the test expects exactly what the form sends: each field it fills from the fixture's request, and for those it leaves, a required flag unticked, a required choice's first option, `null` for a nullable field and nothing for an optional one. Its steps go through an `inTurn` helper, so a form of many fields stays within `max-statements`, and a flag is found by its checkbox's role.
 
 **11. `basis/no-fetch` has easy evasions, and `apiFetch` is an unlinted bypass.**
 
@@ -152,6 +164,8 @@ Done in Shot: a path no route matches fails, and --all keeps its shots when one 
   - A trailing `// comment` after the last child yields a syntax error.
 - Severity: polish.
 - Confidence: confirmed by running, with orval's own `pascal` for the first.
+
+Done in Scaffold: what vp run new writes passes tsc and the lint on a second document: `modelName` is orval's PascalCase, so `Page_Trade_` imports `PageTrade`; the route is added after the last of `rootRoute.addChildren`'s own elements, read with Oxc's parser, so a child's own `addChildren` and a comment after the last child are kept.
 
 ## Checked and found sound
 
@@ -204,3 +218,10 @@ The area is better than its age suggests: modules are small and pure, every fail
   API through the generated client's hooks, which parse each answer by its schema. `basis/no-fetch` also refuses
   `fetch` through an alias of the global object or destructured from it, and `basis/no-hand-rounding` a floored value
   over a power of ten. What to do: replace a call to `apiFetch` with the operation's hook from `src/api/client.ts`.
+
+- What `vp run new` writes passes `tsc` and the lint where it did not: a page passes an integer or choice path
+  parameter as the API declares it, a form has a field for each optional and nullable value its body takes, text from
+  the document with quotes, braces or apostrophes is escaped, a table names a row by its identifier fields or its whole
+  value rather than by a column that repeats, a form's test expects what the form sends, and a fixture that answers
+  the request already is used rather than made. The template gains `@tanstack/react-form`. What to do: in an app made
+  before, run `vp add @tanstack/react-form` before `vp run new form`; pages written before are unchanged.

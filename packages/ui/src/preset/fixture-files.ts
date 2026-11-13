@@ -8,9 +8,10 @@ import path from "node:path";
 
 import { fixtureFolders, fixtureProblem, loadFixtureFiles } from "#fixtures/load.ts";
 import { bodyFileOf } from "#fixtures/record.ts";
-import type { FixtureSource, LoadedFixture } from "#fixtures/record.ts";
+import type { FixtureRecord, FixtureSource, LoadedFixture } from "#fixtures/record.ts";
 
 import { documentProblems, operationsOf, pathParameters } from "./fixture-document.ts";
+import type { FixtureRequest, NewFixture } from "./fixture-new.ts";
 import { ignored } from "./installed.ts";
 import { documentFile } from "./orval-options.ts";
 import { TaskError } from "./task-error.ts";
@@ -148,5 +149,43 @@ async function checkFixtures(root: string, args: readonly string[]): Promise<str
     : `${counted} ${documentFile} answers.`;
 }
 
-export { checkFixtures, fixtureParameters, readFixtures };
+/** A fixture `fixtures/` holds, in the form a new one is written in. */
+function asNewFixture(record: FixtureRecord): NewFixture {
+  const { method, path: asked, query, body } = record.request;
+  return {
+    ...record,
+    request: {
+      method,
+      path: asked,
+      ...(query === undefined ? {} : { query }),
+      ...(body === undefined ? {} : { body }),
+    },
+    response: { ...record.response },
+  };
+}
+
+/** The other fixtures in `fixtures/` that answer `request`, in the order of their names, the first of which answers
+ * it, with their files. */
+function answering(
+  root: string,
+  request: FixtureRequest,
+  file: string,
+): readonly { readonly file: string; readonly fixture: NewFixture }[] {
+  const key = JSON.stringify([request.method, request.path, request.query ?? {}]);
+  return readFixtures(root, { records: false })
+    .fixtures.filter(({ record, file: other }) => {
+      const asked = record.request;
+      return (
+        other !== file && JSON.stringify([asked.method, asked.path, asked.query ?? {}]) === key
+      );
+    })
+    .map(({ file: other, record }) => ({ file: other, fixture: asNewFixture(record) }));
+}
+
+/** The other fixtures in `fixtures/` that answer the same request as `fixture`, which the first by name answers. */
+function sameRequest(root: string, fixture: NewFixture, file: string): string[] {
+  return answering(root, fixture.request, file).map(({ file: other }) => other);
+}
+
+export { answering, checkFixtures, fixtureParameters, readFixtures, sameRequest };
 export type { ReadFixtures };

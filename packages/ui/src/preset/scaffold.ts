@@ -13,9 +13,14 @@ import { readFileSync } from "node:fs";
 import { writeFile } from "node:fs/promises";
 import path from "node:path";
 
+import { z } from "zod";
+
 import { camel, operationNamed, pascal, readApi } from "./api-operations.ts";
-import type { ApiDocument } from "./api-operations.ts";
-import { fixtureFor, parameterValue, sameRequest } from "./fixture-new.ts";
+import type { ApiDocument, ApiOperation } from "./api-operations.ts";
+import { answering, sameRequest } from "./fixture-files.ts";
+import { fixtureFor, parameterValue, requestFor } from "./fixture-new.ts";
+import type { NewFixture } from "./fixture-new.ts";
+import { parameterKind } from "./scaffold-code.ts";
 import { fieldsOf } from "./scaffold-fields.ts";
 import { formatFiles, writeNew } from "./scaffold-files.ts";
 import type { NewFile } from "./scaffold-files.ts";
@@ -107,18 +112,40 @@ function argsOf(args: readonly string[]): NewArgs {
   return { force, kind, name, operation };
 }
 
-function planOf(api: ApiDocument, { kind, name, operation: id }: NewArgs): Scaffold {
+/** The operation's path parameters, as the route names them and the API declares them. */
+function pathParameters(api: ApiDocument, operation: ApiOperation): Scaffold["parameters"] {
+  return operation.parameters
+    .filter((parameter) => parameter.in === "path")
+    .map((parameter) => {
+      const declared = parameterKind(api.document, parameter);
+      return {
+        kind: declared.kind,
+        name: parameter.name,
+        options: declared.options,
+        value: parameterValue(api, parameter, false),
+        variable: camel(parameter.name),
+      };
+    });
+}
+
+/** The fixture a scaffold's test answers with: one in `fixtures/` that answers its request already, written by hand
+ * where the schema is one no example can be made from, else one made from the schema. */
+function fixtureOf(
+  root: string,
+  api: ApiDocument,
+  { operation, name }: { readonly operation: ApiOperation; readonly name: string },
+): NewFixture {
+  const request = requestFor(api, operation, false);
+  const [first] = answering(root, request, filesOf({ name }).fixture);
+  return first?.fixture ?? fixtureFor(api, operation);
+}
+
+function planOf(root: string, api: ApiDocument, { kind, name, operation: id }: NewArgs): Scaffold {
   const operation = operationNamed(api, id);
   const reading = { api, kind, operation };
   const shape = shapeOf(reading);
   checkCallable(reading, shape);
-  const parameters = operation.parameters
-    .filter((parameter) => parameter.in === "path")
-    .map((parameter) => ({
-      name: parameter.name,
-      value: parameterValue(api, parameter, false),
-      variable: camel(parameter.name),
-    }));
+  const parameters = pathParameters(api, operation);
   const segments = parameters.map(({ variable }) => `/$${variable}`);
   const values = parameters.map(({ value }) => `/${encodeURIComponent(value)}`);
   const cased = pascal(operation.id);
@@ -127,7 +154,7 @@ function planOf(api: ApiDocument, { kind, name, operation: id }: NewArgs): Scaff
     component: `${pascal(name)}Page`,
     document: api.document,
     fields: fieldsOf(api.document, shape),
-    fixture: fixtureFor(api, operation),
+    fixture: fixtureOf(root, api, { name, operation }),
     kind,
     model: modelOf(reading, shape),
     name,
@@ -137,6 +164,23 @@ function planOf(api: ApiDocument, { kind, name, operation: id }: NewArgs): Scaff
     routePath: [`/${name}`, ...segments].join(""),
     title: wordsOf(name),
   };
+}
+
+const manifestSchema = z.looseObject({
+  dependencies: z.record(z.string(), z.unknown()).optional(),
+  devDependencies: z.record(z.string(), z.unknown()).optional(),
+});
+
+/** Whether the app's package.json depends on TanStack Form, which a form's page imports; an app made from a template
+ * older than the form scaffold lacks it. */
+function dependsOnForm(root: string): boolean {
+  try {
+    const text = readFileSync(path.join(root, "package.json"), "utf8");
+    const { dependencies = {}, devDependencies = {} } = manifestSchema.parse(JSON.parse(text));
+    return "@tanstack/react-form" in dependencies || "@tanstack/react-form" in devDependencies;
+  } catch {
+    return false;
+  }
 }
 
 /** The routes file as it is, or a failure for an app with none. */
@@ -154,7 +198,11 @@ function routesText(root: string): string {
 function doneText(
   scaffold: Scaffold,
   written: readonly NewFile[],
-  { others, routed }: { readonly others: readonly string[]; readonly routed: boolean },
+  {
+    hasForm,
+    others,
+    routed,
+  }: { readonly hasForm: boolean; readonly others: readonly string[]; readonly routed: boolean },
 ): string {
   const names = written.map(({ file }) => file);
   const last = names.pop() ?? "";
@@ -167,7 +215,12 @@ function doneText(
       `${others.join(", ")} ${others.length === 1 ? "answers" : "answer"} ${scaffold.fixture.request.method} ${scaffold.fixture.request.path} already, so vp run new wrote no fixture of its own.`,
     );
   }
-  lines.push("Next, run:", "  vp run verify", `  vp run shot ${scaffold.openPath}`);
+  lines.push(
+    "Next, run:",
+    ...(scaffold.kind === "form" && !hasForm ? ["  vp add @tanstack/react-form"] : []),
+    "  vp run verify",
+    `  vp run shot ${scaffold.openPath}`,
+  );
   return lines.join("\n");
 }
 
@@ -189,7 +242,7 @@ function newFiles(scaffold: Scaffold, others: readonly string[]): NewFile[] {
 /** `vp run new KIND NAME --operation ID [--force]` in the app at `root`. */
 async function newTask(root: string, args: readonly string[]): Promise<string> {
   const options = argsOf(args);
-  const scaffold = planOf(readApi(root), options);
+  const scaffold = planOf(root, readApi(root), options);
   const routed = withRoute(routesText(root), scaffold);
   const others = sameRequest(root, scaffold.fixture, filesOf(scaffold).fixture);
   const files = newFiles(scaffold, others);
@@ -205,7 +258,11 @@ async function newTask(root: string, args: readonly string[]): Promise<string> {
     ...files.map(({ file }) => file),
     ...(routed === undefined ? [] : [routesFile]),
   ]);
-  return doneText(scaffold, files, { others, routed: routed !== undefined });
+  return doneText(scaffold, files, {
+    hasForm: dependsOnForm(root),
+    others,
+    routed: routed !== undefined,
+  });
 }
 
 export { newTask };

@@ -4,13 +4,16 @@
  * mutation. A 422 lands on the fields its errors name, through `submitErrors`; any other failure shows above the
  * button; a success raises a toast. */
 
+import { jsxAttribute, jsxText, parameterArgument } from "./scaffold-code.ts";
 import { access } from "./scaffold-fields.ts";
 import { failureLines, widgets } from "./scaffold-form-parts.ts";
 import type { Field, FieldKind } from "./scaffold-fields.ts";
 import { opening } from "./scaffold-plan.ts";
 import type { Scaffold } from "./scaffold-plan.ts";
+import { choiceReaders, paramsLine } from "./scaffold-view.ts";
 
-/** Each kind of field's starting value: empty text, no amount, unticked, or the first choice. */
+/** Each kind of field's starting value when the body requires it: empty text, no amount, unticked, or the first
+ * choice. */
 const emptyValues: Readonly<Record<FieldKind, (field: Field) => string>> = {
   boolean: () => "false",
   choice: (field) => JSON.stringify(field.options[0] ?? ""),
@@ -20,14 +23,49 @@ const emptyValues: Readonly<Record<FieldKind, (field: Field) => string>> = {
   text: () => '""',
 };
 
+/** How a field may be empty, as step 7.3's form fields say it: `nullable` holds `null` while empty, `optional` holds
+ * `undefined`, so the body leaves the field out, and a required field holds its kind's empty value. An amount's
+ * `null` is AmountInput's own, so it says only `optional`. */
+function emptiness(field: Field): "nullable" | "optional" | "required" {
+  if (field.nullable) {
+    return "nullable";
+  }
+  return field.required ? "required" : "optional";
+}
+
+/** A field's starting value, empty as its emptiness says. */
+function emptyValue(field: Field): string {
+  const empty = emptiness(field);
+  if (empty === "required") {
+    return emptyValues[field.kind](field);
+  }
+  return empty === "nullable" ? "null" : "undefined";
+}
+
+/** The prop that says how a field may be empty, if it says one. */
+function emptinessProps(field: Field): readonly string[] {
+  const empty = emptiness(field);
+  if (empty === "required" || (empty === "nullable" && field.kind === "number")) {
+    return [];
+  }
+  return [empty];
+}
+
+/** The fields a form has: each value the body takes, but a flag it does not require, since a checkbox holds no empty
+ * state. */
+function formFields(scaffold: Scaffold): readonly Field[] {
+  return scaffold.fields.fields.filter(
+    (field) => field.kind !== "boolean" || emptiness(field) === "required",
+  );
+}
+
 function fieldElement(scaffold: Scaffold, field: Field): string {
   const id = `${scaffold.name}-${field.name.replaceAll(/[^\dA-Za-z]+/gu, "-")}`;
   const props = [
-    `id=${JSON.stringify(id)}`,
-    `label=${JSON.stringify(field.label)}`,
-    ...(field.description === undefined
-      ? []
-      : [`description=${JSON.stringify(field.description)}`]),
+    jsxAttribute("id", id),
+    jsxAttribute("label", field.label),
+    ...(field.description === undefined ? [] : [jsxAttribute("description", field.description)]),
+    ...emptinessProps(field),
     ...(field.kind === "choice"
       ? [
           `options={${JSON.stringify(field.options.map((option) => ({ label: option, value: option })))} as const}`,
@@ -39,21 +77,43 @@ function fieldElement(scaffold: Scaffold, field: Field): string {
         </form.Field>`;
 }
 
-/** The form's schema: the body's, each amount read from what AmountInput holds and checked by the body's own rule. */
+/** A field's line in the form's schema, where it differs from the body's: an amount is what AmountInput holds, a
+ * number once its text reads as one, and a field the body may leave out holds `undefined` while empty. */
+function schemaLine(model: string, field: Field): string | undefined {
+  const shape = `${model}.shape${access(field.name)}`;
+  const empty = emptiness(field);
+  const held = empty === "optional" ? `${shape}.optional()` : shape;
+  if (field.kind !== "number") {
+    return empty === "optional" ? `  ${JSON.stringify(field.name)}: ${held},` : undefined;
+  }
+  const amount = empty === "required" ? "amountSchema()" : `amountSchema().${empty}()`;
+  return `  ${JSON.stringify(field.name)}: ${amount}.pipe(${held}),`;
+}
+
+/** The form's schema: the body's, each amount read from what AmountInput holds and checked by the body's own rule,
+ * and each field the body may leave out empty as `undefined`. */
 function schemaLines(scaffold: Scaffold, fields: readonly Field[]): string {
   const model = scaffold.model.name;
-  const amounts = fields.filter(({ kind }) => kind === "number");
-  if (amounts.length === 0) {
+  const lines = fields.flatMap((field) => schemaLine(model, field) ?? []);
+  if (lines.length === 0) {
     return `const formSchema = ${model};`;
   }
-  const lines = amounts.map(
-    ({ name }) => `  ${JSON.stringify(name)}: amountSchema().pipe(${model}.shape${access(name)}),`,
-  );
-  return `/** The body as the form holds it: each amount is what AmountInput holds, a number once its text reads as one. */
+  return `/** The body as the form holds it: each amount is what AmountInput holds, a number once its text reads as one, and a
+ * field the body may leave out is \`undefined\` while empty. */
 const formSchema = ${model}.extend({
 ${lines.join("\n")}
 });`;
 }
+
+/** Whether the form holds a field the body may leave out, which it drops before the body's schema reads it. */
+function leavesOut(fields: readonly Field[]): boolean {
+  return fields.some((field) => emptiness(field) === "optional");
+}
+
+const filledLines = `/** The form's value without the fields left empty, which the body leaves out rather than send as \`undefined\`. */
+function filled(value: Readonly<Record<string, unknown>>): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(value).filter(([, held]) => held !== undefined));
+}`;
 
 /** What every form imports from @basis/ui, whatever its fields. */
 const formParts = [
@@ -84,13 +144,19 @@ import { ${[scaffold.model.name, scaffold.client.hook].toSorted().join(", ")} } 
 
 /** The form component's hooks: the route's parameters, the mutation, and the form, which sends what its schema
  * reads. */
-function formHooks(scaffold: Scaffold): string {
-  const names = scaffold.parameters.map(({ variable }) => variable);
-  const params =
-    names.length === 0
-      ? ""
-      : `  const { ${names.join(", ")} } = useParams({ from: ${JSON.stringify(scaffold.routePath)} });\n`;
-  return `${params}  const telemetry = useTelemetry();
+function formHooks(scaffold: Scaffold, fields: readonly Field[]): string {
+  const sent = [
+    ...scaffold.parameters.map((parameter) =>
+      parameter.kind === "text"
+        ? parameter.variable
+        : `${parameter.variable}: ${parameterArgument(parameter)}`,
+    ),
+    "data",
+  ];
+  const parse = leavesOut(fields)
+    ? `${scaffold.model.name}.parse(filled(formSchema.parse(value)))`
+    : "formSchema.parse(value)";
+  return `${paramsLine(scaffold)}  const telemetry = useTelemetry();
   const report = (error: unknown): void => {
     telemetry.error(error, { source: ${JSON.stringify(scaffold.name)} });
   };
@@ -107,8 +173,8 @@ function formHooks(scaffold: Scaffold): string {
     validators: {
       onChange: formSchema,
       onSubmitAsync: async ({ value }) => {
-        const data = formSchema.parse(value);
-        const failure = await failureOf(async () => sending.mutateAsync({ ${[...names, "data"].join(", ")} }));
+        const data = ${parse};
+        const failure = await failureOf(async () => sending.mutateAsync({ ${sent.join(", ")} }));
         return failure === null
           ? undefined
           : submitErrors(failure, { fields: fieldNames, message: "It was not sent." });
@@ -120,7 +186,7 @@ function formHooks(scaffold: Scaffold): string {
 /** The form component: its fields, the mutation, and the submit. */
 function formComponent(scaffold: Scaffold, fields: readonly Field[], button: string): string {
   return `function ${scaffold.component}(): ReactElement {
-${formHooks(scaffold)}
+${formHooks(scaffold, fields)}
   return (
     <Page title=${JSON.stringify(scaffold.title)}>
       <form
@@ -137,7 +203,7 @@ ${fields.map((field) => fieldElement(scaffold, field)).join("\n")}
         </FieldGroup>
         <ErrorAlert error={errorsOnFields(sending.error, fieldNames) === undefined ? sending.error : null} />
         <Button type="submit" disabled={sending.isPending} className="self-start">
-          ${button}
+          ${jsxText(button)}
         </Button>
       </form>
     </Page>
@@ -145,29 +211,31 @@ ${fields.map((field) => fieldElement(scaffold, field)).join("\n")}
 }`;
 }
 
-/** The submit button's text: the operation's summary, else the page's title. */
+/** The submit button's text: the operation's summary, else the page's title, in sentence case unless it is in Title
+ * Case, as `Record Settlement`, where only its first word keeps its capital; `Book FX trade` stays as written. */
 function buttonText(scaffold: Scaffold): string {
   const summary = scaffold.operation.summary ?? scaffold.title;
-  return `${summary.charAt(0).toUpperCase()}${summary.slice(1).toLowerCase()}`;
+  const words = summary.split(" ");
+  const titled = words.length > 1 && words.every((word) => /^[A-Z][a-z]/u.test(word));
+  const text = titled ? summary.toLowerCase() : summary;
+  return `${text.charAt(0).toUpperCase()}${text.slice(1)}`;
 }
 
 /** `vp run new form`: a form for the operation's request body. */
 function formPage(scaffold: Scaffold): string {
-  const fields = scaffold.fields.fields.filter(({ required }) => required);
-  const optional = scaffold.fields.fields
-    .filter(({ required }) => !required)
+  const fields = formFields(scaffold);
+  const flags = scaffold.fields.fields
+    .filter((field) => !fields.includes(field))
     .map(({ name }) => name);
-  const left = [...optional, ...scaffold.fields.skipped];
+  const left = [...flags, ...scaffold.fields.skipped];
   const leftNote =
     left.length === 0
       ? ""
-      : ` It leaves out ${left.join(", ")}, which the body does not require or which hold an object or a list: add a field for each the page needs.`;
+      : ` It leaves out ${left.join(", ")}, a flag the body does not require or a field that holds an object or a list: add a field for each the page needs.`;
   const comment = opening(
-    `${scaffold.title}: a form for operation ${scaffold.operation.id} (${scaffold.operation.method} ${scaffold.operation.template}), as vp run new form wrote it, a field for each one its body requires, checked by the schema orval generates. A 422 lands on the fields its errors name; any other failure shows above the button.${leftNote}`,
+    `${scaffold.title}: a form for operation ${scaffold.operation.id} (${scaffold.operation.method} ${scaffold.operation.template}), as vp run new form wrote it, a field for each value its body takes, checked by the schema orval generates. A 422 lands on the fields its errors name; any other failure shows above the button.${leftNote}`,
   );
-  const empty = fields.map(
-    (field) => `  ${JSON.stringify(field.name)}: ${emptyValues[field.kind](field)},`,
-  );
+  const empty = fields.map((field) => `  ${JSON.stringify(field.name)}: ${emptyValue(field)},`);
   return `${comment}
 
 ${formImports(scaffold, fields)}
@@ -182,11 +250,11 @@ ${empty.join("\n")}
 };
 
 ${failureLines}
-
+${leavesOut(fields) ? `\n${filledLines}\n` : ""}${choiceReaders(scaffold)}
 ${formComponent(scaffold, fields, buttonText(scaffold))}
 
 export { ${scaffold.component} };
 `;
 }
 
-export { buttonText, formPage };
+export { buttonText, emptiness, formFields, formPage };

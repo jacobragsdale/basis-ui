@@ -205,9 +205,9 @@ function camel(name: string): string {
   return `${cased.charAt(0).toLowerCase()}${cased.slice(1)}`;
 }
 
-/** The name orval gives the model of a component schema. */
+/** The name orval gives the model of a component schema: its name in PascalCase, as `PageTrade` for `Page_Trade_`. */
 function modelName(component: string): string {
-  return component.replaceAll(/[^\w$]/gu, "");
+  return pascal(component);
 }
 
 /** The first success an operation declares, a 2xx, or `undefined`. */

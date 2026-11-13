@@ -30,12 +30,15 @@ interface Fields {
   readonly skipped: readonly string[];
 }
 
-/** A property's schema and whether it allows `null`, a nullable union unwrapped to its other member. */
+/** A property's schema and whether it allows `null`, a nullable union unwrapped to its other member. What the
+ * property says beside a `$ref`, as its own description, is kept over what the reference holds, as OpenAPI 3.1 reads
+ * it. */
 function unwrapped(
   document: Schema,
   property: unknown,
 ): { readonly schema: Schema; readonly nullable: boolean } {
-  const schema = resolved(document, property);
+  const { $ref: _reference, ...beside } = objectOf(property);
+  const schema = { ...resolved(document, property), ...beside };
   const members: unknown = schema["anyOf"] ?? schema["oneOf"];
   if (Array.isArray(members)) {
     const others: unknown[] = members.filter((member) => objectOf(member)["type"] !== "null");
@@ -77,6 +80,12 @@ function access(name: string): string {
   return /^[$A-Z_a-z][\w$]*$/u.test(name) ? `.${name}` : `[${JSON.stringify(name)}]`;
 }
 
+/** A field's label: its schema's title as written, as `P&L note`, unless it is only the name in Title Case, as
+ * Pydantic writes `Security Id` for `security_id`, which reads as `Security id`. */
+function labelOf(name: string, title: unknown): string {
+  return typeof title === "string" && wordsOf(title) !== wordsOf(name) ? title : wordsOf(name);
+}
+
 /** Where a scaffold reads fields: the document, and the component whose display formats they take. */
 interface Source {
   readonly document: Schema;
@@ -105,7 +114,7 @@ function fieldOf(
         ? `displayFormats${access(component)}${access(name)}`
         : undefined,
     kind,
-    label: wordsOf(typeof title === "string" ? title : name),
+    label: labelOf(name, title),
     name,
     nullable,
     options: Array.isArray(choices) ? choices.map(String) : [],

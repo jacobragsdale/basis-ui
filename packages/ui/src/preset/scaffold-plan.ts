@@ -2,6 +2,8 @@
  * the route's path and the values its parameters take in the fixture, the test and the shot. */
 
 import type { ApiOperation, Schema } from "./api-operations.ts";
+import { commentText } from "./scaffold-code.ts";
+import type { ParameterKind } from "./scaffold-code.ts";
 import type { NewFixture } from "./fixture-new.ts";
 import type { Fields } from "./scaffold-fields.ts";
 
@@ -14,6 +16,10 @@ interface PathParameter {
   readonly variable: string;
   /** The value the fixture and the test give it. */
   readonly value: string;
+  /** What the API declares it holds, which the page makes the route's text before the hook takes it. */
+  readonly kind: ParameterKind;
+  /** A choice's values, in the schema's order. */
+  readonly options: readonly string[];
 }
 
 interface Scaffold {
@@ -57,7 +63,7 @@ function filesOf(scaffold: Pick<Scaffold, "name">): {
 function opening(text: string): string {
   const width = 116;
   const lines = [""];
-  for (const word of text.split(/\s+/u)) {
+  for (const word of commentText(text).split(/\s+/u)) {
     const line = lines.at(-1) ?? "";
     if (line !== "" && line.length + word.length + 1 > width) {
       lines.push(word);

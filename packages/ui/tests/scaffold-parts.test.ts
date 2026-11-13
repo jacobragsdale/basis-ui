@@ -5,8 +5,9 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 
 import { describe, expect, test } from "vite-plus/test";
+import { z } from "zod";
 
-import { objectOf } from "#preset/api-operations.ts";
+import { modelName, objectOf } from "#preset/api-operations.ts";
 import { literalOf } from "#preset/scaffold-fields.ts";
 import { schemaIssues } from "#preset/schema-check.ts";
 import { exampleOf } from "#preset/schema-example.ts";
@@ -93,6 +94,53 @@ describe("schemaIssues", () => {
       '0.convention: Invalid option: expected one of "30/360"|"ACT/360"|"ACT/365F"',
       "0.year_days: Invalid input: expected int, received number",
     ]);
+  });
+});
+
+describe("a value the generator makes, held to the check as the generated client reads it", () => {
+  const empty = {};
+  const made = (schema: Record<string, unknown>): unknown =>
+    exampleOf(empty, schema, { every: true, name: "value" });
+
+  test("reads a time as the client's zod.iso.time does: with no offset", () => {
+    const time = { format: "time", type: "string" };
+    expect(schemaIssues(empty, time, "14:30:00")).toStrictEqual([]);
+    expect(schemaIssues(empty, time, "14:30")).toStrictEqual([]);
+    expect(schemaIssues(empty, time, "14:30:00Z")).toHaveLength(1);
+    expect(schemaIssues(empty, time, made(time))).toStrictEqual([]);
+  });
+
+  test.each(["duration", "ipv4", "ipv6", "hostname", "uri-reference", "byte", "idn-email"])(
+    "makes a %s the check accepts",
+    (format) => {
+      const schema = { format, type: "string" };
+      expect(schemaIssues(empty, schema, made(schema))).toStrictEqual([]);
+    },
+  );
+
+  test("makes a multiple of an integer's multipleOf within its bounds", () => {
+    const thousands = { minimum: 1, multipleOf: 1000, type: "integer" };
+    expect(made(thousands)).toBe(1000);
+    expect(schemaIssues(empty, thousands, made(thousands))).toStrictEqual([]);
+    const bounded = { exclusiveMinimum: 5000, multipleOf: 250, type: "integer" };
+    expect(schemaIssues(empty, bounded, made(bounded))).toStrictEqual([]);
+  });
+
+  test("makes the items of a list of unique items differ", () => {
+    for (const items of [{ type: "string" }, { enum: ["BUY", "SELL"] }, { type: "integer" }]) {
+      const schema = { items, minItems: 2, type: "array", uniqueItems: true };
+      const list = z.array(z.unknown()).parse(made(schema));
+      expect(new Set(list.map((item) => JSON.stringify(item))).size).toBe(2);
+      expect(schemaIssues(empty, schema, list)).toStrictEqual([]);
+    }
+  });
+});
+
+describe("modelName", () => {
+  test("names a component's model as orval does", () => {
+    expect(
+      ["Page_Trade_", "DayCount", "trade_request", "ABC"].map((name) => modelName(name)),
+    ).toStrictEqual(["PageTrade", "DayCount", "TradeRequest", "Abc"]);
   });
 });
 
