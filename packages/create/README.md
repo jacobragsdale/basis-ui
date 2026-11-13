@@ -16,9 +16,11 @@ vp create @basis:app --directory positions-ui
   delete `src/sample/`, its routes and its fixtures;
 - tests written with `@basis/ui/testing`, and a `.gitignore` that keeps fixture records and screenshots out of git;
 - the framework's files, which `vp run sync` writes from the installed `@basis/ui` and `vp run verify` holds to it:
-  the agent files with basis-ui's block of `AGENTS.md` and the skill for driving the app, Vite+'s commit and push hooks,
-  an Azure pipeline, never run yet, and a Dockerfile whose Caddy image serves the build with its precompressed files,
-  the hashed assets cached as immutable and every other path `no-cache`.
+  the agent files with basis-ui's block of `AGENTS.md` and the skills, Vite+'s commit and push hooks, `.gitattributes`
+  and `.gitignore`;
+- a `Dockerfile`, `Caddyfile` and `.dockerignore`, the app's own from the start, whose Caddy image serves the build with
+  its precompressed files, the hashed assets cached as immutable and every other path `no-cache`. The app changes them
+  as its registry and cluster need, and writes its own pipeline.
 
 The template's framework files are written by `vp run sync` itself (`node ../../../ui/src/preset/tasks.ts sync` in
 `templates/app`), and `@basis/ui`'s tests fail when they differ from what it writes. A packed package drops its

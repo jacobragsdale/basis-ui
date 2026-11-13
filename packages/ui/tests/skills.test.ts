@@ -36,3 +36,31 @@ describe.each(names)("the skill %s", (name) => {
     expect(typeof parsed === "string" && parsed.length > 0).toBe(true);
   });
 });
+
+describe("the framework's .gitignore", () => {
+  const ignored = readFileSync(fileURLToPath(new URL("../sync/gitignore", import.meta.url)), "utf8")
+    .split("\n")
+    .filter((line) => !line.startsWith("#"));
+
+  test.each(names)("names each folder the skill %s says a tool writes", (name) => {
+    const text = readFileSync(path.join(skills, name, "SKILL.md"), "utf8");
+    const written = [
+      ...text.matchAll(/writes? (?:\w+ )*?(?:to|in) `(?<folder>\.?[\w.-]+\/)`/gu),
+    ].map((match) => match.groups?.["folder"]);
+    expect(written.filter((folder) => !ignored.includes(folder ?? ""))).toStrictEqual([]);
+  });
+
+  test("names what the tests and an editor leave", () => {
+    expect(ignored).toStrictEqual(
+      expect.arrayContaining([
+        ".playwright-cli/",
+        ".shots/",
+        "__screenshots__/",
+        ".vitest/",
+        ".idea/",
+        ".vscode/",
+        ".DS_Store",
+      ]),
+    );
+  });
+});

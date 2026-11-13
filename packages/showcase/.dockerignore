@@ -1,4 +1,3 @@
-# This file is managed by basis-ui: `vp run sync` rewrites it from the installed @basis/ui, and `vp run verify` fails when it differs.
 *
 !Caddyfile
 !dist

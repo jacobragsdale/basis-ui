@@ -97,11 +97,8 @@ To set the app up:
    which hold client data and are never committed. In an app made from the template, `vp run sync` writes the
    `.gitignore` and the drift check keeps it.
 
-`vp build` also writes `FILE.gz` and `FILE.br` beside each built file over 1 KB that compression helps (scripts,
-styles, HTML, JSON, SVG, wasm, Arrow), so the server sends the smaller one the browser accepts without compressing on
-each request: Brotli at quality 11, or 9 for a file over 1 MB, and gzip at 9. It adds about 0.1 s to the example's
-build and 0.3 s to parallax's demo's, whose 5 MB of wasm ships as 1.1 MB. A server should send `Cache-Control:
-public, max-age=31536000, immutable` for the hashed files in `assets/` and `no-cache` for `index.html`.
+`vp build` writes `dist/`, with a `.br` and a `.gz` beside each built file, as [Serving the
+build](#serving-the-build) says.
 
 To confirm the setup, run `vp check`, `vp test` and `vp build`. The built `dist/index.html` holds the head script, in
 a `<script>` before `</head>`.
@@ -1799,6 +1796,37 @@ is built as one module for each of its own and declares only its stylesheets as 
 only the components it imports. Most of what is left is the libraries every app shares: of an app of one card's
 543 kB of JavaScript before gzip, React DOM is 207 kB, Zod 83 kB, the router 72 kB, Base UI and Floating UI 65 kB, and
 `@basis/ui` 47 kB. The task needs the same Chromium as `vp run shot`.
+
+## Serving the build
+
+`vp build` writes `dist/`, and `FILE.gz` and `FILE.br` beside each built file over 1 KB that compression helps
+(scripts, styles, HTML, JSON, SVG, wasm, Arrow), so the server sends the smaller one the browser accepts without
+compressing on each request: Brotli at quality 11, or 9 for a file over 1 MB, and gzip at 9. It adds about 0.1 s to
+the example's build and 0.3 s to parallax's demo's, whose 5 MB of wasm ships as 1.1 MB. A server should send
+`Cache-Control: public, max-age=31536000, immutable` for the hashed files in `assets/` and `no-cache` for
+`index.html`.
+
+An app made from the template holds a `Dockerfile`, a `Caddyfile` and a `.dockerignore`: an image that serves `dist/`
+with Caddy, each file's `.br` or `.gz` when the browser accepts one, the hashed assets cached as immutable and every
+other path `no-cache`, `index.html` answering each route the app owns, and a missing asset a 404. They are the app's
+own, a starting point that `vp run sync` neither writes nor checks: the app points `FROM` at the firm's registry, pins
+its tag, sets the user its cluster requires, and writes its own pipeline, which basis-ui does not provide. An app made
+from an earlier template holds them, and `azure-pipelines.yml`, with basis-ui's header as their first line; its next
+`vp run sync` removes the header and keeps the rest.
+
+What basis-ui leaves to the app's server and pipeline:
+
+- **Configuration that differs by environment.** The build holds it: the environment banner is `AppShell`'s
+  `environment` prop, `/api` is the page's own origin, the token endpoint is named in the template's `src/sign-in.ts`, and the lint
+  keeps `fetch` to the generated client, so the page reads no file of the server's. One image promoted from dev to
+  production with a different banner or endpoint needs a way to supply them that basis-ui does not have yet.
+- **Security headers.** The template's `Caddyfile` sends no `Content-Security-Policy`, `X-Content-Type-Options`,
+  frame or referrer policy, and keeps no access log, and when the ingress does not route `/api/*` there, a request
+  for it is answered with `index.html` and a 200. A CSP must allow at least the head script, inline in `index.html`,
+  by its hash, which changes with `@basis/ui`'s releases; `@basis/parallax`'s module worker, from the app's own origin
+  (`worker-src 'self'`); its WebAssembly (`'wasm-unsafe-eval'` in `script-src`); and requests to `/api` and to the
+  token endpoint (`connect-src`). No app has run under a CSP yet, so those are what reading the code finds, not a
+  tested policy.
 
 ## Showing a query's states and small charts
 

@@ -1,7 +1,8 @@
 /* The framework's files, which every basis-ui app shares and `vp run sync` writes from the installed `@basis/ui`:
  *
  *   vp run sync           writes each one that differs, and removes each one an earlier version wrote and this one
- *                         does not, at a path `retiredPaths` names, while it opens as basis-ui wrote it
+ *                         does not, while it opens as basis-ui wrote it, and removes basis-ui's header from each
+ *                         file it hands to the app (sync-former.ts)
  *   vp run sync --check   fails with one ERROR line for each one that differs, which `vp run verify` runs first
  *
  * They are the files in this package's `sync/` folder, at the paths `framework` names, each opening with `header`, the
@@ -35,6 +36,14 @@ import {
   skillStamp,
   sortedForWriting,
 } from "./sync-problems.ts";
+import {
+  handOver,
+  releasedFiles,
+  releasedProblem,
+  retiredFiles,
+  retiredPaths,
+} from "./sync-former.ts";
+import type { Released } from "./sync-former.ts";
 import { inWorkspace, workspaceFile } from "./workspace.ts";
 
 const blockEnd = "<!-- basis-ui:end -->";
@@ -44,10 +53,6 @@ const blockPattern = /<!-- basis-ui:begin\b[^\n]*-->\r?\n[\s\S]*?<!-- basis-ui:e
 /** Each file of `sync/` an app holds, by its path in the app, `/`-separated, and its name in `sync/`, which has no
  * leading dot, since a package's dotfiles do not all survive publishing. */
 const framework: readonly { readonly path: string; readonly source: string }[] = [
-  { path: "Dockerfile", source: "Dockerfile" },
-  { path: "Caddyfile", source: "Caddyfile" },
-  { path: ".dockerignore", source: "dockerignore" },
-  { path: "azure-pipelines.yml", source: "azure-pipelines.yml" },
   { path: ".gitattributes", source: "gitattributes" },
   { path: ".gitignore", source: "gitignore" },
   { path: "pnpm-workspace.yaml", source: "pnpm-workspace.yaml" },
@@ -57,11 +62,6 @@ const framework: readonly { readonly path: string; readonly source: string }[] =
 
 /** The folders the skills go in: `.agents/skills/NAME/`, and its copy for Claude Code. */
 const skillFolders = [".agents/skills", ".claude/skills"];
-
-/** Every path an earlier version wrote and this one does not, `/`-separated from the app's root, which `vp run sync`
- * removes while it holds the file as basis-ui wrote it. A file that leaves `framework`, or a skill that leaves
- * `skills/`, joins this list in the same change, its skill at both of its paths. */
-const retiredPaths: readonly string[] = [];
 
 /** A file `vp run sync` writes, by its path from the app's root, `/`-separated, and its text. */
 interface Wanted {
@@ -74,6 +74,7 @@ interface SyncPlan {
   readonly version: string;
   readonly wanted: readonly Wanted[];
   readonly retired: readonly string[];
+  readonly released: readonly Released[];
 }
 
 /** The installed `@basis/ui`'s folder, found by its own name, wherever its code was bundled to. */
@@ -162,18 +163,6 @@ async function syncedApp(root: string, plan: SyncPlan): Promise<boolean> {
   );
 }
 
-/** The retired paths whose file the app holds as basis-ui wrote it. An app's own file at one of them, or anywhere
- * else, stays, whatever it says of basis-ui. */
-async function retiredFiles(root: string, retired: readonly string[]): Promise<readonly string[]> {
-  const texts = await Promise.all(retired.map(async (file) => textOf(path.join(root, file))));
-  return retired
-    .filter((_file, index) => {
-      const text = texts[index];
-      return text !== undefined && opensAsWritten(text);
-    })
-    .toSorted();
-}
-
 /** What the installed `@basis/ui` writes in the app at `root`, and what it removes of `retired`. */
 async function planSync(root: string, retired = retiredPaths): Promise<SyncPlan> {
   const member = await inWorkspace(root);
@@ -193,7 +182,12 @@ async function planSync(root: string, retired = retiredPaths): Promise<SyncPlan>
     { path: agentsFile, text: agents },
     ...(await configFiles(root)),
   ];
-  return { retired: await retiredFiles(root, retired), version: await version(), wanted };
+  return {
+    released: await releasedFiles(root),
+    retired: await retiredFiles(root, retired),
+    version: await version(),
+    wanted,
+  };
 }
 
 /** The files of the plan that differ from what the app holds, with the text the app holds. */
@@ -224,9 +218,13 @@ async function driftProblems(
       : problem(file, current, plan.version),
   }));
   const retired = plan.retired.map((file) => ({ file, text: retiredProblem(file, plan.version) }));
+  const released = plan.released.map(({ path: file }) => ({
+    file,
+    text: releasedProblem(file, plan.version),
+  }));
   return {
     config: [...files.filter(({ file }) => isAppConfig(file)), ...(await appProblems(root))],
-    sync: [...files.filter(({ file }) => !isAppConfig(file)), ...retired],
+    sync: [...files.filter(({ file }) => !isAppConfig(file)), ...retired, ...released],
   };
 }
 
@@ -245,7 +243,8 @@ async function remove(root: string, file: string): Promise<void> {
   }
 }
 
-/** Writes each framework file that differs, removes each retired one, and says what it did, or fails with what it
+/** Writes each framework file that differs, removes each retired one, hands each released one to the app, and says
+ * what it did, or fails with what it
  * cannot put right. An app's own file at a framework path, and a file with changes git has not committed, are kept,
  * each named by an ERROR line, and the rest written all the same. */
 async function syncWrite(root: string, retired = retiredPaths): Promise<string> {
@@ -262,6 +261,7 @@ async function syncWrite(root: string, retired = retiredPaths): Promise<string> 
   const done = [
     ...writing.map(({ file }) => `Wrote ${file.path}.`),
     ...plan.retired.map((file) => `Removed ${file}.`),
+    ...(await handOver(root, plan.released)),
   ];
   const configProblems = await appProblems(root);
   const left = [...kept, ...configProblems.map(({ text }) => text)];

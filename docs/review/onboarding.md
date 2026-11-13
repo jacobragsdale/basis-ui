@@ -24,12 +24,14 @@ A new developer cannot get from nothing to a deployed, signed-in app today, and 
    - The file is managed (`packages/ui/src/preset/sync.ts:42-52`, byte-compared), so any local edit fails the commit hook's `sync` stage.
    - Who: the first team that tries to ship.
    - Severity: release blocker. Confidence: confirmed by reading; never run, as the file says.
+   - Not done: out of scope by decision 2, which makes the deploy path the app's. Done in Sync: the deploy files are the app's, and the managed .gitignore names what the tools and editors leave: as far as decision 2 goes, `vp run sync` no longer manages `azure-pipelines.yml` (nor the Dockerfile, Caddyfile and `.dockerignore`): an app that has one keeps it, its header removed by the next sync, and the template, the example and the showcase drop the pipeline. The README's "Serving the build" says the app writes its own.
 
 4. **The image's base is public, unpinned, root, and equally locked.**
    - Where: `packages/ui/sync/Dockerfile:3` is `FROM caddy:2-alpine`: Docker Hub, a floating tag, no `USER`, port 80.
    - An app cannot point it at the firm's registry or change the user, because the file is managed. Nothing builds the image in CI or in `prove`.
    - Who: the pipeline's first image build, and any AKS namespace that refuses root.
    - Severity: release blocker. Confidence: file confirmed; the firm's registry and pod policy are plausible.
+   - Not done: out of scope by decision 2. Done in Sync: the deploy files are the app's, and the managed .gitignore names what the tools and editors leave: as far as decision 2 goes, the Dockerfile is the app's own, which `vp run sync` neither writes nor checks, so the app sets its registry, tag and user; the template's still says `FROM caddy:2-alpine`, as a starting point, and its first line says to change it.
 
 5. **Nothing documents the firm's network, and Chromium is mandatory.**
    - Missing: how to install `vp` on Windows, a Node mirror (`VP_NODE_DIST_MIRROR`), the registry (the template has no `.npmrc` or `_npmrc`), the Chromium download host, and CA certificates.
@@ -63,6 +65,7 @@ A new developer cannot get from nothing to a deployed, signed-in app today, and 
    - One image cannot be promoted from dev to QA to prod with a different banner, cookie domain, sign-in endpoint or telemetry target.
    - Who: every deployed app.
    - Severity: fix before release (needs a decision). Confidence: confirmed.
+   - Not done: out of scope with the deploy path (decision 2). Recorded as the app's in Sync: the deploy files are the app's, and the managed .gitignore names what the tools and editors leave: the README's "Serving the build" says what the build fixes and that basis-ui has no way yet to supply a value per environment.
 
 10. **The server sends no security headers, and no page says what a CSP must allow.**
     - Where: `packages/ui/sync/Caddyfile:6-25` has cache headers, precompression, SPA fallback and a 404 for missing assets, which is good. It has no CSP, `nosniff`, frame or referrer policy, and no access log.
@@ -70,6 +73,7 @@ A new developer cannot get from nothing to a deployed, signed-in app today, and 
     - `/api/*` also falls back to `index.html` with a 200 when the ingress does not route it.
     - Who: the firm's security review, and the first ingress that adds a strict CSP.
     - Severity: fix before release. Confidence: confirmed.
+    - Not done: out of scope with the deploy path (decision 2), as the Caddyfile is now the app's. Recorded as the app's in Sync: the deploy files are the app's, and the managed .gitignore names what the tools and editors leave: the README's "Serving the build" lists the headers the template's Caddyfile does not send, the `/api/*` fallback, and what a CSP must allow, as read from the code (the inline head script by its hash, parallax's module worker, `'wasm-unsafe-eval'`, `connect-src` for `/api` and the token endpoint); no policy was tried.
 
 11. **All four skills have front matter that strict YAML parsers reject.**
     - Where: line 3 of each `packages/ui/skills/*/SKILL.md` is an unquoted `description:` containing `: `.
@@ -89,6 +93,7 @@ A new developer cannot get from nothing to a deployed, signed-in app today, and 
     - `packages/ui/sync/agents.md:30-33` omits `.gitignore` from its list of managed files.
     - Who: an agent running `git add --all` after driving the app.
     - Severity: fix before release. Confidence: confirmed.
+    - Done in Sync: the deploy files are the app's, and the managed .gitignore names what the tools and editors leave: the managed `.gitignore` also names `.playwright-cli/`, `.vitest/`, `__screenshots__/` (a browser test's screenshot on failure) and what an editor or the system leaves (`.idea/`, `.vscode/`, `*.swp`, `.DS_Store`, `Thumbs.db`); `tests/skills.test.ts` holds it to each folder a skill says a tool writes. `AGENTS.md`'s block lists `.gitignore` among the managed files and says an app ignores its own files with a `.gitignore` in their folder, which sync does not manage, rather than extending the root one.
 
 14. **The template pins neither Node nor pnpm.**
     - Where: `packages/create/templates/app/package.json` has no `engines`, `devEngines`, `packageManager` or `.node-version`. The root repo pins all of them.
@@ -174,3 +179,12 @@ The two check scripts are `(a scratch folder)` and `(a scratch folder)`.
 
 - The skills' `description` lines are quoted, so a strict YAML parser reads their front matter. What to do: run
   `vp run sync`.
+
+- `vp run sync` no longer manages the `Dockerfile`, `Caddyfile`, `.dockerignore` and `azure-pipelines.yml`: the app
+  owns them, may edit or replace them, and writes its own pipeline. The next `vp run sync` removes basis-ui's header
+  from each that still has it, and `vp run verify` names one that does until then. The template keeps the Dockerfile,
+  Caddyfile and `.dockerignore` as a starting point, and has no pipeline. What to do: run `vp run sync`, commit the
+  files it hands over, and delete `azure-pipelines.yml` if the app has no use for it.
+
+- The framework's `.gitignore` names `.playwright-cli/`, `.vitest/`, `__screenshots__/`, and what an editor leaves:
+  `.idea/`, `.vscode/`, `*.swp`, `.DS_Store` and `Thumbs.db`. What to do: run `vp run sync`.

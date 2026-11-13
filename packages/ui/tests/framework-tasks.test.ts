@@ -100,14 +100,11 @@ describe("vp run sync", () => {
   test("writes the framework's files, each but CLAUDE.md opening with basis-ui's marker", () => {
     expect(run("sync").status).toBe(0);
     expect(read("CLAUDE.md")).toBe("@AGENTS.md\n");
-    for (const file of [
-      "Dockerfile",
-      "Caddyfile",
-      ".gitattributes",
-      ".gitignore",
-      ".vite-hooks/pre-commit",
-    ]) {
+    for (const file of [".gitattributes", ".gitignore", ".vite-hooks/pre-commit"]) {
       expect(read(file).split("\n", 1)[0]).toBe(header);
+    }
+    for (const file of ["Dockerfile", "Caddyfile", ".dockerignore", "azure-pipelines.yml"]) {
+      expect(existsSync(path.join(app, file))).toBe(false);
     }
     expect(read(".claude/skills/drive-the-app/SKILL.md")).toBe(
       read(".agents/skills/drive-the-app/SKILL.md"),
@@ -117,15 +114,15 @@ describe("vp run sync", () => {
 
   test("--check fails with one line ending in the fix for each edited or missing file", () => {
     run("sync");
-    write("Caddyfile", `${read("Caddyfile")}# a change of the app's own\n`);
+    write(".gitattributes", `${read(".gitattributes")}# a change of the app's own\n`);
     rmSync(path.join(app, ".vite-hooks/pre-push"));
     const check = run("sync", "--check");
     expect(check.status).toBe(1);
     expect(check.stderr.trimEnd().split("\n")).toStrictEqual([
-      "ERROR Caddyfile differs from what @basis/ui 0.0.0 writes: run vp run sync to put it back, since a change it needs belongs in @basis/ui.",
+      "ERROR .gitattributes differs from what @basis/ui 0.0.0 writes: run vp run sync to put it back, since a change it needs belongs in @basis/ui.",
       "ERROR .vite-hooks/pre-push is missing: run vp run sync to write it.",
     ]);
-    expect(run("sync").stdout).toBe("Wrote Caddyfile.\nWrote .vite-hooks/pre-push.\n");
+    expect(run("sync").stdout).toBe("Wrote .gitattributes.\nWrote .vite-hooks/pre-push.\n");
     expect(run("sync", "--check").status).toBe(0);
   });
 

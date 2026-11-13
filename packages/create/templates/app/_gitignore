@@ -1,10 +1,21 @@
 # This file is managed by basis-ui: `vp run sync` rewrites it from the installed @basis/ui, and `vp run verify` fails when it differs.
 node_modules/
 dist/
+# The hooks' runner, which vp config writes on each vp install.
+.vite-hooks/_
 # Records exported from an API's run store: they hold client data.
 .fixtures/
 # Body files that a task of the app's own writes for its fixtures' body_file, too large for git.
 fixtures/generated/
-# vp run shot's pictures of the app.
+# vp run shot's pictures of the app, and Playwright CLI's files from driving it.
 .shots/
-.vite-hooks/_
+.playwright-cli/
+# What the tests leave: Vitest's attachments, and a browser test's screenshot when it fails.
+.vitest/
+__screenshots__/
+# What an editor or the system leaves.
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db

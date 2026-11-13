@@ -36,7 +36,7 @@ afterEach(() => {
 describe("vp run sync in a pnpm workspace", () => {
   test("writes no pnpm-workspace.yaml for an app the workspace above it holds", async () => {
     expect(await written("apps/web")).not.toContain("pnpm-workspace.yaml");
-    expect(await written("apps/web")).toContain("Dockerfile");
+    expect(await written("apps/web")).toContain(".gitattributes");
   });
 
   test("writes it for an app the workspace leaves out, or that is a workspace's root", async () => {

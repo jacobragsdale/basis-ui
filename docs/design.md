@@ -104,20 +104,28 @@ version line is its own, apart from basis's: the two meet at the contract, not a
 | `openapi.json`                                                 | The pinned copy of the API's document, which the client is generated from                                                                  |
 | `fixtures/`                                                    | Synthetic responses for fixture mode, in git, in the record format `basis records export` writes                                           |
 | `.fixtures/`                                                   | Records exported from a basis API's run store by `basis records export`, which git ignores because they hold client data                   |
-| `Dockerfile`, `azure-pipelines.yml`                            | An image that serves the built files with a static file server, and the deploy pipeline that calls the maintainer's team's templates       |
+| `Dockerfile`, `Caddyfile`, `.dockerignore`                     | The app's own image, which serves the built files with Caddy: the template's is a starting point, and the app writes its pipeline          |
 | `AGENTS.md`, `CLAUDE.md`, `.agents/skills/`, `.claude/skills/` | The agent files, as basis writes them: `AGENTS.md` a short map, `CLAUDE.md` containing `@AGENTS.md`, and the skills copied for Claude Code |
 | `.vite-hooks/`, `.gitattributes`, `.gitignore`                 | Vite+'s commit and push hooks, LF line endings on Windows and in WSL alike, and the ignored files, `.fixtures/` among them                 |
 
-`.gitignore` is a framework file, so no app drops `.fixtures/` from it. The app's own configuration is held to the
-framework's lines too, since a probe on 2026-11-09 declared a colour, a utility and a class in an app's stylesheet and
-the lint passed them: the drift check, `vp run sync --check`, fails when `src/styles.css` holds more than the import of
-`@basis/ui`'s stylesheet, and of `@basis/parallax`'s for an app that depends on it, when `tsconfig.json` is more than
-the lines that extend the strict tsconfig, and when `vite.config.ts` is more than the preset, its plugins and its
-tests, with the app's own budget and `basisTest({ browser: false })` allowed; `vp run sync` writes the first two, and
-the third when it is missing. It also holds `package.json` to the packages an app may use, a list in the preset that a
-new dependency joins with the maintainer's approval, and refuses by name, with what replaces each, the libraries
-[Decided against](#decided-against) names and those `@basis/ui`'s utilities replace. ctzd writes these files by hand
-and never runs `vp run sync`, so the lint's own checks are what bind its apps.
+The deploy path is the app's: the maintainer decided on 2026-11-13 that an app writes its own Dockerfile and pipeline,
+and that deploying is out of basis-ui's scope, after a review found that the managed files locked an app out of its
+registry, base image, user and pipeline, and that the pipeline had never run. `vp run sync` managed the four deploy
+files until then and now hands them to the app: one that opens with basis-ui's header loses that line on the next sync
+and is never written or checked again. The template keeps the Dockerfile, Caddyfile and `.dockerignore` as a starting
+point, and has no pipeline, since the one it had was never run.
+
+`.gitignore` is a framework file, so no app drops `.fixtures/` from it; it names what the framework's own tools and an
+editor write, and a file of the app's own is ignored by a `.gitignore` in its folder. The app's own configuration is
+held to the framework's lines too, since a probe on 2026-11-09 declared a colour, a utility and a class in an app's
+stylesheet and the lint passed them: the drift check, `vp run sync --check`, fails when `src/styles.css` holds more than
+the import of `@basis/ui`'s stylesheet, and of `@basis/parallax`'s for an app that depends on it, when `tsconfig.json`
+is more than the lines that extend the strict tsconfig, and when `vite.config.ts` is more than the preset, its plugins
+and its tests, with the app's own budget and `basisTest({ browser: false })` allowed; `vp run sync` writes the first
+two, and the third when it is missing. It also holds `package.json` to the packages an app may use, a list in the preset
+that a new dependency joins with the maintainer's approval, and refuses by name, with what replaces each, the libraries
+[Decided against](#decided-against) names and those `@basis/ui`'s utilities replace. ctzd writes these files by hand and
+never runs `vp run sync`, so the lint's own checks are what bind its apps.
 
 ## Consumers
 
@@ -762,9 +770,10 @@ image as parallax's are.
 ## Serving the build
 
 `vp build` writes a `.br` and a `.gz` beside every built file over 1 KB that compression helps, so whatever serves the
-UI, basis-api or the template's image, sends the precompressed file the browser accepts rather than the raw one,
-with `Cache-Control: immutable` for the hashed assets and `no-cache` for `index.html`. Brotli runs at quality 11, or 9
-for files over 1 MB, where 11 took 7 s on parallax's wasm for 13% less; the step adds tenths of a second to a build.
+UI, basis-api or the image the app builds from the template's Dockerfile, sends the precompressed file the browser
+accepts rather than the raw one, with `Cache-Control: immutable` for the hashed assets and `no-cache` for
+`index.html`. Brotli runs at quality 11, or 9 for files over 1 MB, where 11 took 7 s on parallax's wasm for 13% less;
+the step adds tenths of a second to a build.
 The maintainer asked for it on 2026-11-08, finding the demos slow when served uncompressed.
 
 An app loads only the parts of `@basis/ui` it uses. The package builds one module for each of its own, declares only
@@ -788,8 +797,8 @@ the push hook runs `vp run verify`, every stage, the tests in the browser, the b
 an agent to `--no-verify`. `vp run review` writes the pull request's summary, so a
 reviewer judges screenshots and the client's diff rather than lines of agent-written code; until an app keeps
 baselines, the summary asks for a `vp run shot` of each page instead of a diff. A hook can be skipped with
-`--no-verify`, so until CI exists the gates are only as strong as the hooks; the generated pipeline already runs `vp run
-verify`, and a branch policy on `main` that requires it turns the checks into the gate the day the firm builds CI.
+`--no-verify`, so until CI exists the gates are only as strong as the hooks; an app's own pipeline that runs `vp run
+verify`, and a branch policy on `main` that requires it, turn the checks into the gate the day the firm builds CI.
 
 ## Parallax: @basis/parallax
 

@@ -27,11 +27,13 @@ skip either with `--no-verify`: fix what each `ERROR` line says, and commit or p
 
 ### The framework's files
 
-`vp run sync` writes the files every basis-ui app shares from the installed `@basis/ui`: the `Dockerfile`, `Caddyfile`
-and `.dockerignore`, `azure-pipelines.yml`, `.gitattributes`, `pnpm-workspace.yaml`, the hooks in `.vite-hooks/`,
-`CLAUDE.md`, the skills in `.agents/skills/` and their copies in `.claude/skills/`, and this block of `AGENTS.md`. Each
-opens with a line saying basis-ui manages it, and `vp run verify` fails when one differs, so never edit them: a
-change one needs belongs in `@basis/ui`. Write the repo's own notes in `AGENTS.md`, outside this block's markers. `vp run upgrade` moves
+`vp run sync` writes the files every basis-ui app shares from the installed `@basis/ui`: `.gitattributes`,
+`.gitignore`, `pnpm-workspace.yaml`, the hooks in `.vite-hooks/`, `CLAUDE.md`, the skills in `.agents/skills/` and
+their copies in `.claude/skills/`, and this block of `AGENTS.md`. Each opens with a line saying basis-ui manages it, and
+`vp run verify` fails when one differs, so never edit them: a change one needs belongs in `@basis/ui`. Write the
+repo's own notes in `AGENTS.md`, outside this block's markers, and ignore a file of the app's own in a `.gitignore` in
+its folder. The `Dockerfile`, `Caddyfile` and `.dockerignore` are the app's own, a starting point from the template:
+edit them as the app's image needs, and write its pipeline. `vp run upgrade` moves
 `@basis/ui` and `@basis/parallax` to their latest release, or `vp run upgrade VERSION` to that one, on a tree with
 nothing uncommitted: it prints the changelog between the two, runs `vp run sync`, the releases' codemods and
 `vp run verify`, and ends with what is left to do by hand. `vp run upgrade --dry-run` shows all of it and changes

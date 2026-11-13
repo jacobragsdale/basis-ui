@@ -31,6 +31,17 @@ function opensAsWritten(text: string): boolean {
   );
 }
 
+/** `text` without its first line, when that is the framework's header, this version's or an earlier one's: a file
+ * basis-ui hands to the app, as the app then owns it. The rest keeps its line endings. */
+function withoutHeader(text: string | null | undefined): string | undefined {
+  if (typeof text !== "string") {
+    return undefined;
+  }
+  const end = text.indexOf("\n");
+  const first = text.slice(0, end === -1 ? text.length : end).replace(/\r$/u, "");
+  return end !== -1 && [header, ...formerHeaders].includes(first) ? text.slice(end + 1) : undefined;
+}
+
 /** Whether the app's `current` text at `file` is its own, which `vp run sync` keeps: a file of the framework's, not
  * AGENTS.md, whose block sync merges, or the app's configuration, that does not open as sync wrote it. */
 function ownFile(file: string, current: string | undefined): boolean {
@@ -140,4 +151,5 @@ export {
   retiredProblem,
   skillStamp,
   sortedForWriting,
+  withoutHeader,
 };

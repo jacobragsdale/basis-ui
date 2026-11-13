@@ -1,5 +1,6 @@
 /* `vp run sync` and the files it does not own: an app's own file at a path where it writes basis-ui's, and a framework
- * file with changes git has not committed, each kept and named while the rest are written; and files saved with CRLF
+ * file with changes git has not committed, each kept and named while the rest are written; the deploy files an
+ * earlier version wrote, which it hands to the app; and files saved with CRLF
  * line endings, as an editor on Windows may. Run as the preset runs it, Node on src/preset/tasks.ts in an app's root,
  * a temporary folder with this package linked in. */
 
@@ -76,10 +77,10 @@ afterEach(() => {
 
 describe("vp run sync", () => {
   test("keeps an app's own file at a framework path, writes the rest, and says so", () => {
-    write("Dockerfile", "FROM node:24\n");
+    write(".gitattributes", "* text=auto\n");
     write("CLAUDE.md", "# The app's own notes for Claude\n");
     const own = [
-      "ERROR Dockerfile is the app's own, which vp run sync did not write, and basis-ui writes its own there: rename it, or delete it to take basis-ui's, then run vp run sync again.",
+      "ERROR .gitattributes is the app's own, which vp run sync did not write, and basis-ui writes its own there: rename it, or delete it to take basis-ui's, then run vp run sync again.",
       "ERROR CLAUDE.md is the app's own, which vp run sync did not write, and basis-ui writes its own there: rename it, or delete it to take basis-ui's, then run vp run sync again.",
     ];
     const synced = run("sync");
@@ -87,25 +88,25 @@ describe("vp run sync", () => {
     expect(synced.stderr.split("\n").filter((line) => line.startsWith("ERROR "))).toStrictEqual(
       own,
     );
-    expect(read("Dockerfile")).toBe("FROM node:24\n");
+    expect(read(".gitattributes")).toBe("* text=auto\n");
     expect(read("CLAUDE.md")).toBe("# The app's own notes for Claude\n");
-    expect(read("Caddyfile").split("\n", 1)[0]).toBe(header);
+    expect(read(".gitignore").split("\n", 1)[0]).toBe(header);
     expect(run("sync", "--check").stderr.trimEnd().split("\n")).toStrictEqual(own);
   });
 
   test("never overwrites a framework file's changes git has not committed, and says so", () => {
     committedSync();
-    const edited = `${read("Caddyfile")}# a change not yet committed\n`;
-    write("Caddyfile", edited);
+    const edited = `${read(".vite-hooks/pre-push")}# a change not yet committed\n`;
+    write(".vite-hooks/pre-push", edited);
     const synced = run("sync");
     expect({ status: synced.status, stderr: synced.stderr }).toStrictEqual({
       status: 1,
       stderr:
-        "ERROR Caddyfile has changes git has not committed, which vp run sync would overwrite with @basis/ui 0.0.0's: commit or discard them, then run vp run sync again.\n",
+        "ERROR .vite-hooks/pre-push has changes git has not committed, which vp run sync would overwrite with @basis/ui 0.0.0's: commit or discard them, then run vp run sync again.\n",
     });
-    expect(read("Caddyfile")).toBe(edited);
+    expect(read(".vite-hooks/pre-push")).toBe(edited);
     git("commit", "--quiet", "-am", "An edit");
-    expect(run("sync").stdout).toBe("Wrote Caddyfile.\n");
+    expect(run("sync").stdout).toBe("Wrote .vite-hooks/pre-push.\n");
   });
 });
 
@@ -126,5 +127,49 @@ describe("vp run sync, with CRLF line endings", () => {
     );
     run("sync");
     expect(run("sync", "--check")).toMatchObject({ status: 0 });
+  });
+});
+
+describe("vp run sync, and the deploy files it hands to the app", () => {
+  const former =
+    "# This file is managed by basis-ui: `vp run sync` rewrites it from the installed @basis/ui, and `vp run check-full` fails when it differs.";
+
+  beforeEach(() => {
+    run("sync");
+    write("Dockerfile", `${header}\nFROM caddy:2-alpine\nCOPY dist /srv\n`);
+    write(".dockerignore", `${former}\r\n*\r\n!dist\r\n`);
+    write("azure-pipelines.yml", `${header}\ntrigger: none\n`);
+    write("Caddyfile", ":80 {\n\tfile_server\n}\n");
+  });
+
+  test("--check names each that still carries basis-ui's header", () => {
+    const check = run("sync", "--check");
+    expect(check.status).toBe(1);
+    expect(check.stderr.trimEnd().split("\n")).toStrictEqual(
+      [".dockerignore", "Dockerfile", "azure-pipelines.yml"].map(
+        (file) =>
+          `ERROR ${file} carries basis-ui's header, and @basis/ui 0.0.0 no longer manages it: run vp run sync to remove the header, and the file is the app's own.`,
+      ),
+    );
+  });
+
+  test("removes the header, this version's or an earlier one's, and keeps the rest and its line endings", () => {
+    expect(run("sync").stdout).toBe(
+      [".dockerignore", "Dockerfile", "azure-pipelines.yml"]
+        .map((file) => `Handed ${file} to the app: basis-ui's header removed.\n`)
+        .join(""),
+    );
+    expect(read("Dockerfile")).toBe("FROM caddy:2-alpine\nCOPY dist /srv\n");
+    expect(read(".dockerignore")).toBe("*\r\n!dist\r\n");
+    expect(read("azure-pipelines.yml")).toBe("trigger: none\n");
+    expect(read("Caddyfile")).toBe(":80 {\n\tfile_server\n}\n");
+  });
+
+  test("never writes or checks them again, so the app edits them as its own", () => {
+    run("sync");
+    write("Dockerfile", "FROM registry.example.com/caddy:2.10\nUSER caddy\n");
+    expect(run("sync", "--check")).toMatchObject({ status: 0 });
+    expect(run("sync").stdout).toBe("The framework's files match @basis/ui 0.0.0.\n");
+    expect(read("Dockerfile")).toBe("FROM registry.example.com/caddy:2.10\nUSER caddy\n");
   });
 });
