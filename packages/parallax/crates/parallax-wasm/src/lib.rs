@@ -267,7 +267,8 @@ impl Worker {
     ///
     /// # Errors
     ///
-    /// Returns an error if no load of `name` is under way.
+    /// Returns an error if no load of `name` is under way, or its stream has
+    /// ended.
     #[wasm_bindgen(js_name = addLoadBytes)]
     pub fn add_load_bytes(
         &mut self,
@@ -484,9 +485,14 @@ impl Worker {
     ///
     /// # Errors
     ///
-    /// Returns an error if no load of `name` is under way.
+    /// Returns an error if no load of `name` is under way, or its stream has
+    /// ended.
     pub fn add_bytes(&mut self, name: &str, piece: Box<dyn StreamSource>) -> Result<(), String> {
-        self.loading(name)?.batches.source_mut().push(piece);
+        let source = self.loading(name)?.batches.source_mut();
+        if source.is_whole() {
+            return Err(format!("{name}'s stream has ended; it takes no more bytes"));
+        }
+        source.push(piece);
         Ok(())
     }
 
@@ -1363,6 +1369,21 @@ mod tests {
         writer.finish().unwrap();
         drop(writer);
         out
+    }
+
+    #[test]
+    fn bytes_after_the_stream_ended_are_refused() {
+        let mut worker = Worker::new();
+        worker.begin("app", load(100), None).unwrap();
+        worker.add_bytes("app", Box::new(stream(10, None))).unwrap();
+        worker.end_bytes("app").unwrap();
+        assert_eq!(
+            worker.add_bytes("app", Box::new(stream(10, None))),
+            Err("app's stream has ended; it takes no more bytes".to_owned())
+        );
+        // The load goes on as it was.
+        while !worker.step("app").unwrap().ended {}
+        assert_eq!(worker.finish("app"), Ok(10));
     }
 
     #[test]

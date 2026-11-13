@@ -50,6 +50,8 @@ No release blocker in these four crates, but 13 findings: one trap on spec-valid
 - The test that claims to cover it, `crates/parallax-session/tests/reloads.rs:209-223`, uses a flat layout (line 19), and flat views simply rebuild (`view.rs:1431-1434`).
 - Confidence: confirmed.
 
+- Done in Engine: charts leave out dates past the calendar, and a view behind by two loads rebuilds: a view applies a missed change set only when it missed exactly one, and rebuilds after more; a view keeps at most one change set (`HISTORY` was 16), so a view two loads behind holds no old rows. Test: `a_pivot_that_missed_two_keyed_reloads_shows_the_sums_of_the_last` in `reloads.rs`, a pivot whose row goes 1, 10, 100 across two missed keyed loads, which showed a wrong sum before; the flat test that claimed it is now `a_keyed_view_keeps_the_diff_of_one_missed_reload_and_rebuilds_after_more`.
+
 **6. Duplicate column names silently load the first column's data into every duplicate** — fix before release (cheap: refuse in `Table::new`)
 
 - Where: `packages/parallax/crates/parallax-engine/src/table.rs:156-178, 250-291`. Engine code, boundary input.
@@ -71,11 +73,15 @@ No release blocker in these four crates, but 13 findings: one trap on spec-valid
 - A dictionary-of-dictionary field would also reach `unreachable!` at `crates/parallax-engine/src/column.rs:693`, because `types.rs:68` recurses. I did not establish that arrow-ipc decodes such a field.
 - Confidence: the first is confirmed; the second is plausible.
 
+- Done in Engine: charts leave out dates past the calendar, and a view behind by two loads rebuilds: the stream's reader refuses a record or dictionary batch whose buffer has a negative offset or length, or reaches past the body, before arrow's `slice_with_length` can assert, both when it counts a whole stream's rows and when it decodes. Arrow validates the arrays it builds by default (no `skip_validation`), so the buffers were the gap. The dictionary of dictionaries is done in the first commit, as `engine.md` 1. Test: `a_buffer_past_its_body_is_refused_before_arrow_reads_it`, which patches a real stream's header.
+
 **9. `addLoadBytes` after `endLoadBytes` panics** — polish
 
 - Where: `packages/parallax/crates/parallax-protocol/src/ipc.rs:164-165`, via `crates/parallax-wasm/src/lib.rs:488-490`.
 - Scenario: the exported API asserts instead of returning an error.
 - Confidence: confirmed. The shipped worker cannot send that order (`src/engine/worker-loads.ts:100-103,142`).
+
+- Done in Engine: charts leave out dates past the calendar, and a view behind by two loads rebuilds: `add_bytes` refuses a piece after the stream has ended, `app's stream has ended; it takes no more bytes`, and the load goes on as it was. Test: `bytes_after_the_stream_ended_are_refused`.
 
 **10. `SetViewport` and `UpdateView.viewport` have no cell cap** — polish
 

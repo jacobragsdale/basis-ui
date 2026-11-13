@@ -42,14 +42,15 @@ pub mod testing;
 pub use load::{LOAD_METADATA, LoadStatus};
 
 /// The most change sets one view keeps while it is behind; one more and it is
-/// rebuilt instead.
-const HISTORY: usize = 16;
+/// rebuilt instead. A change set applies only against the table it made, so a
+/// view applies one and rebuilds after more (see [`OpenView::catch_up`]).
+const HISTORY: usize = 1;
 
 /// The change sets one open view has yet to apply. The table adds each load's to
 /// every open view's, and the view takes them when it catches up, so a change set
 /// lives only while some view still needs it. A view behind by more change sets
 /// than [`HISTORY`], or by more old rows than the table has slots, keeps none and
-/// is rebuilt instead, which then costs less than replaying them.
+/// is rebuilt instead.
 #[derive(Debug, Default)]
 struct Missed {
     changes: VecDeque<Arc<ChangeSet>>,
@@ -603,8 +604,14 @@ fn build_view(
 }
 
 impl OpenView {
-    /// Applies the change sets the view missed, or rebuilds it if it was handed too
-    /// many to keep. Returns `true` if the view changed.
+    /// Applies the change set the view missed, or rebuilds it if it missed more
+    /// than one, or was handed too many to keep. Returns `true` if the view
+    /// changed.
+    ///
+    /// A change set applies against the table it made: [`View::apply`] adds its
+    /// rows with their values now, so the second of two missed sets would add a
+    /// row the first changed at its newest value, and again when the second is
+    /// applied, a wrong sum in a pivot.
     fn catch_up(&mut self, state: &TableState) -> Result<bool, String> {
         // Taken under the table's read lock, so no load adds to them meanwhile.
         let missed = lock(&self.missed).take();
@@ -629,15 +636,11 @@ impl OpenView {
         }
         let missing: Vec<&Arc<ChangeSet>> =
             missed.iter().filter(|c| c.load_version > behind).collect();
-        let contiguous = missing
-            .first()
-            .is_some_and(|c| c.load_version == behind + 1)
-            && missing.last().is_some_and(|c| c.load_version == current);
-        if contiguous {
-            let view = self.view.grid()?;
-            for change in missing {
-                view.apply(&state.table, change);
-            }
+        if let [change] = missing[..]
+            && change.load_version == behind + 1
+            && change.load_version == current
+        {
+            self.view.grid()?.apply(&state.table, change);
         } else {
             let resolved = self
                 .layout

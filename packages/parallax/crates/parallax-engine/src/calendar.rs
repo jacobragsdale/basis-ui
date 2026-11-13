@@ -45,16 +45,18 @@ pub fn epoch_days(day: Date) -> i32 {
         .get_days()
 }
 
-/// Returns the civil date `days` after the Unix epoch.
-///
-/// # Panics
-///
-/// Panics if the result is outside jiff's supported range.
+/// The days from the Unix epoch to jiff's first date, -9999-01-01, and to its
+/// last, 9999-12-31.
+pub const DAYS: std::ops::RangeInclusive<i32> = -4_371_587..=2_932_896;
+
+/// Returns the civil date `days` after the Unix epoch, or jiff's first or last
+/// date for a day before or after its range, as a chart's axis may ask for.
 #[must_use]
 pub fn from_epoch_days(days: i32) -> Date {
+    let days = days.clamp(*DAYS.start(), *DAYS.end());
     EPOCH
         .checked_add(jiff::Span::new().days(i64::from(days)))
-        .expect("date within jiff's range")
+        .expect("a day of jiff's range")
 }
 
 /// Returns Easter Sunday for `year` (anonymous Gregorian algorithm).
@@ -428,11 +430,9 @@ impl TradingCalendar {
 
     /// An instant's place in trading time, in microseconds of open market since
     /// the epoch. Instants outside the session take its nearest edge, so the
-    /// close of one day and the open of the next share a place.
-    ///
-    /// # Panics
-    ///
-    /// Panics only for instants outside jiff's range, which a table cannot hold.
+    /// close of one day and the open of the next share a place. It holds for
+    /// the days [`last_day`] searches, about years 1232 to 4707; a chart places
+    /// no instant outside them.
     #[must_use]
     pub fn instant_position(&self, micros: i64) -> f64 {
         let day = self.trading_date(micros);
@@ -445,24 +445,27 @@ impl TradingCalendar {
         (start + offset) as f64
     }
 
-    /// The instant at a place in trading time, in microseconds since the epoch.
+    /// The instant at a place in trading time, in microseconds since the epoch;
+    /// a place past the calendar's days saturates, as a zoom far out may ask.
     #[must_use]
     pub fn instant_at(&self, position: f64) -> i64 {
         let at = position.round() as i64;
         // The trading day is the last whose session starts at or before `at`.
         let day = last_day(|day| self.start(day) <= at);
-        self.opens(day) + (at - self.start(day))
+        self.opens(day)
+            .saturating_add(at.saturating_sub(self.start(day)))
     }
 
     /// The day an instant trades for, in days since the epoch: its New York date,
     /// or the next for the evening of a session that opens the evening before.
-    ///
-    /// # Panics
-    ///
-    /// Panics only for instants outside jiff's range, which a table cannot hold.
+    /// An instant past jiff's range reads as its first or last instant.
     #[must_use]
     pub fn trading_date(&self, micros: i64) -> i32 {
-        let instant = Timestamp::from_microsecond(micros).expect("instant in range");
+        let instant = Timestamp::from_microsecond(micros).unwrap_or(if micros < 0 {
+            Timestamp::MIN
+        } else {
+            Timestamp::MAX
+        });
         let local = instant.to_zoned(self.zone.clone()).datetime();
         let day = epoch_days(local.date());
         if self.session.overnight() && local.time() >= self.session.opens {
@@ -496,10 +499,15 @@ impl TradingCalendar {
     }
 }
 
-/// The last day, of jiff's range in days since the epoch, for which `holds` holds,
-/// given that it holds for every day up to some day and for none after.
+/// The days a trading calendar places: a million either side of the Unix
+/// epoch, about years 1232 to 4707, well inside jiff's range, so that a
+/// session's open on any of them is an instant.
+pub const TRADING_DAYS: std::ops::RangeInclusive<i32> = -1_000_000..=1_000_000;
+
+/// The last day of [`TRADING_DAYS`] for which `holds` holds, given that it holds
+/// for every day up to some day and for none after.
 fn last_day(holds: impl Fn(i32) -> bool) -> i32 {
-    let (mut low, mut high) = (-1_000_000i32, 1_000_000i32);
+    let (mut low, mut high) = (*TRADING_DAYS.start(), *TRADING_DAYS.end());
     while low < high {
         let mid = low + (high - low + 1) / 2;
         if holds(mid) {

@@ -35,6 +35,8 @@ Paths are relative to `packages/parallax/crates/`.
   - Any chart with a Date32 x whose least value is below about -4,371,587 days, or zoomed past 9999-12-31. `time_ticks` panics at `chart.rs:2212`.
 - **Confidence:** confirmed by those lines and `jiff-0.2.39/src/span.rs:787-789`. Such values are rare.
 
+- Done in Engine: charts leave out dates past the calendar, and a view behind by two loads rebuilds: a chart places a date or instant only on the days a trading calendar covers, a million either side of 1970 (years 1232 to 4707), and leaves any other out as it does a null; the grid still shows them as out of range. `from_epoch_days` and `trading_date` read a day or instant past jiff's range as its first or last, `instant_at` saturates, and `truncate_date` falls back to the year's start, so a zoom the page sends far past the calendar draws too. Decided: a sentinel such as 9999-12-31 is left out of a chart rather than squashing its axis to eight thousand years. Tests: `tests/chart_ranges.rs`, each scenario of the finding on value and trading axes.
+
 **4. Min, max and median totals keep every distinct value and recompute each frame — fix before release**
 
 - **Where:** `parallax-engine/src/view.rs:916-934` (`compile_domains`), `view.rs:2718-2728` (`raw_value`), `aggregate.rs:878-941` (`finish_values`)
@@ -137,3 +139,7 @@ Paths are relative to `packages/parallax/crates/`.
   `null` column, which loads as text with every value blank. A table whose columns repeat a name is refused, naming
   the column, where it showed the first column's values twice. What to do: nothing; an API that sends a repeated name
   gives each column its own.
+
+- A chart leaves out a date or instant more than a million days from 1970, before year 1232 or after 4707, as it
+  leaves out a null, where one such value, such as a 9999-12-31 sentinel or nanoseconds sent as microseconds, stopped
+  the engine; the grid still shows such a value as out of range. What to do: nothing.

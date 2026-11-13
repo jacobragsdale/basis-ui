@@ -303,11 +303,34 @@ fn next_message<S: StreamSource + ?Sized>(source: &S, at: usize) -> Result<Next,
     };
     let body = usize::try_from(message.bodyLength())
         .map_err(|_| ArrowError::IpcError("a message has a negative length".to_owned()))?;
+    // Arrow asserts, rather than returns an error, when a buffer reaches past
+    // the body it slices.
+    let data = message
+        .header_as_record_batch()
+        .or_else(|| message.header_as_dictionary_batch().and_then(|d| d.data()));
+    if let Some(data) = data {
+        within_body(data, body)?;
+    }
     let end = end.checked_add(body).ok_or_else(cut)?;
     if end > source.len() {
         return short();
     }
     Ok(Next::Message(Span { start, end, rows }))
+}
+
+/// Refuses a record batch whose buffers do not all lie within its body of
+/// `body` bytes.
+fn within_body(batch: arrow_ipc::RecordBatch<'_>, body: usize) -> Result<(), ArrowError> {
+    let outside =
+        || ArrowError::IpcError("a record batch's buffer lies outside its body".to_owned());
+    for buffer in batch.buffers().iter().flatten() {
+        let start = usize::try_from(buffer.offset()).map_err(|_| outside())?;
+        let length = usize::try_from(buffer.length()).map_err(|_| outside())?;
+        if start.checked_add(length).is_none_or(|end| end > body) {
+            return Err(outside());
+        }
+    }
+    Ok(())
 }
 
 /// Counts the rows of an Arrow IPC stream from its record batches' headers,
@@ -719,6 +742,49 @@ mod tests {
         assert!(batches.past_limit());
         assert_eq!(batches.rows(), 80);
         assert!(matches!(batches.step().unwrap(), Step::End));
+    }
+
+    /// `bytes` with the length of the first record batch's buffer `buffer` set
+    /// to `length`, and where in the bytes its message's body starts.
+    fn with_buffer_length(bytes: &[u8], buffer: usize, length: i64) -> Vec<u8> {
+        let mut bytes = bytes.to_vec();
+        let mut at = 0;
+        loop {
+            // The continuation marker, the header's length, the header, the body.
+            let size = u32::from_le_bytes(bytes[at + 4..at + 8].try_into().unwrap()) as usize;
+            let header = at + 8..at + 8 + size;
+            let message = arrow_ipc::root_as_message(&bytes[header.clone()]).unwrap();
+            let body = usize::try_from(message.bodyLength()).unwrap();
+            if let Some(batch) = message.header_as_record_batch() {
+                let buffers = batch.buffers().unwrap();
+                let place = std::ptr::from_ref(buffers.get(buffer)).addr()
+                    - bytes[header.clone()].as_ptr().addr()
+                    + header.start;
+                // A buffer is its offset and then its length, eight bytes each.
+                bytes[place + 8..place + 16].copy_from_slice(&length.to_le_bytes());
+                return bytes;
+            }
+            at = header.end + body;
+        }
+    }
+
+    #[test]
+    fn a_buffer_past_its_body_is_refused_before_arrow_reads_it() {
+        let whole = stream(&[3, 5]);
+        for length in [1 << 40, -8] {
+            let hostile = with_buffer_length(&whole, 1, length);
+            // The schema decodes with the first batch, so either refuses it.
+            let error = StreamBatches::new(hostile.as_slice())
+                .and_then(|mut batches| batches.step().map(|_| ()))
+                .unwrap_err()
+                .to_string();
+            assert!(
+                error.contains("a record batch's buffer lies outside its body"),
+                "{error}"
+            );
+            // A stream counted before it is read is refused by its count.
+            assert!(stream_rows(&hostile).is_err());
+        }
     }
 
     #[test]

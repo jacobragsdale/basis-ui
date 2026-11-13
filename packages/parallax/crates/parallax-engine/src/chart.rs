@@ -552,10 +552,14 @@ impl Placement {
         }
     }
 
-    /// The axis position of a key of the x column, or `None` for a null or NaN.
+    /// The axis position of a key of the x column, or `None` for a null or NaN,
+    /// or a date or instant outside [`CHART_DAYS`], which the grid shows as out
+    /// of range and a chart leaves out as it does a null.
     fn position(&self, key: Key) -> Option<f64> {
         let position = match (self, key) {
             (_, Key::Null) => return None,
+            (_, Key::Date(d)) if !CHART_DAYS.contains(&d) => return None,
+            (_, Key::Ts(t)) if !CHART_DAYS.contains(&utc_day(t)) => return None,
             (Self::Number { scale }, Key::Int(_) | Key::Float(_) | Key::Decimal(_)) => {
                 crate::aggregate::key_to_f64(key, scale.unwrap_or(0))
             }
@@ -576,6 +580,16 @@ impl Placement {
         };
         position.is_finite().then_some(position)
     }
+}
+
+/// The days a chart places a date or instant on, those of a trading calendar,
+/// years 1232 to 4707: inside jiff's range with room to spare, so that a
+/// bucket, a tick or a session around any of them is a date jiff can hold.
+const CHART_DAYS: std::ops::RangeInclusive<i32> = crate::calendar::TRADING_DAYS;
+
+/// The UTC day an instant falls on, in days since the epoch.
+fn utc_day(micros: i64) -> i32 {
+    i32::try_from(micros.div_euclid(86_400_000_000)).unwrap_or(i32::MAX)
 }
 
 /// A numeric column's value at `slot` as a double, a decimal correctly rounded,
@@ -1972,7 +1986,8 @@ fn truncate_date(day: Date, interval: Interval) -> Date {
         Interval::Year => day.first_of_year(),
         Interval::Years(n) => {
             let n = i16::try_from(n.max(1)).unwrap_or(i16::MAX);
-            jiff::civil::date(day.year() - day.year().rem_euclid(n), 1, 1)
+            Date::new(day.year() - day.year().rem_euclid(n), 1, 1)
+                .unwrap_or_else(|_| day.first_of_year())
         }
     }
 }
