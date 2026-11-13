@@ -38,6 +38,8 @@ interface GridMenuProps {
   readonly scrollRef: RefObject<HTMLDivElement | null>;
   readonly onChange: (layout: Layout) => void;
   readonly measureMenu: ((props: MeasureMenuProps) => ReactNode) | undefined;
+  /** Why the grid shows no rows, or the engine refused the latest change, which a filter's box shows beside it. */
+  readonly error: string | null;
 }
 
 /** What the open menu shows. */
@@ -49,6 +51,7 @@ function MenuBody({
   handle,
   onChange,
   measureMenu,
+  error,
 }: Omit<GridMenuProps, "anchorRef" | "scrollRef"> & {
   readonly menu: OpenMenu;
   readonly layout: Layout;
@@ -71,6 +74,7 @@ function MenuBody({
       column={menu.name}
       fields={fields}
       source={source}
+      error={error}
       onChange={onChange}
       onFit={() => {
         controller.fitColumn(menu.column);

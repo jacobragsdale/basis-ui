@@ -3,6 +3,7 @@
  * selecting it unless it is in the selection already. */
 
 import type { CellValue } from "#frame/cell.ts";
+import { pathValue } from "#format.ts";
 import type { FrameData } from "#frame/frame.ts";
 import type { Layout, LayoutFilter, LayoutScalar } from "#layout/layout.ts";
 
@@ -14,19 +15,10 @@ import type { GridHost } from "./host.ts";
 import { contains, rangeOf, toTsv } from "./selection.ts";
 import type { CellRange } from "./selection.ts";
 
-/** The largest integer a JSON number holds exactly. */
-const safest = BigInt(Number.MAX_SAFE_INTEGER);
-
-/** A cell's value as a filter's operand: a number, text or a flag, and a decimal, a big integer, a date or a time as
- * the text a copy writes, which the engine reads exactly. */
-function operandOf(value: CellValue, text: string): LayoutScalar {
-  if (value.kind === "number" || value.kind === "text" || value.kind === "boolean") {
-    return value.value;
-  }
-  if (value.kind === "integer") {
-    return value.value <= safest && value.value >= -safest ? Number(value.value) : text;
-  }
-  return value.kind === "null" ? null : text;
+/** A cell's value as a filter's operand, in the engine's exact form, as a layout's group paths hold it: a decimal, a
+ * big integer, a date or a time as exact text, never as the cell shows it, with its separators or to the second. */
+function cellOperand(value: CellValue): LayoutScalar {
+  return pathValue(value);
 }
 
 /** The headers of a range's columns, as a copy with headers writes them. */
@@ -104,7 +96,7 @@ class GridActions {
 
   /** Keeps only the rows whose `cell.column` is the cell's value, or with `exclude` those whose is not. */
   public filterBy(cell: GridCell, exclude: boolean): void {
-    const value = operandOf(cell.value, cell.text);
+    const value = cellOperand(cell.value);
     const nulls: LayoutFilter["op"] = exclude ? "is_not_null" : "is_null";
     const equals: LayoutFilter["op"] = exclude ? "ne" : "eq";
     const filter: LayoutFilter = {
@@ -177,5 +169,5 @@ class GridActions {
   }
 }
 
-export { GridActions, operandOf };
+export { cellOperand, GridActions };
 export type { GridSelection };

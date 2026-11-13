@@ -31,6 +31,8 @@ interface HeaderMenuProps {
   readonly fields: readonly SourceField[];
   /** Where the column's values come from, for its filter list. */
   readonly source: ValueSource;
+  /** Why the engine refused the latest change, if it did, which the filter shows beside its box. */
+  readonly error: string | null;
   readonly onChange: (layout: Layout) => void;
   /** Fits the column to its values. */
   readonly onFit: () => void;
@@ -192,11 +194,15 @@ function HeaderMenu({
   column,
   fields,
   source,
+  error,
   onChange,
   onFit,
   onDone,
 }: HeaderMenuProps): ReactNode {
-  const kind = fields.find((field) => field.name === column)?.kind ?? "text";
+  const field = fields.find((each) => each.name === column);
+  const kind = field?.kind ?? "text";
+  // The format the column is shown in, which a typed condition is read by.
+  const format = layout.formats[column] ?? field?.format;
   const finish = (next: Layout): void => {
     onChange(next);
     onDone();
@@ -211,7 +217,9 @@ function HeaderMenu({
         layout={layout}
         column={column}
         kind={kind}
+        format={format}
         source={source}
+        error={error}
         onChange={onChange}
       />
       <Separator />

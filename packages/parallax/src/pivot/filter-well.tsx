@@ -85,7 +85,8 @@ function FilterChip({
 }): ReactNode {
   const { layout, fields, source, chips, onChange } = props;
   const { setOpen } = chips;
-  const kind = fields.find((field) => field.name === chip.column)?.kind ?? "text";
+  const field = fields.find((each) => each.name === chip.column);
+  const kind = field?.kind ?? "text";
   return (
     <li
       data-index={index}
@@ -108,7 +109,9 @@ function FilterChip({
             layout={layout}
             column={chip.column}
             kind={kind}
+            format={layout.formats[chip.column] ?? field?.format}
             source={source}
+            error={null}
             onChange={onChange}
           />
         </PopoverContent>

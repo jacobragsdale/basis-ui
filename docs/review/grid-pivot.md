@@ -47,6 +47,9 @@ I found no stale-frame or wrong-cell drawing bug, but two release blockers: one 
 - Scenario: right-click a zoned trade-time cell and choose Filter by. The engine refuses with "needs an offset" (`crates/parallax-protocol/src/layout.rs:1521-1528`). An unzoned time shown to the second matches only rows with zero sub-seconds, so the clicked row itself disappears. A decimal shown with thousands separators is refused.
 - Severity: fix before release.
 - Confidence: confirmed by reading the TypeScript and the Rust. The only test filters a text cell.
+- Done in Grid: a filter takes a cell's exact value, and a typed condition is read as its column shows it: "Filter by" and "Exclude" send `pathValue`'s exact form, a zoned time with its `Z` to the
+  microsecond, a decimal without separators, a big integer as text, as the engine reads a group path. Held by
+  `tests/unit/filter-values.test.ts`; the engine's side was read in `parallax-protocol/src/layout.rs`, not run.
 
 **5. Clipboard TSV does not neutralise formulas.** `src/grid/selection.ts:86-93`
 
@@ -79,6 +82,12 @@ I found no stale-frame or wrong-cell drawing bug, but two release blockers: one 
 - Also: the value box applies on blur, so switching a filtered column to "Contains", clicking the empty box and leaving clears the existing filter; Escape after typing applies rather than cancels.
 - Severity: fix before release for the percent case, polish for the rest.
 - Confidence: confirmed by reading.
+- Done in Grid: a filter takes a cell's exact value, and a typed condition is read as its column shows it: a typed condition is read by the column's display format (`typed-number.ts`): separators,
+  parentheses, `%`, `bp`, `K`, `M`, `B`, 32nds, and a bare number in a percent, basis-point or abbreviated column at the
+  column's scale. What the engine still refuses shows beside the box. The box applies on leaving only when its text
+  changed, and Escape puts it back and applies nothing. Held by `tests/unit/filter-values.test.ts` and
+  `tests/browser/grid-conditions.test.ts`. Not done: a time typed without an offset in a column of instants is not
+  read in the column's zone; the engine's refusal says so beside the box.
 
 **9. Row events expose view indexes, and `key` is null unless `selectable` is set.** `src/grid/events.ts:11-29,59-72`, `src/grid/actions.ts:43-49`
 
@@ -177,3 +186,11 @@ Everything else in `src/grid` and `src/pivot` was read in full. The scripts are 
 
 - With `selectable="single"`, the row chosen stays chosen through a sort, a filter or a reload; it changes only when
   the user moves the focus. What to do: nothing.
+
+- A column's typed condition is read as the column shows its values: separators, `%`, `bp`, `K`, `M`, `B`, 32nds and
+  parentheses, and a bare number in a percentage, basis-point or abbreviated column at the column's scale, so 5 in a
+  yield shown as 5.25% means 5%. A value the engine refuses shows its reason beside the box. Escape cancels a typed
+  value, and leaving an unchanged box no longer clears a filter. What to do: nothing.
+
+- "Filter by" and "Exclude" filter by the cell's exact value, so a time, a decimal shown with separators and a large
+  integer filter as they should. What to do: nothing.

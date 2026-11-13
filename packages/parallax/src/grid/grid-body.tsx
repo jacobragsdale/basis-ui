@@ -196,6 +196,7 @@ function GridBody(props: GridBodyProps): ReactNode {
         scrollRef={scroll}
         onChange={onChange}
         measureMenu={measureMenu}
+        error={error}
       />
       <Spoken snapshot={snapshot} />
       <Overlays tooltip={tooltip} error={error} />

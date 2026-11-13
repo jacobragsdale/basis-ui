@@ -156,7 +156,12 @@ dragging its header's edge, or fits it with a double click there; moves a column
 by dragging its header, and groups by it by dropping it on the group panel; and
 opens a column's menu from its header's funnel or with Alt+Down, for sorting,
 the column's filter of values or a condition, hiding, pinning, fitting,
-grouping, a title and a total. The arrow keys, Page Up and Down, Home and End
+grouping, a title and a total. A condition is read as the column shows its
+values: `1,000`, `(5)`, `5.25%`, `25 bp`, `1.5M` and a price in 32nds such as
+`99-16+`, and a bare number in the column's format, so 5 in a column shown as a
+percentage is 5%. A value the engine still cannot read, such as a time without
+an offset in a column of instants, shows its reason beside the box. "Filter by"
+and "Exclude" in a cell's menu send the cell's exact value, never its text. The arrow keys, Page Up and Down, Home and End
 move the focused cell, Ctrl to the edge and Shift extending the selection;
 Ctrl+A selects everything, Enter or Space opens or closes a group, Ctrl+F
 searches the grid, and Ctrl+C copies the selection as tab-separated text with

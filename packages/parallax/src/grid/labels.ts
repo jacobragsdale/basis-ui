@@ -1,9 +1,10 @@
 /* Words for a layout's names, as the grid's menus and chips say them, and the values a filter reads from what the
  * user types. The pivot's settings say the same names the same way. */
 
-import type { FilterOp, LayoutMeasure, LayoutScalar } from "#layout/layout.ts";
+import type { FilterOp, LayoutFormat, LayoutMeasure, LayoutScalar } from "#layout/layout.ts";
 
 import type { FieldKind } from "./fields.ts";
+import { typedNumber } from "./typed-number.ts";
 
 const labels: Readonly<Record<string, string>> = {
   count: "Count",
@@ -67,9 +68,11 @@ function operandOf(op: FilterOp): "one" | "many" | "none" {
   return op === "is_null" || op === "is_not_null" ? "none" : "one";
 }
 
-/** A typed number as a double's filter value, kept as text when it is not a number. */
-function floatValue(trimmed: string): LayoutScalar {
-  const number = Number(trimmed);
+/** A typed number as a double's filter value, read as the column shows numbers, kept as text when it is not a number,
+ * for the engine to refuse with its reason. */
+function floatValue(trimmed: string, format: LayoutFormat | undefined): LayoutScalar {
+  const read = typedNumber(trimmed, format);
+  const number = read === null ? Number.NaN : Number(read);
   return Number.isFinite(number) ? number : trimmed;
 }
 
@@ -83,16 +86,21 @@ function booleanValue(trimmed: string): LayoutScalar {
 }
 
 /**
- * A filter value from text the user typed, for a column of `kind`: numbers for doubles, booleans for booleans, and
- * text for everything else, which keeps decimals and large integers exact. Empty text is null.
+ * A filter value from text the user typed, for a column of `kind` shown with `format`: numbers as the column shows
+ * them, so 5 in a column shown as a percentage is 0.05 and `1,000` is a thousand, as doubles for doubles and as exact
+ * text for decimals and integers; booleans for booleans; and text for everything else. What is not a number stays
+ * text, for the engine to refuse with its reason. Empty text is null.
  */
-function filterValue(kind: FieldKind, text: string): LayoutScalar {
+function filterValue(kind: FieldKind, text: string, format?: LayoutFormat): LayoutScalar {
   const trimmed = text.trim();
   if (trimmed === "") {
     return null;
   }
   if (kind === "float") {
-    return floatValue(trimmed);
+    return floatValue(trimmed, format);
+  }
+  if (kind === "decimal" || kind === "integer") {
+    return typedNumber(trimmed, format) ?? trimmed;
   }
   if (kind === "boolean") {
     return booleanValue(trimmed);

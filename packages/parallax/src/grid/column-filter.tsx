@@ -2,16 +2,17 @@
  * their counts, or a condition. Text takes contains, does not contain, starts with, ends with, equals and blank;
  * numbers and dates take comparisons, between and blank. "Does not contain" keeps blanks, as in Excel, and says so. */
 
-import { Button, Input, NativeSelect, NativeSelectOption } from "@basis/ui";
+import { Button, NativeSelect, NativeSelectOption } from "@basis/ui";
 import { useState } from "react";
 import type { ReactNode } from "react";
 
-import type { Layout, LayoutFilter, LayoutScalar } from "#layout/layout.ts";
+import type { Layout, LayoutFilter, LayoutFormat } from "#layout/layout.ts";
 
 import type { FieldKind } from "./fields.ts";
 import { columnCondition, withColumnCondition } from "./filters.ts";
 import type { ColumnCondition } from "./filters.ts";
-import { filterValue } from "./labels.ts";
+import { RangeInputs, Refusal, ValueInput } from "./condition-inputs.tsx";
+import type { ConditionProps } from "./condition-inputs.tsx";
 import { ValuePicker } from "./value-picker.tsx";
 import type { ValueSource } from "./value-picker.tsx";
 
@@ -76,85 +77,6 @@ function modeOf(condition: ColumnCondition): Mode {
   return condition.kind === "between" ? "between" : condition.op;
 }
 
-/** A value as an input holds it. */
-function inputText(value: LayoutScalar | undefined): string {
-  return value === null || value === undefined ? "" : String(value);
-}
-
-/** What a condition's inputs edit: the condition, how it applies, and the kind of value it takes. */
-interface ConditionProps {
-  readonly condition: ColumnCondition;
-  readonly apply: (condition: ColumnCondition) => void;
-  readonly kind: FieldKind;
-}
-
-/** A range's two ends, which apply once both are values. */
-function RangeInputs({ condition, apply, kind }: ConditionProps): ReactNode {
-  const [range, setRange] = useState({
-    from: condition.kind === "between" ? inputText(condition.from) : "",
-    to: condition.kind === "between" ? inputText(condition.to) : "",
-  });
-  const between = (): void => {
-    const low = filterValue(kind, range.from);
-    const high = filterValue(kind, range.to);
-    if (low !== null && high !== null) {
-      apply({ from: low, kind: "between", to: high });
-    }
-  };
-  return (
-    <div className="flex gap-1.5">
-      <Input
-        aria-label="From"
-        placeholder="From"
-        value={range.from}
-        onBlur={between}
-        onChange={(event) => {
-          setRange({ ...range, from: event.currentTarget.value });
-        }}
-      />
-      <Input
-        aria-label="To"
-        placeholder="To"
-        value={range.to}
-        onBlur={between}
-        onChange={(event) => {
-          setRange({ ...range, to: event.currentTarget.value });
-        }}
-      />
-    </div>
-  );
-}
-
-/** A condition's one value, which applies on Enter or when the input loses focus; an empty one clears the filter. */
-function ValueInput({
-  condition,
-  apply,
-  kind,
-  op,
-}: ConditionProps & { readonly op: LayoutFilter["op"] }): ReactNode {
-  const [text, setText] = useState(condition.kind === "one" ? inputText(condition.value) : "");
-  const single = (): void => {
-    const value = filterValue(kind, text);
-    apply(value === null ? { kind: "none" } : { kind: "one", op, value });
-  };
-  return (
-    <Input
-      aria-label="Value"
-      placeholder="Value"
-      value={text}
-      onBlur={single}
-      onChange={(event) => {
-        setText(event.currentTarget.value);
-      }}
-      onKeyDown={(event) => {
-        if (event.key === "Enter") {
-          single();
-        }
-      }}
-    />
-  );
-}
-
 /** What a mode edits: the value list, a range, one value, or nothing. */
 function ModeEditor(
   props: ConditionProps & {
@@ -163,7 +85,7 @@ function ModeEditor(
     readonly source: ValueSource;
   },
 ): ReactNode {
-  const { mode, condition, apply, kind, column, source } = props;
+  const { mode, condition, apply, kind, format, column, source } = props;
   if (mode === "values") {
     return (
       <ValuePicker
@@ -178,10 +100,10 @@ function ModeEditor(
     );
   }
   if (mode === "between") {
-    return <RangeInputs condition={condition} apply={apply} kind={kind} />;
+    return <RangeInputs condition={condition} apply={apply} kind={kind} format={format} />;
   }
   return mode === "is_null" || mode === "is_not_null" ? null : (
-    <ValueInput condition={condition} apply={apply} kind={kind} op={mode} />
+    <ValueInput condition={condition} apply={apply} kind={kind} format={format} op={mode} />
   );
 }
 
@@ -212,16 +134,43 @@ function ModeSelect({
   );
 }
 
+/** Clears the column's filter. */
+function ClearFilter({ apply }: Pick<ConditionProps, "apply">): ReactNode {
+  return (
+    <Button
+      variant="link"
+      size="xs"
+      onClick={() => {
+        apply({ kind: "none" });
+      }}
+    >
+      Clear filter
+    </Button>
+  );
+}
+
 interface ColumnFilterProps {
   readonly layout: Layout;
   readonly column: string;
   readonly kind: FieldKind;
+  /** The format the column is shown in, which a typed condition is read by. */
+  readonly format: LayoutFormat | undefined;
   readonly source: ValueSource;
+  /** Why the engine refused the latest change, if it did, shown beside the box. */
+  readonly error: string | null;
   readonly onChange: (layout: Layout) => void;
 }
 
 /** A column's filter editor. */
-function ColumnFilter({ layout, column, kind, source, onChange }: ColumnFilterProps): ReactNode {
+function ColumnFilter({
+  layout,
+  column,
+  kind,
+  format,
+  source,
+  error,
+  onChange,
+}: ColumnFilterProps): ReactNode {
   const condition = columnCondition(layout, column);
   const key = JSON.stringify([column, condition]);
   // The mode chosen here, until the filter changes, which then shows its own.
@@ -249,23 +198,15 @@ function ColumnFilter({ layout, column, kind, source, onChange }: ColumnFilterPr
         condition={condition}
         apply={apply}
         kind={kind}
+        format={format}
         column={column}
         source={source}
       />
+      <Refusal error={error} />
       {mode === "not_contains" ? (
         <p className="text-xs text-muted-foreground">Blank cells are kept, as in Excel.</p>
       ) : null}
-      {condition.kind === "none" ? null : (
-        <Button
-          variant="link"
-          size="xs"
-          onClick={() => {
-            apply({ kind: "none" });
-          }}
-        >
-          Clear filter
-        </Button>
-      )}
+      {condition.kind === "none" ? null : <ClearFilter apply={apply} />}
     </div>
   );
 }
