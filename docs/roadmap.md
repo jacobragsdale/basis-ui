@@ -850,8 +850,9 @@ dlx @basis/create NAME`.
     stacked areas, bars on two axes, a log axis under a scatter's density.
 12. **7.12 The Rust.** No panic that data or a layout can reach, a panic that says what it was, a load that grows as
     a stream of any shape arrives, and memory that is bounded. Built on 2026-11-13, with integer overflow checked in
-    the browser's build. Not yet: one large record batch still costs its stream beside the table until basis writes
-    batches of 65,536 rows (jacobragsdale/basis#37).
+    the browser's build. A table sent as one large record batch still costs its stream beside the table while it loads;
+    basis's APIs no longer send one, since basis writes batches of at most 65,536 rows and its contract says so
+    (jacobragsdale/basis#37, closed the same day).
 13. **7.13 CI.** The template proven on Windows, and the wasm built as it ships. Needs 7.8. Built on 2026-11-13: a
     `windows-latest` job makes the app with `vp dlx @basis/create` from the Linux job's tarballs and proves it, the
     package job fails unless the module names `simd128`, every action is pinned by its commit, and each push to
