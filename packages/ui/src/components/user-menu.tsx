@@ -158,11 +158,12 @@ function PreferenceChoices({ preferences, change }: PreferenceChoicesProps): Rea
   );
 }
 
-/** Signing in or out, as the app's sign-in adapter offers it: nothing under `anonymousSignIn`. */
+/** Signing in or out, as the app's sign-in adapter offers it: nothing under `anonymousSignIn`, and no sign-out under
+ * `windowsSignIn`, which would sign the user in again at once. */
 function SessionItem(): ReactElement | null {
-  const { user, offersSignIn, signIn, signOut } = useSession();
+  const { user, offersSignIn, offersSignOut, signIn, signOut } = useSession();
   const telemetry = useTelemetry();
-  if (!offersSignIn) {
+  if (!offersSignIn || (user !== null && !offersSignOut)) {
     return null;
   }
   const act = user === null ? signIn : signOut;

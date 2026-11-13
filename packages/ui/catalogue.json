@@ -17506,8 +17506,8 @@
       "kind": "function",
       "module": "@basis/ui",
       "name": "setTokenSource",
-      "purpose": "Sets where `apiFetch` gets the user's token. The app shell calls it once, at startup.",
-      "signature": "setTokenSource(source: TokenSource): void"
+      "purpose": "Sets where `apiFetch` gets the user's token, and how it renews one an API answered `invalid-token` to, sending the request once more. The app shell calls it once, at startup.",
+      "signature": "setTokenSource(source: TokenSource, renew?: TokenRenewal): void"
     },
     {
       "kind": "function",
@@ -17613,6 +17613,36 @@
       "name": "sessionChangeEvent",
       "purpose": "The event raised on `window` when the signed-in user becomes another user or nobody, its detail the user's id, or `null` for nobody, beside `basis:themechange`. Whatever holds one user's data outside the query cache, such as `@basis/parallax`'s datasets, drops it. It is not raised for the first user, who is signed in before anything has loaded.",
       "signature": "const sessionChangeEvent = \"basis:sessionchange\""
+    },
+    {
+      "kind": "class",
+      "module": "@basis/ui",
+      "name": "SessionEndedError",
+      "purpose": "The sign-in system refused to sign the user in again, so their session has ended. A sign-in adapter's `token()` or `currentUser()` throws it, as `windowsSignIn`'s does when its endpoint refuses; the shell answers it as it answers an API's `invalid-token`: it signs the user out and offers to sign in again.",
+      "signature": "class SessionEndedError extends Error"
+    },
+    {
+      "kind": "constant",
+      "module": "@basis/ui",
+      "name": "defaultClaims",
+      "purpose": "The claims' names a token holds unless `claims` says otherwise: the one place a port changes them.",
+      "signature": "const defaultClaims = { email: \"email\", id: \"sub\", name: \"name\", roles: \"roles\", } as const satisfies Required<WindowsCla…"
+    },
+    {
+      "kind": "function",
+      "module": "@basis/ui",
+      "name": "windowsSignIn",
+      "purpose": "The sign-in adapter for Windows authentication: the browser signs the user in to `tokenUrl` with their Windows account (the request goes with `credentials: \"include\"`, so the browser answers the endpoint's Negotiate or NTLM challenge), and the JWT it answers with is kept in local storage and carried by every API request. Its payload is read, never verified, for the user's id, name, email and roles, and its `exp`. `token()` answers the stored token until `renewBefore` seconds before it expires, then asks the endpoint again, once for however many requests wait. When an API answers `invalid-token`, the token is dropped and the endpoint asked again without a word to the user, and the request is sent once more. Only when the endpoint itself refuses does the shell say the session has ended. The user menu offers no sign-out, since the adapter would sign the user in again at once.",
+      "signature": "windowsSignIn(options: WindowsSignInOptions): SignIn",
+      "use": "For an app's production entry, with the firm's endpoint; `fakeSignIn()` in `vp dev` and a fixture build.",
+      "with": [
+        "fakeSignIn",
+        "anonymousSignIn",
+        "BasisApp",
+        "useUser",
+        "SessionEndedError"
+      ],
+      "example": "import { windowsSignIn } from \"@basis/ui\";\n\nconst signIn = windowsSignIn({ tokenUrl: \"https://sign-in.example.com/token\" });\n"
     },
     {
       "kind": "function",
@@ -25692,6 +25722,13 @@
       "purpose": "A user as `fakeSignIn` takes one: its roles may be left out, for none."
     },
     {
+      "definition": "(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>",
+      "exported": false,
+      "module": "@basis/ui",
+      "name": "Fetch",
+      "purpose": "`fetch`'s type, written out."
+    },
+    {
       "definition": "{ readonly message?: string | undefined } | string | undefined",
       "extends": [
         "string",
@@ -27024,6 +27061,12 @@
           "name": "offersSignIn",
           "optional": false,
           "type": "boolean"
+        },
+        {
+          "description": "Whether the app offers a sign-out: `false` under `windowsSignIn`, which would sign the user in again at once.",
+          "name": "offersSignOut",
+          "optional": false,
+          "type": "boolean"
         }
       ],
       "exported": true,
@@ -27180,6 +27223,18 @@
           "name": "offersSignIn",
           "optional": true,
           "type": "boolean"
+        },
+        {
+          "description": "Whether the user menu offers a sign-out: yes unless set. `windowsSignIn` sets it to `false`, since it would sign the user in again at once.",
+          "name": "offersSignOut",
+          "optional": true,
+          "type": "boolean"
+        },
+        {
+          "description": "Called when an API answered `invalid-token` to a request that carried `refused`: the adapter drops it and gets a new token, resolving `true` when the request is worth sending once more with `token()`'s next answer. Without it, or when it resolves `false`, the shell answers the `invalid-token` by signing the user out. It throws `SessionEndedError` when the sign-in system refuses.",
+          "name": "renew",
+          "optional": true,
+          "type": "(refused: string) => Promise<boolean>"
         }
       ],
       "exported": true,
@@ -27496,11 +27551,25 @@
       "purpose": "The sub-second digits an instant shows."
     },
     {
+      "definition": "(refused: string) => Promise<boolean>",
+      "exported": true,
+      "module": "@basis/ui",
+      "name": "TokenRenewal",
+      "purpose": "Drops a token an API answered `invalid-token` to and gets a new one, resolving `true` when the request is worth sending once more. The sign-in adapter's `renew` provides it."
+    },
+    {
       "definition": "() => Promise<string | null>",
       "exported": true,
       "module": "@basis/ui",
       "name": "TokenSource",
       "purpose": "Supplies the signed-in user's JWT, or `null` for an anonymous user. The sign-in adapter provides it."
+    },
+    {
+      "definition": "Pick<Storage, \"getItem\" | \"removeItem\" | \"setItem\">",
+      "exported": false,
+      "module": "@basis/ui",
+      "name": "TokenStorage",
+      "purpose": ""
     },
     {
       "fields": [
@@ -27575,6 +27644,94 @@
       "name": "VariantProps",
       "parameters": "<Component extends (...args: never) => unknown>",
       "purpose": "The variant props a `cva` function takes, such as `{ variant?: \"default\" | \"outline\"; size?: \"sm\" }`."
+    },
+    {
+      "fields": [
+        {
+          "description": "The user's id, unique and stable: `sub` by default.",
+          "name": "id",
+          "optional": true,
+          "type": "string"
+        },
+        {
+          "description": "The name the user menu shows: `name` by default, and the id when the token holds none.",
+          "name": "name",
+          "optional": true,
+          "type": "string"
+        },
+        {
+          "description": "The user's email: `email` by default.",
+          "name": "email",
+          "optional": true,
+          "type": "string"
+        },
+        {
+          "description": "The user's roles, a list or one string: `roles` by default.",
+          "name": "roles",
+          "optional": true,
+          "type": "string"
+        }
+      ],
+      "exported": true,
+      "module": "@basis/ui",
+      "name": "WindowsClaims",
+      "purpose": "The claims the user is read from, by their names in the token."
+    },
+    {
+      "fields": [
+        {
+          "description": "The endpoint that signs the browser in with the user's Windows account and answers with the token. It may be on another origin of the firm's, which then allows this app's origin with credentials.",
+          "name": "tokenUrl",
+          "optional": false,
+          "type": "string"
+        },
+        {
+          "description": "The method the endpoint is asked with: `GET` by default.",
+          "name": "method",
+          "optional": true,
+          "type": "\"GET\" | \"POST\""
+        },
+        {
+          "description": "The field of a JSON answer that holds the token, tried before `token` and `access_token`. An answer of text is the token itself.",
+          "name": "tokenField",
+          "optional": true,
+          "type": "string"
+        },
+        {
+          "description": "The claims' names in the token, each defaulting to `defaultClaims`'.",
+          "name": "claims",
+          "optional": true,
+          "type": "WindowsClaims"
+        },
+        {
+          "description": "The local storage key the token is kept under, so that a reload or another tab of the app signs in at once: `basis-ui-token` by default. Apps on one origin that share it share the token.",
+          "name": "storageKey",
+          "optional": true,
+          "type": "string"
+        },
+        {
+          "description": "How many seconds before the token's `exp` it is renewed: 300 by default. A token with no `exp` is kept until an API refuses it.",
+          "name": "renewBefore",
+          "optional": true,
+          "type": "number"
+        },
+        {
+          "description": "The `fetch` the endpoint is asked with: the browser's by default, a fake in a test.",
+          "name": "fetch",
+          "optional": true,
+          "type": "Fetch"
+        },
+        {
+          "description": "Where the token is kept: the browser's local storage by default, a fake in a test.",
+          "name": "storage",
+          "optional": true,
+          "type": "TokenStorage"
+        }
+      ],
+      "exported": true,
+      "module": "@basis/ui",
+      "name": "WindowsSignInOptions",
+      "purpose": ""
     },
     {
       "fields": [

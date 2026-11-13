@@ -1,6 +1,6 @@
 /* The sign-in adapter: how the app shell learns who the user is, gets the JWT every request carries, and signs the user
- * out. The firm's sign-in system gets its own adapter (roadmap step 1.9); `fakeSignIn` stands in for it in tests and in
- * development, signing its tokens with the development key basis publishes, which every basis API accepts on a
+ * out. The firm's system is Windows authentication, `windowsSignIn` (windows-sign-in.ts); `fakeSignIn` stands in for it
+ * in tests, in development and in a fixture build, signing its tokens with the development key basis publishes, which every basis API accepts on a
  * developer's declared desktop and refuses anywhere else (basis's docs/contract.md, Identity). */
 
 /** The signed-in user. `id` is the token's subject, its `sub` claim. `roles` are the token's roles, empty for an adapter
@@ -29,14 +29,26 @@ interface SignIn {
   /** Whether the app offers a sign-in at all: yes unless set. An app with no sign-in system, such as a ctzd dashboard,
    * uses `anonymousSignIn`, which sets it to `false`, and the shell then never asks the user to sign in. */
   readonly offersSignIn?: boolean;
+  /** Whether the user menu offers a sign-out: yes unless set. `windowsSignIn` sets it to `false`, since it would sign
+   * the user in again at once. */
+  readonly offersSignOut?: boolean;
+  /** Called when an API answered `invalid-token` to a request that carried `refused`: the adapter drops it and gets a
+   * new token, resolving `true` when the request is worth sending once more with `token()`'s next answer. Without it,
+   * or when it resolves `false`, the shell answers the `invalid-token` by signing the user out. It throws
+   * `SessionEndedError` when the sign-in system refuses. */
+  readonly renew?: (refused: string) => Promise<boolean>;
 }
+
+/** The private part of the development key, which a production build that still holds `fakeSignIn` carries: what
+ * `vp run verify`'s build stage looks for. A plain string, so that a build without the fake drops it. */
+const developmentKeyMark = "fKf0qhP6MC3WvrtHFG6hPj1_PuqLmI-xx_mfRylqjmQ";
 
 /** basis's development key, as basis publishes it (`basis.api.tokens.DEVELOPMENT_KEY`): an ES256 key whose private
  * part anyone may read, so a token it signs proves nothing, and every API refuses it off a declared desktop. */
 const developmentKey: JsonWebKey = {
   crv: "P-256",
   // oxlint-disable-next-line eslint/id-length -- a JWK names an EC key's private part `d` (RFC 7518, section 6.2.2.1).
-  d: "fKf0qhP6MC3WvrtHFG6hPj1_PuqLmI-xx_mfRylqjmQ",
+  d: developmentKeyMark,
   kty: "EC",
   x: "Xgv3fh0kPSZcEDr60PmlPmZ8V5ytxOae1vtlhXqnhMI",
   y: "Hgxef-hOuDO-ouolTTf9PuIj_FWSZy0BWDmChTcI9EM",
@@ -165,5 +177,5 @@ function anonymousSignIn(): SignIn {
   };
 }
 
-export { anonymousSignIn, fakeSignIn, fakeUser, noSignInMessage };
+export { anonymousSignIn, developmentKeyMark, fakeSignIn, fakeUser, noSignInMessage };
 export type { FakeSignInOptions, FakeUser, SignIn, User };

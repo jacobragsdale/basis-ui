@@ -16,6 +16,8 @@ interface Session {
   readonly signOut: () => Promise<void>;
   /** Whether the app offers a sign-in: `false` under `anonymousSignIn`, so nothing should show a "Sign in" button. */
   readonly offersSignIn: boolean;
+  /** Whether the app offers a sign-out: `false` under `windowsSignIn`, which would sign the user in again at once. */
+  readonly offersSignOut: boolean;
 }
 
 const SessionContext = createContext<Session | null>(null);

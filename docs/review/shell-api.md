@@ -39,6 +39,9 @@ comes with the Windows adapter.
   after a planned restart, so the user before's rows are gone and a dataset that failed 401 loads again. Held by
   `packages/parallax/tests/browser/session.test.tsx`.
 
+Done in Sign-in: windowsSignIn in production, renewing a refused token, and verify refuses the fake there, the adapter's side: a dataset's `invalid-token` is renewed through the adapter and sent once more
+in the same layer as a generated hook's (`sendSigned` in `fetch.ts`, which both `apiFetch` and `arrowResponse` use).
+
 **3. `packages/ui/src/shell/session-state.ts:33` — fix before release**
 
 - **Defect:** `setTokenSource(signIn.token)` detaches `token` from its adapter, while `currentUser`, `signIn` and `signOut` are called as methods.
@@ -67,6 +70,16 @@ which is allowed. Not run on Windows.
 - **Defect:** every scaffolded app ships `fakeSignIn()` in its production entry, and nothing in build, verify, doctor or lint flags it.
 - **Scenario:** An app is deployed before 1.9. The UI shows "Dev User" and signs every request with the published development key. Safety rests entirely on each API refusing that key; one environment configured to accept it gives anyone a forgeable identity.
 - **Confidence:** confirmed by reading, plus a grep of built output: the private key is in `example/dist`, `showcase/dist` and `parallax-demo/dist`. No guard exists in `src/preset`.
+
+Done in Sign-in: windowsSignIn in production, renewing a refused token, and verify refuses the fake there: the template's entry takes its adapter from a new `src/sign-in.ts`, which names the token
+endpoint once and picks `fakeSignIn()` only when `import.meta.env.DEV` or `import.meta.env.MODE === "fixtures"`, and
+`windowsSignIn` otherwise, so the bundler drops the fake from a production build; the example and the showcase do the
+same. `vp run verify`'s build stage reads the chunks the build writes and fails, `fake-sign-in`, on any that holds the
+development key's private part, with the fix. Proven on the example both ways (the pattern passes and holds neither
+the key nor `basis-development`; the fake forced into production fails), and a fixture build still signs in with the
+fake. A first try kept the key: `developmentKey.d`, read for the check, was a property read the bundler kept, so the
+mark is a plain string. Not done: `packages/parallax-demo`'s entry still signs in with the fake in every build; it has
+no verify, and is the parallax lane's.
 
 **6. `packages/ui/src/api/fetch.ts:90-103`, `shell/describe-error.ts:52` — fix before release**
 
@@ -250,3 +263,14 @@ Throwaway scripts are in `(a scratch folder)`.
 - `arrowResponse` inside `BasisApp` is retried, reported and answered as a generated hook's request is, where a dataset's
   failure reached only its grid. What to do: nothing.
 - A sign-in adapter written as a class works: the shell calls `signIn.token()` through the adapter. What to do: nothing.
+- `windowsSignIn({ tokenUrl })`, the adapter for the firm's Windows authentication: the token from the endpoint, kept in
+  local storage, renewed before it expires and after an API's `invalid-token`, with the endpoint, its answer and the
+  claims' names as options (`defaultClaims`). `SessionEndedError` is what an adapter throws when the sign-in system
+  refuses; the shell answers it as an ended session, whose toast's action now says "Sign in again". An adapter's
+  `offersSignOut: false` hides the user menu's sign-out, and `renew(refused)` lets the shell send a refused request
+  once more. `setTokenSource` takes the renewal as its second argument. What to do: an app's production entry uses
+  `windowsSignIn`, as the template's `src/sign-in.ts` shows; README "Sign-in" lists what to set when porting.
+- An app's adapter is chosen in `src/sign-in.ts`: `fakeSignIn()` in `vp dev`, tests and a fixture build, `windowsSignIn`
+  otherwise, and `vp run verify`'s build stage fails a production build that would still sign users in with
+  `fakeSignIn`. What to do: an app whose `src/main.tsx` passes `fakeSignIn()` adds the template's `src/sign-in.ts`,
+  sets its `tokenUrl`, and passes its `signIn`; `vp run verify` names the app until it does.

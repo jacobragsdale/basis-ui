@@ -154,10 +154,11 @@ export { router };
 ```tsx
 // src/main.tsx
 import "./styles.css";
-import { BasisApp, fakeSignIn } from "@basis/ui";
+import { BasisApp } from "@basis/ui";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { router } from "./router.ts";
+import { signIn } from "./sign-in.ts";
 
 const root = document.querySelector("#root");
 if (root === null) {
@@ -165,20 +166,20 @@ if (root === null) {
 }
 createRoot(root).render(
   <StrictMode>
-    <BasisApp router={router} signIn={fakeSignIn()} />
+    <BasisApp router={router} signIn={signIn} />
   </StrictMode>,
 );
 ```
 
 `BasisApp` takes:
 
-| Prop                | What it is                                                                                                                                     |
-| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| `router`            | The app's TanStack Router. Its routes render once the user is known.                                                                           |
-| `signIn`            | The sign-in adapter: the firm's, when it is built, `anonymousSignIn()` for an app with no sign-in, or `fakeSignIn()` in tests and development. |
-| `telemetry`         | Where errors, events and timings go; `consoleTelemetry` by default.                                                                            |
-| `queryClient`       | The TanStack Query client, for a test that reads its cache; one from `createQueryClient()` by default.                                         |
-| `preferencesDomain` | The parent domain the firm's apps share, such as `apps.example.com`. None by default, so the user's choice is this app's alone.                |
+| Prop                | What it is                                                                                                                                                              |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `router`            | The app's TanStack Router. Its routes render once the user is known.                                                                                                    |
+| `signIn`            | The sign-in adapter: `windowsSignIn()` in production, `anonymousSignIn()` for an app with no sign-in, or `fakeSignIn()` in tests and development ([Sign-in](#sign-in)). |
+| `telemetry`         | Where errors, events and timings go; `consoleTelemetry` by default.                                                                                                     |
+| `queryClient`       | The TanStack Query client, for a test that reads its cache; one from `createQueryClient()` by default.                                                                  |
+| `preferencesDomain` | The parent domain the firm's apps share, such as `apps.example.com`. None by default, so the user's choice is this app's alone.                                         |
 
 Inside it, in order: the telemetry, the query client, the toasts (`Toaster`), an error boundary round the whole app,
 the signed-in session, and the router. It keeps the page in the user's mode, density, motion and theme as they change
@@ -220,14 +221,97 @@ them (`followPreferences`), and gives `apiFetch` the adapter's token, so every r
   console and goes no further, so it never stops a toast or a sign-out. An app reports its own: `useTelemetry().event("position.booked",
   { book })`. The firm's collector will be a `Telemetry` of its own; `consoleTelemetry` writes to the console.
 
-A sign-in adapter is four functions, `{ currentUser, token, signIn, signOut }`: `currentUser()` resolves the signed-in
-`User` (`{ id, name, email?, roles }`) or `null`, and `BasisApp` shows nothing of the app until it does; `token()` resolves the
-JWT for the next request, or `null`; `signIn()` signs in a user who is anonymous or whose session ended, and may leave
-the page for the sign-in system's; `signOut()` ends the session. `fakeSignIn({ user, issuer, audience, claims })`
-signs in `user` at once (a placeholder user by default, `null` for an anonymous one, whom `signIn()` signs in as the
-placeholder user) and signs each token with the development key basis publishes, so a basis API on a developer's
-desktop, such as `basis dev`'s, accepts it when `issuer` and `audience` match its `BASIS_IDENTITY__ISSUER` and
-`BASIS_IDENTITY__AUDIENCE` (`basis-development` by default). Every other API refuses it.
+## Sign-in
+
+The firm's apps sign in with Windows authentication: the browser signs the user in to a token endpoint with their
+Windows account, the endpoint answers with a JWT that holds the user's name and roles, the app keeps the token in
+the browser's local storage, and every API request carries it as `Authorization: Bearer`, so the firm's backends
+share one sign-in. `windowsSignIn` is that adapter. The template's `src/sign-in.ts` picks it in production, and
+`fakeSignIn()` in `vp dev` and in a fixture build, which have no endpoint to sign in at:
+
+```ts
+// src/sign-in.ts
+import { fakeSignIn, windowsSignIn } from "@basis/ui";
+import type { SignIn } from "@basis/ui";
+
+/** The firm's token endpoint, which signs the browser in with the user's Windows account. */
+const tokenUrl = "https://sign-in.example.com/token";
+
+const signIn: SignIn =
+  import.meta.env.DEV || import.meta.env.MODE === "fixtures"
+    ? fakeSignIn()
+    : windowsSignIn({ tokenUrl });
+
+export { signIn };
+```
+
+The bundler drops `fakeSignIn` from a production build, and `vp run verify`'s build stage fails, with an `ERROR` line
+that ends in the fix, on an app whose production build would still sign users in with it: its development key is
+public, so a token it signs proves nothing.
+
+| Option             | What it is                                                                                                            |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------- |
+| `tokenUrl`         | The endpoint. The request goes with `credentials: "include"`, so the browser answers its Negotiate or NTLM challenge. |
+| `method`           | `GET` by default, or `POST`.                                                                                          |
+| `tokenField`       | The field of a JSON answer that holds the token, tried before `token` and `access_token`.                             |
+| `claims`           | The claims' names for the user's `id`, `name`, `email` and `roles`: `sub`, `name`, `email` and `roles` by default.    |
+| `storageKey`       | The local storage key the token is kept under, `basis-ui-token` by default.                                           |
+| `renewBefore`      | How many seconds before the token's `exp` it is renewed, 300 by default.                                              |
+| `fetch`, `storage` | The `fetch` the endpoint is asked with and the storage the token is kept in, for a test; the browser's by default.    |
+
+What the endpoint must answer: a 200 whose body is the token as text, or JSON holding it (`{ "token": "..." }`,
+`{ "access_token": "..." }`, or under `tokenField`); a 401 or a 403 when it will not sign the user in. A token is a
+JWT whose payload names the user by the `id` claim; its signature is never checked here, since the API checks it.
+The endpoint may be on another origin of the firm's, which then allows the app's origin with credentials.
+
+How it behaves:
+
+- A reload, or another tab of the app, signs in at once from the stored token. `token()` answers it until
+  `renewBefore` seconds before it expires, then asks the endpoint again, once for however many requests wait; a token
+  with no `exp` is kept until an API refuses it.
+- An API that answers `invalid-token` means the stored token is no longer good: the adapter drops it and signs in
+  again without a word to the user, and the request is sent once more. Only when the endpoint itself refuses does the
+  shell say the session has ended, "Your session has expired", with a "Sign in again" action.
+- The user menu offers no sign-out, since the adapter would sign the user in again at once (`offersSignOut: false`).
+- The token in local storage is readable by any script on the page, which is why the lint refuses inline HTML
+  (`react/no-danger`) and an app loads no third-party script.
+
+A role decides what a page shows, `useUser()?.roles.includes("trader")`; the API stays the judge of what the user may
+do. A test of a page that reads roles signs in a user who has them:
+
+```ts
+renderApp(routeTree, "/limits", {
+  signIn: fakeSignIn({ user: { id: "a.head", name: "A Head", roles: ["desk-head"] } }),
+});
+```
+
+### Porting to the firm's sign-in
+
+In the order a port meets them, each set in the app's `src/sign-in.ts`, or once for every app in `defaultClaims`:
+
+1. `tokenUrl`, the firm's endpoint, and `method` if it takes a `POST`.
+2. The answer's form: text needs nothing; JSON needs `tokenField` unless the token is under `token` or `access_token`.
+3. The claims' names: `claims: { id, name, email, roles }` for any the firm's tokens name otherwise, such as
+   `{ id: "upn", roles: "groups" }`. A roles claim may be a list or one string.
+4. `renewBefore`, if the firm's tokens live less than ten minutes.
+5. Each API's `BASIS_IDENTITY__ISSUER`, `BASIS_IDENTITY__AUDIENCE` and keys, which are the API's to set, so that it
+   accepts the firm's tokens.
+
+### Other adapters
+
+A sign-in adapter is an object, `{ currentUser, token, signIn, signOut }`, with `offersSignIn`, `offersSignOut` and
+`renew` optional: `currentUser()` resolves the signed-in `User` (`{ id, name, email?, roles }`) or `null`, and
+`BasisApp` shows nothing of the app until it does; `token()` resolves the JWT for the next request, or `null`;
+`signIn()` signs in a user who is anonymous or whose session ended, and may leave the page for the sign-in system's;
+`signOut()` ends the session; `renew(refused)` drops a token an API answered `invalid-token` to and resolves `true` to
+have the request sent once more. An adapter that throws `SessionEndedError` has the shell answer it as an ended
+session. The shell calls each through the adapter, so one written as a class keeps its `this`.
+
+`fakeSignIn({ user, issuer, audience, claims })` signs in `user` at once (a placeholder user by default, `null` for an
+anonymous one, whom `signIn()` signs in as the placeholder user) and signs each token, its `roles` among the claims,
+with the development key basis publishes, so a basis API on a developer's desktop, such as `basis dev`'s, accepts it
+when `issuer` and `audience` match its `BASIS_IDENTITY__ISSUER` and `BASIS_IDENTITY__AUDIENCE` (`basis-development`
+by default). Every other API refuses it.
 
 An app with no sign-in system, such as a ctzd dashboard, passes `anonymousSignIn()`: every user is anonymous, requests
 carry no token, and the adapter's `offersSignIn: false` tells the shell never to ask anyone to sign in. If an API answers

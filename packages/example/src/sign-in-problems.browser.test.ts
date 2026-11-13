@@ -111,7 +111,7 @@ describe("an invalid-token 401", () => {
     ]);
   });
 
-  test("the toast's Sign in signs the user in again, and the page asks with their new token", async () => {
+  test("the toast's Sign in again signs the user in again, and the page asks with their new token", async () => {
     const schemes: (string | null)[] = [];
     worker.use(
       http.get("*/conventions", ({ request }) => {
@@ -125,7 +125,7 @@ describe("an invalid-token 401", () => {
     const { signIn, calls } = countedSignIn();
     const { screen } = await renderApp("/", signIn);
     await expect.element(notification(screen, "Your session has expired")).toBeVisible();
-    await notification(screen, "Sign in").click();
+    await notification(screen, "Sign in again").click();
     await expect.element(screen.getByText("Dev User")).toBeVisible();
     await expect.element(notification(screen, "Your session has expired")).not.toBeInTheDocument();
     expect(schemes).toStrictEqual(["Bearer", null, "Bearer"]);

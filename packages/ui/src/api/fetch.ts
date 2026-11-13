@@ -18,15 +18,26 @@ const arrowStream = "application/vnd.apache.arrow.stream";
 /** The status of a request that fails validation, whose problem details name each field at fault. */
 const unprocessableContent = 422;
 
+/** The status of a request the API would not accept the token of, or that needs one. */
+const unauthorized = 401;
+
 /** Supplies the signed-in user's JWT, or `null` for an anonymous user. The sign-in adapter provides it. */
 type TokenSource = () => Promise<string | null>;
 
-/** Where `apiFetch` gets the user's token. Until the app shell sets one, every request is anonymous. */
-let tokenSource: TokenSource | null = null;
+/** Drops a token an API answered `invalid-token` to and gets a new one, resolving `true` when the request is worth
+ * sending once more. The sign-in adapter's `renew` provides it. */
+type TokenRenewal = (refused: string) => Promise<boolean>;
 
-/** Sets where `apiFetch` gets the user's token. The app shell calls it once, at startup. */
-function setTokenSource(source: TokenSource): void {
+/** Where `apiFetch` gets the user's token, and how it renews one an API refused. Until the app shell sets them, every
+ * request is anonymous. */
+let tokenSource: TokenSource | null = null;
+let tokenRenewal: TokenRenewal | null = null;
+
+/** Sets where `apiFetch` gets the user's token, and how it renews one an API answered `invalid-token` to, sending the
+ * request once more. The app shell calls it once, at startup. */
+function setTokenSource(source: TokenSource, renew?: TokenRenewal): void {
   tokenSource = source;
+  tokenRenewal = renew ?? null;
 }
 
 /** Runs a request outside TanStack Query, named by its URL: once, until the app shell sets its own, which retries,
@@ -101,14 +112,42 @@ async function send(url: string, init: RequestInit): Promise<Response> {
   }
 }
 
-/** The request's headers, with the signed-in user's token when there is one. */
-async function headersFor(request: RequestInit): Promise<Headers> {
+/** The request's headers, with `token` when there is one. */
+function headersWith(request: RequestInit, token: string | null): Headers {
   const headers = new Headers(request.headers);
-  const token = tokenSource === null ? null : await tokenSource();
   if (token !== null) {
     headers.set("Authorization", `Bearer ${token}`);
   }
   return headers;
+}
+
+/** Whether `response` is an API's `invalid-token`: a 401 whose problem details say so. Read from a copy, so the body
+ * stays for the failure it becomes. */
+async function refusesToken(response: Response): Promise<boolean> {
+  if (response.status !== unauthorized) {
+    return false;
+  }
+  try {
+    const body: unknown = await response.clone().json();
+    return problemSchema.safeParse(body).data?.type === "invalid-token";
+  } catch {
+    return false;
+  }
+}
+
+/** Sends the request with the user's token, and, when the API answers `invalid-token` and the adapter renews the
+ * token, once more with the new one. */
+async function sendSigned(url: string, request: RequestInit): Promise<Response> {
+  const token = tokenSource === null ? null : await tokenSource();
+  const response = await send(url, { ...request, headers: headersWith(request, token) });
+  if (token === null || tokenRenewal === null || !(await refusesToken(response))) {
+    return response;
+  }
+  if (!(await tokenRenewal(token))) {
+    return response;
+  }
+  const renewed = tokenSource === null ? null : await tokenSource();
+  return send(url, { ...request, headers: headersWith(request, renewed) });
 }
 
 /** The statuses that never carry a body, whatever the headers say. */
@@ -183,9 +222,8 @@ function failure(response: Response, body: unknown): ApiError {
 /** The mutator orval's generated client calls for every operation. */
 async function apiFetch<TResponse>(url: string, init: ApiRequestInit = {}): Promise<TResponse> {
   const { schema, ...request } = init;
-  const headers = await headersFor(request);
-  const response = await send(url, { ...request, headers });
-  const body = await readBody(response, headers.get("accept") === arrowStream);
+  const response = await sendSigned(url, request);
+  const body = await readBody(response, new Headers(request.headers).get("accept") === arrowStream);
   if (!response.ok) {
     throw failure(response, body);
   }
@@ -203,9 +241,9 @@ async function apiFetch<TResponse>(url: string, init: ApiRequestInit = {}): Prom
  * a failure that may pass is asked again, and the last is reported to telemetry and its sign-in problem answered. */
 async function arrowResponse(url: string, init: RequestInit = {}): Promise<Response> {
   return requestRunner(async () => {
-    const headers = await headersFor(init);
+    const headers = new Headers(init.headers);
     headers.set("Accept", arrowStream);
-    const response = await send(url, { ...init, headers });
+    const response = await sendSigned(url, { ...init, headers });
     if (!response.ok) {
       throw failure(response, await readBody(response, false));
     }
@@ -223,4 +261,12 @@ export {
   setRequestRunner,
   setTokenSource,
 };
-export type { AnyProblem, ApiRequestInit, ApiResponse, ErrorType, RequestRunner, TokenSource };
+export type {
+  AnyProblem,
+  ApiRequestInit,
+  ApiResponse,
+  ErrorType,
+  RequestRunner,
+  TokenRenewal,
+  TokenSource,
+};

@@ -659,6 +659,7 @@ export {
   type ApiRequestInit,
   type ApiResponse,
   type ErrorType,
+  type TokenRenewal,
   type TokenSource,
 } from "./api/fetch.ts";
 export { errorsOnFields, submitErrors, type SubmitErrors } from "./api/form-errors.ts";
@@ -696,6 +697,13 @@ export { describeError, type ErrorDescription, type FieldProblem } from "./shell
 export { createQueryClient } from "./shell/query-client.ts";
 export { useSession, useUser, type Session } from "./shell/session.ts";
 export { sessionChangeEvent, type SessionChangeDetail } from "./shell/session-state.ts";
+export { SessionEndedError } from "./shell/session-ended.ts";
+export {
+  defaultClaims,
+  windowsSignIn,
+  type WindowsClaims,
+  type WindowsSignInOptions,
+} from "./shell/windows-sign-in.ts";
 export { toastError } from "./shell/toast-error.tsx";
 export {
   anonymousSignIn,

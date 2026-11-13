@@ -16,6 +16,7 @@ import { isApiError, setRequestRunner } from "#api/fetch.ts";
 import { toast } from "#components/toast-manager.ts";
 
 import { requestRunner } from "./outside-queries.ts";
+import { SessionEndedError } from "./session-ended.ts";
 import type { Session } from "./session.ts";
 import { noSignInMessage } from "./sign-in.ts";
 import type { Telemetry } from "./telemetry.ts";
@@ -25,9 +26,13 @@ type SignInProblem = "invalid-token" | "sign-in-required";
 
 const unauthorized = 401;
 
-/** The sign-in problem `error` holds: a 401 whose problem type is `invalid-token` or `sign-in-required`, or
- * `undefined` for any other error. */
+/** The sign-in problem `error` holds: a 401 whose problem type is `invalid-token` or `sign-in-required`, a
+ * `SessionEndedError` an adapter threw, which ends the session as `invalid-token` does, or `undefined` for any other
+ * error. */
 function signInProblem(error: unknown): SignInProblem | undefined {
+  if (error instanceof SessionEndedError) {
+    return "invalid-token";
+  }
   if (!isApiError(error) || error.status !== unauthorized) {
     return undefined;
   }
@@ -54,13 +59,13 @@ interface PromptState {
   ending: boolean;
 }
 
-/** Raises the sign-in toast for `problem`, whose "Sign in" calls `signIn`. */
+/** Raises the sign-in toast for `problem`, whose "Sign in", or "Sign in again" for an ended session, calls `signIn`. */
 function raisePrompt(problem: SignInProblem, state: PromptState, signIn: () => void): void {
   state.shown = problem;
   toast.add({
     ...prompts[problem],
     actionProps: {
-      children: "Sign in",
+      children: problem === "invalid-token" ? "Sign in again" : "Sign in",
       onClick: () => {
         toast.close(promptId);
         signIn();

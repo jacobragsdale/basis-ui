@@ -240,9 +240,24 @@ not, so that an API can add a field without breaking a UI already deployed, as b
 
 The app shell owns startup, sign-in (it attaches the user's JWT to every request through orval's custom fetch), routing,
 the generated client, telemetry, and how errors are shown, reading RFC 9457 problem details. It answers the sign-in
-problems basis's contract names by their type: `invalid-token` means the session has ended, so the shell signs the user
-out through the sign-in adapter and says so; `sign-in-required` asks the user to sign in; and `keys-unavailable`, a 503
-while the sign-in system's keys cannot be fetched, is retried and never signs the user out. Feature code reaches the
+problems basis's contract names by their type: `invalid-token` means the token is no longer good, so the shell has the
+sign-in adapter renew it and sends the request once more, and, when the adapter cannot, signs the user out through it
+and says the session has ended; `sign-in-required` asks the user to sign in; and `keys-unavailable`, a 503 while the
+sign-in system's keys cannot be fetched, is retried and never signs the user out. A request outside TanStack Query, a
+dataset's `arrowResponse`, goes through the same retries and answers. When the signed-in user becomes another or
+nobody, the shell raises `basis:sessionchange` on `window`, and whatever holds a user's data outside the query cache,
+parallax's datasets among it, drops it.
+
+Sign-in is Windows authentication, the maintainer's decision of 2026-11-13: the browser signs the user in to a token
+endpoint with their Windows account, the endpoint answers with a JWT holding the user's name and roles, the app keeps
+it in the browser's local storage, and every API request carries it as a bearer token, so the firm's backends share
+one system. `@basis/ui` ships the adapter, `windowsSignIn`, whose endpoint, answer and claims' names are options with
+defaults, since they are the firm's and nothing of the firm's is in this repo. It reads the token's payload and never
+verifies it, as the API does; it renews the token before its `exp`, once for every waiting request, and again without
+a word when an API answers `invalid-token`, and only the endpoint's own refusal ends the session. A role on the user
+decides what a page shows; the API stays the judge of what the user may do. `fakeSignIn`, whose key is public, is for
+`vp dev`, tests and fixture builds: the template picks the adapter by `import.meta.env`, so the bundler drops the fake
+from a production build, and `vp run verify` fails a production build that still holds its key. Feature code reaches the
 backend only through the generated client, which Oxlint's built-in `no-restricted-imports` and the preset's own
 `basis/no-fetch` enforce; it replaced `no-restricted-globals`, whose help told an agent to shadow `fetch` with a local
 variable.

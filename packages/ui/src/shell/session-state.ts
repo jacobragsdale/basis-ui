@@ -59,7 +59,10 @@ function useSignIn(
   const [attempt, setAttempt] = useState(0);
   useEffect(() => {
     // Called through the adapter, so an adapter written as a class keeps its `this`.
-    setTokenSource(async () => signIn.token());
+    setTokenSource(
+      async () => signIn.token(),
+      async (refused) => (signIn.renew === undefined ? false : signIn.renew(refused)),
+    );
     let live = true;
     const start = async (): Promise<void> => {
       try {
@@ -126,6 +129,7 @@ function useSessionState(
             await forgetResponses();
           },
           offersSignIn: signIn.offersSignIn ?? true,
+          offersSignOut: signIn.offersSignOut ?? true,
           user: state.user,
         }
       : null;
