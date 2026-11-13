@@ -52,6 +52,9 @@ I found no stale-frame or wrong-cell drawing bug, but two release blockers: one 
 - Scenario: a saved or URL layout names a column the API renamed. The grid shows the reason over a skeleton; removing the chip or passing a corrected layout sends updates to a view that does not exist, so it stays dead until remount. A sort or pin on the missing column has no control to remove it at all.
 - Severity: fix before release. The fix sits in the React layer another reviewer owns.
 - Confidence: confirmed by reading both sides; not run.
+- Done in Parallax: a refused view opens once its layout is corrected, and tells the app (step 7.9): a corrected layout opens the refused view anew, and `Grid`, `Pivot` and `Chart` take
+  `onError`, called with the reason they show and with null once it clears. A sort or pin on a missing column still
+  has no control to remove it in the grid: that is the grid's, for 7.10.
 
 **8. Condition filters take engine literals, not what the column shows.** `src/grid/labels.ts:71-101`, `src/grid/column-filter.tsx:136-145`
 

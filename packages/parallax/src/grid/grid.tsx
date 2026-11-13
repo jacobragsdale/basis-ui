@@ -20,7 +20,7 @@ import { Maximizable } from "#react/maximize-parts.tsx";
 import type { MaximizeFrame } from "#react/maximize-parts.tsx";
 import type { Dataset } from "#react/use-dataset.ts";
 import { useParallaxTheme } from "#react/use-theme.ts";
-import { useView } from "#react/use-view.ts";
+import { useErrorReport, useView } from "#react/use-view.ts";
 import type { View } from "#react/use-view.ts";
 
 import { GridController } from "./controller.ts";
@@ -50,6 +50,10 @@ interface GridBaseProps<TRow extends AnyRow = AnyRow> {
   readonly layout?: LayoutFor<TRow> | undefined;
   /** Takes every change the user makes. Without it, the grid keeps the changes itself until `layout` changes. */
   readonly onLayoutChange?: ((layout: Layout) => void) | undefined;
+  /** Takes the reason the grid shows in place of its data, or for a change the engine refused, whenever it changes, and
+   * null once it clears: a layout the engine cannot open, such as a saved one that names a column the API dropped,
+   * which the app may then reset. */
+  readonly onError?: ((error: string | null) => void) | undefined;
   /** The toolbar above the grid: true shows all of it, false hides it, and an object turns parts off, such as
    * `{ export: false }` for a small tile. */
   readonly toolbar?: boolean | Partial<ToolbarParts> | undefined;
@@ -195,6 +199,19 @@ function Chrome({
   );
 }
 
+/** The error the grid shows in place of its rows, which `onError` hears of. */
+function useShownError(
+  snapshot: GridSnapshot,
+  view: View,
+  onError: GridProps["onError"],
+): string | null {
+  const error =
+    snapshot.problem ??
+    (view.layout === null && view.error !== null ? `Invalid layout: ${view.error}` : view.error);
+  useErrorReport(error, onError);
+  return error;
+}
+
 /** The grid inside its maximizing frame: `root` is its element, which `maximizing` makes fill the window. */
 type GridFrameProps = GridProps & MaximizeFrame;
 
@@ -208,9 +225,7 @@ function GridFrame(props: GridFrameProps): ReactNode {
   const onExport = useHandles(state, { ref, searchBox: search });
   const { attributes } = useParallaxTheme();
   const id = useId();
-  const error =
-    snapshot.problem ??
-    (view.layout === null && view.error !== null ? `Invalid layout: ${view.error}` : view.error);
+  const error = useShownError(snapshot, view, props.onError);
   return (
     <div
       {...attributes}

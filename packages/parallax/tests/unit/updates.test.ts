@@ -1,6 +1,17 @@
 import { afterEach, describe, expect, test, vi } from "vite-plus/test";
 
+import { decodeChartFrame } from "#frame/chart-frame.ts";
+import type { ChartFrameData } from "#frame/chart-data.ts";
+
 import { clock, emptyFrame, open, rows, summary } from "./channel.ts";
+import { chartFrame } from "./chart-arrow.ts";
+
+/** An empty chart frame of a configuration version. */
+function chartOf(configVersion: bigint): ChartFrameData {
+  return decodeChartFrame(
+    chartFrame({ count: new Uint32Array([0]) }, { columns: 1, configVersion, rows: 1, viewId: 1 }),
+  );
+}
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -112,5 +123,39 @@ describe("a view's updates", () => {
     view.update("a", () => rows(0));
     view.update("b", () => rows(0));
     expect([view.layoutJson, view.layoutAt(1n)]).toStrictEqual(["b", "a"]);
+  });
+});
+
+describe("an update the engine refuses", () => {
+  test("draw the layout before again once the engine refuses one, as the engine keeps it", () => {
+    const { view, frames } = open();
+    view.update("bad", () => rows(0));
+    view.receiveError("no such column", 3n);
+    // The engine still answers with the layout it opened on, which the view draws.
+    view.setViewport(rows(100));
+    view.receiveFrame(emptyFrame(0n), 4n);
+    expect(frames.map((frame) => frame.configVersion)).toStrictEqual([0n]);
+  });
+
+  test("drop the layout before while a later update is on its way, even once an earlier one is refused", () => {
+    const { view, charts } = open("prices");
+    view.update("bad");
+    view.update("good");
+    view.receiveError("no such column", 3n);
+    // Hello was request 1, opening the view 2, the updates 3 and 4; the frames answer no window.
+    view.receiveChartFrame(chartOf(0n), 0n);
+    view.receiveChartFrame(chartOf(2n), 0n);
+    expect(charts.map((chart) => chart.configVersion)).toStrictEqual([2n]);
+  });
+
+  test("draw a chart on the layout the engine kept once it refuses a change", () => {
+    const { view, charts } = open("prices");
+    view.update("good");
+    view.receiveChartFrame(chartOf(1n), 0n);
+    view.update("worse");
+    // Hello was request 1, opening the view 2, the updates 3 and 4.
+    view.receiveError("no such column", 4n);
+    view.receiveChartFrame(chartOf(1n), 0n);
+    expect(charts.map((chart) => chart.configVersion)).toStrictEqual([1n, 1n]);
   });
 });

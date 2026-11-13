@@ -8,6 +8,7 @@ import type { Layout, LayoutFilter, LayoutInput } from "#layout/layout.ts";
 import { MaximizeContext, useMaximize } from "#react/maximize.ts";
 import { MaximizeBefore, MaximizeButton } from "#react/maximize-parts.tsx";
 import type { Dataset } from "#react/use-dataset.ts";
+import { useErrorReport } from "#react/use-view.ts";
 
 import { ChartLegend, ChartStatus, ChartTools, CompactLegend } from "./chart-chrome.tsx";
 import { ChartPlot } from "./chart-plot.tsx";
@@ -24,6 +25,10 @@ interface ChartOptions {
   /** Called with the layout the chart changed: a series hidden or shown, a zoom, a drawing. Without it the chart keeps
    * its own changes until its `layout` changes. */
   readonly onLayoutChange?: (layout: Layout) => void;
+  /** Takes the reason the chart shows in place of its data, or for a change the engine refused, whenever it changes, and
+   * null once it clears: a layout the engine cannot open, such as a saved one that names a column the API dropped,
+   * which the app may then reset. */
+  readonly onError?: (error: string | null) => void;
   /** The filters a Shift-drag brush selects, for linked views; null once the brush is cleared. */
   readonly onBrush?: (filters: readonly LayoutFilter[] | null) => void;
   /** The group whose bar or slice was clicked, or the scatter's dot by its id, for linked views; null once the
@@ -140,6 +145,7 @@ function ChartView(props: ChartViewProps): ReactNode {
   const source = props.source ?? props.dataset.name;
   // A chart with a problem says it in place of the plot, with no legend of what it cannot draw.
   const problem = problemOf(chart);
+  useErrorReport(problem, props.onError);
   const description =
     props.label ?? (layout === null ? "Chart" : describeChart({ ...layout, dataset: source }));
   const maximizing = useMaximize(() => scene.parts.get("root"), description);

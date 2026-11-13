@@ -1,7 +1,10 @@
 /* A view's layout updates. A grid's update carries the window to answer it with, which the engine always answers; at
  * most one such update is in flight and only the newest waits, so typing faster than the engine answers never queues a
  * backlog. Expansions asked for while an update waits are sent after it, so that they apply to its layout. The view
- * remembers its recent layouts, so a frame's own layout can be read. */
+ * remembers its recent layouts, so a frame's own layout can be read.
+ *
+ * Frames of a layout older than the newest the engine has, or will have, are stale. An update the engine refuses
+ * leaves it on the layout before, so a refused update no longer counts: the frames of the layout before draw again. */
 
 import type { Viewport } from "./view-types.ts";
 
@@ -38,7 +41,12 @@ interface Change {
 
 /** A view's layout updates, in order. */
 class LayoutUpdates {
+  /** The configuration version last sent. */
   #configVersion = openingVersion;
+  /** The newest configuration version the engine is known to have taken: by a frame of it, or by opening on it. */
+  #accepted = openingVersion;
+  /** The updates sent and not yet answered, by request id: their configuration versions. */
+  readonly #unanswered = new Map<bigint, bigint>();
   #change: Change | null = null;
   /** The update with a window that the engine has not answered yet. */
   #inFlight: { readonly configVersion: bigint; readonly requestId: bigint } | null = null;
@@ -48,9 +56,14 @@ class LayoutUpdates {
   #latest = "";
   readonly #layouts = new Map<bigint, string>();
 
-  /** The configuration version last sent; frames of older ones are dropped. */
+  /** The configuration version the engine has or will have, once the updates sent are answered: the newest sent that
+   * it has not refused. Frames of older ones are dropped. */
   public get configVersion(): bigint {
-    return this.#configVersion;
+    let newest = this.#accepted;
+    for (const version of this.#unanswered.values()) {
+      newest = version > newest ? version : newest;
+    }
+    return newest;
   }
 
   /** Whether an update waits behind the one in flight, which holds back viewports, chart windows and expansions. */
@@ -101,9 +114,13 @@ class LayoutUpdates {
     return { configVersion, layoutJson: update.layoutJson, viewport: update.window?.() ?? null };
   }
 
-  /** Records that an update with a window went as request `requestId`, so later updates wait for its answer. */
-  public sent(configVersion: bigint, requestId: bigint): void {
-    this.#inFlight = { configVersion, requestId };
+  /** Records that an update went as request `requestId`; one `windowed`, with a window, makes later updates wait for
+   * its answer. */
+  public sent(configVersion: bigint, requestId: bigint, windowed: boolean): void {
+    this.#unanswered.set(requestId, configVersion);
+    if (windowed) {
+      this.#inFlight = { configVersion, requestId };
+    }
   }
 
   /** Holds an expansion while an update waits, returning false when it may go now. */
@@ -125,14 +142,22 @@ class LayoutUpdates {
   /** Releases the update in flight once a frame of its layout or a newer one arrives, returning the update waiting,
    * which goes next. */
   public answered(configVersion: bigint): PendingUpdate | null {
+    this.#accepted = configVersion > this.#accepted ? configVersion : this.#accepted;
+    for (const [requestId, version] of this.#unanswered) {
+      if (version <= configVersion) {
+        this.#unanswered.delete(requestId);
+      }
+    }
     if (this.#inFlight !== null && configVersion >= this.#inFlight.configVersion) {
       return this.#next();
     }
     return null;
   }
 
-  /** Releases the update in flight if the engine refused request `requestId`, returning the update waiting. */
+  /** Forgets an update the engine refused as request `requestId`, which left it on the layout before, and releases it
+   * if it was in flight, returning the update waiting. */
   public refused(requestId: bigint): PendingUpdate | null {
+    this.#unanswered.delete(requestId);
     return this.#inFlight?.requestId === requestId ? this.#next() : null;
   }
 
@@ -148,6 +173,7 @@ class LayoutUpdates {
 
   /** Forgets every update in flight or waiting, as when the view closes. */
   public clear(): void {
+    this.#unanswered.clear();
     this.#inFlight = null;
     this.#pending = null;
     this.#held = [];

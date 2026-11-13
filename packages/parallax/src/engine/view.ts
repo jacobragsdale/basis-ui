@@ -284,8 +284,8 @@ class ViewHandle {
         ...(viewport === null ? {} : { viewport: gridWindow(viewport) }),
       },
     });
+    this.#updates.sent(configVersion, requestId, viewport !== null);
     if (viewport !== null) {
-      this.#updates.sent(configVersion, requestId);
       this.#rows.carried(viewport, requestId);
     }
     // What waited behind the update follows it, in the order it was asked for.

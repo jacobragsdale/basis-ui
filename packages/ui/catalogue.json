@@ -16756,6 +16756,12 @@
           "type": "(layout: Layout) => void"
         },
         {
+          "description": "Takes the reason the chart shows in place of its data, or for a change the engine refused, whenever it changes, and null once it clears: a layout the engine cannot open, such as a saved one that names a column the API dropped, which the app may then reset.",
+          "name": "onError",
+          "optional": true,
+          "type": "(error: string | null) => void"
+        },
+        {
           "description": "The filters a Shift-drag brush selects, for linked views; null once the brush is cleared.",
           "name": "onBrush",
           "optional": true,
@@ -16895,6 +16901,12 @@
           "name": "onLayoutChange",
           "optional": true,
           "type": "((layout: Layout) => void) | undefined"
+        },
+        {
+          "description": "Takes the reason the grid shows in place of its data, or for a change the engine refused, whenever it changes, and null once it clears: a layout the engine cannot open, such as a saved one that names a column the API dropped, which the app may then reset.",
+          "name": "onError",
+          "optional": true,
+          "type": "((error: string | null) => void) | undefined"
         },
         {
           "description": "The toolbar above the grid: true shows all of it, false hides it, and an object turns parts off, such as `{ export: false }` for a small tile.",
@@ -17041,6 +17053,12 @@
           "name": "onLayoutChange",
           "optional": true,
           "type": "((layout: Layout) => void) | undefined"
+        },
+        {
+          "description": "Takes the reason the pivot shows in place of its data, or for a change the engine refused, whenever it changes, and null once it clears: a layout the engine cannot open, such as a saved one that names a column the API dropped, which the app may then reset.",
+          "name": "onError",
+          "optional": true,
+          "type": "((error: string | null) => void) | undefined"
         },
         {
           "description": "The table's toolbar, as `<Grid>` takes it.",
@@ -20837,6 +20855,12 @@
           "type": "(layout: Layout) => void"
         },
         {
+          "description": "Takes the reason the chart shows in place of its data, or for a change the engine refused, whenever it changes, and null once it clears: a layout the engine cannot open, such as a saved one that names a column the API dropped, which the app may then reset.",
+          "name": "onError",
+          "optional": true,
+          "type": "(error: string | null) => void"
+        },
+        {
           "description": "The filters a Shift-drag brush selects, for linked views; null once the brush is cleared.",
           "name": "onBrush",
           "optional": true,
@@ -20965,6 +20989,12 @@
           "name": "onLayoutChange",
           "optional": true,
           "type": "(layout: Layout) => void"
+        },
+        {
+          "description": "Takes the reason the chart shows in place of its data, or for a change the engine refused, whenever it changes, and null once it clears: a layout the engine cannot open, such as a saved one that names a column the API dropped, which the app may then reset.",
+          "name": "onError",
+          "optional": true,
+          "type": "(error: string | null) => void"
         },
         {
           "description": "The filters a Shift-drag brush selects, for linked views; null once the brush is cleared.",
@@ -21204,6 +21234,12 @@
           "name": "onLayoutChange",
           "optional": true,
           "type": "(layout: Layout) => void"
+        },
+        {
+          "description": "Takes the reason the chart shows in place of its data, or for a change the engine refused, whenever it changes, and null once it clears: a layout the engine cannot open, such as a saved one that names a column the API dropped, which the app may then reset.",
+          "name": "onError",
+          "optional": true,
+          "type": "(error: string | null) => void"
         },
         {
           "description": "The filters a Shift-drag brush selects, for linked views; null once the brush is cleared.",
@@ -21716,6 +21752,12 @@
           "type": "((layout: Layout) => void) | undefined"
         },
         {
+          "description": "Takes the reason the grid shows in place of its data, or for a change the engine refused, whenever it changes, and null once it clears: a layout the engine cannot open, such as a saved one that names a column the API dropped, which the app may then reset.",
+          "name": "onError",
+          "optional": true,
+          "type": "((error: string | null) => void) | undefined"
+        },
+        {
           "description": "The toolbar above the grid: true shows all of it, false hides it, and an object turns parts off, such as `{ export: false }` for a small tile.",
           "name": "toolbar",
           "optional": true,
@@ -21935,6 +21977,12 @@
           "name": "onLayoutChange",
           "optional": true,
           "type": "((layout: Layout) => void) | undefined"
+        },
+        {
+          "description": "Takes the reason the grid shows in place of its data, or for a change the engine refused, whenever it changes, and null once it clears: a layout the engine cannot open, such as a saved one that names a column the API dropped, which the app may then reset.",
+          "name": "onError",
+          "optional": true,
+          "type": "((error: string | null) => void) | undefined"
         },
         {
           "description": "The toolbar above the grid: true shows all of it, false hides it, and an object turns parts off, such as `{ export: false }` for a small tile.",
@@ -23710,6 +23758,12 @@
           "name": "onLayoutChange",
           "optional": true,
           "type": "(layout: Layout) => void"
+        },
+        {
+          "description": "Takes the reason the chart shows in place of its data, or for a change the engine refused, whenever it changes, and null once it clears: a layout the engine cannot open, such as a saved one that names a column the API dropped, which the app may then reset.",
+          "name": "onError",
+          "optional": true,
+          "type": "(error: string | null) => void"
         },
         {
           "description": "The filters a Shift-drag brush selects, for linked views; null once the brush is cleared.",

@@ -2,6 +2,7 @@
  * run lasts, and closes the view when the run ends; a run that ends before its dataset loads opens none. */
 
 import type { ParallaxClient } from "#engine/client.ts";
+import type { Connection } from "#engine/connection.ts";
 import type { ViewHandle } from "#engine/view.ts";
 import type { ChartWindow, ViewListener, Viewport } from "#engine/view-types.ts";
 import type { ChartFrameData } from "#frame/chart-data.ts";
@@ -46,6 +47,12 @@ function describe(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
+/** What a view opens on: the dataset, and the connection to the engine that holds it. */
+interface Source {
+  readonly dataset: string;
+  readonly connection: Connection;
+}
+
 /** One attempt to open a view, for one run of the hook's effect. */
 class ViewAttempt {
   readonly #key: string;
@@ -53,6 +60,8 @@ class ViewAttempt {
   readonly #sinks: Sinks;
   #live = true;
   #view: ViewHandle | null = null;
+  #source: Source | null = null;
+  #layoutJson: string | null = null;
 
   /** `key` names the dataset and engine the view opens on; what it reports under another key is not its own.
    * `sinks` may take each chart reduction and each frame, which then stay out of the state. */
@@ -62,8 +71,14 @@ class ViewAttempt {
     this.#sinks = sinks;
   }
 
+  /** The layout the view was last opened with, or null before it opens. */
+  public get layoutJson(): string | null {
+    return this.#layoutJson;
+  }
+
   /** Opens the view once its dataset is loaded, and asks for its first window. */
   public async open(client: ParallaxClient, dataset: string, first: Opening): Promise<void> {
+    this.#layoutJson = first.layoutJson;
     try {
       /* A view's effect runs before the effects of the components above it, so a dataset that a page loads for the
        * chart or grid below it starts loading only after this. The rest of the effects run first. */
@@ -74,11 +89,28 @@ class ViewAttempt {
       const connection = await client.connectionFor(dataset, first.whole);
       // A run that ended while the dataset loaded opens nothing.
       if (this.#live) {
+        this.#source = { connection, dataset };
         this.#opened(connection.open(dataset, first.layoutJson, this.#listener()), first);
       }
     } catch (error: unknown) {
       this.#change((state) => ({ ...state, error: describe(error), status: "failed" }));
     }
+  }
+
+  /**
+   * Opens the view again with `next`, as a new view on the same engine, closing the one before. The engine never opens
+   * a view it refused, and answers every later change of it with the same refusal, so a corrected layout opens anew.
+   */
+  public reopen(next: Opening): void {
+    const source = this.#source;
+    if (!this.#live || source === null) {
+      return;
+    }
+    this.#view?.close();
+    this.#layoutJson = next.layoutJson;
+    this.#view = null;
+    this.#change(() => opening);
+    this.#opened(source.connection.open(source.dataset, next.layoutJson, this.#listener()), next);
   }
 
   /** Ends the run: nothing more is reported, and the view closes. */

@@ -9,6 +9,10 @@ No release blocker in the strict sense, but 1–7 should be fixed before tens of
    - Scenario: a saved or URL layout names a column the API dropped; the grid shows "column X is not in the table"; the user or app resets the layout; the same error stays until the component remounts.
    - A Zod-invalid layout does recover, because `ready` toggles; an engine-refused one does not.
    - Severity: fix before release. Confidence: confirmed by running on the real engine (`check5.ts`, case A: corrected layout, same error, 0 frames).
+   - Done in Parallax: a refused view opens once its layout is corrected, and tells the app: the view's attempt remembers the layout it opened with, and a view the engine refused to open
+     (it failed before any `opened` came) opens again, as a new view, when its layout changes, rather than updating a
+     view the engine never opened. Held by `tests/browser/refused-views.test.tsx`, and by
+     `tests/browser/grid-states.test.tsx` through `Grid`, which also gained `onError` (`grid-pivot.md` 7).
 
 2. **`packages/parallax/src/engine/browser-engine.ts:265-269` with `packages/parallax/src/react/use-dataset.ts:76-91` — a planned restart fails any dataset whose fetch is still on its way.**
    - `#answers.idle` does not count a `load()` whose bytes are a pending promise, which is every documented source until its headers arrive. `restarted()` then treats "load under way" as the load that ran the engine out of memory, planned or not.
@@ -20,6 +24,9 @@ No release blocker in the strict sense, but 1–7 should be fixed before tens of
    - `begin()` raises the client's config version before the engine accepts; on refusal the engine keeps the old one (`lib.rs:752-806` returns before line 806), and `refused()` does not roll back.
    - Scenario: a pivot edit the engine refuses. The README names one: a `titles` key that names neither a column nor a measure. The error banner shows, and then scrolling, pushed reload frames and chart zooms all draw nothing until some later update is accepted.
    - Severity: fix before release. Confidence: confirmed by running on the real engine (`check5.ts`, case B: 0 of 3 scroll frames drawn; a copy fetch still answers).
+   - Done in Parallax: a refused view opens once its layout is corrected, and tells the app: `LayoutUpdates` keeps the newest version the engine took and the versions sent and not yet
+     answered; a refusal forgets its version, so the stale floor falls back to the layout the engine kept. Held by
+     `tests/unit/updates.test.ts` ("an update the engine refuses") and `tests/browser/refused-views.test.tsx`.
 
 4. **`packages/parallax/src/react/dataset-share.ts:106-128` with `browser-engine.ts:127-133` — a dataset whose last holder unmounts mid-fetch is loaded anyway and never unloaded.**
    - The unload reaches the worker before the load does, so it drops nothing; the bytes then arrive and the table loads with no holder.
@@ -105,3 +112,13 @@ Nothing documents this, and none of it was run in a browser; it is from reading 
 - `src/proto/parallax_pb.ts` (generated) and `src/frame/chart-data.ts` (types).
 - README lines 330-380, and `packages/parallax/docs/design.md` beyond a search.
 - Tests read by name only: `browser-engine.test.ts`, `engine-loads.test.ts`, the theme, page-watch, maximize and progressive tests, and the e2e suites.
+
+## Changelog
+
+- A view the engine refused to open, such as one whose saved layout names a column the API dropped, opens once its
+  layout is corrected, and a view that refused a change draws again on the layout the engine kept. What to do:
+  nothing.
+
+- `Grid`, `Pivot` and `Chart` take `onError`, called with the reason they show in place of their data, or for a
+  change the engine refused, each time it changes, and with null once it clears. What to do: nothing; a page that
+  restores a saved layout may reset it there.

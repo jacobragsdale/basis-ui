@@ -132,6 +132,7 @@ frame for rows already on screen redraws only the cells whose text changed.
 | `dataset`        | The dataset, from `useDataset`                                                                                                              |
 | `layout`         | The view: columns, sorts, filters, groups and pivots, formats, widths, pinned columns, titles and totals; a layout the engine refuses shows its reason in place of the grid |
 | `onLayoutChange` | Takes each layout the user makes                                                                                                            |
+| `onError` | Takes the reason the grid shows in place of its rows, or for a change the engine refused, each time it changes, and null once it clears: a saved layout that names a column the API dropped, which the app may reset |
 | `toolbar`        | `true` (the default) shows the toolbar, `false` hides it, and an object turns parts off: `search`, `chips`, `columns`, `totals`, `export`, `group`, `expand` and `maximize` |
 | `height`         | `fill`, the default, takes the container's height; `auto` sizes the grid to its rows up to `maxHeight` pixels (480 by default)               |
 | `onDrill`        | Takes a double click on a pivot's value: the group's path, the column's pivot values and a label, for the rows behind it                     |
@@ -291,6 +292,7 @@ function Exposure(): ReactNode {
 | `dataset`, `layout`   | The dataset, from `useDataset`, and the pivot: its row and column groups, values, filters and more |
 | `layout.titles`       | Header text by column, or by a measure's header as the pivot shows it: `{ "sum(par)": "Par", "wmean(ytm by market_value)": "Yield" }`. A key that names neither fails the view with a reason that lists both |
 | `onLayoutChange`      | Takes each layout the user makes; without it, the pivot keeps its changes until `layout` changes   |
+| `onError` | Takes the reason the pivot shows in place of its rows, or for a change the engine refused, each time it changes, and null once it clears |
 | `toolbar`             | The table's toolbar, as `<Grid>` takes it                                                          |
 | `defaultSettingsOpen` | Whether the settings start open; they do by default, and the user hides and shows them             |
 | `label`               | What screen readers call the table; the dataset's name by default                                  |
@@ -526,6 +528,7 @@ of its own, in their order:
 | `dataset`, `layout`      | The data and the view of it; the layout's `chart` section says what to draw, its `titles` name columns in the legend, and `chart.drawing_tools: false` hides the drawing tools |
 | `rows`, `kind`, `x`, `y` | The small-data form: the rows, a value per column, and what to draw of them; `series` splits them, `settings` adds chart settings and `formats` formats the values |
 | `onLayoutChange`         | The layout the chart changed: a series hidden from the legend, a zoom, a drawing. Without it, the chart keeps its own changes until its `layout` changes           |
+| `onError` | Takes the reason the chart shows in place of its plot, each time it changes, and null once it clears |
 | `onBrush`                | The filters a Shift-drag selects, for a linked view; null once Escape clears it                                                                                    |
 | `onSelect`               | The group of a bar, slice or waterfall step clicked, or a scatter's dot by its `id` column, for a linked view; null once the selection is cleared                  |
 | `sync`                   | The group whose crosshairs move together: charts of the same dataset, x column and axis by default; null keeps the crosshair to this chart                        |

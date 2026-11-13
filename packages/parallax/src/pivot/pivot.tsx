@@ -38,6 +38,10 @@ interface PivotProps<TRow extends AnyRow = AnyRow> {
   readonly layout: LayoutFor<TRow>;
   /** Takes every change the user makes. Without it, the pivot keeps the changes itself until `layout` changes. */
   readonly onLayoutChange?: ((layout: Layout) => void) | undefined;
+  /** Takes the reason the pivot shows in place of its data, or for a change the engine refused, whenever it changes, and
+   * null once it clears: a layout the engine cannot open, such as a saved one that names a column the API dropped,
+   * which the app may then reset. */
+  readonly onError?: ((error: string | null) => void) | undefined;
   /** The table's toolbar, as `<Grid>` takes it. */
   readonly toolbar?: GridProps["toolbar"];
   /** Whether the settings start open; they do by default. */
@@ -177,6 +181,7 @@ function PivotFrame(props: PivotFrameProps): ReactNode {
             dataset={dataset}
             layout={shown}
             onLayoutChange={onChange}
+            onError={props.onError}
             toolbar={toolbar}
             label={label}
             asOf={props.asOf}

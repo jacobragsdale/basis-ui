@@ -3,12 +3,17 @@
 
 import "@basis/ui/styles.css";
 
+import type { ReactNode } from "react";
 import { expect, test } from "vite-plus/test";
 import { render } from "vitest-browser-react";
 
+import { Grid } from "#grid/grid.tsx";
+import type { LayoutInput } from "#layout/layout.ts";
 import { ParallaxProvider } from "#react/provider.tsx";
+import { useDataset } from "#react/use-dataset.ts";
 import { readTheme } from "#theme/read.ts";
 
+import { positionsBytes, startWorker } from "./data.ts";
 import { gatedWorker } from "./gated-worker.ts";
 import { canvasOf, drawn, renderGrid } from "./grid-helpers.tsx";
 import { GridPage } from "./grid-page.tsx";
@@ -76,4 +81,41 @@ test("says no row matches once the filters leave none", async () => {
   // The line sits two rows below the header, where a skeleton's bar would be had no frame come.
   await expect.poll(() => inkedAcross(canvas, header + 2 * row)).toBeGreaterThan(0);
   expect(inkedAcross(canvas, header + row / 2)).toBe(0);
+});
+
+/** A grid of the positions in `layout`, telling `errors` each error it reports. */
+function ReportingGrid({
+  layout,
+  errors,
+}: {
+  readonly layout: LayoutInput;
+  readonly errors: (string | null)[];
+}): ReactNode {
+  const positions = useDataset("positions", positionsBytes);
+  return (
+    <div className="h-96 w-full max-w-3xl">
+      <Grid
+        dataset={positions}
+        layout={layout}
+        onError={(error) => {
+          errors.push(error);
+        }}
+      />
+    </div>
+  );
+}
+
+test("tells the app why the engine refused its layout, and shows the rows once the layout is corrected", async () => {
+  const errors: (string | null)[] = [];
+  const page = (layout: LayoutInput): ReactNode => (
+    <ParallaxProvider worker={startWorker}>
+      <ReportingGrid layout={layout} errors={errors} />
+    </ParallaxProvider>
+  );
+  const screen = await render(page({ sort: [{ column: "region", descending: false }] }));
+  await expect.poll(() => errors).toHaveLength(1);
+  expect(errors[0]).toMatch(/region/u);
+  await screen.rerender(page({ sort: [{ column: "fund", descending: false }] }));
+  await expect.poll(() => errors).toStrictEqual([errors[0], null]);
+  await expect.element(screen.getByRole("grid")).toHaveAttribute("aria-rowcount", "6");
 });

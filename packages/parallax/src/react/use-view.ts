@@ -1,6 +1,6 @@
 /* `useView()`: a view of a dataset, as a layout describes it, and what the engine sends for it. */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { RefObject } from "react";
 
 import type { ParallaxClient } from "#engine/client.ts";
@@ -64,24 +64,46 @@ interface Target {
   readonly sinks: Sinks;
 }
 
-/** Opens the view whenever its dataset, its engine or whether it can open changes, closing the one before. */
-function useOpen(target: Target, report: (update: (was: Opened | null) => Opened) => void): void {
+/** Opens the view whenever its dataset, its engine or whether it can open changes, closing the one before. Returns
+ * the attempt running, for a refused view to open again. */
+function useOpen(
+  target: Target,
+  report: (update: (was: Opened | null) => Opened) => void,
+): RefObject<ViewAttempt | null> {
   const { client, name, key, ready, latestRef, sinks } = target;
+  const attemptRef = useRef<ViewAttempt | null>(null);
   useEffect(() => {
     const first = latestRef.current;
     if (!ready || first === null) {
       return (): void => undefined;
     }
     const run = new ViewAttempt(key, report, sinks);
+    attemptRef.current = run;
     run.open(client, name, first).catch(reportError);
     return (): void => {
       run.end();
+      if (attemptRef.current === run) {
+        attemptRef.current = null;
+      }
     };
   }, [client, key, latestRef, name, ready, report, sinks]);
+  return attemptRef;
 }
 
-/** Updates the open view's layout in place, and asks for its window and its chart's, when they change. */
-function useWindows(handle: ViewHandle | null, opening: Opening | null): void {
+/** The open view, whether the engine refused to open it, and how to open it again. */
+interface Windowed {
+  readonly handle: ViewHandle | null;
+  readonly refused: boolean;
+  readonly attemptRef: RefObject<ViewAttempt | null>;
+  readonly latestRef: RefObject<Opening | null>;
+}
+
+/** Updates the open view's layout in place, and asks for its window and its chart's, when they change. A view the
+ * engine refused to open opens again with a changed layout, since the engine refuses every change of it. */
+function useWindows(
+  { handle, refused, attemptRef, latestRef }: Windowed,
+  opening: Opening | null,
+): void {
   const layoutJson = opening?.layoutJson ?? null;
   const rows = opening?.viewport !== null;
   const { firstRow, rowCount, firstColumn, columnCount } = opening?.viewport ?? defaultViewport;
@@ -89,12 +111,21 @@ function useWindows(handle: ViewHandle | null, opening: Opening | null): void {
   const [xFrom, xTo] = x ?? [];
   const [yFrom, yTo] = y ?? [];
   useEffect(() => {
-    if (handle !== null && layoutJson !== null && handle.layoutJson !== layoutJson) {
+    const attempt = attemptRef.current;
+    const latest = latestRef.current;
+    if (refused && attempt !== null && latest !== null && attempt.layoutJson !== layoutJson) {
+      attempt.reopen(latest);
+    } else if (
+      !refused &&
+      handle !== null &&
+      layoutJson !== null &&
+      handle.layoutJson !== layoutJson
+    ) {
       /* A view without rows is answered with its chart; any other with the window last asked for, answered or not,
        * so that an update at rest is in flight until its answer comes, and those after it wait. */
       handle.update(layoutJson, rows ? (): Viewport | null => handle.latestViewport() : null);
     }
-  }, [handle, layoutJson, rows]);
+  }, [attemptRef, handle, latestRef, layoutJson, refused, rows]);
   useEffect(() => {
     if (rows) {
       handle?.setViewport({ columnCount, firstColumn, firstRow, rowCount });
@@ -163,9 +194,35 @@ function useSinks(options: ViewOptions): Sinks {
   return useMemo(() => ({ chart, frame }), [chart, frame]);
 }
 
+/** Whether the engine refused to open the view: it failed before any `opened` came. */
+function refusedOpen(current: Opened | null): boolean {
+  return (
+    current !== null &&
+    current.handle !== null &&
+    current.state.status === "failed" &&
+    current.state.opened === null
+  );
+}
+
 /** Whether a view of the dataset can open: once it is loading, since a view waits for its load. */
 function canOpen(dataset: Dataset): boolean {
   return dataset.status === "loading" || dataset.status === "loaded";
+}
+
+/** Opens the view, keeps it up to date with `opening`, and returns what it reported, if it is open on the dataset and
+ * engine `key` names. */
+function useOpenView(
+  target: Omit<Target, "latestRef" | "sinks">,
+  opening: Opening | null,
+  options: ViewOptions,
+): Opened | null {
+  const [opened, setOpened] = useState<Opened | null>(null);
+  const latestRef = useLatest(opening);
+  const attemptRef = useOpen({ ...target, latestRef, sinks: useSinks(options) }, setOpened);
+  const current = opened?.key === target.key ? opened : null;
+  const handle = current?.handle ?? null;
+  useWindows({ attemptRef, handle, latestRef, refused: refusedOpen(current) }, opening);
+  return current;
 }
 
 /**
@@ -188,21 +245,8 @@ function useView(dataset: Dataset, layout: LayoutInput, options: ViewOptions = {
   const checked = checkLayout({ ...layout, dataset: dataset.name });
   const opening = openingOf(checked, options);
   const key = `${String(dataset.engine)}:${dataset.name}`;
-  const [opened, setOpened] = useState<Opened | null>(null);
-  const latestRef = useLatest(opening);
-  useOpen(
-    {
-      client,
-      key,
-      latestRef,
-      name: dataset.name,
-      ready: opening !== null && canOpen(dataset),
-      sinks: useSinks(options),
-    },
-    setOpened,
-  );
-  const current = opened?.key === key ? opened : null;
-  useWindows(current?.handle ?? null, opening);
+  const ready = opening !== null && canOpen(dataset);
+  const current = useOpenView({ client, key, name: dataset.name, ready }, opening, options);
   return {
     ...viewStateOf(dataset, checked, current?.state ?? null),
     handle: current?.handle ?? null,
@@ -210,5 +254,21 @@ function useView(dataset: Dataset, layout: LayoutInput, options: ViewOptions = {
   };
 }
 
-export { useView };
+/** Calls the newest `onError` with the error a component of a view shows each time it changes, and never for one that
+ * has shown none: the reason in place of its data, or for a change the engine refused, and null once it clears. */
+function useErrorReport(
+  error: string | null,
+  onError: ((error: string | null) => void) | undefined,
+): void {
+  const onErrorRef = useLatest(onError);
+  const reportedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (reportedRef.current !== error) {
+      reportedRef.current = error;
+      onErrorRef.current?.(error);
+    }
+  }, [error, onErrorRef]);
+}
+
+export { useErrorReport, useView };
 export type { View, ViewOptions };
