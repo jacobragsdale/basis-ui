@@ -14,8 +14,8 @@
     "test": "vp test"
   },
   "dependencies": {
-    "@basis/parallax": "0.0.0",
-    "@basis/ui": "0.0.0",
+    "@basis/parallax": "0.1.0",
+    "@basis/ui": "0.1.0",
     "@tanstack/react-form": "1.33.5",
     "@tanstack/react-query": "5.106.1",
     "@tanstack/react-router": "1.170.46",

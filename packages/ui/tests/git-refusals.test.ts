@@ -11,6 +11,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { afterEach, beforeEach, describe, expect, test, vi } from "vite-plus/test";
+import { uiVersion } from "./ui-version.ts";
 
 import { recordCheck } from "#preset/review.ts";
 
@@ -44,7 +45,7 @@ beforeEach(() => {
   app = mkdtempSync(path.join(tmpdir(), "basis-ui-git-"));
   mkdirSync(path.join(app, "node_modules/@basis"), { recursive: true });
   symlinkSync(packageRoot, path.join(app, "node_modules/@basis/ui"), "junction");
-  write("package.json", JSON.stringify({ dependencies: { "@basis/ui": "0.0.0" }, name: "app" }));
+  write("package.json", JSON.stringify({ dependencies: { "@basis/ui": uiVersion }, name: "app" }));
   write(".gitignore", "node_modules/\n");
   write(".npmrc", "registry=http://127.0.0.1:9/\n");
   git("init", "--quiet");

@@ -10,7 +10,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 const packageRoot = fileURLToPath(new URL("../..", import.meta.url));
 const fakeVp = path.join(packageRoot, "tests/upgrade/fake-vp.ts");
-const realCodemod = path.join(packageRoot, "src/codemods/unreleased/fetch-rule-name.ts");
+const realCodemod = path.join(packageRoot, "src/codemods/0.1.0/fetch-rule-name.ts");
 
 const changelog = `# Changelog
 

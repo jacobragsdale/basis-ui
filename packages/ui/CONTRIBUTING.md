@@ -17,8 +17,38 @@ an error's text, the catalogue or the configuration the README shows, adds an en
 words an app's agent needs: what changed, then "What to do:" and what an app does about it, which the upgrade's
 summary repeats. An entry is a bullet, `- `, its other lines indented by two spaces; a release is a heading,
 `## VERSION - YYYY-MM-DD`, newest first, below Unreleased. `src/preset/changelog.ts` reads it, and
-`tests/changelog.test.ts` fails on a line written otherwise. A release renames `## Unreleased` to its version and
-date, and `src/codemods/unreleased/` to `src/codemods/VERSION/`.
+`tests/changelog.test.ts` fails on a line written otherwise. A release moves Unreleased's entries under its version
+and date, and `src/codemods/unreleased/` to `src/codemods/VERSION/`, as "Cutting a release" says.
+
+## Cutting a release
+
+`@basis/ui`, `@basis/parallax` and `@basis/create` release together, at one version. The other packages are private
+and stay at `0.0.0`. From a clean `main`, VERSION being the release, such as `0.2.0`:
+
+1. **The changelog.** In `CHANGELOG.md`, put a heading `## VERSION - YYYY-MM-DD` under `## Unreleased`, so that
+   every entry is the release's, and leave `## Unreleased` above it, empty; `tests/changelog.test.ts` allows an empty
+   Unreleased, never an empty release. The intro paragraph names `## Unreleased` in its text too, so a script that
+   splits the file at that heading matches the heading's own line. Order the entries for an app's agent reading top
+   to bottom: first those whose "What to do:" asks something, then the rest by area. Merge two entries of one change,
+   and where an entry disagrees with the code, the code decides.
+2. **The codemods.** `git mv src/codemods/unreleased src/codemods/VERSION`, when the release ships any. The build
+   takes `src/codemods/*/*.ts`, so no configuration names the folder. A test that names a shipped codemod's id names
+   its release, as `0.1.0/fetch-rule-name`, and `tests/codemods.test.ts` holds what `unreleased/` means with a folder
+   of its own, so it survives every release.
+3. **The versions.** `"version"` in `packages/ui/package.json`, `packages/parallax/package.json` and
+   `packages/create/package.json`, and the pins of `@basis/ui` and `@basis/parallax` in
+   `packages/create/templates/app/package.json`. Every workspace app takes both packages as `workspace:*`, so no
+   other manifest changes. A test reads the version from `tests/ui-version.ts`, never as text, so it follows.
+4. **The lockfile and the catalogue.** `vp install`, then `vp run @basis/ui#catalogue`. With every app on
+   `workspace:*`, the lockfile records no version, and neither changes for a version alone.
+5. **The checks**, then one commit for the changelog and one for the version, each pushed once it passes:
+   `vp run @basis/ui#build`, `vp check`, `heavy -- vp test` in `packages/ui`, the catalogue's test,
+   `vp run @basis/example#verify` and `vp run @basis/consumer#verify`; after the version, also
+   `vp run @basis/parallax#build`, `vp run @basis/create#prove`, `vp run @basis/showcase-data#data 5000` with
+   `vp run @basis/showcase#verify`, and the upgrade's tests (`tests/upgrade.test.ts`,
+   `tests/upgrade-stopped.test.ts`). Then watch the version commit's run on GitHub to green on every job.
+6. **The tag and the tarballs**, the maintainer's: the proof on a Windows desktop from the packed packages, then the
+   tag `vVERSION`, and the packages packed for the apps that take them from tarballs until the feed has them.
 
 ## Shipping a codemod
 

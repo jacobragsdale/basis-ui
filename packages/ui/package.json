@@ -1,6 +1,6 @@
 {
   "name": "@basis/ui",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "The firm's React design system, app shell and Vite+ preset.",
   "license": "MIT",
   "repository": {

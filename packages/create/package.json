@@ -1,6 +1,6 @@
 {
   "name": "@basis/create",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "The UI repo template for apps on @basis/ui and @basis/parallax, and its creator: vp dlx @basis/create NAME.",
   "license": "MIT",
   "bin": {

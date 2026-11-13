@@ -20,6 +20,7 @@ import { text as textOf } from "node:stream/consumers";
 import { fileURLToPath } from "node:url";
 
 import { afterAll, beforeAll, describe, expect, test } from "vite-plus/test";
+import { uiVersion } from "./ui-version.ts";
 
 import { syncWrite } from "#preset/sync.ts";
 import { stageNames, verifyReportSchema } from "#preset/verify-report.ts";
@@ -223,7 +224,7 @@ describe("vp run verify", () => {
   test("its ERROR lines are the framework's own, and the tools' in one form: place, message, rule, fix", () => {
     const lines = ran("brokenText").stdout.trimEnd().split("\n");
     expect(lines).toContain(
-      "ERROR .gitattributes differs from what @basis/ui 0.0.0 writes: run vp run sync to put it back, since a change it needs belongs in @basis/ui.",
+      `ERROR .gitattributes differs from what @basis/ui ${uiVersion} writes: run vp run sync to put it back, since a change it needs belongs in @basis/ui.`,
     );
     expect(lines).toContain(
       "ERROR src/stop.ts:2: `debugger` statement is not allowed (eslint(no-debugger)): Remove the debugger statement.",

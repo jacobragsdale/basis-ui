@@ -11,6 +11,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { afterEach, beforeEach, describe, expect, test, vi } from "vite-plus/test";
+import { uiVersion } from "./ui-version.ts";
 
 /* Each test here starts Node on a task, the compiler, a build, a browser or vp, which a busy CI runner can make take
  * many seconds: a minute holds there, where Vitest's 5 s did not, and a test that hangs still fails. */
@@ -72,7 +73,7 @@ beforeEach(() => {
   app = mkdtempSync(path.join(tmpdir(), "basis-ui-sync-own-"));
   mkdirSync(path.join(app, "node_modules/@basis"), { recursive: true });
   symlinkSync(packageRoot, path.join(app, "node_modules/@basis/ui"), "junction");
-  write("package.json", JSON.stringify({ dependencies: { "@basis/ui": "0.0.0" }, name: "app" }));
+  write("package.json", JSON.stringify({ dependencies: { "@basis/ui": uiVersion }, name: "app" }));
 });
 
 afterEach(() => {
@@ -105,8 +106,7 @@ describe("vp run sync", () => {
     const synced = run("sync");
     expect({ status: synced.status, stderr: synced.stderr }).toStrictEqual({
       status: 1,
-      stderr:
-        "ERROR .vite-hooks/pre-push has changes git has not committed, which vp run sync would overwrite with @basis/ui 0.0.0's: commit or discard them, then run vp run sync again.\n",
+      stderr: `ERROR .vite-hooks/pre-push has changes git has not committed, which vp run sync would overwrite with @basis/ui ${uiVersion}'s: commit or discard them, then run vp run sync again.\n`,
     });
     expect(read(".vite-hooks/pre-push")).toBe(edited);
     git("commit", "--quiet", "-am", "An edit");
@@ -152,7 +152,7 @@ describe("vp run sync, and the deploy files it hands to the app", () => {
     expect(check.stderr.trimEnd().split("\n")).toStrictEqual(
       [".dockerignore", "Dockerfile", "azure-pipelines.yml"].map(
         (file) =>
-          `ERROR ${file} carries basis-ui's header, and @basis/ui 0.0.0 no longer manages it: run vp run sync to remove the header, and the file is the app's own.`,
+          `ERROR ${file} carries basis-ui's header, and @basis/ui ${uiVersion} no longer manages it: run vp run sync to remove the header, and the file is the app's own.`,
       ),
     );
   });
@@ -173,7 +173,7 @@ describe("vp run sync, and the deploy files it hands to the app", () => {
     run("sync");
     write("Dockerfile", "FROM registry.example.com/caddy:2.10\nUSER caddy\n");
     expect(run("sync", "--check")).toMatchObject({ status: 0 });
-    expect(run("sync").stdout).toBe("The framework's files match @basis/ui 0.0.0.\n");
+    expect(run("sync").stdout).toBe(`The framework's files match @basis/ui ${uiVersion}.\n`);
     expect(read("Dockerfile")).toBe("FROM registry.example.com/caddy:2.10\nUSER caddy\n");
   });
 });

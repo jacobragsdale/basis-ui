@@ -10,6 +10,7 @@ import { fileURLToPath } from "node:url";
 
 import { afterAll, describe, expect, test } from "vite-plus/test";
 import { z } from "zod";
+import { uiVersion } from "./ui-version.ts";
 
 const packageRoot = fileURLToPath(new URL("..", import.meta.url));
 const script = path.join(packageRoot, "src/preset/tasks.ts");
@@ -19,7 +20,7 @@ mkdirSync(path.join(app, "node_modules/@basis"), { recursive: true });
 symlinkSync(packageRoot, path.join(app, "node_modules/@basis/ui"), "junction");
 writeFileSync(
   path.join(app, "package.json"),
-  JSON.stringify({ dependencies: { "@basis/ui": "0.0.0" }, name: "app" }),
+  JSON.stringify({ dependencies: { "@basis/ui": uiVersion }, name: "app" }),
 );
 
 afterAll(() => {

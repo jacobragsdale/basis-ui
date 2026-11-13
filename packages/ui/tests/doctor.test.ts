@@ -25,6 +25,7 @@ import { fileURLToPath } from "node:url";
 
 import { afterEach, beforeEach, describe, expect, test, vi } from "vite-plus/test";
 import { z } from "zod";
+import { uiVersion } from "./ui-version.ts";
 
 import { satisfies } from "#preset/doctor-environment.ts";
 
@@ -82,7 +83,7 @@ beforeEach(async () => {
   app = mkdtempSync(path.join(tmpdir(), "basis-ui-doctor-"));
   mkdirSync(path.join(app, "node_modules/@basis"), { recursive: true });
   symlinkSync(packageRoot, path.join(app, "node_modules/@basis/ui"), "junction");
-  write("package.json", JSON.stringify({ dependencies: { "@basis/ui": "0.0.0" }, name: "app" }));
+  write("package.json", JSON.stringify({ dependencies: { "@basis/ui": uiVersion }, name: "app" }));
   // A registry that refuses at once, so no test asks the internet.
   write(".npmrc", `registry=${closed}\n`);
 });

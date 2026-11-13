@@ -20,6 +20,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { afterEach, beforeEach, describe, expect, test, vi } from "vite-plus/test";
+import { uiVersion } from "./ui-version.ts";
 
 import { recordCheck } from "#preset/review.ts";
 import { planSync, syncProblems, syncWrite } from "#preset/sync.ts";
@@ -83,7 +84,7 @@ beforeEach(() => {
   app = mkdtempSync(path.join(tmpdir(), "basis-ui-tasks-"));
   mkdirSync(path.join(app, "node_modules/@basis"), { recursive: true });
   symlinkSync(packageRoot, path.join(app, "node_modules/@basis/ui"), "junction");
-  write("package.json", JSON.stringify({ dependencies: { "@basis/ui": "0.0.0" }, name: "app" }));
+  write("package.json", JSON.stringify({ dependencies: { "@basis/ui": uiVersion }, name: "app" }));
 });
 
 afterEach(() => {
@@ -123,7 +124,7 @@ describe("vp run sync", () => {
     const check = run("sync", "--check");
     expect(check.status).toBe(1);
     expect(check.stderr.trimEnd().split("\n")).toStrictEqual([
-      "ERROR .gitattributes differs from what @basis/ui 0.0.0 writes: run vp run sync to put it back, since a change it needs belongs in @basis/ui.",
+      `ERROR .gitattributes differs from what @basis/ui ${uiVersion} writes: run vp run sync to put it back, since a change it needs belongs in @basis/ui.`,
       "ERROR .vite-hooks/pre-push is missing: run vp run sync to write it.",
     ]);
     expect(run("sync").stdout).toBe("Wrote .gitattributes.\nWrote .vite-hooks/pre-push.\n");
@@ -138,7 +139,7 @@ describe("vp run sync", () => {
     );
     write(".vite-hooks/post-merge", `${header}\nvp install\n`);
     expect(run("sync", "--check")).toMatchObject({ status: 0 });
-    expect(run("sync").stdout).toBe("The framework's files match @basis/ui 0.0.0.\n");
+    expect(run("sync").stdout).toBe(`The framework's files match @basis/ui ${uiVersion}.\n`);
     expect(existsSync(path.join(app, "README.md"))).toBe(true);
     expect(existsSync(path.join(app, ".vite-hooks/post-merge"))).toBe(true);
   });
@@ -157,8 +158,8 @@ describe("vp run sync", () => {
     );
     write(".agents/skills/old/SKILL.md", read(".agents/skills/drive-the-app/SKILL.md"));
     await expect(syncProblems(app, await planSync(app, retired))).resolves.toStrictEqual([
-      "ERROR .agents/skills/old/SKILL.md carries basis-ui's header, and @basis/ui 0.0.0 no longer writes it: run vp run sync to remove it.",
-      "ERROR .vite-hooks/pre-rebase carries basis-ui's header, and @basis/ui 0.0.0 no longer writes it: run vp run sync to remove it.",
+      `ERROR .agents/skills/old/SKILL.md carries basis-ui's header, and @basis/ui ${uiVersion} no longer writes it: run vp run sync to remove it.`,
+      `ERROR .vite-hooks/pre-rebase carries basis-ui's header, and @basis/ui ${uiVersion} no longer writes it: run vp run sync to remove it.`,
     ]);
     expect(await syncWrite(app, retired)).toBe(
       "Removed .agents/skills/old/SKILL.md.\nRemoved .vite-hooks/pre-rebase.",
@@ -177,7 +178,7 @@ describe("vp run sync", () => {
     );
     write("AGENTS.md", synced.replace("## basis-ui", "## basis-ui, edited"));
     expect(run("sync", "--check").stderr).toContain(
-      "ERROR AGENTS.md's basis-ui block differs from what @basis/ui 0.0.0 writes: run vp run sync to rewrite it, and keep the repo's own notes outside its markers.",
+      `ERROR AGENTS.md's basis-ui block differs from what @basis/ui ${uiVersion} writes: run vp run sync to rewrite it, and keep the repo's own notes outside its markers.`,
     );
     write("AGENTS.md", `${synced}\nMore notes, after the block.\n`);
     expect(run("sync", "--check").status).toBe(0);
@@ -193,6 +194,7 @@ describe("vp run sync", () => {
 describe("vp run review", () => {
   beforeEach(() => {
     git("init", "--quiet", "--initial-branch=main");
+    write("package.json", JSON.stringify({ dependencies: { "@basis/ui": "0.0.0" }, name: "app" }));
     write(".gitignore", "node_modules/\n");
     git("add", "--all");
     git("commit", "--quiet", "-m", "First commit");

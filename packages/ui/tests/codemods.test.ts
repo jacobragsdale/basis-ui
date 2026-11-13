@@ -11,6 +11,8 @@ import { afterEach, beforeEach, describe, expect, test } from "vite-plus/test";
 
 import { codemodsBetween, runCodemods, shippedCodemods } from "#preset/codemods.ts";
 
+import { uiVersion } from "./ui-version.ts";
+
 const packageRoot = fileURLToPath(new URL("..", import.meta.url));
 
 /** The environment without git's own variables, which a commit hook sets. */
@@ -39,19 +41,34 @@ afterEach(() => {
 });
 
 describe("shippedCodemods", () => {
-  test("finds src/codemods/unreleased's as the package's own version, each exporting a codemod", async () => {
-    const shipped = await shippedCodemods(packageRoot, "0.3.0");
-    expect(shipped.map(({ id }) => id)).toContain("0.3.0/fetch-rule-name");
-    expect(codemodsBetween(shipped, "0.3.0", "0.3.0")).toStrictEqual([]);
+  test("finds each release's folder by its version, each exporting a codemod", async () => {
+    const shipped = await shippedCodemods(packageRoot, uiVersion);
+    expect(shipped.map(({ id }) => id)).toContain("0.1.0/fetch-rule-name");
+    expect(codemodsBetween(shipped, "0.0.0", "0.1.0").map(({ id }) => id)).toContain(
+      "0.1.0/fetch-rule-name",
+    );
+    expect(codemodsBetween(shipped, "0.1.0", "0.1.0")).toStrictEqual([]);
     write("src/empty.ts", "export const empty = 1;\n");
     const runs = await runCodemods(app, shipped, false);
     expect(runs.map(({ id }) => id)).toStrictEqual(shipped.map(({ id }) => id));
   });
 });
 
+test("finds src/codemods/unreleased's as the package's own version, until a release renames it", async () => {
+  const folder = mkdtempSync(path.join(tmpdir(), "basis-ui-codemods-package-"));
+  mkdirSync(path.join(folder, "src/codemods/unreleased"), { recursive: true });
+  writeFileSync(path.join(folder, "src/codemods/unreleased/rename.ts"), "export {};\n");
+  try {
+    const shipped = await shippedCodemods(folder, "0.3.0");
+    expect(shipped.map(({ id }) => id)).toStrictEqual(["0.3.0/rename"]);
+  } finally {
+    rmSync(folder, { force: true, recursive: true });
+  }
+});
+
 /** Runs the shipped fetch-rule-name codemod on the fixture app, writing what it changes when `writing`. */
 async function fetchRuleName(writing: boolean): ReturnType<typeof runCodemods> {
-  const shipped = await shippedCodemods(packageRoot, "0.3.0");
+  const shipped = await shippedCodemods(packageRoot, uiVersion);
   return runCodemods(
     app,
     shipped.filter(({ id }) => id.endsWith("/fetch-rule-name")),
@@ -113,7 +130,7 @@ describe("the fetch-rule-name codemod", () => {
     const [run] = await fetchRuleName(true);
     expect(run?.failed).toStrictEqual([
       expect.stringMatching(
-        /^ERROR codemod 0\.3\.0\/fetch-rule-name could not change src\/broken\.ts \(it does not parse: .+\): make the change its changelog entry describes in that file by hand\.$/u,
+        /^ERROR codemod 0\.1\.0\/fetch-rule-name could not change src\/broken\.ts \(it does not parse: .+\): make the change its changelog entry describes in that file by hand\.$/u,
       ),
     ]);
     expect(read("src/a.ts")).toBe("// oxlint-disable-next-line basis/no-fetch\nfetch('/a');\n");

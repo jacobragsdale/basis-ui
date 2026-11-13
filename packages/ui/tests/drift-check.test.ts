@@ -11,6 +11,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { afterEach, beforeEach, describe, expect, test, vi } from "vite-plus/test";
+import { uiVersion } from "./ui-version.ts";
 
 /* Each test here starts Node on a task, the compiler, a build, a browser or vp, which a busy CI runner can make take
  * many seconds: a minute holds there, where Vitest's 5 s did not, and a test that hangs still fails. */
@@ -43,7 +44,7 @@ beforeEach(() => {
   app = mkdtempSync(path.join(tmpdir(), "basis-ui-drift-"));
   mkdirSync(path.join(app, "node_modules/@basis"), { recursive: true });
   symlinkSync(packageRoot, path.join(app, "node_modules/@basis/ui"), "junction");
-  write("package.json", JSON.stringify({ dependencies: { "@basis/ui": "0.0.0" }, name: "app" }));
+  write("package.json", JSON.stringify({ dependencies: { "@basis/ui": uiVersion }, name: "app" }));
 });
 
 afterEach(() => {
@@ -71,7 +72,7 @@ describe("vp run sync, on the app's own configuration and dependencies", () => {
     run("sync");
     write(".gitignore", read(".gitignore").replace(".fixtures/\n", ""));
     expect(run("sync", "--check").stderr).toBe(
-      "ERROR .gitignore differs from what @basis/ui 0.0.0 writes: run vp run sync to put it back, since a change it needs belongs in @basis/ui.\n",
+      `ERROR .gitignore differs from what @basis/ui ${uiVersion} writes: run vp run sync to put it back, since a change it needs belongs in @basis/ui.\n`,
     );
   });
 
@@ -86,7 +87,7 @@ describe("vp run sync, on the app's own configuration and dependencies", () => {
   test("writes @basis/parallax's stylesheet beside @basis/ui's for an app that depends on it", () => {
     write(
       "package.json",
-      JSON.stringify({ dependencies: { "@basis/parallax": "0.0.0", "@basis/ui": "0.0.0" } }),
+      JSON.stringify({ dependencies: { "@basis/parallax": uiVersion, "@basis/ui": uiVersion } }),
     );
     run("sync");
     expect(read("src/styles.css")).toBe(
@@ -135,7 +136,7 @@ describe("vp run sync, on the app's own configuration and dependencies", () => {
     write(
       "package.json",
       JSON.stringify({
-        dependencies: { "@basis/ui": "0.0.0", "left-pad": "1.3.0", recharts: "3.0.0" },
+        dependencies: { "@basis/ui": uiVersion, "left-pad": "1.3.0", recharts: "3.0.0" },
         devDependencies: { prettier: "3.6.0" },
       }),
     );
@@ -167,7 +168,7 @@ describe("vp run sync, on configuration beside the framework's and dependencies 
       "package.json",
       JSON.stringify({
         dependencies: {
-          "@basis/ui": "0.0.0",
+          "@basis/ui": uiVersion,
           react: "github:someone/react",
           zod: "npm:other@1.0.0",
         },
