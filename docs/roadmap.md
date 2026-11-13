@@ -1,6 +1,6 @@
 # Roadmap
 
-This roadmap is the build order for basis-ui: seven phases, the steps in each, what each step needs first, and when it
+This roadmap is the build order for basis-ui: eight phases, the steps in each, what each step needs first, and when it
 is done. Steps in different lanes run at the same time. For the reasons behind each piece, see [the design](design.md).
 basis has [a roadmap of its own](https://github.com/jacobragsdale/basis/blob/main/docs/roadmap.md), and the two meet at
 the contract (basis's step 2.5, which this roadmap's step 1.3 builds on) and the pilot (basis's step 2.8 and this
@@ -13,11 +13,11 @@ Actions.
 
 ## Lanes
 
-| Lane        | Builds                              | Phases     |
-| ----------- | ----------------------------------- | ---------- |
-| A. UI       | `@basis/ui`                         | 1, 3, 5, 6 |
-| B. Parallax | `@basis/parallax`                   | 2, 6       |
-| C. Ports    | the firm's Angular library and apps | 4          |
+| Lane        | Builds                              | Phases        |
+| ----------- | ----------------------------------- | ------------- |
+| A. UI       | `@basis/ui`                         | 1, 3, 5, 6, 7 |
+| B. Parallax | `@basis/parallax`                   | 2, 6, 7       |
+| C. Ports    | the firm's Angular library and apps | 4             |
 
 The critical path runs through lane A: the Vite+ and orval spikes, the workspace, the preset, the shell, fixture mode,
 screenshots, the firm's components, the template, and the pilot. Parallax runs alongside phase 1 once the preset exists,
@@ -787,3 +787,42 @@ flowchart TD
 10. **6.10 Citrix validation (work).** The maintainer runs the built showcase on a Citrix desktop and sends back the
     probe's and the performance overlay's reports and screenshots. The limit, the budgets and the motion defaults are
     then set from the desktop's figures. This is spike 0.3's Citrix repeat, on the new engine.
+
+## Phase 7: release readiness
+
+Lanes A and B. This phase takes basis-ui from a demo to what tens of developers at the firm can build on. It comes from
+a review of the whole repo on 2026-11-13, which ran the checks, read every area, and made an app from the packed
+template on `winbox`, the Windows machine that stands in for the firm's desktop, and it carries out the decisions the
+maintainer made that day: sign-in by Windows authentication, with the token in local storage; an app's own Dockerfile
+and pipeline; a rate field that needs its unit; and the UI on Windows only. [The release
+plan](release-plan.md) holds each step's detail, and `docs/review/` each area's findings, until the phase is done,
+then both are deleted; this section is the summary. Its steps push straight to `main`, as Phase 6's did, each lane
+from a worktree of its own.
+
+1. **7.1 The API layer and the shell.** A 204 or an empty body no longer fails a request that succeeded, an error
+   that is no problem details keeps its status, a programming error is not shown as a network failure, and the dev
+   server's body files cannot reach outside the fixture folders.
+2. **7.2 Sign-in.** `windowsSignIn`, the adapter for a token endpoint behind Windows authentication, the user's
+   roles, and a production build that cannot sign users in with the fake. Needs 7.1.
+3. **7.3 Inputs and forms.** What the review found in the amount, date, filter, import and form components.
+4. **7.4 Tables, saved views, shortcuts, overlays and navigation.** What the review found there. Needs 7.3.
+5. **7.5 The utilities and the file readers.** A CSV or a workbook that is damaged or hostile fails with a reason,
+   at once. Needs 7.2.
+6. **7.6 The preset's tasks.** On Windows as on Linux: `shot` and `verify` end, `doctor` finds what stops a desktop,
+   and a stage never passes when its tool crashed.
+7. **7.7 Lint rules, scaffolding and the fixture tooling.** The holes and the false alarms the review found. Needs
+   7.6.
+8. **7.8 The template, the synced files and the docs.** A repo that `vp create` can make, pinned to its Node, the
+   deploy files handed to the app, a page that says when a browser is too old, and the docs a person starts from.
+   Needs 7.7.
+9. **7.9 Parallax's React layer.** A view the engine refuses recovers, a dataset is never loaded for nobody or shown
+   to the next user, and a restart does not fail what was still on its way.
+10. **7.10 The grid and the pivot.** A choice of rows that stays true through a filter, a click that lands on the row
+    under it at any scaling, and filters that take what the column shows. Needs 7.9.
+11. **7.11 The charts.** An axis that cannot hang the page, series named as the engine names them, and the small-data
+    API as its docs show it. Needs 7.10.
+12. **7.12 The Rust.** No panic that data or a layout can reach, a panic that says what it was, a load that grows as
+    a stream of any shape arrives, and memory that is bounded.
+13. **7.13 CI.** The template proven on Windows, and the wasm built as it ships. Needs 7.8.
+14. **7.14 Release.** The proof on winbox again, the end-to-end suites, the changelog, version 0.1.0 and its tag.
+    Needs every step.

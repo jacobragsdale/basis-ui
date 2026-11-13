@@ -1,0 +1,132 @@
+# Review: app shell, API layer, fixture mode, testing helpers, preferences
+
+One release blocker, four fix-before-release defects, and a tail of polish. The security design holds up; the confirmed bugs sit at the HTTP boundary and on the dataset path, which the shell's handling never sees.
+
+## Findings, most severe first
+
+**1. `packages/ui/src/api/fetch.ts:77-82` (called at `:120`, `:140`) — release blocker**
+
+- **Defect:** `readBody` calls `response.json()` whenever the content type says JSON, so a 204 from a basis API throws.
+- **Scenario:** A DELETE or PUT route answers 204. FastAPI sends `content-type: application/json` with an empty body, and basis registers routes on that default path (`routes.py:418`). `apiFetch` throws `SyntaxError: Unexpected end of JSON input` after the server has committed. The mutation shows "Something went wrong", `onSuccess` never runs, and the user repeats a write that succeeded.
+- **Why tests miss it:** orval's MSW handlers and fixture records answer 204 with no content type.
+- **Same root cause on errors:** a 502 with a JSON content type and empty body, or a truncated `invalid-token` 401, becomes a `SyntaxError`. It is then neither retried nor answered as a sign-in problem.
+- **Confidence:** confirmed by running. A FastAPI `TestClient` 204 returned `{'content-type': 'application/json'} b''`; a node script against `fetch.ts` reproduced the throw. The FastAPI check was one Python snippet in basis's venv, outside the node-only rule, and wrote nothing.
+
+**2. `packages/ui/src/shell/sign-in-problems.ts:139-159`, `session-state.ts:81-84`, `packages/parallax/src/react/dataset-load.ts:73-87` — fix before release**
+
+- **Defect:** the documented dataset path, `useDataset(name, async () => arrowResponse(url))`, bypasses everything the shell does for requests.
+- **Scenario:** A grid page's only call is a dataset route. On `invalid-token` or `sign-in-required` the `ApiError` is reduced to a string inside parallax. There is no sign-out, no sign-in toast, no telemetry, and no retry of `keys-unavailable` or 502/503/504.
+- **Sign-out gap:** `forgetResponses` resets only the query and mutation caches. After sign-out, or sign-in as someone else, the previous user's rows stay in the engine, on screen and exportable. A dataset that failed 401 stays failed after sign-in.
+- **Where it is recommended:** `packages/create/templates/app/.claude/skills/show-data/SKILL.md:23` and `packages/showcase/src/data/datasets.ts`.
+- **Confidence:** confirmed by reading; nothing in parallax or the shell links the two.
+
+**3. `packages/ui/src/shell/session-state.ts:33` — fix before release**
+
+- **Defect:** `setTokenSource(signIn.token)` detaches `token` from its adapter, while `currentUser`, `signIn` and `signOut` are called as methods.
+- **Scenario:** The firm's adapter (step 1.9, not yet written) is a class whose `token()` reads `this`. Every request rejects with `TypeError: Cannot read properties of undefined`. The shell shows "The server could not be reached. Check the network connection" and retries twice.
+- **Confidence:** confirmed by running a class adapter through `setTokenSource` and `apiFetch`.
+
+**4. `packages/ui/src/preset/fixture-bodies.ts:17-26` — fix before release (dev and test servers only)**
+
+- **Defect:** the body-file middleware decodes each path part after splitting, so `%2F` (and `%5C` on Windows) smuggles `..` past the check.
+- **Scenario:** `GET /__basis/fixture-body/fixtures/..%2F..%2F..%2F..%2Fetc%2Fpasswd` resolves to `/etc/passwd` and is streamed. Any file the developer can read is exposed, including `.env`, `.git/config` and `.fixtures/` client data.
+- **Reach:** any local process, another user on a shared session host (loopback is per machine), or the network under `vp dev --host`. Vite's host check runs before the middleware, so DNS rebinding is blocked.
+- **Confidence:** the function was confirmed by running (`bodyFileAsked` returned `fixtures/../../../../etc/passwd`); reachability is by reading. The existing test covers only `%2E%2E`.
+
+**5. `packages/create/templates/app/src/main.tsx:16`, `packages/ui/src/shell/sign-in.ts:34-41` — fix before release**
+
+- **Defect:** every scaffolded app ships `fakeSignIn()` in its production entry, and nothing in build, verify, doctor or lint flags it.
+- **Scenario:** An app is deployed before 1.9. The UI shows "Dev User" and signs every request with the published development key. Safety rests entirely on each API refusing that key; one environment configured to accept it gives anyone a forgeable identity.
+- **Confidence:** confirmed by reading, plus a grep of built output: the private key is in `example/dist`, `showcase/dist` and `parallax-demo/dist`. No guard exists in `src/preset`.
+
+**6. `packages/ui/src/api/fetch.ts:90-103`, `shell/describe-error.ts:52` — fix before release**
+
+- **Defect:** a non-problem error body always gets a synthesized title, and a 422 is parsed only by the strict validation schema.
+- **Scenario A:** An ingress answers 403 or 404 with HTML over HTTP/2, where `statusText` is empty. The user sees only "Request failed", with no status. The "You do not have access" and "Not found" titles are unreachable for these responses.
+- **Scenario B:** A 422 with no `errors`, or one entry of a third kind such as `{detail, header}`, loses its whole title, detail and fields.
+- **Confidence:** confirmed by running both cases.
+
+**7. `packages/ui/src/shell/query-client.ts:32`, `describe-error.ts:67-73` — polish**
+
+- **Defect:** every `TypeError` is treated as a network failure.
+- **Scenario:** A bug in a `queryFn` or `select` (`x.map is not a function`), or finding 3, is retried twice with backoff and shown as "The server could not be reached".
+- **Confidence:** confirmed by running.
+
+**8. `packages/ui/src/api/fetch.ts:59`, `api/mutator.ts:16` — polish, but a public type that is hard to change later**
+
+- **Defect:** a hook's error type is `ApiError<the operation's declared problems>`, narrower than what is thrown.
+- **Scenario:** An operation declares only 422. `mutation.error.problem.errors.map(...)` type-checks under the strictest settings, then crashes on a 502 (no `errors`) or a network failure (no `.problem`).
+- **Confidence:** confirmed by reading the generated client (`TError = ErrorType<ValidationProblem>`) against what `apiFetch` throws. `ErrorAlert`, `describeError` and `submitErrors` take `unknown` and are safe.
+
+**9. `packages/ui/src/shell/basis-app.tsx:67-95` — polish**
+
+- **Defect:** telemetry is called unguarded inside the cache subscribers, and nothing listens for `error` or `unhandledrejection`.
+- **Scenario:** A collector that throws once aborts the subscriber before `toastError`, so failed saves show nothing. Errors in event handlers and un-awaited promises never reach telemetry.
+- **Confidence:** confirmed by reading.
+
+**10. `packages/ui/src/preset/fixture-page.ts:38-48`, `fixtures/start.ts:41-45` — polish**
+
+- **Defect:** the page's inline script awaits `startFixtureMode` with no catch.
+- **Scenario:** A fixture build or `vp dev` is opened over plain HTTP by hostname, where there is no service worker API. MSW's invariant throws, the entry is never imported, and the page is blank with only a console error.
+- **Confidence:** confirmed by reading MSW 3.0.4 (`lib/browser/index.js:228`). Nothing in the docs mentions a secure context.
+
+**11. `packages/ui/src/theme/preferences-cookie.ts:64-81`, `:107-109`, `preferences.ts:156-165` — polish**
+
+- **Defect:** both readers take the first cookie of the name, and the comment's premise that a host-only cookie is listed first is wrong; equal paths are ordered oldest first (RFC 6265 §5.4).
+- **Scenario:** App A sets `preferencesDomain`; app B on a sibling host does not, which is the template's default. B's own choice is written host-only behind the older shared cookie, so it reverts on the next cookie, focus or visibility event.
+- **Confidence:** the parse order was confirmed by running; the browser ordering is by spec, not observed.
+
+**12. `packages/ui/src/testing/check-routes.ts:114-117`, `testing/index.ts:65-68`, `page-load.ts:14-25` — polish**
+
+- **Defect:** `checkRoutes` and `renderApp` build their own router from the route tree, and "loaded" watches only the router and query client.
+- **Scenario:** A router `context`, `basepath` or search serializer the app sets is never under test, and a loader reading `context.queryClient` cannot be tested at all. A dataset load that fails after the 100 ms still-window is not reported.
+- **Confidence:** the first is confirmed by reading; the second is plausible.
+
+**13. `packages/ui/src/api/problem.ts:39`, `basis-app.tsx:159-165` — polish**
+
+- **Defect:** `pointerPath` lets `decodeURIComponent` throw.
+- **Scenario:** A 422 with pointer `#/discount%` throws `URIError` inside `describeError`. If that happens in `PageError`, the outer boundary's own fallback, nothing is left to catch it.
+- **Confidence:** the throw was confirmed by running; the blank page is by reading. A contract-compliant basis percent-encodes, so this is rare.
+
+**14. `packages/ui/src/preset/dev-server.ts:62-72` — polish**
+
+- **Defect:** `process.kill(-pid)` is the only stop for the detached `vp dev` that `vp run shot` starts, and the catch treats any failure as "ended already".
+- **Scenario:** On Windows there are no process groups, so the server is likely left running after every shot.
+- **Confidence:** plausible; not run on Windows.
+
+## Checked and sound
+
+- **Token scope:** the token cannot leave the origin. Every URL is prefixed with `/api`; an absolute URL becomes `/apihttps://…` (confirmed by running).
+- **Token leakage:** none found in `ApiError`, telemetry, toasts or URLs. Fixture records refuse JWTs.
+- **Concurrent 401s:** one sign-out, guarded by a flag and a null-user check. Only a single failing request is tested.
+- **Retries:** two, with TanStack's default backoff. Mutations retry only on `keys-unavailable`.
+- **Sign-out:** `resetQueries` silently cancels in-flight fetches and resets inactive queries (query-core 5.106.1).
+- **Focus refetch:** driven by `visibilitychange` only, so no focus storms.
+- **Production builds:** `vp build` carries no MSW or fixtures; `example/dist` has neither. A fixture build never reads `.fixtures/`.
+- **Stale service worker:** MSW 3's worker passes through for any page that never activates it.
+- **XSS:** no `innerHTML`. Problem text renders as React text, and the head script and cookie parse against allow-lists.
+- **Cookie:** no `Secure` flag, but it holds only a theme choice.
+
+## Overall quality
+
+The area is in better shape than a week of agent work would suggest: small files, clear contracts, and careful security design. Pure functions are well tested (fixture format, cookie and head-script twins, retry predicates, route sampling), and the `invalid-token`, `sign-in-required` and `keys-unavailable` flows have real browser tests in `packages/example`. The gap is the HTTP boundary as a real server and ingress behave. No test covers a 204, an empty or non-JSON body, HTTP/2's empty status text, a failing token source, concurrent 401s, or sign-out with a dataset loaded. `BasisApp` itself is tested only through the example app.
+
+## The sign-in adapter
+
+- **What exists:** only `fakeSignIn` and `anonymousSignIn`. The firm's adapter is roadmap step 1.9, marked (work), with no code.
+- **How it is wired:** an object of four functions passed to `<BasisApp signIn>`. `currentUser()` runs once at start and may redirect, `token()` runs per request and is expected to renew, and `signIn()` / `signOut()` may leave the page.
+- **Open questions before writing it:**
+  - What `token()` does when renewal fails. Throwing gives a generic error; returning `null` gives anonymous requests under a header that still shows the user.
+  - The interface has no way to tell the shell the user changed.
+  - Whether an expired session on `/api` is a 401 problem or an ingress redirect. A redirect surfaces as a `TypeError`, shown as a network error.
+  - Whether `signOut()` on `invalid-token` should end the firm-wide session. That flow is a recorded decision, but one API with a wrong audience would then sign users out everywhere.
+
+## Not read
+
+- **Theme generator:** `check.ts`, `colours.ts`, `css.ts`, `declarations.ts`, `inputs.ts`, `levers.ts`, `pairs.ts`, `parallax-charts.ts`, `ramps.ts`, `theme-file.ts`, `tokens.ts` (outside the brief).
+- **Skimmed only:** `testing/workbook-file.ts`, `testing/zip-file.ts`; `user-menu.tsx` was grepped.
+- **Preset neighbours:** `fixture-document.ts`, `fixture-new.ts`, `orval.ts`.
+- **Tests:** read in full were `api.test.ts`, `check-routes.test.tsx` and `sign-in-problems.browser.test.ts`; parts of `shell.test.ts` and `fixture-mode.test.ts`; test names only for the rest.
+- **Example app:** its pages were not read.
+
+Throwaway scripts are in `(a scratch folder)`.
