@@ -121,7 +121,10 @@ function DataTable<TRow extends RowData, TFilters extends FilterDefinitions = Fi
       />
     );
   }
-  return <DataTableView {...props} data={rows} />;
+  // Data not yet there is loading, as a query's is before it answers, unless the app says otherwise or has an error.
+  const loading =
+    props.loading ?? (data === undefined && (props.error === undefined || props.error === null));
+  return <DataTableView {...props} data={rows} loading={loading} />;
 }
 
 export { DataTable };

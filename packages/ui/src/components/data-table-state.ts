@@ -199,11 +199,20 @@ function useRowsFor<TRow>(
   return held.rows;
 }
 
+/** The ids of the rows the filters keep, none before the table is built. */
+function keptIds<TRow extends RowData>(
+  table: DataTableInstance<TRow> | undefined,
+): ReadonlySet<string> {
+  return new Set(table?.getRowModel().rows.map((row) => row.id));
+}
+
 /** The table DataTable renders. Sorting starts ascending on every column, and Shift adds a column to it. */
 function useDataTable<TRow extends RowData>(options: DataTableOptions<TRow>): DataTableState<TRow> {
   const { data, columns, getRowId, state } = options;
   const parts = useStateParts(state);
-  const selection = useRowSelection(data, getRowId, state);
+  // The ids the filters keep, read when the selection is reported, once the table below exists.
+  const built: { table?: DataTableInstance<TRow> } = {};
+  const selection = useRowSelection(data, { getRowId, kept: () => keptIds(built.table) }, state);
   const columnDefs = columnDefsFor(columns);
   const matches = textMatcher(columns);
   // TanStack keeps each row's values, and its sorted and filtered rows, until the data array changes, and the columns
@@ -213,6 +222,7 @@ function useDataTable<TRow extends RowData>(options: DataTableOptions<TRow>): Da
   const table = useTable<DataTableFeatures, TRow>(
     tableOptions({ columnDefs, matches, options: { ...options, kept: rows }, parts, selection }),
   );
+  built.table = table;
   return { hidden: parts.hidden, page: parts.page, setPage: parts.setPage, table };
 }
 

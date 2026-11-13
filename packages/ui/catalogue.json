@@ -15212,7 +15212,7 @@
           "type": "readonly string[] | undefined"
         },
         {
-          "description": "Hears the selected rows, in order, and their ids on each change and when new data drops or replaces one.",
+          "description": "Hears the selected rows the filters keep, as the toolbar counts them, in the data's order, and their ids: on each change, and whenever those rows change, as when new data drops one or a filter narrows them.",
           "name": "onSelectionChange",
           "optional": true,
           "type": "SelectionListener<TRow> | undefined"
@@ -15230,7 +15230,7 @@
           "type": "readonly DataTableColumn<TRow>[]"
         },
         {
-          "description": "The rows, or `undefined` while there are none yet, as a query's `data` is before it loads.",
+          "description": "The rows, or `undefined` while there are none yet, as a query's `data` is before it loads, which shows the loading rows unless `loading` is false or there is an `error`.",
           "name": "data",
           "optional": false,
           "type": "readonly TRow[] | undefined"
@@ -15302,7 +15302,7 @@
           "type": "number | undefined"
         },
         {
-          "description": "Shows placeholder rows in place of the rows, as while a query is pending.",
+          "description": "Shows placeholder rows in place of the rows, as while a query is pending; while `data` is `undefined` and there is no `error` unless set.",
           "name": "loading",
           "optional": true,
           "type": "boolean | undefined"
@@ -25572,7 +25572,7 @@
           "type": "readonly string[] | undefined"
         },
         {
-          "description": "Hears the selected rows, in order, and their ids on each change and when new data drops or replaces one.",
+          "description": "Hears the selected rows the filters keep, as the toolbar counts them, in the data's order, and their ids: on each change, and whenever those rows change, as when new data drops one or a filter narrows them.",
           "name": "onSelectionChange",
           "optional": true,
           "type": "SelectionListener<TRow> | undefined"
@@ -27287,7 +27287,7 @@
       "exported": true,
       "module": "@basis/ui",
       "name": "Shortcut",
-      "purpose": "A shortcut as a component declares it. `keys` is a combination such as `mod+k` (Ctrl on Windows, Cmd on a Mac), `shift+?` or `/`; `description` is what the `?` overlay says it does."
+      "purpose": "A shortcut as a component declares it. `keys` is a combination such as `mod+k` (Ctrl on Windows, Cmd on a Mac), `shift+?` or `/`, by the grammar shortcut-keys.ts states; `description` is what the `?` overlay says it does."
     },
     {
       "definition": "\"offcanvas\" | \"icon\" | \"none\"",

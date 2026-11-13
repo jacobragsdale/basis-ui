@@ -41,18 +41,39 @@ interface DataTableStateProps<TRow> {
   readonly selectedIds?: readonly string[] | undefined;
   /** The ids selected when the table holds them, among the rows it holds; none unless set. */
   readonly defaultSelectedIds?: readonly string[] | undefined;
-  /** Hears the selected rows, in order, and their ids on each change and when new data drops or replaces one. */
+  /** Hears the selected rows the filters keep, as the toolbar counts them, in the data's order, and their ids: on each
+   * change, and whenever those rows change, as when new data drops one or a filter narrows them. */
   readonly onSelectionChange?: SelectionListener<TRow> | undefined;
 }
 
-/** A part of the state: the app's value when it holds one, else the table's own from `initial`; a change goes to
- * `onChange` either way, and to the table's own value when the app holds none. */
+/** The table's own copy of a part the app may hold, which starts from `initial` again when the app lets go of the
+ * part, its value going back to `undefined`: an app that keeps the page in its address as `page || undefined` means
+ * the first page by it, not the last page the table held for itself. */
+function useOwnCopy<TValue>(
+  held: boolean,
+  initial: TValue,
+): readonly [TValue, (next: TValue) => void] {
+  const [own, setOwn] = useState(initial);
+  const [wasHeld, setWasHeld] = useState(held);
+  if (wasHeld !== held) {
+    setWasHeld(held);
+    if (!held) {
+      setOwn(initial);
+      return [initial, setOwn];
+    }
+  }
+  return [own, setOwn];
+}
+
+/** A part of the state: the app's value when it holds one, else the table's own from `initial`, which starts again
+ * from `initial` whenever the app's value goes back to `undefined`; a change goes to `onChange` either way, and to the
+ * table's own value when the app holds none. */
 function useControllable<TValue>(
   value: TValue | undefined,
   initial: TValue,
   onChange: ((next: TValue) => void) | undefined,
 ): readonly [TValue, (next: TValue) => void] {
-  const [own, setOwn] = useState(initial);
+  const [own, setOwn] = useOwnCopy(value !== undefined, initial);
   const set = (next: TValue): void => {
     if (value === undefined) {
       setOwn(next);
@@ -96,21 +117,39 @@ interface RowSelection {
   readonly change: (updater: Updater<RowSelectionState>) => void;
 }
 
-/** The row selection, by id, kept to the rows `data` holds: the app's ids when it holds them. The app hears the
- * selected rows and their ids on each change, and again when new data arrives whose selected rows differ from those
- * it heard of: the rows as the new data holds them, without those it dropped. Data made afresh each render from the
- * same rows tells it nothing. */
+/** The rows the app hears of: those selected that the filters keep, as the toolbar counts them, in the data's order. */
+function reportedRows<TRow>(
+  data: readonly TRow[],
+  selection: RowSelectionState,
+  {
+    getRowId,
+    kept,
+  }: { readonly getRowId: (row: TRow) => string; readonly kept: () => ReadonlySet<string> },
+): TRow[] {
+  const shown = kept();
+  return selectedIn(data, selection, getRowId).filter((row) => shown.has(getRowId(row)));
+}
+
+/** The row selection, by id, kept to the rows `data` holds: the app's ids when it holds them, and the defaults again
+ * when it lets go of them. The app hears the selected rows the filters keep, as the toolbar counts them, and their
+ * ids: on each change, and again whenever those rows differ from the ones it last heard of, as when new data drops
+ * one or a filter narrows them. Data made afresh each render from the same rows tells it nothing. */
 function useRowSelection<TRow>(
   data: readonly TRow[],
-  getRowId: (row: TRow) => string,
+  {
+    getRowId,
+    kept,
+  }: { readonly getRowId: (row: TRow) => string; readonly kept: () => ReadonlySet<string> },
   { selectedIds, defaultSelectedIds, onSelectionChange }: DataTableStateProps<TRow>,
 ): RowSelection {
-  const [own, setOwn] = useState(() => selectionOf(defaultSelectedIds ?? noIds));
+  const [own, setOwn] = useOwnCopy(
+    selectedIds !== undefined,
+    selectionOf(defaultSelectedIds ?? noIds),
+  );
   const chosen = selectedIds === undefined ? own : selectionOf(selectedIds);
   const rowSelection = keptSelection(chosen, new Set(data.map((row) => getRowId(row))));
-  // The rows the app last heard of, and the data it last heard of them in.
-  const heard = useRef<readonly TRow[]>([]);
-  const heardIn = useRef(data);
+  // The rows the app last heard of, or `null` before the first render, whose selection it set itself.
+  const heard = useRef<readonly TRow[] | null>(null);
   const report = (rows: readonly TRow[]): void => {
     heard.current = rows;
     onSelectionChange?.(
@@ -119,12 +158,11 @@ function useRowSelection<TRow>(
     );
   };
   useEffect(() => {
-    if (heardIn.current !== data) {
-      heardIn.current = data;
-      const rows = selectedIn(data, rowSelection, getRowId);
-      if (!sameRows(rows, heard.current)) {
-        report(rows);
-      }
+    const rows = reportedRows(data, rowSelection, { getRowId, kept });
+    if (heard.current === null) {
+      heard.current = rows;
+    } else if (!sameRows(rows, heard.current)) {
+      report(rows);
     }
   });
   return {
@@ -133,7 +171,7 @@ function useRowSelection<TRow>(
       if (selectedIds === undefined) {
         setOwn(next);
       }
-      report(selectedIn(data, next, getRowId));
+      report(reportedRows(data, next, { getRowId, kept }));
     },
     rowSelection,
   };

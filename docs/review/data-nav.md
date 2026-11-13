@@ -40,6 +40,11 @@ key (`development.ts` reads Vite's `import.meta.env.DEV`). Held by unit tests of
 - **Severity:** fix before release.
 - **Confidence:** confirmed by running the real hook (`controllable.mjs`).
 
+Done in DataTable: a state the app lets go of returns to its default, the selection reported is the toolbar's, and no data yet is loading: when a state prop goes back to `undefined`, the table's own copy starts again from its default
+(`useOwnCopy` in `data-table-control.ts`), for the sort, filter, hidden columns, page and selection. So `page ||
+undefined` means the first page, `q || undefined` no filter, and a saved view with no `filter` key no filter. Held by
+gallery tests of an app that keeps the page and filter as an address does (`data-table-over-time.test.tsx`).
+
 **4. `browserViewStore` permanently deletes every view the current `parse` rejects on its next write**
 
 - **Where:** `packages/ui/src/components/saved-views-store.ts:92-131`
@@ -73,6 +78,11 @@ key (`development.ts` reads Vite's `import.meta.env.DEV`). Held by unit tests of
 - **Severity:** fix before release (an API that is hard to change later).
 - **Confidence:** confirmed by running the built `DataTable` (`selection.mjs`).
 
+Done in DataTable: a state the app lets go of returns to its default, the selection reported is the toolbar's, and no data yet is loading: `onSelectionChange` reports the selected rows the filters keep, the rows the toolbar counts and Copy
+copies, in the data's order. It reports again whenever those rows change, as when a filter narrows them. A row the
+filter hides stays selected, and is reported again once the filter lets it back. Held by a gallery test that selects
+all and then filters.
+
 **8. Sidebar and palette route derivation breaks on anything but a flat route tree**
 
 - **Where:** `packages/ui/src/components/route-entries.ts:65-83`
@@ -88,6 +98,10 @@ key (`development.ts` reads Vite's `import.meta.env.DEV`). Held by unit tests of
 - **Scenario:** `<DataTable data={q.data?.data} … />` tells a trader there are no positions while the query loads, and permanently after a 500.
 - **Severity:** fix before release (treat undefined as loading, or take the query).
 - **Confidence:** confirmed by running (`selection.mjs`).
+
+Done in DataTable: a state the app lets go of returns to its default, the selection reported is the toolbar's, and no data yet is loading: `data: undefined` shows the loading rows, with the table `aria-busy`, unless `loading` is set or
+there is an `error`, which shows as before. A query that fails with no `error` passed stays loading rather than
+saying there are no rows. Held by a gallery test.
 
 **10. A date-range filter on a timestamp uses the UTC date in the text (FilterBar's, reached through `filterBy`)**
 
@@ -187,3 +201,13 @@ Two weak spots in what agents are shown:
 
 - Shortcuts no longer repeat while a key is held, never run for a key a grid or chart already handled, and none run
   while a modal dialog is open. What to do: nothing.
+
+- A DataTable state prop the app sets back to `undefined`, such as `page || undefined` or a saved view with no
+  `filter`, now returns the table to its default rather than to the table's own last copy. What to do: nothing.
+
+- `onSelectionChange` reports the selected rows the filters keep, as the toolbar counts them, and is called again
+  when a filter narrows them. What to do: an action on "the selected rows" now gets only those shown; pass the
+  filter's text as `filter` and clear it first if a page means every row selected.
+
+- `DataTable` with `data` `undefined` shows its loading rows unless `loading={false}` or an `error` is passed, never
+  "No rows to show." What to do: pass the query's `error`, so a failed load shows it rather than loading.

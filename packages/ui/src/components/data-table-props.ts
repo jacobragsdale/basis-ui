@@ -16,7 +16,8 @@ interface DataTableProps<
   readonly label: string;
   /** The columns, in order: each one's `id`, `header` and `value`, and `cell` when its value's text is not enough. */
   readonly columns: readonly DataTableColumn<TRow>[];
-  /** The rows, or `undefined` while there are none yet, as a query's `data` is before it loads. */
+  /** The rows, or `undefined` while there are none yet, as a query's `data` is before it loads, which shows the
+   * loading rows unless `loading` is false or there is an `error`. */
   readonly data: readonly TRow[] | undefined;
   /** A row's stable id, such as its CUSIP or trade id, which keeps it selected as the rows sort and change. */
   readonly getRowId: (row: TRow) => string;
@@ -42,7 +43,8 @@ interface DataTableProps<
   readonly pageSize?: number | undefined;
   /** The most rows the table draws; 2,000 unless set. Past it the table shows an error in their place. */
   readonly rowCap?: number | undefined;
-  /** Shows placeholder rows in place of the rows, as while a query is pending. */
+  /** Shows placeholder rows in place of the rows, as while a query is pending; while `data` is `undefined` and there
+   * is no `error` unless set. */
   readonly loading?: boolean | undefined;
   /** An error to show over the table, such as a query's `error`, as `ErrorAlert` shows it. */
   readonly error?: unknown;
