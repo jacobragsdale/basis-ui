@@ -44,7 +44,11 @@ function triggerText<TState>(model: SavedViewsModel<TState>, label: string): str
 /** The saved views, the one shown checked and the default marked. */
 function ViewList<TState>({ model }: { readonly model: SavedViewsModel<TState> }): ReactElement {
   if (model.views.length === 0) {
-    return <DropdownMenuLabel>No saved views yet</DropdownMenuLabel>;
+    return (
+      <DropdownMenuLabel>
+        {model.failed ? "The saved views could not be loaded." : "No saved views yet"}
+      </DropdownMenuLabel>
+    );
   }
   return (
     <DropdownMenuRadioGroup

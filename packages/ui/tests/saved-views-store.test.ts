@@ -64,6 +64,52 @@ describe(browserViewStore, () => {
     });
   });
 
+  test("never writes back less than it read: a view its parse rejects, and the default naming it, stay stored", async () => {
+    const storage = memoryStorage();
+    const stored = {
+      defaultId: "newer",
+      views: [
+        { id: "newer", name: "From a newer release", state: { columns: ["fund"] } },
+        { id: "a", name: "By fund", state: { column: "fund" } },
+      ],
+    };
+    storage.setItem("basis-ui-views:positions.grid", JSON.stringify(stored));
+    const store = browserViewStore({ key: "positions.grid", parse: parseSort, storage });
+    const shown = await store.list();
+    expect(shown.views.map(({ id }) => id)).toStrictEqual(["a"]);
+    await store.put({ id: "b", name: "By book", state: { column: "book" } });
+    await store.remove("a");
+    await store.setDefault(null);
+    expect(JSON.parse(storage.getItem("basis-ui-views:positions.grid") ?? "null")).toStrictEqual({
+      defaultId: null,
+      views: [stored.views[0], { id: "b", name: "By book", state: { column: "book" } }],
+    });
+  });
+
+  test("a default it cannot show is kept until another is chosen", async () => {
+    const storage = memoryStorage();
+    storage.setItem(
+      "basis-ui-views:positions.grid",
+      JSON.stringify({ defaultId: "newer", views: [{ id: "newer", name: "Newer", state: 1 }] }),
+    );
+    const store = browserViewStore({ key: "positions.grid", parse: parseSort, storage });
+    await store.put({ id: "b", name: "By book", state: { column: "book" } });
+    expect(JSON.parse(storage.getItem("basis-ui-views:positions.grid") ?? "null")).toMatchObject({
+      defaultId: "newer",
+    });
+  });
+
+  test("keeps text it cannot read aside before it writes over it", async () => {
+    const storage = memoryStorage();
+    storage.setItem("basis-ui-views:positions.grid", "{not json");
+    const store = browserViewStore({ key: "positions.grid", parse: parseSort, storage });
+    await store.put({ id: "b", name: "By book", state: { column: "book" } });
+    const aside = Array.from({ length: storage.length }, (_unused, index) =>
+      storage.key(index),
+    ).filter((key) => key?.startsWith("basis-ui-views:positions.grid:unreadable:") === true);
+    expect(aside.map((key) => storage.getItem(key ?? ""))).toStrictEqual(["{not json"]);
+  });
+
   test("reads nothing from a key that holds no JSON, rather than failing the page", async () => {
     const storage = memoryStorage();
     storage.setItem("basis-ui-views:positions.grid", "{not json");

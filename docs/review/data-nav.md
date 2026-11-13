@@ -53,6 +53,11 @@ gallery tests of an app that keeps the page and filter as an address does (`data
 - **Severity:** fix before release.
 - **Confidence:** confirmed by running the real store (`views.mjs`).
 
+Done in SavedViews: the store keeps what it cannot read, the view shown is held, and a failed or late load says so: `browserViewStore` writes over the list as stored, not as `parse` read it. A view the page
+refuses stays stored, as does a default it cannot show, and text that is not a list of views is kept aside under
+`KEY:unreadable:TIME` before the first write. Held by unit tests of each write over a rejected view and its default,
+and of unreadable text.
+
 **5. SavedViews names the store's current default as the active view, whatever was applied**
 
 - **Where:** `packages/ui/src/components/use-saved-views.ts:99-107`
@@ -61,6 +66,12 @@ gallery tests of an app that keeps the page and filter as an address does (`data
 - **Scenario B:** a tab loaded with no default; another tab makes "Risk" the default; on the next refetch (window focus) this tab reads "Risk (changed)" without applying it, and "Save changes to Risk" overwrote Risk with this tab's unrelated state.
 - **Severity:** fix before release.
 - **Confidence:** confirmed by running the real hook (`savedviews.mjs`).
+
+Done in SavedViews: the store keeps what it cannot read, the view shown is held, and a failed or late load says so: the view shown is held. It is the one opened on, decided once when the views first load, until
+the user picks or saves another; it is never read from the store's default as it is now. So stopping the default
+keeps the view shown with its actions, and a default another tab sets is not taken for this tab's view on a reload.
+The gallery's "stops opening" test now checks the menu as well as the store; a new test makes another tab's default
+over the shared storage, with its storage event, and loads the views again.
 
 **6. Toasts sit under any open modal's veil and viewport**
 
@@ -161,6 +172,10 @@ finding's CUSIPs, Apple's first, by such a column.
 - **Severity:** polish.
 - **Confidence:** confirmed by reading.
 
+Done in SavedViews: the store keeps what it cannot read, the view shown is held, and a failed or late load says so: a failed load says "The saved views could not be loaded." in the menu, and the default is applied
+only if the page's state is still the one it opened with when the views arrive. Held by gallery tests of a store
+that rejects and one that answers after the user changed the sort.
+
 **15. Any `TypeError` is described as "The server could not be reached"**
 
 - **Where:** `packages/ui/src/shell/describe-error.ts:67`, shown through `ErrorAlert`, `QueryState` and `DataTable`
@@ -211,3 +226,11 @@ Two weak spots in what agents are shown:
 
 - `DataTable` with `data` `undefined` shows its loading rows unless `loading={false}` or an `error` is passed, never
   "No rows to show." What to do: pass the query's `error`, so a failed load shows it rather than loading.
+
+- `browserViewStore` never writes back less than it read: a view the page's `parse` refuses, and a default it cannot
+  show, stay stored, and unreadable text is kept aside under `KEY:unreadable:TIME` before a write replaces it. What
+  to do: nothing.
+
+- SavedViews holds the view shown: stopping the default no longer deselects it, and a default another tab sets is
+  not taken for this tab's view. A failed load says so in the menu, and a default that arrives after the user has
+  changed the page's state is not applied. What to do: nothing.

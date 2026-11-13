@@ -1,6 +1,8 @@
 import "#styles.css";
 
 import { SavedViews, browserViewStore } from "@basis/ui";
+import type { SavedViewList, SavedViewStore } from "@basis/ui";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
 import type { ReactElement } from "react";
 import { describe, expect, test } from "vite-plus/test";
@@ -31,11 +33,11 @@ function storeWith(json?: string): ReturnType<typeof browserViewStore<Sort>> {
   return browserViewStore({ key, parse: parseSort });
 }
 
-/** A page whose state is a sort, shown as text, with its views and a button that changes it. */
-function SortPage({ store }: { readonly store: ReturnType<typeof storeWith> }): ReactElement {
+/** The sort page's parts. */
+function SortParts({ store }: { readonly store: SavedViewStore<Sort> }): ReactElement {
   const [sort, setSort] = useState<Sort>({ by: "issuer" });
   return (
-    <WithQueryClient>
+    <>
       <p>Sorted by {sort.by}</p>
       <button
         type="button"
@@ -46,8 +48,49 @@ function SortPage({ store }: { readonly store: ReturnType<typeof storeWith> }): 
         Sort by par
       </button>
       <SavedViews label="Views" store={store} state={sort} onApply={setSort} />
+    </>
+  );
+}
+
+/** A page whose state is a sort, shown as text, with its views and a button that changes it. */
+function SortPage({ store }: { readonly store: SavedViewStore<Sort> }): ReactElement {
+  return (
+    <WithQueryClient>
+      <SortParts store={store} />
     </WithQueryClient>
   );
+}
+
+/** The sort page under the test's own query client, which it can tell to load the views again, as a window's
+ * focus would. */
+function SortPageIn({
+  client,
+  store,
+}: {
+  readonly client: QueryClient;
+  readonly store: SavedViewStore<Sort>;
+}): ReactElement {
+  return (
+    <QueryClientProvider client={client}>
+      <SortParts store={store} />
+    </QueryClientProvider>
+  );
+}
+
+/** A query client that never retries, so a failed load shows at once. */
+function testClient(): QueryClient {
+  return new QueryClient({ defaultOptions: { queries: { retry: false } } });
+}
+
+/** A store over `list`, which the test resolves or rejects when it likes, as an API behind retries answers. */
+function heldStore(list: Promise<SavedViewList<Sort>>): SavedViewStore<Sort> {
+  return {
+    key: `held.${String(Math.random())}`,
+    list: async () => list,
+    put: async () => Promise.resolve(),
+    remove: async () => Promise.resolve(),
+    setDefault: async () => Promise.resolve(),
+  };
 }
 
 const seeded = JSON.stringify({
@@ -99,7 +142,7 @@ describe("SavedViews", () => {
     expect(views.map((view) => view.name)).toStrictEqual(["Issuers"]);
   });
 
-  test("stops opening the view shown by default", async () => {
+  test("stops opening the view shown by default, and still names it as the view shown", async () => {
     const store = storeWith(seeded);
     const screen = await render(<SortPage store={store} />);
     await screen.getByRole("button", { name: "By fund" }).click();
@@ -110,6 +153,41 @@ describe("SavedViews", () => {
         return list.defaultId;
       })
       .toBeNull();
+    await screen.getByRole("button", { name: "By fund", exact: true }).click();
+    await expect.element(page.getByRole("menuitem", { name: "Delete By fund…" })).toBeVisible();
+  });
+
+  test("a default another tab sets is not taken for the view shown when the views load again", async () => {
+    const store = storeWith(JSON.stringify({ ...JSON.parse(seeded), defaultId: null }));
+    const client = testClient();
+    const screen = await render(<SortPageIn client={client} store={store} />);
+    await expect.element(screen.getByRole("button", { name: "Views" })).toBeVisible();
+    // Another tab makes By book the default, in the storage both share.
+    await store.setDefault("book");
+    globalThis.dispatchEvent(new StorageEvent("storage", { key: `basis-ui-views:${store.key}` }));
+    await client.invalidateQueries();
+    await expect.element(screen.getByRole("button", { name: "Views" })).toBeVisible();
+    await expect.element(screen.getByText("Sorted by issuer")).toBeVisible();
+  });
+
+  test("a list that loads after the user has changed the page does not apply the default over it", async () => {
+    const { promise, resolve } = Promise.withResolvers<SavedViewList<Sort>>();
+    const screen = await render(<SortPageIn client={testClient()} store={heldStore(promise)} />);
+    await screen.getByRole("button", { name: "Sort by par" }).click();
+    resolve({ defaultId: "fund", views: [{ id: "fund", name: "By fund", state: { by: "fund" } }] });
+    await screen.getByRole("button", { name: "Views" }).click();
+    await expect
+      .element(page.getByRole("menuitemradio", { name: "By fund Default" }))
+      .toBeVisible();
+    await expect.element(screen.getByText("Sorted by par")).toBeVisible();
+  });
+
+  test("says when the views could not be loaded, not that there are none", async () => {
+    const screen = await render(
+      <SortPageIn client={testClient()} store={heldStore(Promise.reject(new Error("503")))} />,
+    );
+    await screen.getByRole("button", { name: "Views" }).click();
+    await expect.element(page.getByText("The saved views could not be loaded.")).toBeVisible();
   });
 
   test("deletes the view shown after asking", async () => {

@@ -81,8 +81,51 @@ async function settled<TResult>(work: () => TResult): Promise<TResult> {
   }
 }
 
+/** The list as stored, before `parse` reads it: every entry, a view the page no longer takes among them, and the
+ * default as stored, so a write keeps what this page cannot read. */
+interface StoredList {
+  readonly views: readonly unknown[];
+  readonly defaultId: unknown;
+}
+
+const nothingStored: StoredList = { defaultId: null, views: [] };
+
+/** A stored entry's id, if it has one. */
+function entryId(entry: unknown): string | undefined {
+  return isRecord(entry) && typeof entry["id"] === "string" ? entry["id"] : undefined;
+}
+
+/** The stored list a write starts from: what is stored, or, for text that is not a list of views, nothing, the text
+ * kept aside first under a key of its own, so that no write loses it. */
+function storedList(storage: Storage, name: string): StoredList {
+  const text = storage.getItem(name);
+  if (text === null) {
+    return nothingStored;
+  }
+  try {
+    const value: unknown = JSON.parse(text);
+    if (isRecord(value) && Array.isArray(value["views"])) {
+      return { defaultId: value["defaultId"] ?? null, views: value["views"] };
+    }
+  } catch {
+    // Not JSON: kept aside below.
+  }
+  storage.setItem(`${name}:unreadable:${String(Date.now())}`, text);
+  return nothingStored;
+}
+
+/** The stored views with `view` in place of the one with its id, or after them. */
+function withView(views: readonly unknown[], view: SavedView<unknown>): readonly unknown[] {
+  const index = views.findIndex((entry) => entryId(entry) === view.id);
+  return index === -1 ? [...views, view] : views.toSpliced(index, 1, view);
+}
+
 /** A store in the browser's storage: the user's views on this browser, which no other user or machine sees. A
- * storage that refuses a write, as a full one does, rejects the operation with its error. */
+ * storage that refuses a write, as a full one does, rejects the operation with its error.
+ *
+ * A write never stores less than it found: a view the page's `parse` refuses, such as one a newer release saved or
+ * another part of the app shares the key with, stays stored, as does a default this page cannot show, and text that
+ * is not a list of views is kept aside under `KEY:unreadable:TIME` before the first write replaces it. */
 function browserViewStore<TState>({
   key,
   parse,
@@ -100,33 +143,27 @@ function browserViewStore<TState>({
       return { defaultId: null, views: [] };
     }
   };
-  const write = (list: SavedViewList<TState>): void => {
-    storage.setItem(name, JSON.stringify(list));
+  const change = (next: (stored: StoredList) => StoredList): void => {
+    const stored = storedList(storage, name);
+    storage.setItem(name, JSON.stringify(next(stored)));
   };
   return {
     key,
     list: async () => settled(read),
     put: async (view) =>
       settled(() => {
-        const list = read();
-        const others = list.views.filter((saved) => saved.id !== view.id);
-        const index = list.views.findIndex((saved) => saved.id === view.id);
-        write({
-          ...list,
-          views: index === -1 ? [...others, view] : others.toSpliced(index, 0, view),
-        });
+        change((stored) => ({ ...stored, views: withView(stored.views, view) }));
       }),
     remove: async (id) =>
       settled(() => {
-        const list = read();
-        write({
-          defaultId: list.defaultId === id ? null : list.defaultId,
-          views: list.views.filter((saved) => saved.id !== id),
-        });
+        change((stored) => ({
+          defaultId: stored.defaultId === id ? null : stored.defaultId,
+          views: stored.views.filter((entry) => entryId(entry) !== id),
+        }));
       }),
     setDefault: async (id) =>
       settled(() => {
-        write({ ...read(), defaultId: id });
+        change((stored) => ({ ...stored, defaultId: id }));
       }),
   };
 }

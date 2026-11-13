@@ -16251,7 +16251,7 @@
           "type": "(state: TState) => void"
         },
         {
-          "description": "Whether the default view, if there is one, is applied once the views load; true unless set. A page opened from a link that names its own state passes false.",
+          "description": "Whether the default view, if there is one, is applied once the views load; true unless set. A page opened from a link that names its own state passes false. It is not applied if the page's state has changed since it opened, so views that load late never overwrite what the user has done.",
           "name": "applyDefault",
           "optional": true,
           "type": "boolean | undefined"
@@ -17234,7 +17234,7 @@
       "kind": "function",
       "module": "@basis/ui",
       "name": "browserViewStore",
-      "purpose": "A store in the browser's storage: the user's views on this browser, which no other user or machine sees. A storage that refuses a write, as a full one does, rejects the operation with its error.",
+      "purpose": "A store in the browser's storage: the user's views on this browser, which no other user or machine sees. A storage that refuses a write, as a full one does, rejects the operation with its error. A write never stores less than it found: a view the page's `parse` refuses, such as one a newer release saved or another part of the app shares the key with, stays stored, as does a default this page cannot show, and text that is not a list of views is kept aside under `KEY:unreadable:TIME` before the first write replaces it.",
       "signature": "browserViewStore<TState>({ key, parse, storage = globalThis.localStorage, }: BrowserViewStoreOptions<TState>): SavedViewStore<TState>"
     },
     {

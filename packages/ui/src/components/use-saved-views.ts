@@ -16,13 +16,16 @@ interface SavedViewsOptions<TState> {
   /** Puts a view's state on the page. */
   readonly onApply: (state: TState) => void;
   /** Whether the default view, if there is one, is applied once the views load; true unless set. A page opened from a
-   * link that names its own state passes false. */
+   * link that names its own state passes false. It is not applied if the page's state has changed since it opened, so
+   * views that load late never overwrite what the user has done. */
   readonly applyDefault?: boolean | undefined;
 }
 
 interface SavedViewsModel<TState> {
   readonly views: readonly SavedView<TState>[];
   readonly defaultId: string | null;
+  /** Whether the views could not be loaded, which the menu says rather than that there are none. */
+  readonly failed: boolean;
   /** The view the page shows, or `null` for none. */
   readonly active: SavedView<TState> | null;
   /** Whether the page's state differs from the active view's. */
@@ -55,14 +58,15 @@ interface Change {
   readonly shows?: string | null | undefined;
 }
 
-/** The store's list and a mutation that runs a change on it, then loads it again and shows the view it names. */
+/** The store's list, whether loading it failed, and a mutation that runs a change on it, then loads it again and
+ * shows the view it names. */
 function useViewList<TState>(
   store: SavedViewStore<TState>,
   show: (id: string | null) => void,
-): readonly [SavedViewList<TState> | undefined, (change: Change) => void] {
+): readonly [SavedViewList<TState> | undefined, boolean, (change: Change) => void] {
   const client = useQueryClient();
   const queryKey = ["@basis/ui", "saved-views", store.key];
-  const { data } = useQuery({ queryFn: store.list, queryKey });
+  const { data, isError } = useQuery({ queryFn: store.list, queryKey });
   const { mutate } = useMutation({
     mutationFn: async (change: Change) => change.run(),
     onSettled: async () => client.invalidateQueries({ queryKey }),
@@ -72,39 +76,72 @@ function useViewList<TState>(
       }
     },
   });
-  return [data, mutate];
+  return [data, isError, mutate];
 }
 
-/** Applies the default view once, when the views first load, unless the page says not to. */
-function useDefaultView<TState>(
+/** The view the page opened on, decided once, when the views first load: the default, if the page applies it and
+ * its state is still the one it opened with, so a list that arrives late never overwrites what the user has changed;
+ * otherwise none. The default is applied once it is decided. */
+function useOpeningView<TState>(
   list: SavedViewList<TState> | undefined,
-  applyDefault: boolean,
-  onApply: (state: TState) => void,
-): void {
+  {
+    applyDefault,
+    onApply,
+    state,
+  }: {
+    readonly applyDefault: boolean;
+    readonly onApply: (state: TState) => void;
+    readonly state: TState;
+  },
+): string | null | undefined {
+  // The state the page opened with, and once the views load, the view it opens on.
+  const [held, setHeld] = useState<{
+    readonly opened: string;
+    readonly opening?: { readonly view: SavedView<TState> | null };
+  }>(() => ({ opened: canonical(state) }));
+  const { opening } = held;
+  if (opening === undefined && list !== undefined) {
+    const chosen = list.views.find((view) => view.id === list.defaultId) ?? null;
+    const untouched = canonical(state) === held.opened;
+    setHeld({ ...held, opening: { view: applyDefault && untouched ? chosen : null } });
+  }
   const applied = useRef(false);
   useEffect(() => {
-    if (list === undefined || applied.current) {
+    if (opening === undefined || applied.current) {
       return;
     }
     applied.current = true;
-    const chosen = list.views.find((view) => view.id === list.defaultId);
-    if (applyDefault && chosen !== undefined) {
-      onApply(chosen.state);
+    if (opening.view !== null) {
+      onApply(opening.view.state);
     }
-  }, [applyDefault, list, onApply]);
+  }, [opening, onApply]);
+  return opening === undefined ? undefined : (opening.view?.id ?? null);
 }
 
-/** The id of the view shown: the one picked or saved, or before the user has done either, the default if it was
- * applied. */
-function shownId(
-  picked: string | null | undefined,
-  applyDefault: boolean,
-  { defaultId }: SavedViewList<unknown>,
-): string | null {
-  if (picked === undefined) {
-    return applyDefault ? defaultId : null;
-  }
-  return picked;
+/** The store's list and the view shown, which is held: the one opened on until the user picks or saves another,
+ * never read from the store's default as it is now, which another tab may have changed. */
+function useShownView<TState>({
+  store,
+  state,
+  onApply,
+  applyDefault,
+}: SavedViewsOptions<TState> & { readonly applyDefault: boolean }): {
+  readonly list: SavedViewList<TState>;
+  readonly failed: boolean;
+  readonly change: (change: Change) => void;
+  readonly active: SavedView<TState> | null;
+  readonly setPicked: (id: string | null) => void;
+} {
+  const [picked, setPicked] = useState<string | null | undefined>();
+  const [list = empty, failed, change] = useViewList(store, setPicked);
+  const opening = useOpeningView(list === empty ? undefined : list, {
+    applyDefault,
+    onApply,
+    state,
+  });
+  const shown = picked === undefined ? (opening ?? null) : picked;
+  const active = list.views.find((view) => view.id === shown) ?? null;
+  return { active, change, failed, list, setPicked };
 }
 
 /** The saved views of one part of a page, such as its grid, from `store`. */
@@ -114,10 +151,8 @@ function useSavedViews<TState>({
   onApply,
   applyDefault = true,
 }: SavedViewsOptions<TState>): SavedViewsModel<TState> {
-  const [picked, setPicked] = useState<string | null | undefined>();
-  const [list = empty, change] = useViewList(store, setPicked);
-  useDefaultView(list === empty ? undefined : list, applyDefault, onApply);
-  const active = list.views.find((view) => view.id === shownId(picked, applyDefault, list)) ?? null;
+  const shown = useShownView({ applyDefault, onApply, state, store });
+  const { list, failed, change, active, setPicked } = shown;
   const onActive = (
     run: (view: SavedView<TState>) => Promise<void>,
     shows?: string | null,
@@ -129,6 +164,7 @@ function useSavedViews<TState>({
   return {
     active,
     defaultId: list.defaultId,
+    failed,
     edited: active !== null && canonical(active.state) !== canonical(state),
     onApply: (id) => {
       const view = list.views.find((saved) => saved.id === id);
