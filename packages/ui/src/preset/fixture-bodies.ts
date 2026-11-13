@@ -12,23 +12,44 @@ import { fixtureFolders } from "#fixtures/load.ts";
 
 const notFound = 404;
 
-/** The path from the app's root of a body file a request asks for, `fixtures/data/trades.arrows`, or `undefined` for
- * one outside the two fixture folders, or with a `..` part. */
-function bodyFileAsked(url: string | undefined): string | undefined {
+/** An encoded separator, `%2F` or `%5C`, which would make one part of the path several once decoded. */
+const encodedSeparator = /%(?:2f|5c)/iu;
+
+/** The path, decoded once, or `undefined` for one that is not percent-encoded as a URL's must be. */
+function decodedPath(pathname: string): string | undefined {
+  try {
+    return decodeURIComponent(pathname);
+  } catch {
+    return undefined;
+  }
+}
+
+/** The file on disk a request for a body file asks for, in the app at `root`, or `undefined` for anything but a file
+ * inside one of the two fixture folders. It is decided by the path the request resolves to, not by its parts: the path
+ * is decoded once, an encoded separator is refused, and what is left is resolved against the folder it names and must
+ * stay inside it, with `platform`'s separators, both slashes on Windows. */
+function bodyFileAsked(
+  root: string,
+  url: string | undefined,
+  platform: Pick<typeof path, "isAbsolute" | "relative" | "resolve"> = path,
+): string | undefined {
   const pathname = new URL(url ?? "/", "http://fixture.invalid").pathname.slice(1);
-  const parts = pathname.split("/").map((part) => decodeURIComponent(part));
-  const inFolder = [fixtureFolders.fixture, fixtureFolders.record].includes(parts[0] ?? "");
-  return inFolder &&
-    parts.length > 1 &&
-    parts.every((part) => part !== "" && part !== "." && part !== "..")
-    ? parts.join("/")
+  const decoded = encodedSeparator.test(pathname) ? undefined : decodedPath(pathname);
+  const [folder = "", ...rest] = decoded?.split("/") ?? [];
+  if (![fixtureFolders.fixture, fixtureFolders.record].includes(folder)) {
+    return undefined;
+  }
+  const inside = platform.resolve(root, folder);
+  const file = platform.resolve(inside, ...rest);
+  const relative = platform.relative(inside, file);
+  return relative !== "" && !relative.startsWith("..") && !platform.isAbsolute(relative)
+    ? file
     : undefined;
 }
 
 /** Streams the body file a request under `bodyFilesPath` asks for, with its length, or answers 404. */
 function serveBodyFile(root: string, url: string | undefined, response: ServerResponse): void {
-  const asked = bodyFileAsked(url);
-  const file = asked === undefined ? undefined : path.join(root, asked);
+  const file = bodyFileAsked(root, url);
   const stats = file === undefined ? undefined : statSync(file, { throwIfNoEntry: false });
   if (file === undefined || stats?.isFile() !== true) {
     response.statusCode = notFound;

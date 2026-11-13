@@ -39,6 +39,13 @@ claims is kept as text, so an empty 502, a 500 of plain text and a truncated `in
 - **Reach:** any local process, another user on a shared session host (loopback is per machine), or the network under `vp dev --host`. Vite's host check runs before the middleware, so DNS rebinding is blocked.
 - **Confidence:** the function was confirmed by running (`bodyFileAsked` returned `fixtures/../../../../etc/passwd`); reachability is by reading. The existing test covers only `%2E%2E`.
 
+Done in Fixtures: vp dev serves a body file only from inside a fixture folder: `bodyFileAsked(root, url)` decides by the path the request resolves to: the path is decoded once, an
+encoded `%2F` or `%5C` is refused, and the rest is resolved against the fixture folder it names and must stay inside
+it, by `path.relative`, with the platform's separators; it returns the file on disk. Tested with `path.posix` and
+`path.win32` (the review's `..%2F` and `..%5C` paths, a drive letter, `%2E%2E`); the WHATWG URL parser folds an
+encoded `%2E%2E` segment itself, so `fixtures/%2E%2E/.fixtures/x` reaches `.fixtures/x`, inside a fixture folder,
+which is allowed. Not run on Windows.
+
 **5. `packages/create/templates/app/src/main.tsx:16`, `packages/ui/src/shell/sign-in.ts:34-41` — fix before release**
 
 - **Defect:** every scaffolded app ships `fakeSignIn()` in its production entry, and nothing in build, verify, doctor or lint flags it.
@@ -185,3 +192,6 @@ Throwaway scripts are in `(a scratch folder)`.
 - A telemetry collector that throws no longer stops a failed mutation's toast, or replaces the mutation's error: the
   shell writes it to the console and carries on. `BasisApp` reports the page's uncaught errors (`source: "page"`) and
   unhandled rejections (`source: "unhandled-rejection"`). What to do: nothing.
+- `vp dev`'s body-file route, `__basis/fixture-body/`, serves only a file inside `fixtures/` or `.fixtures/` by the
+  path it resolves to, where an encoded `/` or `\` let a request read any file the developer could. What to do:
+  nothing.
