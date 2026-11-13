@@ -1,6 +1,8 @@
 /* MonthPicker: a month, such as a statement's or a report's, as a `Temporal.PlainYearMonth`. A button shows the month
  * and opens a popover with the year, its previous and next, and its twelve months as buttons, the chosen one pressed
- * and those outside the field's bounds disabled. The arrow keys move between the months, a row being a quarter; it is
+ * and those outside the field's bounds disabled. The arrow keys move between the months, a row being a quarter, and
+ * stop at a bound, so the month focused, the one Tab reaches, is always one the field takes; the grid opens on the
+ * month, or this one, held within the bounds, and a year with no month the field takes cannot be stepped to. It is
  * drawn as a Select's trigger, with its sizes, as DateRangePicker is. */
 
 import { Popover as PopoverPrimitive } from "@base-ui/react/popover";
@@ -17,6 +19,15 @@ import { ChevronRightIcon } from "#vendor/lucide/chevron-right.tsx";
 import { Button } from "./button.tsx";
 import { todayInNewYork } from "./date-picking.ts";
 import { useControlled } from "./field-state.ts";
+import {
+  clamped,
+  monthName,
+  months,
+  moved,
+  shortName,
+  within,
+  yearWithin,
+} from "./month-picker-months.ts";
 import { Popover, PopoverContent } from "./popover.tsx";
 import { selectTriggerVariants as monthPickerVariants } from "./select-variants.ts";
 
@@ -40,45 +51,6 @@ interface MonthPickerProps
   readonly pickerLabel?: string | undefined;
 }
 
-const locale = "en-US";
-const monthsPerYear = 12;
-/** A row of the months is a quarter. */
-const monthsPerRow = 3;
-const months = Array.from({ length: monthsPerYear }, (_unused, index) => index + 1);
-
-/** A month in words: "November 2026". */
-function monthName(month: Temporal.PlainYearMonth): string {
-  return month.toPlainDate({ day: 1 }).toLocaleString(locale, { month: "long", year: "numeric" });
-}
-
-/** A month's short name: "Nov". */
-function shortName(month: Temporal.PlainYearMonth): string {
-  return month.toPlainDate({ day: 1 }).toLocaleString(locale, { month: "short" });
-}
-
-/** Whether `month` lies within the bounds. */
-function within(
-  month: Temporal.PlainYearMonth,
-  { min, max }: Pick<MonthPickerProps, "min" | "max">,
-): boolean {
-  return (
-    (min === undefined || Temporal.PlainYearMonth.compare(month, min) >= 0) &&
-    (max === undefined || Temporal.PlainYearMonth.compare(month, max) <= 0)
-  );
-}
-
-/** The month an arrow key moves to from `month`: one either way, or a row, a quarter, up or down. */
-function moved(month: Temporal.PlainYearMonth, key: string): Temporal.PlainYearMonth | undefined {
-  const steps: Readonly<Record<string, number>> = {
-    ArrowDown: monthsPerRow,
-    ArrowLeft: -1,
-    ArrowRight: 1,
-    ArrowUp: -monthsPerRow,
-  };
-  const step = steps[key];
-  return step === undefined ? undefined : month.add({ months: step });
-}
-
 interface MonthGridProps {
   readonly current: Temporal.PlainYearMonth | null;
   readonly focused: Temporal.PlainYearMonth;
@@ -92,15 +64,17 @@ interface MonthGridProps {
 function YearHeader({
   focused,
   onFocusedChange,
-}: Pick<MonthGridProps, "focused" | "onFocusedChange">): ReactElement {
+  bounds,
+}: Pick<MonthGridProps, "focused" | "onFocusedChange" | "bounds">): ReactElement {
   return (
     <div className="flex items-center justify-between">
       <Button
         variant="ghost"
         size="icon-sm"
         aria-label="Previous year"
+        disabled={!yearWithin(focused.year - 1, bounds)}
         onClick={() => {
-          onFocusedChange(focused.subtract({ years: 1 }));
+          onFocusedChange(clamped(focused.subtract({ years: 1 }), bounds));
         }}
       >
         <ChevronLeftIcon />
@@ -112,8 +86,9 @@ function YearHeader({
         variant="ghost"
         size="icon-sm"
         aria-label="Next year"
+        disabled={!yearWithin(focused.year + 1, bounds)}
         onClick={() => {
-          onFocusedChange(focused.add({ years: 1 }));
+          onFocusedChange(clamped(focused.add({ years: 1 }), bounds));
         }}
       >
         <ChevronRightIcon />
@@ -143,7 +118,8 @@ function MonthButton({
         grid.onChoose(month);
       }}
       onKeyDown={(event: KeyboardEvent<HTMLButtonElement>) => {
-        const next = moved(month, event.key);
+        const step = moved(month, event.key);
+        const next = step === undefined ? undefined : clamped(step, grid.bounds);
         if (next !== undefined) {
           event.preventDefault();
           // The month takes the focus at once, so a key pressed straight after lands on it.
@@ -168,7 +144,7 @@ function MonthGrid(grid: MonthGridProps): ReactElement {
   const { year } = focused;
   return (
     <div className="flex w-56 flex-col gap-2">
-      <YearHeader focused={focused} onFocusedChange={onFocusedChange} />
+      <YearHeader focused={focused} onFocusedChange={onFocusedChange} bounds={grid.bounds} />
       <fieldset
         id={grid.gridId}
         aria-label={`Months of ${String(year)}`}
@@ -191,7 +167,9 @@ function useMonthField({
   value,
   defaultValue = null,
   onValueChange,
-}: Pick<MonthPickerProps, "value" | "defaultValue" | "onValueChange">): {
+  min,
+  max,
+}: Pick<MonthPickerProps, "value" | "defaultValue" | "onValueChange" | "min" | "max">): {
   readonly current: Temporal.PlainYearMonth | null;
   readonly open: boolean;
   readonly handleOpenChange: (open: boolean) => void;
@@ -210,7 +188,9 @@ function useMonthField({
     same: (left, right) => (left === null || right === null ? left === right : left.equals(right)),
     value,
   });
-  const start = (): Temporal.PlainYearMonth => current ?? todayInNewYork().toPlainYearMonth();
+  // The grid opens on the month, or this one, held within the bounds, so the month focused is one Tab reaches.
+  const start = (): Temporal.PlainYearMonth =>
+    clamped(current ?? todayInNewYork().toPlainYearMonth(), { max, min });
   const [focused, setFocused] = useState(start);
   return {
     current,
@@ -259,7 +239,7 @@ function MonthPicker({
   ...props
 }: MonthPickerProps): ReactElement {
   const gridId = useId();
-  const field = useMonthField({ defaultValue, onValueChange, value });
+  const field = useMonthField({ defaultValue, max, min, onValueChange, value });
   return (
     <Popover open={field.open} modal="trap-focus" onOpenChange={field.handleOpenChange}>
       <PopoverPrimitive.Trigger

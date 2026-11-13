@@ -134,12 +134,23 @@ ends trimmed, as the label shows them, and an empty `confirmText` never matches,
 - **Severity:** fix before release (keyboard).
 - **Confidence:** confirmed by reading, including Base UI 1.9.0's `useFocusableWhenDisabled`.
 
+Done in MonthPicker, SecurityPicker: the keyboard stops at a bound, and a paste ends on the chips as they are: the month focused is always one the field takes. The grid opens on the month, or this one, held
+within `min` and `max`; the arrow keys stop at a bound; and the year buttons are disabled where the year holds no
+month the field takes, and otherwise land on a month within it (`month-picker-months.ts`). Held by gallery tests of
+an empty field whose latest month is last month, the arrows at the earliest month with Tab away and back, and a year
+that cannot be stepped to.
+
 **12. `packages/ui/src/components/security-picker-multiple.tsx:82`**
 
 - **Defect:** a paste's lookup ends with the `chosen` list captured when the paste began.
 - **Scenario:** remove or add a chip while 50 pasted CUSIPs resolve; the removed chip returns and the added one is lost. The lookup also runs up to 200 requests at once outside the query client, and calls `onValueChange` after unmount.
 - **Severity:** polish.
 - **Confidence:** confirmed by reading.
+
+Done in MonthPicker, SecurityPicker: the keyboard stops at a bound, and a paste ends on the chips as they are: the lookup ends on the chips as they are when it ends, not as they were when it began; it is
+aborted, changing nothing, when the picker unmounts; its searches go through the query client, under a key of the
+picker's own, so they retry and report a sign-in problem as the picker's own searches do; and at most six run at once.
+Held by a gallery test that removes a chip while a paste resolves, and a unit test of the limit.
 
 **13. `packages/ui/src/components/amount-input.tsx:121` and `date-field.tsx:113`**
 
@@ -237,3 +248,9 @@ Not read: the `*-variants.ts` style files, `src/dates`, `src/securities`, `forma
 
 - MultiSelect says "All" and ticks Select all only when every option is chosen, not when as many values are held, so
   a saved value an option no longer has is not counted. What to do: nothing.
+
+- MonthPicker's keyboard never leaves the months it takes: it opens on the month, or this one, within `min` and
+  `max`, the arrows stop at a bound, and a year with no month it takes cannot be stepped to. What to do: nothing.
+
+- A list pasted into a SecurityPicker of several keeps a chip removed or added while it is looked up, stops when the
+  picker goes, runs at most six searches at once, and searches through the app's query client. What to do: nothing.

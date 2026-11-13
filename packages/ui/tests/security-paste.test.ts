@@ -6,9 +6,11 @@ import {
   identifiersIn,
   lookUpPasted,
   pasteLimit,
+  pasteSearches,
   pasteSummary,
 } from "#components/security-paste.ts";
 import { securityIdentifierKinds } from "#securities/security-identifier.ts";
+import { sleep } from "#utils/index.ts";
 import type { SecurityIdentifier } from "#securities/security-identifier.ts";
 
 interface Security {
@@ -75,4 +77,25 @@ describe(pasteSummary, () => {
       "Added 2 securities. 037833100 matched no security.",
     );
   });
+});
+
+test("a long paste runs at most six searches at once, and keeps the order pasted", async () => {
+  let running = 0;
+  let most = 0;
+  const words = Array.from({ length: 20 }, (_unused, index) =>
+    index % 2 === 0 ? "912828XG0" : "3137EAEP0",
+  );
+  const counted = async (identifier: SecurityIdentifier): Promise<readonly Security[]> => {
+    running += 1;
+    most = Math.max(most, running);
+    await sleep(1);
+    running -= 1;
+    return search(identifier);
+  };
+  const result = await lookUpPasted({ ...lookup, search: counted, words });
+  expect([most, pasteSearches, result.found.map(({ cusip }) => cusip)]).toStrictEqual([
+    6,
+    6,
+    ["912828XG0", "3137EAEP0"],
+  ]);
 });

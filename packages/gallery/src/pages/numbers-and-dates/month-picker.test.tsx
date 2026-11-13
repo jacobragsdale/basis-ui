@@ -56,4 +56,39 @@ describe("MonthPicker", () => {
     await userEvent.click(page.getByRole("button", { name: "Previous year" }));
     await expect.element(page.getByRole("button", { name: "Dec 2025" })).toBeEnabled();
   });
+
+  test("with no month and its latest before this one, opens on its latest, which Tab reaches", async () => {
+    const latest = Temporal.Now.plainDateISO("America/New_York")
+      .toPlainYearMonth()
+      .subtract({ months: 1 });
+    const name = `${latest.toPlainDate({ day: 1 }).toLocaleString("en-US", { month: "short" })} ${String(latest.year)}`;
+    const screen = await render(<StatementField max={latest} />);
+    await userEvent.click(screen.getByRole("button", { name: "Statement month" }));
+    await focusIsOn(page.getByRole("button", { name }));
+    await userEvent.keyboard("{ArrowRight}");
+    await focusIsOn(page.getByRole("button", { name }));
+    await userEvent.keyboard("{ArrowDown}");
+    await focusIsOn(page.getByRole("button", { name }));
+  });
+
+  test("the arrow keys stop at its earliest month, and Tab comes back to the month focused", async () => {
+    const screen = await render(
+      <StatementField defaultValue={month("2026-03")} min={month("2026-02")} />,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Statement month" }));
+    await focusIsOn(page.getByRole("button", { name: "Mar 2026" }));
+    await userEvent.keyboard("{ArrowLeft}{ArrowLeft}{ArrowUp}");
+    await focusIsOn(page.getByRole("button", { name: "Feb 2026" }));
+    await userEvent.keyboard("{Shift>}{Tab}{/Shift}");
+    await userEvent.keyboard("{Tab}");
+    await focusIsOn(page.getByRole("button", { name: "Feb 2026" }));
+  });
+
+  test("a year with no month it takes cannot be stepped to", async () => {
+    const screen = await render(
+      <StatementField defaultValue={month("2026-03")} min={month("2026-02")} />,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Statement month" }));
+    await expect.element(page.getByRole("button", { name: "Previous year" })).toBeDisabled();
+  });
 });

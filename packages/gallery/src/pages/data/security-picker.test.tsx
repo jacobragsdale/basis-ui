@@ -5,6 +5,7 @@ import type { SecurityIdentifier } from "@basis/ui";
 import type { ReactElement } from "react";
 import { describe, expect, test } from "vite-plus/test";
 import { page, userEvent } from "vite-plus/test/browser";
+import type { Locator } from "vite-plus/test/browser";
 import { render } from "vitest-browser-react";
 
 import { SecurityPickerSection } from "./entity-picker.tsx";
@@ -47,6 +48,25 @@ function PastingPicker(): ReactElement {
   );
 }
 
+/** A SecurityPicker of several, holding the first of the page's securities, whose searches wait for `release`. */
+function SlowPastingPicker({ release }: { readonly release: Promise<boolean> }): ReactElement {
+  return (
+    <WithQueryClient>
+      <SecurityPicker
+        multiple
+        aria-label="Securities"
+        defaultValue={securities.slice(0, 1)}
+        search={async (identifier) => {
+          await release;
+          return securities.filter((security) => security.cusip === identifier.value);
+        }}
+        itemKey={(security) => security.cusip}
+        itemLabel={(security) => security.description}
+      />
+    </WithQueryClient>
+  );
+}
+
 /** Pastes `text` into `element`, as the clipboard would. */
 function pasteInto(element: Element, text: string): void {
   const transfer = new DataTransfer();
@@ -54,6 +74,14 @@ function pasteInto(element: Element, text: string): void {
   element.dispatchEvent(
     new ClipboardEvent("paste", { bubbles: true, cancelable: true, clipboardData: transfer }),
   );
+}
+
+/** Pastes `text` into the picker, waits for its lookup to start, and closes its list, so its chips can be reached. */
+async function pasteAndClose(input: Locator, text: string): Promise<void> {
+  await userEvent.click(input);
+  pasteInto(input.element(), text);
+  await expect.element(page.getByText(/^Looking up \d+ identifiers…$/u)).toBeVisible();
+  await userEvent.keyboard("{Escape}");
 }
 
 describe("SecurityPicker", () => {
@@ -128,5 +156,23 @@ describe("SecurityPicker", () => {
       .element(screen.getByText("Added 2 securities. 037833100 matched no security."))
       .toBeVisible();
     await expect.element(input).toHaveValue("");
+  });
+
+  test("a chip removed while a paste is looked up stays removed", async () => {
+    const { promise: release, resolve } = Promise.withResolvers<boolean>();
+    const [first, , third, fourth] = securities;
+    const screen = await render(<SlowPastingPicker release={release} />);
+    await pasteAndClose(
+      screen.getByRole("combobox", { name: "Securities" }),
+      `${third?.cusip ?? ""}\n${fourth?.cusip ?? ""}`,
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: `Remove ${first?.description ?? ""}` }),
+    );
+    resolve(true);
+    await expect.element(screen.getByText("Added 2 securities.")).toBeVisible();
+    expect(
+      [...document.querySelectorAll('[data-slot="combobox-chip"]')].map((chip) => chip.textContent),
+    ).toStrictEqual([third?.description, fourth?.description]);
   });
 });

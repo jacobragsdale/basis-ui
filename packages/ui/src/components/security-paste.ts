@@ -46,14 +46,41 @@ async function lookUp<TItem>(
   return item === undefined ? { problem: `${word} matched no security.` } : { item };
 }
 
-/** Looks up each pasted word, at most `pasteLimit`, and gathers the securities found, each once, in the order pasted. */
+/** How many of a paste's searches run at once, so a long list does not send them all together. */
+const pasteSearches = 6;
+
+/** Each item through `run`, at most `limit` at a time, the results in the items' order. */
+async function eachLimited<TIn, TOut>(
+  items: readonly TIn[],
+  limit: number,
+  run: (item: TIn) => Promise<TOut>,
+): Promise<TOut[]> {
+  const results: TOut[] = [];
+  let next = 0;
+  const worker = async (): Promise<void> => {
+    while (next < items.length) {
+      const index = next;
+      next += 1;
+      const item = items[index];
+      if (item !== undefined) {
+        // oxlint-disable-next-line no-await-in-loop -- each worker runs its searches one after another, by design.
+        results[index] = await run(item);
+      }
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  return results;
+}
+
+/** Looks up each pasted word, at most `pasteLimit` and `pasteSearches` at a time, and gathers the securities found,
+ * each once, in the order pasted. */
 async function lookUpPasted<TItem>({
   words,
   itemKey,
   ...lookup
 }: PasteLookup<TItem>): Promise<PasteResult<TItem>> {
-  const looked = await Promise.all(
-    words.slice(0, pasteLimit).map(async (word) => lookUp(word, lookup)),
+  const looked = await eachLimited(words.slice(0, pasteLimit), pasteSearches, async (word) =>
+    lookUp(word, lookup),
   );
   const seen = new Set<string>();
   const found = looked.flatMap((result) => {
@@ -80,5 +107,5 @@ function pasteSummary(added: number, { problems }: Pick<PasteResult<unknown>, "p
   return problems.length === 0 ? count : `${count} ${problems.join(" ")}`;
 }
 
-export { identifiersIn, lookUpPasted, pasteLimit, pasteSummary };
+export { identifiersIn, lookUpPasted, pasteLimit, pasteSearches, pasteSummary };
 export type { PasteResult };
