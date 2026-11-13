@@ -27,6 +27,7 @@ import path from "node:path";
 
 import { devServer } from "./dev-server.ts";
 import { devPort } from "./fixture-mode.ts";
+import { git } from "./git.ts";
 import { optionsOf } from "./shot-options.ts";
 import type { ShotOptions } from "./shot-options.ts";
 import { launch, pageFor } from "./shot-page.ts";
@@ -133,11 +134,24 @@ function failedReport(error: unknown): ShotReport {
   return { ok: false, problems: [{ kind: "task", message, route: null }], shots: [], skipped: [] };
 }
 
+/** The root of Git Bash's MSYS, which it rewrites an argument that starts with one slash under, on Windows when an
+ * argument looks rewritten: Git's own folder, from where git keeps its commands, such as
+ * `C:/Program Files/Git/mingw64/libexec/git-core`. */
+function msysRoot(args: readonly string[]): string | undefined {
+  if (process.platform !== "win32" || !args.some((arg) => /^[A-Za-z]:[\\/]/u.test(arg))) {
+    return undefined;
+  }
+  const exec = git(process.cwd(), ["--exec-path"])?.replaceAll("\\", "/");
+  return /^(?<root>.+?)\/(?:mingw32|mingw64|clang64|clangarm64|ucrt64|usr)\/libexec\/git-core$/iu.exec(
+    exec ?? "",
+  )?.groups?.["root"];
+}
+
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
   // Through a promise, so that options that cannot be read fail as the report says, as any other failure does.
   const report = await Promise.resolve()
-    .then(async () => shoot(process.cwd(), optionsOf(args)))
+    .then(async () => shoot(process.cwd(), optionsOf(args, msysRoot(args))))
     .catch(failedReport);
   if (args.includes("--json")) {
     process.stdout.write(`${JSON.stringify(report)}\n`);

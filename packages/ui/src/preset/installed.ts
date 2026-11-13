@@ -104,8 +104,33 @@ function chromiumInstall(version: string): string {
   return `vp dlx playwright@${version} install chromium`;
 }
 
+/** The libraries a Chromium that failed to start names as missing, from Playwright's error or the browser's own. */
+function missingLibraries(said: string): readonly string[] | undefined {
+  if (!/missing dependencies|missing libraries|error while loading shared libraries/iu.test(said)) {
+    return undefined;
+  }
+  const named = said.match(/\blib[\w+.-]*?\.so(?:\.\d+)*/gu);
+  return named === null ? [] : [...new Set(named)];
+}
+
+/** The ERROR line for a Chromium that `launch` could not start, from what it said: not installed, installed but
+ * missing system libraries, which `install-deps` installs, or another failure; each ends by running `task` again. */
+function chromiumFailure(said: string, version: string, task: string): string {
+  if (said.includes("Executable doesn't exist")) {
+    return `ERROR Playwright ${version}'s Chromium is not installed: run ${chromiumInstall(version)}, then vp run ${task} again.`;
+  }
+  const libraries = missingLibraries(said);
+  if (libraries !== undefined) {
+    const named = libraries.length === 0 ? "" : ` (${libraries.join(", ")})`;
+    return `ERROR Playwright ${version}'s Chromium is installed, but cannot start, since the system lacks libraries it needs${named}: run sudo vp dlx playwright@${version} install-deps chromium, then vp run ${task} again.`;
+  }
+  const [first = ""] = said.split("\n");
+  return `ERROR Chromium did not start (${first}): run ${chromiumInstall(version)}, then vp run ${task} again, and report the message if it repeats.`;
+}
+
 export {
   appDependencies,
+  chromiumFailure,
   chromiumInstall,
   compareVersions,
   exactVersion,

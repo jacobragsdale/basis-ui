@@ -3,8 +3,10 @@
  *   vp run doctor   prints one line for each check that passes, then one ERROR line for each that fails, ending with
  *                   its fix
  *
- * It checks git and the clone, that git runs Vite+'s hooks, that the installed packages are the ones package.json pins,
- * that Playwright's Chromium is installed for `vp test` and `vp run shot`, and `BASIS_API_URL` when it is set. */
+ * It checks the Node that runs the tasks, the certificate file NODE_EXTRA_CA_CERTS names and one HTTPS request to the
+ * registry (doctor-environment.ts), git and the clone, that git runs Vite+'s hooks, that the installed packages are
+ * the ones package.json pins, that Playwright's Chromium starts, for `vp test`, `vp run shot` and the budget, and
+ * `BASIS_API_URL` when it is set. */
 
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
@@ -13,10 +15,12 @@ import path from "node:path";
 
 import { z } from "zod";
 
+import { environmentFindings, failed, passed } from "./doctor-environment.ts";
+import type { Finding } from "./doctor-environment.ts";
 import { git } from "./git.ts";
 import {
   appDependencies,
-  chromiumInstall,
+  chromiumFailure,
   exactVersion,
   ignored,
   installedVersion,
@@ -25,24 +29,10 @@ import {
 import { TaskError } from "./task-error.ts";
 import { installedUi } from "./sync.ts";
 
-/** One check's outcome: a line saying what it found, or an ERROR line ending with the fix. */
-interface Finding {
-  readonly ok: boolean;
-  readonly line: string;
-}
-
 /** The folder Vite+'s hook dispatcher lives in, which `vp config` installs and git's `core.hooksPath` names. */
 const hooksPath = ".vite-hooks/_";
 /** The packages whose installed version must be the one package.json pins. */
 const pinned = new Set(["@basis/ui", "@basis/parallax", "vite-plus", "typescript", "react"]);
-
-function passed(line: string): Finding {
-  return { line, ok: true };
-}
-
-function failed(line: string): Finding {
-  return { line: `ERROR ${line}`, ok: false };
-}
 
 /** git, and whether the app's folder is a clone. */
 function gitFindings(root: string): readonly Finding[] {
@@ -101,29 +91,38 @@ async function dependencyFindings(root: string): Promise<readonly Finding[]> {
   });
 }
 
-/** Playwright's `chromium`, kept as the object it is, since `executablePath` reads its own `this`. */
+/** Playwright's `chromium`, kept as the object it is, since `launch` reads its own `this`. */
 const playwrightSchema = z.object({
-  chromium: z.custom<{ readonly executablePath: () => string }>(
+  chromium: z.custom<{
+    readonly launch: (options: object) => Promise<{ readonly close: () => Promise<void> }>;
+  }>(
     (value) =>
       typeof value === "object" &&
       value !== null &&
-      "executablePath" in value &&
-      typeof value.executablePath === "function",
+      "launch" in value &&
+      typeof value.launch === "function",
   ),
 });
 
-/** The version of the Playwright `@basis/ui` depends on, and where it puts its Chromium. */
-async function playwright(): Promise<{ readonly version: string; readonly executable: string }> {
+/** The version of the Playwright `@basis/ui` depends on, and its `chromium`. */
+async function playwright(): Promise<{
+  readonly version: string;
+  readonly chromium: z.infer<typeof playwrightSchema>["chromium"];
+}> {
   const installed = await installedUi();
   const ui = createRequire(path.join(installed.root, "package.json"));
   const manifest = ui.resolve("playwright/package.json");
   const { version } = versionSchema.parse(JSON.parse(await readFile(manifest, "utf8")));
   // Playwright is CommonJS, whose exports an import would give only as `default`.
   const loaded: unknown = ui("playwright");
-  return { executable: playwrightSchema.parse(loaded).chromium.executablePath(), version };
+  return { chromium: playwrightSchema.parse(loaded).chromium, version };
 }
 
-/** Whether the Chromium that `@basis/ui`'s Playwright pins is installed. */
+/** How long Chromium may take to start. */
+const launchMs = 30_000;
+
+/** Whether the Chromium that `@basis/ui`'s Playwright pins starts, as `vp test`, `vp run shot` and the budget start it:
+ * one downloaded may still lack the system's libraries, as on a fresh Ubuntu in WSL. */
 async function chromiumFinding(): Promise<Finding> {
   const found = await playwright().catch(ignored);
   if (found === null) {
@@ -131,12 +130,16 @@ async function chromiumFinding(): Promise<Finding> {
       "Playwright, which @basis/ui runs vp test and vp run shot in, is not installed: run vp install.",
     );
   }
-  const { executable, version } = found;
-  return existsSync(executable)
-    ? passed(`Playwright ${version}'s Chromium, for vp test and vp run shot`)
-    : failed(
-        `Playwright ${version}'s Chromium is not installed, and vp test and vp run shot run in it: run ${chromiumInstall(version)}.`,
-      );
+  const { chromium, version } = found;
+  try {
+    const browser = await chromium.launch({ headless: true, timeout: launchMs });
+    await browser.close();
+    return passed(
+      `Playwright ${version}'s Chromium starts, for vp test, vp run shot and the budget`,
+    );
+  } catch (error) {
+    return { line: chromiumFailure(String(error), version, "doctor"), ok: false };
+  }
 }
 
 /** Where `vp dev` sends `/api`: fixture mode, or a live API at an http or https address. */
@@ -158,6 +161,7 @@ async function doctor(root: string, args: readonly string[]): Promise<string> {
     throw new TaskError("ERROR vp run doctor takes no arguments: run vp run doctor alone.");
   }
   const findings = [
+    ...(await environmentFindings(root)),
     ...gitFindings(root),
     hooksFinding(root),
     ...(await dependencyFindings(root)),

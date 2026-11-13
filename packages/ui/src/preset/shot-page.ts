@@ -9,27 +9,23 @@ import type { Browser, Page } from "playwright";
 
 import { defaultPreferences, preferencesCookie, serializePreferences } from "#theme/preferences.ts";
 
-import { chromiumInstall, ignored, versionSchema } from "./installed.ts";
+import { chromiumFailure, ignored, versionSchema } from "./installed.ts";
 import { TaskError } from "./task-error.ts";
 import type { ShotOptions } from "./shot-options.ts";
 
-/** The command that installs the Chromium of the Playwright beside this module, `@basis/ui`'s. */
-function installCommand(): string {
+/** The version of the Playwright beside this module, `@basis/ui`'s. */
+function playwrightVersion(): string {
   const manifest: unknown = createRequire(import.meta.url)("playwright/package.json");
-  return chromiumInstall(versionSchema.parse(manifest).version);
+  return versionSchema.parse(manifest).version;
 }
 
-/** Headless Chromium, or a failure that says how to install it and run `task`, `shot` unless named, again. */
+/** Headless Chromium, or a failure that says how to install it, or the libraries it needs, and run `task`, `shot`
+ * unless named, again. */
 async function launch(task = "shot"): Promise<Browser> {
   try {
     return await chromium.launch({ headless: true });
   } catch (error) {
-    const missing = String(error).includes("Executable doesn't exist");
-    throw new TaskError(
-      missing
-        ? `ERROR Playwright's Chromium is not installed: run ${installCommand()}, then vp run ${task} again.`
-        : `ERROR Chromium did not start (${String(error).split("\n")[0] ?? ""}): run ${installCommand()}, and report the message if it repeats.`,
-    );
+    throw new TaskError(chromiumFailure(String(error), playwrightVersion(), task));
   }
 }
 

@@ -77,6 +77,23 @@ describe(optionsOf, () => {
     ]);
   });
 
+  test("takes back a route Git Bash rewrote into a Windows path under its own root", () => {
+    const root = "C:/Program Files/Git";
+    expect(
+      optionsOf(
+        ["C:/Program Files/Git/conventions", String.raw`c:\program files\git\bonds\X1`],
+        root,
+      ).routes,
+    ).toStrictEqual(["/conventions", "/bonds/X1"]);
+    expect(optionsOf(["C:/Program Files/Git/"], root).routes).toStrictEqual(["/"]);
+  });
+
+  test("refuses a Windows path it cannot take back, naming MSYS_NO_PATHCONV", () => {
+    expect(() => optionsOf(["D:/work/conventions"], "C:/Program Files/Git")).toThrow(
+      'ERROR "D:/work/conventions" is a Windows path, not a route, as Git Bash makes of a route such as /positions: run the command with MSYS_NO_PATHCONV=1 before it, as MSYS_NO_PATHCONV=1 vp run shot /positions, which leaves the route as written.',
+    );
+  });
+
   test("takes --wait 0, for a page that needs no time to settle", () => {
     expect(optionsOf(["/", "--wait", "0"])).toMatchObject({ wait: 0 });
   });

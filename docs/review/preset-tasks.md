@@ -184,6 +184,27 @@ What `docs/release-plan.md`'s "On winbox" gives step 7.6.
 - **W5**, `vp run shot /` never exits on Windows when it starts `vp dev` itself.
   Done in "Preset: the vp dev that shot starts is stopped on Windows, and when shot is interrupted": finding 2's fix. `vp dev` is also run from the app's own Vite+, its `bin/vp` through Node, as
   verify runs its tools, so no `vp` on the `PATH` is needed.
+- **W1**, behind a proxy that inspects TLS, every Node tool fails until `NODE_EXTRA_CA_CERTS` names the proxy's CA.
+  Done in "Preset: doctor checks Node, the registry's certificate and that Chromium starts, and shot reads Git Bash's routes" (doctor's part; the docs are step 7.8's): `vp run doctor` makes one `HEAD` request to the registry the
+  app installs from, `.npmrc`'s `registry` or npm's, from a Node of its own with `NODE_USE_ENV_PROXY=1`, so it goes
+  through `HTTPS_PROXY` as pnpm does. A certificate Node does not trust is an `ERROR` line naming its code and
+  `NODE_EXTRA_CA_CERTS`, with `setx` on Windows; a registry that does not answer is one too; and a
+  `NODE_EXTRA_CA_CERTS` that names no file is another. `tests/doctor.test.ts` serves a registry over HTTPS with a
+  certificate made for the test, and expects the line, then `ok` once `NODE_EXTRA_CA_CERTS` names the certificate.
+- **W2**, an older Node on the `PATH`, which Vite+ prefers. Done in "Preset: doctor checks Node, the registry's certificate and that Chromium starts, and shot reads Git Bash's routes" (doctor's part): `vp run doctor` holds the
+  Node that runs it to `vite-plus`'s `engines.node`, and `@basis/ui`'s once it has one (step 7.8), and names
+  `vp env on`. Under Node 18 `vp run` itself fails before any task of `@basis/ui`'s runs, so nothing here can make
+  that failure legible: step 7.8 pins Node. Held by `tests/doctor.test.ts`, with a `vite-plus` that needs Node 99.
+- **W4**, a fresh Ubuntu lacks libraries Chromium needs, and doctor says ok. Done in "Preset: doctor checks Node, the registry's certificate and that Chromium starts, and shot reads Git Bash's routes": `vp run doctor` starts
+  Chromium as the tasks do, headless, rather than looking for its file, which was the wrong one for headless runs
+  anyway. A Chromium that cannot start for a missing library is an `ERROR` line naming the libraries and `sudo vp dlx
+  playwright@VERSION install-deps chromium`; `vp run shot`'s and the budget's launch name the same fix, so verify's
+  `ERROR` line does too. `tests/doctor.test.ts` puts a headless Chromium in place that fails as one missing
+  `libnss3.so` does, on Linux.
+- **W6**, Git Bash rewrites `vp run shot /conventions` to `C:/Program Files/Git/conventions`. Done in "Preset: doctor checks Node, the registry's certificate and that Chromium starts, and shot reads Git Bash's routes": on
+  Windows, a route that arrives as a Windows path under Git's own folder, which `git --exec-path` gives, is taken
+  back to the route; one under another folder is refused with an `ERROR` line naming `MSYS_NO_PATHCONV=1`.
+  `tests/shot-options.test.ts` holds both with the root given.
 
 ## Changelog
 
@@ -208,3 +229,11 @@ What `docs/release-plan.md`'s "On winbox" gives step 7.6.
   exits 1. Before, it overwrote both and said only "Wrote X". What to do: when it names a file, do as its line says.
 - `vp run sync` replaces the basis-ui block of an `AGENTS.md` saved with CRLF line endings, rather than adding a
   second, and `--check` names a file that differs only in its line endings as such. What to do: nothing.
+
+- `vp run doctor` checks more of the desktop: the Node that runs the tasks against what Vite+ needs, with `vp env on`
+  as the fix; one HTTPS request to the registry, through `HTTPS_PROXY`, naming `NODE_EXTRA_CA_CERTS` when Node does not
+  trust the certificate it gets, as behind a proxy that inspects TLS; and that Chromium starts, naming
+  `playwright install-deps chromium` when it lacks a system library, as a fresh Ubuntu in WSL does. `vp run shot` and
+  verify's budget name the same fix. What to do: run `vp run doctor` on a new desktop, and do as each `ERROR` line says.
+- `vp run shot /route` in Git Bash, which rewrites the route into a Windows path, takes the route back. What to do:
+  nothing.

@@ -79,11 +79,35 @@ function whole(name: string, value: string, least: number): number {
   return parsed;
 }
 
-/** What was read so far: each setting's value as given, and the steps. */
+/** What was read so far: each setting's value as given, and the steps; and the root of Git Bash's MSYS, if known,
+ * whose rewrite of a route it takes back. */
 interface Read {
   readonly settings: Map<string, string>;
   readonly routes: string[];
   readonly steps: Step[];
+  readonly msysRoot?: string | undefined;
+}
+
+/** A Windows path, as `C:/Program Files/Git/positions`, which no route is. */
+const windowsPath = /^[A-Za-z]:[\\/]/u;
+
+/** `text` with forward slashes, and no slash at its end. */
+function forward(text: string): string {
+  return text.replaceAll("\\", "/").replace(/\/$/u, "");
+}
+
+/** The route Git Bash rewrote into `arg`, a Windows path under its MSYS `root`, as it rewrites an argument that starts
+ * with one slash, `/conventions` into `C:/Program Files/Git/conventions`; or a failure that names the fix. */
+function msysRoute(arg: string, root: string | undefined): string {
+  const under = root === undefined ? undefined : forward(root);
+  const given = arg.replaceAll("\\", "/");
+  if (under !== undefined && `${given.toLowerCase()}/`.startsWith(`${under.toLowerCase()}/`)) {
+    const rest = given.slice(under.length);
+    return rest.startsWith("/") ? rest : `/${rest}`;
+  }
+  throw new TaskError(
+    `ERROR ${JSON.stringify(arg)} is a Windows path, not a route, as Git Bash makes of a route such as /positions: run the command with MSYS_NO_PATHCONV=1 before it, as MSYS_NO_PATHCONV=1 vp run shot /positions, which leaves the route as written.`,
+  );
 }
 
 /** Records `name`'s `value`, failing when the option was given before with another. */
@@ -178,8 +202,8 @@ function readArg(read: Read, args: readonly string[], index: number): number {
   } else if (option.startsWith("--") && Object.hasOwn(valueErrors, option.slice(2))) {
     setValue(read, option.slice(2), inline ?? args[index + 1]);
     return index + (inline === undefined ? 2 : 1);
-  } else if (arg.startsWith("/") || arg.startsWith("#")) {
-    read.routes.push(arg);
+  } else if (arg.startsWith("/") || arg.startsWith("#") || windowsPath.test(arg)) {
+    read.routes.push(windowsPath.test(arg) ? msysRoute(arg, read.msysRoot) : arg);
   } else {
     throw new TaskError(
       `ERROR ${JSON.stringify(arg)} is no route or option: a route starts with /, such as /positions, and the options are ${optionNames}.`,
@@ -189,9 +213,9 @@ function readArg(read: Read, args: readonly string[], index: number): number {
 }
 
 /** The task's arguments, read, or a failure that says how to give them. An option's value follows it, or follows `=`
- * in the same word, as `--mode=dark`. */
-function optionsOf(args: readonly string[]): ShotOptions {
-  const read: Read = { routes: [], settings: new Map(), steps: [] };
+ * in the same word, as `--mode=dark`. A route Git Bash rewrote under `msysRoot` is taken back. */
+function optionsOf(args: readonly string[], msysRoot?: string): ShotOptions {
+  const read: Read = { msysRoot, routes: [], settings: new Map(), steps: [] };
   let index = 0;
   while (index < args.length) {
     index = readArg(read, args, index);

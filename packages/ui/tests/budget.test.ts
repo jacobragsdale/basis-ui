@@ -180,6 +180,6 @@ describe(budgetTask, () => {
     });
     rmSync(browsers, { force: true, recursive: true });
     expect({ signal: ran.signal, status: ran.status }).toStrictEqual({ signal: null, status: 1 });
-    expect(ran.stderr).toMatch(/^ERROR Playwright's Chromium is not installed: run /u);
+    expect(ran.stderr).toMatch(/^ERROR Playwright [\d.]+.s Chromium is not installed: run /u);
   });
 });
