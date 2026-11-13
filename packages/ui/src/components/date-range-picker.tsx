@@ -4,7 +4,8 @@
  * business day to a business day (date-range-presets.ts). In the grid, the first day picked starts the range and the
  * second ends it, in either order. Under them, a range can be typed, From and To, and Clear empties it.
  *
- * The presets count from an as-of date: the last business day before today in New York unless the field sets one. Like
+ * The presets count from an as-of date: the last business day before today in New York unless the field sets one, and
+ * never past the latest date the field takes; a preset whose range falls outside the field's dates is disabled. Like
  * AsOfDatePicker, the field names its calendar, SIFMA's unless it names another, and takes business days only, up to
  * today unless it sets other bounds. The button's text is the range, which is also its description, so a button named
  * by a FieldLabel still reads its range. It is drawn as a Select's trigger, with its sizes, since it is a field that
@@ -26,7 +27,12 @@ import { defaultAsOfDate, pickRules } from "./date-picking.ts";
 import type { PickRules } from "./date-picking.ts";
 import { PresetList, RangeEntry } from "./date-range-entry.tsx";
 import { rangeOf, rangeText, sameRange } from "./date-range-text.ts";
-import { dateRangePresets, rangeForPreset } from "./date-range-presets.ts";
+import {
+  dateRangePresets,
+  insideRules,
+  presetsAsOf,
+  rangeForPreset,
+} from "./date-range-presets.ts";
 import type { DateRangePreset } from "./date-range-presets.ts";
 import { idList, useControlled, useGridPopover, useToday } from "./field-state.ts";
 import type { GridPopover } from "./field-state.ts";
@@ -92,6 +98,7 @@ function RangeBody({
       <div className="flex gap-4">
         <PresetList
           presets={presets}
+          offered={(preset) => insideRules(rangeForPreset(preset, asOf, rules.calendar), rules)}
           onPreset={(preset) => {
             onChoose(rangeForPreset(preset, asOf, rules.calendar));
           }}
@@ -174,7 +181,11 @@ function useRangeField({
     popover.close();
   };
   const rules = pickRules({ calendar, max, min, today: day });
-  return { body: { asOf: until, current, onChoose, popover, rules, today: day }, current, popover };
+  return {
+    body: { asOf: presetsAsOf(until, rules), current, onChoose, popover, rules, today: day },
+    current,
+    popover,
+  };
 }
 
 interface RangeTriggerProps

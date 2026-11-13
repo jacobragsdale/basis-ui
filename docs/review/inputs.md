@@ -76,6 +76,12 @@ whose result passes its schema, and a type test. The README's "Building a form" 
 - **Severity:** fix before release.
 - **Confidence:** confirmed by running `rangeForPreset` against `whyNotPickable` (`dates.ts`).
 
+Done in DateRangePicker, MultiSelect: a preset stays inside the field's dates, and All means every option chosen: the presets count to the as-of date, or to the last business day on or before `max` when that is
+earlier, so "Month to date" ends at the latest date the field takes; a preset whose range still has an end outside
+`min` and `max` is shown disabled. A preset is never cut to fit, which would give a range other than its name. Held by
+a gallery test with the finding's bounds: Month to date, Quarter to date, Prior month and Past month are offered, and
+Month to date gives 2026-11-02 to 2026-11-06.
+
 **7. `packages/ui/src/components/date-range-entry.tsx:99` and `typed-confirm-dialog.tsx:53`**
 
 - **Defect:** these portaled forms call `preventDefault` but not `stopPropagation`, so their submit reaches an ancestor `<form onSubmit>`.
@@ -156,6 +162,10 @@ parent typing key by key, a parent that ignores a refused date and then sets ano
 - **Severity:** polish.
 - **Confidence:** confirmed by reading.
 
+Done in DateRangePicker, MultiSelect: a preset stays inside the field's dates, and All means every option chosen: "all chosen" and the count are judged by the options chosen, so a value no option has is not
+counted, in the trigger's text, Select all's tick, and what Select all does next. Held by a gallery test of a saved
+value the options no longer offer.
+
 **15. `packages/ui/src/format/parse.ts:164` and `amount-schema.ts:21`**
 
 - **Defect:** a digit string too long for a double parses as `Infinity`, and the schema passes it although `z.number()` would not.
@@ -221,3 +231,9 @@ Not read: the `*-variants.ts` style files, `src/dates`, `src/securities`, `forma
   AmountInput uncontrolled to avoid this may hold its number.
 
 - `FormDateField` clears a date it refused, and its reason, on `form.reset()`. What to do: nothing.
+
+- DateRangePicker's presets never commit a range outside `min` and `max`: they count to the last business day on or
+  before `max`, and a preset still outside the field's dates is disabled. What to do: nothing.
+
+- MultiSelect says "All" and ticks Select all only when every option is chosen, not when as many values are held, so
+  a saved value an option no longer has is not counted. What to do: nothing.

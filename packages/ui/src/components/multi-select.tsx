@@ -57,7 +57,24 @@ const none: readonly never[] = [];
 /** The value the "Select all" item holds, which no option may. */
 const allValue = "\u0000all";
 
-/** What the trigger says of the values chosen. */
+/** The options chosen, in the options' order: a value no option has, such as one an old saved view holds, is not
+ * one of them. */
+function chosenOptions<TValue extends string>(
+  chosen: readonly TValue[],
+  options: readonly MultiSelectOption<TValue>[],
+): readonly MultiSelectOption<TValue>[] {
+  return options.filter((option) => chosen.includes(option.value));
+}
+
+/** Whether every option is chosen, by which are, not by how many values are held. */
+function allChosen<TValue extends string>(
+  chosen: readonly TValue[],
+  options: readonly MultiSelectOption<TValue>[],
+): boolean {
+  return options.length > 0 && chosenOptions(chosen, options).length === options.length;
+}
+
+/** What the trigger says of the options chosen. */
 function countText<TValue extends string>(
   chosen: readonly TValue[],
   {
@@ -70,16 +87,18 @@ function countText<TValue extends string>(
     readonly placeholder: string;
   },
 ): string {
-  if (chosen.length === 0) {
+  const known = chosenOptions(chosen, options);
+  const [only] = known;
+  if (only === undefined) {
     return placeholder;
   }
-  if (chosen.length === options.length) {
+  if (known.length === options.length) {
     return `All ${noun}`;
   }
-  if (chosen.length === 1) {
-    return options.find((option) => option.value === chosen[0])?.label ?? placeholder;
+  if (known.length === 1) {
+    return only.label;
   }
-  return `${String(chosen.length)} of ${String(options.length)} ${noun}`;
+  return `${String(known.length)} of ${String(options.length)} ${noun}`;
 }
 
 /** The values chosen after the list's change, in the options' order: every option once "Select all" is chosen, none
@@ -89,7 +108,7 @@ function chosenAfter<TValue extends string>(
   before: readonly TValue[],
   options: readonly MultiSelectOption<TValue>[],
 ): readonly TValue[] {
-  const wasAll = before.length === options.length;
+  const wasAll = allChosen(before, options);
   const isAll = next.includes(allValue);
   if (isAll && !wasAll) {
     return options.map((option) => option.value);
@@ -139,7 +158,7 @@ function MultiSelect<TValue extends string>({
 }: MultiSelectProps<TValue>): ReactElement {
   const [own, setOwn] = useState<readonly TValue[]>(defaultValue);
   const chosen = value ?? own;
-  const all = chosen.length === options.length && options.length > 0;
+  const all = allChosen(chosen, options);
   return (
     <Select<string, true>
       multiple

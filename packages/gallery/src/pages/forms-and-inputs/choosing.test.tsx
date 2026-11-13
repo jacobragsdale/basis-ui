@@ -43,6 +43,25 @@ describe("MultiSelect", () => {
     await expect.element(screen.getByRole("combobox", { name: "None" })).toHaveTextContent("None");
   });
 
+  test("judges All by which options are chosen, not how many values it holds", async () => {
+    // A saved view holds three books, munis among them, which the options no longer offer.
+    const options: readonly { readonly label: string; readonly value: string }[] = books;
+    const screen = await render(
+      <MultiSelect
+        aria-label="Saved"
+        options={options}
+        noun="books"
+        defaultValue={["rates", "munis", "credit"]}
+      />,
+    );
+    const trigger = screen.getByRole("combobox", { name: "Saved" });
+    await expect.element(trigger).toHaveTextContent("2 of 3 books");
+    await userEvent.click(trigger);
+    await expect
+      .element(page.getByRole("option", { name: "Select all" }))
+      .toHaveAttribute("aria-selected", "false");
+  });
+
   test("chooses options one at a time, keeping the list open, in the options' order", async () => {
     const onValueChange = vi.fn<(value: readonly Book[]) => void>();
     const screen = await render(

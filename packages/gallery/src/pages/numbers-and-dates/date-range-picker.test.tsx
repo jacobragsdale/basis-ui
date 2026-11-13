@@ -79,6 +79,31 @@ describe("DateRangePicker", () => {
       .not.toBeInTheDocument();
   });
 
+  test("with bounds, offers only the presets inside them, counted to the latest date it takes", async () => {
+    const onValueChange = vi.fn<(range: DateRange | null) => void>();
+    const screen = await render(
+      <PeriodField
+        onValueChange={onValueChange}
+        min={date("2026-10-01")}
+        max={date("2026-11-06")}
+      />,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Period" }));
+    const dialog = page.getByRole("dialog", { name: "Choose a date range" });
+    const offered = [...dialog.element().querySelectorAll("button")]
+      .filter((button) => !button.disabled)
+      .map((button) => button.textContent);
+    expect(offered.slice(0, 4)).toStrictEqual([
+      "Month to date",
+      "Quarter to date",
+      "Prior month",
+      "Past month",
+    ]);
+    await userEvent.click(dialog.getByRole("button", { name: "Prior year" }), { force: true });
+    await userEvent.click(dialog.getByRole("button", { name: "Month to date" }));
+    expect(heard(onValueChange)).toStrictEqual(["2026-11-02 – 2026-11-06"]);
+  });
+
   test("the keys cross into the month before, and two picks make a range", async () => {
     const onValueChange = vi.fn<(range: DateRange | null) => void>();
     const screen = await render(<PeriodField onValueChange={onValueChange} />);

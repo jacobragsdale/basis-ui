@@ -8,6 +8,9 @@ import { businessPeriodToDate, periodStart, priorBusinessPeriodEnd } from "#date
 import type { DateRange, Period } from "#dates/periods.ts";
 import { sifma } from "#dates/sifma.ts";
 
+import { whyNotPickable } from "./date-picking.ts";
+import type { PickRules } from "./date-picking.ts";
+
 /** A preset's name. */
 type DateRangePreset =
   | "month-to-date"
@@ -98,5 +101,22 @@ function rangeForPreset(
   return { end, start: businessDayOnOrAfter(periodStart(period, end), { calendar }) };
 }
 
-export { dateRangePresets, presetLabel, rangeForPreset };
+/** Whether both ends of a range are dates the field takes, as the grid and the typed range require. */
+function insideRules(range: DateRange, rules: PickRules): boolean {
+  return (
+    whyNotPickable(range.start, rules) === undefined &&
+    whyNotPickable(range.end, rules) === undefined
+  );
+}
+
+/** The date the presets run to: the as-of date, or the last business day on or before the latest date the field
+ * takes, when that is earlier, so "Month to date" stays inside the field's dates. */
+function presetsAsOf(asOf: Temporal.PlainDate, rules: PickRules): Temporal.PlainDate {
+  const { max } = rules;
+  return max === undefined || Temporal.PlainDate.compare(asOf, max) <= 0
+    ? asOf
+    : businessDayOnOrBefore(max, { calendar: rules.calendar });
+}
+
+export { dateRangePresets, insideRules, presetLabel, presetsAsOf, rangeForPreset };
 export type { DateRangePreset };

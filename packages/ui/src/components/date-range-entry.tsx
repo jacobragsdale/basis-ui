@@ -20,9 +20,12 @@ import { Label } from "./label.tsx";
 /** The presets, each setting its range at once; nothing when there are none. */
 function PresetList({
   presets,
+  offered,
   onPreset,
 }: {
   readonly presets: readonly DateRangePreset[];
+  /** Whether a preset's range is inside the field's dates; one that is not is shown, and disabled. */
+  readonly offered: (preset: DateRangePreset) => boolean;
   readonly onPreset: (preset: DateRangePreset) => void;
 }): ReactElement | null {
   if (presets.length === 0) {
@@ -36,6 +39,7 @@ function PresetList({
           variant="ghost"
           size="sm"
           className="justify-start"
+          disabled={!offered(preset)}
           onClick={() => {
             onPreset(preset);
           }}
