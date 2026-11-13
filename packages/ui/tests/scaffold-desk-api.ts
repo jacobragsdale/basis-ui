@@ -1,7 +1,7 @@
 /* A second OpenAPI document for the scaffolder's tests, unlike the example's in each way the review of 2026-11-13
  * found the scaffolder to fail: integer and enum path parameters, optional and nullable fields, a description with
  * quotes and braces, a summary with an apostrophe, a body with its own example, `format: time`, a list whose rows
- * have no unique column, and a component whose name orval rewrites. Its problem schemas are basis's, from the
+ * have no unique column, a component whose name orval rewrites, and response properties left out of required. Its problem schemas are basis's, from the
  * example's document. */
 
 import { readFileSync } from "node:fs";
@@ -67,13 +67,15 @@ const deskDocument = {
           booked: { format: "date-time", title: "Booked", type: "string" },
           cutoff: { format: "time", title: "Cutoff", type: "string" },
           desk_id: { title: "Desk Id", type: "integer" },
-          notes: { anyOf: [{ type: "string" }, { type: "null" }], title: "Notes" },
+          // Left out of required, as an API outside basis may leave a property; its mocks must still pass tsc.
+          memo: { anyOf: [{ type: "string" }, { type: "null" }], title: "Memo" },
+          notes: { title: "Notes", type: "string" },
           price: { anyOf: [{ type: "number" }, { type: "null" }], title: "Price" },
           quantity: { title: "Quantity", type: "integer" },
           side,
           trade_id: { title: "Trade Id", type: "integer" },
         },
-        required: ["trade_id", "desk_id", "side", "quantity", "price", "notes", "cutoff", "booked"],
+        required: ["trade_id", "desk_id", "side", "quantity", "price", "cutoff", "booked"],
         title: "Trade",
         type: "object",
       },

@@ -167,6 +167,14 @@ Done in Shot: a path no route matches fails, and --all keeps its shots when one 
 
 Done in Scaffold: what vp run new writes passes tsc and the lint on a second document: `modelName` is orval's PascalCase, so `Page_Trade_` imports `PageTrade`; the route is added after the last of `rootRoute.addChildren`'s own elements, read with Oxc's parser, so a child's own `addChildren` and a comment after the last child are kept.
 
+**16. Found while fixing: orval's mocks of a property left out of `required` fail `tsc`.** (Added by step 7.7, given
+to it by the orchestrator.)
+
+- Where: `src/api/generated/client.msw.ts`, as `vp run client-pull` writes it from orval 8.46.
+- Scenario: a 200 schema with `notes` not in `required` generates `notes: faker.helpers.arrayElement([TEXT, undefined])`, and the model's `notes?: string` refuses `undefined` under `exactOptionalPropertyTypes` (TS2375), so verify's types stage fails on the app's own generated client.
+
+Done in Client: a response property left out of required leaves the generated mocks passing tsc: `client-pull` rewrites each such pick, beside the enum picks, into `...faker.helpers.arrayElement([{ notes: TEXT }, {}])`, which leaves the property out (`src/preset/client-mocks.ts`, which the enum repair moved into). The desk document's `Trade` gains an optional `notes` and an optional nullable `memo`, and `tests/scaffold-desk.test.ts` type-checks the client generated from it; orval writes the nullable one as text or `null`, which its type takes. The tsconfig and the generated client's checks are unchanged. Not done: orval's mock of a `format: time` string is random letters, which the client's `zod.iso.time` refuses, so a generated handler's answer for such a field fails its parse in fixture mode; a fixture answers it.
+
 ## Checked and found sound
 
 - **Numeric separators**: Oxlint does not require grouped fraction digits, so `99.515625` in generated tests is fine.
@@ -225,3 +233,7 @@ The area is better than its age suggests: modules are small and pure, every fail
   value rather than by a column that repeats, a form's test expects what the form sends, and a fixture that answers
   the request already is used rather than made. The template gains `@tanstack/react-form`. What to do: in an app made
   before, run `vp add @tanstack/react-form` before `vp run new form`; pages written before are unchanged.
+
+- `vp run client-pull` writes mocks that pass `tsc` for an API whose response leaves a property out of `required`:
+  the mock leaves it out, where it set it to `undefined`, which the model's type refuses. What to do: run
+  `vp run client-pull`.

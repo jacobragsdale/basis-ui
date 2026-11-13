@@ -15,6 +15,7 @@ import path from "node:path";
 
 import { generate } from "orval";
 
+import { repairMocks } from "./client-mocks.ts";
 import { displayFormatsModule } from "./display-formats.ts";
 import { documentFile, generatedFolder, orvalOptions } from "./orval-options.ts";
 import { removeScratchLater } from "./scratch.ts";
@@ -119,25 +120,6 @@ function pinned(document: Record<string, unknown>, origin: string): Record<strin
     "x-basis-ui": `copied by vp run client-pull from ${origin}; pull it again rather than edit it`,
     ...Object.fromEntries(Object.entries(document).filter(([key]) => !markers.has(key))),
   };
-}
-
-/** orval 8.46's MSW mocks pick an enum field's value with `Object.values(Convention)`, written for the plain object
- * its TypeScript models declare. With Zod models, `Convention` is a Zod enum, whose own properties are no value of it,
- * so every mock with an enum failed its own schema. A Zod 4 enum lists its values in `options`. */
-const zodEnumMock =
-  /faker\.helpers\.arrayElement\(Object\.values\((?<schema>[A-Za-z_$][\w$]*)\)\)/gu;
-
-/** Rewrites the generated mocks' enum picks to read the Zod enum's `options`, so a mock passes its own schema. */
-async function repairMocks(output: string): Promise<void> {
-  const file = path.join(output, "client.msw.ts");
-  if (!existsSync(file)) {
-    return;
-  }
-  const text = await readFile(file, "utf8");
-  const repaired = text.replaceAll(zodEnumMock, "faker.helpers.arrayElement($<schema>.options)");
-  if (repaired !== text) {
-    await writeFile(file, repaired);
-  }
 }
 
 /** Writes `formats.ts`, each number property's display format from the document's `x-basis-format`. */

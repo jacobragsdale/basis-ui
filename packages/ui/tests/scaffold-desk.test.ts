@@ -249,6 +249,16 @@ describe("vp run new on the desk's document", () => {
     expect(read("src/pages/note.test.ts")).toContain('"Rates desk closes early."');
   });
 
+  test("generates mocks that leave a property out of required out, rather than set it to undefined", () => {
+    const mocks = read("src/api/generated/client.msw.ts");
+    expect(mocks).toContain("...faker.helpers.arrayElement([{ notes: faker.string.alpha(");
+    // One that may also be null orval always writes, as text or null, which its type takes.
+    expect(mocks).toMatch(
+      /memo: faker\.helpers\.arrayElement\(\[faker\.string\.alpha\([^\]]*\),null,\]\)/u,
+    );
+    expect(mocks).not.toContain(", undefined])");
+  });
+
   test("imports a model by the name orval gives it", () => {
     expect(read("src/pages/latest-page.tsx")).toContain("PageTrade");
   });
