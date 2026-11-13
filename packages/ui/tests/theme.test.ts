@@ -229,6 +229,7 @@ describe("the theme under Tailwind", () => {
       "duration-panel",
       "z-raised",
       "z-popup",
+      "z-notice",
       "opacity-disabled",
     ];
     const css = await build(kept);

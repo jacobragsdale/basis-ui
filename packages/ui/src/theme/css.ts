@@ -64,9 +64,10 @@ const fontsAndVariant = `@import "@fontsource-variable/inter";
  * geometry, the same in every theme. */
 const pillRadius = "9999px";
 
-/** The stacking order: a part raised over its siblings, such as a focused button in a group, and a popup or the veil
- * behind a dialog, over the page. It is structure, the same in every theme. */
-const layers = { popup: "50", raised: "10" } as const;
+/** The stacking order: a part raised over its siblings, such as a focused button in a group; a popup or the veil
+ * behind a dialog, over the page; and a notice, the toasts, over every popup, so a toast raised while a dialog is
+ * open is read and clicked over its veil. It is structure, the same in every theme. */
+const layers = { notice: "60", popup: "50", raised: "10" } as const;
 
 /** The smallest a control may be, across and down: WCAG 2.2's minimum target size, 24 CSS pixels, which no theme may
  * lower. It is a fixed length rather than a multiple of the spacing unit, so the compact density cannot shrink it. It
@@ -151,7 +152,7 @@ function scales(theme: ThemeInputs): string {
     .join("\n");
   return `/* Only the theme's own values exist: Tailwind's palette, its blur utilities and most of its shadows are removed, so a
    class that uses them is an unknown class and fails the lint. Citrix desktops draw on the CPU, where blur is slow.
-   Each scale is named for its use: \`duration-popup\` and \`duration-panel\`, \`z-raised\` and \`z-popup\`,
+   Each scale is named for its use: \`duration-popup\` and \`duration-panel\`, \`z-raised\`, \`z-popup\` and \`z-notice\`,
    \`rounded-pill\` and \`opacity-disabled\`. */
 @theme {
   --color-*: initial;
@@ -164,6 +165,7 @@ function scales(theme: ThemeInputs): string {
   --radius-pill: ${pillRadius};
   --z-index-raised: ${layers.raised};
   --z-index-popup: ${layers.popup};
+  --z-index-notice: ${layers.notice};
   --spacing-target: ${targetSize};
 ${scaleDeclarations(theme)}
 }

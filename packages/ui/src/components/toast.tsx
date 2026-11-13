@@ -57,13 +57,14 @@ function ToastPortal(props: ToastPrimitive.Portal.Props): ReactElement {
   return <ToastPrimitive.Portal data-slot="toast-portal" {...props} />;
 }
 
-/** Where the toasts appear: the bottom right corner, or across the bottom on a narrow screen. */
+/** Where the toasts appear: the bottom right corner, or across the bottom on a narrow screen, over every popup and
+ * dialog's veil, so a toast raised while a dialog is open is read and clicked. */
 function ToastViewport({ className, ...props }: ToastPrimitive.Viewport.Props): ReactElement {
   return (
     <ToastPrimitive.Viewport
       data-slot="toast-viewport"
       className={cn(
-        "pointer-events-none fixed inset-x-4 bottom-4 z-popup mx-auto flex w-auto max-w-sm flex-col gap-2 outline-none sm:right-4 sm:left-auto sm:mx-0 sm:w-full",
+        "pointer-events-none fixed inset-x-4 bottom-4 z-notice mx-auto flex w-auto max-w-sm flex-col gap-2 outline-none sm:right-4 sm:left-auto sm:mx-0 sm:w-full",
         className,
       )}
       {...props}

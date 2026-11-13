@@ -81,6 +81,11 @@ over the shared storage, with its storage event, and loads the views again.
 - **Severity:** fix before release.
 - **Confidence:** plausible; read from the classes and Base UI 1.9.0's portal code, not run in a browser. No test raises a toast with a modal open.
 
+Done in Toast: toasts show over every popup and dialog's veil: confirmed in the browser first. With the Toaster mounted before an open Dialog, the toast's action
+was not the topmost element where it showed. The theme gains a layer, `z-notice` (60), over `z-popup` (50), which
+the toast viewport takes. Held by a gallery test that raises a toast over an open Dialog: its action is topmost,
+takes its click, and the dialog stays open. `docs/design.md` and the README name the new layer.
+
 **7. `onSelectionChange` reports rows the filters hide, while the toolbar counts only visible ones**
 
 - **Where:** `packages/ui/src/components/data-table-control.ts:136`, `data-table-table.tsx:40`
@@ -234,3 +239,6 @@ Two weak spots in what agents are shown:
 - SavedViews holds the view shown: stopping the default no longer deselects it, and a default another tab sets is
   not taken for this tab's view. A failed load says so in the menu, and a default that arrives after the user has
   changed the page's state is not applied. What to do: nothing.
+
+- Toasts show over every popup and dialog's veil, on a new layer, `z-notice`, so a failed save's error toast raised
+  from a form in a Dialog is read and clicked, and clicking it no longer closes the Dialog. What to do: nothing.

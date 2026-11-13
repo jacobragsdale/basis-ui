@@ -860,7 +860,7 @@
 
 /* Only the theme's own values exist: Tailwind's palette, its blur utilities and most of its shadows are removed, so a
    class that uses them is an unknown class and fails the lint. Citrix desktops draw on the CPU, where blur is slow.
-   Each scale is named for its use: `duration-popup` and `duration-panel`, `z-raised` and `z-popup`,
+   Each scale is named for its use: `duration-popup` and `duration-panel`, `z-raised`, `z-popup` and `z-notice`,
    `rounded-pill` and `opacity-disabled`. */
 @theme {
   --color-*: initial;
@@ -873,6 +873,7 @@
   --radius-pill: 9999px;
   --z-index-raised: 10;
   --z-index-popup: 50;
+  --z-index-notice: 60;
   --spacing-target: 1.5rem;
   --opacity-disabled: 50%;
   --spacing: 0.1875rem;

@@ -463,7 +463,7 @@ theme.
    than a ring, since an outline's gap is transparent on any surface where a ring's would need the surface's colour,
    and Windows' forced colours keep an outline and drop a ring; a field that is invalid takes `outline-destructive`
    for it. The other scales are named for their use: `duration-popup` and `duration-panel`, `z-raised` for a part over
-   its siblings and `z-popup` for a popup or a veil, `rounded-pill` for a badge or a switch, where a circle such as an
+   its siblings, `z-popup` for a popup or a veil and `z-notice` for the toasts, over every popup, `rounded-pill` for a badge or a switch, where a circle such as an
    avatar or a radio stays `rounded-full`, and `opacity-disabled` for a disabled control's fade. Citrix desktops draw on the CPU, so the theme removes the blur
    scale, which makes `blur-sm` and `backdrop-blur-md` unknown classes; the other filter utilities have no scale to
    remove and stay out of the components by review. Transitions are short and stop under

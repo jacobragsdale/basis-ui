@@ -937,7 +937,7 @@ on it its `-edge`. The outline of a card or a popup is `ring-1 ring-edge`, the v
 control that is off `control-off` and a disabled field's fill `disabled`. A focus ring is an outline in the `ring`
 colour, whose width and gap are the theme's: `focus-visible:outline-solid focus-visible:outline
 focus-visible:outline-offset-(--focus-offset) focus-visible:outline-ring`. The scales are named for their use:
-`duration-popup` and `duration-panel`, `z-raised` and `z-popup`, `rounded-pill`, `opacity-disabled`, and `shadow-sm`
+`duration-popup` and `duration-panel`, `z-raised`, `z-popup` and `z-notice` (the toasts), `rounded-pill`, `opacity-disabled`, and `shadow-sm`
 and `shadow-md`.
 
 On a plain element, `basis/theme-classes` refuses what would step outside the theme: a `dark:` variant, since every
