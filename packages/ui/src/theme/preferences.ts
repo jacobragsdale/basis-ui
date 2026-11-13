@@ -208,10 +208,25 @@ function followPreferences(shown?: Preferences, options: CookieOptions = {}): ()
   };
 }
 
+/** The Chrome and Edge release the app needs: the first that ships `Temporal`, which the dates module uses. */
+const browserFloor = 144;
+
 /** A script for the page's `<head>` that applies the stored preferences before the first paint, so the page never
  * flashes the wrong mode. It repeats `parsePreferences` and `applyPreferences` in plain JavaScript; a test holds the
- * two to the same answers. */
+ * two to the same answers. First, in a browser without `Temporal`, where the app's modules fail as they load and React
+ * draws nothing, it puts a line in the page, once it has loaded, that names the browser the app needs. */
 const headScript = `(() => {
+  if (typeof Temporal === "undefined") {
+    const agent = navigator.userAgent;
+    const found = /Edg\\/(\\d+)/.exec(agent) ?? /Chrome\\/(\\d+)/.exec(agent);
+    const browser = found === null ? "" : (found[0].startsWith("Edg") ? "Edge " : "Chrome ") + found[1];
+    const line = document.createElement("p");
+    line.textContent =
+      "This app needs Chrome or Edge ${browserFloor} or later" +
+      (browser === "" ? ": open it in one of them" : ", and this is " + browser + ": update the browser") +
+      ", then reload the page.";
+    document.addEventListener("DOMContentLoaded", () => document.body.replaceChildren(line));
+  }
   try {
     const themes = ${JSON.stringify(themeNames)};
     const values = document.cookie.split(";").flatMap((part) => {

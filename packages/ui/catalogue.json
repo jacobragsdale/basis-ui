@@ -17394,8 +17394,8 @@
       "kind": "constant",
       "module": "@basis/ui",
       "name": "headScript",
-      "purpose": "A script for the page's `<head>` that applies the stored preferences before the first paint, so the page never flashes the wrong mode. It repeats `parsePreferences` and `applyPreferences` in plain JavaScript; a test holds the two to the same answers.",
-      "signature": "const headScript = `(() => { try { const themes = ${JSON.stringify(themeNames)}; const values = document.cookie.split(…"
+      "purpose": "A script for the page's `<head>` that applies the stored preferences before the first paint, so the page never flashes the wrong mode. It repeats `parsePreferences` and `applyPreferences` in plain JavaScript; a test holds the two to the same answers. First, in a browser without `Temporal`, where the app's modules fail as they load and React draws nothing, it puts a line in the page, once it has loaded, that names the browser the app needs.",
+      "signature": "const headScript = `(() => { if (typeof Temporal === \"undefined\") { const agent = navigator.userAgent; const found = /…"
     },
     {
       "kind": "function",

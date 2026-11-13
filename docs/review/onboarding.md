@@ -107,6 +107,7 @@ A new developer cannot get from nothing to a deployed, signed-in app today, and 
     - `sync`, `doctor` and `review` have no README section, so `vp run docs` cannot print one.
     - Also absent: browser support (Chrome/Edge 139 is only in the design's "Not yet verified"), a versioning policy, troubleshooting, an owner, and where a firm developer opens "a basis-ui pull request".
     - Severity: fix before release. Confidence: confirmed.
+    - Browser support done in Head script: a browser without Temporal is told which Chrome or Edge the app needs: the README's "Browsers" says Chrome and Edge 144 or later, on Windows, and the design's "Not yet verified" says 144. The rest of the finding is in the docs commit below.
 
 16. **Three README samples contradict the checks or the exports.**
     - `packages/ui/README.md:1216` uses `toFixed`, which `packages/ui/src/preset/lint-bans.ts:66` bans.
@@ -188,3 +189,8 @@ The two check scripts are `(a scratch folder)` and `(a scratch folder)`.
 
 - The framework's `.gitignore` names `.playwright-cli/`, `.vitest/`, `__screenshots__/`, and what an editor leaves:
   `.idea/`, `.vscode/`, `*.swp`, `.DS_Store` and `Thumbs.db`. What to do: run `vp run sync`.
+
+- In a browser without `Temporal`, such as Chrome or Edge before 144, the page shows a line that names the browser it
+  needs and the one it found, in place of an empty page: the head script checks before the app's modules load. The
+  README's "Browsers" states the floor, Chrome and Edge 144 or later. What to do: nothing; `vp dev` and `vp build`
+  write the new head script.

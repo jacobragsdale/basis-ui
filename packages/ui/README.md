@@ -9,6 +9,14 @@ time, and every component, hook, function and type the package exports, as [Look
 says. What changed in each version is in `CHANGELOG.md`, which `vp run docs ui/changelog` prints. How the package
 itself is built, and how a component is added to it, is in basis-ui's repo, in `packages/ui/CONTRIBUTING.md`.
 
+## Browsers
+
+An app on `@basis/ui` runs in Chrome and Edge 144 or later, on Windows, which is what the firm's users and developers
+run. 144 is the first release with `Temporal`, which the dates module uses. In a browser without it, such as Chrome or
+Edge before 144, the page shows one line naming the browser it needs, and the one it found, in place of the app: the
+head script checks before any of the app's modules loads, since a module that uses `Temporal` fails as it loads, before
+React can draw anything.
+
 ## How to build an app on @basis/ui
 
 An app takes its checks, its plugins, its stylesheet, its components and its icons from this one package, and declares

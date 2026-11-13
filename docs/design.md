@@ -629,8 +629,8 @@ yields, risk or returns over long series, is computed by the API, so the firm ha
 | `@basis/ui/securities` | CUSIP, ISIN and SEDOL checks, CUSIP to ISIN, and branded identifier types, so a ticker cannot pass where a CUSIP is due                                                                                                                                                                                                                                   |
 | `@basis/ui/utils`      | The collection helpers modern JavaScript lacks (`keyBy`, `partition`, `chunk`, `uniqBy`, a multi-key `sortBy` and others), `deepEqual` and `stableStringify`, `debounce` and `throttle`, type guards such as `assertNever`, and CSV and TSV writers that neutralize formula injection                                                                     |
 
-A date field names its calendar, SIFMA unless it says otherwise. Dates use Temporal, which the firm's Chrome has shipped
-since version 144, so no date library is needed; grouping uses `Object.groupBy`, cloning `structuredClone`, and set
+A date field names its calendar, SIFMA unless it says otherwise. Dates use Temporal, which Chrome and Edge have shipped
+since version 144, the oldest the UI supports, so no date library is needed; grouping uses `Object.groupBy`, cloning `structuredClone`, and set
 operations the Set methods. `AmountInput` parses its text exactly, by moving the decimal point by its suffix's power of ten, before it converts the result to a number, and the calendars are tested against the exchanges' published holidays. The preset's `no-restricted-imports` rejects `lodash`, `lodash-es`, `underscore`,
 `es-toolkit`, `moment`, `date-fns`, `dayjs`, `decimal.js` and `big.js` in apps, as it does `recharts`, `react-hook-form`,
 `sonner` and React Aria, which [Decided against](#decided-against) names, and each error names the module, the
@@ -937,9 +937,10 @@ Citrix repeat on the new engine:
 - how long parallax's wasm takes to download, compile and draw a first chart on a Citrix desktop (the same repeat);
 - whether a Citrix desktop's display scaling leaves the canvases' text and rules sharp, and whether Windows has its
   animations turned off there (step 6.10);
-- that the firm's Chrome and Edge are version 139 or later, which the canvas's tabular digits need: they come from a
-  `font-feature-settings` descriptor in `@font-face`, which Chromium honours from 139 (step 6.4.1; the probe page of
-  step 6.10 reports the version);
+- that the firm's Chrome and Edge are version 144 or later, the first to ship `Temporal`, which the dates module uses;
+  the canvas's tabular digits need 139, for a `font-feature-settings` descriptor in `@font-face` (step 6.4.1). In an
+  older browser the app's modules fail as they load, so the head script, which runs before them, puts a line in the
+  page that names the version needed and the one it found (the probe page of step 6.10 reports the version);
 - that the firm's apps share a parent domain, for the cookie that holds the mode, density, motion and theme.
 - that a desktop reaches Playwright's download site for its Chromium, or a mirror `PLAYWRIGHT_DOWNLOAD_HOST` names:
   without one, `vp test` runs in a Node DOM with `BASIS_TEST_DOM=node`, and on Windows `vp run shot` and the budget use
