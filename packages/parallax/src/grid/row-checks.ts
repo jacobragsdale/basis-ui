@@ -22,6 +22,9 @@ interface RowChecksHost {
   readonly update: () => void;
 }
 
+/** Why more rows than a fetch takes cannot be handed to the app as keys. */
+const tooMany = `Up to ${maxRowsFetched.toLocaleString("en-US")} rows are checked at once: filter the view first.`;
+
 /** Whether two ways of choosing rows are the same. */
 function sameSelect(one: RowSelect | null, other: RowSelect | null): boolean {
   return one?.index === other?.index && one?.mode === other?.mode;
@@ -121,14 +124,49 @@ class RowChecks {
    * rows, and an app that holds the keys as a list, fetch the keys. */
   public checkAll(): void {
     const { model } = this.#host;
-    const selected = this.#host.inputs()?.selected;
+    const inputs = this.#host.inputs();
+    const selected = inputs?.selected;
     if (model.choice.any) {
       this.#commit(noRows, false);
+    } else if (inputs?.onChange !== undefined && model.totalRows > maxRowsFetched) {
+      // An app that takes keys could be handed none of these: it is told so, rather than left holding none.
+      this.#host.say(tooMany);
     } else if (model.frame?.tree === null && (selected === undefined || !isKeyList(selected))) {
       this.#commit({ all: true, keys: [] }, false);
     } else {
       this.#checkShown().catch(reportError);
     }
+  }
+
+  /**
+   * Hears whether the rows the view shows have `changed`, as a filter, a search, a reload or more rows of a first load
+   * change them. A choice of every row now covers other rows, so the app hears it again: the rows chosen with the
+   * view, and the keys, fetched again. Past the keys a fetch takes, an app that takes keys has the choice cleared,
+   * saying why, so it never holds keys the grid does not show checked.
+   */
+  public rowsChanged(changed: boolean): void {
+    const inputs = this.#host.inputs();
+    const { rows } = this.#host.model.choice;
+    if (!changed || inputs === null || !rows.all) {
+      return;
+    }
+    if (inputs.onChange !== undefined && this.#host.model.totalRows > maxRowsFetched) {
+      this.#commit(noRows, false);
+      this.#host.say(`Every row was unchecked: ${tooMany}`);
+      return;
+    }
+    inputs.onRows?.(this.#viewed(rows));
+    this.#handTo(inputs.onChange, rows);
+  }
+
+  /** The rows chosen, with the view they cover when they are every row but some. */
+  #viewed(rows: RowsChosen): RowsChosen {
+    if (!rows.all) {
+      return rows;
+    }
+    const { layout, totalRows } = this.#host.model;
+    const view = { filters: layout?.filters ?? [], rows: totalRows, search: layout?.search ?? "" };
+    return { ...rows, view };
   }
 
   /** In single mode, chooses the focused cell's row once the focus moves to another row with a key. */
@@ -152,8 +190,7 @@ class RowChecks {
       return null;
     }
     if (count > maxRowsFetched) {
-      const most = maxRowsFetched.toLocaleString("en-US");
-      this.#host.say(`Up to ${most} rows are checked at once: filter the view first.`);
+      this.#host.say(tooMany);
       return null;
     }
     const window = { columnCount: 1, firstColumn: select.index, firstRow: first, rowCount: count };
@@ -201,7 +238,7 @@ class RowChecks {
     }
     // Held by the app, the keys come back on its next render, and the header shows them all checked if they are these.
     choice.checkedAll(all && !rows.all ? rows.keys : null);
-    inputs.onRows?.(rows);
+    inputs.onRows?.(this.#viewed(rows));
     this.#handTo(inputs.onChange, rows);
     this.#host.update();
   }

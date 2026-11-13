@@ -21,6 +21,8 @@ const rowY = (row: number): number => 42 + row * 24;
 const cell = 100;
 
 const keys = ["100.5", "200.25", "-50", "400", "1.75", "0.25"];
+/** The view a choice of every row covers: the six positions, unfiltered. */
+const everyRow = { filters: [], rows: 6, search: "" };
 
 /** A grid of the positions whose rows are chosen by checkbox, or by focus in single mode, with the keys each change
  * handed the app. */
@@ -75,10 +77,12 @@ describe("Grid with rows chosen by checkbox", () => {
   test("checks every row of a flat view as every row but none, and unchecking one leaves it out", async () => {
     const { grid, screen, chosen } = await rowsChooser();
     await pressAt(grid, { x: checkbox, y: header });
-    await expect.poll(() => chosen.at(-1)).toStrictEqual({ all: true, keys: [] });
+    await expect.poll(() => chosen.at(-1)).toStrictEqual({ all: true, keys: [], view: everyRow });
     await expect.element(screen.getByText("6 selected")).toBeVisible();
     await pressAt(grid, { x: checkbox, y: rowY(1) });
-    await expect.poll(() => chosen.at(-1)).toStrictEqual({ all: true, keys: ["200.25"] });
+    await expect
+      .poll(() => chosen.at(-1))
+      .toStrictEqual({ all: true, keys: ["200.25"], view: everyRow });
     await expect.element(screen.getByText("5 selected")).toBeVisible();
     await pressAt(grid, { x: checkbox, y: header });
     await expect.poll(() => chosen.at(-1)).toStrictEqual({ all: false, keys: [] });

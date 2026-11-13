@@ -206,10 +206,22 @@ function searchIn(json: string): string {
   return "";
 }
 
+/** Whether `next` shows other rows than `shown` did: the first frame of a layout the engine took, which may filter or
+ * search, another load of the table, or another count of rows, as a first load's grows. */
+function rowsDiffer(shown: FrameData | null, next: FrameData): boolean {
+  return (
+    shown === null ||
+    next.changedAtMs !== undefined ||
+    next.loadVersion !== shown.loadVersion ||
+    next.totalRows !== shown.totalRows
+  );
+}
+
 export {
   frameToShow,
   groupPath,
   missingWindow,
+  rowsDiffer,
   searchIn,
   toggledEntry,
   wholeCells,

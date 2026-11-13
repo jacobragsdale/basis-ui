@@ -21232,6 +21232,32 @@
       "purpose": "The part of a chart to reduce and the plot it fills, in pixels. Without an x range, the whole data."
     },
     {
+      "fields": [
+        {
+          "description": "",
+          "name": "filters",
+          "optional": false,
+          "type": "readonly LayoutFilter[]"
+        },
+        {
+          "description": "",
+          "name": "search",
+          "optional": false,
+          "type": "string"
+        },
+        {
+          "description": "",
+          "name": "rows",
+          "optional": false,
+          "type": "number"
+        }
+      ],
+      "exported": true,
+      "module": "@basis/parallax",
+      "name": "ChosenView",
+      "purpose": "The view a choice of every row covers, as an app's API can find its rows: the layout's filters and search, and how many rows the view shows."
+    },
+    {
       "extends": [
         "Message<\"parallax.v1.ColumnCount\">"
       ],
@@ -24018,12 +24044,18 @@
           "name": "keys",
           "optional": false,
           "type": "readonly string[]"
+        },
+        {
+          "description": "With `all` true, as the grid hands it over, the view whose rows are chosen: what a bulk action sends its API, with `keys` as the rows left out. The grid reads none of it in the rows an app gives back.",
+          "name": "view",
+          "optional": true,
+          "type": "ChosenView | undefined"
         }
       ],
       "exported": true,
       "module": "@basis/parallax",
       "name": "RowsChosen",
-      "purpose": "The rows chosen: these rows, by key, in the order they were chosen; or every row the view shows but these, which the header's checkbox chooses in a flat view without fetching a key. \"Every row\" follows the view: a row a filter later shows is chosen, and one it hides is not."
+      "purpose": "The rows chosen: these rows, by key, in the order they were chosen; or every row the view shows but these, which the header's checkbox chooses in a flat view without fetching a key. \"Every row\" follows the view: a row a filter later shows is chosen, and one it hides is not, and the app hears the choice again whenever its rows change."
     },
     {
       "definition": "\"light\" | \"dark\" | \"auto\"",

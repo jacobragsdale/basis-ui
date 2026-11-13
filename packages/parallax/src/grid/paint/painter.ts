@@ -160,10 +160,9 @@ class GridPainter {
     if (prepared === null) {
       return;
     }
-    const area = {
-      ...prepared.at,
-      first: scene.rows.firstRow(scene.scrollTop, prepared.at.height),
-    };
+    /* The first row from the visible area's height, as hit testing, the keys and the rows asked for take it: the
+     * canvas's, floored to whole device pixels, can map a scaled scroll to the row before. */
+    const area = { ...prepared.at, first: scene.rows.firstRow(scene.scrollTop, scene.height) };
     const drawing = this.#drawing(prepared, scene, area);
     const plan = this.#plan(prepared, scene, { area, bodyBottom: drawing.bodyBottom });
     const painted = this.#paint(plan, this.#draw(prepared, { area, drawing, scene }));

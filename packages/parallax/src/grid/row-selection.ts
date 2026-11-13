@@ -8,7 +8,7 @@
  * its group rows; a pivot's rows are groups, so it selects none, and neither does a view that hides the key column. */
 
 import type { FrameData } from "#frame/frame.ts";
-import type { Layout } from "#layout/layout.ts";
+import type { Layout, LayoutFilter } from "#layout/layout.ts";
 
 import { isPivotLayout, shownColumns } from "./edit.ts";
 import type { SourceField } from "./fields.ts";
@@ -104,15 +104,26 @@ function withKeys(keys: ReadonlySet<string>, added: readonly string[]): string[]
   return [...new Set([...keys, ...added])];
 }
 
+/** The view a choice of every row covers, as an app's API can find its rows: the layout's filters and search, and
+ * how many rows the view shows. */
+interface ChosenView {
+  readonly filters: readonly LayoutFilter[];
+  readonly search: string;
+  readonly rows: number;
+}
+
 /** The rows chosen: these rows, by key, in the order they were chosen; or every row the view shows but these, which
  * the header's checkbox chooses in a flat view without fetching a key. "Every row" follows the view: a row a filter
- * later shows is chosen, and one it hides is not. */
+ * later shows is chosen, and one it hides is not, and the app hears the choice again whenever its rows change. */
 interface RowsChosen {
   /** Whether every row the view shows is chosen but `keys`, or only `keys`. */
   readonly all: boolean;
   /** With `all` false, the keys of the rows chosen, in the order they were chosen; with `all` true, of those left
    * out. */
   readonly keys: readonly string[];
+  /** With `all` true, as the grid hands it over, the view whose rows are chosen: what a bulk action sends its API, with
+   * `keys` as the rows left out. The grid reads none of it in the rows an app gives back. */
+  readonly view?: ChosenView | undefined;
 }
 
 const noRows: RowsChosen = { all: false, keys: [] };
@@ -253,4 +264,12 @@ export {
   toggled,
   withKeys,
 };
-export type { HeaderCheck, KeyColumn, RowSelect, RowSelectionInputs, RowsChosen, SelectMode };
+export type {
+  ChosenView,
+  HeaderCheck,
+  KeyColumn,
+  RowSelect,
+  RowSelectionInputs,
+  RowsChosen,
+  SelectMode,
+};

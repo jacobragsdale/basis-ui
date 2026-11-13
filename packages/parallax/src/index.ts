@@ -34,7 +34,7 @@ export type { ChartRow, ChartSettings, ChartValue } from "./chart/small-data.ts"
 
 // The grid.
 export { Grid, type GridProps } from "./grid/grid.tsx";
-export type { RowsChosen } from "./grid/row-selection.ts";
+export type { ChosenView, RowsChosen } from "./grid/row-selection.ts";
 export type { GridCell, GridMenuItem, GridRow } from "./grid/events.ts";
 export type { GridSelection } from "./grid/actions.ts";
 export type { GridHandle } from "./grid/use-grid-handles.ts";

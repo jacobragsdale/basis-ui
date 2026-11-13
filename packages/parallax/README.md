@@ -182,11 +182,30 @@ the rows of the groups that are open. A pivot's rows are groups, so it chooses n
 and a view that hides the key column says so in its status bar rather than choosing
 rows it cannot name. In a flat view the header's checkbox chooses every row the view
 shows without fetching a key, however many rows there are: `onRowsChange` gets
-`{ all: true, keys: [] }`, and unchecking a row adds its key to `keys`. Every row
-follows the view, so a row a later filter shows is chosen, and the count in the
-status bar is the view's rows less those unchecked. An app that takes
-`onSelectionChange` still gets every key, fetched, and an app that holds `selected`
-as a list of keys gets the list. Shift ranges, a grouped view's header checkbox and
+`{ all: true, keys: [], view }`, and unchecking a row adds its key to `keys`.
+`view` is the view the rows are chosen from: its `filters` and `search`, as the
+layout holds them, and how many `rows` it shows. Every row follows the view, so a
+row a later filter shows is chosen, and the count in the status bar is the view's
+rows less those unchecked; each time a filter, a search or a reload changes the
+rows, the app hears the choice again, with the new view, and an app that takes
+`onSelectionChange` gets every key again, fetched. An app that holds `selected` as
+a list of keys gets the list. A bulk action sends its API what the grid shows
+checked:
+
+```tsx
+const [chosen, setChosen] = useState<RowsChosen>({ all: false, keys: [] });
+<Grid dataset={blotter} selectable rowKey="trade_id" onRowsChange={setChosen} />;
+// Every row of the view but some, or these rows.
+const close = async (): Promise<void> =>
+  chosen.all && chosen.view !== undefined
+    ? closeTrades({ filters: chosen.view.filters, search: chosen.view.search, except: chosen.keys })
+    : closeTrades({ trade_ids: chosen.keys });
+```
+
+Past the 1,000,000 keys a fetch takes, an app that takes `onSelectionChange` is
+refused a check of every row, which the status bar says, and a later change past
+them clears the choice, saying so, so it never holds keys the grid does not show
+checked; an app that takes only `onRowsChange` gets every row of the view. Shift ranges, a grouped view's header checkbox and
 those lists fetch the keys of rows off screen, up to 1,000,000 at once. With `selectable="single"` there are no
 checkboxes: the row chosen is the focused cell's, so a click or an arrow key chooses
 another, as a master list beside its detail does.

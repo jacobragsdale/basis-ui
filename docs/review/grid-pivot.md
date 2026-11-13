@@ -8,6 +8,13 @@ I found no stale-frame or wrong-cell drawing bug, but two release blockers: one 
 - Scenario: the README's own example (`selectable rowKey onSelectionChange`). Check the header on 5,000 rows, then filter to 100: the grid shows 100 checked and "100 selected" while the app still holds 5,000 keys, so a bulk action hits 5,000 trades. The reverse also happens. Above 1,000,000 rows the choice is committed and drawn but the callback never fires at all.
 - Severity: release blocker for any app that acts on checked rows.
 - Confidence: confirmed by running `RowChecks` against fake frames (filter removed: app holds 2 keys, status bar says 5 selected, 5 rows drawn checked).
+- Done in Grid: a choice of every row follows its rows to the app, and a click hits the row drawn under it: whenever a frame shows the view's rows changed (a layout the engine took, another load, or more
+  rows), a choice of every row is heard again: `onRowsChange` with `view`, the layout's `filters` and `search` and the
+  rows it shows, and `onSelectionChange` with the keys fetched again. Past the 1,000,000 keys a fetch takes, an app
+  that takes keys is refused the header's check, and a later change past them clears the choice, both said in the
+  status bar, so it never holds keys the grid does not show checked; an app that takes only `onRowsChange` gets every
+  row of the view. The README's bulk action is the pattern, and `tests/browser/grid-choices.test.tsx` holds a filter,
+  a reload and the limit.
 
 **2. The painter and hit-testing use different heights for the scaled scroll mapping.** `src/grid/paint/painter.ts:165` vs `src/grid/hit.ts:65`, `src/grid/model.ts:230`
 
@@ -16,6 +23,12 @@ I found no stale-frame or wrong-cell drawing bug, but two release blockers: one 
 - Measured: about 0.7–2% of drag positions at 1,000,000 rows and 6–20% at 10,000,000. At the very bottom the outcome depends on how Chrome snaps the maximum offset; I computed three possibilities, one of which is clean, one gives the mismatch and one cuts off the last row.
 - Severity: release blocker; the fix is to pass one height to both.
 - Confidence: confirmed by running `rowGeometry` with the two heights and reading both call sites. The unit tests use one viewport for both.
+- Done in Grid: a choice of every row follows its rows to the app, and a click hits the row drawn under it: the painter maps the scroll to its first row with the visible area's height, the one hit testing,
+  the keys and the rows asked for take, not the canvas's height floored to device pixels.
+  `tests/browser/scaled-rows.test.tsx` runs at 1, 1.25 and 1.5 over 1,200,000 rows in a box a fraction of a device
+  pixel tall, and compares the row drawn at a y with the row a click there reports at 25 positions down the
+  scrollbar, the end among them, where the last row shows whole; it failed at the end at both ratios before the
+  fix.
 
 **3. `selectable="single"` re-chooses by view index and can emit another column's value as the key.** `src/grid/row-checks.ts:135-144`, `src/grid/row-selection.ts:62-72`
 
@@ -138,3 +151,15 @@ The defects sit at seams rather than in the drawing: row identity against view i
 - e2e and browser test bodies beyond their titles and the few read above
 
 Everything else in `src/grid` and `src/pivot` was read in full. The scripts are in `(a scratch folder)`: `rows.ts`, `end.ts`, `single.ts`, `all.ts`, `tsv.ts` and `blank.ts`.
+
+## Changelog
+
+- A choice of every row, from the header's checkbox, is handed to the app again whenever a filter, a search or a
+  reload changes the rows it covers: `onRowsChange` gets `{ all: true, keys, view }`, `view` being the layout's
+  `filters` and `search` and how many `rows` the view shows, and `onSelectionChange` the keys again. Past 1,000,000
+  rows an app that takes `onSelectionChange` is refused a check of every row, saying so. What to do: a bulk action on
+  every row sends `view`'s filters and search with `keys` as the rows left out, as the README shows; `ChosenView` is
+  its type.
+
+- At 125 % and 150 % scaling, past about 535,000 rows, a click, a hover or a menu lands on the row drawn under the
+  pointer, where it could take the row below. What to do: nothing.
