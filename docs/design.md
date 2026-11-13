@@ -45,7 +45,7 @@ behaves alike, and a fix reaches all of them in one upgrade.
 | `vp run client-pull`            | Copies the API's `openapi.json` from the API repo at a tag, or from a deployed API, and regenerates the client                                                                                                                               |
 | `vp run client-check`           | Whether the generated client still matches the repo's `openapi.json`: a task of its own, since an app cannot add a step to `vp check`                                                                                                        |
 | `vp run review`                 | A pull request's summary: the client's diff, the versions, the count of comments that turn a check off, and the commit that was checked; screenshot diffs, not yet                                                                           |
-| `vp run sync`, `vp run upgrade` | Rewrite the framework's files from the installed version; update `@basis/ui` on a clean tree, print the changelog between, sync, run the releases' codemods and check, or `--dry-run` to see it                                              |
+| `vp run sync`, `vp run upgrade` | Rewrite the framework's files from the installed version; update `@basis/ui` on a clean tree, print the changelog between, sync, run the releases' codemods and check, `--dry-run` to see it, or `--continue` to finish it                   |
 | `vp run doctor`, `vp run docs`  | Check the desktop's setup and print the fix for each problem; print the installed version's docs: one entry of the catalogue, a search by purpose, or a README section                                                                       |
 
 `vp run upgrade` reads the new version's `CHANGELOG.md`, whose headings are `## Unreleased` and `## VERSION - DATE`,
@@ -53,7 +53,12 @@ newest first, and runs the codemods it ships, each a module of `src/codemods/VER
 its new text, found by Oxc's parser from `vite-plus` rather than a codemod library, oldest release first. It runs
 them after `vp run sync` and before `vp run verify`, so verify judges the app as the upgrade leaves it, and a dry run
 installs the new version outside the app to read both, changing nothing. It refuses a tree with changes not
-committed, so the upgrade is a diff of its own, and an app linked to basis-ui's workspace, which moves with it.
+committed, so the upgrade is a diff of its own, and an app linked to basis-ui's workspace, which moves with it. Sync
+installs again after it writes the framework's files, and moves the app's exact pins on `vite-plus` and `typescript` to
+the versions the new release peers on and overrides, so verify runs on what the lockfile installs. Each step that passes,
+of install, sync, codemods and verify, is recorded in the clone's git folder: one that fails names the steps that ran and
+those that did not, and `vp run upgrade --continue` runs the rest, or the developer undoes the upgrade, which began on a
+clean tree, with git. A codemod that cannot change a file is named, and the others' changes are written all the same.
 
 `vp run shot --compare DIR` compares an app's pictures with its baselines; `verify` and `review` do not yet run it, as
 an app keeps no baselines yet. The gallery's exist, as [Components](#components) says.

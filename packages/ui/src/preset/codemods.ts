@@ -46,11 +46,13 @@ interface CodemodChange {
   readonly after: string;
 }
 
-/** What one codemod did, or would do. */
+/** What one codemod did, or would do, and the ERROR line of each file it could not change, which the others' changes
+ * never wait on. */
 interface CodemodRun {
   readonly id: string;
   readonly description: string;
   readonly changes: readonly CodemodChange[];
+  readonly failed: readonly string[];
 }
 
 /** The folder of releases' codemods in a package's source, then in its build: `src/` in basis-ui's workspace, where
@@ -159,15 +161,18 @@ async function loaded(shipped: ShippedCodemod): Promise<Codemod> {
   return parsed.data.codemod;
 }
 
-/** What `codemod`, shipped as `id`, changes in `file`, if anything. */
-function changeOf(id: string, codemod: Codemod, file: CodemodFile): CodemodChange | undefined {
+/** What `codemod`, shipped as `id`, changes in `file`: the change, nothing, or the ERROR line of a file it could not
+ * change. */
+function changeOf(
+  id: string,
+  codemod: Codemod,
+  file: CodemodFile,
+): CodemodChange | string | undefined {
   try {
     const after = codemod.transform(file);
     return after === file.text ? undefined : { after, before: file.text, path: file.path };
   } catch (error) {
-    throw new TaskError(
-      `ERROR codemod ${id} could not change ${file.path} (${error instanceof Error ? error.message : String(error)}): make the change its changelog entry describes in that file by hand, then run vp run verify.`,
-    );
+    return `ERROR codemod ${id} could not change ${file.path} (${error instanceof Error ? error.message : String(error)}): make the change its changelog entry describes in that file by hand.`;
   }
 }
 
@@ -202,17 +207,23 @@ async function runEach(
   const codemod = await loaded(each);
   const read = files.paths.filter((file) => codemod.extensions.some((ext) => file.endsWith(ext)));
   const texts = await textsOf(root, read, files.texts);
-  const changes = texts.flatMap((file) => {
+  const outcomes = texts.map((file) => {
     const change = changeOf(each.id, codemod, file);
-    files.texts.set(file.path, change?.after ?? file.text);
-    return change === undefined ? [] : [change];
+    files.texts.set(file.path, typeof change === "object" ? change.after : file.text);
+    return change;
   });
-  const run = { changes, description: codemod.description, id: each.id };
+  const run = {
+    changes: outcomes.filter((outcome) => typeof outcome === "object"),
+    description: codemod.description,
+    failed: outcomes.filter((outcome) => typeof outcome === "string"),
+    id: each.id,
+  };
   return [run, ...(await runEach(root, rest, files))];
 }
 
 /** Runs each codemod over the app at `root` in turn, each on the files as the one before left them, and writes what
- * they change unless `write` is false, for a dry run. */
+ * they change unless `write` is false, for a dry run: a file one cannot change is its run's `failed`, and the rest are
+ * written all the same. */
 async function runCodemods(
   root: string,
   shipped: readonly ShippedCodemod[],

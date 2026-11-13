@@ -61,17 +61,29 @@ function latestRelease(root: string): string {
   return version;
 }
 
-/** The version of the package at `packageDir` and its changelog's sections after `from`, or `undefined` for sections
- * when it ships no changelog. */
-async function changelogOf(
-  packageDir: string,
-  from: string,
-): Promise<{ readonly sections: ReleaseNotes["sections"]; readonly version: string }> {
+/** What the upgrade read of a release: its version, its changelog's sections after the installed version, or
+ * `undefined` when it ships no changelog, and why the changelog could not be read, when it could not. */
+interface ReadRelease {
+  readonly sections: ReleaseNotes["sections"];
+  readonly version: string;
+  readonly unreadable?: string;
+}
+
+/** The version of the package at `packageDir` and its changelog's sections after `from`. A changelog this version
+ * cannot read, as one written for a newer parser, never stops the upgrade: it is named, and left to be read. */
+async function changelogOf(packageDir: string, from: string): Promise<ReadRelease> {
   const manifest = await readFile(path.join(packageDir, "package.json"), "utf8");
   const { version } = versionSchema.parse(JSON.parse(manifest));
   const text = await readFile(path.join(packageDir, "CHANGELOG.md"), "utf8").catch(ignored);
-  const sections = text === null ? undefined : releasesBetween(parseChangelog(text), from, version);
-  return { sections, version };
+  if (text === null) {
+    return { sections: undefined, version };
+  }
+  try {
+    return { sections: releasesBetween(parseChangelog(text), from, version), version };
+  } catch (error) {
+    const reason = error instanceof Error ? error.message.replace(/^ERROR /u, "") : String(error);
+    return { sections: undefined, unreadable: reason.split(":")[0] ?? reason, version };
+  }
 }
 
 /** What the codemods the package at `packageDir`, at `version`, ships after `from` change in the app, written to its

@@ -60,7 +60,7 @@ afterEach(() => {
 describe("vp run upgrade", () => {
   test("refuses a version not written exactly", () => {
     expect(upgrade(["^0.4"]).stderr).toBe(
-      "ERROR vp run upgrade takes one version at most, written exactly, and --dry-run: run vp run upgrade for the latest release, or vp run upgrade VERSION, such as vp run upgrade 0.4.0, with --dry-run to see what it would do.\n",
+      "ERROR vp run upgrade takes one version at most, written exactly, and --dry-run, or --continue alone: run vp run upgrade for the latest release, or vp run upgrade VERSION, such as vp run upgrade 0.4.0, with --dry-run to see what it would do, or vp run upgrade --continue to finish one that stopped.\n",
     );
   });
 
@@ -79,7 +79,7 @@ describe("vp run upgrade", () => {
     const result = upgrade([]);
     expect(result.status).toBe(1);
     expect(result.stderr).toBe(
-      "ERROR the working tree has changes not committed, which the upgrade's own would mix with: commit them, or stash them with git stash, then run vp run upgrade again.\n",
+      "ERROR the working tree has changes not committed, which the upgrade's own would mix with: commit them, or stash them with git stash, then run vp run upgrade again; to finish an upgrade that stopped part-way, run vp run upgrade --continue.\n",
     );
     expect(logged()).toStrictEqual([]);
   });
@@ -121,6 +121,8 @@ describe("vp run upgrade", () => {
       "app vp info @basis/ui dist-tags.latest",
       "app vp add --save-exact @basis/ui@0.2.0 @basis/parallax@0.2.0",
       "app vp run sync",
+      ...`sync saw ${before.trimEnd()}`.split("\n"),
+      "app vp install",
       "app vp run verify",
       ...`verify saw ${after.trimEnd()}`.split("\n"),
     ]);
@@ -154,7 +156,11 @@ describe("vp run upgrade", () => {
       "Upgraded @basis/ui and @basis/parallax from 0.1.0 to 0.2.0: vp run sync wrote the framework's files, 1 codemod changed 1 file, and vp run verify failed.",
     );
     expect(result.stderr).toBe(
-      "ERROR @basis/ui 0.2.0 is installed, its files synced and its codemods run, but vp run verify fails, as its output above says: fix what it says, then commit the upgrade.\n",
+      [
+        "ERROR @basis/ui 0.2.0 is installed, its files synced and its codemods run, but vp run verify fails, as its output above says: fix what it says.",
+        "ERROR the upgrade of @basis/ui from 0.1.0 to 0.2.0 stopped at verify, after install, sync and codemods ran: fix what the lines above say, then run vp run upgrade --continue, which runs verify; or undo the upgrade with git restore . and git clean -fd ., since it began on a clean tree, then vp install.",
+        "",
+      ].join("\n"),
     );
   });
 
@@ -200,7 +206,7 @@ describe("vp run upgrade --dry-run", () => {
         "",
         "What vp run upgrade 0.2.0 would do:",
         "  1. vp add --save-exact @basis/ui@0.2.0 @basis/parallax@0.2.0",
-        "  2. vp run sync, which writes the framework's files from 0.2.0",
+        "  2. vp run sync, which writes the framework's files from 0.2.0, then vp install, moving vite-plus and typescript where 0.2.0 needs another version",
         "  3. codemod 0.2.0/fetch-rule-name, which renames eslint/no-restricted-globals to basis/no-fetch in the comments that turn it off, changes:",
         "          src/report.ts",
         "              1 - // oxlint-disable-next-line eslint/no-restricted-globals -- a download outside the client.",

@@ -4,10 +4,11 @@
  *
  *   vp info @basis/ui dist-tags.latest   prints `FAKE_FEED/latest`
  *   vp add [FLAGS] NAME@VERSION...       copies `FAKE_FEED/NAME/VERSION/` to `node_modules/NAME/` and pins it in
- *                                        package.json, or fails as pnpm does when the feed has no such folder
- *   vp run sync                          passes
- *   vp run verify                        logs the text of `FAKE_WATCH` too, as verify finds it, and exits with
- *                                        `FAKE_VERIFY_STATUS`, 0 when unset */
+ *                                        package.json, in devDependencies with `-D`, or fails as pnpm does when the
+ *                                        feed has no such folder
+ *   vp install                           passes
+ *   vp run sync, vp run verify           log the text of `FAKE_WATCH` too, as each finds it, and exit with
+ *                                        `FAKE_SYNC_STATUS` and `FAKE_VERIFY_STATUS`, 0 when unset */
 
 import { appendFileSync, cpSync, existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
@@ -22,7 +23,10 @@ function log(line: string): void {
   appendFileSync(path.join(feed, "log"), `${line}\n`);
 }
 
-const manifestSchema = z.looseObject({ dependencies: z.record(z.string(), z.string()).optional() });
+const manifestSchema = z.looseObject({
+  dependencies: z.record(z.string(), z.string()).optional(),
+  devDependencies: z.record(z.string(), z.string()).optional(),
+});
 
 /** Copies `NAME@VERSION` from the feed into `node_modules`, and says whether the feed has it. */
 function copied(spec: string): boolean {
@@ -38,8 +42,9 @@ function copied(spec: string): boolean {
   return true;
 }
 
-/** Installs each `NAME@VERSION` from the feed, as `vp add` would from a registry, pinned in package.json. */
-function add(specs: readonly string[]): number {
+/** Installs each `NAME@VERSION` from the feed, as `vp add` would from a registry, pinned in package.json's
+ * `dependencies`, or its `devDependencies` when `dev`. */
+function add(specs: readonly string[], dev: boolean): number {
   if (!specs.every((spec) => copied(spec))) {
     return 1;
   }
@@ -49,19 +54,23 @@ function add(specs: readonly string[]): number {
     const at = spec.lastIndexOf("@");
     return [spec.slice(0, at), spec.slice(at + 1)];
   });
-  manifest.dependencies = { ...manifest.dependencies, ...Object.fromEntries(pinned) };
+  if (dev) {
+    manifest.devDependencies = { ...manifest.devDependencies, ...Object.fromEntries(pinned) };
+  } else {
+    manifest.dependencies = { ...manifest.dependencies, ...Object.fromEntries(pinned) };
+  }
   writeFileSync(manifestFile, JSON.stringify(manifest));
   return 0;
 }
 
-/** `vp run verify`: logs the watched file as verify finds it, and exits as `FAKE_VERIFY_STATUS` says. */
-function verify(): number {
+/** `vp run sync` or `vp run verify`: logs the watched file as the task finds it, and exits as its variable says. */
+function task(name: "sync" | "verify"): number {
   const watched = process.env["FAKE_WATCH"];
   if (watched !== undefined) {
     const text = readFileSync(path.join(process.cwd(), watched), "utf8");
-    log(`verify saw ${text.trimEnd()}`);
+    log(`${name} saw ${text.trimEnd()}`);
   }
-  return Number(process.env["FAKE_VERIFY_STATUS"] ?? "0");
+  return Number(process.env[name === "sync" ? "FAKE_SYNC_STATUS" : "FAKE_VERIFY_STATUS"] ?? "0");
 }
 
 function main(): number {
@@ -71,9 +80,13 @@ function main(): number {
     return 0;
   }
   if (command === "add") {
-    return add(args.filter((arg) => !arg.startsWith("-")));
+    return add(
+      args.filter((arg) => !arg.startsWith("-")),
+      args.includes("-D"),
+    );
   }
-  return command === "run" && args[0] === "verify" ? verify() : 0;
+  const [name] = args;
+  return command === "run" && (name === "sync" || name === "verify") ? task(name) : 0;
 }
 
 process.exitCode = main();

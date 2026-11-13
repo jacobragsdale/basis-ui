@@ -7,10 +7,18 @@ import type { CodemodRun } from "./codemods.ts";
 import { changeText } from "./line-diff.ts";
 
 /** What a release brings an app, read from its package: the changelog's sections between the two versions, or
- * `undefined` when the package ships no changelog, and the codemods' runs. */
+ * `undefined` when the package ships no changelog or one that cannot be read, and the codemods' runs. */
 interface ReleaseNotes {
   readonly sections: readonly Release[] | undefined;
   readonly runs: readonly CodemodRun[];
+  /** Why the changelog could not be read, when it could not. */
+  readonly unreadable?: string | undefined;
+}
+
+/** What the codemods of an upgrade did, for its summary: how many ran, and the files they changed. */
+interface CodemodsDone {
+  readonly runs: number;
+  readonly files: readonly string[];
 }
 
 /** Names joined as a sentence lists them: `a`, `a and b`, `a, b and c`. */
@@ -20,8 +28,15 @@ function listed(names: readonly string[]): string {
     : `${names.slice(0, -1).join(", ")} and ${names.at(-1) ?? ""}`;
 }
 
-/** The changelog's sections between the two versions, as the file writes them. */
-function changelogText(sections: ReleaseNotes["sections"], to: string): string {
+/** The changelog's sections between the two versions, as the file writes them, or why they cannot be. */
+function changelogText(
+  sections: ReleaseNotes["sections"],
+  to: string,
+  unreadable?: string,
+): string {
+  if (unreadable !== undefined) {
+    return `@basis/ui ${to}'s CHANGELOG.md could not be read (${unreadable}), so what changed is not listed here: read it with vp run docs ui/changelog.`;
+  }
   if (sections === undefined) {
     return `@basis/ui ${to} ships no CHANGELOG.md, so what changed is not listed.`;
   }
@@ -37,13 +52,14 @@ function changelogText(sections: ReleaseNotes["sections"], to: string): string {
 /** One codemod's run: what it does, then each file it changes, with the lines. */
 function runText(run: CodemodRun): string {
   const head = `codemod ${run.id}, which ${run.description}`;
+  const failed = run.failed.map((line) => `     ${line}`);
   if (run.changes.length === 0) {
-    return `${head}, changes no file`;
+    return [`${head}, changes no file`, ...failed].join("\n");
   }
   const files = run.changes.map(
     ({ after, before, path }) => `     ${path}\n${changeText(before, after)}`,
   );
-  return [`${head}, changes:`, ...files].join("\n");
+  return [`${head}, changes:`, ...files, ...failed].join("\n");
 }
 
 /** Every codemod's run, one after another, or the line that says none ships between the two. */
@@ -66,22 +82,24 @@ function byHandText(sections: ReleaseNotes["sections"], packageVersion: string):
     : ["What the changelog asks of the app, which no codemod does:", ...asked].join("\n");
 }
 
-/** The count of files the codemods changed. */
-function changedCount(runs: readonly CodemodRun[]): number {
-  return new Set(runs.flatMap(({ changes }) => changes.map(({ path }) => path))).size;
+/** What the codemods of `runs` did, for the summary. */
+function codemodsDone(runs: readonly CodemodRun[]): CodemodsDone {
+  const files = new Set(runs.flatMap(({ changes }) => changes.map(({ path }) => path)));
+  return { files: [...files], runs: runs.length };
 }
 
 /** The summary of an upgrade that ran: what it did, whether verify passed, and what to look at. */
 function summaryText(
   move: { readonly names: readonly string[]; readonly from: string; readonly to: string },
-  notes: ReleaseNotes,
+  notes: { readonly sections: ReleaseNotes["sections"]; readonly codemods: CodemodsDone },
   verified: boolean,
 ): string {
-  const count = changedCount(notes.runs);
+  const { runs, files } = notes.codemods;
+  const count = files.length;
   const codemods =
-    notes.runs.length === 0
+    runs === 0
       ? "no codemod ships between the two"
-      : `${notes.runs.length} codemod${notes.runs.length === 1 ? "" : "s"} changed ${count} file${count === 1 ? "" : "s"}`;
+      : `${String(runs)} codemod${runs === 1 ? "" : "s"} changed ${String(count)} file${count === 1 ? "" : "s"}`;
   return [
     `Upgraded ${listed(move.names)} from ${move.from} to ${move.to}: vp run sync wrote the framework's files, ${codemods}, and vp run verify ${verified ? "passed" : "failed"}.`,
     "What to look at:",
@@ -103,11 +121,11 @@ function previewText(
   const command = `vp run upgrade ${to}`;
   return [
     `Dry run, which changes nothing: @basis/ui ${from} is installed, and ${command} would move ${listed(names)} to ${to}.`,
-    changelogText(notes.sections, to),
+    changelogText(notes.sections, to, notes.unreadable),
     [
       `What ${command} would do:`,
       `  1. vp add --save-exact ${names.map((name) => `${name}@${to}`).join(" ")}`,
-      `  2. vp run sync, which writes the framework's files from ${to}`,
+      `  2. vp run sync, which writes the framework's files from ${to}, then vp install, moving vite-plus and typescript where ${to} needs another version`,
       `  3. ${runsText(notes.runs).replaceAll("\n", "\n     ")}`,
       "  4. vp run verify",
     ].join("\n"),
@@ -123,5 +141,5 @@ function previewText(
   ].join("\n\n");
 }
 
-export { changelogText, listed, previewText, runsText, summaryText };
-export type { ReleaseNotes };
+export { changelogText, codemodsDone, listed, previewText, runsText, summaryText };
+export type { CodemodsDone, ReleaseNotes };

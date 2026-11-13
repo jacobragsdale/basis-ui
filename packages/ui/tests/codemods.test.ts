@@ -107,10 +107,15 @@ describe("the fetch-rule-name codemod", () => {
     );
   });
 
-  test("a file that does not parse fails with one ERROR line naming it", async () => {
-    write("src/broken.ts", "export const = ;\n");
-    await expect(fetchRuleName(true)).rejects.toThrow(
-      /^ERROR codemod 0\.3\.0\/fetch-rule-name could not change src\/broken\.ts \(it does not parse: .+\): make the change its changelog entry describes in that file by hand, then run vp run verify\.$/u,
-    );
+  test("a file that does not parse is one ERROR line naming it, and the other files are changed all the same", async () => {
+    write("src/broken.ts", "// eslint-disable-next-line no-restricted-globals\nexport const = ;\n");
+    write("src/a.ts", "// oxlint-disable-next-line eslint/no-restricted-globals\nfetch('/a');\n");
+    const [run] = await fetchRuleName(true);
+    expect(run?.failed).toStrictEqual([
+      expect.stringMatching(
+        /^ERROR codemod 0\.3\.0\/fetch-rule-name could not change src\/broken\.ts \(it does not parse: .+\): make the change its changelog entry describes in that file by hand\.$/u,
+      ),
+    ]);
+    expect(read("src/a.ts")).toBe("// oxlint-disable-next-line basis/no-fetch\nfetch('/a');\n");
   });
 });

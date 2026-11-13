@@ -10,7 +10,7 @@
  *   vp run new page|table|form NAME --operation ID   a page, its test, its fixture and its route (scaffold.ts)
  *   suppressions               the check of the comments that turn a check off, verify's stage (suppressions.ts)
  *   vp run docs [NAME]         the installed version's docs and catalogue (docs.ts)
- *   vp run upgrade [VERSION]   a new @basis/ui, synced and checked (upgrade.ts)
+ *   vp run upgrade [VERSION]   a new @basis/ui, synced and checked, or --continue one that stopped (upgrade.ts)
  *
  * Every module is imported here, before any task runs, so `vp run upgrade` replacing the package mid-run cannot leave
  * this process loading a module of another version. Every failure is one line that starts with ERROR and ends with

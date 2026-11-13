@@ -40,6 +40,19 @@
    - Severity: fix before release.
    - Confidence: confirmed by reading. `tests/upgrade.test.ts` cannot see it: its fake `vp run sync` always passes.
 
+   Done in "Preset: an upgrade that stops part-way says how far it got, and --continue finishes it": each step of
+   install, sync, codemods and verify that passes is recorded in the clone's git folder, `basis-ui-upgrade.json`, which
+   `git status` never shows. A step that fails ends the task with its own lines and one more, "the upgrade of @basis/ui
+   from A to B stopped at STEP, after X ran", naming the steps `vp run upgrade --continue` would run and how to undo the
+   upgrade with git, since it began on a clean tree. `--continue` runs the steps left, in the version the upgrade
+   installed, and refuses when that version is no longer installed, as after an undo. A changelog the running version
+   cannot parse no longer stops the upgrade: it is named, with `vp run docs ui/changelog` to read it. A codemod that
+   throws on one file leaves that file's line and writes the other files' changes, and `--continue` runs the codemods
+   again once the file is fixed. The order stays install, sync, codemods, verify, as `docs/design.md` records it: a
+   codemod meant to rewrite a `vite.config.ts` that sync refuses is reached by fixing what sync names and `--continue`.
+   `tests/upgrade-stopped.test.ts` holds each case; all failed before. The fake `vp` can now fail sync, and logs what
+   sync saw.
+
 5. **`src/preset/verify.ts:76-82`** — the client stage ignores the child's exit status and passes when it crashes.
    - Scenario: it keeps only stderr lines starting `ERROR `. A child that dies any other way (bad `NODE_OPTIONS`, out of memory, a failed import, an uncaught async error) yields no findings.
    - Severity: fix before release.
@@ -55,6 +68,11 @@
    - `verify-tools.ts:28-53` already avoids this by running `vite-plus/bin/vp` through `process.execPath`; these two did not follow.
    - Severity: fix before release, conditional on how `vp` is installed (itself unverified).
    - Confidence: confirmed by reading. `tests/upgrade/fixture.ts:85` fakes `vp` as a `#!/bin/sh` script, so the suite cannot see it.
+
+   Did not hold on winbox, as the release plan records: Vite+'s installer puts a `vp.exe` on the `PATH`. Done in
+   "Preset: the vp dev that shot starts is stopped on Windows, and when shot is interrupted": `shot` runs `vp dev` from
+   the app's own `vite-plus/bin/vp` through Node. Not done for `upgrade`: the app's `vp` script has no `add`, `install`
+   or `info`, which only the global Vite+ command has, so `upgrade` still spawns `vp` by name.
 
 7. **`src/preset/sync.ts:196-206, 244-253`** — `vp run sync` overwrites any file at a framework path, whether or not it carries the header, with no clean-tree check.
    - Confirmed by running in a never-synced app: an own `.gitignore` (with `.idea/`, `.env`), `Dockerfile`, `CLAUDE.md` and `pnpm-workspace.yaml` (with `patchedDependencies`) were all replaced, reported only as "Wrote X."
@@ -77,6 +95,13 @@
    - `@basis/ui` peers on `vite-plus` at an exact version, and the app's own pins on `vite-plus` and `typescript` are left behind with at most a pnpm warning.
    - Severity: fix before the first toolchain bump.
    - Confidence: code confirmed by reading; pnpm's lockfile behaviour is from memory.
+
+   Done in "Preset: an upgrade that stops part-way says how far it got, and --continue finishes it": the sync step
+   installs again after `vp run sync`, and moves the app's exact pins on `vite-plus`, to the version the new @basis/ui
+   peers on, and on `typescript`, to the synced `pnpm-workspace.yaml`'s override, with `vp add --save-exact` (`-D` for a
+   development pin), so verify runs on what the lockfile will install. A range the app wrote is its own, and left. Held
+   by `tests/upgrade-stopped.test.ts`'s toolchain test. That pnpm's `vp add` keeps a development dependency in
+   `devDependencies` with `-D` is from pnpm's documentation, not run here against a real feed.
 
 10. **`src/preset/app-config.ts:89-101, 151-159`, `installed.ts:13-16, 94-99`, `verify.ts:88-92`** — the drift check has loopholes.
     - Only `vite.config.ts`, `tsconfig.json` and `src/styles.css` are held. A `vitest.config.ts`, `.oxlintrc.json`, `.oxfmtrc.json` or `vite.config.js` beside them is not noticed; Vite+'s docs only "do not recommend" the first three, and Vite prefers `.js` over `.ts`.
@@ -157,3 +182,9 @@ What `docs/release-plan.md`'s "On winbox" gives step 7.6.
 - `vp run shot` stops the `vp dev` it started, and everything that one started, on Windows too, and when it is
   interrupted; before, on Windows, the task wrote its files and never exited, leaving a dev server on the port. It runs
   `vp dev` from the app's own Vite+. What to do: nothing.
+
+- `vp run upgrade` that stops part-way names the steps that ran, of install, sync, codemods and verify, and those that
+  did not, and `vp run upgrade --continue` runs the rest; the line also says how to undo it with git. A changelog the
+  installed version cannot parse no longer stops an upgrade, and a codemod that cannot change one file still writes
+  the others. Sync now installs again, and moves the app's exact pins on `vite-plus` and `typescript` to the versions
+  the new release needs. What to do: nothing; when an upgrade stops, do as its last `ERROR` line says.
