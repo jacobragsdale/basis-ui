@@ -155,6 +155,17 @@ Excel's 16,384; a chart's pixels are clamped by the session (`MAX_CHART_PIXELS`)
 under 2^32 entries within the 10,000,000-row limit; the formatter's digits are ASCII. A panic that still happens says
 what and where (`session-wasm-export.md` 4).
 
+## Overflow checks in the browser's build
+
+The `[profile.wasm]` build inherited release's wrapping arithmetic, so an overflow the native tests would catch gave a
+wrong number in the browser. Measured on 2026-11-13 on this host, busy (load average 4 to 7), with the bench at
+1,000,000 rows, plain, one device pixel ratio: the module grew from 4,838,307 to 4,872,220 bytes (0.7%), and two
+pairs of runs on positions put the load at 1,896 and 1,451 ms with checks against 1,432 and 1,457 ms without, and the
+reference pivot at 338 and 315 ms against 330 and 409 ms; trades' sorts and filters matched within a millisecond or
+two. That is within the bench's noise, so `overflow-checks = true` is on in `[profile.wasm]`
+(Done in Engine: the browser's build checks integer overflow). An overflow now panics, and the panic hook names it.
+Not measured: the throttled mode, and the 2,000,000-row sizes.
+
 ## Changelog
 
 - `@basis/parallax` loads Arrow it refused or trapped on before: a dictionary-encoded text column that is null in
@@ -171,3 +182,7 @@ what and where (`session-wasm-export.md` 4).
   grouped by their own id with float sums, is refused with a message that says so and what to change, where it could
   stop the engine. A text column whose values change on every reload no longer grows the engine's memory with each.
   What to do: nothing; a layout refused this way groups by fewer or coarser columns, or filters first.
+
+- `@basis/parallax`'s engine checks integer arithmetic in the browser as its tests do: an overflow stops the engine
+  with an internal error that names it, where it wrapped into a wrong number. What to do: nothing; report such an
+  error.
