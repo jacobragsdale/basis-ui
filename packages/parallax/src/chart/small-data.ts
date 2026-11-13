@@ -1,21 +1,12 @@
-/* The small-data form of `<Chart>`: rows the page already holds, such as ten sectors' exposure, made into an Arrow
- * table here, so a small chart needs no load of its own. Each column takes its type from its values: numbers become
- * doubles, `YYYY-MM-DD` strings dates, other strings text, booleans booleans; null is a missing value. */
-
-import { Bool, DateDay, Float64, Table, Utf8, tableToIPC, vectorFromArray } from "apache-arrow";
-import type { Vector } from "apache-arrow";
+/* The small-data form of `<Chart>`: the layout a small chart draws its table with, the order of its groups, and what
+ * its axis cannot take. `small-table.ts` makes the rows into the table. */
 
 import { groupedKinds } from "#layout/chart.ts";
 import type { LayoutChart } from "#layout/chart.ts";
 import type { LayoutInput, LayoutScalar } from "#layout/layout.ts";
 
 import type { CategoryData } from "./model-types.ts";
-
-/** A value of a small-data row. */
-type ChartValue = string | number | boolean | null;
-
-/** A small-data row: a value per column. */
-type ChartRow = Readonly<Record<string, ChartValue>>;
+import type { ChartValue, SmallTable } from "./small-table.ts";
 
 /** A chart's settings beyond its kind and columns, such as `stacked`, `horizontal`, `donut` or `log_y`. */
 type ChartSettings = Omit<NonNullable<LayoutInput["chart"]>, "kind" | "x" | "y" | "series">;
@@ -32,11 +23,19 @@ interface SmallChart {
   readonly series?: string;
 }
 
-const isoDate = /^\d{4}-\d{2}-\d{2}$/u;
-
 /** The kinds that draw the layout's grouped view, whose x groups the rows, and whose groups are put in the rows'
  * order after the engine's: not a waterfall, whose running totals the engine sums in the rows' order itself. */
 const reorderedKinds: ReadonlySet<LayoutChart["kind"]> = new Set(["bar", "heatmap", "pie"]);
+
+/** The kinds drawn along an x axis that takes dates, times and numbers, or text only as tenors. */
+const axisKinds: ReadonlySet<LayoutChart["kind"]> = new Set([
+  "line",
+  "area",
+  "scatter",
+  "histogram",
+  "candlestick",
+  "ohlc",
+]);
 
 /** The columns a small chart reads: its x, y and series, and a scatter's size, id, tooltip and fit columns. */
 function columnsOf(chart: SmallChart, settings: ChartSettings = {}): readonly string[] {
@@ -49,76 +48,23 @@ function columnsOf(chart: SmallChart, settings: ChartSettings = {}): readonly st
   ];
 }
 
-/** A column's values as an Arrow vector of the type they share. */
-function vectorOf(name: string, values: readonly ChartValue[]): Vector {
-  const present = values.filter((value) => value !== null);
-  if (present.every((value) => typeof value === "number")) {
-    return vectorFromArray(values, new Float64());
+/** Why a small chart cannot draw its table's x column on its axis, with what to change, or null when it can. */
+function axisProblem(chart: SmallChart, table: SmallTable, settings: ChartSettings): string | null {
+  const textAxis = settings.axis === "tenor";
+  if (!axisKinds.has(chart.kind) || table.kinds[chart.x] !== "text" || textAxis) {
+    return null;
   }
-  if (present.every((value) => typeof value === "boolean")) {
-    return vectorFromArray(values, new Bool());
-  }
-  if (present.every((value) => typeof value === "string")) {
-    return present.every((value) => isoDate.test(value))
-      ? vectorFromArray(
-          values.map((value) => (value === null ? null : new Date(`${String(value)}T00:00:00Z`))),
-          new DateDay(),
-        )
-      : vectorFromArray(values, new Utf8());
-  }
-  throw new TypeError(
-    `Column ${name} mixes numbers, text and booleans; give each of a chart's columns one kind of value.`,
-  );
+  return `Column ${chart.x} holds text, and a ${chart.kind} chart's x axis takes dates, times or numbers: give tenors such as 2Y with settings={{ axis: "tenor" }}, or draw categories as a bar chart`;
 }
 
-/** The rows' chart columns as an Arrow IPC stream. */
-function rowsToArrow(
-  rows: readonly ChartRow[],
-  chart: SmallChart,
-  settings: ChartSettings = {},
-): ArrayBuffer {
-  const vectors = Object.fromEntries(
-    columnsOf(chart, settings).map((name) => [
-      name,
-      vectorOf(
-        name,
-        rows.map((row) => row[name] ?? null),
-      ),
-    ]),
-  );
-  return new Uint8Array(tableToIPC(new Table(vectors), "stream")).buffer;
-}
-
-/** How many small tables' bytes are kept, so that rows built afresh with the same content load once. */
-const keptTables = 64;
-const tables = new Map<string, ArrayBuffer>();
-
-/** The rows' chart columns as an Arrow IPC stream: the same bytes for rows of the same content, so that a page that
- * builds its rows afresh each render loads them once. */
-function smallBytes(
-  rows: readonly ChartRow[],
-  chart: SmallChart,
-  settings: ChartSettings = {},
-): ArrayBuffer {
-  const content = JSON.stringify([rows, columnsOf(chart, settings)]);
-  const kept = tables.get(content);
-  if (kept !== undefined) {
-    return kept;
-  }
-  const bytes = rowsToArrow(rows, chart, settings);
-  const [oldest] = tables.keys();
-  if (tables.size >= keptTables && oldest !== undefined) {
-    tables.delete(oldest);
-  }
-  tables.set(content, bytes);
-  return bytes;
-}
-
-/** A waterfall's steps in the order its x text first appears in the rows, as an order the engine sums them in. */
-function rowsOrders(rows: readonly ChartRow[], x: string): LayoutInput["orders"] {
-  const values = [...new Set(rows.map((row) => row[x] ?? null))];
+/** A waterfall's steps in the order its x text first appears in the rows, as an order the engine sums them in. A date,
+ * a number or a boolean sorts as itself, and takes no order. */
+function rowsOrders(table: SmallTable, x: string): LayoutInput["orders"] {
+  const values = [...new Set(table.xValues)];
   const texts = values.filter((value): value is string => typeof value === "string");
-  return texts.length === values.length ? { [x]: { values: texts } } : undefined;
+  return table.kinds[x] === "text" && texts.length === values.length
+    ? { [x]: { values: texts } }
+    : undefined;
 }
 
 /**
@@ -128,12 +74,13 @@ function rowsOrders(rows: readonly ChartRow[], x: string): LayoutInput["orders"]
 function smallLayout(
   chart: SmallChart,
   options: ChartSettings = {},
-  rows: readonly ChartRow[] = [],
+  table: SmallTable | null = null,
 ): LayoutInput {
   const ys = typeof chart.y === "string" ? [chart.y] : [...chart.y];
   const split = chart.series === undefined ? [] : [chart.series];
   if (groupedKinds.has(chart.kind)) {
-    const orders = chart.kind === "waterfall" ? rowsOrders(rows, chart.x) : undefined;
+    const orders =
+      chart.kind === "waterfall" && table !== null ? rowsOrders(table, chart.x) : undefined;
     return {
       chart: { ...options, kind: chart.kind },
       group_by: [chart.x],
@@ -164,10 +111,9 @@ function inOrder<TValue>(values: readonly TValue[], order: readonly number[]): T
 /** Puts a grouped chart's groups in the order their x first appears in the rows, rather than the engine's order by
  * key; "Other", which stands for several, stays last. A frame reports a date's key as its `YYYY-MM-DD` text, as the
  * rows give it. */
-function rowOrder(rows: readonly ChartRow[], x: string): (data: CategoryData) => CategoryData {
+function rowOrder(xValues: readonly ChartValue[]): (data: CategoryData) => CategoryData {
   const firstSeen = new Map<LayoutScalar, number>();
-  for (const [index, row] of rows.entries()) {
-    const key = row[x] ?? null;
+  for (const [index, key] of xValues.entries()) {
     if (!firstSeen.has(key)) {
       firstSeen.set(key, index);
     }
@@ -176,7 +122,7 @@ function rowOrder(rows: readonly ChartRow[], x: string): (data: CategoryData) =>
     const rank = (group: number): number =>
       data.others[group] === true
         ? Number.POSITIVE_INFINITY
-        : (firstSeen.get(data.keys[group] ?? null) ?? rows.length);
+        : (firstSeen.get(data.keys[group] ?? null) ?? xValues.length);
     const order = data.categories
       .map((_category, group) => group)
       .toSorted((first, second) => rank(first) - rank(second));
@@ -194,5 +140,5 @@ function rowOrder(rows: readonly ChartRow[], x: string): (data: CategoryData) =>
   };
 }
 
-export { reorderedKinds, rowOrder, rowsToArrow, smallBytes, smallLayout };
-export type { ChartRow, ChartSettings, ChartValue, SmallChart };
+export { axisProblem, columnsOf, reorderedKinds, rowOrder, smallLayout };
+export type { ChartSettings, SmallChart };

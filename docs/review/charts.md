@@ -68,6 +68,11 @@ as bars and as a waterfall, and refuses 2,100, through the engine.
 - Actual: an alert reading "the x axis of a chart cannot be column tenor of type Utf8". It needs `settings={{ axis: "tenor" }}`. The example is type-checked but never run.
 - Severity: fix before release. Confidence: confirmed by reading.
 
+Done in Charts: the small-data form runs as its docs show, types its rows or says why, and keeps its own table: the example now gives `settings={{ axis: "tenor" }}`, and a line, area, scatter,
+histogram or candle chart of rows whose x column is text, on any axis but a tenor one, says so in place of the plot,
+with the setting to give, before it loads. `tests/browser/chart-small-data.test.tsx` runs the catalogue's example
+and the README's against the engine.
+
 **6. `packages/parallax/src/chart/small-data.ts:118-122`** — A small-data waterfall whose x is `YYYY-MM-DD` strings is refused.
 
 - Scenario: `<Chart rows={[{ d: "2026-11-12", pnl: 2 }, …]} kind="waterfall" x="d" y="pnl" />`. `rowsOrders` emits `orders: { d: { values: [...] } }` because the values are strings, while `vectorOf` types the column `Date32`.
@@ -75,12 +80,24 @@ as bars and as a waterfall, and refuses 2,100, through the engine.
 - The unit test's "dates" case passes a number (`tests/unit/chart-waterfall.test.ts:253`), so this path is untested.
 - Severity: fix before release. Confidence: TypeScript half confirmed by running, Rust half by reading.
 
+Done in Charts: the small-data form runs as its docs show, types its rows or says why, and keeps its own table: a waterfall's order comes only from an x column typed as text, so `YYYY-MM-DD` days
+sort as dates; a waterfall, bar, scatter and area chart of text dates each draw in
+`tests/browser/chart-small-data.test.tsx`, and the unit test's "dates" case now passes text.
+
 **7. `packages/parallax/src/chart/small-data.ts:92-115` (called in render at `packages/parallax/src/chart/chart.tsx:61`)** — The cache that keeps `rows` bytes identical across renders is a 64-entry FIFO, and a miss changes the dataset's source identity, which reloads it.
 
 - Scenario: 65 or more mounted small-data charts with distinct rows (a small-multiples page). Each load that settles re-renders its chart, misses, reloads and evicts the next chart's entry.
 - Actual: in a model of that loop over the real `smallBytes`, 64 charts rest after 64 loads; 65 were still reloading after 100,000.
 - Also: every parent render runs `JSON.stringify` over all rows and all fields, and bar, heatmap and pie charts repaint each time because `rowOrder(rows, x)` is a new function (`chart.tsx:71`).
 - Severity: fix before release. Confidence: cache behaviour confirmed by running, the React loop by reading.
+
+Done in Charts: the small-data form runs as its docs show, types its rows or says why, and keeps its own table: the 64-table cache is gone. Each chart keeps its own table, made again only when its
+plotted columns' values change (`use-small-table.ts`, over `tableContent`, which writes only the plotted columns),
+and its group order is the same function while the x values are. The browser test mounts 70 charts and counts one
+load each (the old code made 210), and a page that builds its rows afresh loads them once. On t4's report that the
+first small-data test timed out under the whole suite: its 70-chart cousin showed the reload churn was real across
+charts, though within one file of a few charts the old cache did not evict; the polls that wait for a chart's first
+draw, when the engine's worker starts, now wait up to 20 seconds.
 
 **8. `packages/parallax/src/layout/chart.ts:181-182` and `packages/parallax/src/chart/model-series.ts:86-112`** — `stacked` is documented as "on an area or bar chart", but nothing stacks areas.
 
@@ -128,6 +145,12 @@ as bars and as a waterfall, and refuses 2,100, through the engine.
 - `ChartRow = Record<string, ChartValue>` rejects typed API rows with optional or nested fields, though only the plotted columns are read.
 - Severity: polish. Confidence: confirmed by running; the type point by reading.
 
+Done in Charts: the small-data form runs as its docs show, types its rows or says why, and keeps its own table: a plotted column of mixed kinds, or of a value a chart does not draw, and a `YYYY-MM-DD` that
+is no day (`0000-00-00`, `2026-13-01`, `2026-02-30`), are the chart's own problem, in place of the plot and to
+`onError`, never a throw from render. `ChartRow` is any object: an API's typed rows, with optional and nested
+fields, are taken, and only the plotted columns are read (`src/chart/small-table.ts`,
+`tests/unit/chart-small-table.test.ts`).
+
 **15. `packages/parallax/src/chart/summary.ts:147-159` and `packages/parallax/src/chart/scene-inputs.ts:19-28`** — Two smaller gaps.
 
 - The text alternative for a histogram is "N bins" and for a density "N points", with no values; hidden series and slices are still read out as shown.
@@ -167,3 +190,9 @@ The defects cluster in three places the pixel-parity port could not catch:
 - A bar chart, heatmap, pie or waterfall draws every group of its grouped view, up to 2,000 groups and 400 series,
   where it drew the first 499 groups without a word. Past the limit it draws none and says what to change in place
   of the plot. What to do: nothing; a chart of more groups filters its rows or keeps the largest with `top_n`.
+
+- `<Chart rows>` reads only the columns it plots, so an API's typed rows, with optional or nested fields, are taken
+  as they come; `ChartRow` is any object. A column of mixed values, or a date that is no day, shows in place of the
+  plot and goes to `onError`, where it threw from render or drew from 1970. Text dates are dates on every chart, a
+  waterfall's included. Each chart keeps its own table, so a page of many small charts loads each once. What to do:
+  nothing; a line of text tenors gives `settings={{ axis: "tenor" }}`, as the chart now says.

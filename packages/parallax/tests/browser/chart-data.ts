@@ -3,7 +3,7 @@
 
 import { DateDay, Float64, Table, tableToIPC, vectorFromArray } from "apache-arrow";
 
-import type { ChartRow } from "#chart/small-data.ts";
+import type { ChartRow } from "#chart/small-table.ts";
 
 const days = 250;
 const millisPerDay = 86_400_000;

@@ -2,6 +2,7 @@ import { describe, expect, test } from "vite-plus/test";
 
 import type { CategoryData, ChartModel, LineMark, RectMark } from "#chart/model-types.ts";
 import { smallLayout } from "#chart/small-data.ts";
+import { smallTable, tableContent } from "#chart/small-table.ts";
 import { drawsGroups, withWaterfallRun } from "#chart/source.ts";
 import { parseLayout } from "#layout/layout.ts";
 import { chartColors } from "#theme/charts.ts";
@@ -247,12 +248,21 @@ describe("a small waterfall", () => {
       { factor: "Carry", pnl: 1 },
       { factor: "Basis", pnl: 2 },
     ];
-    const layout = smallLayout({ kind: "waterfall", x: "factor", y: "pnl" }, {}, rows);
-    expect(layout.orders).toStrictEqual({ factor: { values: ["Carry", "Curve", "Basis"] } });
-    expect(layout.group_by).toStrictEqual(["factor"]);
-    const dates = smallLayout({ kind: "waterfall", x: "day", y: "pnl" }, {}, [{ day: 1, pnl: 2 }]);
-    expect(dates.orders).toBeUndefined();
-    const bars = smallLayout({ kind: "bar", x: "factor", y: "pnl" }, {}, rows);
+    const table = smallTable(tableContent(rows, ["factor", "pnl"]));
+    const layout = smallLayout({ kind: "waterfall", x: "factor", y: "pnl" }, {}, table);
+    expect([layout.orders, layout.group_by]).toStrictEqual([
+      { factor: { values: ["Carry", "Curve", "Basis"] } },
+      ["factor"],
+    ]);
+    // Days, as numbers or as YYYY-MM-DD text, sort as themselves, and take no order the engine would refuse.
+    const numbered = smallTable(tableContent([{ day: 1, pnl: 2 }], ["day", "pnl"]));
+    const dated = smallTable(tableContent([{ day: "2026-11-12", pnl: 2 }], ["day", "pnl"]));
+    for (const days of [numbered, dated]) {
+      expect(
+        smallLayout({ kind: "waterfall", x: "day", y: "pnl" }, {}, days).orders,
+      ).toBeUndefined();
+    }
+    const bars = smallLayout({ kind: "bar", x: "factor", y: "pnl" }, {}, table);
     expect(bars.orders).toBeUndefined();
   });
 });

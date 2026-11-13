@@ -30,6 +30,8 @@ const candles = {
   },
 } satisfies LayoutInput;
 const line = { chart: { kind: "line", x: "date", y: ["close"] } } satisfies LayoutInput;
+/** How long a chart may take to draw first: the engine's worker starts with it, which a busy host slows. */
+const firstDraw = { timeout: 20_000 } as const;
 
 /** Renders a line chart of the prices, counting React's renders of it, once it has drawn and settled. */
 async function countedLine(): Promise<{
@@ -47,7 +49,7 @@ async function countedLine(): Promise<{
       />
     </ParallaxProvider>,
   );
-  await expect.poll(() => summaryOf(screen.container)).toMatch(/points drawn$/u);
+  await expect.poll(() => summaryOf(screen.container), firstDraw).toMatch(/points drawn$/u);
   // Whatever React rendered while the chart loaded and laid itself out is done.
   await rest(300);
   return { renders: () => renders, root: screen.container };
@@ -71,7 +73,7 @@ describe("Chart's small-data form", () => {
         <Chart rows={exposures} kind="bar" x="sector" y="exposure" className="h-80 w-160" />
       </ParallaxProvider>,
     );
-    await expect.poll(() => summaryOf(screen.container)).toBe("3 groups");
+    await expect.poll(() => summaryOf(screen.container), firstDraw).toBe("3 groups");
     await expect
       .element(screen.getByRole("application"))
       .toHaveAccessibleName("Bar chart of sector from rows");
@@ -88,7 +90,7 @@ describe("Chart's small-data form", () => {
         <Chart rows={exposures} kind="pie" x="sector" y="exposure" className="h-44 w-60" />
       </ParallaxProvider>,
     );
-    await expect.poll(() => summaryOf(screen.container)).toBe("3 groups");
+    await expect.poll(() => summaryOf(screen.container), firstDraw).toBe("3 groups");
     const legend = (): string =>
       screen.container.querySelector("ul[data-slot=chart-legend]")?.textContent ?? "";
     await expect.poll(legend).toMatch(/Rates/u);
@@ -102,7 +104,7 @@ describe("Chart's small-data form", () => {
         <Chart rows={yields} kind="line" x="date" y="yield" className="h-80 w-160" />
       </ParallaxProvider>,
     );
-    await expect.poll(() => summaryOf(screen.container)).toBe("5 points drawn");
+    await expect.poll(() => summaryOf(screen.container), firstDraw).toBe("5 points drawn");
     expect(wordsOf(screen.container)).toMatch(
       /yield: from 4\.1\d* at 2026-11-02 to 4\.25\d* at 2026-11-06/u,
     );
@@ -152,7 +154,7 @@ async function oneBond(onSelect: (selection: ChartSelection | null) => void): Pr
       />
     </ParallaxProvider>,
   );
-  await expect.poll(() => summaryOf(screen.container)).toBe("1 dot");
+  await expect.poll(() => summaryOf(screen.container), firstDraw).toBe("1 dot");
   // The axes' font may arrive after the first frame, and move the dot over as their labels take their width in it.
   await document.fonts.ready;
   await rest(50);
@@ -173,7 +175,7 @@ describe("a scatter of a few rows, drawn as dots", () => {
         />
       </ParallaxProvider>,
     );
-    await expect.poll(() => summaryOf(screen.container)).toBe("3 dots");
+    await expect.poll(() => summaryOf(screen.container), firstDraw).toBe("3 dots");
     await expect
       .element(screen.getByRole("application"))
       .toHaveAccessibleName("Scatter plot of spread from rows");
@@ -222,7 +224,7 @@ describe("Chart over a dataset", () => {
         <PricesChart layout={candles} />
       </ParallaxProvider>,
     );
-    await expect.poll(() => summaryOf(screen.container)).toMatch(/candles$/u);
+    await expect.poll(() => summaryOf(screen.container), firstDraw).toMatch(/candles$/u);
     await expect
       .element(screen.getByRole("application"))
       .toHaveAccessibleName("Candlestick chart of date from prices");
@@ -258,7 +260,7 @@ describe("Chart over a dataset", () => {
         <PricesChart layout={line} onLayoutChange={onLayoutChange} />
       </ParallaxProvider>,
     );
-    await expect.poll(() => summaryOf(screen.container)).toMatch(/points drawn$/u);
+    await expect.poll(() => summaryOf(screen.container), firstDraw).toMatch(/points drawn$/u);
     fire(screen.container, "wheel", { deltaY: -100, x: 300, y: 120 });
     await screen.unmount();
     await rest(600);
@@ -271,7 +273,7 @@ describe("Chart over a dataset", () => {
         <PricesChart layout={line} />
       </ParallaxProvider>,
     );
-    await expect.poll(() => summaryOf(screen.container)).toMatch(/points drawn$/u);
+    await expect.poll(() => summaryOf(screen.container), firstDraw).toMatch(/points drawn$/u);
     const light = surfaceOf(screen.container);
     document.documentElement.classList.add("dark");
     await expect.poll(() => surfaceOf(screen.container)).not.toBe(light);

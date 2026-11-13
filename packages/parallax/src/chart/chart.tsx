@@ -23,14 +23,17 @@ import { useDataset } from "#react/use-dataset.ts";
 
 import { ChartView } from "./chart-view.tsx";
 import type { ChartOptions, ChartViewProps } from "./chart-view.tsx";
-import { reorderedKinds, rowOrder, smallBytes, smallLayout } from "./small-data.ts";
-import type { ChartRow, ChartSettings, SmallChart } from "./small-data.ts";
+import { axisProblem, columnsOf, smallLayout } from "./small-data.ts";
+import type { ChartSettings, SmallChart } from "./small-data.ts";
+import { tableContent } from "./small-table.ts";
+import type { ChartRow } from "./small-table.ts";
+import { useRowOrder, useSmallTable } from "./use-small-table.ts";
 
 /** `<Chart>` over a dataset that `useDataset` loads. */
 /** `<Chart>` over a dataset, whose layout names only its columns when its rows are of a known type. */
 type DatasetChartProps<TRow extends AnyRow = AnyRow> = Omit<
   ChartViewProps,
-  "dataset" | "layout" | "order" | "source"
+  "dataset" | "layout" | "order" | "source" | "problem"
 > & {
   /** The dataset to draw, from `useDataset`. */
   readonly dataset: Dataset<TRow>;
@@ -41,7 +44,8 @@ type DatasetChartProps<TRow extends AnyRow = AnyRow> = Omit<
 
 /** `<Chart>` over rows the page holds. */
 interface RowsChartProps extends ChartOptions, SmallChart {
-  /** The rows, a value per column; the chart reads its x, y and series columns. */
+  /** The rows, such as an API's; the chart reads only its x, y and series columns, each a number, text, a
+   * `YYYY-MM-DD` date or a boolean, and null or absent where a row has none. */
   readonly rows: readonly ChartRow[];
   /** More of the chart's settings, such as `stacked` bars or a `donut: false` pie. */
   readonly settings?: ChartSettings;
@@ -53,14 +57,20 @@ interface RowsChartProps extends ChartOptions, SmallChart {
 
 type ChartProps = DatasetChartProps | RowsChartProps;
 
-/** A small chart: the rows made into a table of its own, loaded under a name no other chart takes. */
+/**
+ * A small chart: the rows made into a table of its own, loaded under a name no other chart takes. The chart keeps its
+ * table while the rows' plotted columns hold the same values, however often the page builds them, so it loads them
+ * once; rows it cannot type are its own problem, shown in place of the plot.
+ */
 function RowsChart(props: RowsChartProps): ReactNode {
   const { rows, kind, x, y, series, settings, formats, name, ...options } = props;
   const small = { kind, x, y, ...(series === undefined ? {} : { series }) };
   const id = useId().replaceAll(/[^\w-]/gu, "");
-  const dataset = useDataset(`rows-${id}`, smallBytes(rows, small, settings));
+  const table = useSmallTable(tableContent(rows, columnsOf(small, settings)));
+  const problem = table.problem ?? axisProblem(small, table, settings ?? {});
+  const dataset = useDataset(`rows-${id}`, problem === null ? table.bytes : null);
   const layout = {
-    ...smallLayout(small, settings, rows),
+    ...smallLayout(small, settings, table),
     ...(formats === undefined ? {} : { formats }),
   };
   return (
@@ -68,7 +78,8 @@ function RowsChart(props: RowsChartProps): ReactNode {
       {...options}
       dataset={dataset}
       layout={layout}
-      order={reorderedKinds.has(kind) ? rowOrder(rows, x) : null}
+      order={useRowOrder(kind, table.xValues)}
+      problem={problem}
       source={name ?? "rows"}
     />
   );
@@ -90,7 +101,14 @@ function RowsChart(props: RowsChartProps): ReactNode {
  * ];
  *
  * <div className="h-80">
- *   <Chart rows={curve} kind="line" x="tenor" y="yield" name="Treasury yields" />
+ *   <Chart
+ *     rows={curve}
+ *     kind="line"
+ *     x="tenor"
+ *     y="yield"
+ *     settings={{ axis: "tenor" }}
+ *     name="Treasury yields"
+ *   />
  * </div>;
  * ```
  */

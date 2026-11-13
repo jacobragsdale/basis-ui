@@ -16850,7 +16850,7 @@
           "type": "string"
         },
         {
-          "description": "The rows, a value per column; the chart reads its x, y and series columns.",
+          "description": "The rows, such as an API's; the chart reads only its x, y and series columns, each a number, text, a `YYYY-MM-DD` date or a boolean, and null or absent where a row has none.",
           "name": "rows",
           "optional": true,
           "type": "readonly ChartRow[]"
@@ -16886,7 +16886,7 @@
         "CellBar"
       ],
       "variants": {},
-      "example": "import { Chart } from \"@basis/parallax\";\n\nconst curve = [\n  { tenor: \"2Y\", yield: 0.0412 },\n  { tenor: \"10Y\", yield: 0.0438 },\n];\n\n<div className=\"h-80\">\n  <Chart rows={curve} kind=\"line\" x=\"tenor\" y=\"yield\" name=\"Treasury yields\" />\n</div>;\n"
+      "example": "import { Chart } from \"@basis/parallax\";\n\nconst curve = [\n  { tenor: \"2Y\", yield: 0.0412 },\n  { tenor: \"10Y\", yield: 0.0438 },\n];\n\n<div className=\"h-80\">\n  <Chart\n    rows={curve}\n    kind=\"line\"\n    x=\"tenor\"\n    y=\"yield\"\n    settings={{ axis: \"tenor\" }}\n    name=\"Treasury yields\"\n  />\n</div>;\n"
     },
     {
       "extends": [],
@@ -20567,6 +20567,12 @@
           "name": "series",
           "optional": false,
           "type": "readonly CategorySeries[]"
+        },
+        {
+          "description": "What the view holds past what a chart draws, which it then refuses to draw rather than draw part of: more groups, or more series; null when it read them all.",
+          "name": "unread",
+          "optional": true,
+          "type": "\"groups\" | \"series\""
         }
       ],
       "exported": false,
@@ -21060,11 +21066,11 @@
       "purpose": "The charts' colours a theme may set, by their names in `ChartColors`."
     },
     {
-      "definition": "Readonly<Record<string, ChartValue>>",
+      "definition": "object",
       "exported": true,
       "module": "@basis/parallax",
       "name": "ChartRow",
-      "purpose": "A small-data row: a value per column."
+      "purpose": "A small-data row: an object of the page's, such as a row an API sent, of which the chart reads only the columns it plots, each a number, text, a `YYYY-MM-DD` date or a boolean, and null or absent where it has none."
     },
     {
       "fields": [
@@ -21124,7 +21130,7 @@
       "exported": true,
       "module": "@basis/parallax",
       "name": "ChartValue",
-      "purpose": "A value of a small-data row."
+      "purpose": "A value of a small-data row's plotted column."
     },
     {
       "fields": [
@@ -21205,6 +21211,12 @@
           "name": "source",
           "optional": true,
           "type": "string"
+        },
+        {
+          "description": "What is wrong with the data before any view of it, such as rows the small-data form cannot type.",
+          "name": "problem",
+          "optional": true,
+          "type": "string | null"
         }
       ],
       "exported": false,
@@ -24015,7 +24027,7 @@
           "type": "string"
         },
         {
-          "description": "The rows, a value per column; the chart reads its x, y and series columns.",
+          "description": "The rows, such as an API's; the chart reads only its x, y and series columns, each a number, text, a `YYYY-MM-DD` date or a boolean, and null or absent where a row has none.",
           "name": "rows",
           "optional": false,
           "type": "readonly ChartRow[]"

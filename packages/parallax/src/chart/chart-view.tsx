@@ -59,10 +59,15 @@ interface ChartViewProps extends ChartOptions {
   /** Where the chart says its data comes from, in its status line and text alternative: the dataset's name by
    * default. */
   readonly source?: string;
+  /** What is wrong with the data before any view of it, such as rows the small-data form cannot type. */
+  readonly problem?: string | null;
 }
 
-/** What the chart says is wrong, or null: its layout, what a grouped chart lacks, or the view's error. */
-function problemOf({ checked, layout, view }: ChartState): string | null {
+/** What the chart says is wrong, or null: its data, its layout, what a grouped chart lacks, or the view's error. */
+function problemOf({ checked, layout, view }: ChartState, given: string | null): string | null {
+  if (given !== null) {
+    return given;
+  }
   if (!checked.ok) {
     return `Invalid layout: ${checked.error}`;
   }
@@ -144,7 +149,7 @@ function ChartView(props: ChartViewProps): ReactNode {
   const { root, summary, asOf, words } = scene.parts.mount;
   const source = props.source ?? props.dataset.name;
   // A chart with a problem says it in place of the plot, with no legend of what it cannot draw.
-  const problem = problemOf(chart);
+  const problem = problemOf(chart, props.problem ?? null);
   useErrorReport(problem, props.onError);
   const description =
     props.label ?? (layout === null ? "Chart" : describeChart({ ...layout, dataset: source }));

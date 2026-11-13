@@ -544,7 +544,11 @@ default, the small-data form's included, and the layout's drawings still show:
 ```
 
 A small chart takes the rows the page already holds, and loads them as a table
-of its own, in their order:
+of its own, in their order. Each plotted column holds numbers, text,
+`YYYY-MM-DD` dates or booleans, and null or nothing where a row has none; a
+column of mixed values, or a date that is no day, is shown in place of the plot
+with what to change. The chart loads its rows again only when the values it
+plots change, however often the page builds them:
 
 ```tsx
 <Chart rows={exposures} kind="bar" x="sector" y="exposure" />
@@ -553,7 +557,7 @@ of its own, in their order:
 | Prop                     | What it does                                                                                                                                                       |
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `dataset`, `layout`      | The data and the view of it; the layout's `chart` section says what to draw, its `titles` name columns in the legend, and `chart.drawing_tools: false` hides the drawing tools |
-| `rows`, `kind`, `x`, `y` | The small-data form: the rows, a value per column, and what to draw of them; `series` splits them, `settings` adds chart settings and `formats` formats the values |
+| `rows`, `kind`, `x`, `y` | The small-data form: the rows, such as an API's, of which it reads only the columns it plots, and what to draw of them; `series` splits them, `settings` adds chart settings, such as `axis: "tenor"` for text tenors, and `formats` formats the values |
 | `onLayoutChange`         | The layout the chart changed: a series hidden from the legend, a zoom, a drawing. Without it, the chart keeps its own changes until its `layout` changes           |
 | `onError` | Takes the reason the chart shows in place of its plot, each time it changes, and null once it clears |
 | `onBrush`                | The filters a Shift-drag selects, for a linked view; null once Escape clears it                                                                                    |
