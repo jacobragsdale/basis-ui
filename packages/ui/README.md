@@ -207,7 +207,9 @@ them (`followPreferences`), and gives `apiFetch` the adapter's token, so every r
   user out.
 - **Telemetry.** `useTelemetry()` returns `{ error, event, timing }`. `BasisApp` reports each error its boundary, the
   router or a failed query or mutation meets, with a `source` attribute (`render`, `route`, `query`, `mutation`,
-  `sign-in`), and each navigation's time as `navigation`. An app reports its own: `useTelemetry().event("position.booked",
+  `sign-in`), each error nothing else caught, in an event handler or a timer (`page`) or a promise nobody awaited
+  (`unhandled-rejection`), and each navigation's time as `navigation`. A collector that throws is written to the
+  console and goes no further, so it never stops a toast or a sign-out. An app reports its own: `useTelemetry().event("position.booked",
   { book })`. The firm's collector will be a `Telemetry` of its own; `consoleTelemetry` writes to the console.
 
 A sign-in adapter is four functions, `{ currentUser, token, signIn, signOut }`: `currentUser()` resolves the signed-in
@@ -279,9 +281,11 @@ value of unknown shape with a zod schema. A comment that turns off every rule hi
 `vp run verify` reads `src/` as text for them, and `vp run review` counts them.
 
 A hook returns the response as `{ data, status, headers }`, so a component reads `query.data.data`; a 204, a 205, or any
-response with an empty body has `data` undefined, whatever its content type. Its error is an `ApiError` holding the
-API's problem details, a body that is not problem details, such as an ingress's error page, read as one with the
-response's status. Show it with `ErrorAlert`, which renders nothing while there is no error:
+response with an empty body has `data` undefined, whatever its content type. Its error is typed as what the client throws:
+an `ApiError` holding the API's problem details, of any status, not only those the operation declares, a body that is
+not problem details, such as an ingress's error page, read as one with the response's status; or another `Error`, a
+`NetworkError` or a response its schema refused. Narrow it with `isApiError` before reading `error.problem`, and read a
+422's fields with `fieldErrors`. Show it with `ErrorAlert`, which renders nothing while there is no error:
 
 ```tsx
 import { ErrorAlert } from "@basis/ui";

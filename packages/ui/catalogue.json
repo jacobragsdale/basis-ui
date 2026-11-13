@@ -16654,7 +16654,7 @@
           "type": "SignIn"
         },
         {
-          "description": "Where errors, events and timings go; the console by default.",
+          "description": "Where errors, events and timings go; the console by default. A call that throws is written to the console and goes no further, so a failing collector never stops the shell's answer to a failure.",
           "name": "telemetry",
           "optional": true,
           "type": "Telemetry"
@@ -25563,12 +25563,12 @@
       "purpose": "An error, in the user's words."
     },
     {
-      "definition": "ApiError<TProblem>",
+      "definition": "ApiError<TProblem | AnyProblem> | Error",
       "exported": true,
       "module": "@basis/ui",
       "name": "ErrorType",
       "parameters": "<TProblem>",
-      "purpose": "The error type orval reads from this module: each hook's error is `ErrorType<the operation's problem types>`."
+      "purpose": "What a generated hook's `error` is: whatever `apiFetch` throws. orval names the operation's declared problems, but any status may answer, a 502 from an ingress as well as the 422 an operation declares, and a request may never reach the API, so the error is an `ApiError` of the declared problems or of any other, or another `Error`: a `NetworkError`, or the `ZodError` of a response its schema refused. Narrow it with `isApiError` before reading its problem, and read a 422's fields with `fieldErrors`, which reads any problem."
     },
     {
       "fields": [

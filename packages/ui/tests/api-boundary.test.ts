@@ -2,10 +2,12 @@
  * claim, error pages with no status text, problems of shapes the contract does not name, and a request that never
  * reached the API. */
 
-import { afterEach, beforeEach, describe, expect, test, vi } from "vite-plus/test";
+import type { ErrorType } from "@basis/ui/mutator";
+import { afterEach, beforeEach, describe, expect, expectTypeOf, test, vi } from "vite-plus/test";
+import type { ZodError } from "zod";
 
 import { apiFetch, arrowResponse, describeError, NetworkError, setTokenSource } from "#index.ts";
-import type { ApiResponse } from "#index.ts";
+import type { ApiError, ApiResponse, Problem, ValidationProblem } from "#index.ts";
 import { shouldRetry } from "#shell/query-client.ts";
 
 import { answer, failureOf, json, sent, tokenSource } from "./api-fakes.ts";
@@ -155,4 +157,15 @@ describe("a request that never reached the API", () => {
     const failed: unknown = await arrowResponse("/trades").catch((error: unknown) => error);
     expect(shouldRetry(0, failed)).toBe(true);
   });
+});
+
+/* What a generated hook's `error` is typed as: everything `apiFetch` throws, so that only a narrowed `ApiError` is read
+ * for its problem. An operation that declares only a 422 still fails with a 502's problem, or a lost connection. */
+test("a hook's error is typed as what apiFetch throws, of any status, or no ApiError at all", () => {
+  type HookError = ErrorType<ValidationProblem>;
+  expectTypeOf<ApiError<Problem>>().toExtend<HookError>();
+  expectTypeOf<NetworkError>().toExtend<HookError>();
+  expectTypeOf<ZodError>().toExtend<HookError>();
+  expectTypeOf<HookError>().not.toHaveProperty("problem");
+  expectTypeOf<Extract<HookError, ApiError>["problem"]["errors"]>().toBeUnknown();
 });

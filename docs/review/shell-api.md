@@ -77,11 +77,23 @@ and `describeError` says "The server could not be reached" only for it; any othe
 - **Scenario:** An operation declares only 422. `mutation.error.problem.errors.map(...)` type-checks under the strictest settings, then crashes on a 502 (no `errors`) or a network failure (no `.problem`).
 - **Confidence:** confirmed by reading the generated client (`TError = ErrorType<ValidationProblem>`) against what `apiFetch` throws. `ErrorAlert`, `describeError` and `submitErrors` take `unknown` and are safe.
 
+Done in Shell: a hook's error type is what the client throws, and telemetry cannot stop a toast: `ErrorType<TProblem>`, which orval reads from `@basis/ui/mutator`, is now
+`ApiError<TProblem | AnyProblem> | Error`, so `mutation.error.problem` does not type-check until `isApiError` narrows
+it, and a narrowed problem's `errors` is `unknown`, read through `fieldErrors`. The mutator keeps its literal `export
+type ErrorType` line, which orval looks for, as an alias of `@basis/ui`'s. The example's generated client and pages
+type-check unchanged; a type test in `tests/api-boundary.test.ts` holds it.
+
 **9. `packages/ui/src/shell/basis-app.tsx:67-95` — polish**
 
 - **Defect:** telemetry is called unguarded inside the cache subscribers, and nothing listens for `error` or `unhandledrejection`.
 - **Scenario:** A collector that throws once aborts the subscriber before `toastError`, so failed saves show nothing. Errors in event handlers and un-awaited promises never reach telemetry.
 - **Confidence:** confirmed by reading.
+
+Done in Shell: a hook's error type is what the client throws, and telemetry cannot stop a toast: `BasisApp` wraps the telemetry it is given in `guardedTelemetry`, so a call that throws is
+written to the console and returns; the components inside get the guarded one. A throwing collector had done worse
+than the review said: the subscriber's throw replaced the mutation's own error. `reportPageErrors` reports the
+window's `error` (`source: "page"`) and `unhandledrejection` (`source: "unhandled-rejection"`). Tested in
+`tests/basis-app.test.tsx`, in happy-dom.
 
 **10. `packages/ui/src/preset/fixture-page.ts:38-48`, `fixtures/start.ts:41-45` — polish**
 
@@ -166,3 +178,10 @@ Throwaway scripts are in `(a scratch folder)`.
   `NetworkError`, a `TypeError` whose `cause` is what `fetch` threw, and `isNetworkError` tells it. Any other
   `TypeError`, such as a bug in a query's `select`, is no longer retried or shown as "The server could not be
   reached". What to do: a test that stands for a lost connection with `new TypeError(...)` makes a `NetworkError`.
+- A generated hook's `error` is typed as what the client throws: `ApiError` of any problem, or another `Error`, where
+  it was an `ApiError` of the operation's declared problems alone, which a 502 or a lost connection broke at run time.
+  What to do: narrow with `isApiError(error)` before reading `error.problem`, and read a 422's fields with
+  `fieldErrors`; the compiler names each place.
+- A telemetry collector that throws no longer stops a failed mutation's toast, or replaces the mutation's error: the
+  shell writes it to the console and carries on. `BasisApp` reports the page's uncaught errors (`source: "page"`) and
+  unhandled rejections (`source: "unhandled-rejection"`). What to do: nothing.

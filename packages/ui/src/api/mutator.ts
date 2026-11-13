@@ -5,14 +5,15 @@
  * token source and one `ApiError` class. */
 
 import { apiFetch as sharedFetch } from "@basis/ui";
-import type { ApiError, ApiRequestInit } from "@basis/ui";
+import type { ApiRequestInit, ErrorType as SharedErrorType } from "@basis/ui";
 
 /** The mutator orval's generated client calls for every operation: `@basis/ui`'s `apiFetch`. */
 async function apiFetch<TResponse>(url: string, init?: ApiRequestInit): Promise<TResponse> {
   return sharedFetch<TResponse>(url, init);
 }
 
-/** What a generated hook's error is: `ApiError`, holding the operation's problem details. */
-export type ErrorType<TProblem> = ApiError<TProblem>;
+/** What a generated hook's error is: whatever `apiFetch` throws, an `ApiError` of any status or another `Error`, so a
+ * page narrows it with `isApiError` before it reads the problem. */
+export type ErrorType<TProblem> = SharedErrorType<TProblem>;
 
 export { apiFetch };

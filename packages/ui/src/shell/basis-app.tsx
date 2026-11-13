@@ -10,7 +10,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import type { QueryClient } from "@tanstack/react-query";
 import { CatchBoundary, Link, RouterProvider, useRouter } from "@tanstack/react-router";
 import type { AnyRouter, ErrorComponentProps } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { ReactElement } from "react";
 
 import { ButtonLink } from "#components/button-link.ts";
@@ -34,7 +34,13 @@ import { useSessionState } from "./session-state.ts";
 import { SessionContext } from "./session.ts";
 import { signInProblem } from "./sign-in-problems.ts";
 import type { SignIn } from "./sign-in.ts";
-import { TelemetryContext, consoleTelemetry, useTelemetry } from "./telemetry.ts";
+import {
+  TelemetryContext,
+  consoleTelemetry,
+  guardedTelemetry,
+  reportPageErrors,
+  useTelemetry,
+} from "./telemetry.ts";
 import type { Telemetry } from "./telemetry.ts";
 
 interface BasisAppProps {
@@ -45,7 +51,8 @@ interface BasisAppProps {
   /** The sign-in adapter: the firm's, `anonymousSignIn()` for an app with no sign-in, or `fakeSignIn()` in tests and
    * development. */
   readonly signIn: SignIn;
-  /** Where errors, events and timings go; the console by default. */
+  /** Where errors, events and timings go; the console by default. A call that throws is written to the console and
+   * goes no further, so a failing collector never stops the shell's answer to a failure. */
   readonly telemetry?: Telemetry;
   /** The query client, for a test that reads its cache; one from `createQueryClient()` by default. */
   readonly queryClient?: QueryClient;
@@ -230,17 +237,19 @@ function useFollowPreferences(shown: Preferences | undefined, domain: string | u
 function BasisApp({
   router,
   signIn,
-  telemetry = consoleTelemetry,
+  telemetry: givenTelemetry = consoleTelemetry,
   queryClient: givenClient,
   preferences,
   preferencesDomain,
 }: BasisAppProps): ReactElement {
+  const telemetry = useMemo(() => guardedTelemetry(givenTelemetry), [givenTelemetry]);
   // oxlint-disable-next-line react/hook-use-state -- one query client for the app's life, made once; nothing sets it.
   const [queryClient] = useState(() => givenClient ?? createQueryClient());
   const { state, retry, session } = useSessionState(signIn, queryClient, telemetry);
   useFollowPreferences(preferences, preferencesDomain);
   useEffect(() => reportRequests(queryClient, telemetry), [queryClient, telemetry]);
   useEffect(() => reportNavigations(router, telemetry), [router, telemetry]);
+  useEffect(() => reportPageErrors(telemetry), [telemetry]);
   const report = (error: unknown): void => {
     telemetry.error(error, { source: "render" });
   };

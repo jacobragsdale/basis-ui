@@ -36,6 +36,59 @@ const consoleTelemetry: Telemetry = {
   },
 };
 
+/** Writes to the console that a collector threw, once per call, since the collector cannot report its own failure. */
+function collectorFailed(failure: unknown): void {
+  // oxlint-disable-next-line eslint/no-console -- the collector itself failed, so the console is all that is left.
+  console.error("[telemetry] the collector threw", failure);
+}
+
+/** `telemetry`, each call made safe: a collector that throws is written to the console, and the call returns, so a
+ * failing collector never stops what reported to it, such as the toast for a failed save. `BasisApp` gives its
+ * components this. */
+function guardedTelemetry(telemetry: Telemetry): Telemetry {
+  return {
+    error: (error, attributes) => {
+      try {
+        telemetry.error(error, attributes);
+      } catch (error_) {
+        collectorFailed(error_);
+      }
+    },
+    event: (name, attributes) => {
+      try {
+        telemetry.event(name, attributes);
+      } catch (error) {
+        collectorFailed(error);
+      }
+    },
+    timing: (name, milliseconds, attributes) => {
+      try {
+        telemetry.timing(name, milliseconds, attributes);
+      } catch (error) {
+        collectorFailed(error);
+      }
+    },
+  };
+}
+
+/** Reports the page's errors that nothing else caught, in an event handler or a timer (`source: "page"`) or a promise
+ * nobody awaited (`source: "unhandled-rejection"`). The browser still writes each to the console. Returns the
+ * unsubscribe. */
+function reportPageErrors(telemetry: Telemetry): () => void {
+  const uncaught = (event: ErrorEvent): void => {
+    telemetry.error(event.error ?? event.message, { source: "page" });
+  };
+  const unhandled = (event: PromiseRejectionEvent): void => {
+    telemetry.error(event.reason, { source: "unhandled-rejection" });
+  };
+  globalThis.addEventListener("error", uncaught);
+  globalThis.addEventListener("unhandledrejection", unhandled);
+  return () => {
+    globalThis.removeEventListener("error", uncaught);
+    globalThis.removeEventListener("unhandledrejection", unhandled);
+  };
+}
+
 /** The telemetry `BasisApp` was given, for the components inside it. */
 const TelemetryContext = createContext<Telemetry>(consoleTelemetry);
 
@@ -44,5 +97,5 @@ function useTelemetry(): Telemetry {
   return use(TelemetryContext);
 }
 
-export { TelemetryContext, consoleTelemetry, useTelemetry };
+export { TelemetryContext, consoleTelemetry, guardedTelemetry, reportPageErrors, useTelemetry };
 export type { Telemetry, TelemetryAttributes };

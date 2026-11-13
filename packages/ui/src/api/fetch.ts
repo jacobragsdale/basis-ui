@@ -56,8 +56,12 @@ class ApiError<TProblem = AnyProblem> extends Error {
   }
 }
 
-/** The error type orval reads from this module: each hook's error is `ErrorType<the operation's problem types>`. */
-type ErrorType<TProblem> = ApiError<TProblem>;
+/** What a generated hook's `error` is: whatever `apiFetch` throws. orval names the operation's declared problems, but
+ * any status may answer, a 502 from an ingress as well as the 422 an operation declares, and a request may never reach
+ * the API, so the error is an `ApiError` of the declared problems or of any other, or another `Error`: a
+ * `NetworkError`, or the `ZodError` of a response its schema refused. Narrow it with `isApiError` before reading its
+ * problem, and read a 422's fields with `fieldErrors`, which reads any problem. */
+type ErrorType<TProblem> = ApiError<TProblem | AnyProblem> | Error;
 
 /** Whether `error` is the `ApiError` a generated hook fails with, holding the API's status and problem details. */
 function isApiError(error: unknown): error is ApiError {
