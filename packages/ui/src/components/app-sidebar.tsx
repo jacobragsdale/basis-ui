@@ -7,6 +7,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import type { ReactElement, ReactNode } from "react";
 
 import { currentEntry, groupEntries, useRouteEntries } from "./route-entries.ts";
+import { useSidebar } from "./sidebar-context.ts";
 import type { RouteEntry } from "./route-entries.ts";
 import { Sidebar, SidebarRail } from "./sidebar.tsx";
 import { SidebarGroup, SidebarGroupContent, SidebarGroupLabel } from "./sidebar-group.tsx";
@@ -29,6 +30,8 @@ function PageGroup({
   readonly entries: readonly RouteEntry[];
   readonly current: RouteEntry | undefined;
 }): ReactElement {
+  // In a narrow window the sidebar is a sheet over the page, which a page chosen from it closes, to show the page.
+  const { setOpenMobile } = useSidebar();
   return (
     <SidebarGroup>
       {label === undefined ? null : <SidebarGroupLabel>{label}</SidebarGroupLabel>}
@@ -44,6 +47,9 @@ function PageGroup({
                     to={to}
                     activeOptions={exactly}
                     aria-current={id === current?.id ? "page" : undefined}
+                    onClick={() => {
+                      setOpenMobile(false);
+                    }}
                   />
                 }
               >

@@ -46,7 +46,7 @@ interface RouteEntry {
 interface RouteLike {
   readonly id: string;
   readonly fullPath: string;
-  readonly options: { readonly staticData?: StaticDataRouteOption };
+  readonly options: { readonly staticData?: StaticDataRouteOption; readonly path?: string };
 }
 
 function isRouteLike(value: unknown): value is RouteLike {
@@ -61,14 +61,37 @@ function isRouteLike(value: unknown): value is RouteLike {
   );
 }
 
-/** Whether a route is a page the navigation lists: titled, in the navigation, and reachable without parameters. */
+/** Whether a route is a page the navigation lists: titled, in the navigation, reachable without parameters, and a
+ * page of its own, with a path; the root and a pathless layout route have none, and their titles are for the
+ * breadcrumbs. */
 function isListed(route: RouteLike): boolean {
-  const { staticData } = route.options;
+  const { staticData, path } = route.options;
   return (
     typeof staticData?.title === "string" &&
     staticData.inNavigation !== false &&
+    typeof path === "string" &&
     !route.fullPath.includes("$")
   );
+}
+
+/** The path a link reaches a route at: its full path without the slash an index route ends with, as `/positions`
+ * for the index route under `/positions`. */
+function linkPath(fullPath: string): string {
+  return fullPath.length > 1 ? fullPath.replace(/\/+$/u, "") : fullPath;
+}
+
+/** One entry a path: where a layout route and its index route share one, as `/positions` and `/positions/`, the
+ * index route's, the page itself, and the layout's title stays its breadcrumb. */
+function onePerPath(routes: readonly RouteLike[]): readonly RouteLike[] {
+  const byPath = new Map<string, RouteLike>();
+  for (const route of routes) {
+    const to = linkPath(route.fullPath);
+    const held = byPath.get(to);
+    if (held === undefined || route.fullPath.endsWith("/")) {
+      byPath.set(to, route);
+    }
+  }
+  return routes.filter((route) => byPath.get(linkPath(route.fullPath)) === route);
 }
 
 /** The entry the page at `path` belongs to: the one whose path it is, or else the one with the longest path it lies
@@ -89,20 +112,18 @@ function groupEntries(
   return [...Map.groupBy(entries, ({ group }) => group).entries()];
 }
 
-/** The app's pages, in the order its route tree declares them. */
+/** The app's pages, in the order its route tree declares them, each once, by the path a link reaches it at. */
 function useRouteEntries(): readonly RouteEntry[] {
   const routes: unknown = useRouter().routesById;
   const all = typeof routes === "object" && routes !== null ? Object.values(routes) : [];
-  return all
-    .filter((route) => isRouteLike(route))
-    .filter((route) => isListed(route))
-    .map((route) => ({
-      group: route.options.staticData?.group,
-      icon: route.options.staticData?.icon,
-      id: route.id,
-      title: route.options.staticData?.title ?? route.fullPath,
-      to: route.fullPath,
-    }));
+  const listed = all.filter((route) => isRouteLike(route)).filter((route) => isListed(route));
+  return onePerPath(listed).map((route) => ({
+    group: route.options.staticData?.group,
+    icon: route.options.staticData?.icon,
+    id: route.id,
+    title: route.options.staticData?.title ?? route.fullPath,
+    to: linkPath(route.fullPath),
+  }));
 }
 
 export { currentEntry, groupEntries, useRouteEntries };

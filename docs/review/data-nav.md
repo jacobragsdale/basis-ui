@@ -107,6 +107,12 @@ all and then filters.
 - **Severity:** fix before release.
 - **Confidence:** confirmed by running against the installed TanStack Router (`routes.mjs`). The gallery's route tests use only flat routes.
 
+Done in Shell: the sidebar and palette list a nested route tree's pages once, and a narrow sidebar closes on a page chosen: a route is listed only if it has a path of its own, so the root and a pathless layout route, whose
+titles are for the breadcrumbs, are not. An entry links by the path without the slash an index route ends with, so
+`/positions/` is `/positions` and is marked on `/positions/abc`. Where a layout route and its index route share a
+path, the index route is the entry. Held by gallery tests of a tree with a titled root, a titled layout over an index
+and a parameter route, and a pathless layout: the sidebar, the marked item and the palette (`route-tree.test.tsx`).
+
 **9. `data: undefined` without `loading` or `error` says "No rows to show."**
 
 - **Where:** `packages/ui/src/components/data-table-table.tsx:68-74`, `:149`
@@ -155,6 +161,9 @@ handled key, `Mod+S` in a field and `mod+s` behind a modal.
 - **Scenario:** a user with the browser snapped to half a laptop screen picks "Trades"; the modal sheet keeps covering the new page until Escape.
 - **Severity:** polish.
 - **Confidence:** confirmed by reading.
+
+Done in Shell: the sidebar and palette list a nested route tree's pages once, and a narrow sidebar closes on a page chosen: a page link in AppSidebar closes the mobile sheet. Held by a gallery test at 700 px, which fails
+without the fix.
 
 **13. Text columns sort identifiers by digit runs as numbers**
 
@@ -242,3 +251,9 @@ Two weak spots in what agents are shown:
 
 - Toasts show over every popup and dialog's veil, on a new layer, `z-notice`, so a failed save's error toast raised
   from a form in a Dialog is read and clicked, and clicking it no longer closes the Dialog. What to do: nothing.
+
+- The sidebar and Ctrl+K list a nested route tree's pages once each: an index route under a parent by its parent's
+  path, marked on the pages below it, and never a titled root or pathless layout route, whose titles stay their
+  breadcrumbs'. What to do: nothing; an app that titled a layout route to hide its index loses the extra item.
+
+- In a window under 768 px, choosing a page from the sidebar's sheet closes it. What to do: nothing.
