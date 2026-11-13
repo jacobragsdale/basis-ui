@@ -694,12 +694,14 @@ export { ErrorAlert, type ErrorAlertProps } from "./components/error-alert.tsx";
 export { BasisApp, type BasisAppProps } from "./shell/basis-app.tsx";
 export { describeError, type ErrorDescription, type FieldProblem } from "./shell/describe-error.ts";
 export { createQueryClient } from "./shell/query-client.ts";
-export { useSession, type Session } from "./shell/session.ts";
+export { useSession, useUser, type Session } from "./shell/session.ts";
+export { sessionChangeEvent, type SessionChangeDetail } from "./shell/session-state.ts";
 export { toastError } from "./shell/toast-error.tsx";
 export {
   anonymousSignIn,
   fakeSignIn,
   fakeUser,
+  type FakeUser,
   type FakeSignInOptions,
   type SignIn,
   type User,

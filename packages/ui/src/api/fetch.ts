@@ -29,6 +29,27 @@ function setTokenSource(source: TokenSource): void {
   tokenSource = source;
 }
 
+/** Runs a request outside TanStack Query, named by its URL: once, until the app shell sets its own, which retries,
+ * reports and answers its failure as a query's (src/shell/outside-queries.ts). */
+type RequestRunner = <TResult>(request: () => Promise<TResult>, name: string) => Promise<TResult>;
+
+async function runOnce<TResult>(request: () => Promise<TResult>): Promise<TResult> {
+  return request();
+}
+
+/** How a request outside TanStack Query runs. */
+let requestRunner: RequestRunner = runOnce;
+
+/** Sets how a request outside TanStack Query, such as `arrowResponse`'s, runs. The app shell calls it while it is
+ * mounted; the returned function puts back the one before. */
+function setRequestRunner(runner: RequestRunner): () => void {
+  const before = requestRunner;
+  requestRunner = runner;
+  return () => {
+    requestRunner = before;
+  };
+}
+
 /** A request as orval passes it: `RequestInit`, plus the response's Zod schema when its configuration asks for it. */
 interface ApiRequestInit extends RequestInit {
   readonly schema?: ZodType;
@@ -178,16 +199,28 @@ async function apiFetch<TResponse>(url: string, init: ApiRequestInit = {}): Prom
 /** A dataset route's response, its Arrow body unread, for `@basis/parallax`'s `useDataset` to stream batch by batch:
  * `useDataset("trades", async () => arrowResponse(getTradesUrl()))`, with the URL from the generated client. It asks
  * for Arrow under `/api` with the user's token, as the generated call does, whose `Blob` has arrived whole before the
- * engine sees a byte; a failure throws the same `ApiError`. */
+ * engine sees a byte; a failure throws the same `ApiError`. Inside `BasisApp` it goes through the shell as a query does:
+ * a failure that may pass is asked again, and the last is reported to telemetry and its sign-in problem answered. */
 async function arrowResponse(url: string, init: RequestInit = {}): Promise<Response> {
-  const headers = await headersFor(init);
-  headers.set("Accept", arrowStream);
-  const response = await send(url, { ...init, headers });
-  if (!response.ok) {
-    throw failure(response, await readBody(response, false));
-  }
-  return response;
+  return requestRunner(async () => {
+    const headers = await headersFor(init);
+    headers.set("Accept", arrowStream);
+    const response = await send(url, { ...init, headers });
+    if (!response.ok) {
+      throw failure(response, await readBody(response, false));
+    }
+    return response;
+  }, url);
 }
 
-export { ApiError, apiFetch, apiPrefix, arrowResponse, arrowStream, isApiError, setTokenSource };
-export type { AnyProblem, ApiRequestInit, ApiResponse, ErrorType, TokenSource };
+export {
+  ApiError,
+  apiFetch,
+  apiPrefix,
+  arrowResponse,
+  arrowStream,
+  isApiError,
+  setRequestRunner,
+  setTokenSource,
+};
+export type { AnyProblem, ApiRequestInit, ApiResponse, ErrorType, RequestRunner, TokenSource };

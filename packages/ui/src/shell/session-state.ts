@@ -17,6 +17,34 @@ type SignInState =
   | { readonly status: "failed"; readonly error: unknown }
   | { readonly status: "ready"; readonly user: User | null };
 
+/** The event raised on `window` when the signed-in user becomes another user or nobody, its detail the user's id, or
+ * `null` for nobody, beside `basis:themechange`. Whatever holds one user's data outside the query cache, such as
+ * `@basis/parallax`'s datasets, drops it. It is not raised for the first user, who is signed in before anything has
+ * loaded. */
+const sessionChangeEvent = "basis:sessionchange";
+
+/** `sessionChangeEvent`'s detail. */
+interface SessionChangeDetail {
+  readonly userId: string | null;
+}
+
+/** Raises `sessionChangeEvent` each time a settled sign-in names another user than the one before, from the one place
+ * the shell records who is signed in. */
+function useSessionChanges(state: SignInState): void {
+  const recorded = useRef<{ readonly id: string | null } | null>(null);
+  useEffect(() => {
+    if (state.status !== "ready") {
+      return;
+    }
+    const id = state.user?.id ?? null;
+    if (recorded.current !== null && recorded.current.id !== id) {
+      const detail: SessionChangeDetail = { userId: id };
+      globalThis.dispatchEvent(new CustomEvent(sessionChangeEvent, { detail }));
+    }
+    recorded.current = { id };
+  }, [state]);
+}
+
 /** Signs the user in through `signIn` once, and again after `retry`; `settle` records who is signed in after a sign-in
  * or a sign-out. It gives `apiFetch` the adapter's token first. */
 function useSignIn(
@@ -30,7 +58,8 @@ function useSignIn(
   const [state, setState] = useState<SignInState>({ status: "pending" });
   const [attempt, setAttempt] = useState(0);
   useEffect(() => {
-    setTokenSource(signIn.token);
+    // Called through the adapter, so an adapter written as a class keeps its `this`.
+    setTokenSource(async () => signIn.token());
     let live = true;
     const start = async (): Promise<void> => {
       try {
@@ -78,6 +107,7 @@ function useSessionState(
   readonly session: Session | null;
 } {
   const { state, retry, settle } = useSignIn(signIn, telemetry);
+  useSessionChanges(state);
   const forgetResponses = async (): Promise<void> => {
     queryClient.getMutationCache().clear();
     await queryClient.resetQueries();
@@ -111,5 +141,5 @@ function useSessionState(
   return { retry, session, state };
 }
 
-export { useSessionState };
-export type { SignInState };
+export { sessionChangeEvent, useSessionState };
+export type { SessionChangeDetail, SignInState };

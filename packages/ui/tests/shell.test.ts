@@ -56,6 +56,7 @@ describe(fakeSignIn, () => {
       email: "dev.user@example.com",
       id: "dev-user",
       name: "Dev User",
+      roles: [],
     });
     const token = (await signIn.token()) ?? "";
     expect(await verifies(token)).toBe(true);
@@ -68,9 +69,19 @@ describe(fakeSignIn, () => {
       email: "dev.user@example.com",
       iss: "dev",
       name: "Dev User",
+      roles: [],
       sub: "dev-user",
     });
     expect(claims.exp - claims.iat).toBe(3600);
+  });
+
+  test("a user given without roles has none, in the user and in the token", async () => {
+    const signIn = fakeSignIn({ user: { id: "analyst", name: "An Analyst" } });
+    const user = await signIn.currentUser();
+    expect(user?.roles).toStrictEqual([]);
+    const token = await signIn.token();
+    const [, payload = ""] = (token ?? "").split(".");
+    expect(jsonOf(payload)).toMatchObject({ roles: [] });
   });
 
   test("gives the same token until it nears its expiry", async () => {
@@ -87,10 +98,14 @@ describe(fakeSignIn, () => {
   });
 
   test("signs its user in again after a sign-out, and an anonymous one in as the placeholder user", async () => {
-    const signedOut = fakeSignIn({ user: { id: "desk-head", name: "Desk Head" } });
+    const signedOut = fakeSignIn({ user: { id: "desk-head", name: "Desk Head", roles: ["head"] } });
     await signedOut.signOut();
     await signedOut.signIn();
-    expect(await signedOut.currentUser()).toStrictEqual({ id: "desk-head", name: "Desk Head" });
+    expect(await signedOut.currentUser()).toStrictEqual({
+      id: "desk-head",
+      name: "Desk Head",
+      roles: ["head"],
+    });
     expect(await signedOut.token()).not.toBeNull();
     const anonymous = fakeSignIn({ user: null });
     await anonymous.signIn();

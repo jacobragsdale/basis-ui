@@ -17485,7 +17485,7 @@
       "kind": "function",
       "module": "@basis/ui",
       "name": "arrowResponse",
-      "purpose": "A dataset route's response, its Arrow body unread, for `@basis/parallax`'s `useDataset` to stream batch by batch: `useDataset(\"trades\", async () => arrowResponse(getTradesUrl()))`, with the URL from the generated client. It asks for Arrow under `/api` with the user's token, as the generated call does, whose `Blob` has arrived whole before the engine sees a byte; a failure throws the same `ApiError`.",
+      "purpose": "A dataset route's response, its Arrow body unread, for `@basis/parallax`'s `useDataset` to stream batch by batch: `useDataset(\"trades\", async () => arrowResponse(getTradesUrl()))`, with the URL from the generated client. It asks for Arrow under `/api` with the user's token, as the generated call does, whose `Blob` has arrived whole before the engine sees a byte; a failure throws the same `ApiError`. Inside `BasisApp` it goes through the shell as a query does: a failure that may pass is asked again, and the last is reported to telemetry and its sign-in problem answered.",
       "signature": "arrowResponse(url: string, init: RequestInit = {}): Promise<Response>"
     },
     {
@@ -17601,6 +17601,20 @@
       "signature": "useSession(): Session"
     },
     {
+      "kind": "hook",
+      "module": "@basis/ui",
+      "name": "useUser",
+      "purpose": "The signed-in user, or `null` for an anonymous one: `const user = useUser();`, and `user?.roles.includes(\"trader\")` to decide what a page shows. A role decides only what the page shows; the API stays the judge of what the user may do. Only components inside `BasisApp` have one.",
+      "signature": "useUser(): User | null"
+    },
+    {
+      "kind": "constant",
+      "module": "@basis/ui",
+      "name": "sessionChangeEvent",
+      "purpose": "The event raised on `window` when the signed-in user becomes another user or nobody, its detail the user's id, or `null` for nobody, beside `basis:themechange`. Whatever holds one user's data outside the query cache, such as `@basis/parallax`'s datasets, drops it. It is not raised for the first user, who is signed in before anything has loaded.",
+      "signature": "const sessionChangeEvent = \"basis:sessionchange\""
+    },
+    {
       "kind": "function",
       "module": "@basis/ui",
       "name": "toastError",
@@ -17618,7 +17632,7 @@
       "kind": "function",
       "module": "@basis/ui",
       "name": "fakeSignIn",
-      "purpose": "A sign-in adapter for tests and development: `user` is signed in at once, and each token is a JWT for them, signed with basis's development key, with their `name` and `email` as claims. A basis API on a developer's desktop whose settings verify with the development key, such as `basis dev`'s, accepts it; any other refuses it with a 401. `signOut` makes the user anonymous, and `signIn` signs them in again at once.",
+      "purpose": "A sign-in adapter for tests and development: `user` is signed in at once, and each token is a JWT for them, signed with basis's development key, with their `name`, `email` and `roles` as claims. A basis API on a developer's desktop whose settings verify with the development key, such as `basis dev`'s, accepts it; any other refuses it with a 401. `signOut` makes the user anonymous, and `signIn` signs them in again at once.",
       "signature": "fakeSignIn({ user = fakeUser, issuer = developmentKeyId, audience = developmentKeyId, claims = {}, }: FakeSignInOptions = {}): SignIn"
     },
     {
@@ -25599,7 +25613,7 @@
           "description": "Who is signed in at the start: a placeholder user by default, or `null` for an anonymous one, whom `signIn` signs in as the placeholder user.",
           "name": "user",
           "optional": true,
-          "type": "User | null"
+          "type": "FakeUser | null"
         },
         {
           "description": "The token's `iss`, which must be the API's `BASIS_IDENTITY__ISSUER`. `basis-development` by default.",
@@ -25624,6 +25638,38 @@
       "module": "@basis/ui",
       "name": "FakeSignInOptions",
       "purpose": ""
+    },
+    {
+      "fields": [
+        {
+          "description": "",
+          "name": "id",
+          "optional": false,
+          "type": "string"
+        },
+        {
+          "description": "",
+          "name": "name",
+          "optional": false,
+          "type": "string"
+        },
+        {
+          "description": "",
+          "name": "email",
+          "optional": true,
+          "type": "string"
+        },
+        {
+          "description": "",
+          "name": "roles",
+          "optional": true,
+          "type": "readonly string[]"
+        }
+      ],
+      "exported": true,
+      "module": "@basis/ui",
+      "name": "FakeUser",
+      "purpose": "A user as `fakeSignIn` takes one: its roles may be left out, for none."
     },
     {
       "definition": "{ readonly message?: string | undefined } | string | undefined",
@@ -26969,6 +27015,20 @@
       "fields": [
         {
           "description": "",
+          "name": "userId",
+          "optional": false,
+          "type": "string | null"
+        }
+      ],
+      "exported": true,
+      "module": "@basis/ui",
+      "name": "SessionChangeDetail",
+      "purpose": "`sessionChangeEvent`'s detail."
+    },
+    {
+      "fields": [
+        {
+          "description": "",
           "name": "keys",
           "optional": false,
           "type": "string"
@@ -27468,12 +27528,18 @@
           "name": "email",
           "optional": true,
           "type": "string"
+        },
+        {
+          "description": "",
+          "name": "roles",
+          "optional": false,
+          "type": "readonly string[]"
         }
       ],
       "exported": true,
       "module": "@basis/ui",
       "name": "User",
-      "purpose": "The signed-in user. `id` is the token's subject, its `sub` claim."
+      "purpose": "The signed-in user. `id` is the token's subject, its `sub` claim. `roles` are the token's roles, empty for an adapter whose tokens hold none: a role decides what a page shows, and the API stays the judge of what the user may do."
     },
     {
       "definition": "Problem",

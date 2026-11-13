@@ -26,11 +26,22 @@ claims is kept as text, so an empty 502, a 500 of plain text and a truncated `in
 - **Where it is recommended:** `packages/create/templates/app/.claude/skills/show-data/SKILL.md:23` and `packages/showcase/src/data/datasets.ts`.
 - **Confidence:** confirmed by reading; nothing in parallax or the shell links the two.
 
+Done in Shell: a dataset's request is answered as a query's, and the user's change is announced, the shell's side: `arrowResponse` runs through a request runner the shell installs while
+`BasisApp` is mounted (`setRequestRunner`, `src/shell/outside-queries.ts`): a network failure or a 502, 503 or 504 is
+asked again twice with TanStack Query's backoff, the last failure is reported to telemetry as `source: "request"`, and
+the same sign-in answer as the caches' handles it, so an ended session signs out once however many requests it fails.
+The shell raises `basis:sessionchange` on `window` (`{ userId }`) whenever the settled user becomes another or nobody.
+Left to 7.9: `ParallaxProvider` dropping its datasets and views on that event. `invalid-token` renewed and retried
+comes with the Windows adapter.
+
 **3. `packages/ui/src/shell/session-state.ts:33` — fix before release**
 
 - **Defect:** `setTokenSource(signIn.token)` detaches `token` from its adapter, while `currentUser`, `signIn` and `signOut` are called as methods.
 - **Scenario:** The firm's adapter (step 1.9, not yet written) is a class whose `token()` reads `this`. Every request rejects with `TypeError: Cannot read properties of undefined`. The shell shows "The server could not be reached. Check the network connection" and retries twice.
 - **Confidence:** confirmed by running a class adapter through `setTokenSource` and `apiFetch`.
+
+Done in Shell: a dataset's request is answered as a query's, and the user's change is announced: the shell gives `apiFetch` `async () => signIn.token()`, so an adapter written as a class keeps
+its `this`; reproduced first with a class adapter in `tests/basis-app.test.tsx`, which threw the review's `TypeError`.
 
 **4. `packages/ui/src/preset/fixture-bodies.ts:17-26` — fix before release (dev and test servers only)**
 
@@ -226,3 +237,11 @@ Throwaway scripts are in `(a scratch folder)`.
   or a function of `BasisApp`'s query client that makes them: `{ router: (queryClient) => ({ context: { queryClient }
   }) }`. What to do: an app whose router sets a `context`, a `basepath` or a search serializer passes them, so that
   its route tests run the router it ships.
+- A `User` holds `roles`, the token's, empty for `fakeSignIn` and `anonymousSignIn` unless given; `fakeSignIn`'s user
+  may leave them out, and its token carries them. `useUser()` returns the signed-in user. A role decides what a page
+  shows; the API stays the judge. What to do: an adapter of the app's own returns `roles` on its user.
+- `basis:sessionchange` (`sessionChangeEvent`) is raised on `window` whenever the signed-in user becomes another user or
+  nobody, with `{ userId }` as its detail. What to do: nothing.
+- `arrowResponse` inside `BasisApp` is retried, reported and answered as a generated hook's request is, where a dataset's
+  failure reached only its grid. What to do: nothing.
+- A sign-in adapter written as a class works: the shell calls `signIn.token()` through the adapter. What to do: nothing.

@@ -32,5 +32,12 @@ function useSession(): Session {
   return session;
 }
 
-export { SessionContext, useSession };
+/** The signed-in user, or `null` for an anonymous one: `const user = useUser();`, and `user?.roles.includes("trader")`
+ * to decide what a page shows. A role decides only what the page shows; the API stays the judge of what the user may
+ * do. Only components inside `BasisApp` have one. */
+function useUser(): User | null {
+  return useSession().user;
+}
+
+export { SessionContext, useSession, useUser };
 export type { Session };

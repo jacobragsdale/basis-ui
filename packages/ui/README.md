@@ -200,8 +200,14 @@ them (`followPreferences`), and gives `apiFetch` the adapter's token, so every r
   handler runs; after any other failure the write may have happened, so it is the user's to repeat.
 - **Routes.** Unless the router sets its own, `BasisApp` gives it an error component, which shows the error on an
   `ErrorAlert` with "Try again", and a not-found page that links to `/`.
-- **Session.** `useSession()` returns `{ user, signIn, signOut }`. `signIn()` and `signOut()` go through the adapter,
-  then drop every cached response, which was the last user's, and ask again for what the page shows.
+- **Session.** `useSession()` returns `{ user, signIn, signOut }`, and `useUser()` the user alone, or `null`.
+  `signIn()` and `signOut()` go through the adapter, then drop every cached response, which was the last user's, and
+  ask again for what the page shows. Each time the user becomes another user or nobody, the shell raises
+  `basis:sessionchange` on `window`, `sessionChangeEvent`, with `{ userId }` as its detail, for whatever holds a
+  user's data outside the query cache.
+- **Roles.** A `User` holds `roles`, the token's, empty for an adapter whose tokens hold none. A role decides what a
+  page shows, `useUser()?.roles.includes("trader")`; the API stays the judge of what the user may do, and refuses
+  what the user may not, whatever the page shows.
 - **Sign-in problems.** A query or mutation that fails with a 401 of type `invalid-token` means the session has ended:
   `BasisApp` signs the user out through the adapter and raises a toast, "Your session has expired", whose "Sign in"
   signs them in again. One of type `sign-in-required` raises a toast that asks the user to sign in. A failed mutation
@@ -215,7 +221,7 @@ them (`followPreferences`), and gives `apiFetch` the adapter's token, so every r
   { book })`. The firm's collector will be a `Telemetry` of its own; `consoleTelemetry` writes to the console.
 
 A sign-in adapter is four functions, `{ currentUser, token, signIn, signOut }`: `currentUser()` resolves the signed-in
-`User` (`{ id, name, email? }`) or `null`, and `BasisApp` shows nothing of the app until it does; `token()` resolves the
+`User` (`{ id, name, email?, roles }`) or `null`, and `BasisApp` shows nothing of the app until it does; `token()` resolves the
 JWT for the next request, or `null`; `signIn()` signs in a user who is anonymous or whose session ended, and may leave
 the page for the sign-in system's; `signOut()` ends the session. `fakeSignIn({ user, issuer, audience, claims })`
 signs in `user` at once (a placeholder user by default, `null` for an anonymous one, whom `signIn()` signs in as the
@@ -326,6 +332,13 @@ const trades = useDataset("trades", async () => arrowResponse(getTradesUrl()), {
   primaryKey: "trade_id",
 });
 ```
+
+Inside `BasisApp`, `arrowResponse` goes through the shell as a generated hook does: a network failure or a 502, 503 or
+504, `keys-unavailable` among them, is asked again twice with the query client's backoff, the last failure is reported
+to telemetry (`source: "request"`, with the URL as `request`), and a sign-in problem is answered as a query's is.
+When the signed-in user becomes another user or nobody, the shell raises `basis:sessionchange` on `window`, its detail
+`{ userId }` (`null` for nobody), and `@basis/parallax`'s provider drops every dataset and view it holds, so one user's
+rows are never shown to the next.
 
 In tests, MSW stands in for the API: `basisPlugins()` serves its service worker's script in `vp dev` and `vp test`
 only, and `mockApi` from `@basis/ui/testing` starts it, or MSW's Node server where there is no browser, as [Testing the

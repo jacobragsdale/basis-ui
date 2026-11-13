@@ -12,9 +12,10 @@
 
 import type { QueryClient } from "@tanstack/react-query";
 
-import { isApiError } from "#api/fetch.ts";
+import { isApiError, setRequestRunner } from "#api/fetch.ts";
 import { toast } from "#components/toast-manager.ts";
 
+import { requestRunner } from "./outside-queries.ts";
 import type { Session } from "./session.ts";
 import { noSignInMessage } from "./sign-in.ts";
 import type { Telemetry } from "./telemetry.ts";
@@ -134,14 +135,17 @@ function signInAnswers(
   };
 }
 
-/** Answers each sign-in problem a query or a mutation of `queryClient` meets. `session` reads the session as it is
- * now, or `null` until the user is known. Returns the unsubscribe. */
+/** Answers each sign-in problem a query or a mutation of `queryClient` meets, and each a request outside TanStack Query
+ * meets, such as a dataset's, through `setRequestRunner`, with one answer, so that however many requests an ended
+ * session fails it signs out once. `session` reads the session as it is now, or `null` until the user is known.
+ * Returns the unsubscribe. */
 function answerSignInProblems(
   queryClient: QueryClient,
   session: () => Session | null,
   telemetry: Telemetry,
 ): () => void {
   const answer = signInAnswers(session, telemetry);
+  const stopRequests = setRequestRunner(requestRunner({ answer, telemetry }));
   const stopQueries = queryClient.getQueryCache().subscribe((event) => {
     if (event.type === "updated" && event.action.type === "error") {
       answer(event.action.error);
@@ -155,6 +159,7 @@ function answerSignInProblems(
   return () => {
     stopQueries();
     stopMutations();
+    stopRequests();
   };
 }
 

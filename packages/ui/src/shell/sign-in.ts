@@ -3,11 +3,13 @@
  * development, signing its tokens with the development key basis publishes, which every basis API accepts on a
  * developer's declared desktop and refuses anywhere else (basis's docs/contract.md, Identity). */
 
-/** The signed-in user. `id` is the token's subject, its `sub` claim. */
+/** The signed-in user. `id` is the token's subject, its `sub` claim. `roles` are the token's roles, empty for an adapter
+ * whose tokens hold none: a role decides what a page shows, and the API stays the judge of what the user may do. */
 interface User {
   readonly id: string;
   readonly name: string;
   readonly email?: string;
+  readonly roles: readonly string[];
 }
 
 /** What `BasisApp` needs from a sign-in system. */
@@ -47,7 +49,15 @@ const renewalMargin = 60;
 const millisecondsPerSecond = 1000;
 
 /** The user `fakeSignIn` signs in when it is given none. */
-const fakeUser: User = { email: "dev.user@example.com", id: "dev-user", name: "Dev User" };
+const fakeUser: User = {
+  email: "dev.user@example.com",
+  id: "dev-user",
+  name: "Dev User",
+  roles: [],
+};
+
+/** A user as `fakeSignIn` takes one: its roles may be left out, for none. */
+type FakeUser = Omit<User, "roles"> & { readonly roles?: readonly string[] };
 
 function base64Url(bytes: Uint8Array): string {
   return btoa(String.fromCodePoint(...bytes))
@@ -81,7 +91,7 @@ async function signWithDevelopmentKey(claims: Readonly<Record<string, unknown>>)
 interface FakeSignInOptions {
   /** Who is signed in at the start: a placeholder user by default, or `null` for an anonymous one, whom `signIn`
    * signs in as the placeholder user. */
-  readonly user?: User | null;
+  readonly user?: FakeUser | null;
   /** The token's `iss`, which must be the API's `BASIS_IDENTITY__ISSUER`. `basis-development` by default. */
   readonly issuer?: string;
   /** The token's `aud`, which must be the API's `BASIS_IDENTITY__AUDIENCE`. `basis-development` by default. */
@@ -91,7 +101,7 @@ interface FakeSignInOptions {
 }
 
 /** A sign-in adapter for tests and development: `user` is signed in at once, and each token is a JWT for them, signed
- * with basis's development key, with their `name` and `email` as claims. A basis API on a developer's desktop whose
+ * with basis's development key, with their `name`, `email` and `roles` as claims. A basis API on a developer's desktop whose
  * settings verify with the development key, such as `basis dev`'s, accepts it; any other refuses it with a 401.
  * `signOut` makes the user anonymous, and `signIn` signs them in again at once. */
 function fakeSignIn({
@@ -100,12 +110,13 @@ function fakeSignIn({
   audience = developmentKeyId,
   claims = {},
 }: FakeSignInOptions = {}): SignIn {
-  let current = user;
+  const given: User | null = user === null ? null : { ...user, roles: user.roles ?? [] };
+  let current = given;
   let signed: { readonly token: string; readonly expires: number } | null = null;
   return {
     currentUser: async () => Promise.resolve(current),
     signIn: async () => {
-      current = user ?? fakeUser;
+      current = given ?? fakeUser;
       signed = null;
       await Promise.resolve();
     },
@@ -127,6 +138,7 @@ function fakeSignIn({
           iat: now,
           iss: issuer,
           name: current.name,
+          roles: current.roles,
           sub: current.id,
           ...(current.email === undefined ? {} : { email: current.email }),
         };
@@ -154,4 +166,4 @@ function anonymousSignIn(): SignIn {
 }
 
 export { anonymousSignIn, fakeSignIn, fakeUser, noSignInMessage };
-export type { FakeSignInOptions, SignIn, User };
+export type { FakeSignInOptions, FakeUser, SignIn, User };
