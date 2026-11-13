@@ -28,6 +28,13 @@ on" marks and the changelog keep what was done.
 5. **The UI runs on Windows only.** Users run Chrome or Edge on Windows, and developers work on Windows. WSL keeps
    working where that is cheap, and is not a target.
 
+6. **`@basis/create` makes a repo itself.** Found while proving the template on 2026-11-13: Vite+ 1.5.0's `vp create`
+   rewrites every standalone app it makes (a catalog in `pnpm-workspace.yaml`, `fmt` and `lint` blocks in
+   `vite.config.ts`, `vite-plus` as `catalog:`), with no flag to stop it, so an app made that way fails its own drift
+   check at once. The design named the fallback, a creator of basis-ui's own, and the orchestrator took it under the
+   maintainer's leave to decide: `vp dlx @basis/create NAME` copies the template and nothing more, `createConfig`
+   leaves the manifest, and the proof runs that command (step 7.13).
+
 Left as they are: the name, still a placeholder, and the pilot at the firm, the maintainer's.
 
 ## How to work
@@ -206,19 +213,19 @@ The orchestrator's, once every lane has landed:
 
 ## Status
 
-| Step | State                                         | Commits                                                                     |
-| ---- | --------------------------------------------- | --------------------------------------------------------------------------- |
-| 7.1  | done                                          | `342555c`, `9b7940c`, `a77b071`, `93a1bba`, `7380686`, `f045d96`            |
-| 7.2  | done                                          | `3525da6`, `549406c`                                                        |
-| 7.3  | done                                          | `644114c`, `760a598`, `d0c2e5e`, `5fc6ba5`, `6bb56e0`, `2b82cb8`, `e9e937a` |
-| 7.4  | done                                          | `22be6e7` and the eight before it                                           |
-| 7.5  | done                                          | `85821de`, `4372e4a`, and the two after                                     |
-| 7.6  | in progress                                   |                                                                             |
-| 7.7  | in progress, in a lane of its own, `lint`     |                                                                             |
-| 7.8  | in progress, in a lane of its own, `template` |                                                                             |
-| 7.9  | done                                          | `f75b731`, `18a568f`, `a02483e`, `aa5c042`, `e6b290e`, `d92d4f6`            |
-| 7.10 | in progress                                   |                                                                             |
-| 7.11 | in progress, in a lane of its own, `charts`   |                                                                             |
-| 7.12 | done                                          | `f2d0bf0`, `a5704ce`, `7ee636b`, `b94b2c7` and three more                   |
-| 7.13 | not started                                   |                                                                             |
-| 7.14 | not started                                   |                                                                             |
+| Step | State                                                        | Commits                                                                       |
+| ---- | ------------------------------------------------------------ | ----------------------------------------------------------------------------- |
+| 7.1  | done                                                         | `342555c`, `9b7940c`, `a77b071`, `93a1bba`, `7380686`, `f045d96`              |
+| 7.2  | done                                                         | `3525da6`, `549406c`                                                          |
+| 7.3  | done                                                         | `644114c`, `760a598`, `d0c2e5e`, `5fc6ba5`, `6bb56e0`, `2b82cb8`, `e9e937a`   |
+| 7.4  | done                                                         | `22be6e7` and the eight before it                                             |
+| 7.5  | done                                                         | `85821de`, `4372e4a`, and the two after                                       |
+| 7.6  | done, proven on winbox, on Windows and in WSL; W7 not solved | `6842fd6`, `c7ea099`, `40948f7`, `38b4451`, `b497216`, `713e78b` and one more |
+| 7.7  | in progress, in a lane of its own, `lint`                    |                                                                               |
+| 7.8  | in progress, in a lane of its own, `template`                |                                                                               |
+| 7.9  | done                                                         | `f75b731`, `18a568f`, `a02483e`, `aa5c042`, `e6b290e`, `d92d4f6`              |
+| 7.10 | done                                                         | `624891b` and the eight around it                                             |
+| 7.11 | in progress, in a lane of its own, `charts`                  |                                                                               |
+| 7.12 | done                                                         | `f2d0bf0`, `a5704ce`, `7ee636b`, `b94b2c7` and three more                     |
+| 7.13 | in progress                                                  |                                                                               |
+| 7.14 | not started                                                  |                                                                               |
