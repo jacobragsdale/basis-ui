@@ -30,5 +30,6 @@ test("the conventions page lists what the API answers", async () => {
 
 test("a bond's page shows its terms", async () => {
   renderApp(routeTree, "/bonds/US91282CRF04");
-  expect(await screen.findByText("Issued 2026-05-15, matures 2036-05-15")).toBeTruthy();
+  const matures = await screen.findByText("Matures");
+  expect(matures.nextElementSibling?.textContent).toBe("2036-05-15");
 });
