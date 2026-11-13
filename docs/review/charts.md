@@ -193,6 +193,12 @@ fields, are taken, and only the plotted columns are read (`src/chart/small-table
 - The crosshair sync group is `[dataset, x, axis]` and omits `calendar`, `session` and `tenor_spacing`, which change axis positions, so two such charts point at different times.
 - Severity: polish. Confidence: confirmed by reading.
 
+Done in Charts: the text alternative reads bins, densities and only what is shown, and crosshairs group by the axis's calendar: a histogram's text alternative reads each series' rows and its fullest bin, by the bounds the
+engine wrote; a density's, its dots and the x axis's ends as its ticks label them; and hidden series, groups and
+slices are left out, by `hiddenLabels`. The default crosshair group adds a trading-time axis's calendar and session
+and a tenor axis's spacing, at their defaults when unset, so charts that place times differently no longer share a
+crosshair. Held in `tests/unit/chart-words.test.ts`, which fails on the code before.
+
 ## Overall
 
 The area is in better shape than a week of agent-written code suggests. The draw model is pure and readable, every number a reader sees is the engine's text, and stacked mixed-sign bars, reversed axes, the crosshair's "nearest point, labelled with its own x" rule, the waterfall refusals and unmount cleanup all held up. The indicator formulas in `crates/parallax-engine/src/indicator.rs` (SMA, EMA, WMA, Bollinger, RSI, MACD, ATR, stochastic, VWAP) match their TA-Lib definitions and warm-ups; I read them but could not run them. The chart TypeScript has no dependence on the browser's time zone.
@@ -252,3 +258,7 @@ The defects cluster in three places the pixel-parity port could not catch:
 - A pie labels its slices with shares only when its second measure is the first's share of the grand total, and
   with their values while a slice is hidden, where it labelled a half of the ring "25.0%". What to do: nothing; a
   pie that wants shares gives `{ ...first, show_as: "percent_of_grand_total" }` as its second measure.
+
+- A chart's text alternative reads a histogram's rows and fullest bin and a density's dots, and leaves out what the
+  legend hides. Crosshairs move together only between charts whose axes share a calendar, session or tenor spacing.
+  What to do: nothing.

@@ -14,9 +14,28 @@ interface PlotSize {
   readonly height: number;
 }
 
+/** What places points along a chart's x axis: its kind, and a trading-time axis's calendar and session or a tenor
+ * axis's spacing, at their defaults when the layout gives none. */
+function axisOf(chart: LayoutChart): readonly unknown[] {
+  switch (chart.axis) {
+    case "trading": {
+      return [chart.axis, chart.calendar ?? "nyse", chart.session ?? null];
+    }
+    case "tenor": {
+      return [chart.axis, chart.tenor_spacing ?? "even"];
+    }
+    case "value": {
+      return [chart.axis];
+    }
+    default: {
+      return chart.axis satisfies never;
+    }
+  }
+}
+
 /** The group a chart's crosshair moves with: `sync` when given, null for none; by default charts of the same dataset,
- * x column and axis, among the kinds drawn along an x axis. */
-function groupOf(layout: Layout | null, sync: string | null | undefined): string | null {
+ * x column and axis, among the kinds drawn along an x axis, as only those place a time at the same point. */
+function groupOf(layout: Layout | null, sync?: string | null): string | null {
   if (sync !== undefined) {
     return sync;
   }
@@ -24,7 +43,7 @@ function groupOf(layout: Layout | null, sync: string | null | undefined): string
   if (layout === null || chart === null || chart.x === "" || !drawableKinds.includes(chart.kind)) {
     return null;
   }
-  return JSON.stringify([layout.dataset, chart.x, chart.axis]);
+  return JSON.stringify([layout.dataset, chart.x, ...axisOf(chart)]);
 }
 
 /** Whether a chart takes drawings: the kinds the engine reduces along an x axis over a price. */

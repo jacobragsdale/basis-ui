@@ -1,13 +1,20 @@
 /* What a chart says in words: the status line's summary of what it draws, and the text alternative a screen reader
  * reads in place of the canvas, with the values the chart shows, as the engine wrote them. */
 
-import type { CandleData, ChartFrameData, PointSeries, SeriesData } from "#frame/chart-data.ts";
+import type {
+  CandleData,
+  ChartFrameData,
+  HistogramSeries,
+  PointSeries,
+  SeriesData,
+} from "#frame/chart-data.ts";
 import { groupedKinds } from "#layout/chart.ts";
 import type { LayoutChart } from "#layout/chart.ts";
 
 import { bucketTitle } from "./model-candles.ts";
 import type { CategoryData } from "./model-types.ts";
 import { unreadProblem } from "./group-limits.ts";
+import { hiddenLabels } from "./series-keys.ts";
 
 const count = new Intl.NumberFormat("en-US");
 
@@ -133,12 +140,39 @@ function dotWords(series: PointSeries): string {
   return `${series.label}: ${dots(series.y.length)}, ${where}`;
 }
 
-/** Each group's values, as a table would read them. */
-function groupWords(data: CategoryData): readonly string[] {
-  return data.categories.slice(0, mostListed).map((category, index) => {
-    const values = data.series.map((series) => `${series.label} ${series.texts[index] ?? ""}`);
-    return `${category}: ${values.join(", ")}`;
-  });
+/** Each group's values, as a table would read them: the groups and series shown, not those hidden. */
+function groupWords(data: CategoryData, hidden: readonly string[]): readonly string[] {
+  const series = data.series.filter((shown) => !hidden.includes(shown.label));
+  return data.categories
+    .map((category, index) => ({ category, index }))
+    .filter(({ category }) => !hidden.includes(category))
+    .slice(0, mostListed)
+    .map(({ category, index }) => {
+      const values = series.map((shown) => `${shown.label} ${shown.texts[index] ?? ""}`);
+      return `${category}: ${values.join(", ")}`;
+    });
+}
+
+/** A histogram series' rows, and its fullest bin, by the bin's bounds as the engine wrote them. */
+function binWords(series: HistogramSeries): string {
+  let fullest = -1;
+  for (const [bin, rows] of series.counts.entries()) {
+    fullest = rows > (series.counts[fullest] ?? 0) ? bin : fullest;
+  }
+  const rows = sum(series.counts);
+  if (fullest === -1) {
+    return `${series.label}: no rows shown`;
+  }
+  const bounds = `${series.fromText[fullest] ?? ""} to ${series.toText[fullest] ?? ""}`;
+  const most = count.format(series.counts[fullest] ?? 0);
+  return `${series.label}: ${count.format(rows)} rows, the most, ${most}, from ${bounds}`;
+}
+
+/** A density's dots, and the x axis's ends it spans, as its ticks label them. */
+function densityWords(frame: ChartFrameData, dotsShown: number): string {
+  const [first, last] = [frame.ticks[0]?.label, frame.ticks.at(-1)?.label];
+  const across = first === undefined || last === undefined ? "" : `, from ${first} to ${last}`;
+  return `${dots(dotsShown)} drawn as a density${across}`;
 }
 
 /** A candle chart's first open and last close. */
@@ -152,26 +186,48 @@ function candleWords(candles: CandleData): readonly string[] {
       ];
 }
 
-/** The values a frame shows, in words. */
-function frameWords(frame: ChartFrameData | null): readonly string[] {
+/** The series of `all` shown, not hidden, as many as a text alternative lists. */
+function shownOf<TSeries extends { readonly label: string }>(
+  all: readonly TSeries[],
+  hidden: readonly string[],
+): TSeries[] {
+  return all.filter((series) => !hidden.includes(series.label)).slice(0, mostListed);
+}
+
+/** The values a frame shows, in words: of the series shown, not those hidden. */
+function frameWords(frame: ChartFrameData | null, hidden: readonly string[]): readonly string[] {
   if (frame === null) {
     return [];
   }
   const { content } = frame;
-  if (content.kind === "series") {
-    return content.series.slice(0, mostListed).map((series) => seriesWords(series));
+  switch (content.kind) {
+    case "series": {
+      return shownOf(content.series, hidden).map((series) => seriesWords(series));
+    }
+    case "points": {
+      return shownOf(content.series, hidden).map((series) => dotWords(series));
+    }
+    case "histogram": {
+      return shownOf(content.series, hidden).map((series) => binWords(series));
+    }
+    case "density": {
+      return [densityWords(frame, sum(content.counts))];
+    }
+    case "candles": {
+      return candleWords(content.candles);
+    }
+    default: {
+      return content satisfies never;
+    }
   }
-  if (content.kind === "points") {
-    return content.series.slice(0, mostListed).map((series) => dotWords(series));
-  }
-  return content.kind === "candles" ? candleWords(content.candles) : [];
 }
 
 /** What the chart shows, for a screen reader: its summary, then its values. */
 function chartWords(input: SummaryInput): string {
   const { chart, frame, categories } = input;
   const grouped = categories !== null && groupsKind(chart) && categories.unread === undefined;
-  const values = grouped ? groupWords(categories) : frameWords(frame);
+  const hidden = hiddenLabels(chart, frame);
+  const values = grouped ? groupWords(categories, hidden) : frameWords(frame, hidden);
   return [chartSummary(input), ...values].join(". ");
 }
 
