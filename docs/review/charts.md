@@ -122,12 +122,22 @@ candle and grouped chart all ignored it), with what to change. The README, the l
 - Actual: bar heights 0, 0, 197.6, 364.4, 197.6, 0, 0, 0 px; five of eight non-empty bins vanish, which are the tails a log axis is used to show.
 - Severity: fix before release. Confidence: confirmed by running.
 
+Done in Charts: a log axis shows a histogram's single rows and fits a scatter's dots: what grows from a baseline on a log axis, a histogram's bins and an area, starts a decade
+under its smallest value when that is a power of ten itself (`logDomain`'s `under`), so a bin of one row has a
+height; `tests/unit/chart-log-axes.test.ts` draws the review's counts, every bin with a row taller than a pixel.
+
 **10. `packages/parallax/src/chart/model-points.ts:139`** — A scatter's log scale is fitted to `[yFrom, yTo]` only, so one y at or below zero puts the domain on the single decade around `yTo`.
 
 - Scenario: y values `-0.0005, 0.0004, 0.002, 0.008, 0.05` with `log_y`.
 - Actual: domain `[0.01, 0.1]`; three of five dots land at y = 410 to 882 px in a plot ending at 378 and are clipped away.
 - Also: the density form ignores `log_y` (`src/chart/model-bins.ts:179-185`), so the axis flips between log and linear at 5,000 rows.
 - Severity: polish, bordering fix. Confidence: confirmed by running (dots), by reading (density).
+
+Done in Charts: a log axis shows a histogram's single rows and fits a scatter's dots: a scatter's log axis is fitted to its dots above zero as well as the range's ends, so one
+dot at or below zero no longer squeezes the axis into the top decade; the review's dots fall on
+`[0.0001, 0.1]`. The density half is said, not fixed: the engine bins a density by value, so its axis stays
+linear, and its status line now ends ", on a linear axis" when the layout asks for a log one. Log bins would be the
+engine's (`parallax-engine`'s density), which t4 has been told.
 
 **11. `packages/parallax/src/chart/scene-pointer.ts:255-279`** — The wheel is always swallowed over a chart with an x axis, and keys ignore modifiers.
 
@@ -214,3 +224,7 @@ The defects cluster in three places the pixel-parity port could not catch:
 - A chart refuses a setting it does not draw, with what to change, where it ignored it: `stacked` on anything but a
   bar chart, and `y_right` on anything but a line or area chart. What to do: a layout that set either drops it, or
   draws its columns as the message says.
+
+- A histogram or area on a log axis shows its smallest values, such as a bin of one row, where they had no height;
+  a scatter's log axis fits its dots though one is at or below zero, and a density, which stays linear, says so.
+  What to do: nothing.

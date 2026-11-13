@@ -146,15 +146,18 @@ function niceDomain(
   return [Number.isFinite(from) ? from : low, Number.isFinite(to) ? to : high];
 }
 
-/** A positive domain for a log scale covering `min..max`, widened to whole powers of ten. */
-function logDomain(min: number, max: number): readonly [number, number] {
+/** A positive domain for a log scale covering `min..max`, widened to whole powers of ten. `under` starts it a decade
+ * under a `min` that is a power of ten itself, so that a bar of `min`, which grows from the domain's start, has a
+ * height. */
+function logDomain(min: number, max: number, under = false): readonly [number, number] {
   if (!(min > 0) || !(max > 0) || !Number.isFinite(min) || !Number.isFinite(max)) {
     return [1, ten];
   }
   // At least one decade, within the powers a double holds.
   const top = Math.ceil(Math.log10(max));
   const high = Math.min(highestPower, Math.max(lowestPower + 1, top));
-  const bottom = Math.floor(Math.log10(min));
+  const floor = Math.floor(Math.log10(min));
+  const bottom = under && ten ** floor >= min ? floor - 1 : floor;
   const low = Math.max(lowestPower, Math.min(high - 1, bottom));
   return [ten ** low, ten ** high];
 }

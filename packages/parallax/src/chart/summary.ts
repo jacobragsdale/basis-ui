@@ -75,7 +75,12 @@ function drawn({ chart, frame, categories }: SummaryInput): string {
       `${count.format(categories.categories.length)} groups`
     );
   }
-  return frame === null ? "loading…" : drawnOf(frame);
+  if (frame === null) {
+    return "loading…";
+  }
+  // The engine bins a density by value, so its axis is linear, though the dots it stands for were on a log one.
+  const linear = frame.content.kind === "density" && chart.log_y && !chart.compare;
+  return linear ? `${drawnOf(frame)}, on a linear axis` : drawnOf(frame);
 }
 
 /** The status line's summary: what the chart draws, whether it is zoomed, drawings it cannot place, and events past

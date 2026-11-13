@@ -149,7 +149,8 @@ function valueScale(
   if (input.chart.log_y && !input.chart.compare) {
     const positive = extent(values, true);
     if (positive !== null) {
-      return logScale(logDomain(positive[0], positive[1]), range);
+      // What grows from a baseline, bars and areas, starts under its smallest value, so that it shows.
+      return logScale(logDomain(positive[0], positive[1], zero), range);
     }
   }
   const all = extent(values, false) ?? [0, 1];

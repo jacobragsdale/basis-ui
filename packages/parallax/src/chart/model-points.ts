@@ -136,7 +136,11 @@ function fitMark(
  * range shows whole. */
 function dotScales(input: ModelInput, frame: ChartFrameData, content: Content): DotScales {
   const range: readonly [number, number] = [input.height - xAxisHeight, padOf(input)];
-  const scale = valueScale(input, [content.yFrom, content.yTo], { range, zero: false });
+  // A log axis fits the dots it can place, those above zero, rather than the range's ends, one of which may not be.
+  const fitted = input.chart.log_y
+    ? [content.yFrom, content.yTo, ...content.series.flatMap((series) => [...series.y])]
+    : [content.yFrom, content.yTo];
+  const scale = valueScale(input, fitted, { range, zero: false });
   const plot = plotFor(input, {
     left: axis("left", scale, { style: columnStyle(input, input.chart.y[0]) }).ticks,
     right: null,
