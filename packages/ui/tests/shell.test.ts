@@ -5,7 +5,7 @@
 import { describe, expect, test } from "vite-plus/test";
 import { z } from "zod";
 
-import { anonymousSignIn, ApiError, describeError, fakeSignIn } from "#index.ts";
+import { anonymousSignIn, ApiError, describeError, fakeSignIn, NetworkError } from "#index.ts";
 import type { AnyProblem } from "#index.ts";
 import { shouldRetry, shouldRetryMutation } from "#shell/query-client.ts";
 import { signInProblem } from "#shell/sign-in-problems.ts";
@@ -123,8 +123,9 @@ describe(shouldRetry, () => {
     expect(shouldRetry(2, apiError(status))).toBe(false);
   });
 
-  test("retries a request that never reached the API, but not a response its schema refused", () => {
-    expect(shouldRetry(0, new TypeError("Failed to fetch"))).toBe(true);
+  test("retries a request that never reached the API, but not a response its schema refused, nor a bug", () => {
+    expect(shouldRetry(0, new NetworkError())).toBe(true);
+    expect(shouldRetry(0, new TypeError("Failed to fetch"))).toBe(false);
     expect(shouldRetry(0, z.number().safeParse("five").error)).toBe(false);
     expect(shouldRetry(0, new Error("a bug"))).toBe(false);
   });
@@ -148,7 +149,7 @@ describe(shouldRetryMutation, () => {
     ["a 502", apiError(502, { type: "call-failed" })],
     ["a 504", apiError(504, { type: "deadline-exceeded" })],
     ["a 422", apiError(422)],
-    ["a lost connection", new TypeError("Failed to fetch")],
+    ["a lost connection", new NetworkError()],
   ])("never retries %s, which may have come after the write", (_name, error) => {
     expect(shouldRetryMutation(0, error)).toBe(false);
   });
@@ -203,7 +204,8 @@ describe(describeError, () => {
 
   test.each([
     [z.number().safeParse("five").error, "The response was not in the form this page expects"],
-    [new TypeError("Failed to fetch"), "The server could not be reached"],
+    [new NetworkError(), "The server could not be reached"],
+    [new TypeError("Failed to fetch"), "Something went wrong"],
     [new Error("Cannot read properties of undefined"), "Something went wrong"],
     ["a thrown string", "Something went wrong"],
   ])("names a failure the API did not answer: %s", (failure, title) => {

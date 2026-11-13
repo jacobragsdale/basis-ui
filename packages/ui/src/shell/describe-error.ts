@@ -3,6 +3,7 @@
  * failure when the API answered nothing the client could read. */
 
 import { isApiError } from "#api/fetch.ts";
+import { isNetworkError } from "#api/network-error.ts";
 import { fieldErrors } from "#api/problem.ts";
 
 /** One field's error, by the field's name as TanStack Form gives it, such as `legs[0].price`; `""` is the whole
@@ -64,7 +65,7 @@ function describeError(error: unknown): ErrorDescription {
       title: "The response was not in the form this page expects",
     };
   }
-  if (error instanceof TypeError) {
+  if (isNetworkError(error)) {
     return {
       detail: "Check the network connection, then try again.",
       fields: [],

@@ -1,6 +1,6 @@
 /* The failures the app shell page shows: problems a basis API answers, and failures it never answered. */
 
-import { ApiError } from "@basis/ui";
+import { ApiError, NetworkError } from "@basis/ui";
 import type { AnyProblem } from "@basis/ui";
 import { z } from "zod";
 
@@ -38,7 +38,10 @@ const keysUnavailable = failed({
   type: "keys-unavailable",
 });
 
-const unreachable = new TypeError("Failed to fetch");
+/** What a request that never reached the API fails with, as `apiFetch` throws it. */
+const unreachable = new NetworkError("Failed to fetch", {
+  cause: new TypeError("Failed to fetch"),
+});
 
 /** What a response that breaks its schema throws: a price sent as a number where the document says a string. */
 const brokenResponse = z.object({ price: z.string() }).safeParse({ price: 99.5 }).error;

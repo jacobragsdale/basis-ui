@@ -12,6 +12,12 @@ One release blocker, four fix-before-release defects, and a tail of polish. The 
 - **Same root cause on errors:** a 502 with a JSON content type and empty body, or a truncated `invalid-token` 401, becomes a `SyntaxError`. It is then neither retried nor answered as a sign-in problem.
 - **Confidence:** confirmed by running. A FastAPI `TestClient` 204 returned `{'content-type': 'application/json'} b''`; a node script against `fetch.ts` reproduced the throw. The FastAPI check was one Python snippet in basis's venv, outside the node-only rule, and wrote nothing.
 
+Done in Shell: an empty body reads as none, and only a failed fetch is a network failure: `readBody` reads no body for a 204 or a 205, and none for any empty body whatever its content type,
+so `data` is undefined; a JSON content type is read from the text, and on a failure a body that is not the JSON it
+claims is kept as text, so an empty 502, a 500 of plain text and a truncated `invalid-token` 401 each become an
+`ApiError` with their status, which the retry rule sees. A success whose JSON cannot be read still throws. Tested in
+`tests/api-boundary.test.ts` with responses as FastAPI and an ingress send them; not run against a live FastAPI.
+
 **2. `packages/ui/src/shell/sign-in-problems.ts:139-159`, `session-state.ts:81-84`, `packages/parallax/src/react/dataset-load.ts:73-87` — fix before release**
 
 - **Defect:** the documented dataset path, `useDataset(name, async () => arrowResponse(url))`, bypasses everything the shell does for requests.
@@ -46,11 +52,24 @@ One release blocker, four fix-before-release defects, and a tail of polish. The 
 - **Scenario B:** A 422 with no `errors`, or one entry of a third kind such as `{detail, header}`, loses its whole title, detail and fields.
 - **Confidence:** confirmed by running both cases.
 
+Done in Shell: an empty body reads as none, and only a failed fetch is a network failure: a body that is not problem details becomes one with no title, so `describeError` takes the
+status's own words ("You do not have access to this", "Not found", "The request failed with status 503"), and the
+`ApiError`'s message is `Request failed with status N`; the status text is no longer borrowed, since HTTP/2 has none.
+A 422 that is not the validation shape is read as problem details, keeping its title and detail, and `fieldErrors`
+reads each entry of `errors` on its own, so one of a kind the contract does not name, such as `{ detail, header }`,
+keeps its detail under the whole request (`""`) and the rest keep their fields.
+
 **7. `packages/ui/src/shell/query-client.ts:32`, `describe-error.ts:67-73` — polish**
 
 - **Defect:** every `TypeError` is treated as a network failure.
 - **Scenario:** A bug in a `queryFn` or `select` (`x.map is not a function`), or finding 3, is retried twice with backoff and shown as "The server could not be reached".
 - **Confidence:** confirmed by running.
+
+Done in Shell: an empty body reads as none, and only a failed fetch is a network failure: `apiFetch` and `arrowResponse` throw what `fetch` itself threw as a `NetworkError`, a
+`TypeError` that holds the original as its `cause`, exported with `isNetworkError`. The query client retries only it,
+and `describeError` says "The server could not be reached" only for it; any other `TypeError`, such as a bug in a
+`select` or a token source that throws, is "Something went wrong" with its message, and is not retried. The gallery's
+"unreachable" sample is a `NetworkError`. This also closes `data-nav.md` finding 15.
 
 **8. `packages/ui/src/api/fetch.ts:59`, `api/mutator.ts:16` — polish, but a public type that is hard to change later**
 
@@ -87,6 +106,9 @@ One release blocker, four fix-before-release defects, and a tail of polish. The 
 - **Defect:** `pointerPath` lets `decodeURIComponent` throw.
 - **Scenario:** A 422 with pointer `#/discount%` throws `URIError` inside `describeError`. If that happens in `PageError`, the outer boundary's own fallback, nothing is left to catch it.
 - **Confidence:** the throw was confirmed by running; the blank page is by reading. A contract-compliant basis percent-encodes, so this is rare.
+
+Done in Shell: an empty body reads as none, and only a failed fetch is a network failure: `pointerPath` returns `undefined` for a pointer `decodeURIComponent` refuses, so its error
+sits under the whole request (`""`) and `describeError` cannot throw on it.
 
 **14. `packages/ui/src/preset/dev-server.ts:62-72` — polish**
 
@@ -130,3 +152,17 @@ The area is in better shape than a week of agent work would suggest: small files
 - **Example app:** its pages were not read.
 
 Throwaway scripts are in `(a scratch folder)`.
+
+## Changelog
+
+- A 204, a 205, or any response with an empty body, whatever its content type, gives a generated hook `data`
+  undefined, where a 204 that FastAPI sends as `application/json` used to fail after the write had happened. A failed
+  response whose body is not the JSON it claims, or is empty, is an `ApiError` with its status, so it is retried or
+  answered as any other. What to do: nothing.
+- An error page with no problem details, such as an ingress's 403 over HTTP/2, is shown by its status ("You do not have
+  access to this"), not "Request failed", and an `ApiError`'s message says the status. A 422 that is not the
+  validation shape keeps its title and detail. What to do: nothing.
+- Only a request that never reached the API is a network failure: `apiFetch` and `arrowResponse` throw it as a
+  `NetworkError`, a `TypeError` whose `cause` is what `fetch` threw, and `isNetworkError` tells it. Any other
+  `TypeError`, such as a bug in a query's `select`, is no longer retried or shown as "The server could not be
+  reached". What to do: a test that stands for a lost connection with `new TypeError(...)` makes a `NetworkError`.

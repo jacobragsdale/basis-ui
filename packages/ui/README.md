@@ -193,7 +193,7 @@ them (`followPreferences`), and gives `apiFetch` the adapter's token, so every r
   development, the cookie stays the app's alone, since the browser would refuse it. Give the same domain in every app.
 
 - **Queries.** `createQueryClient()` keeps data fresh for 30 seconds and retries a query twice, but only after a
-  network failure or a 502, 503 or 504, which basis's contract says may pass; a 4xx, a 500 or a response its schema
+  network failure, a `NetworkError` that `fetch` itself threw, or a 502, 503 or 504, which basis's contract says may pass; a 4xx, a 500 or a response its schema
   refused shows at once. A mutation retries twice only after a `keys-unavailable` 503, which basis answers before any
   handler runs; after any other failure the write may have happened, so it is the user's to repeat.
 - **Routes.** Unless the router sets its own, `BasisApp` gives it an error component, which shows the error on an
@@ -278,8 +278,10 @@ Those two comments are the only ones an app may write to turn a check off. `basi
 value of unknown shape with a zod schema. A comment that turns off every rule hides from the lint as well, so
 `vp run verify` reads `src/` as text for them, and `vp run review` counts them.
 
-A hook returns the response as `{ data, status, headers }`, so a component reads `query.data.data`, and its error is an
-`ApiError` holding the API's problem details. Show it with `ErrorAlert`, which renders nothing while there is no error:
+A hook returns the response as `{ data, status, headers }`, so a component reads `query.data.data`; a 204, a 205, or any
+response with an empty body has `data` undefined, whatever its content type. Its error is an `ApiError` holding the
+API's problem details, a body that is not problem details, such as an ingress's error page, read as one with the
+response's status. Show it with `ErrorAlert`, which renders nothing while there is no error:
 
 ```tsx
 import { ErrorAlert } from "@basis/ui";
@@ -296,7 +298,9 @@ const positions = useGetPositions();
 ```
 
 `ErrorAlert` shows the problem's title, its detail, each field a 422 names (`legs[0].price: Must be positive`) and the
-request's reference, and words of its own for a lost connection or a response that broke its schema. A failed
+request's reference, and words of its own for a lost connection or a response that broke its schema. Only a `NetworkError` is a lost
+connection: a `TypeError` thrown by the page's own code, in a `select`, is shown as "Something went wrong" with its
+message, and is never retried. A failed
 mutation raises a toast of the same words through `toastError`, unless the mutation says otherwise, as a form that puts
 the errors on its fields does:
 

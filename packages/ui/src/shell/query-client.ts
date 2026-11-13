@@ -3,6 +3,7 @@
 import { QueryClient } from "@tanstack/react-query";
 
 import { isApiError } from "#api/fetch.ts";
+import { isNetworkError } from "#api/network-error.ts";
 
 /** How long a query's data counts as fresh, in milliseconds. A page that mounts within it shows the cached data without
  * asking again; after it, the data still shows while the query asks again in the background. */
@@ -20,8 +21,8 @@ const passingStatuses = new Set([badGateway, serviceUnavailable, gatewayTimeout]
 
 /** Whether a failed query is worth asking again. A problem the API answered is final unless its status may pass, so
  * a 4xx never retries, and a `keys-unavailable` 503 retries without signing the user out; a response its schema
- * refused would be refused again; a request that never reached the API, a `TypeError` from `fetch`, may reach it next
- * time. */
+ * refused would be refused again; a request that never reached the API, a `TypeError` from `fetch` itself, may reach it
+ * next time, and a `TypeError` from the page's own code is a bug, which would only fail again. */
 function shouldRetry(failureCount: number, error: unknown): boolean {
   if (failureCount >= retries) {
     return false;
@@ -29,7 +30,7 @@ function shouldRetry(failureCount: number, error: unknown): boolean {
   if (isApiError(error)) {
     return passingStatuses.has(error.status);
   }
-  return error instanceof TypeError;
+  return isNetworkError(error);
 }
 
 /** Whether a failed mutation is worth sending again: only when the API answered `keys-unavailable`, which basis's

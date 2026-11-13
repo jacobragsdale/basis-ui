@@ -5,6 +5,7 @@
 
 import type { ZodType } from "zod";
 
+import { NetworkError } from "./network-error.ts";
 import { problemSchema, validationProblemSchema } from "./problem.ts";
 import type { Problem, ValidationProblem } from "./problem.ts";
 
@@ -63,6 +64,18 @@ function isApiError(error: unknown): error is ApiError {
   return error instanceof ApiError;
 }
 
+/** `fetch`, its own failure thrown as a `NetworkError`. */
+async function send(url: string, init: RequestInit): Promise<Response> {
+  try {
+    return await fetch(`${apiPrefix}${url}`, init);
+  } catch (error) {
+    if (error instanceof TypeError) {
+      throw new NetworkError(error.message, { cause: error });
+    }
+    throw error;
+  }
+}
+
 /** The request's headers, with the signed-in user's token when there is one. */
 async function headersFor(request: RequestInit): Promise<Headers> {
   const headers = new Headers(request.headers);
@@ -73,33 +86,63 @@ async function headersFor(request: RequestInit): Promise<Headers> {
   return headers;
 }
 
-/** JSON first, since a failed Arrow request still answers with problem details. */
+/** The statuses that never carry a body, whatever the headers say. */
+const noContentStatus = 204;
+const resetContentStatus = 205;
+const noContent = new Set([noContentStatus, resetContentStatus]);
+
+/** JSON as the content type says, read from the text so that an empty body is none: FastAPI answers a 204 with
+ * `content-type: application/json` and no body. A failure's body that is not the JSON it claims, such as an ingress's
+ * error page or a body cut short, is kept as text, so that it still becomes an `ApiError` with its status; a success's
+ * throws, since its data cannot be read. */
+async function readJson(response: Response): Promise<unknown> {
+  const text = await response.text();
+  if (text.trim() === "") {
+    return undefined;
+  }
+  try {
+    const body: unknown = JSON.parse(text);
+    return body;
+  } catch (error) {
+    if (response.ok) {
+      throw error;
+    }
+    return text;
+  }
+}
+
+/** A response's body: none for a 204, a 205 or an empty body, whatever its content type; JSON first, since a failed
+ * Arrow request still answers with problem details; Arrow as bytes; otherwise text. */
 async function readBody(response: Response, wantsArrow: boolean): Promise<unknown> {
+  if (noContent.has(response.status)) {
+    return undefined;
+  }
   const contentType = response.headers.get("content-type") ?? "";
   if (contentType.includes("json")) {
-    const body: unknown = await response.json();
-    return body;
+    return readJson(response);
   }
   if (wantsArrow || contentType.startsWith(arrowStream)) {
     return response.blob();
   }
-  return response.text();
+  const text = await response.text();
+  return text === "" ? undefined : text;
 }
 
-/** A 422 names its fields. Anything that is not problem details, such as a proxy's HTML error page, becomes one. */
+/** A 422 names its fields, and is still problem details when it does not. Anything that is not problem details, such
+ * as a proxy's HTML error page, becomes one with no title, so that the status's own words show: over HTTP/2 there is no
+ * status text to borrow. */
 function toProblem(response: Response, body: unknown): AnyProblem {
-  const parsed =
-    response.status === unprocessableContent
-      ? validationProblemSchema.safeParse(body)
-      : problemSchema.safeParse(body);
+  if (response.status === unprocessableContent) {
+    const validation = validationProblemSchema.safeParse(body);
+    if (validation.success) {
+      return validation.data;
+    }
+  }
+  const parsed = problemSchema.safeParse(body);
   if (parsed.success) {
     return parsed.data;
   }
-  return {
-    status: response.status,
-    title: response.statusText || "Request failed",
-    type: "about:blank",
-  };
+  return { status: response.status, type: "about:blank" };
 }
 
 /** The `ApiError` a failed response's body becomes. */
@@ -116,7 +159,7 @@ function failure(response: Response, body: unknown): ApiError {
 async function apiFetch<TResponse>(url: string, init: ApiRequestInit = {}): Promise<TResponse> {
   const { schema, ...request } = init;
   const headers = await headersFor(request);
-  const response = await fetch(`${apiPrefix}${url}`, { ...request, headers });
+  const response = await send(url, { ...request, headers });
   const body = await readBody(response, headers.get("accept") === arrowStream);
   if (!response.ok) {
     throw failure(response, body);
@@ -135,7 +178,7 @@ async function apiFetch<TResponse>(url: string, init: ApiRequestInit = {}): Prom
 async function arrowResponse(url: string, init: RequestInit = {}): Promise<Response> {
   const headers = await headersFor(init);
   headers.set("Accept", arrowStream);
-  const response = await fetch(`${apiPrefix}${url}`, { ...init, headers });
+  const response = await send(url, { ...init, headers });
   if (!response.ok) {
     throw failure(response, await readBody(response, false));
   }

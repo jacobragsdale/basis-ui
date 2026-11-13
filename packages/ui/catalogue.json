@@ -17496,6 +17496,20 @@
       "signature": "submitErrors(error: unknown, { fields, message, }: { readonly fields: ReadonlySet<string> | readonly string[]; readonly message: string }): SubmitErrors"
     },
     {
+      "kind": "function",
+      "module": "@basis/ui",
+      "name": "isNetworkError",
+      "purpose": "Whether `error` is a request that never reached the API, as `apiFetch` and `arrowResponse` throw it.",
+      "signature": "isNetworkError(error: unknown): error is NetworkError"
+    },
+    {
+      "kind": "class",
+      "module": "@basis/ui",
+      "name": "NetworkError",
+      "purpose": "What a request that never reached the API fails with: the `TypeError` `fetch` itself threw, for a lost connection, a refused one, or a redirect the browser would not follow, as its `cause`, with its message. Only it is a network failure, which the query client retries and the shell says could not reach the server: a `TypeError` thrown by the page's own code, in a `select` or a token source, is a bug that asking again would not mend.",
+      "signature": "class NetworkError extends TypeError"
+    },
+    {
       "kind": "constant",
       "module": "@basis/ui",
       "name": "fieldErrorSchema",
@@ -17506,7 +17520,7 @@
       "kind": "function",
       "module": "@basis/ui",
       "name": "fieldErrors",
-      "purpose": "A 422's errors keyed by the form field each names, in TanStack Form's naming, such as `legs[0].price`; errors for the whole body sit under `\"\"`, and parameters under their names.",
+      "purpose": "A 422's errors keyed by the form field each names, in TanStack Form's naming, such as `legs[0].price`; errors for the whole body sit under `\"\"`, and parameters under their names. An entry of a kind the contract does not name sits under `\"\"` too, and one with no `detail` is left out, since a problem type may define its own `errors` member.",
       "signature": "fieldErrors(problem: Problem | ValidationProblem): ReadonlyMap<string, readonly string[]>"
     },
     {

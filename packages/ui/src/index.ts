@@ -655,6 +655,7 @@ export {
   type TokenSource,
 } from "./api/fetch.ts";
 export { errorsOnFields, submitErrors, type SubmitErrors } from "./api/form-errors.ts";
+export { isNetworkError, NetworkError } from "./api/network-error.ts";
 export {
   fieldErrorSchema,
   fieldErrors,

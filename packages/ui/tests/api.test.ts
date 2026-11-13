@@ -1,5 +1,4 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vite-plus/test";
-import type { Mock } from "vite-plus/test";
 import { z } from "zod";
 
 import {
@@ -8,48 +7,12 @@ import {
   arrowStream,
   fieldErrors,
   fieldName,
-  isApiError,
   pointerPath,
   setTokenSource,
 } from "#index.ts";
-import type { ApiError, ApiResponse, TokenSource } from "#index.ts";
+import type { ApiResponse } from "#index.ts";
 
-/** `fetch`'s type, written out: the preset bans naming the global outside the client layer. */
-type Fetch = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
-
-/** Stubs `fetch` to answer every request with `response`, and returns the stub so a test can read its requests. */
-function answer(response: Response): Mock<Fetch> {
-  const stub = vi.fn<Fetch>().mockResolvedValue(response);
-  vi.stubGlobal("fetch", stub);
-  return stub;
-}
-
-/** The URL and headers of the first request the stub answered. */
-function firstRequest(stub: Mock<Fetch>): { readonly headers: Headers; readonly url: unknown } {
-  const [url, init] = stub.mock.calls[0] ?? [];
-  return { headers: new Headers(init?.headers), url };
-}
-
-function json(status: number, body: unknown, contentType = "application/json"): Response {
-  return Response.json(body, { headers: { "content-type": contentType }, status });
-}
-
-function tokenSource(token: string | null): TokenSource {
-  return vi.fn<TokenSource>().mockResolvedValue(token);
-}
-
-/** The `ApiError` a call fails with. Fails the test if the call succeeds or throws anything else. */
-async function failureOf(call: Promise<unknown>): Promise<ApiError> {
-  try {
-    await call;
-  } catch (error) {
-    if (isApiError(error)) {
-      return error;
-    }
-    throw error;
-  }
-  throw new Error("The call succeeded, but it should have failed with an ApiError.");
-}
+import { answer, failureOf, firstRequest, json, tokenSource } from "./api-fakes.ts";
 
 beforeEach(() => {
   setTokenSource(tokenSource(null));
@@ -153,7 +116,7 @@ describe("apiFetch's failures", () => {
   test("turns a response that is not problem details into one", async () => {
     answer(new Response("<html>Bad gateway</html>", { status: 502, statusText: "Bad Gateway" }));
     const error = await failureOf(apiFetch("/positions"));
-    expect(error.problem).toEqual({ status: 502, title: "Bad Gateway", type: "about:blank" });
+    expect(error.problem).toEqual({ status: 502, type: "about:blank" });
   });
 
   test("reads a 422's field errors", async () => {
@@ -199,6 +162,16 @@ test("fieldErrors ignores an errors member of another shape", () => {
   expect(fieldErrors({ type: "about:blank" }).size).toBe(0);
 });
 
+test("a 422 whose pointer is not percent-encoded as it should be names the whole request", () => {
+  const problem = {
+    errors: [{ detail: "Too large", pointer: "#/discount%" }],
+    status: 422,
+    title: "The request is not valid",
+    type: "about:blank",
+  };
+  expect(Object.fromEntries(fieldErrors(problem))).toEqual({ "": ["Too large"] });
+});
+
 describe("pointerPath", () => {
   test.each([
     ["#", []],
@@ -208,6 +181,8 @@ describe("pointerPath", () => {
     ["#/007", ["007"]],
     ["/legs/0", undefined],
     ["#legs", undefined],
+    ["#/discount%", undefined],
+    ["#/%E0%A4%A", undefined],
   ] as const)("%s names %o", (pointer, path) => {
     expect(pointerPath(pointer)).toEqual(path);
   });
