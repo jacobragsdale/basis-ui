@@ -141,4 +141,31 @@ describe("DataTable sorting", () => {
     await expect.element(table.getByRole("columnheader", { name: "Note" })).toBeVisible();
     await expect.element(table.getByRole("button", { name: "Note" })).not.toBeInTheDocument();
   });
+
+  test("a column whose text is an identifier sorts it by code point, as Excel does, not by its digit runs", async () => {
+    const cusips = [
+      "3135G0Q22",
+      "31359MGK3",
+      "91282CAB7",
+      "912810SU3",
+      "912828ZT0",
+      "9128285M8",
+      "037833100",
+    ];
+    const columns: DataTableColumn<{ readonly cusip: string }>[] = [
+      { header: "CUSIP", id: "cusip", identifier: true, value: (row) => row.cusip },
+    ];
+    const screen = await render(
+      <DataTable
+        label="Bonds"
+        columns={columns}
+        data={cusips.map((cusip) => ({ cusip }))}
+        getRowId={(row) => row.cusip}
+        defaultSorting={[{ id: "cusip" }]}
+      />,
+    );
+    expect(columnText(screen.getByRole("table", { name: "Bonds" }), 0)).toStrictEqual(
+      cusips.toSorted((left, right) => (left < right ? -1 : 1)),
+    );
+  });
 });

@@ -134,6 +134,11 @@ handled key, `Mod+S` in a field and `mod+s` behind a modal.
 - **Severity:** polish; the "as people read it" rule is deliberate, but identifier columns need a way out.
 - **Confidence:** confirmed by running (`sort.mjs`).
 
+Done in Utilities: identifiers sort as read, and a closed trade date and an old stamp count by the calendar (step
+7.5): a text column takes `identifier: true` and sorts by code point. Its tests cover `compareCells` and the
+scaffold; DataTable: an identifier column's sort is held end to end adds a gallery test that a DataTable sorts the
+finding's CUSIPs, Apple's first, by such a column.
+
 **14. SavedViews hides a failed load and applies the default late**
 
 - **Where:** `packages/ui/src/components/use-saved-views.ts:65`, `:79-95`; `saved-views.tsx:47`
