@@ -36,7 +36,7 @@ const defaultPreferences: Preferences = {
 };
 
 /** The cookie's name. Its value is the mode, the density, the motion and the theme joined by dots, such as
- * `dark.compact.full.default`. A value written before the motion or the theme was reads them as the default's, and so
+ * `dark.compact.full.default`, and `.host` after them in the cookie an app keeps for itself. A value written before the motion or the theme was reads them as the default's, and so
  * does a theme no longer shipped, since a user's cookie can outlive a theme. */
 const preferencesCookie = "basis-ui-preferences";
 
@@ -60,36 +60,63 @@ function isTheme(value: string | undefined): value is ThemeName {
   return themeNames.some((name) => name === value);
 }
 
-/** Reads the preferences from a `document.cookie` string. Anything missing or unknown falls back to the default. */
-function parsePreferences(cookies: string): Preferences {
-  for (const part of cookies.split(";")) {
+/** The last part of the value of the cookie an app keeps for itself, `dark.compact.full.default.host`. A page may be
+ * sent two cookies of the name, its own and the one apps on the shared domain write, and a browser lists cookies of one
+ * path oldest first (RFC 6265, 5.4), keeping a cookie's first creation time when it is written again, so their order
+ * says nothing of which is the app's: the mark does. */
+const hostOnlyMark = "host";
+
+/** Where the mark sits: after the mode, the density, the motion and the theme. */
+const markPart = 4;
+
+/** The values of every cookie of the name in a `document.cookie` string, each split into its parts. */
+function cookieValues(cookies: string): string[][] {
+  return cookies.split(";").flatMap((part) => {
     const separator = part.indexOf("=");
-    if (separator !== -1 && part.slice(0, separator).trim() === preferencesCookie) {
-      const [mode, density, motion, theme] = part
-        .slice(separator + 1)
-        .trim()
-        .split(".");
-      return {
-        density: isDensity(density) ? density : defaultPreferences.density,
-        mode: isMode(mode) ? mode : defaultPreferences.mode,
-        motion: isMotion(motion) ? motion : defaultPreferences.motion,
-        theme: isTheme(theme) ? theme : defaultPreferences.theme,
-      };
-    }
-  }
-  return defaultPreferences;
+    return separator !== -1 && part.slice(0, separator).trim() === preferencesCookie
+      ? [
+          part
+            .slice(separator + 1)
+            .trim()
+            .split("."),
+        ]
+      : [];
+  });
 }
 
-/** The `document.cookie` assignment that stores the preferences for a year. */
+/** Reads the preferences from a `document.cookie` string: the cookie the app keeps for itself when there is one, which
+ * a choice made in this app wrote, and otherwise the first. Anything missing or unknown falls back to the default. */
+function parsePreferences(cookies: string): Preferences {
+  const values = cookieValues(cookies);
+  const chosen = values.find((parts) => parts.at(markPart) === hostOnlyMark) ?? values[0];
+  if (chosen === undefined) {
+    return defaultPreferences;
+  }
+  const [mode, density, motion, theme] = chosen;
+  return {
+    density: isDensity(density) ? density : defaultPreferences.density,
+    mode: isMode(mode) ? mode : defaultPreferences.mode,
+    motion: isMotion(motion) ? motion : defaultPreferences.motion,
+    theme: isTheme(theme) ? theme : defaultPreferences.theme,
+  };
+}
+
+/** The `document.cookie` assignment that stores the preferences for a year: on `options.domain` when it names one, and
+ * otherwise for this app alone, its value marked as such. */
 function serializePreferences(preferences: Preferences, options: CookieOptions = {}): string {
   const attributes = [`Path=/`, `Max-Age=${String(oneYear)}`, "SameSite=Lax"];
-  if (options.domain !== undefined) {
+  const parts: string[] = [
+    preferences.mode,
+    preferences.density,
+    preferences.motion,
+    preferences.theme,
+  ];
+  if (options.domain === undefined) {
+    parts.push(hostOnlyMark);
+  } else {
     attributes.push(`Domain=${options.domain}`);
   }
-  const value = [preferences.mode, preferences.density, preferences.motion, preferences.theme].join(
-    ".",
-  );
-  return `${preferencesCookie}=${value}; ${attributes.join("; ")}`;
+  return `${preferencesCookie}=${parts.join(".")}; ${attributes.join("; ")}`;
 }
 
 /** The domain the cookie takes on a page at `host`: `domain` when `host` is it or under it, as
@@ -111,6 +138,7 @@ const hostOnlyRemoval = `${preferencesCookie}=; Path=/; Max-Age=0; SameSite=Lax`
 export {
   cookieDomain,
   defaultPreferences,
+  hostOnlyMark,
   hostOnlyRemoval,
   parsePreferences,
   preferencesCookie,

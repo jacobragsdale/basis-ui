@@ -269,4 +269,27 @@ describe("the shared domain", () => {
     expect(domainOf(fake.jar)).toStrictEqual([shared]);
     stop();
   });
+
+  /* A browser lists cookies of one path oldest first (RFC 6265, 5.4), and keeps a cookie's first creation time when it
+   * is written again, so which of a host-only and a shared cookie comes first says nothing of which is this app's. */
+  test.each([
+    ["an older shared one", "shared first"],
+    ["a newer shared one", "own first"],
+  ])("an app that names no domain keeps its own choice over %s", (_name, order) => {
+    const fake = fakePage(false, `trades.${shared}`);
+    if (order === "own first") {
+      writePreferences({ ...light, density: "compact" });
+    }
+    fake.otherApp("dark.compact.reduced.default");
+    writePreferences(light);
+    const stop = followPreferences();
+    fake.events.fire("window", "focus");
+    expect(domainOf(fake.jar)).toHaveLength(2);
+    expect(state(fake.root)).toMatchObject({
+      dark: false,
+      density: "comfortable",
+      motion: undefined,
+    });
+    stop();
+  });
 });

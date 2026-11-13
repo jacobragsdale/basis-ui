@@ -479,7 +479,10 @@ cookie sits on the parent domain the firm's apps share, which an app names in `B
 that every app follows one choice, and a page left open changes when another app changes it. A page on a host outside
 that domain, such as `localhost` in development, keeps the cookie for itself, since a browser refuses it otherwise,
 and without the option every app keeps its own choice. A choice an app kept for itself before is moved onto the
-domain when the app starts, since a browser lists the older cookie first and it would hide the shared one.
+domain when the app starts, since a browser lists the older cookie first and it would hide the shared one. A browser
+lists cookies of one path oldest first, keeping a cookie's first creation time when it is written again, so an app
+without the option, on a host under another app's shared domain, is sent both cookies in no order that tells them
+apart: the cookie an app keeps for itself carries `.host` after the four parts, and both readers take it first.
 
 No event tells a page that another origin changed a cookie they share: `storage` and `BroadcastChannel` stay within
 one origin. The cookie store's change event does cross: in Chromium 158, over HTTPS, a page on one subdomain received

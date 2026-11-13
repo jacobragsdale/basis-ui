@@ -17385,20 +17385,20 @@
       "module": "@basis/ui",
       "name": "headScript",
       "purpose": "A script for the page's `<head>` that applies the stored preferences before the first paint, so the page never flashes the wrong mode. It repeats `parsePreferences` and `applyPreferences` in plain JavaScript; a test holds the two to the same answers.",
-      "signature": "const headScript = `(() => { try { const themes = ${JSON.stringify(themeNames)}; const match = /(?:^|;\\\\s*)${preferenc…"
+      "signature": "const headScript = `(() => { try { const themes = ${JSON.stringify(themeNames)}; const values = document.cookie.split(…"
     },
     {
       "kind": "function",
       "module": "@basis/ui",
       "name": "parsePreferences",
-      "purpose": "Reads the preferences from a `document.cookie` string. Anything missing or unknown falls back to the default.",
+      "purpose": "Reads the preferences from a `document.cookie` string: the cookie the app keeps for itself when there is one, which a choice made in this app wrote, and otherwise the first. Anything missing or unknown falls back to the default.",
       "signature": "parsePreferences(cookies: string): Preferences"
     },
     {
       "kind": "constant",
       "module": "@basis/ui",
       "name": "preferencesCookie",
-      "purpose": "The cookie's name. Its value is the mode, the density, the motion and the theme joined by dots, such as `dark.compact.full.default`. A value written before the motion or the theme was reads them as the default's, and so does a theme no longer shipped, since a user's cookie can outlive a theme.",
+      "purpose": "The cookie's name. Its value is the mode, the density, the motion and the theme joined by dots, such as `dark.compact.full.default`, and `.host` after them in the cookie an app keeps for itself. A value written before the motion or the theme was reads them as the default's, and so does a theme no longer shipped, since a user's cookie can outlive a theme.",
       "signature": "const preferencesCookie = \"basis-ui-preferences\""
     },
     {
@@ -17419,7 +17419,7 @@
       "kind": "function",
       "module": "@basis/ui",
       "name": "serializePreferences",
-      "purpose": "The `document.cookie` assignment that stores the preferences for a year.",
+      "purpose": "The `document.cookie` assignment that stores the preferences for a year: on `options.domain` when it names one, and otherwise for this app alone, its value marked as such.",
       "signature": "serializePreferences(preferences: Preferences, options: CookieOptions = {}): string"
     },
     {

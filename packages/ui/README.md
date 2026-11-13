@@ -191,6 +191,8 @@ them (`followPreferences`), and gives `apiFetch` the adapter's token, so every r
   store's change event on a page served over HTTPS, and otherwise when the user comes back to the page. A choice the
   app kept for itself before is moved onto the domain. On a host outside the domain, such as `localhost` in
   development, the cookie stays the app's alone, since the browser would refuse it. Give the same domain in every app.
+  An app without it, on a host under another's domain, is sent that app's shared cookie too; the cookie it keeps for
+  itself ends in `.host`, as `dark.compact.full.default.host`, and is read first, so its own choice holds.
 
 - **Queries.** `createQueryClient()` keeps data fresh for 30 seconds and retries a query twice, but only after a
   network failure, a `NetworkError` that `fetch` itself threw, or a 502, 503 or 504, which basis's contract says may pass; a 4xx, a 500 or a response its schema

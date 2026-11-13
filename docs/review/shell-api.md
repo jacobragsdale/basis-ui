@@ -120,6 +120,14 @@ opened over plain HTTP by hostname in a browser.
 - **Scenario:** App A sets `preferencesDomain`; app B on a sibling host does not, which is the template's default. B's own choice is written host-only behind the older shared cookie, so it reverts on the next cookie, focus or visibility event.
 - **Confidence:** the parse order was confirmed by running; the browser ordering is by spec, not observed.
 
+Done in Theme: an app's own preferences cookie is read before a shared one: the review is right that order cannot tell the cookies apart, in either direction: a browser
+also keeps a cookie's first creation time when it is rewritten. Decision, the smallest that removes the wrong outcome:
+the cookie an app keeps for itself, written without a domain, carries a fifth part, `.host`, and both readers,
+`parsePreferences` and the head script, take a marked cookie first, else the first listed. The shared cookie is
+unchanged, and an unmarked host-only cookie written before reads as it did until the next choice. `docs/design.md`'s
+account of the cookie says so. Tested with the cookie-jar fake in both orders, and the head script held to
+`parsePreferences` on both; the browser's ordering is still by spec, not observed.
+
 **12. `packages/ui/src/testing/check-routes.ts:114-117`, `testing/index.ts:65-68`, `page-load.ts:14-25` — polish**
 
 - **Defect:** `checkRoutes` and `renderApp` build their own router from the route tree, and "loaded" watches only the router and query client.
@@ -204,3 +212,6 @@ Throwaway scripts are in `(a scratch folder)`.
 - A page in fixture mode that the browser gives no service worker, such as `vp dev --host` opened over plain HTTP by
   hostname, says "Fixture mode could not start" and the address to open instead, where it was blank. What to do:
   nothing.
+- The preferences cookie an app keeps for itself, with no `preferencesDomain`, ends in `.host`, as
+  `dark.compact.full.default.host`, and is read before a shared one, so an app on a host under another app's shared
+  domain keeps its own choice. What to do: nothing; a test that reads the cookie's value expects the mark.

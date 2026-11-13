@@ -44,7 +44,7 @@ async function pageFor(
     colorScheme: options.mode,
     viewport: { height: options.height, width: options.width },
   });
-  // The cookie as the user menu writes it, `dark.compact.full.default`, without its attributes.
+  // The cookie as the user menu writes it, `dark.compact.full.default.host`, without its attributes.
   const [cookie = ""] = serializePreferences({
     density: options.density,
     mode: options.mode,

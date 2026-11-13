@@ -4,6 +4,7 @@
 
 import {
   cookieDomain,
+  hostOnlyMark,
   hostOnlyRemoval,
   parsePreferences,
   preferencesCookie,
@@ -213,8 +214,14 @@ function followPreferences(shown?: Preferences, options: CookieOptions = {}): ()
 const headScript = `(() => {
   try {
     const themes = ${JSON.stringify(themeNames)};
-    const match = /(?:^|;\\s*)${preferencesCookie}=([^;]*)/.exec(document.cookie);
-    const [stored, density, motion, theme] = match === null ? [] : match[1].trim().split(".");
+    const values = document.cookie.split(";").flatMap((part) => {
+      const separator = part.indexOf("=");
+      return separator !== -1 && part.slice(0, separator).trim() === "${preferencesCookie}"
+        ? [part.slice(separator + 1).trim().split(".")]
+        : [];
+    });
+    const [stored, density, motion, theme] =
+      values.find((parts) => parts[4] === "${hostOnlyMark}") ?? values[0] ?? [];
     const mode = stored === "light" || stored === "dark" ? stored : matchMedia("${darkQuery}").matches ? "dark" : "light";
     const root = document.documentElement;
     root.classList.toggle("dark", mode === "dark");

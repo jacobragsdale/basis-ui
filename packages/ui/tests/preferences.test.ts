@@ -165,6 +165,9 @@ describe("the head script agrees with applyPreferences", () => {
     `x${preferencesCookie}=dark.comfortable; other=1`,
     `other=1; ${preferencesCookie}=dark.comfortable.reduced.default; more=2`,
     `${preferencesCookie}=light.comfortable; ${preferencesCookie}=dark.compact`,
+    `${preferencesCookie}=dark.compact.full.default; ${preferencesCookie}=light.comfortable.reduced.default.host`,
+    `${preferencesCookie}=light.comfortable.reduced.default.host; ${preferencesCookie}=dark.compact`,
+    `${preferencesCookie}=dark.compact.full.default.shared`,
   ];
   const oddCases = odd.flatMap((cookie) =>
     [true, false].map((systemDark) => [cookie, systemDark] as const),

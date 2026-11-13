@@ -83,7 +83,7 @@ describe("the app shell's parts", () => {
     await app.getByRole("button", { name: "Dev User" }).click();
     await expect.element(page.getByRole("menuitemradio", { name: "Dark" })).toBeChecked();
     await page.getByRole("menuitemradio", { name: "Compact" }).click();
-    await expect.poll(storedValue).toBe("dark.compact.full.default");
+    await expect.poll(storedValue).toBe("dark.compact.full.default.host");
     expect(document.documentElement.dataset["theme"]).toBe("default");
   });
 
