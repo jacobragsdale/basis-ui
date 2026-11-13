@@ -77,7 +77,7 @@ async function exampleApp(): Promise<string> {
 
 /** One failure for each stage, each of a kind no other stage reports: each file's text from the copy's own. */
 const breaks: Readonly<Record<string, (text: string) => string>> = {
-  Dockerfile: (text) => `${text}# an edit of the app's own\n`,
+  ".gitattributes": (text) => `${text}# an edit of the app's own\n`,
   "fixtures/stale.json": () =>
     readFileSync(path.join(example, "fixtures/conventions.json"), "utf8").replace(
       '"basis-ui-fixture/1"',
@@ -86,8 +86,8 @@ const breaks: Readonly<Record<string, (text: string) => string>> = {
   "src/adds.test.ts": () =>
     'import { expect, test } from "vite-plus/test";\n\ntest("adds", () => {\n  expect(1 + 1).toBe(3);\n});\n',
   "src/api/generated/client.ts": (text) => `${text}// edited by hand\n`,
-  // The lint reads comments as code, and reports each that turns a check off; only this stage reads one in a string.
-  "src/hint.ts": () => 'export const hint = "// @ts-ignore";\n',
+  // A comment that turns off the lint rule that would report it: only this stage finds it.
+  "src/hint.ts": () => '/* oxlint-disable basis/no-suppressions */\nexport const hint = "hint";\n',
   // An import only the bundler resolves: neither the lint nor the compiler reads a stylesheet's path.
   "src/main.tsx": (text) =>
     text.replace("import { router }", 'import "./missing.css";\nimport { router }'),
@@ -119,7 +119,7 @@ const expected = {
   fixtures: { file: "fixtures/stale.json", line: null, rule: null },
   lint: { file: "src/stop.ts", line: 2, rule: "eslint(no-debugger)" },
   suppressions: { file: "src/hint.ts", line: 1, rule: null },
-  sync: { file: "Dockerfile", line: null, rule: null },
+  sync: { file: ".gitattributes", line: null, rule: null },
   tests: { file: "src/adds.test.ts", line: 3, rule: null },
   types: { file: "src/quantity.ts", line: 1, rule: "TS2322" },
 };
@@ -223,7 +223,7 @@ describe("vp run verify", () => {
   test("its ERROR lines are the framework's own, and the tools' in one form: place, message, rule, fix", () => {
     const lines = ran("brokenText").stdout.trimEnd().split("\n");
     expect(lines).toContain(
-      "ERROR Dockerfile differs from what @basis/ui 0.0.0 writes: run vp run sync to put it back, since a change it needs belongs in @basis/ui.",
+      "ERROR .gitattributes differs from what @basis/ui 0.0.0 writes: run vp run sync to put it back, since a change it needs belongs in @basis/ui.",
     );
     expect(lines).toContain(
       "ERROR src/stop.ts:2: `debugger` statement is not allowed (eslint(no-debugger)): Remove the debugger statement.",
