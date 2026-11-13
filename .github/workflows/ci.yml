@@ -8,10 +8,11 @@ on:
 permissions:
   contents: read
 
+# Every push to main runs to the end, in a group of its own: in one group for main, GitHub keeps one run waiting and
+# cancels it for the next, so with several pushes a minute most commits went unchecked, and each job that their paths
+# alone would start never ran. A branch's newer push cancels its older run.
 concurrency:
-  group: ci-${{ github.ref }}
-  # Every push to main runs to the end, queued behind the one before, so main always has a complete run; a branch's
-  # newer push cancels its older run.
+  group: ci-${{ github.ref == 'refs/heads/main' && github.sha || github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 # No RUSTFLAGS here: Cargo takes RUSTFLAGS in place of a target's own flags, so a global one hid the wasm build's
