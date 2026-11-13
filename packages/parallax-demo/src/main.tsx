@@ -1,9 +1,10 @@
-/* The demo's entry point: the router in BasisApp, the app shell every basis-ui app starts in. The demo calls no API,
- * so its user is anonymous and no one signs in. */
+/* The demo's entry point: the router in BasisApp, the app shell every basis-ui app starts in. The demo is a
+ * demonstration with no API: its datasets are files beside the page, so its user is anonymous, no one signs in, and
+ * no build of it, a production one included, holds a sign-in adapter's key. */
 
 import "./styles.css";
 
-import { BasisApp, fakeSignIn } from "@basis/ui";
+import { BasisApp, anonymousSignIn } from "@basis/ui";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
@@ -15,6 +16,6 @@ if (root === null) {
 }
 createRoot(root).render(
   <StrictMode>
-    <BasisApp router={router} signIn={fakeSignIn({ user: null })} />
+    <BasisApp router={router} signIn={anonymousSignIn()} />
   </StrictMode>,
 );
