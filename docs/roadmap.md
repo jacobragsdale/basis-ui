@@ -794,10 +794,13 @@ Lanes A and B. This phase takes basis-ui from a demo to what tens of developers 
 a review of the whole repo on 2026-11-13, which ran the checks, read every area, and made an app from the packed
 template on `winbox`, the Windows machine that stands in for the firm's desktop, and it carries out the decisions the
 maintainer made that day: sign-in by Windows authentication, with the token in local storage; an app's own Dockerfile
-and pipeline; a rate field that needs its unit; and the UI on Windows only. [The release
-plan](release-plan.md) holds each step's detail, and `docs/review/` each area's findings, until the phase is done,
-then both are deleted; this section is the summary. Its steps push straight to `main`, as Phase 6's did, each lane
-from a worktree of its own.
+and pipeline; a rate field that needs its unit; and the UI on Windows only. Its plan and each area's findings were
+kept in `docs/release-plan.md` and `docs/review/` while it ran, and deleted when it closed: this section is the
+summary, `packages/ui/CHANGELOG.md`'s 0.1.0 says what changed for an app, and git keeps the rest (the plan as it
+stood is at commit `bc0e6fe`). Its steps pushed straight to `main`, as Phase 6's did, each lane from a worktree of
+its own. One decision was taken while it ran, under the maintainer's leave: Vite+ 1.5.0's `vp create` rewrites every
+app it makes into a configuration the app's own drift check refuses, so `@basis/create` makes a repo itself, with `vp
+dlx @basis/create NAME`.
 
 1. **7.1 The API layer and the shell.** A 204 or an empty body no longer fails a request that succeeded, an error
    that is no problem details keeps its status, a programming error is not shown as a network failure, and the dev
@@ -854,4 +857,10 @@ from a worktree of its own.
     package job fails unless the module names `simd128`, every action is pinned by its commit, and each push to
     `main` has a run of its own.
 14. **7.14 Release.** The proof on winbox again, the end-to-end suites, the changelog, version 0.1.0 and its tag.
-    Needs every step.
+    Needs every step. Built on 2026-11-13: from the packed 0.1.0 packages, an app made with `vp dlx @basis/create` was
+    installed, committed through its hook, verified, pictured and built on winbox in 54 s, with nothing left running,
+    and in WSL the same but for its pictures, which still time out there with no GPU; the showcase's 1,000,000 trades
+    ran in Edge 157 on winbox as before the phase (first rows 1.1 s from the page's load, all rows 4.4 s, scrolling
+    at 16.6 ms a frame, no console error); CI passed every job on Linux and the template's on Windows. Not yet, and
+    the maintainer's at the firm: a desktop with no admin rights, the internal feed, the real token endpoint, and
+    step 6.10.

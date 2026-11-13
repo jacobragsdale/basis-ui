@@ -1,4 +1,4 @@
-/* `windowsSignIn`: the sign-in adapter for the firm's system (docs/release-plan.md, decision 1). The browser signs the
+/* `windowsSignIn`: the sign-in adapter for the firm's system (docs/design.md, The stack). The browser signs the
  * user in to a token endpoint with their Windows account; the endpoint answers with a JWT holding the user's name and
  * roles; the adapter keeps it in local storage and gives it to every API request, so that the firm's backends share
  * one sign-in. The endpoint's address, the form of its answer and the claims' names are the firm's, so each is an

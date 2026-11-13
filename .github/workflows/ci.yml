@@ -182,8 +182,8 @@ jobs:
           retention-days: 3
 
   # The same proof on Windows, the firm's desktop, in PowerShell as a developer's terminal is: the Linux job's tarballs,
-  # so it needs no Rust and no install of the workspace. It holds what winbox proved by hand (docs/release-plan.md, "On
-  # winbox"): the install, the commit through the hook, `vp run verify`, `vp run shot --all` started with no dev server,
+  # so it needs no Rust and no install of the workspace. It holds what winbox, the Windows machine that stands in for that desktop, proved by
+  # hand (docs/roadmap.md, steps 7.6 and 7.13): the install, the commit through the hook, `vp run verify`, `vp run shot --all` started with no dev server,
   # which must stop the one it starts, `vp build`, and a clean tree.
   template-windows:
     name: create / The template on Windows, from the packed packages
