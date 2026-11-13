@@ -4,13 +4,13 @@
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
+  DescriptionList,
   ErrorAlert,
+  Page,
   Pct,
   Skeleton,
-  TypographyH1,
   useTelemetry,
 } from "@basis/ui";
 import { useParams } from "@tanstack/react-router";
@@ -24,21 +24,18 @@ function BondTerms({ bond }: { readonly bond: Bond }): ReactElement {
     <Card>
       <CardHeader>
         <CardTitle>Terms</CardTitle>
-        <CardDescription>
-          Issued {bond.issued}, matures {bond.maturity}
-        </CardDescription>
       </CardHeader>
       <CardContent>
-        <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm sm:grid-cols-6">
-          <dt className="text-muted-foreground">Coupon</dt>
-          <dd>
-            <Pct value={bond.coupon_rate} decimals={3} />
-          </dd>
-          <dt className="text-muted-foreground">Coupons a year</dt>
-          <dd className="tabular-nums">{bond.frequency}</dd>
-          <dt className="text-muted-foreground">Day count</dt>
-          <dd>{bond.convention}</dd>
-        </dl>
+        <DescriptionList
+          columns={3}
+          items={[
+            { description: <Pct value={bond.coupon_rate} decimals={3} />, term: "Coupon" },
+            { description: bond.frequency, term: "Coupons a year" },
+            { description: bond.convention, term: "Day count" },
+            { description: bond.issued, term: "Issued" },
+            { description: bond.maturity, term: "Matures" },
+          ]}
+        />
       </CardContent>
     </Card>
   );
@@ -52,8 +49,7 @@ function BondPage(): ReactElement {
     telemetry.error(error, { source: "bond" });
   };
   return (
-    <>
-      <TypographyH1>Bond {security}</TypographyH1>
+    <Page title={`Bond ${security}`} breadcrumb={security}>
       <ErrorAlert
         error={bond.error}
         onRetry={() => {
@@ -62,7 +58,7 @@ function BondPage(): ReactElement {
       />
       {bond.isPending ? <Skeleton className="h-32 w-full" /> : null}
       {bond.data === undefined ? null : <BondTerms bond={bond.data.data} />}
-    </>
+    </Page>
   );
 }
 

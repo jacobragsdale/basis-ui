@@ -13,6 +13,7 @@
     "src/api/mutator.ts",
     "src/styles",
     "src/vendor/*/LICENSE",
+    "licenses",
     "config",
     "schema",
     "catalogue.json",

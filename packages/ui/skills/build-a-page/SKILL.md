@@ -40,6 +40,10 @@ Look a component up before using it: `vp run docs Select` prints its purpose, pr
 - A component's look is its `variant` and `size`; `className` only places it. Colours are the theme's tokens.
 - A component renders as another element through `render`, as `<DialogTrigger render={<Button />}>`, never `asChild`.
 - A number is shown by a number component, never by `toFixed`.
+- A form field the schema lets be empty says so as the schema does: `optional` for `.optional()`, which holds
+  `undefined`, and `nullable` for `.nullable()` or `.nullish()`, which holds `null`; start its default value there.
+  The field's type asks for the prop, so `tsc` names a field that lacks it.
+- A column that holds an identifier, such as a CUSIP or an id, takes `identifier: true`, so it sorts as it reads.
 
 ## Before saying it is done
 

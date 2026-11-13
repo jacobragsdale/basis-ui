@@ -33,8 +33,10 @@ export default defineConfig({
       // vp run upgrade imports each release's codemods by their paths (src/preset/codemods.ts).
       "src/codemods/*/*.ts",
     ],
-    // The fixture-mode plugin makes this module in an app's vp test; the package never holds it.
-    deps: { neverBundle: [/^virtual:basis\//u] },
+    /* The fixture-mode plugin makes this module in an app's vp test; the package never holds it. culori, a dev
+     * dependency, is the one package bundled into dist/, and its licence ships beside it, in licenses/culori/: the
+     * build fails on any other, which needs its licence there too before it joins the list. */
+    deps: { neverBundle: [/^virtual:basis\//u], onlyBundle: ["culori"] },
     /* The React Compiler, as `basisPlugins()` applies it to an app: a component that breaks the rules of React fails
      * the package's build rather than shipping unoptimized. `vp pack` runs with NODE_ENV=development, which would
      * otherwise add the compiler's hot-reload checks to the published code. */

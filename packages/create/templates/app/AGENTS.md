@@ -3,6 +3,11 @@
 This repo is a UI on `@basis/ui` and `@basis/parallax`, made from the `@basis/create` template. Replace this paragraph
 with what the app is for and which API it calls. The block below is basis-ui's, which `vp run sync` keeps current.
 
+## Naming the app
+
+The template calls it "basis-ui app". Give it its name in three places: `name` in `package.json`; the `<title>` in
+`index.html`, which the browser's tab shows; and `appName` in `src/routes.ts`, which the sidebar's header shows. The icon in `index.html` is the template's; replace it with the app's.
+
 ## The sample API
 
 Until the app has an API of its own, it runs on a sample, so `vp dev` shows working pages from the first run:

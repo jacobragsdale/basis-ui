@@ -109,6 +109,7 @@ A new developer cannot get from nothing to a deployed, signed-in app today, and 
     - Also absent: browser support (Chrome/Edge 139 is only in the design's "Not yet verified"), a versioning policy, troubleshooting, an owner, and where a firm developer opens "a basis-ui pull request".
     - Severity: fix before release. Confidence: confirmed.
     - Browser support done in Head script: a browser without Temporal is told which Chrome or Edge the app needs: the README's "Browsers" says Chrome and Edge 144 or later, on Windows, and the design's "Not yet verified" says 144. The rest of the finding is in the docs commit below.
+    - Done in READMEs: every sample compiles in an app, and a person starts at Getting started: `@basis/ui`'s README opens with "Getting started", what basis-ui is and nine numbered steps from installing Vite+ to `vp run verify`, each with what the developer sees, linking to the reference below; "On Windows", W1, W2, W4 and W6 in the order winbox met them, with PowerShell's and cmd's ways to set a variable for one command; "Versions, upgrades and help", the versioning before 1.0 and where a component or a fault goes; and sections for `vp run sync`, `doctor` and `review`, so `vp run docs` prints each. The template gains a `README.md` of the app's own. The app is made with `vp dlx @basis/create NAME`, the creator step 7.13 builds, so that step is written and not yet run; `vp --version`, `vp run doctor` and `vp dev`'s first lines were run and are as written. Troubleshooting is each task's `ERROR` line and `vp run doctor`, as the steps say; an owner is not named, as the repo is public.
 
 16. **Three README samples contradict the checks or the exports.**
     - `packages/ui/README.md:1216` uses `toFixed`, which `packages/ui/src/preset/lint-bans.ts:66` bans.
@@ -116,21 +117,27 @@ A new developer cannot get from nothing to a deployed, signed-in app today, and 
     - Line 1406 uses `layoutSchema`, which nothing exports; parallax exports `parseLayout`.
     - README samples are not compiled or linted.
     - Severity: polish. Confidence: confirmed.
+    - Done in READMEs: every sample compiles in an app, and a person starts at Getting started: the three are true (`numberText` in place of `toFixed`; `BasisApp` renders the `Toaster`, so the sample raises a toast alone; `checkLayout` in place of `layoutSchema`). `tests/readme-samples.test.ts` type-checks all 62 fenced `ts` and `tsx` samples of both READMEs in `packages/consumer`, as the catalogue's examples are: a name a sample uses unimported that the packages export is imported for it, so its props are still checked; the app's own names are declared `any`; and a name that a module of the packages exports and the packages do not is refused, which is how it caught `layoutSchema` before the fix. It also found the form sample's `defaultValues: { face: null }`, which types `face` as `null` so no amount fits it: the sample now types its defaults by the schema's input, as the example does. Five samples that did not parse (several JSX roots, an object fragment) were made statements. Not checked: the lint, so a banned call such as `toFixed` in a sample would pass; the samples' fragments make the lint's own rules (unused expressions, hooks at the top level) fail on every one.
 
 17. **App identity is never set.**
     - Where: `packages/create/templates/app/index.html:6` and `src/routes.ts:13` say "basis-ui app". `vp create` renames only `package.json`, and `AGENTS.md` does not mention either.
     - The shell never sets `document.title`, and the showcase still ships the placeholder.
     - Severity: polish. Confidence: confirmed.
+    - Done in Template: its pages are Pages, the app is named in one list, and every app's page has an icon: the template's `AGENTS.md` gains "Naming the app", the three places a name goes (`package.json`, `index.html`'s `<title>`, `appName` in `src/routes.ts`); the showcase's title is "Workbench", its `appName`. Not done: the shell setting `document.title` from the route's title, a change to `AppShell` in the components' lane; told to `t4`.
 
 18. **The template models patterns its own skill steers away from.**
     - Where: `packages/create/templates/app/src/sample/bond.tsx:32-41` hand-rolls a `<dl>` with colour classes. The pages use `TypographyH1`, where `build-a-page` says `Page` and `DescriptionList`.
     - Severity: polish. Confidence: confirmed.
+    - Done in Template: its pages are Pages, the app is named in one list, and every app's page has an icon: the home, conventions and bond pages are each a `Page`, with its title and description, and the bond's terms a `DescriptionList`; the sample's tests and `checkRoutes` pass on them. The `build-a-page` skill gains a line on `optional` and `nullable` form fields (7.3) and one on `identifier: true` (7.5); neither the template's nor the example's tables hold an identifier, and the showcase's import page's CUSIP column takes it.
 
 19. **The repo's own map is stale.**
     - `AGENTS.md` omits `packages/create`, `packages/showcase` and `packages/showcase-data`.
     - `README.md:8-10` still says "first components" and "phase 1 fills in the rest".
     - `packages/ui/CONTRIBUTING.md:75` cites `@jacobragsdale/ui`.
     - Severity: polish. Confidence: confirmed.
+    - Done in Template: its pages are Pages, the app is named in one list, and every app's page has an icon: `AGENTS.md` names the three packages, the root `README.md` drops "first components" and the phase, and names the showcase and Getting started, and `CONTRIBUTING.md` no longer cites another package.
+
+Also done there, from the plan: every app's `index.html` (the template, the example, the consumer, the gallery, parallax's demo and the showcase) names an inline SVG icon, so no browser asks for `/favicon.ico`; and the published `@basis/ui` carries culori's licence, in `licenses/culori/LICENSE`, beside the code its build bundles from it. The build's `deps.onlyBundle` names culori, so it fails on any other package bundled into `dist/` (checked by emptying the list: `RolldownError: culori is located in node_modules but is not included in deps.onlyBundle option`), and `tests/licences.test.ts` holds each package it names to a licence in `licenses/`, as the installed package holds it. The packed tarball lists `package/licenses/culori/LICENSE`.
 
 ## Day one, as it stands
 
@@ -200,3 +207,19 @@ The two check scripts are `(a scratch folder)` and `(a scratch folder)`.
   the folder NAME, names the package and the page after it, and runs `git init`. `vp create @basis:app` no longer
   offers the template: Vite+ 1.5.0 rewrites every app it makes into a configuration the drift check refuses. What to
   do: nothing for an app that exists.
+
+- The READMEs' samples compile in an app, and a test holds them to it. Three were untrue: the saved-views sample
+  parses a layout with `checkLayout` from `@basis/parallax`, as `layoutSchema` is not exported; `BasisApp` renders the
+  `Toaster`, so an app raises a toast without rendering one; and a cell's filter text is written with `numberText`,
+  since the lint refuses `toFixed`. The form sample types its `defaultValues` by the schema's input, as
+  `z.input<typeof settlementForm>`. What to do: an app that copied the old saved-views or form sample makes the same
+  change; one that renders a second `<Toaster />` inside `BasisApp` removes it.
+
+- The template's pages are each a `Page`, and its bond's terms a `DescriptionList`, as the `build-a-page` skill says;
+  its `AGENTS.md` says where the app's name goes, and every app's `index.html` names an icon. The `build-a-page`
+  skill says how a form field declares itself optional or nullable, and that an identifier column takes
+  `identifier: true`. What to do: run `vp run sync`; an app made from an earlier template may give its pages the same
+  shape, and its `index.html` an icon of its own.
+
+- `@basis/ui`'s package carries culori's licence, in `licenses/culori/LICENSE`, beside the code its build bundles from
+  it. What to do: nothing.

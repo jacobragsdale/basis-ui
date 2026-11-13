@@ -7,15 +7,14 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  TypographyH1,
+  Page,
 } from "@basis/ui";
 import { Link } from "@tanstack/react-router";
 import type { ReactElement } from "react";
 
 function HomePage(): ReactElement {
   return (
-    <>
-      <TypographyH1>Home</TypographyH1>
+    <Page title="Home">
       <Card>
         <CardHeader>
           <CardTitle>Start here</CardTitle>
@@ -39,7 +38,7 @@ function HomePage(): ReactElement {
           </div>
         </CardContent>
       </Card>
-    </>
+    </Page>
   );
 }
 

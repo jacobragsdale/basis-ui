@@ -74,8 +74,8 @@ skips the pack, taking the three tarballs from DIR. A packed package drops its `
    with `cn` from the `cn` package, as shadcn does; take `cva` from `#vendor/cva/cva.ts`, and each icon from its file
    in `src/vendor/lucide`, such as `#vendor/lucide/chevron-down.tsx`.
 
-   shadcn's source names its look in `cn-*` classes that its styles define; the components here take its nova style's,
-   as `@jacobragsdale/ui`'s do. shadcn's Tailwind setup also brings `tw-animate-css` and the variants in
+   shadcn's source names its look in `cn-*` classes that its styles define; the components here take its nova style's
+   classes, written out in place of the `cn-*` names. shadcn's Tailwind setup also brings `tw-animate-css` and the variants in
    `shadcn/tailwind.css`, and the theme has neither: write `data-[orientation=horizontal]:` for `data-horizontal:`,
    since Tailwind still generates the latter and the lint passes it, but it never matches Base UI's attributes; and
    fade or scale a popup with `transition` and Base UI's `data-starting-style` and `data-ending-style` in place of

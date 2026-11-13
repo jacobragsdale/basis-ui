@@ -10,8 +10,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-  TypographyH1,
-  TypographyLead,
+  Page,
   useTelemetry,
 } from "@basis/ui";
 import type { ReactElement } from "react";
@@ -51,9 +50,10 @@ function ConventionsPage(): ReactElement {
     telemetry.error(error, { source: "conventions" });
   };
   return (
-    <>
-      <TypographyH1>Day count conventions</TypographyH1>
-      <TypographyLead>How the API counts the days a coupon accrues over.</TypographyLead>
+    <Page
+      title="Day count conventions"
+      description="How the API counts the days a coupon accrues over."
+    >
       <ErrorAlert
         error={conventions.error}
         onRetry={() => {
@@ -64,7 +64,7 @@ function ConventionsPage(): ReactElement {
       {conventions.data === undefined ? null : (
         <ConventionsTable conventions={conventions.data.data} />
       )}
-    </>
+    </Page>
   );
 }
 

@@ -20,7 +20,7 @@ type TicketRow = z.output<typeof ticketRow>;
 
 const columns: readonly DataTableColumn<TicketRow & { readonly line: number }>[] = [
   { header: "Line", id: "line", value: (row) => row.line, variant: "numeric" },
-  { header: "CUSIP", id: "cusip", value: (row) => row.cusip },
+  { header: "CUSIP", id: "cusip", identifier: true, value: (row) => row.cusip },
   { header: "Side", id: "side", value: (row) => row.side },
   {
     format: { currency: "USD", decimals: 0, kind: "money" },

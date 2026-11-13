@@ -9,7 +9,10 @@ phases, their steps, and the lanes that run at the same time. The code is a pnpm
 `@basis/ui` in `packages/ui`, its gallery in `packages/gallery`, an example app on the app shell and a generated client
 in `packages/example`, an app configured by hand with exactly the README's lines, as ctzd writes its apps, in
 `packages/consumer`, parallax, moved in with its history, in `packages/parallax`: its Rust crates and the
-`@basis/parallax` package, and parallax's demo, a React app on both packages, in `packages/parallax-demo`.
+`@basis/parallax` package, parallax's demo, a React app on both packages, in `packages/parallax-demo`, the template a
+UI repo is made from, `@basis/create`, in `packages/create`, and the showcase, a fixed-income workbench made from the
+template as a firm's app is, in `packages/showcase`, with the data of the API it imagines written by
+`packages/showcase-data`.
 [packages/ui/README.md](packages/ui/README.md) says how an app uses `@basis/ui`, [packages/ui/CONTRIBUTING.md](packages/ui/CONTRIBUTING.md)
 how a component is added and the catalogue built, and [packages/parallax/README.md](packages/parallax/README.md) how an
 app uses `@basis/parallax`.
