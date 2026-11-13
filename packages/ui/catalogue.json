@@ -16931,7 +16931,7 @@
           "type": "\"fill\" | \"auto\" | undefined"
         },
         {
-          "description": "The tallest an `auto` grid's rows grow, in CSS pixels, before they scroll.",
+          "description": "The tallest an `auto` grid's rows grow, in CSS pixels, before they scroll: 480 by default, and never past 8,192, a canvas's height a browser draws at every ratio of a Windows desktop's scaling.",
           "name": "maxHeight",
           "optional": true,
           "type": "number | undefined"
@@ -20573,6 +20573,12 @@
           "name": "unread",
           "optional": true,
           "type": "\"groups\" | \"series\""
+        },
+        {
+          "description": "The series that is the first's share of the grand total, which a pie notes beside its slices; absent without one.",
+          "name": "share",
+          "optional": true,
+          "type": "number"
         }
       ],
       "exported": false,
@@ -21920,7 +21926,7 @@
           "type": "\"fill\" | \"auto\" | undefined"
         },
         {
-          "description": "The tallest an `auto` grid's rows grow, in CSS pixels, before they scroll.",
+          "description": "The tallest an `auto` grid's rows grow, in CSS pixels, before they scroll: 480 by default, and never past 8,192, a canvas's height a browser draws at every ratio of a Windows desktop's scaling.",
           "name": "maxHeight",
           "optional": true,
           "type": "number | undefined"
@@ -22147,7 +22153,7 @@
           "type": "\"fill\" | \"auto\" | undefined"
         },
         {
-          "description": "The tallest an `auto` grid's rows grow, in CSS pixels, before they scroll.",
+          "description": "The tallest an `auto` grid's rows grow, in CSS pixels, before they scroll: 480 by default, and never past 8,192, a canvas's height a browser draws at every ratio of a Windows desktop's scaling.",
           "name": "maxHeight",
           "optional": true,
           "type": "number | undefined"
