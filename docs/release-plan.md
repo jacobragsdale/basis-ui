@@ -206,19 +206,19 @@ The orchestrator's, once every lane has landed:
 
 ## Status
 
-| Step | State                                       | Commits                                                                     |
-| ---- | ------------------------------------------- | --------------------------------------------------------------------------- |
-| 7.1  | done                                        | `342555c`, `9b7940c`, `a77b071`, `93a1bba`, `7380686`, `f045d96`            |
-| 7.2  | done                                        | `3525da6`, `549406c`                                                        |
-| 7.3  | done                                        | `644114c`, `760a598`, `d0c2e5e`, `5fc6ba5`, `6bb56e0`, `2b82cb8`, `e9e937a` |
-| 7.4  | in progress                                 |                                                                             |
-| 7.5  | done                                        | `85821de`, `4372e4a`, and the two after                                     |
-| 7.6  | in progress                                 |                                                                             |
-| 7.7  | in progress, in a lane of its own, `lint`   |                                                                             |
-| 7.8  | not started                                 |                                                                             |
-| 7.9  | done                                        | `f75b731`, `18a568f`, `a02483e`, `aa5c042`, `e6b290e`, `d92d4f6`            |
-| 7.10 | in progress                                 |                                                                             |
-| 7.11 | in progress, in a lane of its own, `charts` |                                                                             |
-| 7.12 | in progress                                 |                                                                             |
-| 7.13 | not started                                 |                                                                             |
-| 7.14 | not started                                 |                                                                             |
+| Step | State                                         | Commits                                                                     |
+| ---- | --------------------------------------------- | --------------------------------------------------------------------------- |
+| 7.1  | done                                          | `342555c`, `9b7940c`, `a77b071`, `93a1bba`, `7380686`, `f045d96`            |
+| 7.2  | done                                          | `3525da6`, `549406c`                                                        |
+| 7.3  | done                                          | `644114c`, `760a598`, `d0c2e5e`, `5fc6ba5`, `6bb56e0`, `2b82cb8`, `e9e937a` |
+| 7.4  | done                                          | `22be6e7` and the eight before it                                           |
+| 7.5  | done                                          | `85821de`, `4372e4a`, and the two after                                     |
+| 7.6  | in progress                                   |                                                                             |
+| 7.7  | in progress, in a lane of its own, `lint`     |                                                                             |
+| 7.8  | in progress, in a lane of its own, `template` |                                                                             |
+| 7.9  | done                                          | `f75b731`, `18a568f`, `a02483e`, `aa5c042`, `e6b290e`, `d92d4f6`            |
+| 7.10 | in progress                                   |                                                                             |
+| 7.11 | in progress, in a lane of its own, `charts`   |                                                                             |
+| 7.12 | done                                          | `f2d0bf0`, `a5704ce`, `7ee636b`, `b94b2c7` and three more                   |
+| 7.13 | not started                                   |                                                                             |
+| 7.14 | not started                                   |                                                                             |
