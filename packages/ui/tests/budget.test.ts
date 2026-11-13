@@ -9,11 +9,15 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { gzipSync } from "node:zlib";
 
-import { afterAll, describe, expect, test } from "vite-plus/test";
+import { afterAll, describe, expect, test, vi } from "vite-plus/test";
 
 import { budgetArgs, budgetOf, verdict } from "#preset/budget-options.ts";
 import { budgetTask, fileFor } from "#preset/budget.ts";
 import { basisPreset } from "#preset/index.ts";
+
+/* Each test here starts Node on a task, the compiler, a build, a browser or vp, which a busy CI runner can make take
+ * many seconds: a minute holds there, where Vitest's 5 s did not, and a test that hangs still fails. */
+vi.setConfig({ testTimeout: 60_000 });
 
 const example = 'basisPreset({ budget: { "/": { css: 30, js: 180 } } })';
 

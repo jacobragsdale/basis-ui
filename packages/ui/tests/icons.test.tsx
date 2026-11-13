@@ -3,7 +3,7 @@
 
 import { renderToStaticMarkup } from "react-dom/server";
 import type { ComponentType } from "react";
-import { describe, expect, test } from "vite-plus/test";
+import { describe, expect, test, vi } from "vite-plus/test";
 
 import {
   AlertTriangleIcon,
@@ -20,6 +20,10 @@ import {
   TriangleExclamationPointIcon,
 } from "#index.ts";
 import type { IconProps } from "#index.ts";
+
+/* It imports the whole library's source, which a busy CI runner can make take many seconds: a minute holds there,
+ * where Vitest's 5 s did not, and a test that hangs still fails. */
+vi.setConfig({ testTimeout: 60_000 });
 
 // The attributes lucide-react 1.70.0 gives every icon, in its order, with basis-ui's 1.75-unit stroke for its 2, then
 // `aria-hidden` for an unnamed one.

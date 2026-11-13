@@ -11,6 +11,10 @@ import { afterEach, describe, expect, test, vi } from "vite-plus/test";
 import { lintFindings, withReportFile } from "#preset/verify-tools.ts";
 import { verify } from "#preset/verify.ts";
 
+/* Each test here starts Node on a task, the compiler, a build, a browser or vp, which a busy CI runner can make take
+ * many seconds: a minute holds there, where Vitest's 5 s did not, and a test that hangs still fails. */
+vi.setConfig({ testTimeout: 60_000 });
+
 const roots: string[] = [];
 
 afterEach(() => {

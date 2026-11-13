@@ -8,9 +8,13 @@ import path from "node:path";
 import babel from "@rolldown/plugin-babel";
 import { reactCompilerPreset } from "@vitejs/plugin-react";
 import { build } from "vite-plus";
-import { afterAll, describe, expect, test } from "vite-plus/test";
+import { afterAll, describe, expect, test, vi } from "vite-plus/test";
 
 import { compilerFix, withCompilerFixes } from "#preset/compiler-fixes.ts";
+
+/* Each test here starts Node on a task, the compiler, a build, a browser or vp, which a busy CI runner can make take
+ * many seconds: a minute holds there, where Vitest's 5 s did not, and a test that hangs still fails. */
+vi.setConfig({ testTimeout: 60_000 });
 
 const scratch = mkdtempSync(path.join(tmpdir(), "basis-compiler-"));
 

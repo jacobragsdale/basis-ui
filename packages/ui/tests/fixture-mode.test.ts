@@ -9,12 +9,16 @@ import { text } from "node:stream/consumers";
 
 import { createLogger, createServer, resolveConfig } from "vite-plus";
 import type { Plugin, ViteDevServer } from "vite-plus";
-import { afterAll, beforeAll, describe, expect, test } from "vite-plus/test";
+import { afterAll, beforeAll, describe, expect, test, vi } from "vite-plus/test";
 
 import { devPort, fixtureModePlugin, rootPath } from "#preset/fixture-mode.ts";
 import { withFixtureMode } from "#preset/fixture-page.ts";
 
 import { bondAnswer, example, makeApp, record, removeApp, writeIn } from "./fixture-app.ts";
+
+/* Its tests start Vite's dev server and load an app through it, which a busy CI runner can make take many seconds: a
+ * minute holds there, where Vitest's 5 s did not, and a test that hangs still fails. */
+vi.setConfig({ testTimeout: 60_000 });
 
 const page = `<!doctype html>
 <html lang="en">

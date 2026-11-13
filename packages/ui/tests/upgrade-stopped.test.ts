@@ -5,11 +5,15 @@
 import { readFileSync, rmSync } from "node:fs";
 import path from "node:path";
 
-import { afterEach, beforeEach, describe, expect, test } from "vite-plus/test";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vite-plus/test";
 
 import { after, before, git as gitIn, makeFixture, write } from "./upgrade/fixture.ts";
 import type { Fixture } from "./upgrade/fixture.ts";
 import { loggedIn, runUpgrade } from "./upgrade/run.ts";
+
+/* Each test here starts Node on a task, the compiler, a build, a browser or vp, which a busy CI runner can make take
+ * many seconds: a minute holds there, where Vitest's 5 s did not, and a test that hangs still fails. */
+vi.setConfig({ testTimeout: 60_000 });
 
 let fixture: Fixture = { app: "", feed: "", folder: "" };
 

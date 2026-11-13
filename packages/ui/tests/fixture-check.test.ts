@@ -4,9 +4,13 @@
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
-import { afterEach, beforeEach, describe, expect, test } from "vite-plus/test";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vite-plus/test";
 
 import { makeApp, record, removeApp, writeIn } from "./fixture-app.ts";
+
+/* Each test here starts Node on a task, the compiler, a build, a browser or vp, which a busy CI runner can make take
+ * many seconds: a minute holds there, where Vitest's 5 s did not, and a test that hangs still fails. */
+vi.setConfig({ testTimeout: 60_000 });
 
 const script = fileURLToPath(new URL("../src/preset/tasks.ts", import.meta.url));
 

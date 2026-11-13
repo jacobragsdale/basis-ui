@@ -4,7 +4,11 @@
 
 import { readFileSync } from "node:fs";
 
-import { describe, expect, test } from "vite-plus/test";
+import { describe, expect, test, vi } from "vite-plus/test";
+
+/* Each test here starts Node on a task, the compiler, a build, a browser or vp, which a busy CI runner can make take
+ * many seconds: a minute holds there, where Vitest's 5 s did not, and a test that hangs still fails. */
+vi.setConfig({ testTimeout: 60_000 });
 
 const readme = readFileSync(new URL("../README.md", import.meta.url), "utf8");
 

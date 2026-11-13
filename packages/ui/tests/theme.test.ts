@@ -4,13 +4,17 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { compile } from "@tailwindcss/node";
-import { describe, expect, test } from "vite-plus/test";
+import { describe, expect, test, vi } from "vite-plus/test";
 
 import { checkTheme, themeFileProblems } from "#theme/check.ts";
 import { defineTheme } from "#theme/inputs.ts";
 import type { ChartColour, Charts, Hue, StepTone, ThemeInputs } from "#theme/inputs.ts";
 import { defaultTheme, themes } from "#theme/themes/index.ts";
 import { tokenNames } from "#theme/tokens.ts";
+
+/* Each test here starts Node on a task, the compiler, a build, a browser or vp, which a busy CI runner can make take
+ * many seconds: a minute holds there, where Vitest's 5 s did not, and a test that hangs still fails. */
+vi.setConfig({ testTimeout: 60_000 });
 
 const source = new URL("../src/", import.meta.url).pathname;
 const committed = readFileSync(path.join(source, "styles/theme.css"), "utf8");
