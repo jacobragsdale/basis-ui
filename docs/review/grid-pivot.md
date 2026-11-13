@@ -167,6 +167,19 @@ I found no stale-frame or wrong-cell drawing bug, but two release blockers: one 
 - `height="auto"` with a very large `maxHeight` is not capped at canvas limits.
 - In part, in Grid: the keyboard reaches the checkbox, a link and the cell menu, and a refused layout can be cleared: "Fit this column" fits the column the menu opened on. The rest of this list is below,
   each with its own line.
+  - The status message: done in Grid: a drag ends with its button, the last column stays, and an auto grid fits a canvas: it carries its whole text as its `title`, so a cut message reads whole on
+    hover. Not tested: an attribute.
+  - The drilled rows: done in Grid: a drag ends with its button, the last column stays, and an auto grid fits a canvas: the search is part of what the rows behind a value depend on, so a new search
+    closes them. Held by `tests/unit/pivot-edit.test.ts`.
+  - The value list's `source`: wrong for the package as it ships. The React Compiler, which builds it, keeps the
+    closure while the view's handle is the same (`dist/index.mjs`, `$[9] !== handle`), so a tick re-queries nothing.
+  - Hiding the last column: done in Grid: a drag ends with its button, the last column stays, and an auto grid fits a canvas: it stays, and its menu's Hide column is disabled. Held by
+    `tests/unit/grid-edit.test.ts`.
+  - A lost pointerup: done in Grid: a drag ends with its button, the last column stays, and an auto grid fits a canvas: a move with the button up ends the press, the drag and the scroll past the
+    edge, and the grid going ends them too. By reading; not run, since a lost pointerup cannot be made in the browser
+    tests.
+  - `height="auto"` with a huge `maxHeight`: done in Grid: a drag ends with its button, the last column stays, and an auto grid fits a canvas: an auto grid grows to 8,192 CSS pixels at most, and the
+    prop says so. Held by `tests/browser/grid-states.test.tsx`.
 
 ## Overall quality
 
@@ -241,3 +254,6 @@ Everything else in `src/grid` and `src/pivot` was read in full. The scripts are 
 
 - A layout the engine refuses, such as a saved one whose sort or pin names a column the data dropped, shows its reason
   with a button that clears its sorts, filters, groups and pins. What to do: nothing.
+
+- An auto-height grid grows to 8,192 CSS pixels at most, whatever its `maxHeight`, so its canvas stays within what a
+  browser draws. The last column shown can no longer be hidden, which showed every column. What to do: nothing.

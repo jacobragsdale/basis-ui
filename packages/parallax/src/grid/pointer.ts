@@ -55,6 +55,10 @@ class PointerInput {
   };
 
   public readonly move = (event: PointerEvent): void => {
+    // A press whose release never came, as a pointerup lost on a remote desktop, ends once the button is up.
+    if ((this.#pressed !== null || this.#selecting) && event.buttons % 2 === 0) {
+      this.cancel();
+    }
     const pressed = this.#pressed;
     if (pressed !== null && pressed.hit.edge !== null) {
       this.#resize(pressed, event);
@@ -108,7 +112,9 @@ class PointerInput {
   };
 
   /** Ends a drag that the browser cancelled, as when the window loses focus. */
+  /** Ends a press, a drag or the scroll past the edge, as a lost pointer or the grid going does, and the tooltip. */
   public readonly cancel = (): void => {
+    this.clearTooltip();
     const { model } = this.#host;
     const dragging = model.interaction.drag !== null || model.liveWidth !== null;
     this.#release();

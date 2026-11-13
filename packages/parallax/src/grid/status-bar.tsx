@@ -223,7 +223,7 @@ function StatusBar({
           {failed.text}
         </Badge>
       )}
-      <output data-slot="grid-status-message" className="flex-1 truncate">
+      <output data-slot="grid-status-message" className="flex-1 truncate" title={message}>
         {message}
       </output>
       <Reading figures={reading} />

@@ -210,6 +210,10 @@ describe("drillLayout", () => {
     expect(drillSource(setExpandDepth(base, 1))).toBe(drillSource(base));
     expect(drillSource(removeChip(base, { area: "rows", index: 1 }))).not.toBe(drillSource(base));
   });
+
+  test("changes when the search does, which changes the rows behind a value", () => {
+    expect(drillSource({ ...base, search: "atlas" })).not.toBe(drillSource(base));
+  });
 });
 
 describe("the field list", () => {

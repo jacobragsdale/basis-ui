@@ -83,6 +83,11 @@ describe("header menu edits", () => {
     expect(withTitle(withTitle(base, "fund", "Fund"), "fund", "").titles).toStrictEqual({});
   });
 
+  test("keeps the last column shown, since a layout that lists none shows every one", () => {
+    const one = parseLayout({ columns: ["ticker"] });
+    expect(withHidden(one, "ticker", fields)).toBe(one);
+  });
+
   test("total a column by the aggregates its kind takes", () => {
     const totalled = withTotal(base, "price", "sum");
     expect(totalOf(totalled, "price")).toBe("sum");

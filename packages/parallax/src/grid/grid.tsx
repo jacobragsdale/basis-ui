@@ -59,7 +59,8 @@ interface GridBaseProps<TRow extends AnyRow = AnyRow> {
   readonly toolbar?: boolean | Partial<ToolbarParts> | undefined;
   /** `fill` takes the height its container gives; `auto` sizes the grid to its rows, up to `maxHeight`. */
   readonly height?: "fill" | "auto" | undefined;
-  /** The tallest an `auto` grid's rows grow, in CSS pixels, before they scroll. */
+  /** The tallest an `auto` grid's rows grow, in CSS pixels, before they scroll: 480 by default, and never past 8,192,
+   * a canvas's height a browser draws at every ratio of a Windows desktop's scaling. */
   readonly maxHeight?: number | undefined;
   /** Takes a double click on a pivot's value, which asks for the rows behind its group. */
   readonly onDrill?: ((request: DrillRequest) => void) | undefined;
@@ -85,6 +86,8 @@ type GridProps<TRow extends AnyRow = AnyRow> = GridBaseProps<TRow> &
   GridRowSelection;
 
 const defaultMaxHeight = 480;
+/** The tallest an auto grid grows, in CSS pixels: its canvas, as tall, stays within what a browser draws. */
+const mostAutoHeight = 8192;
 
 /** The layout of a grid given none: every column, in the table's order. One value, so it never reads as a change. */
 const defaultLayout: LayoutInput = {};
@@ -148,7 +151,7 @@ function useGrid(props: GridProps): GridState {
       drill,
       fields,
       layout: view.layout,
-      maxHeight: height === "auto" ? maxHeight : null,
+      maxHeight: height === "auto" ? Math.min(maxHeight, mostAutoHeight) : null,
       measureMenus,
       rowKey: rowKeyOf(props),
       rowSelection: rowSelectionOf(props),

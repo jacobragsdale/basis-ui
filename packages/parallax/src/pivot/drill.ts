@@ -50,13 +50,14 @@ function drillLayout(
   };
 }
 
-/** What decides the rows behind a group: the dataset, its filters and the groups. When it changes, rows drilled into
- * no longer add up to the values above them. */
+/** What decides the rows behind a group: the dataset, its filters, its search and the groups. When it changes, rows
+ * drilled into no longer add up to the values above them. */
 function drillSource(layout: Layout): string {
   return JSON.stringify([
     layout.dataset,
     layout.parameters,
     layout.filters,
+    layout.search,
     layout.group_by,
     layout.split_by,
   ]);

@@ -115,7 +115,7 @@ class GridSurface {
       stopObserving();
       device.dispose();
       this.#device = null;
-      pointer.clearTooltip();
+      pointer.cancel();
       for (const stop of stops) {
         stop();
       }

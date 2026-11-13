@@ -13,7 +13,7 @@ import { ParallaxProvider } from "#react/provider.tsx";
 import { useDataset } from "#react/use-dataset.ts";
 import { readTheme } from "#theme/read.ts";
 
-import { positionsBytes, startWorker } from "./data.ts";
+import { countedBytes, positionsBytes, startWorker } from "./data.ts";
 import { gatedWorker } from "./gated-worker.ts";
 import { canvasOf, drawn, renderGrid } from "./grid-helpers.tsx";
 import { GridPage } from "./grid-page.tsx";
@@ -128,4 +128,13 @@ test("offers to clear a layout the engine refused, such as a sort and a pin on a
   await screen.getByRole("button", { name: "Clear sorts, filters, groups and pins" }).click();
   await expect.element(grid).toHaveAttribute("aria-rowcount", "6");
   expect([changes.at(-1)?.sort, changes.at(-1)?.pinned]).toStrictEqual([[], []]);
+});
+
+test("keeps an auto-height grid within what a canvas holds, however tall its maxHeight", async () => {
+  const { grid } = await renderGrid(
+    { grid: { height: "auto", maxHeight: 1_000_000_000 }, source: () => countedBytes(50_000) },
+    "50000",
+  );
+  await drawn();
+  expect(canvasOf(grid).clientHeight).toBeLessThanOrEqual(8192);
 });

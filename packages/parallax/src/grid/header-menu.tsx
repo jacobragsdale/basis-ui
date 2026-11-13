@@ -163,6 +163,8 @@ function ColumnItems({
   return (
     <Menu label="Column">
       <Item
+        // The last column shown cannot be hidden: a layout of none shows every one.
+        disabled={withHidden(layout, column, fields) === layout}
         onClick={() => {
           finish(withHidden(layout, column, fields));
         }}

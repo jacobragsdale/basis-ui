@@ -50,9 +50,13 @@ function withSort(layout: Layout, column: string, descending: boolean | null): L
   };
 }
 
-/** Hides `column`, listing the columns that stay when the layout listed none. */
+/** Hides `column`, listing the columns that stay when the layout listed none. The last column shown stays: a layout
+ * that lists no columns shows every one. */
 function withHidden(layout: Layout, column: string, fields: readonly SourceField[]): Layout {
   const shown = shownColumns(layout, fields).filter((name) => name !== column);
+  if (shown.length === 0) {
+    return layout;
+  }
   return { ...layout, columns: shown, pinned: layout.pinned.filter((name) => name !== column) };
 }
 
