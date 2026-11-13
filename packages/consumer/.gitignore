@@ -1,4 +1,5 @@
 .fixtures/
 .catalogue-examples/
+.readme-samples/
 .lint-probe/
 .lint-probe-doors/

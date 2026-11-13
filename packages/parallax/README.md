@@ -448,6 +448,8 @@ a series with no values is left out, so curves on three dates read with their
 change in basis points below:
 
 ```tsx
+const curves = useDataset<Curve>("curves", curvesBytes);
+
 <Chart
   dataset={curves}
   layout={{

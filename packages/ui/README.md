@@ -9,6 +9,82 @@ time, and every component, hook, function and type the package exports, as [Look
 says. What changed in each version is in `CHANGELOG.md`, which `vp run docs ui/changelog` prints. How the package
 itself is built, and how a component is added to it, is in basis-ui's repo, in `packages/ui/CONTRIBUTING.md`.
 
+## Getting started
+
+basis-ui is what the firm's web UIs are built on: `@basis/ui` gives an app its components, its look, its app shell and
+its checks, and `@basis/parallax` its grids, pivots and charts. An app is a repo of its own, made from a template,
+that calls a basis API through a client generated from the API's document, and runs with no API at all while it is
+written. Agents write most of the code, and one command, `vp run verify`, says whether a change is right and how to
+fix it when it is not.
+
+On Windows, read [On Windows](#on-windows) first: a desktop behind the firm's proxy needs one setting before step 1.
+
+1. **Install Vite+**, whose `vp` runs everything below. In PowerShell, `irm https://vite.plus/ps1 | iex`; in WSL or
+   Linux, `curl -fsSL https://vite.plus | bash`. Open a new terminal, and `vp --version` prints `vp v1.5.0` or later.
+2. **Make the app's repo**: `vp dlx @basis/create positions-ui`, then `cd positions-ui`. The folder holds an app on a
+   sample API, with the framework's files, its agent files and its hooks, in a git repo.
+3. **Install it**: `vp install`, then the browser the tests and screenshots use, `vp dlx playwright@1.65.0 install
+   chromium`. `vp run doctor` then prints `ok` for each check of the machine's setup, or the fix for each that fails.
+4. **Run it**: `vp dev` prints `Local: http://localhost:PORT/`, on a port of the folder's own, and a line saying fixture
+   mode answers `/api` from `fixtures/`. Open the address in Chrome or Edge: the home page, and in the sidebar the
+   sample's pages, with no API running. Stop it with Ctrl+C.
+5. **Name it**: as the app's `AGENTS.md` says, its name in `package.json`, `index.html` and `src/routes.ts`.
+6. **Call its API**: `vp run client-pull URL`, with the deployed API's address, or `vp run client-pull PATH TAG`, with
+   a clone of the API's repo and a tag, copies the API's document and generates the client; then delete the sample,
+   as `AGENTS.md` says. [Calling the API](#calling-the-api) says how a page uses the client.
+7. **Add a page**: `vp run new table trades --operation list_trades`, with an operation from the API's document,
+   writes the page, its test, a fixture and its route, and prints what to run next. `vp run shot /trades`, with
+   `vp dev` running, writes the page's screenshot to `.shots/`.
+8. **Sign in**: the template's `src/sign-in.ts` signs in with the firm's Windows sign-in in production, and with a fake
+   user in `vp dev`; set its token endpoint as [Sign-in](#sign-in) says.
+9. **Check it**: `vp run verify` runs every check and ends `vp run verify passed 10 of 10 stages`, or with one
+   `ERROR` line for each failure, which says how to fix it. The commit hook runs its quick stages and the push hook
+   all of them.
+
+The sections below are the reference: each says what one part does, and `vp run docs` prints any of them in the app.
+
+## On Windows
+
+The firm's developers work on Windows, and basis-ui is proven there; WSL works too, where it is cheap to keep. What a
+Windows desktop at the firm needed, in the order it was met:
+
+- **The proxy's certificate.** Behind a proxy that inspects TLS, Vite+'s installer, `vp install` and every Node tool
+  fail on the certificate until `NODE_EXTRA_CA_CERTS` names the proxy's root certificate. Set it for good, then open a
+  new terminal: `setx NODE_EXTRA_CA_CERTS C:\path\to\root-ca.crt` on Windows, or
+  `export NODE_EXTRA_CA_CERTS=/path/to/root-ca.crt` in `~/.profile` in WSL. `vp run doctor` makes one request to the
+  app's registry, and names the setting when the certificate stops it.
+- **Node, in WSL.** Vite+ runs the Node first on the `PATH` until told otherwise, and Ubuntu's is 18, where the app's
+  install stops with an `ERROR` line that names Node 26. `vp env on` makes Vite+ run the Node the app pins in
+  `.node-version`; open a new terminal and run `vp install` again.
+- **Chromium's libraries, in WSL.** A fresh Ubuntu lacks libraries Chromium needs, so the browser downloads but does
+  not start: `vp dlx playwright@1.65.0 install-deps chromium` installs them, with `sudo`. `vp run doctor` starts the
+  browser and names the command when it cannot.
+- **Git Bash's paths.** Git Bash, where Claude Code runs commands on Windows, rewrites an argument that starts with
+  `/`, so `vp run shot /trades` reaches the task as `C:/Program Files/Git/trades`. `vp run shot` takes such a route
+  back, and names `MSYS_NO_PATHCONV=1` for one it cannot: `MSYS_NO_PATHCONV=1 vp run shot /trades`.
+- **A variable for one command.** The docs write `BASIS_TEST_DOM=node vp test`, as a POSIX shell does. In PowerShell,
+  set it and run the command, then remove it: `$env:BASIS_TEST_DOM = "node"; vp test; Remove-Item Env:BASIS_TEST_DOM`.
+  In cmd, `set "BASIS_TEST_DOM=node" && vp test`, the quotes keeping the space before `&&` out of the value, which
+  stays set for the rest of the session.
+- **No Chromium download.** Where a desktop cannot reach Playwright's download site, `vp run shot` and `vp run budget`
+  use the Edge every Windows desktop has, and say so, and `BASIS_TEST_DOM=node vp test` runs the tests in a Node DOM.
+  `PLAYWRIGHT_DOWNLOAD_HOST` names a mirror where the firm has one.
+
+Keep one clone for each: a clone's `node_modules` is installed for the system that installed it, so Windows and WSL do
+not share one.
+
+## Versions, upgrades and help
+
+`@basis/ui` and `@basis/parallax` release together, under one version, and an app pins both exactly. Before 1.0 a
+release may change what an app writes; each such change is an entry in `CHANGELOG.md` that ends with "What to do:",
+and a change a program can make ships as a codemod. `vp run upgrade` moves the app to the latest release: it prints
+the entries between, rewrites the framework's files, runs the codemods and `vp run verify`, and ends with what is
+left to do by hand, as [Upgrading](#upgrading-vp-run-upgrade) says.
+
+A component the app needs and `@basis/ui` lacks, or a fault in either package, goes to basis-ui's repo as an issue,
+with what the app needs or the `ERROR` line and the command that printed it. An app never works around the framework
+in its own files: the drift check refuses that, and the fix belongs in the package, where every app gets it.
+
 ## Browsers
 
 An app on `@basis/ui` runs in Chrome and Edge 144 or later, on Windows, which is what the firm's users and developers
@@ -864,6 +940,33 @@ When verify fails after an upgrade, the new version is installed and its codemod
 then commit `package.json`, the lockfile and the changed files together. `vp run upgrade` moves only forward; to go
 back, revert the upgrade's commit.
 
+## The framework's files: `vp run sync`
+
+`vp run sync` writes the files every app made from the template shares, from the installed `@basis/ui`:
+`.gitattributes`, `.gitignore`, `pnpm-workspace.yaml`, the hooks in `.vite-hooks/`, `CLAUDE.md`, the skills in
+`.agents/skills/` and their copies in `.claude/skills/`, and basis-ui's block of `AGENTS.md`, and the framework's
+lines of `src/styles.css`, `tsconfig.json` and a missing `vite.config.ts`. Each file opens with a line saying basis-ui
+manages it. `vp run sync --check`, verify's first stage, fails with one `ERROR` line for each that differs, so a
+change one needs is made in `@basis/ui`, where every app gets it. Sync keeps, and names, an app's own file at one of
+those paths and a file with changes git has not committed. The `Dockerfile`, `Caddyfile` and `.dockerignore` are the
+app's own, as [Serving the build](#serving-the-build) says.
+
+## The desktop's setup: `vp run doctor`
+
+`vp run doctor` checks what the app's tasks need of the machine, and prints a line for each check that passes and an
+`ERROR` line, with its fix, for each that fails: the Node that runs the tasks, against what Vite+ and `@basis/ui`
+need; the certificate `NODE_EXTRA_CA_CERTS` names, and one request to the registry the app installs from, through
+`HTTPS_PROXY` when one is set; git, the clone, and that git runs Vite+'s hooks; that the installed packages are the
+ones `package.json` pins; that Playwright's Chromium starts; and `BASIS_API_URL` when it is set. Run it after
+installing, and whenever a task fails in a way its own `ERROR` line does not explain.
+
+## A pull request's summary: `vp run review`
+
+`vp run review` prints, as Markdown to paste into a pull request, the commit `vp run verify` passed on, the versions of
+`@basis/ui` and `@basis/parallax`, the API's operations the change adds, removes or changes, the generated client's
+diff, and the count of comments that turn a check off, against the branch the pull request merges into: `origin/main`,
+or `vp run review BRANCH`. A reviewer judges those and the pages' screenshots rather than every line.
+
 ## Using the components
 
 A component's look comes from its props, `variant` and `size`, never from `className`. `className` places a component:
@@ -977,28 +1080,55 @@ invalid field is never told by colour alone. `submitErrors` puts a 422's errors 
 form error for a failure they cannot hold, which an `ErrorAlert` above the button shows:
 
 ```tsx
-import { ErrorAlert, FormAmountField, FormTextField, UnsavedChangesGuard, errorsOnFields, submitErrors } from "@basis/ui";
+import {
+  ErrorAlert,
+  FormAmountField,
+  FormTextField,
+  UnsavedChangesGuard,
+  amountSchema,
+  errorsOnFields,
+  submitErrors,
+} from "@basis/ui";
 import { useForm, useSelector } from "@tanstack/react-form";
+import { z } from "zod";
 
+// The body's schema as orval generates it, here by hand, with the amount's own: in an app,
+// `SettlementRequest.extend({ face: amountSchema() })`.
+const settlementForm = z.object({ security_id: z.string().length(12), face: amountSchema() });
 const fieldNames = ["security_id", "face"] as const;
+// Typed by the schema's input, so `face` holds an amount, which starts empty.
+const empty: z.input<typeof settlementForm> = { face: null, security_id: "" };
 const form = useForm({
-  defaultValues: { face: null, security_id: "" },
+  defaultValues: empty,
   validators: {
     onChange: settlementForm,
     onSubmitAsync: async ({ value }) => {
-      const failure = await failureOf(async () => recording.mutateAsync({ data: settlementForm.parse(value) }));
-      return failure === null ? undefined : submitErrors(failure, { fields: fieldNames, message: "Not recorded." });
+      const failure = await failureOf(async () =>
+        recording.mutateAsync({ data: settlementForm.parse(value) }),
+      );
+      return failure === null
+        ? undefined
+        : submitErrors(failure, { fields: fieldNames, message: "Not recorded." });
     },
   },
 });
-const dirty = useSelector(form.store, (state) => state.isDirty && !state.isSubmitting && !state.isSubmitSuccessful);
+const dirty = useSelector(
+  form.store,
+  (state) => state.isDirty && !state.isSubmitting && !state.isSubmitSuccessful,
+);
 
-<UnsavedChangesGuard when={dirty} />
+<UnsavedChangesGuard when={dirty} />;
 <form.Field name="security_id">
-  {(field) => <FormTextField field={field} label="ISIN" description="Twelve capital letters and digits." />}
-</form.Field>
-<form.Field name="face">{(field) => <FormAmountField field={field} label="Face amount" />}</form.Field>
-<ErrorAlert error={errorsOnFields(recording.error, fieldNames) === undefined ? recording.error : null} />
+  {(field) => (
+    <FormTextField field={field} label="ISIN" description="Twelve capital letters and digits." />
+  )}
+</form.Field>;
+<form.Field name="face">
+  {(field) => <FormAmountField field={field} label="Face amount" />}
+</form.Field>;
+<ErrorAlert
+  error={errorsOnFields(recording.error, fieldNames) === undefined ? recording.error : null}
+/>;
 ```
 
 `FormDateField` holds the ISO 8601 text a generated schema declares, on `DatePicker`, or on `AsOfDatePicker` with
@@ -1014,8 +1144,17 @@ an identifier the form opens on through its `search`. A field the six do not cov
   `defaultValues` may be `undefined` does not compile without `optional`:
 
   ```tsx
-  <form.Field name="memo">{(field) => <FormTextField field={field} label="Memo" optional />}</form.Field>
-  <form.Field name="settles">{(field) => <FormDateField field={field} label="Settles" nullable />}</form.Field>
+  import { useForm } from "@tanstack/react-form";
+
+  const empty: { memo?: string | undefined; settles: string | null } = { settles: null };
+  const form = useForm({ defaultValues: empty });
+
+  <form.Field name="memo">
+    {(field) => <FormTextField field={field} label="Memo" optional />}
+  </form.Field>;
+  <form.Field name="settles">
+    {(field) => <FormDateField field={field} label="Settles" nullable />}
+  </form.Field>;
   ```
 
 - **Leaving with changes.** `UnsavedChangesGuard`, given `when`, asks before the page is left while it holds: a link,
@@ -1207,13 +1346,11 @@ The navigation and layout components keep shadcn's names, props and parts. Where
 
 ## Raising a toast
 
-Render `<Toaster />` once, around the app or beside its routes, and raise a toast from anywhere, inside React or out,
-with `toast`:
+`BasisApp` renders the toasts' `<Toaster />` around the app, so raise a toast from anywhere, inside React or out, with
+`toast`. An app that renders its routes without `BasisApp`, as a test may, renders `<Toaster />` once around them.
 
 ```tsx
-import { Toaster, toast } from "@basis/ui";
-
-<Toaster />;
+import { toast } from "@basis/ui";
 
 toast.add({ title: "Trade booked", description: "Bought 5,000 par at 99-16.", type: "success" });
 toast.promise(save(), { loading: "Saving", success: "Saved", error: "Not saved" });
@@ -1396,11 +1533,11 @@ Declare each column's `value`, which it sorts, copies and exports by, and draw t
 text is not enough:
 
 ```tsx
-import { DataTable, Money } from "@basis/ui";
+import { DataTable, Money, numberText } from "@basis/ui";
 import type { DataTableColumn } from "@basis/ui";
 
-// The text the price's cell shows, for the filter: `$99.97`.
-const moneyText = (price: number): string => `$${price.toFixed(2)}`;
+// The text the price's cell shows, for the filter: `$99.97`, rounded by the formatter, as the cell is.
+const priceText = (price: number): string => `$${numberText(price, { decimals: 2 })}`;
 
 const columns: readonly DataTableColumn<Position>[] = [
   {
@@ -1416,7 +1553,7 @@ const columns: readonly DataTableColumn<Position>[] = [
     variant: "numeric",
     value: (row) => row.price,
     cell: (row) => <Money value={row.price} />,
-    text: (row) => moneyText(row.price),
+    text: (row) => priceText(row.price),
   },
 ];
 
@@ -1489,7 +1626,7 @@ const [selected, setSelected] = useState<readonly string[]>([]);
   label="Positions"
   columns={columns}
   data={positions.data?.data}
-  getRowId={(row) => row.id}
+  getRowId={(row: Position) => row.id}
   sorting={sorting}
   onSortingChange={setSorting}
   selectable
@@ -1506,12 +1643,12 @@ they keep, and keeps the selection of the rows they hide:
 ```tsx
 const filters = useFilters(tradeFilters);
 
-<FilterBar filters={filters} />
+<FilterBar filters={filters} />;
 <DataTable
   label="Trades"
   columns={columns}
   data={trades.data?.data}
-  getRowId={(row) => row.id}
+  getRowId={(row: Trade) => row.id}
   filterBy={{ filters: tradeFilters, values: filters.values, fields: tradeFields }}
 />;
 ```
@@ -1589,11 +1726,15 @@ is plain JSON: a grid's, pivot's or chart's `LayoutInput`, a `DataTable`'s sorti
 
 ```tsx
 import { SavedViews, apiViewStore, browserViewStore } from "@basis/ui";
+import { checkLayout } from "@basis/parallax";
 
-// This browser alone, under one key per page and part.
+// This browser alone, under one key per page and part. checkLayout reads a stored layout, or says what is wrong.
 const gridViews = browserViewStore({
   key: "positions.grid",
-  parse: (state) => layoutSchema.safeParse(state).data,
+  parse: (state) => {
+    const check = checkLayout(state);
+    return check.ok ? check.layout : undefined;
+  },
 });
 
 // Or the app's API, through its generated client, so a user's views follow them.
@@ -1878,10 +2019,10 @@ yield. `CellBar` puts a bar of a value behind its text in a table cell, as a sha
 magnitude, growing both ways from the middle when `signed`:
 
 ```tsx
-<Sparkline label="NAV over 30 days, up 2.1%" values={nav} trend />
+<Sparkline label="NAV over 30 days, up 2.1%" values={nav} trend />;
 <CellBar value={row.pnl} max={largestPnl} signed>
   <Money value={row.pnl} />
-</CellBar>
+</CellBar>;
 ```
 
 `HeatCell` fills a table's cell with its value's heat, on the theme's sequential scale from `min` to `max`, or on the
@@ -1891,8 +2032,17 @@ mode shown and again when either changes, since the scales' middle steps favour 
 dark. It fills the cell to its edges, as a `DataTable` column's `cell`:
 
 ```tsx
-{ id: "october", header: "Oct", variant: "numeric", value: (row) => row.october,
-  cell: (row) => <HeatCell value={row.october} scale="diverging" min={-0.04} max={0.04}><Pct value={row.october} signed /></HeatCell> }
+const october: DataTableColumn<Returns> = {
+  id: "october",
+  header: "Oct",
+  variant: "numeric",
+  value: (row) => row.october,
+  cell: (row) => (
+    <HeatCell value={row.october} scale="diverging" min={-0.04} max={0.04}>
+      <Pct value={row.october} signed />
+    </HeatCell>
+  ),
+};
 ```
 
 `DescriptionList` is a detail page's facts, such as a bond's terms: `items` of a `term` and its `description`, each term
