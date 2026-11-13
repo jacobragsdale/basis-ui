@@ -22,6 +22,13 @@ pub enum LoadError {
         /// Column name.
         column: String,
     },
+    /// Two of the schema's columns have the same name, so a load could not tell
+    /// which of them a value belongs to.
+    #[error("column {column} appears more than once; give each column its own name")]
+    DuplicateColumn {
+        /// Column name.
+        column: String,
+    },
     /// The load has a column the table does not.
     #[error("column {column} is not in the table")]
     UnexpectedColumn {

@@ -527,7 +527,8 @@ struct OpenView {
 /// Why a chart refuses a viewport, or a window sent with an update.
 const CHART_HAS_NO_VIEWPORT: &str = "this view is a chart; ask for its chart window instead";
 
-/// The most cells one [`FetchWindow`](parallax_protocol::v1::FetchWindow) may ask for.
+/// The most cells one [`FetchWindow`](parallax_protocol::v1::FetchWindow), or a
+/// view's viewport, may ask for.
 pub const MAX_FETCH_CELLS: u64 = 1_000_000;
 
 /// The widest and tallest plot a [`SetChartWindow`](parallax_protocol::v1::SetChartWindow)
@@ -1086,7 +1087,13 @@ impl Session {
             u64::from(viewport.first_column),
             u64::from(viewport.column_count),
         );
-        if let Asked::Once(_, max) = asked {
+        // A viewport the view keeps is capped as a fetch is: either formats every
+        // cell it covers on every change.
+        let max = match asked {
+            Asked::Once(_, max) => max,
+            Asked::Viewport => MAX_FETCH_CELLS,
+        };
+        {
             let total_rows = view.num_rows(&state.table);
             let total_columns = view.num_columns(&state.table);
             let height = rows.end.min(total_rows).saturating_sub(rows.start) as u64;

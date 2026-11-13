@@ -622,6 +622,63 @@ mod requests {
     }
 
     #[test]
+    fn a_viewport_is_capped_as_a_fetch_is() {
+        let mut s = session_of(30_000);
+        open(&mut s, "{}");
+        let viewport = |row_count: u64| {
+            C::SetViewport(SetViewport {
+                view_id: 1,
+                first_row: 0,
+                row_count,
+                first_column: 0,
+                column_count: u32::MAX,
+            })
+        };
+        let rows = MAX_FETCH_CELLS / 40;
+        assert!(matches!(
+            ask(&mut s, 2, viewport(rows))[0].1,
+            Body::Frame(_)
+        ));
+        let Body::Error(e) = &ask(&mut s, 3, viewport(u64::MAX))[0].1 else {
+            panic!("refused");
+        };
+        assert_eq!(
+            e.message,
+            "a window of 30000 rows by 40 columns is more than the 1000000 cells one request may fetch"
+        );
+    }
+
+    #[test]
+    fn a_grid_scrolled_right_takes_a_layout_with_fewer_columns() {
+        let mut s = session();
+        open(
+            &mut s,
+            r#"{"totals":[{"column":"market_value_usd","aggregate":"sum"}],"cells":{"market_value_usd":{"kind":"bar"}}}"#,
+        );
+        ask(
+            &mut s,
+            2,
+            C::SetViewport(SetViewport {
+                view_id: 1,
+                first_row: 0,
+                row_count: 10,
+                first_column: 30,
+                column_count: 10,
+            }),
+        );
+        // The update keeps the viewport, which now lies past the last column.
+        let narrow = r#"{"columns":["fund","market_value_usd"],"totals":[{"column":"market_value_usd","aggregate":"sum"}],"cells":{"market_value_usd":{"kind":"bar"}}}"#;
+        let answer = ask(&mut s, 3, update(narrow, 1, None));
+        let Some((_, Body::Frame(frame))) = answer.first() else {
+            panic!("{answer:?}");
+        };
+        let totals = &decode_batches(&frame.totals).unwrap()[0];
+        assert_eq!((totals.num_rows(), totals.num_columns()), (1, 0));
+        let domains = &decode_batches(&frame.domains).unwrap()[0];
+        assert_eq!((domains.num_rows(), domains.num_columns()), (2, 0));
+    }
+
+    #[test]
     fn a_format_change_keeps_expanded_groups() {
         let mut s = session();
         let layout = r#"{"group_by":["fund","strategy"],"measures":[{"column":"market_value_usd","aggregate":"sum"}]}"#;

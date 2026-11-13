@@ -14,12 +14,16 @@ Paths are relative to `packages/parallax/crates/`.
 - **Confidence:** confirmed. `arrow-array-60.1.0/src/array/dictionary_array.rs:1055-1057` reads `assert_ne!(v_len, 0)`, and no test loads an empty dictionary.
 - **Related:** `Dictionary(_, Dictionary(_, Utf8))` passes `types.rs:68` and hits `unreachable!` at `column.rs:693`; that is exotic.
 
+- Done in Engine: an empty dictionary, a null column and a repeated name load or refuse, never trap: a dictionary with no values loads as nulls, every row's key being null, before arrow's `normalized_keys` can assert; a dictionary of dictionaries is an unsupported type, refused by `Table::new` with its name. Tests: `tests/arrow_shapes.rs`, and `a_dictionary_column_of_nulls_loads_and_reloads` through a real IPC stream in `parallax-wasm`.
+
 **2. Totals and domains windows panic on an empty column range — fix before release**
 
 - **Where:** `parallax-engine/src/view.rs:1269-1305` (`totals_window`), `1312-1357` (`domains_window`), `1941-1944` (`finish`)
 - **Defect:** when no column falls in the window, the builder has zero fields, `RecordBatch::try_new` returns an error, and `.expect("consistent window")` panics.
 - **Scenario:** a flat or detail grid with a totals row, or a bar or heat cell, is asked for a window with `first_column >= column count` or `column_count == 0`. The session passes the stored viewport straight through (`parallax-session/src/lib.rs:1085-1123`) and keeps the old viewport when an `UpdateView` carries none (`lib.rs:812-824`). So a user scrolled right on a wide grid who applies a layout with fewer columns would trigger it.
 - **Confidence:** engine panic confirmed (`arrow-array-60.1.0/src/record_batch.rs:338-345`). I did not establish whether the TypeScript grid ever leaves `first_column` stale. The main `window()` is safe because it always carries `__seq` or `__depth`.
+
+- Done in Engine: an empty dictionary, a null column and a repeated name load or refuse, never trap: a totals or domains window builds its batch with an explicit row count, so a window past the last column, or of none, is one or two rows with no columns; every window clamps its column range, which also takes a range that ends before it starts. Tests: `frames.rs`, and the session's `a_grid_scrolled_right_takes_a_layout_with_fewer_columns`, the scenario the finding gives, which the session answers with a frame.
 
 **3. Charts panic on dates and instants outside jiff's range — fix before release**
 
@@ -59,12 +63,16 @@ Paths are relative to `packages/parallax/crates/`.
 - **Scenario:** an API that builds its table from pandas or polars sends an optional column that is all None today, which arrives as Arrow `null`. The grid shows nothing but "column x has unsupported type Null".
 - **Confidence:** engine behaviour confirmed. I did not check whether basis always sends declared types, which would make this moot.
 
+- Done in Engine: an empty dictionary, a null column and a repeated name load or refuse, never trap: decided as the brief says, an Arrow `null` column is a text column whose every value is blank, so the table loads, and a later load that fills it in, or empties it again, keeps the type. Test: `a_column_of_arrow_nulls_loads_as_blank_text`.
+
 **8. Duplicate column names silently show the first column's values — polish**
 
 - **Where:** `parallax-engine/src/table.rs:156-178`, `table.rs:253-274`
 - **Defect:** `Table::new` keeps both same-named columns, but `arrays_of` reads each by `column_by_name`, which returns the first match.
 - **Scenario:** a batch with two `price` columns of the same type, which pyarrow allows. The second grid column silently repeats the first; with different types the load fails with `TypeChanged` instead.
 - **Confidence:** confirmed; nothing in engine or session rejects duplicates.
+
+- Done in Engine: an empty dictionary, a null column and a repeated name load or refuse, never trap: `Table::new` refuses a schema that names a column twice, and a load refuses a batch that does, with `column price appears more than once; give each column its own name`. Test: `a_repeated_column_name_is_refused_naming_it`.
 
 **9. A column pivot at exactly its limit silently loses its last key — polish**
 
@@ -121,3 +129,11 @@ Paths are relative to `packages/parallax/crates/`.
 - The last third of `sifma.rs`.
 - Most test files beyond `oracle.rs` (first 450 lines) and `tests/format.rs`.
 - `chart.rs` and `indicator.rs` were read in full but less closely than `view.rs`, `sort.rs`, `filter.rs`, `aggregate.rs`, `table.rs`, `column.rs` and `format.rs`.
+
+## Changelog
+
+- `@basis/parallax` loads Arrow it refused or trapped on before: a dictionary-encoded text column that is null in
+  every row, as `dictionary_encode()` of an empty column or an all-null pandas categorical sends it, and an Arrow
+  `null` column, which loads as text with every value blank. A table whose columns repeat a name is refused, naming
+  the column, where it showed the first column's values twice. What to do: nothing; an API that sends a repeated name
+  gives each column its own.

@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use arrow_array::RecordBatch;
 use arrow_schema::{Field, Schema, SchemaRef};
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::bitmap::Bitmap;
 use crate::column::Column;
@@ -157,13 +157,15 @@ fn arrays_of<'b>(
     schema: &Schema,
     batch: &'b RecordBatch,
 ) -> Result<Vec<&'b arrow_array::ArrayRef>, LoadError> {
-    for field in batch.schema().fields() {
+    let batch_schema = batch.schema();
+    for field in batch_schema.fields() {
         if schema.index_of(field.name()).is_err() {
             return Err(LoadError::UnexpectedColumn {
                 column: field.name().clone(),
             });
         }
     }
+    distinct_names(&batch_schema)?;
     schema
         .fields()
         .iter()
@@ -175,6 +177,20 @@ fn arrays_of<'b>(
                 })
         })
         .collect()
+}
+
+/// Refuses a schema that names a column twice: a load reads each column by its
+/// name, so the second would show the first's values.
+fn distinct_names(schema: &Schema) -> Result<(), LoadError> {
+    let mut seen = FxHashSet::default();
+    for field in schema.fields() {
+        if !seen.insert(field.name().as_str()) {
+            return Err(LoadError::DuplicateColumn {
+                column: field.name().clone(),
+            });
+        }
+    }
+    Ok(())
 }
 
 /// A first load that the table shows as it arrives, a batch at a time: what
@@ -245,9 +261,10 @@ impl Table {
     ///
     /// # Errors
     ///
-    /// Returns an error if a column type is unsupported or the primary key is not a
-    /// column.
+    /// Returns an error if a column type is unsupported, two columns have the
+    /// same name, or the primary key is not a column.
     pub fn new(schema: &Schema, options: TableOptions) -> Result<Self, LoadError> {
+        distinct_names(schema)?;
         let mut fields = Vec::with_capacity(schema.fields().len());
         let mut columns = Vec::with_capacity(schema.fields().len());
         for field in schema.fields() {

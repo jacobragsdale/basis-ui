@@ -9,6 +9,8 @@ No release blocker in these four crates, but 13 findings: one trap on spec-valid
 - Scenario: a stream has a `dictionary<int32, utf8>` column that is entirely null (pandas all-NaN categorical, `dictionary_encode()` of nulls, or a zero-row batch). arrow-ipc 60.1 `reader.rs:179-190` deliberately synthesises an empty values array for this case. `types.rs:68` accepts the type, then `assert_ne!(v_len, 0)` (arrow-array 60.1 `dictionary_array.rs:1057`) panics. Every dataset on the page is lost and the message blames memory.
 - Confidence: confirmed. basis itself writes plain `utf8`, so only other sources trigger it.
 
+- Done in Engine: an empty dictionary, a null column and a repeated name load or refuse, never trap: as `engine.md` 1. The worker's test loads a stream whose dictionary column is null in every row, and reloads it.
+
 **2. A streamed first load with no usable length reallocates every column on every 16,384-row step** — fix before release
 
 - Where: `packages/parallax/crates/parallax-wasm/src/lib.rs:162-174, 640-644, 664, 883-892`.
@@ -54,6 +56,8 @@ No release blocker in these four crates, but 13 findings: one trap on spec-valid
 - Scenario: a stream with fields `[id, id]` (a join result served straight from a driver) loads; `column_by_name` returns the first match for both, so the grid and exports show column 1 twice.
 - Confidence: confirmed. basis's model-declared columns cannot produce duplicates.
 
+- Done in Engine: an empty dictionary, a null column and a repeated name load or refuse, never trap: as `engine.md` 8.
+
 **7. CI never builds or tests the binary configuration that ships** — polish
 
 - Where: `.github/workflows/ci.yml:17-19` against `packages/parallax/scripts/build-wasm.ts:105-109`.
@@ -78,6 +82,8 @@ No release blocker in these four crates, but 13 findings: one trap on spec-valid
 - Where: `packages/parallax/crates/parallax-session/src/lib.rs:829-840, 1084-1104`.
 - Scenario: `FetchWindow` is capped at 1,000,000 cells (lines 1089-1103). A viewport with a huge `row_count` formats the whole view, about 40M cells on a full table.
 - Confidence: plausible. I did not establish that the grid can send one, or the memory it would take.
+
+- Done in Engine: an empty dictionary, a null column and a repeated name load or refuse, never trap: a view's viewport is capped at the 1,000,000 cells a fetch is, refused with the same message. The grid asks for at most about 20,000 cells (`src/grid/window.ts`), so no grid meets it. Test: `a_viewport_is_capped_as_a_fetch_is`.
 
 **11. Exports run to completion in one synchronous call** — polish
 

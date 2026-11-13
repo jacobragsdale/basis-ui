@@ -345,6 +345,14 @@ fn totals_read_as_the_pivot_grand_total_and_titles_rename_headers() {
     // A window of columns gets the totals of those columns.
     let right = flat.totals_window(&t, 2..3).unwrap();
     assert_eq!(text_of(&right, 0), ["0.8M"]);
+    // A window past the last column, as a grid scrolled right keeps after a
+    // layout with fewer columns, or of none, is a row with no columns.
+    #[allow(clippy::reversed_empty_ranges)]
+    for columns in [10..20, 2..2, 4..1] {
+        let past = flat.totals_window(&t, columns).unwrap();
+        assert_eq!((past.num_rows(), past.num_columns()), (1, 0));
+    }
+    assert_eq!(flat.window(&t, 0..10, 10..20).batch.num_rows(), 4);
 }
 
 #[test]
@@ -646,4 +654,10 @@ fn a_flat_view_carries_the_domains_of_the_columns_drawn_by_value() {
     // A view that asks for none carries none.
     let mut plain = View::new(&t, ViewConfig::default()).unwrap();
     assert!(plain.domains_window(&t, 0..4).is_none());
+    // A window past the last column, or of none, has the two rows and no columns.
+    #[allow(clippy::reversed_empty_ranges)]
+    for columns in [10..20, 2..2, 4..1] {
+        let past = only.domains_window(&t, columns).unwrap();
+        assert_eq!((past.num_rows(), past.num_columns()), (2, 0));
+    }
 }

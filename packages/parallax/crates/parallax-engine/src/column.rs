@@ -584,6 +584,15 @@ impl Column {
                     }
                 }
             }
+            DataType::Null => {
+                let Values::Utf8 { codes, .. } = &mut self.values else {
+                    unreachable!()
+                };
+                codes.resize(start + array.len(), 0);
+                let none = NullBuffer::new_null(array.len());
+                self.valid.extend_from_validity(array.len(), Some(&none));
+                return Ok(0);
+            }
             DataType::Utf8
             | DataType::LargeUtf8
             | DataType::Utf8View
@@ -739,10 +748,18 @@ fn extend_text(
         return;
     }
     let encoded = array.as_any_dictionary();
+    let start = valid.len();
+    // A dictionary with no values has no key that names one, so every row is
+    // null: arrow checks keys against the values when it builds the array, and
+    // its normalized keys assert that there is a value.
+    if encoded.values().is_empty() {
+        codes.resize(codes.len() + array.len(), 0);
+        valid.extend_from_validity(array.len(), Some(&NullBuffer::new_null(array.len())));
+        return;
+    }
     let values = Strings::of(encoded.values().as_ref());
     let keys = encoded.normalized_keys();
     let mut mapped = vec![UNMAPPED; encoded.values().len()];
-    let start = valid.len();
     valid.extend_ones(array.len());
     for (i, &key) in keys.iter().enumerate() {
         if !array.is_valid(i) || !values.is_valid(key) {

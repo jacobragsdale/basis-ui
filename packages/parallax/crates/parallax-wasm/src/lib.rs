@@ -1337,6 +1337,47 @@ mod tests {
         assert_eq!(csv(&sliced), csv(&whole));
     }
 
+    /// A stream of `rows` ids and a dictionary-encoded comment that is null in
+    /// every row, as `dictionary_encode()` of an empty column sends it.
+    fn null_comments(rows: i64) -> Vec<u8> {
+        use arrow_array::{DictionaryArray, Int32Array, types::Int32Type};
+        let comment = DataType::Dictionary(Box::new(DataType::Int32), Box::new(DataType::Utf8));
+        let schema = Arc::new(Schema::new(vec![
+            Field::new("id", DataType::Int64, false),
+            Field::new("comment", comment, true),
+        ]));
+        let keys = Int32Array::from(vec![None; rows as usize]);
+        let values = Arc::new(StringArray::from(Vec::<&str>::new()));
+        let comments = DictionaryArray::<Int32Type>::try_new(keys, values).unwrap();
+        let batch = RecordBatch::try_new(
+            Arc::clone(&schema),
+            vec![
+                Arc::new(Int64Array::from_iter_values(0..rows)),
+                Arc::new(comments),
+            ],
+        )
+        .unwrap();
+        let mut out = Vec::new();
+        let mut writer = arrow_ipc::writer::StreamWriter::try_new(&mut out, &schema).unwrap();
+        writer.write(&batch).unwrap();
+        writer.finish().unwrap();
+        drop(writer);
+        out
+    }
+
+    #[test]
+    fn a_dictionary_column_of_nulls_loads_and_reloads() {
+        let mut worker = Worker::new();
+        assert_eq!(worker.load("app", null_comments(4), &load(100)), Ok(4));
+        assert_eq!(open(&mut worker, 1, "app").0.rows, 4);
+        assert_eq!(worker.load("app", null_comments(2), &load(100)), Ok(2));
+        let mut csv = Vec::new();
+        worker
+            .write_csv_to(r#"{"version":1,"dataset":"app"}"#, None, &mut csv)
+            .unwrap();
+        assert_eq!(csv, "\u{feff}ID,Comment\n0,\n1,\n".as_bytes());
+    }
+
     #[test]
     fn a_whole_stream_is_counted_before_it_is_read_and_one_arriving_as_it_comes() {
         let mut worker = Worker::new();

@@ -14,7 +14,7 @@ use std::sync::Arc;
 
 use arrow_array::{
     ArrayRef, BooleanArray, Date32Array, Decimal128Array, Float64Array, Int32Array, Int64Array,
-    RecordBatch, StringArray, TimestampMicrosecondArray, UInt8Array,
+    RecordBatch, RecordBatchOptions, StringArray, TimestampMicrosecondArray, UInt8Array,
 };
 use arrow_buffer::i256;
 use arrow_schema::{DataType, Field, Schema};
@@ -1268,7 +1268,7 @@ impl View {
     /// `None` for a view without totals.
     pub fn totals_window(&mut self, table: &Table, columns: Range<usize>) -> Option<RecordBatch> {
         let (grouped, shown) = self.totals_source()?;
-        let cols = columns.start.min(shown.len())..columns.end.min(shown.len());
+        let cols = within(&columns, shown.len());
         let mut out = FrameBuilder::default();
         for (index, &c) in shown[cols].iter().enumerate() {
             let field = table.schema().field(c);
@@ -1302,7 +1302,7 @@ impl View {
                 ),
             }
         }
-        Some(out.finish())
+        Some(out.finish_rows(1))
     }
 
     /// The domains of a flat view's data columns `columns`: two rows, the least
@@ -1315,7 +1315,7 @@ impl View {
         };
         let grouped = flat.domains.as_deref()?;
         let shown = &flat.columns;
-        let cols = columns.start.min(shown.len())..columns.end.min(shown.len());
+        let cols = within(&columns, shown.len());
         let mut out = FrameBuilder::default();
         for (index, &c) in shown[cols].iter().enumerate() {
             let field = table.schema().field(c);
@@ -1354,7 +1354,7 @@ impl View {
                 ),
             }
         }
-        Some(out.finish())
+        Some(out.finish_rows(2))
     }
 
     /// The configuration version, which every frame carries.
@@ -1679,7 +1679,7 @@ fn flat_window(
     let end = rows.end.min(order.len()).max(start);
     let slots: Vec<usize> = order[start..end].iter().map(|&s| s as usize).collect();
     let slots = slots.as_slice();
-    let cols = columns.start.min(flat.columns.len())..columns.end.min(flat.columns.len());
+    let cols = within(&columns, flat.columns.len());
     let mut out = FrameBuilder::default();
     out.push(
         role_field("__seq", DataType::Int64, false, role::SEQ, &[]),
@@ -1938,10 +1938,27 @@ impl FrameBuilder {
         }
     }
 
+    /// The window: its row count comes from its columns, of which there is
+    /// always one, `__seq` or `__depth`.
     fn finish(self) -> RecordBatch {
         RecordBatch::try_new(Arc::new(Schema::new(self.fields)), self.arrays)
             .expect("consistent window")
     }
+
+    /// A batch of `rows` rows, which may have no columns: a totals row or the
+    /// domains of a window past the last column.
+    fn finish_rows(self, rows: usize) -> RecordBatch {
+        let options = RecordBatchOptions::new().with_row_count(Some(rows));
+        RecordBatch::try_new_with_options(Arc::new(Schema::new(self.fields)), self.arrays, &options)
+            .expect("consistent window")
+    }
+}
+
+/// The part of `range` that lies within `0..len`, empty when it lies past the
+/// end or ends before it starts.
+fn within(range: &Range<usize>, len: usize) -> Range<usize> {
+    let start = range.start.min(len);
+    start..range.end.clamp(start, len)
 }
 
 fn to_f64(value: &MeasureValue, scale: i8) -> Option<f64> {
@@ -3084,7 +3101,7 @@ impl Grouped {
         let total_rows = self.visible(table, config).len();
         let shown: Vec<Row> = self.visible(table, config).rows(rows);
         let total_columns = self.data_columns(table).len();
-        let cols = columns.start.min(total_columns)..columns.end.min(total_columns);
+        let cols = within(&columns, total_columns);
         let data_columns: Vec<(u32, usize)> = self.data_columns(table)[cols].to_vec();
         let levels = self.levels();
 
@@ -3319,7 +3336,7 @@ impl Grouped {
         let slots = self.detail_slots(table, &shown);
         let detail_columns = self.detail.as_ref().map_or(&[][..], |d| &d.columns[..]);
         let total_columns = detail_columns.len();
-        let cols = columns.start.min(total_columns)..columns.end.min(total_columns);
+        let cols = within(&columns, total_columns);
         let levels = self.levels();
         let node_of = |row: &Row| match row {
             Row::Node(id) | Row::Detail { leaf: id, .. } => *id,

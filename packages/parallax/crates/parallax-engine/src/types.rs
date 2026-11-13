@@ -64,8 +64,19 @@ impl ColumnType {
                 precision: *precision,
                 scale: *scale,
             },
-            DataType::Utf8 | DataType::LargeUtf8 | DataType::Utf8View => Self::Utf8,
-            DataType::Dictionary(_, value) if Self::from_arrow(value) == Some(Self::Utf8) => {
+            // A column of Arrow nulls, as a data frame sends an optional column
+            // that is empty today, is text with every value blank, so that a
+            // later load that fills it in keeps the column's type.
+            DataType::Utf8 | DataType::LargeUtf8 | DataType::Utf8View | DataType::Null => {
+                Self::Utf8
+            }
+            // A dictionary of strings, but not of dictionaries.
+            DataType::Dictionary(_, value)
+                if matches!(
+                    value.as_ref(),
+                    DataType::Utf8 | DataType::LargeUtf8 | DataType::Utf8View
+                ) =>
+            {
                 Self::Utf8
             }
             DataType::Date32 => Self::Date32,
