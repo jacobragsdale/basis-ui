@@ -91,7 +91,7 @@ describe(devServer, () => {
       output: new PassThrough(),
     });
     await expect(fails).rejects.toThrow(
-      "ERROR vp run shot could not start vp dev (spawn basis-ui-no-such-command ENOENT): check that Vite+'s vp is on the PATH, as vp --version shows, then run vp run shot again.",
+      "ERROR vp run shot could not start vp dev (spawn basis-ui-no-such-command ENOENT): run vp install, then vp run shot again.",
     );
   });
 });

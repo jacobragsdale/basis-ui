@@ -44,7 +44,7 @@ function binOf(root: string, name: string, bin: string): string {
     return path.join(path.dirname(manifest), bin);
   } catch {
     throw new TaskError(
-      `ERROR ${name} is not installed in this app, and vp run verify runs it: run vp install.`,
+      `ERROR ${name} is not installed in this app, and the task runs it: run vp install.`,
     );
   }
 }

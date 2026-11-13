@@ -4,13 +4,15 @@
  * prints, such as a fixture's, reach whoever runs the task, and a `vp dev` that stops, or never starts, fails the task
  * at once. */
 
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import type { ChildProcess } from "node:child_process";
+import { Socket } from "node:net";
 import path from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 
 import { rootPath } from "./fixture-mode.ts";
 import { TaskError } from "./task-error.ts";
+import { binOf } from "./verify-tools.ts";
 
 /** How long a `vp dev` this task starts may take to answer, how often it is asked, and how long one answer may take. */
 const startSeconds = 60;
@@ -56,19 +58,73 @@ interface DevCommand {
   readonly output?: NodeJS.WritableStream;
 }
 
-const vpDev: DevCommand = { args: ["dev", "--strictPort"], command: "vp" };
-
-/** Stops a `vp dev` this task started, and everything it started. */
-function stopper(child: ChildProcess): () => void {
-  return () => {
-    if (child.pid !== undefined) {
-      try {
-        process.kill(-child.pid, "SIGTERM");
-      } catch {
-        // It ended already.
-      }
-    }
+/** `vp dev` from the app's own Vite+, its script run by this Node, so no shell or PATH is needed, on Windows too, as
+ * `vp run verify` runs its tools. */
+function vpDev(root: string): DevCommand {
+  return {
+    args: [binOf(root, "vite-plus", "bin/vp"), "dev", "--strictPort"],
+    command: process.execPath,
   };
+}
+
+/** Ends `pid` and everything it started: on Windows, which has no process groups, with `taskkill /T`; elsewhere by its
+ * process group, which `detached` gave it. */
+function killTree(pid: number): void {
+  if (process.platform === "win32") {
+    spawnSync("taskkill", ["/pid", String(pid), "/T", "/F"], {
+      stdio: "ignore",
+      windowsHide: true,
+    });
+    return;
+  }
+  try {
+    process.kill(-pid, "SIGTERM");
+  } catch {
+    // It ended already.
+  }
+}
+
+/** Stops a `vp dev` this task started, and everything it started, once: when the task asks, when it is interrupted, or
+ * when it exits any other way. Its pipes are closed with it, so they never hold the task open. */
+function stopper(child: ChildProcess): () => void {
+  let stopped = false;
+  const on = {
+    interrupted: (signal: NodeJS.Signals): void => {
+      on.stop();
+      // Raised again, with no listener left, so the task ends as the signal ends any process.
+      process.kill(process.pid, signal);
+    },
+    stop: (): void => {
+      if (stopped) {
+        return;
+      }
+      stopped = true;
+      // The tree first, so a signal that arrives once the listeners are gone cannot end the task before it.
+      if (child.pid !== undefined) {
+        killTree(child.pid);
+      }
+      child.stdout?.destroy();
+      child.stderr?.destroy();
+      process.off("exit", on.stop);
+      process.off("SIGINT", on.interrupted);
+      process.off("SIGTERM", on.interrupted);
+    },
+  };
+  process.once("exit", on.stop);
+  process.once("SIGINT", on.interrupted);
+  process.once("SIGTERM", on.interrupted);
+  return on.stop;
+}
+
+/** Lets the task end while `child` runs and its pipes stay open, as a `vp dev` that answered does until it is
+ * stopped: its output still reaches the task's, and stopping it is the task's to do, never the event loop's. */
+function released(child: ChildProcess): void {
+  child.unref();
+  for (const stream of [child.stdout, child.stderr]) {
+    if (stream instanceof Socket) {
+      stream.unref();
+    }
+  }
 }
 
 /** How a `vp dev` this task started came out: answering, stopped with its exit code, never started, or still silent. */
@@ -87,10 +143,13 @@ interface Child {
 /** Starts `vp dev`, its output written to `output`, and records how it ends: unable to start, or stopped once its
  * output has all arrived, not merely once it exits. */
 function start({ command, args, output = process.stderr }: DevCommand): Child {
+  // Detached outside Windows, so that it leads a process group that stopping it ends. On Windows that would give it a
+  // console window of its own, and `taskkill /T` ends its tree without one.
   const child = spawn(command, args, {
-    detached: true,
+    detached: process.platform !== "win32",
     env: { ...process.env, BASIS_API_URL: "" },
     stdio: ["ignore", "pipe", "pipe"],
+    windowsHide: true,
   });
   let ended: Started | undefined = undefined;
   child.on("error", (error) => {
@@ -130,7 +189,7 @@ async function cameUp(
 function failureLine(origin: string, outcome: Exclude<Started, { readonly kind: "up" }>): string {
   switch (outcome.kind) {
     case "failed": {
-      return `ERROR vp run shot could not start vp dev (${outcome.error.message}): check that Vite+'s vp is on the PATH, as vp --version shows, then run vp run shot again.`;
+      return `ERROR vp run shot could not start vp dev (${outcome.error.message}): run vp install, then vp run shot again.`;
     }
     case "stopped": {
       return `ERROR vp dev stopped, with exit code ${String(outcome.code)}, before it answered at ${origin}: fix what its output above says, then run vp run shot again.`;
@@ -176,6 +235,7 @@ async function startDevServer(
   const stop = stopper(started.child);
   const outcome = await cameUp({ origin, root }, started);
   if (outcome.kind === "up") {
+    released(started.child);
     return { stop };
   }
   stop();
@@ -186,14 +246,14 @@ async function startDevServer(
 async function devServer(
   origin: string,
   root: string,
-  command: DevCommand = vpDev,
+  command?: DevCommand,
 ): Promise<{ readonly stop: () => void }> {
   const found = await answering(origin, root);
   if (found.kind === "this") {
     return { stop: (): void => undefined };
   }
   refuseOthers(found, origin);
-  return startDevServer(origin, root, command);
+  return startDevServer(origin, root, command ?? vpDev(root));
 }
 
 export { devServer };

@@ -15,6 +15,15 @@
    - Severity: fix before release.
    - Confidence: confirmed by reading, relying on Node's documented lack of process-group kill on Windows.
 
+   Done in "Preset: the vp dev that shot starts is stopped on Windows, and when shot is interrupted": `stopper` ends the
+   tree with `taskkill /pid PID /T /F` on Windows and by its process group elsewhere, closes the child's pipes, and runs
+   on `SIGINT`, `SIGTERM` and the task's exit too. Once the dev server answers, the child and its pipes are unref'd, so
+   they never hold the task open. On Windows the child is no longer detached, which would give it a console window, and
+   is started with `windowsHide`. `tests/dev-server.test.ts` starts a fake `vp dev` that starts a second Node to listen,
+   and expects, after a stop and after a `SIGINT`, the task ended and no process or listener left; the interrupt failed
+   before on Linux, and the stop holds Windows' case. A real `vp run shot /` in the example app, with no `vp dev`
+   running, ended in 7 s with nothing left.
+
 3. **`src/preset/verify-tools.ts:164-165, 177-204`** — the `tsc` line parser matches nothing when lines end in CRLF.
    - Scenario: `output.split("\n")` leaves a `\r`, and `(?<message>.*)$` cannot consume it. With CRLF output, zero errors parse, so the stage falls to `unread`.
    - Consequence: one finding with `file: null`, `line: null`, only the first error quoted, and the fix "run tsc --noEmit", a command that is not on an app's PATH. The verdict is still FAIL, but the JSON loses every location.
@@ -133,6 +142,9 @@ What `docs/release-plan.md`'s "On winbox" gives step 7.6.
   Done in "Preset: the budget ends when Chromium cannot start": `weighRoutes` launches the browser inside the `try`
   that closes its server, so a launch that fails ends the task with its `ERROR` line. `tests/budget.test.ts` runs the
   task with an empty `PLAYWRIGHT_BROWSERS_PATH` and expects it to exit 1 within 30 s; before, it was killed at 30 s.
+- **W5**, `vp run shot /` never exits on Windows when it starts `vp dev` itself.
+  Done in "Preset: the vp dev that shot starts is stopped on Windows, and when shot is interrupted": finding 2's fix. `vp dev` is also run from the app's own Vite+, its `bin/vp` through Node, as
+  verify runs its tools, so no `vp` on the `PATH` is needed.
 
 ## Changelog
 
@@ -141,3 +153,7 @@ What `docs/release-plan.md`'s "On winbox" gives step 7.6.
 
 - `vp run verify`'s client and lint stages fail when their tool fails with no report to read, as a client check whose
   child cannot start, or a lint whose type-aware pass crashes; before, both passed. What to do: nothing.
+
+- `vp run shot` stops the `vp dev` it started, and everything that one started, on Windows too, and when it is
+  interrupted; before, on Windows, the task wrote its files and never exited, leaving a dev server on the port. It runs
+  `vp dev` from the app's own Vite+. What to do: nothing.
