@@ -159,3 +159,6 @@ It is not diagnosable: there is no panic message, no stack and no console log, s
   load with their columns copied a few times rather than once a batch or slice. A table sent as one batch still holds
   its whole stream in the engine's memory beside the table until it has loaded. What to do: an API that serves large
   tables writes them in batches of about 65,536 rows, as `write_table(table, max_chunksize=65_536)` does in pyarrow.
+- `@basis/parallax`'s protocol: `MeasureChart` gains `y`, the y column to measure by name, empty for the chart's first
+  as before, so the Measure tool can measure any line a chart with several y columns draws. An additive field. What
+  to do: nothing.

@@ -597,14 +597,20 @@ pub(crate) fn measure(table: &Table, state: &ChartState, request: &MeasureChart)
                 .into_iter()
                 .find(|v| texts.value(v) == request.series)
         });
-    let Some(m) = state
-        .view
-        .measure(table, request.from, request.to, wanted.as_ref())
+    // The y column asked for, or the chart's first, or an OHLC chart's close.
+    let price_name = if request.y.is_empty() {
+        config.indicator_price().unwrap_or_default()
+    } else {
+        request.y.as_str()
+    };
+    let Some(m) =
+        state
+            .view
+            .measure_y(table, request.from, request.to, wanted.as_ref(), price_name)
     else {
         return ChartMeasure::default();
     };
     let x_text = Texts::new(table, &state.formats, &config.x);
-    let price_name = config.indicator_price().unwrap_or_default();
     let price = Texts::new(table, &state.formats, price_name);
     let format = price_format(table, &state.formats, price_name);
     let formatter = Formatter::new(&format).unwrap_or_default();

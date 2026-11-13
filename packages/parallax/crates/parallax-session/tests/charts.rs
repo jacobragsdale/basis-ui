@@ -950,6 +950,7 @@ mod tools {
                 from: first + 20.2,
                 to: first + 10.1,
                 series: String::new(),
+                y: String::new(),
             }),
         );
         let [Body::ChartMeasure(m)] = replies.as_slice() else {
@@ -986,6 +987,56 @@ mod tools {
             "two weeks of trading days"
         );
         assert!(!m.from_x.is_empty() && !m.to_x.is_empty());
+    }
+
+    #[test]
+    fn measuring_reads_the_y_column_it_names() {
+        let (mut session, data) = session(1);
+        open(
+            &mut session,
+            r#"{"chart": {"kind": "line", "x": "date", "y": ["close", "open"]}}"#,
+        );
+        let dates = data
+            .column_by_name("date")
+            .unwrap()
+            .as_primitive::<Date32Type>();
+        let mut measure = |y: &str| {
+            let replies = send(
+                &mut session,
+                3,
+                client_message::Body::MeasureChart(MeasureChart {
+                    view_id: 1,
+                    from: f64::from(dates.value(10)),
+                    to: f64::from(dates.value(20)),
+                    series: String::new(),
+                    y: y.into(),
+                }),
+            );
+            let [Body::ChartMeasure(m)] = replies.as_slice() else {
+                panic!("{replies:?}")
+            };
+            m.clone()
+        };
+        let number = |text: &str| -> f64 { text.replace(',', "").parse().unwrap() };
+        let value = |column: &str| {
+            data.column_by_name(column)
+                .unwrap()
+                .as_primitive::<Float64Type>()
+                .value(10)
+        };
+        // The first y column unless another is named.
+        for (y, column) in [("", "close"), ("close", "close"), ("open", "open")] {
+            let m = measure(y);
+            assert!(m.found, "{y}");
+            assert!(
+                (number(&m.from_value) - value(column)).abs() <= 0.005,
+                "{y}: {}",
+                m.from_value
+            );
+        }
+        assert_ne!(value("open"), value("close"));
+        // A column the chart does not draw has nothing to measure.
+        assert!(!measure("volume").found);
     }
 }
 

@@ -1282,7 +1282,8 @@ impl ChartView {
 
     /// Measures a series between two axis positions: the rows nearest each with
     /// a price, and the rows from one to the other. The series is the one whose
-    /// key is `series`, or the first; `None` if it has no row with a price.
+    /// key is `series`, or the first; `None` if it has no row with a price. The
+    /// price is the chart's first y column, or an OHLC chart's close.
     #[must_use]
     pub fn measure(
         &self,
@@ -1291,10 +1292,27 @@ impl ChartView {
         to: f64,
         series: Option<&Scalar>,
     ) -> Option<Measured> {
-        let price = self
-            .config
-            .indicator_price()
-            .and_then(|c| table.column_index(c))?;
+        self.measure_y(table, from, to, series, self.config.indicator_price()?)
+    }
+
+    /// Measures as [`ChartView::measure`] does, the price being the y column
+    /// `y`, which must be one the chart draws, its close among them; `None` for
+    /// any other.
+    #[must_use]
+    pub fn measure_y(
+        &self,
+        table: &Table,
+        from: f64,
+        to: f64,
+        series: Option<&Scalar>,
+        y: &str,
+    ) -> Option<Measured> {
+        let drawn = self.config.y.iter().any(|c| c == y)
+            || self.config.ohlc.as_ref().is_some_and(|o| o.close == y);
+        if !drawn {
+            return None;
+        }
+        let price = table.column_index(y)?;
         let column = table.column(price);
         let ordered = series
             .and_then(|wanted| {

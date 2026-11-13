@@ -319,6 +319,10 @@ message MeasureChart {
   // The series to measure, by the series column's value as text, or empty for
   // the first.
   string series = 4;
+  // The y column to measure, by name, one of the chart's y columns; empty for
+  // its first, or an OHLC chart's close. A column the chart does not draw is
+  // not found.
+  string y = 5;
 }
 
 // What changed between two rows of a chart's series, all as the engine's text.
