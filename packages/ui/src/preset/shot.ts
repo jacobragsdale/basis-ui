@@ -32,8 +32,8 @@ import { optionsOf } from "./shot-options.ts";
 import type { ShotOptions } from "./shot-options.ts";
 import { launch, pageFor } from "./shot-page.ts";
 import type { ShotReport } from "./shot-report.ts";
-import { linesText, shootRoute, shotsFolder } from "./shot-route.ts";
-import type { RouteShot, Run } from "./shot-route.ts";
+import { linesText, shootInTurn, shootRoute, shotsFolder } from "./shot-route.ts";
+import type { Run } from "./shot-route.ts";
 import { routerPaths, routesToShoot, skippedLine } from "./shot-routes.ts";
 import { TaskError } from "./task-error.ts";
 
@@ -52,19 +52,6 @@ async function routesOf(
   }
 }
 
-/** Shoots each route in turn, each once the one before is written. */
-async function shootEach(
-  run: Run,
-  routes: readonly string[],
-  done: readonly RouteShot[] = [],
-): Promise<readonly RouteShot[]> {
-  const [route, ...rest] = routes;
-  if (route === undefined) {
-    return done;
-  }
-  return shootEach(run, rest, [...done, await shootRoute(run, route)]);
-}
-
 /** Fails at once when `--compare` names no folder, rather than once for each picture. */
 function checkCompareFolder(root: string, folder: string | undefined): void {
   if (folder === undefined) {
@@ -81,12 +68,12 @@ function checkCompareFolder(root: string, folder: string | undefined): void {
 /** Takes the shots `run` asks for, on its browser, and reports them. */
 async function shootAll(run: Run): Promise<ShotReport> {
   const { routes, skipped } = await routesOf(run);
-  const shots = await shootEach(run, routes);
+  const shots = await shootInTurn(routes, async (route) => shootRoute(run, route));
   const problems = shots.flatMap((shot) => shot.problems);
   return {
     ok: problems.length === 0,
     problems,
-    shots: shots.map((shot) => shot.entry),
+    shots: shots.flatMap((shot) => ("entry" in shot ? [shot.entry] : [])),
     skipped: skipped.map((route) => ({ reason: skippedLine(route), route })),
   };
 }

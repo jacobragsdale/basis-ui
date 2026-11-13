@@ -4,8 +4,8 @@
 import { z } from "zod";
 
 /** What a problem can be: a logged error, a violation, a difference from a baseline, a selector or a step that
- * failed, or the whole task. */
-const kinds = ["axe", "compare", "console", "selector", "step", "task"] as const;
+ * failed, a route that matches none of the router's or could not be pictured, or the whole task. */
+const kinds = ["axe", "compare", "console", "route", "selector", "step", "task"] as const;
 
 /** The files one shot wrote, from the app's root. */
 interface ShotFiles {

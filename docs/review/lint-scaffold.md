@@ -140,6 +140,8 @@ Done in Preset: doctor checks Node, the registry's certificate and that Chromium
 - Severity: polish.
 - Confidence: confirmed by reading.
 
+Done in Shot: a path no route matches fails, and --all keeps its shots when one route cannot be pictured: after opening a route, shot reads the router's paths from the page, as `--all` does, and a route none of them matches fails with a problem of the new kind `route`, naming the router's paths; a page with no router to read is not judged. Each route is shot in turn by `shootInTurn`, which turns a route that throws, as a 30 s load timeout, into its own `route` problem and keeps the shots before and after it. Held by `tests/shot-routes.test.ts`. Not run against a real `vp dev` here.
+
 **15. Smaller scaffolder defects.**
 
 - `api-operations.ts:209-211`: `modelName` keeps underscores and capitals where orval's `pascal` does not, so `Page_Trade_` is imported where the client exports `PageTrade`.
@@ -191,3 +193,7 @@ The area is better than its age suggests: modules are small and pure, every fail
   any line of a block comment, as TypeScript honours it, and verify reads each file's comments as the parser gives
   them, so a URL or `"src/*"` in a string no longer hides the comment after it. What to do: remove what `vp run verify`
   now reports, and fix the type the compiler names.
+
+- `vp run shot` fails a route that matches none of the router's paths, whose picture was the page not found, and
+  `--all` keeps every other route's shot when one cannot be pictured, as when its load times out; both report a
+  problem of the new kind `route` in `--json`. What to do: name a route the router has.

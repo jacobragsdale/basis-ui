@@ -17,6 +17,7 @@ import { nameOf } from "./shot-options.ts";
 import type { ShotOptions } from "./shot-options.ts";
 import { open, pageFor } from "./shot-page.ts";
 import type { ShotEntry, ShotFiles, ShotProblem } from "./shot-report.ts";
+import { pathsOnPage, unmatchedLine } from "./shot-routes.ts";
 import { takeSteps } from "./shot-steps.ts";
 import { TaskError } from "./task-error.ts";
 
@@ -209,6 +210,7 @@ async function writeTexts(
 async function shot(shooting: Shooting): Promise<RouteShot> {
   const { run, route, page, network, files } = shooting;
   const errors = await open(page, `${run.origin}${route}`, 0);
+  const unmatched = unmatchedLine(route, await pathsOnPage(page));
   const steps = await stepped(shooting);
   await sleep(run.options.wait);
   const selector = await picture(shooting);
@@ -225,6 +227,7 @@ async function shot(shooting: Shooting): Promise<RouteShot> {
       route,
     },
     problems: [
+      ...(unmatched === undefined ? [] : [{ kind: "route" as const, message: unmatched, route }]),
       ...steps,
       ...selector,
       ...consoleProblems(route, errors, files.console),
@@ -259,5 +262,36 @@ async function shootRoute(run: Run, route: string): Promise<RouteShot> {
   }
 }
 
-export { linesText, shootRoute, shotsFolder };
+/** A route's shot that failed as a whole, as a load that timed out: no entry, and the line that says so. */
+function failedShot(route: string, error: unknown): { readonly problems: readonly ShotProblem[] } {
+  const reason = (error instanceof Error ? error.message : String(error)).split("\n")[0] ?? "";
+  return {
+    problems: [
+      {
+        kind: "route",
+        message: `ERROR ${route} could not be pictured (${reason.replace(/\.$/u, "")}), and the routes before it were: run vp run shot ${route} alone, and if it fails again, read its console and network files or raise --wait for a slow page.`,
+        route,
+      },
+    ],
+  };
+}
+
+type Taken = RouteShot | ReturnType<typeof failedShot>;
+
+/** Each route's shot by `take`, in turn, each once the one before is written; a route that fails as a whole adds its
+ * problem and leaves the shots before and after it. */
+async function shootInTurn(
+  routes: readonly string[],
+  take: (route: string) => Promise<RouteShot>,
+  done: readonly Taken[] = [],
+): Promise<readonly Taken[]> {
+  const [route, ...rest] = routes;
+  if (route === undefined) {
+    return done;
+  }
+  const taken = await take(route).catch((error: unknown) => failedShot(route, error));
+  return shootInTurn(rest, take, [...done, taken]);
+}
+
+export { linesText, shootInTurn, shootRoute, shotsFolder };
 export type { RouteShot, Run };

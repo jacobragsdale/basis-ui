@@ -1766,9 +1766,11 @@ vp run shot /bonds/US91282CRF04 --all --compare baselines --json
   by copying it there. Text draws differently from one operating system to the next, so make and compare baselines in
   WSL.
 
-A console error, an axe violation, a step that cannot be taken, a selector that picks no one element and a picture
-that differs from its baseline, or has none, each fail the task with an `ERROR` line that ends in its fix, and the
-files are still written, so the picture shows the page as it stood.
+A console error, an axe violation, a step that cannot be taken, a selector that picks no one element, a picture that
+differs from its baseline, or has none, and a route that matches none of the router's paths, whose picture is the page
+not found, each fail the task with an `ERROR` line that ends in its fix, and the files are still written, so the
+picture shows the page as it stood. A route that cannot be pictured at all, as one whose load times out, fails with
+its line, and the routes before and after it are still pictured and reported.
 
 It needs the Chromium that `@basis/ui`'s Playwright pins, which `vp dlx playwright@1.65.0 install chromium` installs, as
 `vp run doctor` says. It trusts only the `vp dev` that answers on the app's port with the app's own folder, and one it
