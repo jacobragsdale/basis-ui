@@ -54,6 +54,7 @@ function themeScaleNames(css: string): readonly string[] {
     "--radius-pill",
     "--z-index-raised",
     "--z-index-popup",
+    "--z-index-notice",
     "--spacing-target",
   ]);
   const block = /@theme \{(?<body>[^}]*)\}/u.exec(css)?.groups?.["body"] ?? "";

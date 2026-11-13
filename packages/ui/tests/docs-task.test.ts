@@ -31,7 +31,9 @@ function run(...args: string[]): { readonly status: number | null; readonly stdo
   return { status: result.status, stdout: result.stdout };
 }
 
-describe("vp run docs", () => {
+/* Each test starts Node on the task once or more, a second or so each, and a busy runner takes several: five seconds,
+ * Vitest's default, was passed on CI by the test that runs it four times. */
+describe("vp run docs", { timeout: 30_000 }, () => {
   test("lists the installed README's sections and each family's main component, and prints a page by its slug", () => {
     const listing = run("docs");
     expect(listing.stdout).toContain("ui/calling-the-api");
