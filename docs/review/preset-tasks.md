@@ -9,6 +9,16 @@
    - Severity: release blocker if the CDN is unreachable; it is not on design.md's "Not yet verified" list.
    - Confidence: code path confirmed by reading; the firm's network is the unknown.
 
+   Done in "Preset: the drift check holds what sits beside the framework's configuration, and the tasks name git's
+   refusals", the smallest change that removes the outcome, as the plan leaves this open: on Windows, where Playwright's
+   Chromium is not installed, `vp run shot` and the budget launch the Microsoft Edge every Windows desktop has
+   (`channel: "msedge"`), and say so on stderr, so verify's budget stage can pass with no download; with
+   `BASIS_TEST_DOM=node` for the tests stage, verify can pass on a desktop with only the internal registry. The line for
+   a missing Chromium names `PLAYWRIGHT_DOWNLOAD_HOST` for a mirror of Playwright's downloads. `docs/design.md` says so,
+   and its "Not yet verified" gains whether a desktop reaches Playwright's download site. `tests/shot.test.ts` holds the
+   line; the Edge fallback can only be shown on Windows, and was on winbox (see the report). `vp test`'s browser mode
+   still needs Playwright's Chromium: `index.ts`'s test setup is not this step's.
+
 2. **`src/preset/dev-server.ts:62-72` (with `:89-94`, `shot.ts:105-107`)** — the dev server that `vp run shot` starts is never stopped on Windows.
    - Scenario: `stopper` calls `process.kill(-child.pid, "SIGTERM")`. Windows has no process groups; libuv's `uv_kill` returns ESRCH for a negative pid, and the `catch` swallows it as "it ended already".
    - Consequence: the detached `vp dev` keeps running, its piped stdout/stderr keep the task's event loop alive, and `shot.ts` only sets `process.exitCode`. The first `vp run shot` without a running dev server prints its files and then hangs until the agent's tool times out, leaving an orphan on the port.
@@ -29,6 +39,10 @@
    - Consequence: one finding with `file: null`, `line: null`, only the first error quoted, and the fix "run tsc --noEmit", a command that is not on an app's PATH. The verdict is still FAIL, but the JSON loses every location.
    - Severity: fix before release.
    - Confidence: regex confirmed by running (LF: 2 of 2 lines matched; CRLF: 0 of 2). That `tsc` 7 prints CRLF on Windows is from memory of TypeScript's platform newline; one run on winbox settles it.
+
+   Did not hold on winbox, as the release plan records: `tsc`'s lines were read on Windows, a type error named at its
+   file and line. Not done, then. A CRLF line would still not parse, so a `\r` before the end would be a cheap guard,
+   but no Windows run printed one.
 
 4. **`src/preset/upgrade.ts:128-137` (with `:83-93`, `codemods.ts:163-172, 216-235`, `changelog.ts:67-79`)** — a failure after `vp add` leaves a half-applied upgrade whose codemods can never be run.
    - Order is install → parse changelog → sync → codemods → verify. Three things abort after the install:
@@ -118,13 +132,36 @@
     - Severity: fix before release for `vitest.config.ts` (agents add one readily); polish for the rest.
     - Confidence: confirmed by reading; whether `vp` honours the sibling files is plausible, not tested.
 
+    Done in "Preset: the drift check holds what sits beside the framework's configuration, and the tasks name git's refusals":
+    the config stage refuses a `vitest.config.*`, a `vite.config.*` other than `vite.config.ts` (Vite prefers `.js`),
+    and an `.oxlintrc*` or `.oxfmtrc*` in the app's root, each with an `ERROR` line naming the tool that reads it; holds
+    `optionalDependencies` to the list as the others are; and refuses a dependency installed under an alias (`npm:`),
+    from a file, a link, git, GitHub or a URL, with `vp add NAME@VERSION` as the fix. `workspace:` stays, as basis-ui's
+    own apps use it. `tests/drift-check.test.ts` holds each; each failed before. Not done: a `vite.config.ts` with no
+    budget passes, and the budget stage then prints `ok`, since `basisPreset()` with no budget is among the framework's
+    lines, and the example has none; requiring one is a decision the plan does not make. That Vite+ reads each sibling
+    file is from its docs, not run.
+
 11. **`src/preset/git.ts:13-25` (used at `doctor.ts:57-65`, `upgrade.ts:49-55`, `review.ts:58-63`)** — git's stderr is discarded, so every failure reads as "not a git clone".
     - Scenario: "detected dubious ownership" (common in WSL under `/mnt/c` and on redirected folders) makes `doctor` advise `git init`, `upgrade` refuse, and `verify` quietly not record.
     - Severity: polish, likely to cost support time. Confidence: plausible.
 
+    Done in "Preset: the drift check holds what sits beside the framework's configuration, and the tasks name git's refusals": `git.ts` keeps what
+    git says when it fails, and `refusedClone` tells a clone git will not read from no clone: "detected dubious
+    ownership" is an `ERROR` line naming the folder and `git config --global --add safe.directory FOLDER`, and another
+    refusal is named with git's own words. `vp run doctor`, `vp run upgrade` and verify's record use it instead of "not
+    a git clone". `tests/git-refusals.test.ts` holds doctor's line with a stand-in for git that refuses as git does; it
+    advised `git init` before.
+
 12. **`src/preset/verify-tools.ts:207-214`, `upgrade-steps.ts:115-117`, `client.ts:264-266`** — temp folders are removed in `finally` with no retries.
     - Scenario: an EBUSY or EPERM from a virus scanner replaces a passing tests or build stage with "the tests stage failed: EBUSY". In a dry run, the codemod imports `vite-plus` from the temp folder, which may leave a loaded native binding there; a failed `rm` then discards the whole preview.
     - Severity: polish. Confidence: plausible.
+
+    Done in "Preset: the drift check holds what sits beside the framework's configuration, and the tasks name git's
+    refusals": `scratch.ts` removes a task's scratch folder with five retries and never fails the task for it, leaving
+    one it cannot remove to the system's temporary folder; verify's report folders, the dry run's install and the client
+    check's folder use it. `tests/verify-tools.test.ts` holds a report folder that refuses to be emptied, which replaced
+    the stage's result with the error before; on Linux, by a folder's mode, since a scanner's hold cannot be made here.
 
 13. **`src/preset/sync.ts:37, 138-148`** — CRLF is mishandled in two places.
     - An `AGENTS.md` saved with CRLF gets a second basis-ui block appended instead of the first replaced, and the check then passes with both.
@@ -141,6 +178,11 @@
     - `.idea/`, `.vscode/` or `.env` are not in the managed `.gitignore`. The only way out is `.git/info/exclude`, which no message names.
     - The managed `.gitignore` is a recorded decision; the interaction is not.
     - Severity: polish. Confidence: confirmed by reading.
+
+    Done in "Preset: the drift check holds what sits beside the framework's configuration, and the tasks name git's refusals", the interaction only:
+    `vp run upgrade`'s refusal of a dirty tree, and verify's "Not recorded" line, name the files not committed, the
+    first five and how many more, and `.git/info/exclude` for a file git should never see, as an editor's. What the
+    managed `.gitignore` names is step 7.8's (`onboarding.md` 13). `tests/git-refusals.test.ts` holds both lines.
 
 ## Quality of the area and its tests
 
@@ -237,3 +279,17 @@ What `docs/release-plan.md`'s "On winbox" gives step 7.6.
   verify's budget name the same fix. What to do: run `vp run doctor` on a new desktop, and do as each `ERROR` line says.
 - `vp run shot /route` in Git Bash, which rewrites the route into a Windows path, takes the route back. What to do:
   nothing.
+
+- `vp run verify`'s config stage refuses a `vitest.config.*`, a second `vite.config.*`, an `.oxlintrc*` or an
+  `.oxfmtrc*` beside the framework's configuration, holds `optionalDependencies` to the list of packages an app may
+  use, and refuses a dependency installed under an alias or from outside the feed. What to do: delete such a file, and
+  install each named dependency with `vp add NAME@VERSION`.
+- `vp run doctor`, `vp run upgrade` and verify's record name git's own refusal of a clone, such as one it holds to be
+  another user's, with `git config --global --add safe.directory`, rather than calling it no clone; and the files not
+  committed that stop an upgrade or a record, with `.git/info/exclude` for a file git should never see. What to do:
+  nothing.
+- A task whose scratch folder a virus scanner holds a moment too long no longer fails for it: the folder is removed
+  with retries, and left to the system when it cannot be. What to do: nothing.
+- On Windows, where Playwright's Chromium is not installed, `vp run shot` and the budget use the installed Microsoft
+  Edge, and say so; the line for a missing Chromium names `PLAYWRIGHT_DOWNLOAD_HOST` for a mirror. What to do: on a
+  desktop that cannot reach Playwright's download site, set `BASIS_TEST_DOM=node` for `vp test`.

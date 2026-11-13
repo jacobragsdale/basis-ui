@@ -5,10 +5,10 @@
  * the app's own budget and, for a machine with no browser, `basisTest({ browser: false })`. `vp run sync` writes the
  * first two, and the third when it is missing, since only the app knows its budget. sync.ts applies them. */
 
-import { readFile } from "node:fs/promises";
+import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 
-import { dependencyProblems } from "./dependencies.ts";
+import { dependencyProblems, specProblems } from "./dependencies.ts";
 import { appDependencies, ignored } from "./installed.ts";
 
 const stylesFile = "src/styles.css";
@@ -146,15 +146,43 @@ interface Problem {
   readonly text: string;
 }
 
-/** One ERROR line for what `vp run sync` cannot put right: `vite.config.ts` beyond the framework's lines, and each
- * dependency an app may not have. */
+/** The configuration files a tool reads beside the framework's, or instead of it, by the tool: Vitest's own, a second
+ * Vite one, which Vite prefers to `vite.config.ts` when it is `.js`, and Oxlint's and Oxfmt's, which `vp check` reads
+ * beside the preset's. */
+const siblingTools: readonly (readonly [RegExp, string])[] = [
+  [/^vitest\.config\.[cm]?[jt]s$/u, "Vitest"],
+  [/^vite\.config\.(?:[cm][jt]s|js)$/u, "Vite"],
+  [/^\.oxlintrc(?:\.jsonc?)?$/u, "Oxlint"],
+  [/^\.oxfmtrc(?:\.jsonc?)?$/u, "Oxfmt"],
+];
+
+/** One line for each configuration file beside the framework's in the app's root, which its tool would read. */
+async function siblingProblems(root: string): Promise<readonly Problem[]> {
+  const names = await readdir(root).catch((): string[] => []);
+  return names.toSorted().flatMap((file) => {
+    const tool = siblingTools.find(([pattern]) => pattern.test(file))?.[1];
+    return tool === undefined
+      ? []
+      : [
+          {
+            file,
+            text: `ERROR ${file} configures ${tool} beside the framework's configuration, which ${tool} reads instead of it or as well, so this app's checks would differ from every other's: delete it, and keep what the app needs in vite.config.ts's framework lines.`,
+          },
+        ];
+  });
+}
+
+/** One ERROR line for what `vp run sync` cannot put right: `vite.config.ts` beyond the framework's lines, a
+ * configuration file beside the framework's, and each dependency an app may not have, or installs from elsewhere. */
 async function appProblems(root: string): Promise<readonly Problem[]> {
   const viteConfig = await viteConfigOf(root);
   const config = viteConfig === undefined ? undefined : viteConfigProblem(viteConfig);
   const dependencies = await appDependencies(root);
+  const inPackage = [...dependencyProblems(dependencies.keys()), ...specProblems(dependencies)];
   return [
     ...(config === undefined ? [] : [{ file: viteConfigFile, text: config }]),
-    ...dependencyProblems(dependencies.keys()).map((text) => ({ file: "package.json", text })),
+    ...(await siblingProblems(root)),
+    ...inPackage.map((text) => ({ file: "package.json", text })),
   ];
 }
 

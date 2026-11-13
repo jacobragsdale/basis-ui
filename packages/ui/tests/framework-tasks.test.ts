@@ -238,7 +238,7 @@ describe("vp run review", () => {
   test("records no check while the worktree has uncommitted changes", async () => {
     write("notes.txt", "uncommitted\n");
     expect(await recordCheck(app)).toMatch(
-      /^Not recorded for vp run review: the worktree has uncommitted changes/u,
+      /^Not recorded for vp run review: the worktree has changes not committed/u,
     );
   });
 });
@@ -266,7 +266,7 @@ describe("vp run doctor", () => {
   test("outside a git clone, fails with the fix for each problem", () => {
     const result = run("doctor");
     expect(result.status).toBe(1);
-    expect(result.stdout).toMatch(/^ok git /u);
+    expect(result.stdout).toMatch(/^ok git /mu);
     expect(`${result.stdout}${result.stderr}`).toMatch(/Playwright \d+\.\d+\.\d+'s Chromium/u);
     expect(result.stderr).toContain(
       "ERROR this folder is not a git clone, so no hook runs: clone the app's repo, or run git init, then vp config.",

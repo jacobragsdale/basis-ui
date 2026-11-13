@@ -2,13 +2,13 @@
  * wrong, or a child that dies before it can say anything. Neither is ever a passing stage. The tools are fakes, a
  * `vite-plus` in a temporary app whose `vp` prints what the test gives it. */
 
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
 import { afterEach, describe, expect, test, vi } from "vite-plus/test";
 
-import { lintFindings } from "#preset/verify-tools.ts";
+import { lintFindings, withReportFile } from "#preset/verify-tools.ts";
 import { verify } from "#preset/verify.ts";
 
 const roots: string[] = [];
@@ -63,4 +63,24 @@ describe("the client stage", () => {
     expect(failed).toBe(true);
     expect(text).toMatch(/^ERROR vp run client-check failed \(exit 1\) with no report to read/mu);
   });
+});
+
+describe(withReportFile, () => {
+  test.skipIf(process.platform === "win32")(
+    "returns what the tool reported though its folder cannot be removed, as when a scanner holds a file",
+    () => {
+      let locked = "";
+      const result = withReportFile("report.json", (file) => {
+        // A folder of the report's that refuses to be emptied, as a file a virus scanner holds open does on Windows.
+        locked = path.join(path.dirname(file), "held");
+        mkdirSync(locked);
+        writeFileSync(path.join(locked, "open.txt"), "");
+        chmodSync(locked, 0o500);
+        return "the report";
+      });
+      chmodSync(locked, 0o700);
+      rmSync(path.dirname(locked), { force: true, recursive: true });
+      expect(result).toBe("the report");
+    },
+  );
 });

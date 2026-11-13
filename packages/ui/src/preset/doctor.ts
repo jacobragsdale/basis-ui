@@ -17,7 +17,7 @@ import { z } from "zod";
 
 import { environmentFindings, failed, passed } from "./doctor-environment.ts";
 import type { Finding } from "./doctor-environment.ts";
-import { git } from "./git.ts";
+import { git, refusedClone } from "./git.ts";
 import {
   appDependencies,
   chromiumFailure,
@@ -45,14 +45,18 @@ function gitFindings(root: string): readonly Finding[] {
     ];
   }
   const top = git(root, ["rev-parse", "--show-toplevel"]);
-  return top === undefined
-    ? [
-        passed(version),
-        failed(
+  if (top !== undefined) {
+    return [passed(version), passed(`a git clone at ${top}`)];
+  }
+  const refused = refusedClone(root, "vp run doctor again");
+  return [
+    passed(version),
+    refused === undefined
+      ? failed(
           "this folder is not a git clone, so no hook runs: clone the app's repo, or run git init, then vp config.",
-        ),
-      ]
-    : [passed(version), passed(`a git clone at ${top}`)];
+        )
+      : { line: refused, ok: false },
+  ];
 }
 
 /** Whether git runs the hooks in `.vite-hooks/`: set to Vite+'s folder, which git reads from the clone's top, and

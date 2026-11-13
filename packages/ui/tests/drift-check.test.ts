@@ -143,6 +143,41 @@ describe("vp run sync, on the app's own configuration and dependencies", () => {
   });
 });
 
+describe("vp run sync, on configuration beside the framework's and dependencies by another name", () => {
+  test.each([
+    ["vitest.config.ts", "Vitest"],
+    ["vite.config.js", "Vite"],
+    [".oxlintrc.json", "Oxlint"],
+    [".oxfmtrc.json", "Oxfmt"],
+  ])("refuses %s, which %s reads beside the framework's configuration", (file, tool) => {
+    run("sync");
+    write(file, "{}\n");
+    expect(run("sync", "--check").stderr).toBe(
+      `ERROR ${file} configures ${tool} beside the framework's configuration, which ${tool} reads instead of it or as well, so this app's checks would differ from every other's: delete it, and keep what the app needs in vite.config.ts's framework lines.\n`,
+    );
+  });
+
+  test("holds optionalDependencies to the list, and refuses an alias or a package from outside the feed", () => {
+    run("sync");
+    write(
+      "package.json",
+      JSON.stringify({
+        dependencies: {
+          "@basis/ui": "0.0.0",
+          react: "github:someone/react",
+          zod: "npm:other@1.0.0",
+        },
+        optionalDependencies: { "left-pad": "1.3.0" },
+      }),
+    );
+    expect(run("sync", "--check").stderr.trimEnd().split("\n")).toStrictEqual([
+      "ERROR package.json depends on left-pad, which is not among the packages a basis-ui app may use: remove it with vp remove left-pad, or ask basis-ui's maintainer to add it to @basis/ui's list.",
+      "ERROR package.json installs react from github:someone/react, not from the feed at a version: install it with vp add react@VERSION, at the version the template pins.",
+      "ERROR package.json installs zod from npm:other@1.0.0, not from the feed at a version: install it with vp add zod@VERSION, at the version the template pins.",
+    ]);
+  });
+});
+
 describe("verify's suppressions stage", () => {
   test("counts the comments the allowlist allows: oxc/no-barrel-file in src/api", () => {
     write(

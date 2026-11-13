@@ -140,7 +140,7 @@ describe("Chromium, when it is missing", () => {
         { encoding: "utf8", env: { ...process.env, PLAYWRIGHT_BROWSERS_PATH: browsers } },
       );
       expect(launched.stdout).toBe(
-        `ERROR Playwright ${version}'s Chromium is not installed: run vp dlx playwright@${version} install chromium, then vp run shot again.`,
+        `ERROR Playwright ${version}'s Chromium is not installed: run vp dlx playwright@${version} install chromium, with PLAYWRIGHT_DOWNLOAD_HOST set to a mirror of Playwright's downloads where its own site cannot be reached, then vp run shot again.`,
       );
     } finally {
       rmSync(browsers, { force: true, recursive: true });

@@ -17,6 +17,7 @@ import { generate } from "orval";
 
 import { displayFormatsModule } from "./display-formats.ts";
 import { documentFile, generatedFolder, orvalOptions } from "./orval-options.ts";
+import { removeScratchLater } from "./scratch.ts";
 
 /** What a task failure throws: its message is the line, or lines, the task prints. */
 class TaskError extends Error {
@@ -262,7 +263,7 @@ async function differences(root: string): Promise<readonly string[]> {
         : [`ERROR ${generatedFolder}/${file} ${difference(want, have)}: ${fix}.`];
     });
   } finally {
-    await rm(scratch, { force: true, recursive: true });
+    await removeScratchLater(scratch);
   }
 }
 

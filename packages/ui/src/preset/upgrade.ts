@@ -18,7 +18,7 @@
 
 import path from "node:path";
 
-import { git } from "./git.ts";
+import { excludeAdvice, git, refusedClone, uncommittedList } from "./git.ts";
 import { appDependencies, compareVersions, exactVersion, installedVersion } from "./installed.ts";
 import { TaskError } from "./task-error.ts";
 import { pinsToMove } from "./upgrade-pins.ts";
@@ -75,12 +75,13 @@ function dirtyTree(root: string, dryRun: boolean): boolean {
   const status = git(root, ["status", "--porcelain", "--", "."]);
   if (status === undefined) {
     throw new TaskError(
-      "ERROR this folder is not a git clone, so the upgrade's changes could be neither told from the app's nor undone: run vp run upgrade in the app's clone, with git on the PATH.",
+      refusedClone(root, "vp run upgrade again") ??
+        "ERROR this folder is not a git clone, so the upgrade's changes could be neither told from the app's nor undone: run vp run upgrade in the app's clone, with git on the PATH.",
     );
   }
   if (status !== "" && !dryRun) {
     throw new TaskError(
-      "ERROR the working tree has changes not committed, which the upgrade's own would mix with: commit them, or stash them with git stash, then run vp run upgrade again; to finish an upgrade that stopped part-way, run vp run upgrade --continue.",
+      `ERROR the working tree has changes not committed${uncommittedList(root, true)}, which the upgrade's own would mix with: commit them, or stash them with git stash, ${excludeAdvice.replace("keep ", "keeping ")}, then run vp run upgrade again; to finish an upgrade that stopped part-way, run vp run upgrade --continue.`,
     );
   }
   return status !== "";

@@ -3,7 +3,7 @@
  * one file a line, and the error Vite's `build()` throws. Colour is turned off, so no line is read through it. */
 
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -11,6 +11,7 @@ import { stripVTControlCharacters } from "node:util";
 
 import { z } from "zod";
 
+import { removeScratch } from "./scratch.ts";
 import { TaskError } from "./task-error.ts";
 import { findingOf, reasonAndFix } from "./verify-report.ts";
 import type { Finding } from "./verify-report.ts";
@@ -222,7 +223,7 @@ function withReportFile<Result>(name: string, run: (file: string) => Result): Re
   try {
     return run(path.join(folder, name));
   } finally {
-    rmSync(folder, { force: true, recursive: true });
+    removeScratch(folder);
   }
 }
 

@@ -2,13 +2,14 @@
  * changelog and running its codemods, and installing a release outside the app for a dry run to read. */
 
 import { spawnSync } from "node:child_process";
-import { copyFile, mkdtemp, readFile, realpath, rm, writeFile } from "node:fs/promises";
+import { copyFile, mkdtemp, readFile, realpath, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
 import { parseChangelog, releasesBetween } from "./changelog.ts";
 import { codemodsBetween, runCodemods, shippedCodemods } from "./codemods.ts";
 import { exactVersion, ignored, versionSchema } from "./installed.ts";
+import { removeScratchLater } from "./scratch.ts";
 import { TaskError } from "./task-error.ts";
 import type { ReleaseNotes } from "./upgrade-report.ts";
 
@@ -125,7 +126,7 @@ async function withRelease<Result>(
     }
     return await read(path.join(folder, "node_modules/@basis/ui"));
   } finally {
-    await rm(folder, { force: true, recursive: true });
+    await removeScratchLater(folder);
   }
 }
 

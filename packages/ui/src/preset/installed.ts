@@ -13,6 +13,7 @@ const versionsSchema = z.record(z.string(), z.string());
 const manifestSchema = z.object({
   dependencies: versionsSchema.optional(),
   devDependencies: versionsSchema.optional(),
+  optionalDependencies: versionsSchema.optional(),
 });
 
 /** What a promise's failure is turned into where only success matters: nothing. */
@@ -90,12 +91,16 @@ async function installedVersion(root: string, name: string): Promise<string | un
   }
 }
 
-/** Every dependency the app's package.json names, development ones included, with its version spec. */
+/** Every dependency the app's package.json names, development and optional ones included, with its version spec. */
 async function appDependencies(root: string): Promise<ReadonlyMap<string, string>> {
   const text = await readFile(path.join(root, "package.json"), "utf8").catch(() => "{}");
   const manifest = manifestSchema.safeParse(JSON.parse(text));
-  const { dependencies = {}, devDependencies = {} } = manifest.success ? manifest.data : {};
-  return new Map(Object.entries({ ...devDependencies, ...dependencies }));
+  const {
+    dependencies = {},
+    devDependencies = {},
+    optionalDependencies = {},
+  } = manifest.success ? manifest.data : {};
+  return new Map(Object.entries({ ...optionalDependencies, ...devDependencies, ...dependencies }));
 }
 
 /** The command that installs the Chromium Playwright `version` pins. It runs that Playwright from the feed, since it is
@@ -117,7 +122,7 @@ function missingLibraries(said: string): readonly string[] | undefined {
  * missing system libraries, which `install-deps` installs, or another failure; each ends by running `task` again. */
 function chromiumFailure(said: string, version: string, task: string): string {
   if (said.includes("Executable doesn't exist")) {
-    return `ERROR Playwright ${version}'s Chromium is not installed: run ${chromiumInstall(version)}, then vp run ${task} again.`;
+    return `ERROR Playwright ${version}'s Chromium is not installed: run ${chromiumInstall(version)}, with PLAYWRIGHT_DOWNLOAD_HOST set to a mirror of Playwright's downloads where its own site cannot be reached, then vp run ${task} again.`;
   }
   const libraries = missingLibraries(said);
   if (libraries !== undefined) {

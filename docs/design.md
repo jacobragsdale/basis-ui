@@ -748,9 +748,11 @@ focus.
 Screenshots differ between operating systems, as Playwright's docs warn, and the desktops run no Docker to pin a Linux
 image in. So visual baselines are made and compared only in WSL, with the Chromium build Playwright pins and the fonts
 `@basis/ui` bundles, and on Windows `vp run verify` says it skipped the comparison and to run it in WSL. An agent on
-Windows still takes screenshots to look at. `vp run shot --compare DIR` compares each picture with its baseline with
-Playwright's comparator, giving the changed pixels and a diff. Not yet: an app keeps no baselines, and `verify`
-compares none. This repo's gallery has its baselines, made and compared in the pinned Playwright image as parallax's are.
+Windows still takes screenshots to look at, and where Playwright's Chromium could not be downloaded, `vp run shot` and
+the budget take the Microsoft Edge every Windows desktop has, and say so. `vp run shot --compare DIR` compares each
+picture with its baseline with Playwright's comparator, giving the changed pixels and a diff. Not yet: an app keeps no
+baselines, and `verify` compares none. This repo's gallery has its baselines, made and compared in the pinned Playwright
+image as parallax's are.
 
 ## Serving the build
 
@@ -925,3 +927,6 @@ Citrix repeat on the new engine:
   `font-feature-settings` descriptor in `@font-face`, which Chromium honours from 139 (step 6.4.1; the probe page of
   step 6.10 reports the version);
 - that the firm's apps share a parent domain, for the cookie that holds the mode, density, motion and theme.
+- that a desktop reaches Playwright's download site for its Chromium, or a mirror `PLAYWRIGHT_DOWNLOAD_HOST` names:
+  without one, `vp test` runs in a Node DOM with `BASIS_TEST_DOM=node`, and on Windows `vp run shot` and the budget use
+  Edge.

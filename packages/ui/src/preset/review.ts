@@ -13,7 +13,7 @@ import path from "node:path";
 
 import { z } from "zod";
 
-import { git } from "./git.ts";
+import { excludeAdvice, git, refusedClone, uncommittedList } from "./git.ts";
 import { ignored, manifestSchema } from "./installed.ts";
 import { TaskError } from "./task-error.ts";
 import { suppressionInLine, turningOff } from "./suppressions.ts";
@@ -59,10 +59,13 @@ async function recordCheck(root: string): Promise<string> {
   const commit = git(root, ["rev-parse", "HEAD"]);
   const file = commit === undefined ? undefined : recordFile(root, commit);
   if (commit === undefined || file === undefined) {
-    return "Not recorded for vp run review: this folder is not a git clone with a commit.";
+    const refused = refusedClone(root, "vp run verify again");
+    return refused === undefined
+      ? "Not recorded for vp run review: this folder is not a git clone with a commit."
+      : `Not recorded for vp run review: ${refused.replace(/^ERROR /u, "")}`;
   }
   if (git(root, ["status", "--porcelain"]) !== "") {
-    return "Not recorded for vp run review: the worktree has uncommitted changes, so no commit holds what passed.";
+    return `Not recorded for vp run review: the worktree has changes not committed${uncommittedList(root)}, so no commit holds what passed; ${excludeAdvice}.`;
   }
   await writeRecord(file, commit);
   return `Recorded for vp run review: vp run verify passed on ${commit.slice(0, shortId)}.`;

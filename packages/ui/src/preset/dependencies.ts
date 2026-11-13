@@ -66,4 +66,21 @@ function dependencyProblems(names: Iterable<string>): readonly string[] {
   });
 }
 
-export { allowed, dependencyProblems, rejected };
+/** A spec that installs a package from somewhere other than the feed, or under another package's name: an alias, a
+ * file or link, a git repository, a URL, or GitHub's `owner/repo`. A version, a range, a tag and `workspace:` are
+ * the feed's, or basis-ui's own workspace's. */
+const elsewhere =
+  /^(?:npm:|file:|link:|git(?:\+|:)|github:|gitlab:|bitbucket:|https?:)|^[^@\s:]+\/[^\s:]+$/u;
+
+/** The one line for each dependency of `specs` that is not installed from the feed at a version. */
+function specProblems(specs: ReadonlyMap<string, string>): readonly string[] {
+  return [...specs]
+    .filter(([, spec]) => elsewhere.test(spec))
+    .toSorted(([left], [right]) => left.localeCompare(right, "en"))
+    .map(
+      ([name, spec]) =>
+        `ERROR package.json installs ${name} from ${spec}, not from the feed at a version: install it with vp add ${name}@VERSION, at the version the template pins.`,
+    );
+}
+
+export { allowed, dependencyProblems, rejected, specProblems };

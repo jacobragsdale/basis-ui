@@ -79,7 +79,7 @@ describe("vp run upgrade", () => {
     const result = upgrade([]);
     expect(result.status).toBe(1);
     expect(result.stderr).toBe(
-      "ERROR the working tree has changes not committed, which the upgrade's own would mix with: commit them, or stash them with git stash, then run vp run upgrade again; to finish an upgrade that stopped part-way, run vp run upgrade --continue.\n",
+      "ERROR the working tree has changes not committed (src/draft.ts), which the upgrade's own would mix with: commit them, or stash them with git stash, keeping a file git should never see, as an editor's, in .git/info/exclude, then run vp run upgrade again; to finish an upgrade that stopped part-way, run vp run upgrade --continue.\n",
     );
     expect(logged()).toStrictEqual([]);
   });

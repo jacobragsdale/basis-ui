@@ -19,13 +19,33 @@ function playwrightVersion(): string {
   return versionSchema.parse(manifest).version;
 }
 
-/** Headless Chromium, or a failure that says how to install it, or the libraries it needs, and run `task`, `shot`
- * unless named, again. */
+/** The Microsoft Edge every Windows desktop has, headless, for a desktop where Playwright's Chromium could not be
+ * downloaded, as one with no route to Playwright's download site; or `null` where it does not start. */
+async function installedEdge(task: string): Promise<Browser | null> {
+  if (process.platform !== "win32") {
+    return null;
+  }
+  const edge = await chromium.launch({ channel: "msedge", headless: true }).catch(ignored);
+  if (edge !== null) {
+    process.stderr.write(
+      `Playwright's Chromium is not installed, so vp run ${task} uses the installed Microsoft Edge.\n`,
+    );
+  }
+  return edge;
+}
+
+/** Headless Chromium, or on Windows, when it is not installed, the installed Edge; or a failure that says how to
+ * install it, or the libraries it needs, and run `task`, `shot` unless named, again. */
 async function launch(task = "shot"): Promise<Browser> {
   try {
     return await chromium.launch({ headless: true });
   } catch (error) {
-    throw new TaskError(chromiumFailure(String(error), playwrightVersion(), task));
+    const said = String(error);
+    const edge = said.includes("Executable doesn't exist") ? await installedEdge(task) : null;
+    if (edge !== null) {
+      return edge;
+    }
+    throw new TaskError(chromiumFailure(said, playwrightVersion(), task));
   }
 }
 
