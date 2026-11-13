@@ -17711,7 +17711,7 @@
       "kind": "function",
       "module": "@basis/ui/numbers",
       "name": "formatThirtySeconds",
-      "purpose": "Writes a price in 32nds: `99-16`, `99-16+`, `99-162`, and `-0-04+` for a negative change. The price is read at 8 decimals, then rounded to the precision's step, so `formatThirtySeconds(price, { precision: \"halves\" })` shows only `99-16` or `99-16+`.",
+      "purpose": "Writes a price in 32nds: `99-16`, `99-16+`, `99-162`, and `-0-04+` for a negative change. The price is read at 8 decimals, or 9 under a rounding other than half away from zero, then rounded to the precision's step, so `formatThirtySeconds(price, { precision: \"halves\" })` shows only `99-16` or `99-16+`. NaN and the infinities are the formatter's dash, `—`.",
       "signature": "formatThirtySeconds(price: number, format: ThirtySecondsFormat = {}): string"
     },
     {
@@ -17732,7 +17732,7 @@
       "kind": "function",
       "module": "@basis/ui/numbers",
       "name": "percentChange",
-      "purpose": "The change from `from` to `to` as a fraction of `from`'s size, `(to - from) / |from|`: 0.05 for a rise from 100 to 105. Dividing by the size keeps the sign with the direction of the move, so a loss that narrows from -100 to -50 is +0.5, where Excel's `(to - from) / from` gives -0.5. Show it with `Pct`.",
+      "purpose": "The change from `from` to `to` as a fraction of `from`'s size, `(to - from) / |from|`: 0.05 for a rise from 100 to 105. Dividing by the size keeps the sign with the direction of the move, so a loss that narrows from -100 to -50 is +0.5, where Excel's `(to - from) / from` gives -0.5. A change from zero is `zero-base`, and one from or to NaN or an infinity `not-a-number`, never NaN. Show it with `Pct`.",
       "signature": "percentChange(from: number, to: number): PercentChange"
     },
     {
@@ -17865,7 +17865,7 @@
       "kind": "function",
       "module": "@basis/ui/utils",
       "name": "stableStringify",
-      "purpose": "JSON text with every object's keys in sorted order, so two equal values always write the same text. It writes what `JSON.stringify` writes in every other way: `toJSON` is called, undefined, functions and symbols are left out of objects and are `null` in arrays, and NaN and the infinities are `null`. Where `JSON.stringify` would write a Map or Set as `{}`, or have nothing to write at all, it throws `TypeError`, as it does for a bigint and a cycle.",
+      "purpose": "JSON text with every object's keys in sorted order, so two equal values always write the same text. It writes what `JSON.stringify` writes in every other way: `toJSON` is called, undefined, functions and symbols are left out of objects and are `null` in arrays, as a hole in an array is, NaN and the infinities are `null`, and a boxed number, string or boolean is its value. Where `JSON.stringify` would write a Map or Set as `{}`, or have nothing to write at all, it throws `TypeError`, as it does for a bigint and a cycle.",
       "signature": "stableStringify(value: unknown): string"
     },
     {
@@ -28480,13 +28480,13 @@
           "description": "",
           "name": "reason",
           "optional": true,
-          "type": "\"zero-base\""
+          "type": "\"zero-base\" | \"not-a-number\""
         }
       ],
       "exported": true,
       "module": "@basis/ui/numbers",
       "name": "PercentChange",
-      "purpose": "A change from zero has no percentage."
+      "purpose": "A change from zero has no percentage, and nor has one from or to a value that is no number, NaN or an infinity."
     },
     {
       "definition": "| \"half-away-from-zero\" | \"half-even\" | \"toward-zero\" | \"away-from-zero\" | \"floor\" | \"ceiling\"",

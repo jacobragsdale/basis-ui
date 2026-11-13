@@ -49,6 +49,20 @@ describe("changes", () => {
     expect(percentChange(-100, -50)).toStrictEqual({ defined: true, value: 0.5 });
   });
 
+  test.each([
+    [Number.NaN, 5],
+    [5, Number.NaN],
+    [Number.POSITIVE_INFINITY, 5],
+    [5, Number.POSITIVE_INFINITY],
+  ])("a change from %s to %s has no percentage, by name, never NaN", (from, to) => {
+    expect(percentChange(from, to)).toStrictEqual({ defined: false, reason: "not-a-number" });
+  });
+
+  test("shares of 200,000 values are read without overflowing the stack", () => {
+    const values = Array.from({ length: 200_000 }, (_unused, index) => (index % 7) + 0.25);
+    expect(total(values, 2)).toBe(1);
+  });
+
   test("a change from zero has no percentage, by name", () => {
     expect(percentChange(0, 5)).toStrictEqual({ defined: false, reason: "zero-base" });
     expect(percentChange(-0, 0)).toStrictEqual({ defined: false, reason: "zero-base" });

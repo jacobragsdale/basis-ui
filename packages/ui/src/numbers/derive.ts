@@ -10,8 +10,8 @@ type Derived<TValue, TReason extends string> =
   | { readonly defined: true; readonly value: TValue }
   | { readonly defined: false; readonly reason: TReason };
 
-/** A change from zero has no percentage. */
-type PercentChange = Derived<number, "zero-base">;
+/** A change from zero has no percentage, and nor has one from or to a value that is no number, NaN or an infinity. */
+type PercentChange = Derived<number, "zero-base" | "not-a-number">;
 
 /** A total of zero, which includes no values at all, has no shares. */
 type Shares = Derived<readonly number[], "zero-total">;
@@ -26,8 +26,12 @@ function delta(from: number, to: number): number {
 
 /** The change from `from` to `to` as a fraction of `from`'s size, `(to - from) / |from|`: 0.05 for a rise from 100 to
  * 105. Dividing by the size keeps the sign with the direction of the move, so a loss that narrows from -100 to -50 is
- * +0.5, where Excel's `(to - from) / from` gives -0.5. Show it with `Pct`. */
+ * +0.5, where Excel's `(to - from) / from` gives -0.5. A change from zero is `zero-base`, and one from or to NaN or an
+ * infinity `not-a-number`, never NaN. Show it with `Pct`. */
 function percentChange(from: number, to: number): PercentChange {
+  if (!Number.isFinite(from) || !Number.isFinite(to)) {
+    return { defined: false, reason: "not-a-number" };
+  }
   if (from === 0) {
     return { defined: false, reason: "zero-base" };
   }
@@ -66,7 +70,11 @@ function flooredShares(
 /** Each value's exact digits, read at its shortest text, all at the largest scale among them. */
 function commonDigits(values: readonly number[]): bigint[] {
   const exact = values.map((value) => exactOf(value));
-  const common = Math.max(0, ...exact.map((value) => value.scale));
+  // A loop, not Math.max(...scales), whose arguments overflow the stack past some 120,000 values.
+  let common = 0;
+  for (const value of exact) {
+    common = Math.max(common, value.scale);
+  }
   return exact.map((value) => value.unscaled * powerOfTen(common - value.scale));
 }
 

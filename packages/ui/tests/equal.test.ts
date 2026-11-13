@@ -60,6 +60,26 @@ describe("deepEqual", () => {
     expect(deepEqual(left, right)).toBe(false);
   });
 
+  test("a Set of objects that share a sub-object matches by what each holds, never by a pair that once differed", () => {
+    const shared = { value: 1 };
+    const other = { value: 2 };
+    // `book` comes first, so each member is compared by its shared object before its trade.
+    const left = new Set([
+      { book: shared, trade: 1 },
+      { book: shared, trade: 2 },
+    ]);
+    const right = new Set([
+      { book: other, trade: 2 },
+      { book: other, trade: 1 },
+    ]);
+    expect(deepEqual(left, right)).toBe(false);
+    const same = new Set([
+      { book: { value: 1 }, trade: 2 },
+      { book: shared, trade: 1 },
+    ]);
+    expect(deepEqual(left, same)).toBe(true);
+  });
+
   test("follows a cycle once", () => {
     const left: { name: string; self?: unknown } = { name: "a" };
     left.self = left;
@@ -113,6 +133,18 @@ describe("stableStringify", () => {
     [(): number => 1, "A value of type function has no JSON form."],
   ])("refuses %o", (value, message) => {
     expect(() => stableStringify(value)).toThrow(new TypeError(message));
+  });
+
+  test("writes a hole in an array as null, and a boxed primitive as its value, as JSON.stringify does", () => {
+    // oxlint-disable-next-line no-sparse-arrays -- the hole is what is under test.
+    const holey = [1, , 3];
+    // oxlint-disable-next-line no-new-wrappers, unicorn/new-for-builtins -- boxed primitives are what is under test.
+    const boxed = { flag: new Boolean(false), count: new Number(1), name: new String("x") };
+    expect([stableStringify(holey), stableStringify(boxed)]).toStrictEqual([
+      JSON.stringify(holey),
+      JSON.stringify({ count: 1, flag: false, name: "x" }),
+    ]);
+    expect(stableStringify(holey)).toBe("[1,null,3]");
   });
 
   test("refuses a cycle, and writes a value seen twice without one", () => {

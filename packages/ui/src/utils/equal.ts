@@ -73,9 +73,13 @@ function isPlainObject(value: object): boolean {
   return prototype === Object.prototype || prototype === null;
 }
 
-/** One deep comparison, which remembers the pairs of objects it has started on, so that a cycle is followed once. */
+/** One deep comparison, which remembers the pairs of objects it has started on, so that a cycle is followed once.
+ * A pair is assumed equal while it is compared; when the comparison finds it unequal, every pair assumed since it
+ * began is forgotten, so no pair that differed, or that was equal only by its assumption, is taken as equal later, as
+ * a Set's members are each tried against several candidates. */
 class Comparison {
-  readonly #seen = new Map<object, object>();
+  readonly #seen = new Map<object, Set<object>>();
+  readonly #assumed: (readonly [object, object])[] = [];
 
   public equal(left: unknown, right: unknown): boolean {
     if (sameValueZero(left, right)) {
@@ -87,11 +91,32 @@ class Comparison {
     if (Object.getPrototypeOf(left) !== Object.getPrototypeOf(right)) {
       return false;
     }
-    if (this.#seen.get(left) === right) {
-      return true;
+    return this.#seen.get(left)?.has(right) === true || this.#assuming(left, right);
+  }
+
+  /** Compares two objects, assuming them equal meanwhile, and forgetting every assumption made since when they differ. */
+  #assuming(left: object, right: object): boolean {
+    const mark = this.#assumed.length;
+    this.#assume(left, right);
+    const equal = this.#objects(left, right);
+    if (!equal) {
+      this.#forget(mark);
     }
-    this.#seen.set(left, right);
-    return this.#objects(left, right);
+    return equal;
+  }
+
+  #assume(left: object, right: object): void {
+    const rights = this.#seen.get(left) ?? new Set<object>();
+    rights.add(right);
+    this.#seen.set(left, rights);
+    this.#assumed.push([left, right]);
+  }
+
+  /** Forgets every pair assumed since `mark`. */
+  #forget(mark: number): void {
+    for (const [left, right] of this.#assumed.splice(mark)) {
+      this.#seen.get(left)?.delete(right);
+    }
   }
 
   /** Two objects of one prototype. */

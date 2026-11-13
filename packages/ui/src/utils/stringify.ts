@@ -15,14 +15,27 @@ function isUnwritable(value: unknown): boolean {
   return value === undefined || typeof value === "function" || typeof value === "symbol";
 }
 
+/** Whether `value` is a boxed primitive, `new Number(1)`, `new String("x")` or `new Boolean(false)`, by the tag
+ * `Object.prototype.toString` gives it, which a box from another realm gives too. */
+function isBoxed(value: object): value is { valueOf: () => boolean | number | string } {
+  const tag = Object.prototype.toString.call(value);
+  return tag === "[object Boolean]" || tag === "[object Number]" || tag === "[object String]";
+}
+
+/** A boxed number, string or boolean as its primitive, as JSON writes it: `new Number(1)` is `1`, not `{}`. */
+function unboxed(value: unknown): unknown {
+  return typeof value === "object" && value !== null && isBoxed(value) ? value.valueOf() : value;
+}
+
 /** A JSON writer that sorts keys and refuses what JSON would lose or cannot hold. */
 class Writer {
   /** The objects being written, which a cycle would come back to. */
   readonly #open = new Set<object>();
 
   public write(raw: unknown, key: string): string | undefined {
-    const value =
-      typeof raw === "object" && raw !== null && isJsonable(raw) ? raw.toJSON(key) : raw;
+    const value = unboxed(
+      typeof raw === "object" && raw !== null && isJsonable(raw) ? raw.toJSON(key) : raw,
+    );
     if (typeof value === "bigint") {
       throw new TypeError(
         `${value.toString()}n has no JSON form: write it as a number or a string.`,
@@ -50,7 +63,8 @@ class Writer {
   }
 
   #array(items: readonly unknown[]): string {
-    return `[${items.map((item, index) => this.write(item, String(index)) ?? "null").join(",")}]`;
+    // Array.from visits a hole, as JSON does, writing null for it, where map skips it.
+    return `[${Array.from(items, (item, index) => this.write(item, String(index)) ?? "null").join(",")}]`;
   }
 
   #object(value: object): string {
@@ -66,7 +80,8 @@ class Writer {
 
 /** JSON text with every object's keys in sorted order, so two equal values always write the same text. It writes what
  * `JSON.stringify` writes in every other way: `toJSON` is called, undefined, functions and symbols are left out of
- * objects and are `null` in arrays, and NaN and the infinities are `null`. Where `JSON.stringify` would write a Map or
+ * objects and are `null` in arrays, as a hole in an array is, NaN and the infinities are `null`, and a boxed number,
+ * string or boolean is its value. Where `JSON.stringify` would write a Map or
  * Set as `{}`, or have nothing to write at all, it throws `TypeError`, as it does for a bigint and a cycle. */
 function stableStringify(value: unknown): string {
   const text = new Writer().write(value, "");

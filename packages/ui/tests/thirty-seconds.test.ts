@@ -79,6 +79,31 @@ describe("formatting", () => {
     ).toBe("99-16");
   });
 
+  /* 1/512 is half an eighth of a 32nd: 99.001953125 is an exact tie between 99-00 and 99-001, which a read at 8
+   * decimals turned into 99.00195313, past the tie. */
+  test.each([
+    ["half-even", "99-00"],
+    ["half-away-from-zero", "99-001"],
+    ["floor", "99-00"],
+    ["ceiling", "99-001"],
+  ] as const)(
+    "keeps an exact tie at half an eighth a tie, rounding it %s to %s",
+    (rounding, text) => {
+      expect(formatThirtySeconds(99.001953125, { rounding })).toBe(text);
+    },
+  );
+
+  test("still reads a double's noise at its digits, not as a tie", () => {
+    expect(formatThirtySeconds(99.51562499999999)).toBe("99-16+");
+  });
+
+  test.each([Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY])(
+    "writes %s as the formatter's dash, never throwing",
+    (value) => {
+      expect(formatThirtySeconds(value)).toBe("—");
+    },
+  );
+
   test("writes negative changes with a sign, and zero without one", () => {
     expect(formatThirtySeconds(-0.140625)).toBe("-0-04+");
     expect(formatThirtySeconds(-1.25)).toBe("-1-08");

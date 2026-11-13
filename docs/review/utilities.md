@@ -42,6 +42,7 @@ All source in the area was read in full; the tests were skimmed (names and selec
    - Only Sets of objects with shared sub-objects are affected.
    - Severity: fix before release. Confidence: confirmed by running.
 
+   - Done in Utilities: equality, JSON, shares, 32nds and changes hold at their edges: a pair is assumed equal only while it is compared; when the comparison finds it unequal, every pair assumed since it began is forgotten, and a left object may be remembered against several right ones, as a Set's members are tried against several candidates. The review's Set now compares `false`, and the same data with a match still `true`; the test fails against the old memo.
 7. **`packages/ui/src/utils/export.ts:35`** — text that looks like a number is written bare.
    - Input → actual: `"037833100"` → `037833100`, `"912828E72"` → `912828E72`, in both CSV and TSV.
    - Excel should then show 37833100 and 9.12828E+77. DataTable's export and copy go through this.
@@ -56,6 +57,7 @@ All source in the area was read in full; the tests were skimmed (names and selec
    - Input → actual: `shares` of 120,000 values works; 130,000 throws `RangeError: Maximum call stack size exceeded`.
    - Severity: polish. Confidence: confirmed by running.
 
+   - Done in Utilities: equality, JSON, shares, 32nds and changes hold at their edges: the common scale is found with a loop, not `Math.max(...scales)`; `shares` of 200,000 values sums to 1.
 10. **`packages/ui/src/dates/staleness.ts:47` and `:55`** — two staleness slips.
     - `relativeTime` says "yesterday" for anything 24 to 48 hours old: now Friday 10:00 New York, stamp Wednesday 10:01 → `"yesterday"`.
     - `isStale` with `threshold: { weeks: 1 }` or `{ months: 1 }` throws `RangeError: Temporal error: ` with an empty message, though the type allows them.
@@ -69,10 +71,14 @@ All source in the area was read in full; the tests were skimmed (names and selec
 12. **`packages/ui/src/utils/stringify.ts:53`** — `stableStringify([1, , 3])` → `[1,,3]`, which is not JSON; `JSON.stringify` gives `[1,null,3]`. Boxed primitives also differ: `new Number(1)` → `{}`.
     - Severity: polish. Confidence: confirmed by running.
 
+- Done in Utilities: equality, JSON, shares, 32nds and changes hold at their edges: an array's hole is written `null`, through `Array.from`, and a boxed number, string or boolean as its primitive, each as `JSON.stringify` writes it.
+
 13. **`packages/ui/src/numbers/thirty-seconds.ts:68-75` and `:93`** — two edge cases outside the formatter's own path.
     - Pre-rounding to 8 decimals breaks exact ties at eighths for non-default rounding: `formatThirtySeconds(99.001953125, { rounding: "half-even" })` → `"99-001"`, expected `"99-00"`. The test covers half-even only at halves.
     - `formatThirtySeconds(NaN)` throws `SyntaxError: "NaN" is not a decimal number`. The formatter guards this; direct callers are not guarded.
     - Severity: polish. Confidence: confirmed by running.
+
+- Done in Utilities: equality, JSON, shares, 32nds and changes hold at their edges: under a rounding other than half away from zero, a double price is read at 9 decimals, where half an eighth of a 32nd, 1/512, is exact, so `99.001953125` rounds half-even to `99-00`; under the default it is still read at 8, as parallax's Rust formatter reads it (`parallax-engine/src/format.rs`), so a card and the grid agree. NaN and the infinities are the formatter's dash, `—`, rather than a `SyntaxError`.
 
 14. **`packages/ui/src/utils/xml-scan.ts:109-121`** — `attribute` can match inside another attribute's value.
     - Input → actual: a sheet named `P&L id='s2' x` (relationship `s1`) reads the cells of the sheet at `s2`.
@@ -85,6 +91,8 @@ All source in the area was read in full; the tests were skimmed (names and selec
     - `parseAmount("9".repeat(400))` → `{ ok: true, value: Infinity }`.
     - `percentChange(NaN, 5)` → `{ defined: true, value: NaN }`, against the module's "says so by name rather than with NaN".
     - Severity: polish. Confidence: confirmed by running.
+
+- Done for `parseAmount` in AmountInput: a rate needs its unit, and digits too many for a double are refused (`760a598`, step 7.3, inputs.md 15). Done for `percentChange` in Utilities: equality, JSON, shares, 32nds and changes hold at their edges: a change from or to NaN or an infinity is `{ defined: false, reason: "not-a-number" }`, never NaN.
 
 ## Overall quality
 
@@ -123,3 +131,12 @@ The weak spot is hostile or malformed file input (findings 1, 3, 4, 5, 14), whic
   cells sit far apart (at column XFD) is `{ ok: false }` with a reason, or a problem of its cell, and a sheet's records
   hold no more fields than its cells bound. A sheet named with what looks like an attribute reads its own cells. What
   to do: nothing.
+- `deepEqual` compares Sets of objects that share a sub-object by what each holds, where a pair that once differed
+  could be taken as equal. What to do: nothing.
+- `stableStringify` writes an array's hole as `null` and a boxed primitive as its value, as `JSON.stringify` does.
+  What to do: nothing.
+- `shares` reads any number of values; it overflowed the stack past about 120,000. What to do: nothing.
+- `formatThirtySeconds` keeps an exact tie at half an eighth a tie under a rounding other than half away from zero, and
+  writes NaN and the infinities as `—` rather than throwing. What to do: nothing.
+- `percentChange` gains the reason `not-a-number`, for a change from or to NaN or an infinity. What to do: code that
+  switches on its reason handles the new one; the compiler names each place.

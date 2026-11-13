@@ -29,8 +29,11 @@ const eighthsPerThirtySecond = 8n;
 const eighthsPerPoint = 256n;
 /** Four eighths are a half, written `+`. */
 const halfInEighths = 4n;
-/** A double price is read at 8 decimals before it is rounded to a step, so 99.51562499999999 reads as 99.515625. */
+/** A double price is read at 8 decimals before it is rounded to a step half away from zero, so 99.51562499999999
+ * reads as 99.515625, as parallax's Rust formatter reads it. Under another rounding it is read at 9, since half an
+ * eighth of a 32nd, 1/512, has 9: a tie between two steps stays one, where 8 would round it half away first. */
 const priceDecimals = 8;
+const tieDecimals = 9;
 
 const stepsPerThirtySecond: Readonly<Record<ThirtySecondsPrecision, bigint>> = {
   "thirty-seconds": 1n,
@@ -63,15 +66,15 @@ interface ExactPrice {
   readonly scale: number;
 }
 
-/** A double price read at its shortest digits, as `String` writes them, then at 8 decimals, rounded half away from
+/** A double price read at its shortest digits, as `String` writes them, then at `decimals`, rounded half away from
  * zero: 99.51562499999999 reads as 99.515625, and a price past 2^53 keeps the digits it prints with. */
-function priceAt8(price: number): ExactPrice {
+function priceAt(price: number, decimals: number): ExactPrice {
   const { scale, unscaled } = parseDecimal(String(price));
-  if (scale <= priceDecimals) {
-    return { scale: priceDecimals, unscaled: unscaled * powerOfTen(priceDecimals - scale) };
+  if (scale <= decimals) {
+    return { scale: decimals, unscaled: unscaled * powerOfTen(decimals - scale) };
   }
-  const at8 = divideRounded(unscaled, powerOfTen(scale - priceDecimals), "half-away-from-zero");
-  return { scale: priceDecimals, unscaled: at8 };
+  const read = divideRounded(unscaled, powerOfTen(scale - decimals), "half-away-from-zero");
+  return { scale: decimals, unscaled: read };
 }
 
 /** Writes an exact price in 32nds, rounded to the precision's step by `rounding`. */
@@ -87,11 +90,20 @@ function exactThirtySeconds(
   return eighthsText(steps * (eighthsPerPoint / stepsPerPoint));
 }
 
+/** What a price that is no number is written as, NaN or an infinity: the formatter's dash. */
+const noPrice = "—";
+
 /** Writes a price in 32nds: `99-16`, `99-16+`, `99-162`, and `-0-04+` for a negative change. The price is read at 8
- * decimals, then rounded to the precision's step, so `formatThirtySeconds(price, { precision: "halves" })` shows only
- * `99-16` or `99-16+`. */
+ * decimals, or 9 under a rounding other than half away from zero, then rounded to the precision's step, so
+ * `formatThirtySeconds(price, { precision: "halves" })` shows only `99-16` or `99-16+`. NaN and the infinities are the
+ * formatter's dash, `—`. */
 function formatThirtySeconds(price: number, format: ThirtySecondsFormat = {}): string {
-  return exactThirtySeconds(priceAt8(price), format);
+  if (!Number.isFinite(price)) {
+    return noPrice;
+  }
+  const decimals =
+    (format.rounding ?? defaultRounding) === defaultRounding ? priceDecimals : tieDecimals;
+  return exactThirtySeconds(priceAt(price, decimals), format);
 }
 
 function refuse(reason: string): ThirtySecondsResult {
