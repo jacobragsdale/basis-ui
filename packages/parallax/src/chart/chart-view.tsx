@@ -15,7 +15,7 @@ import { ChartPlot } from "./chart-plot.tsx";
 import { describeChart } from "./describe.ts";
 import type { CategoryData } from "./model-types.ts";
 import { hasDrawingTools } from "./scene-inputs.ts";
-import { groupsProblem } from "./source.ts";
+import { groupsProblem, settingsProblem } from "./source.ts";
 import type { ChartSelection } from "./scene.ts";
 import { useChart } from "./use-chart.ts";
 import type { ChartState } from "./use-chart.ts";
@@ -74,7 +74,7 @@ function problemOf({ checked, layout, view }: ChartState, given: string | null):
   if (layout === null) {
     return "The layout has no chart section.";
   }
-  return groupsProblem(layout) ?? view.error;
+  return groupsProblem(layout) ?? settingsProblem(layout) ?? view.error;
 }
 
 /** The chart's head: its legend, and the drawing tools on charts that take drawings and keep their tools on. With

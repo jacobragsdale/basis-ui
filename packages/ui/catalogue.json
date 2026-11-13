@@ -22686,7 +22686,7 @@
         },
         {
           "default": "[]",
-          "description": "The columns drawn against a right axis of their own.",
+          "description": "The columns a line or area chart draws against a right axis of their own; another kind, which has one value axis, says so in place of its plot.",
           "name": "y_right",
           "optional": false,
           "type": "string[]"
@@ -22721,7 +22721,7 @@
         },
         {
           "default": "false",
-          "description": "Whether series stack, on an area or bar chart.",
+          "description": "Whether a bar chart's series stack; another kind says it does not stack, in place of its plot.",
           "name": "stacked",
           "optional": false,
           "type": "boolean"

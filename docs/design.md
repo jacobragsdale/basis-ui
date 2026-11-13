@@ -644,7 +644,7 @@ drift check since 2026-11-09, so a package joins any app only when the maintaine
 ## Charts
 
 Every chart is parallax's. Parallax draws on Canvas 2D after its engine, in a worker, reduces the data to pixels, and it
-draws line, area, bar (across, stacked, or on two axes), scatter (a dot per row, or a density past 5,000 rows), heatmap,
+draws line, area, bar (across or stacked), scatter (a dot per row, or a density past 5,000 rows), heatmap,
 histogram, candlestick, OHLC, pie and donut charts. It adds a trading-time axis, technical-analysis indicators, panes,
 drawings and a compare mode, and it formats numbers and times by the grid's rules. One chart system means one look, one formatter, one time zone and
 one way to interact.

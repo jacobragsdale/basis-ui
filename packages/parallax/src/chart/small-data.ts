@@ -6,6 +6,7 @@ import type { LayoutChart } from "#layout/chart.ts";
 import type { LayoutInput, LayoutScalar } from "#layout/layout.ts";
 
 import type { CategoryData } from "./model-types.ts";
+import { aChart } from "./source.ts";
 import type { ChartValue, SmallTable } from "./small-table.ts";
 
 /** A chart's settings beyond its kind and columns, such as `stacked`, `horizontal`, `donut` or `log_y`. */
@@ -54,7 +55,7 @@ function axisProblem(chart: SmallChart, table: SmallTable, settings: ChartSettin
   if (!axisKinds.has(chart.kind) || table.kinds[chart.x] !== "text" || textAxis) {
     return null;
   }
-  return `Column ${chart.x} holds text, and a ${chart.kind} chart's x axis takes dates, times or numbers: give tenors such as 2Y with settings={{ axis: "tenor" }}, or draw categories as a bar chart`;
+  return `Column ${chart.x} holds text, and ${aChart(chart.kind).toLowerCase()}'s x axis takes dates, times or numbers: give tenors such as 2Y with settings={{ axis: "tenor" }}, or draw categories as a bar chart`;
 }
 
 /** A waterfall's steps in the order its x text first appears in the rows, as an order the engine sums them in. A date,

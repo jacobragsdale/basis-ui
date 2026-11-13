@@ -71,6 +71,26 @@ function groupsProblem(layout: Layout): string | null {
     : null;
 }
 
+/** "A bar chart" or "An area chart": a chart of `kind`, to begin a sentence. */
+function aChart(kind: string): string {
+  return `${/^[aeiou]/u.test(kind) ? "An" : "A"} ${kind} chart`;
+}
+
+/** A setting the chart's kind does not draw, said with the fix, or null: a chart never leaves a setting unheeded. Only
+ * bars stack, and only lines and areas have a right axis. */
+function settingsProblem(layout: Layout): string | null {
+  const { chart } = layout;
+  if (chart === null) {
+    return null;
+  }
+  if (chart.stacked && chart.kind !== "bar") {
+    return `${aChart(chart.kind)} does not stack its series: only a bar chart does, so set stacked to false, or draw them as stacked bars.`;
+  }
+  return chart.kind !== "line" && chart.kind !== "area" && chart.y_right.length > 0
+    ? `${aChart(chart.kind)} has one value axis: give its columns as y, or draw them as a line chart with y_right.`
+    : null;
+}
+
 /**
  * A layout as the engine computes a waterfall from it: its first measure's value, and the engine's running total of
  * it among the groups in their order, from which each step floats. Its other measures are not drawn.
@@ -255,12 +275,14 @@ function categoriesOf(frame: FrameData): CategoryData {
 }
 
 export {
+  aChart,
   categoriesOf,
   computedPart,
   drawsGroups,
   groupsProblem,
   pieSlices,
   rowsPart,
+  settingsProblem,
   shapeOf,
   withGroupsFromXY,
   withPieLimit,

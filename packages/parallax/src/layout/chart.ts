@@ -168,7 +168,8 @@ const chartSchema = z.strictObject({
   x: z.string().default(""),
   /** The columns drawn against the left axis, a series each. */
   y: z.array(name).default([]),
-  /** The columns drawn against a right axis of their own. */
+  /** The columns a line or area chart draws against a right axis of their own; another kind, which has one value
+   * axis, says so in place of its plot. */
   y_right: z.array(name).default([]),
   /** A column whose values split each y column into a series per value, such as a curve per date. */
   series: name.nullable().default(null),
@@ -178,7 +179,7 @@ const chartSchema = z.strictObject({
   axis: z.enum(["value", "trading", "tenor"]).default("value"),
   /** Whether the left axis is logarithmic. */
   log_y: z.boolean().default(false),
-  /** Whether series stack, on an area or bar chart. */
+  /** Whether a bar chart's series stack; another kind says it does not stack, in place of its plot. */
   stacked: z.boolean().default(false),
   /** Whether a bar chart's bars run across. */
   horizontal: z.boolean().default(false),

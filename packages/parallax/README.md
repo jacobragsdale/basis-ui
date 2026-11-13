@@ -349,7 +349,7 @@ layout, so a pivot round-trips through a link with `encodeLayout` and
 ## Draw a chart
 
 `<Chart>` draws every chart of the firm's apps on a Canvas 2D surface: line,
-area, bar (across, stacked, or on two axes), scatter (a dot per row up to 5,000
+area, bar (across or stacked), scatter (a dot per row up to 5,000
 rows in the range shown, a density past that), heatmap,
 histogram, candlestick, OHLC, pie, donut and waterfall, on a value, trading-time or tenor axis,
 with technical-analysis indicators and panes, drawings, a compare mode and

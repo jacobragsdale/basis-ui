@@ -108,6 +108,14 @@ draw, when the engine's worker starts, now wait up to 20 seconds.
 - Likewise `y_right` is silently dropped for bars (`src/chart/source.ts:64-69`, single axis at `src/chart/model-bars.ts:185`), though the README lists bars "on two axes".
 - Severity: fix before release (implement it, or correct the docs and refuse the setting). Confidence: confirmed by running (area), by reading (bars).
 
+Done in Charts: a setting a chart does not draw is refused with what to change: stacked only on bars, a right axis only on lines and areas: stacked areas over the engine's reductions, whose series are reduced to points of their own, would
+need the series aligned and summed, which is not small; and a grouped chart's bars come from its measures, which
+have no right axis. So `settingsProblem` in `src/chart/source.ts` refuses, in place of the plot and to `onError`,
+`stacked` on any kind but a bar chart and `y_right` on any kind but a line or area chart (a scatter, histogram,
+candle and grouped chart all ignored it), with what to change. The README, the layout's descriptions and
+`docs/design.md`'s Charts list, as the brief directs, no longer promise bars on two axes or stacked areas.
+`tests/browser/chart-settings.test.tsx` holds both.
+
 **9. `packages/parallax/src/chart/model-bins.ts:87-93` with `packages/parallax/src/chart/scale.ts:100-107`** — A histogram with `log_y` starts its axis at 1, so bins holding one row have zero height.
 
 - Scenario: counts `[1, 1, 40, 900, 40, 1, 1, 0, 0, 1]`.
@@ -202,3 +210,7 @@ The defects cluster in three places the pixel-parity port could not catch:
 - `ViewHandle.measure(from, to, of)` takes `{ series, y }`, the series by its value and the y column whose line it
   measures, where it took the series as a string; the Measure tool measures the line pressed, on any y column. What
   to do: a page that called `measure(from, to, "AAPL")` passes `{ series: "AAPL" }`.
+
+- A chart refuses a setting it does not draw, with what to change, where it ignored it: `stacked` on anything but a
+  bar chart, and `y_right` on anything but a line or area chart. What to do: a layout that set either drops it, or
+  draws its columns as the message says.
