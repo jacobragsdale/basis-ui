@@ -58,6 +58,12 @@ I found no stale-frame or wrong-cell drawing bug, but two release blockers: one 
 - Related, from Excel's known behaviour and not tested here: only `text/plain` is written, so all-digit text ids such as CUSIP `037833100`, digits-E-digits ids, and integers past 15 digits are coerced on paste.
 - Severity: fix before release.
 - Confidence: formula part confirmed by running `toTsv` and `rangeText`.
+- Done in Grid: a copy pastes text as text, says why it failed, and keeps to the cells the view has: a text cell, a group label or a header that starts with `=`, `+`, `-`, `@`, a tab or a return is
+  prefixed with `'`, OWASP's list as `@basis/ui`'s writers have it; a number's text never is. Their `toTsv` itself is
+  not used: the grid copies numbers as exact text, which it would prefix when negative, so the grid applies the same
+  rule to its text cells. Held by `tests/unit/grid-copy.test.ts`. Not done: only `text/plain` is still written, so
+  Excel still coerces all-digit text ids such as CUSIPs on paste; an HTML flavour would keep them, which no reader of
+  the grid's has asked for yet.
 
 **6. A cell tooltip is not cleared or re-read on scroll.** `src/grid/tooltips.ts:22-35`, `src/grid/surface.ts:86-90`
 
@@ -110,12 +116,18 @@ I found no stale-frame or wrong-cell drawing bug, but two release blockers: one 
 - Scenario: on plain http `navigator.clipboard` is undefined, a case the Ctrl+C path handles explicitly. A selection over 1,000,000 cells is refused by the engine. Either error goes to `reportError` with no status-bar note.
 - Severity: polish.
 - Confidence: confirmed by reading.
+- Done in Grid: a copy pastes text as text, says why it failed, and keeps to the cells the view has: the menu's Copy, Copy with headers and `ref.copy()` say why they failed in the status bar, the
+  engine's refusal or a page with no clipboard among them, which names Ctrl+C. Held by
+  `tests/browser/grid-copy.test.tsx`.
 
 **12. The cell selection is never clamped or cleared when the view changes.** `src/grid/copy.ts:35-42,158-161`
 
 - Scenario: select including the group column and then ungroup, or select row 500,000 and then filter to 10 rows. Ctrl+C says "the rows changed while copying; copy again" every time, and the screen reader's cell reads "Loading…".
 - Severity: polish.
 - Confidence: confirmed by reading.
+- Done in Grid: a copy pastes text as text, says why it failed, and keeps to the cells the view has: each frame keeps the cell selection to the cells the view has, clearing it for a view with no
+  rows, so Ctrl+C after a filter or an ungroup copies. Held by `tests/unit/grid-selection.test.ts` and
+  `tests/browser/grid-copy.test.tsx`.
 
 **13. Keyboard edges.** `src/grid/keys.ts:18-33,53,66-79`
 
@@ -194,3 +206,9 @@ Everything else in `src/grid` and `src/pivot` was read in full. The scripts are 
 
 - "Filter by" and "Exclude" filter by the cell's exact value, so a time, a decimal shown with separators and a large
   integer filter as they should. What to do: nothing.
+
+- A grid's copy prefixes a text cell that starts like a formula, `=`, `+`, `-` or `@`, with `'`, as `@basis/ui`'s CSV
+  and TSV writers do, so it pastes into Excel as text; numbers are copied as they are. What to do: nothing.
+
+- The menu's Copy and `ref.copy()` say in the status bar why a copy failed, and a selection is kept to the cells the
+  view has after a filter or an ungroup, so it copies. What to do: nothing.

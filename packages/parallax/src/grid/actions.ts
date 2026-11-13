@@ -12,7 +12,7 @@ import { withPinned, withSort } from "./edit.ts";
 import { cellOf } from "./events.ts";
 import type { GridCell } from "./events.ts";
 import type { GridHost } from "./host.ts";
-import { contains, rangeOf, toTsv } from "./selection.ts";
+import { contains, pasteSafe, rangeOf, toTsv } from "./selection.ts";
 import type { CellRange } from "./selection.ts";
 
 /** A cell's value as a filter's operand, in the engine's exact form, as a layout's group paths hold it: a decimal, a
@@ -27,7 +27,9 @@ function headersOf(frame: FrameData, layout: Layout | null, range: CellRange): s
   for (let column = range.left; column <= range.right; column += 1) {
     const group =
       layout === null || layout.group_by.length === 0 ? "Group" : layout.group_by.join(" › ");
-    titles.push(column < 0 ? group : (frame.columns[column - frame.firstColumn]?.title ?? ""));
+    titles.push(
+      pasteSafe(column < 0 ? group : (frame.columns[column - frame.firstColumn]?.title ?? "")),
+    );
   }
   return titles;
 }
@@ -38,6 +40,16 @@ interface GridSelection {
   readonly top: number;
   readonly bottom: number;
   readonly columns: readonly string[];
+}
+
+/** Writes text to the clipboard, which a page served over plain http has none of: Ctrl+C still copies there. */
+async function clipboardText(text: string): Promise<void> {
+  if (!("clipboard" in navigator)) {
+    throw new Error(
+      "this page has no clipboard to write to, as on plain http; press Ctrl+C instead",
+    );
+  }
+  await navigator.clipboard.writeText(text);
 }
 
 /** The grid's actions on cells. */
@@ -85,13 +97,21 @@ class GridActions {
       return;
     }
     const range = rangeOf(selection);
+    // A copy refused, such as of more cells than a fetch takes, or with no clipboard, says why rather than nothing.
+    const said = await this.#copyText(range, withHeaders).catch(
+      (error: unknown) => `Copy failed: ${error instanceof Error ? error.message : String(error)}`,
+    );
+    this.#host.say(said);
+  }
+
+  /** Copies a range's text, returning what the status bar says of it. */
+  async #copyText(range: CellRange, withHeaders: boolean): Promise<string> {
     const text = await this.#textOf(range, withHeaders);
     if (text === null) {
-      this.#host.say("Copy failed: the rows changed while copying; copy again");
-      return;
+      return "Copy failed: the rows changed while copying; copy again";
     }
-    await navigator.clipboard.writeText(text);
-    this.#host.say(`Copied ${countOf(range)}`);
+    await clipboardText(text);
+    return `Copied ${countOf(range)}`;
   }
 
   /** Keeps only the rows whose `cell.column` is the cell's value, or with `exclude` those whose is not. */

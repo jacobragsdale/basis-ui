@@ -14,6 +14,7 @@ import { KeyInput } from "./keys.ts";
 import type { Metrics } from "./paint/metrics.ts";
 import type { GridPainter } from "./paint/painter.ts";
 import { PointerInput } from "./pointer.ts";
+import { clampSelection } from "./selection.ts";
 import type { CellRef, Selection } from "./selection.ts";
 import { wheelTop } from "./wheel.ts";
 import { searchIn } from "./window.ts";
@@ -119,10 +120,12 @@ class GridSurface {
   }
 
   /** When the rows shrink to end at or above the first row in view, as after a search, shows them from the top; the
-   * engine answers such a change from row 0, so the rows are already here. */
+   * engine answers such a change from row 0, so the rows are already here. The selection is kept to the cells the view
+   * now has. */
   public rowsChanged(before: number): void {
     const { model } = this.#host;
-    const { metrics, area } = model;
+    const { metrics, area, interaction } = model;
+    interaction.selection = clampSelection(interaction.selection, model.extent);
     const rows = model.totalRows;
     if (metrics === null || rows >= before) {
       return;

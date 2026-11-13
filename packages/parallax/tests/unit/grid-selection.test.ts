@@ -1,6 +1,14 @@
 import { describe, expect, test } from "vite-plus/test";
 
-import { clampCell, contains, moveFocus, rangeOf, selectAll, toTsv } from "#grid/selection.ts";
+import {
+  clampCell,
+  clampSelection,
+  contains,
+  moveFocus,
+  rangeOf,
+  selectAll,
+  toTsv,
+} from "#grid/selection.ts";
 import { missingWindow, wholeCells, windowFor } from "#grid/window.ts";
 
 const extent = { columns: 5, rows: 100, tree: true };
@@ -98,5 +106,25 @@ describe("the window a grid asks for", () => {
     expect(
       missingWindow({ ...visible, firstRow: 5000 }, null, windowFor(visible, null)),
     ).toStrictEqual(windowFor({ ...visible, firstRow: 5000 }, null));
+  });
+});
+
+describe(clampSelection, () => {
+  const view = { columns: 3, rows: 10, tree: false };
+
+  test("keeps a selection within the view's cells, and the same one when it is within already", () => {
+    const within = { anchor: { column: 0, row: 1 }, focus: { column: 2, row: 4 } };
+    expect(clampSelection(within, view)).toBe(within);
+    // Rows a filter left, and a group column an ungroup took away.
+    const past = { anchor: { column: -1, row: 2 }, focus: { column: 2, row: 500_000 } };
+    expect(clampSelection(past, view)).toStrictEqual({
+      anchor: { column: 0, row: 2 },
+      focus: { column: 2, row: 9 },
+    });
+  });
+
+  test("is none for a view with no rows", () => {
+    const one = { anchor: { column: 0, row: 0 }, focus: { column: 0, row: 0 } };
+    expect(clampSelection(one, { ...view, rows: 0 })).toBeNull();
   });
 });

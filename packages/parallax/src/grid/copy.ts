@@ -7,7 +7,7 @@ import type { FrameData } from "#frame/frame.ts";
 
 import type { GridHost } from "./host.ts";
 import { groupText } from "./paint/scene.ts";
-import { rangeOf, toTsv } from "./selection.ts";
+import { pasteSafe, rangeOf, toTsv } from "./selection.ts";
 import type { CellRange } from "./selection.ts";
 
 /** Text ready for the clipboard, and the configuration, load and range it was made from. */
@@ -20,15 +20,19 @@ function describe(failure: unknown): string {
   return failure instanceof Error ? failure.message : String(failure);
 }
 
-/** A cell's text as it copies: the group column's label and count, or the data column's exact text. */
+/** A cell's text as it copies: the group column's label and count, or the data column's exact text, a text cell made
+ * safe to paste, as `@basis/ui`'s writers make it. A number's text is never changed: its digits form no formula, and a
+ * negative one must stay a number. */
 function cellCopy(
   frame: FrameData,
   { local, column }: { readonly local: number; readonly column: number },
 ): string {
   if (column === -1) {
-    return frame.tree === null ? "" : groupText(frame.tree, local);
+    return frame.tree === null ? "" : pasteSafe(groupText(frame.tree, local));
   }
-  return frame.columns[column - frame.firstColumn]?.copy(local) ?? "";
+  const data = frame.columns[column - frame.firstColumn];
+  const text = data?.copy(local) ?? "";
+  return data?.numeric === true ? text : pasteSafe(text);
 }
 
 /** Whether the frame holds every cell of a range. */

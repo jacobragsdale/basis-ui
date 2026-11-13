@@ -65,6 +65,23 @@ function clampCell(cell: CellRef, extent: Extent): CellRef {
   };
 }
 
+function sameCell(one: CellRef, other: CellRef): boolean {
+  return one.row === other.row && one.column === other.column;
+}
+
+/** A selection kept within the view it is of, once the view has changed: each end clamped to its rows and columns, so a
+ * selection of rows a filter left, or of a group column an ungroup took away, is of cells that exist; none for a view
+ * with no rows or columns. The same selection when it is within already. */
+function clampSelection(selection: Selection | null, extent: Extent): Selection | null {
+  if (selection === null || extent.rows === 0 || (extent.columns === 0 && !extent.tree)) {
+    return null;
+  }
+  const anchor = clampCell(selection.anchor, extent);
+  const focus = clampCell(selection.focus, extent);
+  const same = sameCell(anchor, selection.anchor) && sameCell(focus, selection.focus);
+  return same ? selection : { anchor, focus };
+}
+
 /** Moves the focus by whole rows and columns, keeping the anchor when the move extends the selection. */
 function moveFocus(selection: Selection, move: Move, extent: Extent): Selection {
   const focus = clampCell(
@@ -82,6 +99,16 @@ function selectAll(extent: Extent): Selection {
   };
 }
 
+/** Characters a spreadsheet reads as the start of a formula, or that hide one: OWASP's list, as `@basis/ui`'s CSV and
+ * TSV writers have it. */
+const formulaStarts = new Set(["=", "+", "-", "@", "\t", "\r"]);
+
+/** Text that pastes into a spreadsheet as text, never as a formula: prefixed with `'` when it starts like one, as
+ * `@basis/ui`'s writers prefix a text cell. A comment of `=HYPERLINK(...)` stays a comment. */
+function pasteSafe(text: string): string {
+  return formulaStarts.has(text.charAt(0)) ? `'${text}` : text;
+}
+
 /** Quotes a cell for tab-separated text as Excel does, when it holds a tab, a line break or a quote. */
 function quote(cell: string): string {
   return /[\t\n\r"]/u.test(cell) ? `"${cell.replaceAll('"', '""')}"` : cell;
@@ -92,5 +119,5 @@ function toTsv(rows: readonly (readonly string[])[]): string {
   return rows.map((row) => row.map((cell) => quote(cell)).join("\t")).join("\r\n");
 }
 
-export { clampCell, contains, moveFocus, rangeOf, selectAll, toTsv };
+export { clampCell, clampSelection, contains, moveFocus, pasteSafe, rangeOf, selectAll, toTsv };
 export type { CellRange, CellRef, Extent, Move, Selection };
