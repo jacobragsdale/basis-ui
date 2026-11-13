@@ -52,6 +52,8 @@ Done in Theme classes: a comparison in cn() passes, cn is @basis/ui's, and a cla
 - Severity: fix before release.
 - Confidence: confirmed by running both the scanner and the compiler.
 
+Done in Suppressions: a directive on a block comment's later line is refused, and verify reads comments as the parser gives them: the type directive is looked for at the start of every line of a comment, after its stars, so `basis/no-suppressions` and verify both refuse it. Held by `tests/suppressions.test.ts` and the doors probe in `tests/preset-errors-doors.test.ts`.
+
 **5. Scaffolded pages pass the router's string path parameter straight to the generated hook.**
 
 - Where: `scaffold-view.ts:48-55`, `scaffold-form.ts:87-111`, `scaffold.ts:115-121`.
@@ -119,6 +121,8 @@ Done in Theme classes: a comparison in cn() passes, cn is @basis/ui's, and a cla
 - Severity: polish.
 - Confidence: confirmed by running the scanner; whether Oxlint's own `no-abusive-eslint-disable` still fires on a blanket `disable-line` was not checked.
 
+Done in Suppressions: a directive on a block comment's later line is refused, and verify reads comments as the parser gives them: verify's scan takes each file's comments from Oxc's parser, through `vite-plus`'s `parseSync`, so no new dependency, and a `//` or `/*` in a string or a URL starts no comment. For a file the parser cannot read, it adds the comments the old text scan finds, so a comment past the syntax error still counts. `vp run review`'s count reads `git grep`'s lines and is unchanged. Held by `tests/suppressions.test.ts`.
+
 **13. Route arguments are rewritten by Git Bash on Windows.**
 
 - Where: `shot-options.ts:181-186`.
@@ -182,3 +186,8 @@ The area is better than its age suggests: modules are small and pure, every fail
   chosen at run time or a helper it also refuses a palette colour, a hex value and an arbitrary value, which
   `@shadcn/lint` cannot see there. What to do: write a page's classes in its own file, and fix what `vp check` now
   reports where they are written.
+
+- `basis/no-suppressions` and verify's suppressions stage refuse a `@ts-expect-error`, `@ts-ignore` or `@ts-nocheck` on
+  any line of a block comment, as TypeScript honours it, and verify reads each file's comments as the parser gives
+  them, so a URL or `"src/*"` in a string no longer hides the comment after it. What to do: remove what `vp run verify`
+  now reports, and fix the type the compiler names.

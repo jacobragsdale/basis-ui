@@ -26,6 +26,9 @@ console.info(amount);
 const wrong: number = "1";
 // @ts-ignore
 const ignored: number = "2";
+/* the API sends a string here
+ * @ts-expect-error */
+const hiddenWrong: number = "3";
 // oxlint-disable-next-line oxc/no-barrel-file -- outside src/api
 const shown = [
   <div key="a" className="bg-black text-white">a</div>,
@@ -46,7 +49,7 @@ const beacon = navigator.sendBeacon("/api/seen");
 
 const libraries = [LineChart, useForm, toast, Button];
 
-export { beacon, dates, ignored, libraries, network, roundedUp, shown, wrong };
+export { beacon, dates, hiddenWrong, ignored, libraries, network, roundedUp, shown, wrong };
 /* eslint-disable */
 `;
 
@@ -97,6 +100,10 @@ describe("the preset's lint against a comment that turns a check off", () => {
     ]);
     expect(at("basis(no-suppressions)", "@ts-ignore")).toStrictEqual([
       `ERROR @ts-ignore ${typeError}`,
+    ]);
+    // On a block comment's later line, where TypeScript reads it too.
+    expect(at("basis(no-suppressions)", "the API sends a string here")).toStrictEqual([
+      `ERROR @ts-expect-error ${typeError}`,
     ]);
     expect(found.filter(({ code }) => code.includes("ban-ts-comment"))).toStrictEqual([]);
   });

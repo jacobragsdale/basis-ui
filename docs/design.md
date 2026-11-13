@@ -191,7 +191,8 @@ basis-ui adds one lint plugin, `@shadcn/lint`, described below:
   comment but one naming `oxc/no-barrel-file` in `src/api`, the allowlist, a list of rule names with their folder in
   the preset's `suppressions.ts`, and every `@ts-expect-error`, `@ts-ignore` and `@ts-nocheck`, in place of
   `typescript/ban-ts-comment`, whose advice sent an app from one to another; `verify`'s suppressions stage, which
-  reads `src/` as text, since a comment that turns off every rule hides from the lint, and `vp run review`'s count;
+  reads every comment of `src/`, as Oxc's parser gives them, since a comment that turns off every rule hides from the
+  lint, and `vp run review`'s count;
   `basis/theme-classes`, which refuses on a plain element a `dark:` variant, `!important`, a selector variant such as
   `[&>*]:`, a filter such as `grayscale` or `brightness-50`, black and white, and a class built from a template
   string, and since 2026-11-13 follows a `className` to the constant, object or helper of the file that writes it,

@@ -3,8 +3,8 @@
  * everywhere. Three places read them through this module:
  *
  *   basis/no-suppressions   the lint rule, which reports each refused comment as it is written (lint-plugin.ts)
- *   suppressions            verify's suppressions stage, which reads every file of src/ as text, since a comment that turns off
- *                           every rule would turn off the lint rule too, and counts what it finds
+ *   suppressions            verify's suppressions stage, which reads every comment of src/, as Oxc's parser gives them,
+ *                           since a comment that turns off every rule would turn off the lint rule too, and counts them
  *   vp run review           the count on the branch and on the one it merges into (review.ts)
  */
 
@@ -31,7 +31,9 @@ interface Suppression {
 
 const lintDirective =
   /^\s*(?<directive>(?:eslint|oxlint)-disable(?:-next-line|-line)?)(?=\s|$)(?<rest>.*)$/su;
-const typeDirective = /^[\s*/]*(?<directive>@ts-(?:expect-error|ignore|nocheck))(?![\w-])/u;
+/* At the start of any line of the comment, after its stars: TypeScript reads a block comment's last line, and
+ * `@ts-nocheck` on any line of one. */
+const typeDirective = /^[\s*/]*(?<directive>@ts-(?:expect-error|ignore|nocheck))(?![\w-])/mu;
 
 /** The suppression a comment's text, without its `//` or `/* *\/`, holds, if it holds one. */
 function suppressionIn(comment: string): Suppression | undefined {
@@ -87,15 +89,44 @@ interface Found {
 
 const comments = /\/\/(?<line>[^\n]*)|\/\*(?<block>[\s\S]*?)\*\//gu;
 
-/** Every suppression in `text`, the source of `file`, a path from the app's root. Comments are found in the text, so
- * one quoted in a string counts too, which costs a rewording at most. */
-function suppressionsInText(file: string, text: string): readonly Found[] {
-  return [...text.matchAll(comments)].flatMap((match) => {
-    const suppression = suppressionIn(match.groups?.["line"] ?? match.groups?.["block"] ?? "");
+/** A comment of a file: its text without its `//` or `/* *\/`, and where it starts. */
+interface Comment {
+  readonly value: string;
+  readonly start: number;
+}
+
+/** The comments in `text` found as text, for a file the parser cannot read: one quoted in a string counts too. */
+function commentsAsText(text: string): readonly Comment[] {
+  return [...text.matchAll(comments)].map((match) => ({
+    start: match.index,
+    value: match.groups?.["line"] ?? match.groups?.["block"] ?? "",
+  }));
+}
+
+/** The comments of `file`, as Oxc's parser gives them, so that a `//` or `/*` in a string or a URL is no comment;
+ * for a file it cannot parse, also those the text holds, since a comment after the error may be missing. */
+async function commentsOf(file: string, text: string): Promise<readonly Comment[]> {
+  const { parseSync } = await import("vite-plus");
+  const parsed = parseSync(file, text);
+  const read = parsed.comments.map(({ start, value }) => ({ start, value }));
+  if (parsed.errors.length === 0) {
+    return read;
+  }
+  const starts = new Set(read.map(({ start }) => start));
+  return [...read, ...commentsAsText(text).filter(({ start }) => !starts.has(start))].toSorted(
+    (first, second) => first.start - second.start,
+  );
+}
+
+/** Every suppression in `text`, the source of `file`, a path from the app's root. */
+async function suppressionsInText(file: string, text: string): Promise<readonly Found[]> {
+  const found = await commentsOf(file, text);
+  return found.flatMap(({ start, value }) => {
+    const suppression = suppressionIn(value);
     if (suppression === undefined) {
       return [];
     }
-    const line = text.slice(0, match.index).split("\n").length;
+    const line = text.slice(0, start).split("\n").length;
     return [{ directive: suppression.directive, file, line, refusal: refusal(suppression, file) }];
   });
 }
@@ -128,7 +159,10 @@ async function suppressionsIn(root: string): Promise<readonly Found[]> {
   const texts = await Promise.all(
     files.map(async (file) => readFile(path.join(root, file), "utf8").catch(() => "")),
   );
-  return files.flatMap((file, index) => suppressionsInText(file, texts[index] ?? ""));
+  const found = await Promise.all(
+    files.map(async (file, index) => suppressionsInText(file, texts[index] ?? "")),
+  );
+  return found.flat();
 }
 
 /** "1 comment in WHERE turns a check off", or "3 comments in WHERE turn" one. */

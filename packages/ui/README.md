@@ -370,7 +370,8 @@ Those two comments are the only ones an app may write to turn a check off. `basi
 `oxlint-disable` or `eslint-disable` comment, which only `oxc/no-barrel-file` in `src/api` passes, and every
 `@ts-expect-error`, `@ts-ignore` and `@ts-nocheck`: fix what the rule or the compiler reports instead, and parse a
 value of unknown shape with a zod schema. A comment that turns off every rule hides from the lint as well, so
-`vp run verify` reads `src/` as text for them, and `vp run review` counts them.
+`vp run verify` reads every comment in `src/` for them, as the parser gives them, and `vp run review` counts them. A
+directive on any line of a block comment counts, since TypeScript reads one there.
 
 A hook returns the response as `{ data, status, headers }`, so a component reads `query.data.data`; a 204, a 205, or any
 response with an empty body has `data` undefined, whatever its content type. Its error is typed as what the client throws:
@@ -754,7 +755,7 @@ gives them, its rule, and its fix. The stages, in order:
 | `tests`        | `vp test`, in Chromium unless the app runs with no browser                                                 |
 | `build`        | `vp build`, which fails on what only the React Compiler or the bundler finds                               |
 | `budget`       | each route of `basisPreset({ budget })` against its budget, as `vp run budget`                             |
-| `suppressions` | the comments that turn a check off, read as text                                                           |
+| `suppressions` | the comments that turn a check off, read from every file's comments                                        |
 
 ```sh
 $ vp run verify
