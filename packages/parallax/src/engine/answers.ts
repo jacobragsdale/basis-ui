@@ -20,13 +20,19 @@ class Answers {
   readonly #waiting = new Map<number, Waiting>();
   #nextId = 1;
 
-  /** Starts a request with a fresh id, which `send` posts, and waits for its answer. */
+  /** Starts a request with a fresh id, which `send` posts, and waits for its answer; a `send` that throws fails it. */
   public async ask(send: (id: number) => void): Promise<Answered> {
     const id = this.#nextId;
     this.#nextId += 1;
     const { promise, resolve, reject } = Promise.withResolvers<Answered>();
     this.#waiting.set(id, { parts: null, reject, resolve });
-    send(id);
+    try {
+      send(id);
+    } catch (error: unknown) {
+      // A request that never went is answered by no one.
+      this.#waiting.delete(id);
+      throw error;
+    }
     return promise;
   }
 

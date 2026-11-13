@@ -71,12 +71,13 @@ function stateOf(request: LoadRequest, settled: Settled | null, stopped: string 
  * What a restart leaves of a dataset. A dataset that was loaded on the engine that stopped loads again on the new one,
  * when the client says to recover. One whose load was under way, most likely the load that ran the engine out of
  * memory, fails with the reason, and loads again only when the app calls `reload` or gives it other data, so it cannot
- * stop the engine again and again.
+ * stop the engine again and again. A planned restart, which only gives memory back, stopped no load: every dataset
+ * loads again.
  */
 function restarted(
   was: Tracked,
   request: LoadRequest | null,
-  { reason, recover }: Restart,
+  { planned, reason, recover }: Restart,
 ): Tracked {
   const engine = was.engine + 1;
   const held =
@@ -84,7 +85,7 @@ function restarted(
     was.settled !== null &&
     was.settled.state.status === "loaded" &&
     sameRequest(was.settled.request, request);
-  if (request === null || (recover && held)) {
+  if (request === null || planned || (recover && held)) {
     return { engine, settled: was.settled, stopped: null };
   }
   return { engine, settled: was.settled, stopped: { reason, request } };

@@ -20,6 +20,42 @@ function contentLength(response: Response): number | null {
   return plain && Number.isSafeInteger(length) && length >= 0 ? length : null;
 }
 
+/** Refuses a response whose body was read before the engine had it, as a source that hands back one response it keeps
+ * does on its second call: its body would never arrive. */
+function checkUnread(dataset: string, response: Response): void {
+  if (response.bodyUsed || response.body?.locked === true) {
+    throw new Error(
+      `${dataset} did not arrive: its response's body was already read; return a new response from each call of the source, such as \`() => fetch(url)\`.`,
+    );
+  }
+}
+
+/** Why a response is refused before its body is read, if it is: it did not succeed, or it says it is past the byte
+ * limit. */
+function refusalOf(dataset: string, response: Response, mostBytes: number): Error | null {
+  const length = contentLength(response);
+  if (!response.ok) {
+    const from = response.url === "" ? "its request" : response.url;
+    return new Error(
+      `${dataset} did not arrive: ${from} answered ${String(response.status)}; check that its API serves it.`,
+    );
+  }
+  return length !== null && length > mostBytes ? tooManyBytes(dataset, length, mostBytes) : null;
+}
+
+/** Checks bytes the app holds before they move to the worker: they must not have moved already, as a source that hands
+ * back the bytes it keeps does on its second call, and must be within the byte limit. */
+function checkBytes(dataset: string, bytes: ArrayBuffer, mostBytes: number): void {
+  if (bytes.detached) {
+    throw new Error(
+      `${dataset} did not load: its source gave bytes that already moved to the engine; return new bytes from each call of the source.`,
+    );
+  }
+  if (bytes.byteLength > mostBytes) {
+    throw tooManyBytes(dataset, bytes.byteLength, mostBytes);
+  }
+}
+
 /** Checks a response before its body is read: it must have succeeded, and must not say it is past the byte limit.
  * Returns its length, if it says it; a refused response's body is cancelled. */
 async function checkResponse(
@@ -27,21 +63,13 @@ async function checkResponse(
   response: Response,
   mostBytes: number,
 ): Promise<number | null> {
-  const length = contentLength(response);
-  let refusal: Error | null = null;
-  if (!response.ok) {
-    const from = response.url === "" ? "its request" : response.url;
-    refusal = new Error(
-      `${dataset} did not arrive: ${from} answered ${String(response.status)}; check that its API serves it.`,
-    );
-  } else if (length !== null && length > mostBytes) {
-    refusal = tooManyBytes(dataset, length, mostBytes);
-  }
+  checkUnread(dataset, response);
+  const refusal = refusalOf(dataset, response, mostBytes);
   if (refusal !== null) {
     await response.body?.cancel();
     throw refusal;
   }
-  return length;
+  return contentLength(response);
 }
 
 /** Where a body goes: the load's id and the worker's answer to it, the dataset and the byte limit, and how to post to
@@ -98,11 +126,27 @@ async function postAll(
   }
 }
 
+/** A body's reader, or null for a body read since it was checked, whose load the worker is told to give up. */
+function readerOf(
+  body: ReadableStream<Uint8Array>,
+  pipe: Pipe,
+): ReadableStreamDefaultReader<Uint8Array> | null {
+  try {
+    return body.getReader();
+  } catch (error: unknown) {
+    pipe.post({ error: describe(error), id: pipe.id, kind: "load-end" }, []);
+    return null;
+  }
+}
+
 /** Posts a load's body to the worker chunk by chunk as it arrives, then says that it ended, or why it failed on its
  * way. Once the worker has answered, as when it refused the rows so far, the body is cancelled and the rest is not
  * read. */
 async function streamBody(body: ReadableStream<Uint8Array>, pipe: Pipe): Promise<void> {
-  const reader = body.getReader();
+  const reader = readerOf(body, pipe);
+  if (reader === null) {
+    return;
+  }
   let answered = false;
   const over = (): null => {
     answered = true;
@@ -117,5 +161,5 @@ async function streamBody(body: ReadableStream<Uint8Array>, pipe: Pipe): Promise
   await watching;
 }
 
-export { checkResponse, contentLength, streamBody };
+export { checkBytes, checkResponse, contentLength, streamBody };
 export type { Pipe };

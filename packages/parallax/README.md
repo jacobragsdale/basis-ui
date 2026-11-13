@@ -617,7 +617,9 @@ memory goes to later loads. WebAssembly's memory never shrinks, so once the
 engine's memory has grown past 1 GiB while its tables take less than half of
 it, the engine starts again as soon as nothing waits on it, and the datasets
 still shown load again from their sources, as after a restart. That restart is
-planned: it never counts towards the three below.
+planned: it never counts towards the three below, and it waits for every load
+under way, a fetch still on its way among them. A dataset whose last component
+unmounts while its fetch is on its way is not loaded when the bytes arrive.
 
 ### When the engine runs out of memory
 
@@ -626,9 +628,10 @@ starts again, empty, and every view fails with the reason. Each dataset that
 was loaded loads again from its source, and its views reopen. A dataset whose
 load was under way, most likely the one that ran the engine out of memory,
 stays failed with the reason until the app calls `reload` or gives it other
-data. If the engine stops a third time within a minute, parallax stops
-recovering, and everything stays failed with a reason that says to reload the
-page.
+data. If the engine stops a third time, each time within five minutes of the
+time before, as a table that runs it out of memory each time it has loaded
+again does however long it takes to arrive, parallax stops recovering, and
+everything stays failed with a reason that says to reload the page.
 
 ## Run the demo
 

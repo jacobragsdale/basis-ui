@@ -5,6 +5,7 @@
 import { loadLimits } from "./limits.ts";
 import type { LoadCall, LoadOptions, LoadProgress, Loaded } from "./limits.ts";
 import type { LoadProgressReply, LoadRequest } from "./messages.ts";
+import { unloadedFirst } from "./running.ts";
 
 const microsPerMilli = 1000;
 
@@ -54,6 +55,12 @@ class Holdings {
   readonly #loading = new Map<string, Pending>();
   /** Who hears each load's progress, by the load's id. */
   readonly #listeners = new Map<number, ProgressListener>();
+  /** Each dataset's loads not yet answered, which an unload of it drops. */
+  readonly #jobs = new Map<string, Set<Job>>();
+  /** Loads whose dataset was unloaded before they were answered. */
+  readonly #dropped = new WeakSet<Job>();
+  /** Loads asked for and not yet answered, their bytes on their way or in the worker. */
+  #underWay = 0;
 
   /** A load of `dataset`, whose progress `onProgress` hears; it holds the dataset once its first rows show. */
   public job(dataset: string, { onProgress, ...options }: LoadCall): Job {
@@ -67,7 +74,44 @@ class Holdings {
       }
       onProgress?.(progress);
     };
-    return { dataset, hear, heldByShowing: () => holding, options, shown: shown.promise };
+    const job: Job = {
+      dataset,
+      hear,
+      heldByShowing: (): boolean => holding,
+      options,
+      shown: shown.promise,
+    };
+    const jobs = this.#jobs.get(dataset) ?? new Set<Job>();
+    jobs.add(job);
+    this.#jobs.set(dataset, jobs);
+    return job;
+  }
+
+  /** Whether `job`'s dataset was unloaded before the load was answered, which leaves nothing for it to load. */
+  public dropped(job: Job): boolean {
+    return this.#dropped.has(job);
+  }
+
+  /** Whether no load is under way: every load asked for has been answered, or failed, whether or not its bytes have
+   * reached the worker. */
+  public get idle(): boolean {
+    return this.#underWay === 0;
+  }
+
+  /** Counts `job` as under way until `done` settles, then forgets it and calls `ended`, after the load's own
+   * continuations, which may ask for more. */
+  public underWay(job: Job, done: Promise<Loaded>, ended: () => void): void {
+    this.#underWay += 1;
+    const end = (): void => {
+      this.#underWay -= 1;
+      const jobs = this.#jobs.get(job.dataset);
+      jobs?.delete(job);
+      if (jobs?.size === 0) {
+        this.#jobs.delete(job.dataset);
+      }
+      queueMicrotask(ended);
+    };
+    done.finally(end).catch(() => null);
   }
 
   /** Keeps a job's load as its dataset's latest until it is answered. A first load that showed rows and then failed
@@ -106,9 +150,12 @@ class Holdings {
     return this.#held.has(dataset);
   }
 
-  /** Holds `dataset`, whose load succeeded. */
-  public add(dataset: string): void {
-    this.#held.add(dataset);
+  /** Holds the dataset of `job`, whose load succeeded, unless it was unloaded before the load was answered. */
+  public add(job: Job): void {
+    if (this.#dropped.has(job)) {
+      throw unloadedFirst(job.dataset);
+    }
+    this.#held.add(job.dataset);
   }
 
   /** Lets `hear` hear the progress of load `id`. */
@@ -126,10 +173,14 @@ class Holdings {
     this.#listeners.delete(id);
   }
 
-  /** Forgets `dataset`, which the page unloads. */
+  /** Forgets `dataset`, which the page unloads, and drops its loads not yet answered. */
   public drop(dataset: string): void {
     this.#held.delete(dataset);
     this.#loading.delete(dataset);
+    for (const job of this.#jobs.get(dataset) ?? []) {
+      this.#dropped.add(job);
+    }
+    this.#jobs.delete(dataset);
   }
 
   /** Forgets every table and load, as when the worker ends. */
@@ -137,6 +188,7 @@ class Holdings {
     this.#held.clear();
     this.#loading.clear();
     this.#listeners.clear();
+    this.#jobs.clear();
   }
 }
 

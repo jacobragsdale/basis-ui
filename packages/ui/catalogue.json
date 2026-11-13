@@ -21116,13 +21116,13 @@
           "type": "number"
         },
         {
-          "description": "The most restarts recovered from within `recoveryWindowMs`; 2 by default.",
+          "description": "The most restarts recovered from in a row, each within `recoveryWindowMs` of the one before; 2 by default.",
           "name": "maxRecoveries",
           "optional": true,
           "type": "number"
         },
         {
-          "description": "60 seconds by default.",
+          "description": "Five minutes by default: a restart that long after the one before starts the count again.",
           "name": "recoveryWindowMs",
           "optional": true,
           "type": "number"
@@ -21314,7 +21314,7 @@
       "exported": true,
       "module": "@basis/parallax",
       "name": "DatasetSource",
-      "purpose": "Where a dataset's Arrow IPC stream comes from: bytes the app holds, or a function that fetches them. A function that returns the response itself, such as `() => fetch(url)`, streams it: its body moves to the engine as it arrives, and a first load's rows show batch by batch, the first long before the last has come. One that returns bytes, such as `() => fetch(url).then((response) => response.arrayBuffer())`, shows them once they have all come. Bytes the app holds are copied before they move to the engine, so the app's copy, such as a query cache's, stays readable; a function's bytes or body move without a copy, so it returns fresh ones each call. After the engine restarts, the hook loads the source again."
+      "purpose": "Where a dataset's Arrow IPC stream comes from: bytes the app holds, or a function that fetches them. A function that returns the response itself, such as `() => fetch(url)`, streams it: its body moves to the engine as it arrives, and a first load's rows show batch by batch, the first long before the last has come. One that returns bytes, such as `() => fetch(url).then((response) => response.arrayBuffer())`, shows them once they have all come. Bytes the app holds are copied before they move to the engine, so the app's copy, such as a query cache's, stays readable; a function's bytes or body move without a copy, so it returns fresh ones each call: bytes that already moved, or a response whose body was already read, fail the load, saying so. After the engine restarts, the hook loads the source again."
     },
     {
       "definition": "\"idle\" | \"loading\" | \"loaded\" | \"failed\"",
@@ -23742,6 +23742,12 @@
         {
           "description": "Whether to load the data again and reopen the views; false once the engine keeps stopping.",
           "name": "recover",
+          "optional": false,
+          "type": "boolean"
+        },
+        {
+          "description": "Whether the restart was planned, to give back the memory of tables the page unloaded, rather than a trap: no load of the engine before it ran it out of memory, so every dataset loads again.",
+          "name": "planned",
           "optional": false,
           "type": "boolean"
         }

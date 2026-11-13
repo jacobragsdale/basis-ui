@@ -13,8 +13,9 @@ import { sharedLoad } from "./dataset-share.ts";
  * a first load's rows show batch by batch, the first long before the last has come. One that returns bytes, such as
  * `() => fetch(url).then((response) => response.arrayBuffer())`, shows them once they have all come. Bytes the app
  * holds are copied before they move to the engine, so the app's copy, such as a query cache's, stays readable; a
- * function's bytes or body move without a copy, so it returns fresh ones each call. After the engine restarts, the hook
- * loads the source again.
+ * function's bytes or body move without a copy, so it returns fresh ones each call: bytes that already moved, or a
+ * response whose body was already read, fail the load, saying so. After the engine restarts, the hook loads the source
+ * again.
  */
 type DatasetSource =
   | ArrayBuffer

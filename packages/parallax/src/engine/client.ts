@@ -4,8 +4,9 @@
  * When the engine traps, every view fails and a new, empty engine starts; the client then tells its listeners whether
  * to recover, by loading their data again and reopening their views. An engine that traps again and again soon after
  * each recovery would load, trap and restart for ever, and hold a desktop's CPU while it did, so past a few restarts
- * in a minute the client says not to, and the views stay failed with the reason. A planned restart, which gives
- * back the memory of datasets the page unloaded, is always recovered from and never counted. */
+ * each within five minutes of the one before, however long the data takes to load again, the client says not to,
+ * and the views stay failed with the reason. A planned restart, which gives back the memory of datasets the page
+ * unloaded, is always recovered from and never counted. */
 
 import { BrowserEngine } from "./browser-engine.ts";
 import type { EngineOptions, Unloaded } from "./memory.ts";
@@ -24,20 +25,23 @@ interface Restart {
   readonly reason: string;
   /** Whether to load the data again and reopen the views; false once the engine keeps stopping. */
   readonly recover: boolean;
+  /** Whether the restart was planned, to give back the memory of tables the page unloaded, rather than a trap: no load
+   * of the engine before it ran it out of memory, so every dataset loads again. */
+  readonly planned: boolean;
 }
 
 /** How the client counts restarts and gives memory back, which tests change. */
 interface ClientOptions extends EngineOptions {
-  /** The most restarts recovered from within `recoveryWindowMs`; 2 by default. */
+  /** The most restarts recovered from in a row, each within `recoveryWindowMs` of the one before; 2 by default. */
   readonly maxRecoveries?: number;
-  /** 60 seconds by default. */
+  /** Five minutes by default: a restart that long after the one before starts the count again. */
   readonly recoveryWindowMs?: number;
   /** The clock, in milliseconds; `performance.now()` by default. */
   readonly now?: () => number;
 }
 
 const defaultRecoveries = 2;
-const defaultWindowMs = 60_000;
+const defaultWindowMs = 300_000;
 
 /** The reason a restart gives when the client will not recover from it. */
 function givenUp(reason: string): string {
@@ -161,10 +165,13 @@ class ParallaxClient {
     this.#generation += 1;
     const now = this.#now();
     if (!planned) {
-      this.#restarts = [...this.#restarts.filter((at) => now - at < this.#recoveryWindowMs), now];
+      // A run of restarts, each soon after the one before, as a load that traps the engine each time it loads again.
+      const last = this.#restarts.at(-1);
+      const inRun = last !== undefined && now - last < this.#recoveryWindowMs;
+      this.#restarts = inRun ? [...this.#restarts, now] : [now];
     }
     const recover = planned || this.#restarts.length <= this.#maxRecoveries;
-    const restart: Restart = { reason: recover ? reason : givenUp(reason), recover };
+    const restart: Restart = { planned, reason: recover ? reason : givenUp(reason), recover };
     for (const listener of this.#listeners) {
       listener(restart);
     }

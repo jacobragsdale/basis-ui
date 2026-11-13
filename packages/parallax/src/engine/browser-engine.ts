@@ -7,28 +7,24 @@
 
 import { Answers } from "./answers.ts";
 import type { Answered } from "./answers.ts";
-import { Connection } from "./connection.ts";
+import type { Connection } from "./connection.ts";
 import { Holdings, loadRequest } from "./holdings.ts";
 import type { Job, LoadBody } from "./holdings.ts";
 import { exportRequest, exportedFile } from "./exported.ts";
-import { loadLimits, tooManyBytes, trapReason } from "./limits.ts";
+import { loadLimits, trapReason } from "./limits.ts";
 import type { LoadCall, Loaded } from "./limits.ts";
 import type { ExportFormat, LoadRequest, ToWorker } from "./messages.ts";
 import { MemoryWatch, plannedReason } from "./memory.ts";
 import type { EngineOptions, Unloaded } from "./memory.ts";
-import { arriving, listen } from "./port.ts";
+import { arriving } from "./port.ts";
 import type { WorkerPort } from "./port.ts";
 import { parseFromWorker } from "./replies.ts";
 import type { Reply } from "./replies.ts";
 import { Restarts } from "./restarts.ts";
 import type { RestartListener } from "./restarts.ts";
-import { checkResponse, streamBody } from "./stream.ts";
-
-/** One worker and the connection to its engine. */
-interface Running {
-  readonly worker: WorkerPort;
-  readonly connection: Connection;
-}
+import { checkArrival, spawn } from "./running.ts";
+import type { Running } from "./running.ts";
+import { checkBytes, checkResponse, streamBody } from "./stream.ts";
 
 /** The worker-hosted engine and its connection. */
 class BrowserEngine {
@@ -81,9 +77,17 @@ class BrowserEngine {
     options: LoadCall = {},
   ): Promise<Loaded> {
     const job = this.#holdings.job(dataset, options);
+    const running = this.#running;
     const done = arriving(bytes)
-      ? Promise.resolve(bytes).then(async (body) => this.#sendBody(job, body))
+      ? Promise.resolve(bytes).then(async (body) => {
+          // Unless its dataset was unloaded, or its worker replaced, while the body was on its way.
+          await checkArrival(running, { dataset, dropped: this.#holdings.dropped(job) }, body);
+          return this.#sendBody(job, body);
+        })
       : this.#sendBody(job, bytes);
+    this.#holdings.underWay(job, done, () => {
+      this.#restartIfIdle();
+    });
     return this.#failure === null ? this.#holdings.track(job, done) : done;
   }
 
@@ -139,16 +143,7 @@ class BrowserEngine {
   }
 
   #spawn(): Running {
-    const worker = this.#start();
-    const connection = new Connection({
-      close: (): void => {
-        worker.terminate();
-      },
-      send: (bytes): void => {
-        worker.postMessage({ bytes, kind: "message" }, { transfer: [] });
-      },
-    });
-    listen(worker, () => this.#running.worker === worker, {
+    return spawn(this.#start, (worker) => this.#running.worker === worker, {
       fail: (reason) => {
         this.#fail(reason);
       },
@@ -156,7 +151,6 @@ class BrowserEngine {
         this.#receive(data);
       },
     });
-    return { connection, worker };
   }
 
   async #sendBody(job: Job, body: LoadBody): Promise<Loaded> {
@@ -164,12 +158,12 @@ class BrowserEngine {
   }
 
   /** The rows a load's answer says the table holds, once the dataset is held. */
-  #loaded(dataset: string, answer: Answered): Loaded {
+  #loaded(job: Job, answer: Answered): Loaded {
     if (answer.kind !== "loaded") {
       throw new Error("The parallax worker answered a load with something else.");
     }
-    this.#holdings.add(dataset);
-    return { dataset, rows: answer.rows };
+    this.#holdings.add(job);
+    return { dataset: job.dataset, rows: answer.rows };
   }
 
   /** Asks the worker to load a job, moving its bytes there, and returns the load's id and its answer. */
@@ -184,17 +178,18 @@ class BrowserEngine {
       this.#holdings.listen(id, job.hear);
       return loadRequest(job, { ...fields, id });
     }, transfer);
+    // A load that never reached the worker, or that it failed, has no more progress to hear.
+    answer.catch(() => {
+      this.#holdings.answered(loadId);
+    });
     return { answer, id: loadId };
   }
 
   /** Checks the bytes against the byte limit and moves them to the worker to load. */
   async #send(job: Job, bytes: ArrayBuffer): Promise<Loaded> {
-    const { maxArrowBytes: mostBytes } = loadLimits();
-    if (bytes.byteLength > mostBytes) {
-      throw tooManyBytes(job.dataset, bytes.byteLength, mostBytes);
-    }
+    checkBytes(job.dataset, bytes, loadLimits().maxArrowBytes);
     const { answer } = this.#ask(job, { bytes, expectedBytes: null });
-    return this.#loaded(job.dataset, await answer);
+    return this.#loaded(job, await answer);
   }
 
   /** Checks a response and posts its body to the worker chunk by chunk as it arrives, to load. */
@@ -211,7 +206,7 @@ class BrowserEngine {
     // The answer may come first, as a refusal; a body that fails tells the worker, which answers with the reason.
     const pipe = { answer, dataset: job.dataset, id, mostBytes, post };
     streamBody(response.body, pipe).catch(() => null);
-    return this.#loaded(job.dataset, await answer);
+    return this.#loaded(job, await answer);
   }
 
   /** Sends a request and waits for its answer, which comes with any CSV chunks collected for it. */
@@ -263,13 +258,17 @@ class BrowserEngine {
   /** Replaces a worker that is to give its memory back, once nothing waits on it: after an answer's own
    * continuations, which may ask for more. */
   #restartIfIdle(): void {
-    if (this.#failure === null && this.#memory.restartNow(this.#answers.idle)) {
+    if (
+      this.#failure === null &&
+      this.#memory.restartNow(this.#answers.idle && this.#holdings.idle)
+    ) {
       this.#restart(plannedReason, true);
     }
   }
 
   /** Fails everything waiting on a worker and its views with `reason`, forgets its tables, and ends it. */
   #stop(reason: string, running: Running): void {
+    running.stopped = reason;
     this.#answers.failAll(reason);
     this.#holdings.clear();
     running.connection.disconnect(reason);

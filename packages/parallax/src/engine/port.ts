@@ -53,4 +53,4 @@ function arriving<TBytes extends object>(
 }
 
 export { arriving, listen };
-export type { WorkerPort };
+export type { PortListener, WorkerPort };

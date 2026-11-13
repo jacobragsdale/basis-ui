@@ -77,20 +77,35 @@ describe(ParallaxClient, () => {
     parallax.prewarm();
     workers.current().answer(trap);
     expect(restarts).toStrictEqual([
-      { reason: expect.stringContaining("RuntimeError: unreachable") as unknown, recover: true },
+      {
+        planned: false,
+        reason: expect.stringContaining("RuntimeError: unreachable") as unknown,
+        recover: true,
+      },
     ]);
     expect(parallax.generation).toBe(2);
   });
 
-  test("says not to recover once the engine keeps stopping, and to recover again a minute on", () => {
+  test("says not to recover once the engine keeps stopping, and to recover again five minutes on", () => {
     const { parallax, workers, restarts, time } = client();
     parallax.prewarm();
-    for (const at of [0, 10_000, 20_000, 90_000]) {
+    for (const at of [0, 10_000, 20_000, 320_001]) {
       time.now = at;
       workers.current().answer(trap);
     }
     expect(restarts.map((restart) => restart.recover)).toStrictEqual([true, true, false, true]);
     expect(restarts[2]?.reason).toContain("parallax leaves it stopped: reload the page");
+  });
+
+  test("says not to recover from an engine that stops each time its data has loaded again, however long that takes", () => {
+    const { parallax, workers, restarts, time } = client();
+    parallax.prewarm();
+    // A table that takes 40 seconds to arrive, and runs the engine out of memory each time it has.
+    for (const at of [0, 40_000, 80_000, 120_000]) {
+      time.now = at;
+      workers.current().answer(trap);
+    }
+    expect(restarts.map((restart) => restart.recover)).toStrictEqual([true, true, false, false]);
   });
 
   test("stops telling a listener that stopped listening", () => {

@@ -19,6 +19,11 @@ No release blocker in the strict sense, but 1–7 should be fixed before tens of
    - Scenario: under the showcase's shared `DataLayout`, wasm memory has passed 1 GiB (I did not measure this; my guess is a 1M-row table reloaded once gets near it). The user goes from page A to B; A's unload answers in milliseconds and the worker is replaced while B waits for its first byte.
    - B shows `failed` with "…its data loads again", which is false: it stays failed until `reload()`. Its table still loads into the new worker unseen.
    - Severity: fix before release. Confidence: engine half confirmed by running (`check1.ts` e); hook half by reading.
+   - Done in Parallax: a load under way survives a planned restart, and an unload, a read body or a failed post ends it: the engine counts every load from its call until it settles, a fetch still on its way among them,
+     so a planned restart waits for it; a fetch that arrives after its worker was replaced fails with the reason and
+     never reaches the new worker. `Restart` gains `planned`, and a planned restart stops no dataset, which loads
+     again on the new engine; that covers a load answered just before the restart, which the hook had not yet heard.
+     Held by `tests/unit/engine-arrivals.test.ts` and `tests/browser/restarts.test.tsx`.
 
 3. **`packages/parallax/src/engine/view.ts:254-263` with `updates.ts:89-102, 135-137` — after a refused layout update, the view drops every later frame as stale.**
    - `begin()` raises the client's config version before the engine accepts; on refusal the engine keeps the old one (`lib.rs:752-806` returns before line 806), and `refused()` does not roll back.
@@ -32,6 +37,9 @@ No release blocker in the strict sense, but 1–7 should be fixed before tens of
    - The unload reaches the worker before the load does, so it drops nothing; the bytes then arrive and the table loads with no holder.
    - Scenario: the user clicks away from a page before its API answers. Up to about 450 MB of wasm per occurrence stays until that name is next loaded and unloaded, or the engine traps.
    - Severity: fix before release. Confidence: confirmed by running (`check1.ts` f: worker receives `unload` then `load`; page still holds it).
+   - Done in Parallax: a load under way survives a planned restart, and an unload, a read body or a failed post ends it: an unload drops the dataset's loads not yet answered; one whose bytes arrive afterwards fails,
+     cancelling a response's body unread, and one already in the worker is not counted as held when it is answered.
+     Held by `tests/unit/engine-arrivals.test.ts`. Cancelling the fetch itself is finding 10.
 
 5. **`packages/parallax/src/react/dataset-share.ts:86-99` — a dataset name is a provider-wide key, and a second source under the same name silently replaces the table.**
    - Scenario: two cards call `useDataset("positions", …)` with different fund filters. Both report `loaded`, each with its own `rows`, and both views show whichever load finished last.
@@ -48,6 +56,9 @@ No release blocker in the strict sense, but 1–7 should be fixed before tens of
    - `getReader()` throws outside the try, the rejection is swallowed, and no `load-end` is posted. The worker waits for bytes forever, and its queue is serial, so later loads and unloads never run.
    - Scenario: a source that returns a memoized `Response`. In production it hangs on `reload()` or any restart recovery; under StrictMode it hangs on the first mount. Status stays `loading` with no error.
    - Severity: fix before release (small fix). Confidence: confirmed by running (`check1.ts` b, `check2.ts` h).
+   - Done in Parallax: a load under way survives a planned restart, and an unload, a read body or a failed post ends it: a response whose body was used or is locked is refused before the load is sent, saying to return a
+     new response from each call, and a `getReader` that throws still tells the worker to give the load up. Held by
+     `tests/unit/engine-arrivals.test.ts`.
 
 8. **`packages/parallax/src/react/dataset-share.ts:36-46` — the shared-load key includes each hook's private `engine` and `reloads` counters.**
    - Two components asking for the same data stop sharing once they have heard different numbers of restarts or reloads.
@@ -57,6 +68,10 @@ No release blocker in the strict sense, but 1–7 should be fixed before tens of
 9. **`packages/parallax/src/engine/client.ts:160-171` — the give-up rule is a 60 s window, so it never fires when a load-trap cycle takes 30 s or more.**
    - Scenario: a pivot layout that runs a loaded 1M-row table out of memory, against an API that takes over 30 s to serve it. Recovery reloads the table, the view reopens with the same layout, and it traps again, indefinitely, refetching up to 500 MB each time.
    - Severity: fix before release. Confidence: counting confirmed by running (`check2.ts` g: a trap every 31 s always recovers); the timing is plausible, not measured.
+   - Done in Parallax: a load under way survives a planned restart, and an unload, a read body or a failed post ends it: the client counts a run of restarts, each within the window of the one before, and the window is
+     five minutes, so a load that traps the engine each time it has loaded again is given up on after the third,
+     however long the table takes to arrive, up to five minutes a cycle. The README says so. Held by
+     `tests/unit/client.test.ts`.
 
 10. **`packages/parallax/src/react/dataset-load.ts:93-115` with `engine/worker-loads.ts:119-132` — nothing cancels a load.**
     - `source` gets no `AbortSignal`, and a superseded or unmounted load downloads and parses to the end.
@@ -70,6 +85,9 @@ No release blocker in the strict sense, but 1–7 should be fixed before tens of
 12. **`packages/parallax/src/engine/answers.ts:24-31` — a `postMessage` that throws leaves its request waiting forever.**
     - Scenario: a function source returns the same `ArrayBuffer` twice; the second is detached. `idle` is never true again, so planned restarts stop, and the progress listener leaks.
     - Severity: polish. Confidence: confirmed by running (`check1.ts` c).
+    - Done in Parallax: a load under way survives a planned restart, and an unload, a read body or a failed post ends it: a request whose post throws is no longer waited for, and its progress listener is dropped; bytes
+      that already moved to the engine are refused before the post, saying to return new bytes from each call. Held
+      by `tests/unit/engine-arrivals.test.ts`.
 
 13. **`packages/parallax/src/index.ts:7, 51-58` — the public surface exposes ways to break the hooks.**
     - `useParallaxClient()` hands apps `close()`, `unload()` and `load()`. None of them tells the hooks, so after `close()` datasets read `loaded` on an empty engine and views stay failed.
@@ -122,3 +140,17 @@ Nothing documents this, and none of it was run in a browser; it is from reading 
 - `Grid`, `Pivot` and `Chart` take `onError`, called with the reason they show in place of their data, or for a
   change the engine refused, each time it changes, and with null once it clears. What to do: nothing; a page that
   restores a saved layout may reset it there.
+
+- A dataset whose fetch is on its way when the engine gives its memory back, in a planned restart, loads on the new
+  engine rather than failing; `Restart`, which `ParallaxClient.onRestart` hears, gains `planned`. What to do: nothing.
+
+- A dataset whose last component unmounts while its fetch is on its way is not loaded when the bytes arrive. What to
+  do: nothing.
+
+- A source that hands back a response whose body was already read, or bytes that already moved to the engine, fails
+  its load with a reason that says to return new ones from each call, where it waited for ever. What to do: a source
+  that keeps one `Response` or `ArrayBuffer` returns a new one from each call.
+
+- Parallax gives up recovering from an engine that keeps running out of memory after the third restart in a run, each
+  within five minutes of the one before, where it was three within a minute, so a large table that traps the engine
+  each time it loads again stops being fetched. What to do: nothing.
