@@ -108,6 +108,20 @@ describe(ParallaxClient, () => {
     expect(restarts.map((restart) => restart.recover)).toStrictEqual([true, true, false, false]);
   });
 
+  test("drops everything when renewed, as for another user, telling its listeners of a planned restart", () => {
+    const { parallax, workers, restarts } = client();
+    parallax.prewarm();
+    for (let renewal = 0; renewal < 4; renewal += 1) {
+      parallax.renew("another user");
+    }
+    expect([workers.all.length, workers.current().terminated]).toStrictEqual([1, true]);
+    expect(restarts.at(-1)).toStrictEqual({ planned: true, reason: "another user", recover: true });
+    // The next use starts a new engine, and renewals are never counted against recovering.
+    parallax.prewarm();
+    workers.current().answer(trap);
+    expect([workers.all.length, restarts.at(-1)?.recover]).toStrictEqual([3, true]);
+  });
+
   test("stops telling a listener that stopped listening", () => {
     const { parallax, workers } = client();
     const heard: Restart[] = [];

@@ -34,6 +34,11 @@ The shell raises `basis:sessionchange` on `window` (`{ userId }`) whenever the s
 Left to 7.9: `ParallaxProvider` dropping its datasets and views on that event. `invalid-token` renewed and retried
 comes with the Windows adapter.
 
+- Parallax's side done in Parallax: a change of the signed-in user drops every dataset, and the provider mounts in a Node DOM (step 7.9): `ParallaxProvider` listens for `basis:sessionchange` on the window, by
+  its name alone, and renews its client: the worker ends, every view fails, and each `useDataset` loads again, as
+  after a planned restart, so the user before's rows are gone and a dataset that failed 401 loads again. Held by
+  `packages/parallax/tests/browser/session.test.tsx`.
+
 **3. `packages/ui/src/shell/session-state.ts:33` — fix before release**
 
 - **Defect:** `setTokenSource(signIn.token)` detaches `token` from its adapter, while `currentUser`, `signIn` and `signOut` are called as methods.

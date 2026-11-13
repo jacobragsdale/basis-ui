@@ -64,6 +64,19 @@ function observeBelow(document: Document, changed: () => void): MutationObserver
   return below;
 }
 
+/** Calls `changed` when a web font arrives, until the returned function is called. A Node DOM, as a test's, has no
+ * fonts to load. */
+function watchFonts(document: Document, changed: () => void): () => void {
+  if (!("fonts" in document)) {
+    return (): void => undefined;
+  }
+  const { fonts } = document;
+  fonts.addEventListener("loadingdone", changed);
+  return () => {
+    fonts.removeEventListener("loadingdone", changed);
+  };
+}
+
 /** Calls `changed` on every change that may change the page's tokens, until the returned function is called. */
 function observe(document: Document, changed: () => void): () => void {
   const observer = new MutationObserver(changed);
@@ -74,13 +87,13 @@ function observe(document: Document, changed: () => void): () => void {
   const below = observeBelow(document, changed);
   const media = document.defaultView?.matchMedia(darkQuery);
   media?.addEventListener("change", changed);
-  document.fonts.addEventListener("loadingdone", changed);
+  const unwatchFonts = watchFonts(document, changed);
   document.addEventListener(themeChangeEvent, changed);
   return () => {
     observer.disconnect();
     below.disconnect();
     media?.removeEventListener("change", changed);
-    document.fonts.removeEventListener("loadingdone", changed);
+    unwatchFonts();
     document.removeEventListener(themeChangeEvent, changed);
   };
 }

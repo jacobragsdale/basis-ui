@@ -12,4 +12,16 @@ async function applyWhenCurrent<TResult>(
   }
 }
 
-export { applyWhenCurrent };
+/** Reports an error that nothing awaits, as the browser reports an uncaught one; a DOM without `reportError`, as a
+ * test's Node DOM, throws it on a later task, as the browser would have. */
+function reportUncaught(error: unknown): void {
+  if ("reportError" in globalThis) {
+    globalThis.reportError(error);
+    return;
+  }
+  setTimeout(() => {
+    throw error;
+  }, 0);
+}
+
+export { applyWhenCurrent, reportUncaught };

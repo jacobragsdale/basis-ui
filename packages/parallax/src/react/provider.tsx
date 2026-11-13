@@ -38,6 +38,27 @@ interface ParallaxProviderProps {
   readonly children?: ReactNode;
 }
 
+/** The event `@basis/ui`'s shell raises on the window when the signed-in user becomes another, or nobody. Parallax
+ * knows it by its name alone, so it never depends on the shell. */
+const sessionChangeEvent = "basis:sessionchange";
+
+const sessionChanged =
+  "The signed-in user changed, so parallax dropped the data it held for the user before; it loads again.";
+
+/** Drops every dataset and view when the signed-in user changes, so one user's rows are never on screen, or
+ * exportable, for the next, and each dataset loads again for the user now signed in. */
+function useSessionChanges(client: ParallaxClient): void {
+  useEffect(() => {
+    const renew = (): void => {
+      client.renew(sessionChanged);
+    };
+    globalThis.addEventListener(sessionChangeEvent, renew);
+    return (): void => {
+      globalThis.removeEventListener(sessionChangeEvent, renew);
+    };
+  }, [client]);
+}
+
 function resolveScheme(scheme: Scheme | undefined, page: PageState): ResolvedScheme {
   if (scheme === undefined) {
     return page.mode;
@@ -51,7 +72,9 @@ function resolveScheme(scheme: Scheme | undefined, page: PageState): ResolvedSch
 /**
  * Starts parallax's engine for the tree inside it, in a Web Worker, and ends it, freeing its memory, when it unmounts.
  * It installs the theme's stylesheets, and follows the page's mode and density, so that every grid, pivot and chart
- * inside repaints when they change.
+ * inside repaints when they change. When `@basis/ui`'s shell says the signed-in user changed, with its
+ * `basis:sessionchange` event, it drops every dataset and view, and each dataset loads again for the user now signed
+ * in. Without a Web Worker, as in a test's Node DOM, it starts no engine, and its datasets wait as `loading`.
  *
  * @use Once, around the part of the app that shows a Grid, a Pivot or a Chart, since it starts the engine's worker. Put
  * it around only the pages that use parallax: with `prewarm`, every page under it downloads the engine.
@@ -74,7 +97,11 @@ function ParallaxProvider({
   children,
 }: ParallaxProviderProps): ReactNode {
   // A new worker source starts a new engine; the old one ends below, freeing its memory.
-  const client = useMemo(() => new ParallaxClient(worker), [worker]);
+  // A Node DOM, as a test's, has no Web Worker: its engine never starts, and its datasets wait as loading.
+  const client = useMemo(
+    () => new ParallaxClient(worker, { inert: typeof Worker === "undefined" }),
+    [worker],
+  );
   const watcher = pageWatcher(document);
   const page = useSyncExternalStore(watcher.subscribe, watcher.getSnapshot);
   useEffect(
@@ -88,6 +115,7 @@ function ParallaxProvider({
       client.prewarm();
     }
   }, [client, prewarm]);
+  useSessionChanges(client);
   // Before any layout effect, so a canvas that reads its tokens on mount finds them declared.
   useInsertionEffect(() => {
     installTokenStyles(document);

@@ -39,7 +39,17 @@ interface ClientOptions extends EngineOptions {
   readonly recoveryWindowMs?: number;
   /** The clock, in milliseconds; `performance.now()` by default. */
   readonly now?: () => number;
+  /** Never starts a worker, as in a Node DOM, which has no Web Worker: every load and view waits, and a dataset's
+   * source is never called. */
+  readonly inert?: boolean;
 }
+
+/** A worker that is never started: it takes every message and answers none. */
+const inertWorker: WorkerPort = {
+  addEventListener: (): void => undefined,
+  postMessage: (): void => undefined,
+  terminate: (): void => undefined,
+};
 
 const defaultRecoveries = 2;
 const defaultWindowMs = 300_000;
@@ -60,6 +70,8 @@ function starter(source: WorkerSource): () => WorkerPort {
 
 /** The page's engine and its worker, started on first use. */
 class ParallaxClient {
+  /** Whether the client never starts a worker, as in a Node DOM: its loads and views wait for ever. */
+  public readonly inert: boolean;
   readonly #start: () => WorkerPort;
   readonly #listeners = new Set<(restart: Restart) => void>();
   readonly #maxRecoveries: number;
@@ -71,7 +83,8 @@ class ParallaxClient {
   #generation = 0;
 
   public constructor(worker: WorkerSource, options: ClientOptions = {}) {
-    this.#start = starter(worker);
+    this.inert = options.inert ?? false;
+    this.#start = this.inert ? (): WorkerPort => inertWorker : starter(worker);
     this.#maxRecoveries = options.maxRecoveries ?? defaultRecoveries;
     this.#recoveryWindowMs = options.recoveryWindowMs ?? defaultWindowMs;
     this.#now = options.now ?? ((): number => performance.now());
@@ -116,7 +129,10 @@ class ParallaxClient {
   /** The connection for views of `dataset`, once its load has succeeded or its first rows show, or, `whole`, once it
    * has all loaded; see `BrowserEngine.connectionFor`. */
   public async connectionFor(dataset: string, whole = false): Promise<Connection> {
-    return this.#current().connectionFor(dataset, whole);
+    // An inert client loads nothing, so its views wait, as for a load still on its way.
+    return this.inert
+      ? Promise.withResolvers<Connection>().promise
+      : this.#current().connectionFor(dataset, whole);
   }
 
   /** Writes a view of a table the app loaded as xlsx or CSV in the engine; see `BrowserEngine.export`. */
@@ -141,6 +157,17 @@ class ParallaxClient {
     return () => {
       this.#listeners.delete(listener);
     };
+  }
+
+  /**
+   * Drops every table and view, as when the signed-in user changes: the worker ends, freeing every table it held, its
+   * views fail with `reason`, and the listeners hear of a planned restart, so they load their data again, for the
+   * user now signed in, on a new engine. A load whose bytes arrive later loads nothing.
+   */
+  public renew(reason: string): void {
+    this.#engine?.close(reason);
+    this.#engine = null;
+    this.#restarted(reason, true);
   }
 
   /** Ends the worker, freeing every table it held; views open on it fail. A later use starts a new one. */

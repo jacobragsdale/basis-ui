@@ -56,6 +56,10 @@ No release blocker in the strict sense, but 1–7 should be fixed before tens of
    - `document.fonts` is undefined in happy-dom 21, so the page watcher's `subscribe` throws. `Worker` is undefined there too, so `prewarm` throws next.
    - Scenario: `BASIS_TEST_DOM=node vp test`, the route check the design gives citizen developers. Any route under the provider fails with "Cannot read properties of undefined (reading 'addEventListener')". The showcase's parallax routes were only ever checked in Chromium.
    - Severity: fix before release for that audience. Confidence: confirmed by running the watcher under happy-dom (`check4.ts`); route-level outcome by reading.
+   - Done in Parallax: a change of the signed-in user drops every dataset, and the provider mounts in a Node DOM: the page watcher skips the fonts a Node DOM lacks, and with no `Worker` the provider's client is
+     inert: no engine starts, datasets wait as `loading` without calling their sources, and views as `opening`.
+     `reportError`, which happy-dom lacks too, has a fallback in the hooks. Held by `tests/unit/node-dom.test.ts`,
+     which mounts the provider, a dataset, a view and a `Grid` in happy-dom.
 
 7. **`packages/parallax/src/engine/stream.ts:104-105` with `browser-engine.ts:213` — a `Response` whose body is already locked hangs the load and every load behind it.**
    - `getReader()` throws outside the try, the rejection is swallowed, and no `load-end` is posted. The worker waits for bytes forever, and its queue is serial, so later loads and unloads never run.
@@ -185,3 +189,11 @@ Nothing documents this, and none of it was run in a browser; it is from reading 
   `show-data` skill's new sample.
 
 - Bytes past the byte limit are refused before they are copied. What to do: nothing.
+
+- `ParallaxProvider` drops every dataset and view when `@basis/ui`'s shell says the signed-in user changed, with its
+  `basis:sessionchange` event on the window, and each dataset loads again for the user now signed in, one that failed
+  for want of a sign-in among them. What to do: nothing.
+
+- `ParallaxProvider` mounts in the Node DOM that `BASIS_TEST_DOM=node` runs tests in: with no Web Worker it starts no
+  engine, and its datasets wait as `loading` without calling their sources. What to do: nothing; a route check of a
+  page with a grid now passes there.

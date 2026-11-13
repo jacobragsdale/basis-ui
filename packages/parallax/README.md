@@ -637,6 +637,23 @@ planned: it never counts towards the three below, and it waits for every load
 under way, a fetch still on its way among them. A dataset whose last component
 unmounts while its fetch is on its way is not loaded when the bytes arrive.
 
+### When the signed-in user changes
+
+`@basis/ui`'s shell raises `basis:sessionchange` on the window when the
+signed-in user becomes another, or signs out. `ParallaxProvider` then drops
+every dataset and view, so one user's rows are never on screen, or exportable,
+for the next, and each dataset loads again from its source for the user now
+signed in, one that failed for want of a sign-in among them. A fetch still on
+its way for the user before loads nothing. An app that signs users in some
+other way raises the same event, by that name.
+
+### In a Node DOM
+
+With no Web Worker, as in the Node DOM that `BASIS_TEST_DOM=node` runs tests
+in, `ParallaxProvider` starts no engine: its datasets wait as `loading`, their
+sources are never called, and their views as `opening`, so a page's route
+check sees its skeletons and nothing fails.
+
 ### When the engine runs out of memory
 
 A load, pivot or export past the engine's memory traps it. The engine then

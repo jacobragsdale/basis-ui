@@ -6,7 +6,7 @@ import { loadLimits } from "#engine/limits.ts";
 import type { LoadOptions, LoadProgress } from "#engine/limits.ts";
 import { checkBytes } from "#engine/stream.ts";
 
-import { applyWhenCurrent } from "./current.ts";
+import { applyWhenCurrent, reportUncaught } from "./current.ts";
 import { sharedLoad } from "./dataset-share.ts";
 
 /** What a dataset's source is given each time it is called: `signal` aborts once no component waits for the load,
@@ -103,6 +103,10 @@ async function load(
   { progress, signal }: Running,
 ): Promise<LoadState> {
   const { name, source } = request;
+  if (client.inert) {
+    // No engine starts, so nothing is fetched for it: the dataset waits as loading.
+    return Promise.withResolvers<LoadState>().promise;
+  }
   try {
     // A copy of the app's bytes, or what its function returns.
     const bytes = typeof source === "function" ? source({ signal }) : copyOf(name, source);
@@ -137,7 +141,7 @@ function start(
     progress,
     run: async (heard, signal) => load(client, request, { progress: heard, signal }),
   });
-  applyWhenCurrent(outcome, () => live, apply).catch(reportError);
+  applyWhenCurrent(outcome, () => live, apply).catch(reportUncaught);
   return () => {
     live = false;
     leave();

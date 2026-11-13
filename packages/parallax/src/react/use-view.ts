@@ -15,6 +15,7 @@ import type { AnyRow, LayoutFor } from "#layout/typed.ts";
 import { ViewAttempt } from "./attempt.ts";
 import type { ChartSink, FrameSink, Opened, Opening, Sinks } from "./attempt.ts";
 import { useParallaxClient } from "./context.ts";
+import { reportUncaught } from "./current.ts";
 import { useLatest } from "./latest.ts";
 import type { Dataset } from "./use-dataset.ts";
 import { viewStateOf } from "./view-state.ts";
@@ -79,7 +80,7 @@ function useOpen(
     }
     const run = new ViewAttempt(key, report, sinks);
     attemptRef.current = run;
-    run.open(client, name, first).catch(reportError);
+    run.open(client, name, first).catch(reportUncaught);
     return (): void => {
       run.end();
       if (attemptRef.current === run) {
