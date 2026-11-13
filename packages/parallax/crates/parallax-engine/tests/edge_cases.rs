@@ -164,6 +164,29 @@ fn column_pivots_beyond_the_limit_are_refused() {
 }
 
 #[test]
+fn a_column_pivot_at_its_limit_shows_every_key_and_one_past_it_is_refused() {
+    // One measure: each key is a column, and the total one more.
+    let pivot = |keys: i64| {
+        let ids: Int64Array = (0..keys).collect();
+        let t = table(vec![
+            ("id", Arc::new(ids)),
+            ("x", floats(&vec![1.0; keys as usize])),
+        ]);
+        let config = ViewConfig {
+            split_by: vec!["id".into()],
+            measures: vec![Measure::new(Aggregate::Sum, "x")],
+            ..ViewConfig::default()
+        };
+        View::new(&t, config).map(|mut view| view.num_columns(&t))
+    };
+    assert_eq!(pivot(9_999), Ok(10_000));
+    assert_eq!(
+        pivot(10_000),
+        Err(ConfigError::TooManyColumns(10_001, 10_000))
+    );
+}
+
+#[test]
 fn text_min_and_max_follow_the_engine_collation() {
     let names = StringArray::from(vec!["beta", "Alpha", "alpha", "Gamma"]);
     let t = table(vec![("s", Arc::new(names))]);

@@ -476,6 +476,52 @@ impl Column {
         self.valid.reserve(additional);
     }
 
+    /// Recodes a text column with only the strings `live` slots use, when they
+    /// use at most half of those its dictionary holds and it holds at least
+    /// [`COMPACT_STRINGS`]: a reload leaves the strings of the rows it replaced
+    /// behind, and a dictionary never forgets one. Codes keep their order, and
+    /// a slot that is not live, or null, takes code 0. Returns whether it
+    /// recoded, after which every code the column gave before means nothing.
+    pub(crate) fn compact_text(&mut self, live: &Bitmap) -> bool {
+        let Values::Utf8 { codes, dictionary } = &mut self.values else {
+            return false;
+        };
+        if dictionary.len() < COMPACT_STRINGS {
+            return false;
+        }
+        let mut used = Bitmap::new();
+        used.extend_from_validity(
+            dictionary.len(),
+            Some(&NullBuffer::new_null(dictionary.len())),
+        );
+        let mut in_use = 0;
+        for slot in live.ones() {
+            let code = codes[slot] as usize;
+            if self.valid.get(slot) && !used.get(code) {
+                used.set(code, true);
+                in_use += 1;
+            }
+        }
+        if in_use * 2 > dictionary.len() {
+            return false;
+        }
+        let mut kept = Dictionary::new();
+        let mut recode = vec![0; dictionary.len()];
+        for code in used.ones() {
+            recode[code] = kept.intern(dictionary.get(code as u32));
+        }
+        kept.refresh_ranks();
+        for (slot, code) in codes.iter_mut().enumerate() {
+            *code = if live.get(slot) && self.valid.get(slot) {
+                recode[*code as usize]
+            } else {
+                0
+            };
+        }
+        *dictionary = kept;
+        true
+    }
+
     /// Gives back the room [`Column::reserve`] made for slots that never came.
     pub(crate) fn shrink_to_fit(&mut self) {
         match &mut self.values {
@@ -739,6 +785,10 @@ impl<'a> Strings<'a> {
         }
     }
 }
+
+/// The fewest strings a dictionary holds before [`Column::compact_text`]
+/// recodes it: below this, the strings it keeps cost less than recoding.
+const COMPACT_STRINGS: usize = 4_096;
 
 /// A dictionary-encoded array's value that no row has used yet.
 const UNMAPPED: u32 = u32::MAX;

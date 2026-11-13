@@ -143,8 +143,10 @@ fn reloads_of_an_unkeyed_table_hold_no_old_rows_once_its_views_catch_up() {
     open(&mut session, 1);
     for seed in 2..30 {
         reload(&shared, seed);
-        // The open view has yet to apply this load: it needs its old rows.
-        assert_eq!(shared.read().unwrap().held_rows(), ROWS as usize);
+        // The open view has yet to apply this load: it needs its old rows,
+        // unless the load recoded the table's text, which a view rebuilds from.
+        let held = shared.read().unwrap().held_rows();
+        assert!([0, ROWS as usize].contains(&held), "{held}");
         let pushed = session.refresh();
         let frame = pushed
             .iter()

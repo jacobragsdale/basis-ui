@@ -67,6 +67,10 @@ pub struct ChangeSet {
     pub removed: RemovedRows,
     /// Slots holding inserted rows and the new values of updated rows.
     pub added: Vec<usize>,
+    /// Whether the load recoded the table's text, dropping strings no row uses
+    /// any more: a view rebuilds rather than applies the change, whose removed
+    /// rows it then does not need, and are not kept.
+    pub recoded: bool,
 }
 
 /// A summary of a load, for the view's info panel.
@@ -655,6 +659,7 @@ impl Table {
                 seq: Vec::new(),
             },
             added: (before..rows).collect(),
+            recoded: false,
         })
     }
 
@@ -836,6 +841,7 @@ impl Table {
                 load_version: self.load_version,
                 removed,
                 added: (0..rows).collect(),
+                recoded: false,
             },
         )
     }
@@ -1010,6 +1016,30 @@ impl Table {
             }
             added.push(slot);
         }
+        // A text column whose strings the live rows mostly no longer use, as a
+        // reload of quote ids or timestamps sent as text leaves it, is recoded
+        // with only the strings they use, so a dictionary holds at most about
+        // twice the strings of its rows, whatever the loads before.
+        let mut recoded = false;
+        for (c, column) in self.columns.iter_mut().enumerate() {
+            if column.compact_text(&self.live) {
+                recoded = true;
+                if self.key_column == Some(c) {
+                    self.index.clear();
+                    self.indexed = false;
+                }
+            }
+        }
+        if recoded {
+            removed = RemovedRows {
+                columns: self
+                    .columns
+                    .iter()
+                    .map(|c| Column::new(c.ty.clone()))
+                    .collect(),
+                seq: Vec::new(),
+            };
+        }
         for column in &mut self.columns {
             column.refresh_ranks();
         }
@@ -1027,6 +1057,7 @@ impl Table {
                 load_version: self.load_version,
                 removed,
                 added,
+                recoded,
             },
         ))
     }

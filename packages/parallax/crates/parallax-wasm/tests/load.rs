@@ -183,3 +183,12 @@ fn a_stream_the_page_holds_loads_as_the_same_bytes_do_in_webassembly() {
     );
     assert_eq!(csv(&from_page), csv(&from_memory));
 }
+
+#[wasm_bindgen_test]
+fn a_weighted_average_of_a_long_period_is_right_where_usize_has_32_bits() {
+    // Weights 1 to 70,000 sum to 2,450,035,000, past a 32-bit word.
+    let period = 70_000;
+    let averages = parallax_engine::indicator::wma(&vec![2.5; period + 10], period);
+    assert_eq!(averages[period - 1], 2.5);
+    assert_eq!(averages[period + 9], 2.5);
+}

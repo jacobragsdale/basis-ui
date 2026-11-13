@@ -147,6 +147,18 @@ pub enum ConfigError {
     /// Column pivots produced more columns than the view allows.
     #[error("column pivots produce {0} columns, more than the limit of {1}")]
     TooManyColumns(usize, usize),
+    /// A grouped view would make more groups than its totals' memory allows.
+    #[error(
+        "grouping makes more than {groups} groups, whose totals would take about {megabytes} MB, more than the {limit_megabytes} MB a view may hold; group by fewer or coarser columns, or filter the rows first"
+    )]
+    TooManyGroups {
+        /// The groups counted when the limit was passed.
+        groups: usize,
+        /// About how many megabytes their totals would take.
+        megabytes: usize,
+        /// The most a view's totals may take, in megabytes.
+        limit_megabytes: usize,
+    },
     /// A detail view's configuration asks for something it cannot show.
     #[error("a grid grouped with its rows {0}")]
     Detail(String),

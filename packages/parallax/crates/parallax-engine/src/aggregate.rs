@@ -368,6 +368,20 @@ impl CompiledMeasure {
         }
     }
 
+    /// About how many bytes this measure's state takes in one cell at a leaf:
+    /// the state itself, and the exact accumulators a float sum, mean or
+    /// variance boxes, or the least a count of values allocates.
+    pub(crate) fn leaf_bytes(&self) -> usize {
+        let exact = std::mem::size_of::<ExactSum>();
+        std::mem::size_of::<State>()
+            + match self.empty(true) {
+                State::Float { squares, .. } => exact * (1 + usize::from(squares.is_some())),
+                State::WeightedFloat { .. } => 2 * exact,
+                State::Values(_) | State::Sequence(_) => 64,
+                _ => 0,
+            }
+    }
+
     /// Returns an empty state for a cell at a leaf (`leaf`) or above.
     pub fn empty(&self, leaf: bool) -> State {
         match &self.aggregate {

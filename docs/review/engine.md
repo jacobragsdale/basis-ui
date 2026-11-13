@@ -44,6 +44,8 @@ Paths are relative to `packages/parallax/crates/`.
 - **Scenario:** a 1,000,000-row grid with a data bar on a P&L column of about 1,000,000 distinct values. Each bar column holds two maps of 2^21 buckets, roughly 140 to 200 MB by my arithmetic. Each `window_frame` (`parallax-session/src/lib.rs:1109-1123`) scans both maps in full; a median total re-sorts a million keys per frame.
 - **Confidence:** logic confirmed. Sizes are computed, not measured, and I did not time it.
 
+- Done in Engine: a dictionary forgets the strings no row uses, and a pivot past 256 MB of totals is refused: a flat view's domains are found in one pass over the rows that pass, each time the view rebuilds, as it does on every change, and only the least and greatest value are kept, where two counts of every distinct value were; and the value of a count of values, a minimum, maximum, median, percentile or distinct count, is kept until the view changes, as an upper node's already was, so a frame no longer scans or sorts it. Not done: a flat view's min, max, median and distinct totals still keep a count of their column's distinct values, one per total, since a total shares the state a pivot keeps reversible; the domains, two per bar or heat column, were the cost the finding measured. The memory saved was read from the code, not measured; the existing frames tests hold the values.
+
 **5. Dictionaries never forget a string — fix before release**
 
 - **Where:** `parallax-engine/src/dictionary.rs:71-81`, `column.rs:349`, `table.rs:950-989`
@@ -51,12 +53,16 @@ Paths are relative to `packages/parallax/crates/`.
 - **Scenario:** a page that reloads a table with a text column whose values change each time, such as an ISO timestamp or quote id sent as text. A 50,000-row table refreshed every 30 seconds adds about 50,000 strings at roughly 150 bytes each per refresh, about 0.7 GB an hour, until the 4 GB trap.
 - **Confidence:** confirmed that nothing shrinks a dictionary. Per-string bytes are an estimate.
 
+- Done in Engine: a dictionary forgets the strings no row uses, and a pivot past 256 MB of totals is refused: after a load, a text column whose live rows use at most half of its dictionary's strings, once it holds 4,096 or more, is recoded with only the strings they use, keeping their order; a keyed table's index is rebuilt when its key is recoded, and the change set says the table was recoded, so views rebuild from it rather than apply it, and it keeps no old rows. A dictionary thus holds at most about twice its rows' strings. The three copies of each string are left as they are. Test: `reloads_whose_text_changes_keep_only_the_strings_rows_use`, unkeyed, keyed by id and keyed by the changing text, with a pivot applying each load checked against one built fresh; the table grew from 0.8 MB to 21.8 MB over forty reloads before.
+
 **6. Nothing bounds the number of pivot cells, and a float sum costs about 400 bytes per cell — fix before release**
 
 - **Where:** `parallax-engine/src/aggregate.rs:246-254`, `exact.rs:16-26`, `view.rs:341-363`, `view.rs:2439-2459`
 - **Defect:** a float sum, mean or variance state is 96 bytes inline plus a boxed 304-byte accumulator, per measure, per node, per column-pivot key. Only column-pivot keys are capped (`view.rs:1114-1143`).
 - **Scenario:** grouping a 1,000,000-row grid by a near-unique column (trade id, timestamp, 300,000 CUSIPs) with float totals or measures. One million leaves times three float sums is about 1.4 GB before splits; with a column pivot it passes 4 GB and traps.
 - **Confidence:** sizes from the type definitions and the `size_of::<State>() <= 96` assert; not measured.
+
+- Done in Engine: a dictionary forgets the strings no row uses, and a pivot past 256 MB of totals is refused: a grouped view whose leaves' totals would take more than 256 MB (`MAX_GROUP_BYTES`, about 200,000 groups of three float sums or 1,500,000 of a count) is refused before it is built, with `grouping makes more than N groups, whose totals would take about M MB, more than the 256 MB a view may hold; group by fewer or coarser columns, or filter the rows first`. A bound from the values each column can hold (text: its dictionary; a boolean: three) skips the count for groupings by text columns of few values; otherwise the leaves are counted, stopping at the limit. A view that loads grow past it is rebuilt, which refuses it. Decided: 256 MB, a quarter of the 1 GiB at which the page replaces its worker. Test: `a_pivot_of_more_groups_than_memory_allows_is_refused_naming_the_limit`.
 
 **7. An Arrow `Null` column refuses the whole table — polish, needs a decision**
 
@@ -83,12 +89,16 @@ Paths are relative to `packages/parallax/crates/`.
 - **Scenario:** one measure and exactly 10,000 distinct split values (or 2 and 5,000, or 10 and 1,000). The last key's columns are missing while Total still includes them. Keys added past the limit by a reload are dropped the same way with no flag.
 - **Confidence:** confirmed.
 
+- Done in Engine: a dictionary forgets the strings no row uses, and a pivot past 256 MB of totals is refused: the check counts the row total's columns as a key's, so it allows the keys `data_columns` shows, `10,000 / measures - 1`, and refuses one more, where the last key was dropped with no word; a view that a reload gives keys past the limit is built again, which refuses it, rather than dropping them. Test: `a_column_pivot_at_its_limit_shows_every_key_and_one_past_it_is_refused`, which opened 10,000 keys with the last missing before.
+
 **10. WMA divisor wraps on wasm32 — polish**
 
 - **Where:** `parallax-engine/src/indicator.rs:408`
 - **Defect:** `p * (p + 1) / 2` is computed in `usize`, which is 32 bits in the browser, and the release profile wraps.
 - **Scenario:** a weighted moving average with a period from 65,536 to the allowed 100,000. At 65,536 the divisor is 32,768 instead of 2,147,516,416, so values are 65,537 times too large. Native tests cannot see it.
 - **Confidence:** confirmed by arithmetic.
+
+- Done in Engine: a dictionary forgets the strings no row uses, and a pivot past 256 MB of totals is refused: the divisor is computed in doubles, exact to the longest period. Test: `a_weighted_average_of_a_long_period_is_right_where_usize_has_32_bits`, a wasm32 test, since natively `usize` has 64 bits; it overflowed there before.
 
 ## Overall
 
@@ -132,6 +142,19 @@ Paths are relative to `packages/parallax/crates/`.
 - Most test files beyond `oracle.rs` (first 450 lines) and `tests/format.rs`.
 - `chart.rs` and `indicator.rs` were read in full but less closely than `view.rs`, `sort.rs`, `filter.rs`, `aggregate.rs`, `table.rs`, `column.rs` and `format.rs`.
 
+## The pass over the panics
+
+Step 7.12 read every `unwrap`, `expect`, `unreachable!`, assert and index outside tests in the engine, session,
+protocol, export and wasm crates, for one that data from the page or an API can reach. Those it could reach are fixed
+above and in `session-wasm-export.md`: an empty dictionary and a dictionary of dictionaries, a buffer past its body,
+dates and instants past jiff's range and a zoom past the calendar (`instant_at`'s arithmetic overflowed too), a
+totals or domains window of no column, bytes after a stream's end, and the WMA divisor. The rest hold by
+construction: a column's values match its type, which the load checks; a node, a lazy state or a computed window
+exists where it is read; a layout's measure numbers are checked (`check_siblings`); the export's column stays under
+Excel's 16,384; a chart's pixels are clamped by the session (`MAX_CHART_PIXELS`); a dictionary or a table stays far
+under 2^32 entries within the 10,000,000-row limit; the formatter's digits are ASCII. A panic that still happens says
+what and where (`session-wasm-export.md` 4).
+
 ## Changelog
 
 - `@basis/parallax` loads Arrow it refused or trapped on before: a dictionary-encoded text column that is null in
@@ -143,3 +166,8 @@ Paths are relative to `packages/parallax/crates/`.
 - A chart leaves out a date or instant more than a million days from 1970, before year 1232 or after 4707, as it
   leaves out a null, where one such value, such as a 9999-12-31 sentinel or nanoseconds sent as microseconds, stopped
   the engine; the grid still shows such a value as out of range. What to do: nothing.
+
+- `@basis/parallax`: a grouped grid or pivot whose groups' totals would take more than 256 MB, such as a million rows
+  grouped by their own id with float sums, is refused with a message that says so and what to change, where it could
+  stop the engine. A text column whose values change on every reload no longer grows the engine's memory with each.
+  What to do: nothing; a layout refused this way groups by fewer or coarser columns, or filters first.

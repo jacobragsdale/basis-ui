@@ -640,14 +640,19 @@ impl OpenView {
             && change.load_version == behind + 1
             && change.load_version == current
         {
-            self.view.grid()?.apply(&state.table, change);
-        } else {
-            let resolved = self
-                .layout
-                .resolve(&state.table)
-                .map_err(|e| e.to_string())?;
-            self.view = build_view(&state.table, &self.layout, resolved)?;
+            let view = self.view.grid()?;
+            view.apply(&state.table, change);
+            // A view that the load grew past its memory or its columns is built
+            // again, which refuses it with the reason.
+            if !view.over_limits() {
+                return Ok(true);
+            }
         }
+        let resolved = self
+            .layout
+            .resolve(&state.table)
+            .map_err(|e| e.to_string())?;
+        self.view = build_view(&state.table, &self.layout, resolved)?;
         Ok(true)
     }
 }

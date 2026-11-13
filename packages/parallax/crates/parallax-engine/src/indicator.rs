@@ -405,7 +405,9 @@ fn ema_from(values: &[f64], period: usize, start: usize, out: &mut [f64]) {
 #[must_use]
 pub fn wma(values: &[f64], period: usize) -> Vec<f64> {
     let p = period.max(1);
-    let divisor = (p * (p + 1) / 2) as f64;
+    // In doubles, exact to the longest period, since a usize has 32 bits in
+    // the browser and the weights of 65,536 or more pass them.
+    let divisor = p as f64 * (p as f64 + 1.0) / 2.0;
     let mut out = vec![f64::NAN; values.len()];
     let (mut sum, mut weighted) = (0.0, 0.0);
     for i in p.saturating_sub(1)..values.len() {

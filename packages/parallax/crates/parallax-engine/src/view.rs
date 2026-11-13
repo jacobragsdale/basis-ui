@@ -21,11 +21,13 @@ use arrow_schema::{DataType, Field, Schema};
 use rustc_hash::FxHashMap;
 
 use crate::aggregate::{
-    Aggregate, CompiledMeasure, Input, Measure, MeasureValue, ShowAs, State, Tally, finish, pow10,
+    Aggregate, CompiledMeasure, Input, KeyValue, Measure, MeasureValue, ShowAs, State, Tally,
+    finish, pow10,
 };
 use crate::bignum::ratio_to_f64;
 use crate::bitmap::Bitmap;
 use crate::column::{Column, Decimals, Values};
+use crate::dictionary::Dictionary;
 use crate::error::ConfigError;
 use crate::filter::{CompiledFilter, Filter};
 use crate::format::{self, Format, Formatter};
@@ -618,8 +620,8 @@ struct Grouped {
     columns: Option<Vec<(u32, usize)>>,
     /// Set for a detail view.
     detail: Option<Box<Detail>>,
-    /// Values of lazy measures above the leaves, by (node, split, measure). Cleared
-    /// whenever the view changes.
+    /// Values of lazy measures above the leaves, and of counted ones at them, by
+    /// (node, split, measure). Cleared whenever the view changes.
     lazy_values: RefCell<FxHashMap<(u32, u32, usize), MeasureValue>>,
     /// Running totals by (node, split, measure), worked out for a whole set of
     /// siblings at once; a group of a top-N's "Other" holds the Other row's.
@@ -652,9 +654,48 @@ struct Flat {
     order: FlatOrder,
     /// The totals, as a grouped view with no levels, whose root is its one leaf.
     totals: Option<Box<Grouped>>,
-    /// The domains, the least and then the greatest value of each column of
-    /// `ViewConfig::domains`, as totals are kept.
-    domains: Option<Box<Grouped>>,
+    /// The domains: the least and then the greatest value of each column of
+    /// `ViewConfig::domains`.
+    domains: Option<Domains>,
+}
+
+/// A flat view's domains: for each column of `ViewConfig::domains`, its least
+/// and greatest value over the rows that pass the filters, found in one pass
+/// over those rows each time the view rebuilds, as a flat view does on every
+/// change, so that only the two values are kept, where a count of every
+/// distinct value was kept for each.
+#[derive(Clone, Debug)]
+struct Domains {
+    /// Per column: its minimum as a measure, which types the values, and the
+    /// least and greatest value.
+    columns: Vec<(CompiledMeasure, [CellValue; 2])>,
+}
+
+impl Domains {
+    /// Finds each column's least and greatest value among `slots`.
+    fn find(&mut self, table: &Table, slots: &[u32]) {
+        for (measure, values) in &mut self.columns {
+            let column = table.column(measure.column.expect("a domain names its column"));
+            let mut least: Option<Key> = None;
+            let mut greatest: Option<Key> = None;
+            for &slot in slots {
+                let key = column.key(slot as usize);
+                if key == Key::Null {
+                    continue;
+                }
+                if least.is_none_or(|l| column.cmp_keys(key, l) == Ordering::Less) {
+                    least = Some(key);
+                }
+                if greatest.is_none_or(|g| column.cmp_keys(key, g) == Ordering::Greater) {
+                    greatest = Some(key);
+                }
+            }
+            *values = [least, greatest].map(|key| {
+                let value = key.map_or(MeasureValue::Null, |k| MeasureValue::Key(KeyValue(k)));
+                to_cell(table, measure, value)
+            });
+        }
+    }
 }
 
 /// A flat view's rows, in order: the table's kept order of every live row
@@ -786,6 +827,10 @@ fn measure_format(measure: &Measure, column: Option<&Format>) -> Format {
 /// The most data columns a column pivot may produce.
 pub const MAX_COLUMNS: usize = 10_000;
 
+/// The most memory a grouped view's leaves' totals may take, about: 256 MB,
+/// some 200,000 groups of three float sums or 1,500,000 of a count.
+pub const MAX_GROUP_BYTES: usize = 256 << 20;
+
 fn column_index(table: &Table, name: &str) -> Result<usize, ConfigError> {
     table
         .column_index(name)
@@ -911,26 +956,20 @@ fn compile_totals(table: &Table, config: &ViewConfig) -> Result<Option<Box<Group
 }
 
 /// Compiles a flat view's domains: the least and the greatest value of each
-/// column, as measures of a grouped view with no levels, which are not computed
-/// yet.
-fn compile_domains(
-    table: &Table,
-    config: &ViewConfig,
-) -> Result<Option<Box<Grouped>>, ConfigError> {
+/// column, which are not found yet.
+fn compile_domains(table: &Table, config: &ViewConfig) -> Result<Option<Domains>, ConfigError> {
     if config.domains.is_empty() || config.is_grouped() {
         return Ok(None);
     }
-    let mut measures = Vec::with_capacity(2 * config.domains.len());
-    for column in &config.domains {
-        for aggregate in [Aggregate::Min, Aggregate::Max] {
-            measures.push(compile_measure(table, &Measure::new(aggregate, column))?);
-        }
-    }
-    Ok(Some(Box::new(Grouped::new(
-        measures,
-        Vec::new(),
-        Vec::new(),
-    ))))
+    let columns = config
+        .domains
+        .iter()
+        .map(|column| {
+            let measure = compile_measure(table, &Measure::new(Aggregate::Min, column))?;
+            Ok((measure, [CellValue::Null, CellValue::Null]))
+        })
+        .collect::<Result<_, ConfigError>>()?;
+    Ok(Some(Domains { columns }))
 }
 
 /// Checks and compiles a view's totals: at most one per column, each of its
@@ -1105,8 +1144,88 @@ impl View {
             load_version: table.load_version(),
         };
         view.check_column_limit(table)?;
+        view.check_group_limit(table)?;
         view.build(table);
         Ok(view)
+    }
+
+    /// Refuses a grouped view whose leaves' totals would take more than
+    /// [`MAX_GROUP_BYTES`], before any is built: grouping a million rows by a
+    /// near-unique column, such as a trade id, with float sums would take more
+    /// than a gigabyte, and past the engine's 4 GB it traps. A bound on the
+    /// leaves from the values each column can hold saves counting them, as a
+    /// grouping by text columns of few values allows; otherwise the leaves are
+    /// counted, stopping as soon as the limit is passed.
+    fn check_group_limit(&self, table: &Table) -> Result<(), ConfigError> {
+        let Kind::Grouped(g) = &self.kind else {
+            return Ok(());
+        };
+        let columns: Vec<usize> = g
+            .group_columns
+            .iter()
+            .chain(&g.split_columns)
+            .copied()
+            .collect();
+        if columns.is_empty() {
+            return Ok(());
+        }
+        let per_leaf = 64
+            + g.measures
+                .iter()
+                .map(CompiledMeasure::leaf_bytes)
+                .sum::<usize>();
+        let limit = MAX_GROUP_BYTES / per_leaf;
+        let bound = columns
+            .iter()
+            .map(|&c| match table.column(c).column_type() {
+                ColumnType::Boolean => 3,
+                ColumnType::Utf8 => table.column(c).dictionary().map_or(0, Dictionary::len) + 1,
+                _ => usize::MAX,
+            })
+            .fold(1, usize::saturating_mul)
+            .min(table.num_rows());
+        if bound <= limit {
+            return Ok(());
+        }
+        let mask = mask(table, &self.filters);
+        let mut seen: rustc_hash::FxHashSet<Box<[Key]>> = rustc_hash::FxHashSet::default();
+        let mut keys = Vec::with_capacity(columns.len());
+        for slot in table.live_slots() {
+            if mask.as_ref().is_some_and(|m| !m.get(slot)) {
+                continue;
+            }
+            keys.clear();
+            keys.extend(columns.iter().map(|&c| table.column(c).key(slot)));
+            if !seen.contains(keys.as_slice()) {
+                seen.insert(keys.as_slice().into());
+                if seen.len() > limit {
+                    return Err(ConfigError::TooManyGroups {
+                        groups: limit,
+                        megabytes: (limit * per_leaf) >> 20,
+                        limit_megabytes: MAX_GROUP_BYTES >> 20,
+                    });
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// Whether loads applied to a grouped view have grown its leaves' totals
+    /// past [`MAX_GROUP_BYTES`], or its column pivots past [`MAX_COLUMNS`], so
+    /// that it should be built again, which then refuses it.
+    #[must_use]
+    pub fn over_limits(&self) -> bool {
+        let Kind::Grouped(g) = &self.kind else {
+            return false;
+        };
+        let per_leaf = 64
+            + g.measures
+                .iter()
+                .map(CompiledMeasure::leaf_bytes)
+                .sum::<usize>();
+        let keys = g.split_rows.iter().filter(|&&rows| rows > 0).count();
+        g.nodes.len().saturating_mul(per_leaf) > MAX_GROUP_BYTES
+            || (keys + 1).saturating_mul(g.measures.len().max(1)) > MAX_COLUMNS
     }
 
     /// Refuses column pivots that would produce more than [`MAX_COLUMNS`] data
@@ -1119,7 +1238,8 @@ impl View {
             return Ok(());
         }
         let per_key = g.measures.len().max(1);
-        let limit = MAX_COLUMNS / per_key;
+        // The row total takes a key's columns too.
+        let limit = MAX_COLUMNS / per_key - 1;
         let mut seen: rustc_hash::FxHashSet<Box<[Key]>> = rustc_hash::FxHashSet::default();
         let mut keys = Vec::with_capacity(g.split_columns.len());
         let mask = mask(table, &self.filters);
@@ -1207,15 +1327,8 @@ impl View {
             }
             if self.config.domains != config.domains {
                 let mut domains = compile_domains(table, config)?;
-                if let Some(grouped) = &mut domains {
-                    for filter in &mut self.filters {
-                        filter.prepare(table, false);
-                    }
-                    let mask = mask(table, &self.filters);
-                    grouped.build(table, &|slot: usize| {
-                        mask.as_ref().is_none_or(|m| m.get(slot))
-                    });
-                    grouped.invalidate();
+                if let Some(domains) = &mut domains {
+                    domains.find(table, flat.order.slots());
                 }
                 flat.domains = domains;
             }
@@ -1313,7 +1426,7 @@ impl View {
         let Kind::Flat(flat) = &self.kind else {
             return None;
         };
-        let grouped = flat.domains.as_deref()?;
+        let domains = flat.domains.as_ref()?;
         let shown = &flat.columns;
         let cols = within(&columns, shown.len());
         let mut out = FrameBuilder::default();
@@ -1323,12 +1436,8 @@ impl View {
             let formatter = &self.formatters.columns[c];
             match self.config.domains.iter().position(|d| d == field.name()) {
                 Some(d) => {
-                    let measure = grouped.measures[2 * d].clone();
-                    let values = [
-                        grouped.shown(table, &[0], ROW_TOTAL, 2 * d),
-                        grouped.shown(table, &[0], ROW_TOTAL, 2 * d + 1),
-                    ];
-                    let (array, data_type) = values_to_arrow(table, &measure, &values);
+                    let (measure, values) = &domains.columns[d];
+                    let (array, data_type) = values_to_arrow(table, measure, values);
                     let flags = values.iter().map(value_flag).collect();
                     let field = Field::new(field.name(), data_type, true);
                     out.data_column(
@@ -1412,9 +1521,12 @@ impl View {
                         FlatOrder::Passing(walk(&sorted.slots, mask))
                     }
                 };
-                for grouped in [&mut flat.totals, &mut flat.domains].into_iter().flatten() {
+                if let Some(grouped) = &mut flat.totals {
                     grouped.build(table, &passes);
                     grouped.invalidate();
+                }
+                if let Some(domains) = &mut flat.domains {
+                    domains.find(table, flat.order.slots());
                 }
             }
             Kind::Grouped(g) => {
@@ -1428,7 +1540,9 @@ impl View {
     /// Applies a table change so that the view equals one rebuilt on the new table.
     pub fn apply(&mut self, table: &Table, change: &ChangeSet) {
         self.load_version = change.load_version;
-        if matches!(self.kind, Kind::Flat(_)) {
+        // A change that recoded the table's text leaves the codes a grouped
+        // view keys its nodes by meaning nothing, so it rebuilds.
+        if matches!(self.kind, Kind::Flat(_)) || change.recoded {
             self.rebuild(table);
             return;
         }
@@ -2740,14 +2854,24 @@ impl Grouped {
             if cell.rows == 0 {
                 return self.empty_value(m);
             }
-            if !matches!(cell.states[m], State::Lazy) {
+            // A count of every distinct value, which a minimum, maximum, median
+            // or distinct count keeps at a leaf, is read whole to find its
+            // value, so the value is kept until the view changes, as a node
+            // above the leaves keeps the value it merges them for: a flat
+            // view's totals row is such a leaf, read for every frame.
+            let counted = matches!(cell.states[m], State::Values(_));
+            if !counted && !matches!(cell.states[m], State::Lazy) {
                 return self.measure_value(table, cell, None, m);
             }
             if let Some(value) = self.lazy_values.borrow().get(&(*id, split, m)) {
                 return value.clone();
             }
-            let merged = self.merged_leaves(ids, split);
-            let value = self.measure_value(table, cell, Some(&merged), m);
+            let value = if counted {
+                self.measure_value(table, cell, None, m)
+            } else {
+                let merged = self.merged_leaves(ids, split);
+                self.measure_value(table, cell, Some(&merged), m)
+            };
             self.lazy_values
                 .borrow_mut()
                 .insert((*id, split, m), value.clone());
@@ -3078,7 +3202,9 @@ impl Grouped {
                 Ordering::Equal
             });
             let m = self.measures.len();
-            // Changes after the view opened can add column keys; keep within the limit.
+            // Changes after the view opened can add column keys; keep within the
+            // limit until the view is built again, which then refuses them
+            // (see `View::over_limits`).
             splits.truncate(MAX_COLUMNS / m.max(1) - 1);
             let mut columns: Vec<(u32, usize)> = splits
                 .iter()
