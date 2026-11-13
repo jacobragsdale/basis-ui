@@ -2,7 +2,7 @@
 metadata:
   basis-ui: "managed by basis-ui: `vp run sync` rewrites it"
 name: build-a-page
-description: Build a page of this app from an operation in the API's document: a table of what a GET lists, a page of one record, or a form for a body an operation takes. Use when asked for a new page, screen, form or view over the API, before writing one by hand.
+description: "Build a page of this app from an operation in the API's document: a table of what a GET lists, a page of one record, or a form for a body an operation takes. Use when asked for a new page, screen, form or view over the API, before writing one by hand."
 ---
 
 # Building a page from an operation

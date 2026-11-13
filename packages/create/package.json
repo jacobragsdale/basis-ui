@@ -15,8 +15,8 @@
     "templates": [
       {
         "name": "app",
-        "description": "A basis-ui app: AppShell, the preset's checks and tasks, fixture mode, and an image that serves the build",
-        "path": "./templates/app"
+        "description": "A basis-ui app: AppShell, the preset's checks and tasks, fixture mode, and a Dockerfile it owns",
+        "template": "./templates/app"
       }
     ]
   }

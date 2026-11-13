@@ -1,6 +1,6 @@
 ---
 name: verify-the-app
-description: Check that this app is right before saying a change is done: run every check in one command, read its ERROR lines, and fix each. Use after any change to the app, before committing, and when a commit or push hook fails.
+description: "Check that this app is right before saying a change is done: run every check in one command, read its ERROR lines, and fix each. Use after any change to the app, before committing, and when a commit or push hook fails."
 ---
 
 # Verifying the app

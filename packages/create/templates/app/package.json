@@ -7,6 +7,7 @@
     "#*": "./src/*"
   },
   "scripts": {
+    "preinstall": "node -e \"if (Math.sign(26 - parseInt(process.versions.node)) === 1) { console.error('ERROR this app needs Node 26 or later, and the Node on the PATH is ' + process.version + ': run vp env on, so Vite+ runs the Node that .node-version pins rather than an older one on the PATH, then open a new terminal and run vp install again.'); process.exit(1) }\"",
     "prepare": "vp config",
     "dev": "vp dev",
     "build": "vp build",
@@ -28,5 +29,15 @@
     "msw": "3.0.4",
     "typescript": "7.0.2",
     "vite-plus": "1.5.0"
+  },
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "version": "12.18.0",
+      "onFail": "download"
+    }
+  },
+  "engines": {
+    "node": ">=26.0.0"
   }
 }

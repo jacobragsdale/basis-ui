@@ -2,7 +2,7 @@
 metadata:
   basis-ui: "managed by basis-ui: `vp run sync` rewrites it"
 name: drive-the-app
-description: See and drive this app's pages in a browser. Use after changing anything an app shows, before saying a page works, and when a page misbehaves in a way tests do not explain: take a shot of a route, or open it with Playwright CLI to click, type and read its console.
+description: "See and drive this app's pages in a browser. Use after changing anything an app shows, before saying a page works, and when a page misbehaves in a way tests do not explain: take a shot of a route, or open it with Playwright CLI to click, type and read its console."
 ---
 
 # Driving the app

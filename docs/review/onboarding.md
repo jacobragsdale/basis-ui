@@ -9,6 +9,7 @@ A new developer cannot get from nothing to a deployed, signed-in app today, and 
    - Why it was missed: `packages/create/scripts/prove.ts:135-144` copies the folder by hand, so nothing ever runs `vp create`.
    - Who: every developer creating a repo, the day step 1.8 publishes.
    - Severity: release blocker (one-word fix). Confidence: confirmed in both files.
+   - Done in Template: vp create reads its manifest, the app pins Node and pnpm, and the skills' front matter parses: `createConfig.templates[0]` names `template`; `tests/create-manifest.test.ts` reads the manifest with Vite+ 1.5.0's own `validateManifest`, taken from the installed `vite-plus`, and failed on `path` with the review's message. Running `vp create` itself against a registry is 7.13's.
 
 2. **There is no real sign-in, no example adapter, and nothing stops the fake one shipping.**
    - Where: `packages/create/templates/app/src/main.tsx:16` hard-codes `fakeSignIn()`. `packages/ui/src/shell/sign-in.ts` has only `fakeSignIn` and `anonymousSignIn`.
@@ -75,6 +76,7 @@ A new developer cannot get from nothing to a deployed, signed-in app today, and 
     - `js-yaml` 4.3.2 and `yaml` 2.9.1 both fail on all four. Claude Code tolerates it.
     - Who: any other agent reading `.agents/skills/`.
     - Severity: fix before release (quote four lines). Confidence: confirmed by parsing.
+    - Done in Template: vp create reads its manifest, the app pins Node and pnpm, and the skills' front matter parses: each `description` is a double-quoted string; `tests/skills.test.ts` holds every skill to a bare `name` and a JSON-quoted `description`, and `js-yaml` 4.3.2 and `yaml` 2.9.1 (strict) parse all four, checked by a script outside the repo, since neither is a dependency.
 
 12. **The lint and README tell agents to use `cn(...)`, which an app cannot import.**
     - Where: `packages/ui/src/preset/lint-classes.ts:81` and `packages/ui/README.md:815`.
@@ -92,6 +94,7 @@ A new developer cannot get from nothing to a deployed, signed-in app today, and 
     - Where: `packages/create/templates/app/package.json` has no `engines`, `devEngines`, `packageManager` or `.node-version`. The root repo pins all of them.
     - Vite+ then falls back to the latest LTS and the latest pnpm on each machine and in CI.
     - Severity: fix before release. Confidence: absence confirmed; I could not confirm whether `vp create` writes a pin.
+    - Done in Template: vp create reads its manifest, the app pins Node and pnpm, and the skills' front matter parses: the template pins as the root does, `.node-version` 26, `engines.node` `>=26.0.0` and `devEngines.packageManager` pnpm 12.18.0, held to the root's by `tests/create-manifest.test.ts`; `@basis/ui`'s manifest names `engines.node`. Vite+ 1.5.0 in system-first mode ignores every pin and runs the Node first on the `PATH`, so a pin alone leaves W2's bare `SyntaxError`; the template's `preinstall` refuses a Node older than 26 with an `ERROR` line that names `vp env on`. Reproduced here with Vite+'s own Node 18 first on the `PATH`: before, `prepare` died on `styleText`; after, the `ERROR` line; with `vp env on` in a throwaway `VP_HOME`, Vite+ read `.node-version` and the install passed. `devEngines.runtime` was tried and not taken: pnpm then installs with Node 26, and `vp run` still dies bare on Node 18.
 
 15. **A person has no way in.**
     - There is no short getting-started, and the template has no `README.md`.
@@ -157,3 +160,17 @@ A new developer cannot get from nothing to a deployed, signed-in app today, and 
 The reference docs are unusually accurate, and the agent loop (scaffold, verify with fix-bearing `ERROR` lines, shot) is coherent and proven on Linux. Everything on either side of that loop is unproven or absent: getting the tools onto a Windows desktop, creating the repo, real sign-in, and getting an image to AKS. Byte-for-byte managed files turn each gap in the production files into something an app team cannot work around. The docs are written for an agent that already has a working repo; a person starting cold has no page to begin from. I would fix the manifest, run `prove` with a real `vp create` against a throwaway registry and on a Windows runner, and decide how apps extend the pipeline and image before anyone at the firm is told to start.
 
 The two check scripts are `(a scratch folder)` and `(a scratch folder)`.
+
+## Changelog
+
+- `vp create @basis:app` reads `@basis/create`'s manifest: its template entry names `template`, as Vite+ 1.5.0 reads
+  it, where it named `path`. What to do: nothing.
+
+- The template pins Node and pnpm as basis-ui's repo does: `.node-version` 26, `engines.node` `>=26.0.0`, and
+  `devEngines.packageManager` pnpm 12.18.0. Its `preinstall` refuses an older Node with an `ERROR` line that names
+  `vp env on`, since Vite+ in system-first mode runs whichever Node is on the `PATH`. `@basis/ui` names
+  `engines.node`. What to do: an app made from an earlier template adds the same `.node-version`, `engines`,
+  `devEngines` and `preinstall` to its own files.
+
+- The skills' `description` lines are quoted, so a strict YAML parser reads their front matter. What to do: run
+  `vp run sync`.

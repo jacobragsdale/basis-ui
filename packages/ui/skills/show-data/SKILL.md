@@ -1,6 +1,6 @@
 ---
 name: show-data
-description: Show a large table, a pivot or a chart with @basis/parallax: the grid for thousands to a million rows, the pivot for grouped totals, and every chart kind. Use when a page holds more rows than DataTable's cap, needs grouping, totals or a pivot, or draws a chart.
+description: "Show a large table, a pivot or a chart with @basis/parallax: the grid for thousands to a million rows, the pivot for grouped totals, and every chart kind. Use when a page holds more rows than DataTable's cap, needs grouping, totals or a pivot, or draws a chart."
 ---
 
 # Showing data with parallax
