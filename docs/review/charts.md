@@ -167,6 +167,13 @@ fail on the old code.
 - Also: any second column's text becomes the slice label, so `y={["mv", "pnl"]}` or a `series` split labels slices sized by the first column with the second's values.
 - Severity: polish. Confidence: confirmed by running (hidden slice), by reading (second column).
 
+Done in Charts: a pie notes a share only where the view has one, and values while a slice is hidden: a pie notes and labels its slices with a share only when the layout's second measure is the
+first's share of the grand total (same column and aggregate, `percent_of_grand_total`, no split), which
+`categoriesOf` reads from the layout as `share`; any other second column, or a series split, notes each slice's
+value. While a slice is hidden the rest fill the ring, so the notes and labels are the slices' values, which the
+engine wrote, not shares of a whole the ring no longer shows; a share recomputed here would be a number the engine
+did not write. Held in `tests/unit/chart-model-groups.test.ts` and `chart-source.test.ts`.
+
 **14. `packages/parallax/src/chart/small-data.ts:53-72`** — Type inference fails silently on bad dates and throws in render on mixed values.
 
 - `"0000-00-00"` and `"2026-13-01"` become 1970-01-01, stretching the axis from 1970; `"2026-02-30"` becomes 2 March.
@@ -241,3 +248,7 @@ The defects cluster in three places the pixel-parity port could not catch:
 - Over a chart that shows everything, the wheel scrolls the page, and with Ctrl, Cmd or Alt the wheel and the keys
   are the browser's (zooming the page, going back). A pan that loses its pointer, as to a remote desktop's change of
   focus, ends. What to do: nothing.
+
+- A pie labels its slices with shares only when its second measure is the first's share of the grand total, and
+  with their values while a slice is hidden, where it labelled a half of the ring "25.0%". What to do: nothing; a
+  pie that wants shares gives `{ ...first, show_as: "percent_of_grand_total" }` as its second measure.

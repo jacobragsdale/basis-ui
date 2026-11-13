@@ -22,9 +22,20 @@ function sliceColor(input: ModelInput, data: CategoryData, index: number): strin
   return data.others[index] === true ? input.muted : seriesColor(input, index);
 }
 
-/** A pie's legend: every group, with its share if the view has a second measure for it, or else its value. */
+/**
+ * What a pie notes beside each slice: its share of the whole when the view has one and every slice is shown, or else
+ * its value. With a slice hidden, the rest fill the ring, so a share of the whole would misread them; a second
+ * measure of another kind is never a slice's note.
+ */
+function notedSeries(input: ModelInput, data: CategoryData): CategorySeries | undefined {
+  const whole = !data.categories.some((category) => hidden(input, category));
+  const share = data.share === undefined ? undefined : data.series[data.share];
+  return whole && share !== undefined ? share : data.series[0];
+}
+
+/** A pie's legend: every group, with its share or its value, as `notedSeries` says. */
 function pieLegend(input: ModelInput, data: CategoryData): readonly LegendEntry[] {
-  const noted = data.series[1] ?? data.series[0];
+  const noted = notedSeries(input, data);
   return data.categories.map((label, i) => ({
     color: sliceColor(input, data, i),
     hidden: hidden(input, label),
@@ -63,7 +74,7 @@ function sliceMark(
     title: label,
   };
   const middle = (start + end) / 2;
-  const text = (data.series[1] ?? data.series[0])?.texts[i] ?? "";
+  const text = notedSeries(input, data)?.texts[i] ?? "";
   return {
     category: data.others[i] === true ? null : i,
     color: sliceColor(input, data, i),

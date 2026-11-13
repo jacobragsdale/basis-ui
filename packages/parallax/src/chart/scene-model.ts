@@ -138,7 +138,7 @@ class SceneModel {
   ): void {
     if (this.fits(frame, handle)) {
       this.asOfMicros = frame.sourceAsOfMicros;
-      const data = categoriesOf(frame);
+      const data = categoriesOf(frame, this.#layout);
       this.setCategories(order === null ? data : order(data));
     }
   }

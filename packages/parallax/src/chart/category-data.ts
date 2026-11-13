@@ -24,6 +24,9 @@ interface CategoryData {
   /** What the view holds past what a chart draws, which it then refuses to draw rather than draw part of: more
    * groups, or more series; null when it read them all. */
   readonly unread?: "groups" | "series";
+  /** The series that is the first's share of the grand total, which a pie notes beside its slices; absent without
+   * one. */
+  readonly share?: number;
 }
 
 export type { CategoryData, CategorySeries };

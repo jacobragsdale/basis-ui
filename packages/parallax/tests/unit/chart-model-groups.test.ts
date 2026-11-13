@@ -151,6 +151,8 @@ const classes: CategoryData = {
       values: [0.6, 0.3, 0.1],
     },
   ],
+  // The second measure is the first's share of the grand total, as `categoriesOf` reads the layout.
+  share: 1,
 };
 
 describe("the draw model of pies", () => {
@@ -187,6 +189,21 @@ describe("the draw model of pies", () => {
     expect(slices.map((slice) => slice.hit.title)).toStrictEqual(["Bond", "Other"]);
     expect((slices[0]?.end ?? 0) - (slices[0]?.start ?? 0)).toBeCloseTo(0.75 * 2 * Math.PI);
     expect(hidden.centre).toBeNull();
+  });
+
+  test("notes values, not shares of the whole, while a slice is hidden and the rest fill the ring", () => {
+    const model = modelOf({ hidden: ["Equity"], kind: "pie" }, { categories: classes });
+    expect(marksOf(model.marks, "slice").map((slice) => slice.label)).toStrictEqual([
+      "30.00",
+      "10.00",
+    ]);
+    expect(model.legend.map((entry) => entry.note)).toStrictEqual(["60.00", "30.00", "10.00"]);
+  });
+
+  test("notes a slice's value where the second measure is not its share", () => {
+    const { share: _share, ...unshared } = classes;
+    const model = modelOf({ kind: "pie" }, { categories: unshared });
+    expect(model.legend.map((entry) => entry.note)).toStrictEqual(["60.00", "30.00", "10.00"]);
   });
 
   test("labels each slice with its share, unless labels are off", () => {

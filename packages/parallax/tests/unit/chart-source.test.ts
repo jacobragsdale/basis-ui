@@ -182,6 +182,17 @@ describe(categoriesOf, () => {
     });
   });
 
+  test("finds the measure that is the first's share of the grand total, for a pie's notes", () => {
+    const frame = decodeFrame(
+      frameMessage([...tree(["Rates"]), ...measure(0, { title: "sum(mv)", values: [5, 5] })], 2),
+    );
+    const mv = { aggregate: "sum", column: "mv" } as const;
+    const layout = (second: object): Parameters<typeof categoriesOf>[1] =>
+      parseLayout({ chart: { kind: "pie" }, group_by: ["sector"], measures: [mv, second] });
+    expect(categoriesOf(frame, layout({ ...mv, show_as: "percent_of_grand_total" })).share).toBe(1);
+    expect(categoriesOf(frame, layout({ aggregate: "sum", column: "pnl" })).share).toBeUndefined();
+  });
+
   test("says what the view holds past what it read: more groups, or more series", () => {
     const frame = decodeFrame(
       frameMessage([...tree(["Rates"]), ...measure(0, { title: "sum(mv)", values: [5, 5] })], 2),

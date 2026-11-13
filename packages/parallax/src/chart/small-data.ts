@@ -6,7 +6,7 @@ import type { LayoutChart } from "#layout/chart.ts";
 import type { LayoutInput, LayoutScalar } from "#layout/layout.ts";
 
 import type { CategoryData } from "./model-types.ts";
-import { aChart } from "./source.ts";
+import { aChart } from "./settings-problems.ts";
 import type { ChartValue, SmallTable } from "./small-table.ts";
 
 /** A chart's settings beyond its kind and columns, such as `stacked`, `horizontal`, `donut` or `log_y`. */
