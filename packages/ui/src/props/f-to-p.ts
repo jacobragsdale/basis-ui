@@ -14,13 +14,8 @@ import type {
   FieldSeparator,
   FieldSet,
   FieldTitle,
-  FormAmountField,
   Formatted,
   FormCheckboxField,
-  FormDateField,
-  FormSecurityField,
-  FormSelectField,
-  FormTextField,
   HoverCard,
   HoverCardContent,
   HoverCardTrigger,
@@ -87,13 +82,8 @@ type FieldLegendProps = ComponentProps<typeof FieldLegend>;
 type FieldSeparatorProps = ComponentProps<typeof FieldSeparator>;
 type FieldSetProps = ComponentProps<typeof FieldSet>;
 type FieldTitleProps = ComponentProps<typeof FieldTitle>;
-type FormAmountFieldProps = ComponentProps<typeof FormAmountField>;
 type FormattedProps = ComponentProps<typeof Formatted>;
 type FormCheckboxFieldProps = ComponentProps<typeof FormCheckboxField>;
-type FormDateFieldProps = ComponentProps<typeof FormDateField>;
-type FormSecurityFieldProps = ComponentProps<typeof FormSecurityField>;
-type FormSelectFieldProps = ComponentProps<typeof FormSelectField>;
-type FormTextFieldProps = ComponentProps<typeof FormTextField>;
 type HoverCardProps = ComponentProps<typeof HoverCard>;
 type HoverCardContentProps = ComponentProps<typeof HoverCardContent>;
 type HoverCardTriggerProps = ComponentProps<typeof HoverCardTrigger>;
@@ -160,13 +150,8 @@ export type {
   FieldSeparatorProps,
   FieldSetProps,
   FieldTitleProps,
-  FormAmountFieldProps,
   FormattedProps,
   FormCheckboxFieldProps,
-  FormDateFieldProps,
-  FormSecurityFieldProps,
-  FormSelectFieldProps,
-  FormTextFieldProps,
   HoverCardProps,
   HoverCardContentProps,
   HoverCardTriggerProps,

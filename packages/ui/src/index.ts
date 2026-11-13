@@ -430,8 +430,15 @@ export { FileImport, type FileImportProps } from "./components/file-import.tsx";
 export type { ImportHeaders, ImportSchema } from "./components/file-import-rows.ts";
 export { FilterBar, type FilterBarProps } from "./components/filter-bar.tsx";
 export { FormAmountField, FormDateField, FormTextField } from "./components/form-fields.tsx";
+export type {
+  FormAmountFieldProps,
+  FormDateFieldProps,
+  FormTextFieldProps,
+} from "./components/form-fields.tsx";
 export { FormCheckboxField, FormSelectField } from "./components/form-choice-fields.tsx";
+export type { FormSelectFieldProps } from "./components/form-choice-fields.tsx";
 export { FormSecurityField } from "./components/form-security-field.tsx";
+export type { FormSecurityFieldProps } from "./components/form-security-field.tsx";
 export type { FormFieldApi, FormFieldProps } from "./components/form-field-parts.ts";
 export {
   UnsavedChangesGuard,
@@ -856,13 +863,8 @@ export type {
   FieldSeparatorProps,
   FieldSetProps,
   FieldTitleProps,
-  FormAmountFieldProps,
   FormattedProps,
   FormCheckboxFieldProps,
-  FormDateFieldProps,
-  FormSecurityFieldProps,
-  FormSelectFieldProps,
-  FormTextFieldProps,
   HoverCardProps,
   HoverCardContentProps,
   HoverCardTriggerProps,

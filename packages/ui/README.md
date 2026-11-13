@@ -853,7 +853,8 @@ of numbers takes `variant="numeric"` on its `TableHead` and each `TableCell`, wh
 ## Building a form
 
 A form's state is TanStack Form's, its schema the one orval generates, and its fields `@basis/ui`'s: `FormTextField`,
-`FormAmountField`, `FormDateField`, `FormSelectField` and `FormCheckboxField` each take `form.Field`'s field, a label
+`FormAmountField`, `FormDateField`, `FormSelectField`, `FormSecurityField` and `FormCheckboxField` each take
+`form.Field`'s field, a label
 and a description, and draw the label, the control, the description and the field's errors, the schema's issues and
 the API's details, once it has been touched, with `data-invalid` on the field and `aria-invalid` on its control, so an
 invalid field is never told by colour alone. `submitErrors` puts a 422's errors on the fields they name, or returns a
@@ -886,8 +887,20 @@ const dirty = useSelector(form.store, (state) => state.isDirty && !state.isSubmi
 
 `FormDateField` holds the ISO 8601 text a generated schema declares, on `DatePicker`, or on `AsOfDatePicker` with
 `asOf`; `FormAmountField` holds what `AmountInput` holds, which `amountSchema()` checks; `FormSelectField` takes its
-`options` as values and words. A field the five do not cover is built from `Field`, `FieldLabel`, its control and
-`FieldError` the same way.
+`options` as values and words; `FormSecurityField` holds the chosen security's identifier, and finds the security for
+an identifier the form opens on through its `search`. A field the six do not cover is built from `Field`,
+`FieldLabel`, its control and `FieldError` the same way.
+
+- **An empty field.** A required text, date, choice or security holds `""` while empty, and an amount `null`. A field
+  the schema lets be empty says so as the schema does: `optional`, for `.optional()`, holds `undefined`, so the form
+  submits no such key, and `nullable`, for `.nullable()` or `.nullish()`, holds `null`; `FormAmountField` takes
+  `optional`, its `null` already serving `.nullable()`. The field's value type asks for it, so a field whose
+  `defaultValues` may be `undefined` does not compile without `optional`:
+
+  ```tsx
+  <form.Field name="memo">{(field) => <FormTextField field={field} label="Memo" optional />}</form.Field>
+  <form.Field name="settles">{(field) => <FormDateField field={field} label="Settles" nullable />}</form.Field>
+  ```
 
 - **Leaving with changes.** `UnsavedChangesGuard`, given `when`, asks before the page is left while it holds: a link,
   Back or a navigation the app makes opens a dialog, Stay on this page or Leave without saving, through TanStack

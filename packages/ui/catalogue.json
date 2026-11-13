@@ -15755,7 +15755,9 @@
       "example": "import { DataTable, FilterBar, defineFilters, filterRows, filterSearchSchema, useFilters } from \"@basis/ui\";\nimport { createRootRoute, createRoute } from \"@tanstack/react-router\";\n\n// Once, outside any component: the filters, each by its search parameter.\nconst tradeFilters = defineFilters({\n  issuer: { kind: \"text\", label: \"Issuer\" },\n  book: { kind: \"choice\", label: \"Book\", options: [\"Rates\", \"Credit\"] },\n  settles: { kind: \"dateRange\", label: \"Settles\" },\n  par: { kind: \"numberRange\", label: \"Par\" },\n});\n\n// The route types its search parameters by the filters.\nexport const tradesRoute = createRoute({\n  getParentRoute: () => createRootRoute(),\n  path: \"/trades\",\n  validateSearch: filterSearchSchema(tradeFilters),\n});\n\n// In the page's component: the filters from the address, and the rows they keep.\nconst trades = [{ book: \"Rates\", id: \"t1\", issuer: \"Treasury\", par: 5_000_000, settles: \"2026-11-10\" }];\nconst filters = useFilters(tradeFilters);\nconst shown = filterRows(trades, {\n  fields: { book: (row) => row.book, issuer: (row) => row.issuer, par: (row) => row.par, settles: (row) => row.settles },\n  filters: tradeFilters,\n  values: filters.values,\n});\n\n<>\n  <FilterBar filters={filters} />\n  <DataTable\n    label=\"Trades\"\n    columns={[{ header: \"Issuer\", id: \"issuer\", value: (row: (typeof trades)[number]) => row.issuer }]}\n    data={shown}\n    getRowId={(row) => row.id}\n  />\n</>;\n"
     },
     {
-      "extends": [],
+      "extends": [
+        "undefined extends TValue ? { /** Holds `undefined` while empty, so the form submits no such key, as `amountSchema().optional()` takes. */ readonly optional: true; } : { readonly optional?: undefined }"
+      ],
       "family": "form-fields",
       "module": "@basis/ui",
       "name": "FormAmountField",
@@ -15785,10 +15787,10 @@
           "type": "\"default\" | \"sm\" | undefined"
         },
         {
-          "description": "The TanStack Form field, `form.Field`'s render argument.",
+          "description": "The TanStack Form field, `form.Field`'s render argument: AmountInput's value, `null` while empty, which `amountSchema()` refuses and `.nullable()` takes, or `undefined` while empty when it is `optional`.",
           "name": "field",
           "optional": false,
-          "type": "FormFieldApi<number | string | null>"
+          "type": "FormFieldApi<TValue>"
         },
         {
           "description": "The suffixes it reads; AmountInput's default unless set, `parSuffixes` for par.",
@@ -15813,7 +15815,9 @@
       "variants": {}
     },
     {
-      "extends": [],
+      "extends": [
+        "null extends TValue ? { readonly nullable: true; readonly optional?: undefined } : undefined extends TValue ? { readonly optional: true; readonly nullable?: undefined } : { readonly optional?: undefined; readonly nullable?: undefined }"
+      ],
       "family": "form-fields",
       "module": "@basis/ui",
       "name": "FormDateField",
@@ -15846,7 +15850,7 @@
           "description": "The TanStack Form field, `form.Field`'s render argument.",
           "name": "field",
           "optional": false,
-          "type": "FormFieldApi<string>"
+          "type": "FormFieldApi<TValue>"
         },
         {
           "description": "Takes business days only, as AsOfDatePicker does, up to today unless `max` says otherwise.",
@@ -15873,7 +15877,7 @@
           "type": "Temporal.PlainDate | undefined"
         }
       ],
-      "purpose": "A date, held as the ISO 8601 text a generated schema declares, `\"\"` while there is none: DatePicker's for any date, or AsOfDatePicker's for the business day data is as of when `asOf`.",
+      "purpose": "A date, held as the ISO 8601 text a generated schema declares, `\"\"` while there is none unless it is `optional` or `nullable`: DatePicker's for any date, or AsOfDatePicker's for the business day data is as of when `asOf`.",
       "use": "For a settlement or maturity date in a form on TanStack Form.",
       "with": [
         "DatePicker",
@@ -15883,7 +15887,9 @@
       "variants": {}
     },
     {
-      "extends": [],
+      "extends": [
+        "null extends TValue ? { readonly nullable: true; readonly optional?: undefined } : undefined extends TValue ? { readonly optional: true; readonly nullable?: undefined } : { readonly optional?: undefined; readonly nullable?: undefined }"
+      ],
       "family": "form-fields",
       "module": "@basis/ui",
       "name": "FormTextField",
@@ -15913,10 +15919,10 @@
           "type": "\"default\" | \"sm\" | undefined"
         },
         {
-          "description": "The TanStack Form field, `form.Field`'s render argument.",
+          "description": "The TanStack Form field, `form.Field`'s render argument: text, `\"\"` while empty unless it is `optional` or `nullable`.",
           "name": "field",
           "optional": false,
-          "type": "FormFieldApi<string>"
+          "type": "FormFieldApi<TValue>"
         },
         {
           "description": "The input's type: text unless set, an email address, or a date the browser's own picker takes.",
@@ -15983,7 +15989,9 @@
       "variants": {}
     },
     {
-      "extends": [],
+      "extends": [
+        "null extends TValue ? { readonly nullable: true; readonly optional?: undefined } : undefined extends TValue ? { readonly optional: true; readonly nullable?: undefined } : { readonly optional?: undefined; readonly nullable?: undefined }"
+      ],
       "family": "form-fields",
       "module": "@basis/ui",
       "name": "FormSelectField",
@@ -16022,7 +16030,7 @@
           "description": "The options, each its value and the words it shows.",
           "name": "options",
           "optional": false,
-          "type": "readonly { readonly value: TValue; readonly label: string }[]"
+          "type": "readonly { readonly value: NonNullable<TValue>; readonly label: string }[]"
         },
         {
           "description": "What the select shows while the field holds none of the options.",
@@ -16031,17 +16039,19 @@
           "type": "string | undefined"
         }
       ],
-      "purpose": "A choice of a few options, on the browser's own select, such as an enum a generated schema declares. A field that starts with no choice holds `\"\"`, which the placeholder stands for until an option is chosen.",
+      "purpose": "A choice of a few options, on the browser's own select, such as an enum a generated schema declares. A field that starts with no choice holds `\"\"`, which the placeholder stands for until an option is chosen. A field the schema lets be empty says so, `optional` or `nullable`: it holds `undefined` or `null` while empty, and its placeholder stays in the list, so the choice can be taken back.",
       "use": "For a choice among a handful of options in a form on TanStack Form. For a long list, use Combobox.",
       "with": [
         "NativeSelect",
         "FormTextField"
       ],
       "variants": {},
-      "example": "import { FormSelectField } from \"@basis/ui\";\n\n// In a page, the field is `form.Field`'s render argument.\nconst field = {\n  handleBlur: () => undefined,\n  handleChange: (_value: \"buy\" | \"sell\") => undefined,\n  name: \"side\",\n  state: { meta: { errors: [], isTouched: false }, value: \"buy\" as const },\n};\n\n<FormSelectField\n  field={field}\n  label=\"Side\"\n  options={[\n    { label: \"Buy\", value: \"buy\" },\n    { label: \"Sell\", value: \"sell\" },\n  ]}\n/>;\n"
+      "example": "import { FormSelectField } from \"@basis/ui\";\nimport type { FormFieldApi } from \"@basis/ui\";\n\n// In a page, the field is `form.Field`'s render argument, typed by the form's values.\nconst field: FormFieldApi<\"buy\" | \"sell\"> = {\n  handleBlur: () => undefined,\n  handleChange: () => undefined,\n  name: \"side\",\n  state: { meta: { errors: [], isTouched: false }, value: \"buy\" },\n};\n\n<FormSelectField\n  field={field}\n  label=\"Side\"\n  options={[\n    { label: \"Buy\", value: \"buy\" },\n    { label: \"Sell\", value: \"sell\" },\n  ]}\n/>;\n"
     },
     {
-      "extends": [],
+      "extends": [
+        "null extends TValue ? { readonly nullable: true; readonly optional?: undefined } : undefined extends TValue ? { readonly optional: true; readonly nullable?: undefined } : { readonly optional?: undefined; readonly nullable?: undefined }"
+      ],
       "family": "form-security-field",
       "module": "@basis/ui",
       "name": "FormSecurityField",
@@ -16071,10 +16081,10 @@
           "type": "\"default\" | \"sm\" | undefined"
         },
         {
-          "description": "The TanStack Form field, `form.Field`'s render argument, holding the chosen security's identifier.",
+          "description": "The TanStack Form field, `form.Field`'s render argument, holding the chosen security's identifier, `\"\"` while none is chosen unless it is `optional` or `nullable`.",
           "name": "field",
           "optional": false,
-          "type": "FormFieldApi<string>"
+          "type": "FormFieldApi<TValue>"
         },
         {
           "description": "Finds the securities the checked identifier names.",
@@ -16113,7 +16123,7 @@
           "type": "readonly SecurityIdentifierKind[] | undefined"
         }
       ],
-      "purpose": "A security found by its CUSIP, ISIN or SEDOL, held as the identifier `itemValue` gives, `\"\"` while none is chosen.",
+      "purpose": "A security found by its CUSIP, ISIN or SEDOL, held as the identifier `itemValue` gives, `\"\"` while none is chosen unless it is `optional` or `nullable`. The picker shows the form's value: an edit form opened on an identifier finds its security through `search`, and `form.reset()` empties it.",
       "use": "For the security of a trade or an order in a form on TanStack Form. Outside a form, use SecurityPicker.",
       "with": [
         "SecurityPicker",

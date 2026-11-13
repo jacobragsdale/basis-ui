@@ -5,16 +5,24 @@
 import type { ReactElement, ReactNode } from "react";
 
 import { Field, FieldDescription, FieldError, FieldLabel } from "./field.tsx";
-import { useFieldParts } from "./form-field-parts.ts";
-import type { FormFieldApi, FormFieldProps } from "./form-field-parts.ts";
+import { emptyOf, holdText, useFieldParts } from "./form-field-parts.ts";
+import type { Emptiness, FormFieldApi, FormFieldProps } from "./form-field-parts.ts";
+import { useHeldSecurity } from "./form-security-held.ts";
 import type { SecuritySearch } from "./security-picker-props.ts";
 import { SecurityPicker } from "./security-picker.tsx";
 import type { SecurityIdentifierKind } from "#securities/security-identifier.ts";
 
-/** FormSecurityField's props: the form field's, and the picker's search and items. */
-interface FormSecurityFieldOwnProps<TItem> extends FormFieldProps {
-  /** The TanStack Form field, `form.Field`'s render argument, holding the chosen security's identifier. */
-  readonly field: FormFieldApi<string>;
+/** FormSecurityField's props, for a field whose value is `TValue`: an identifier, and `undefined` or `null` while
+ * empty when it says `optional` or `nullable`. */
+type FormSecurityFieldProps<
+  TItem,
+  TValue extends string | null | undefined = string,
+> = FormFieldProps & Emptiness<TValue> & SecurityFieldProps<TItem, TValue>;
+
+interface SecurityFieldProps<TItem, TValue extends string | null | undefined> {
+  /** The TanStack Form field, `form.Field`'s render argument, holding the chosen security's identifier, `""` while
+   * none is chosen unless it is `optional` or `nullable`. */
+  readonly field: FormFieldApi<TValue>;
   /** Finds the securities the checked identifier names. */
   readonly search: SecuritySearch<TItem>;
   /** An item's stable id. */
@@ -29,7 +37,9 @@ interface FormSecurityFieldOwnProps<TItem> extends FormFieldProps {
   readonly kinds?: readonly SecurityIdentifierKind[] | undefined;
 }
 
-/** A security found by its CUSIP, ISIN or SEDOL, held as the identifier `itemValue` gives, `""` while none is chosen.
+/** A security found by its CUSIP, ISIN or SEDOL, held as the identifier `itemValue` gives, `""` while none is chosen
+ * unless it is `optional` or `nullable`. The picker shows the form's value: an edit form opened on an identifier finds
+ * its security through `search`, and `form.reset()` empties it.
  *
  * @use For the security of a trade or an order in a form on TanStack Form. Outside a form, use SecurityPicker.
  * @see SecurityPicker, FormTextField, FormAmountField
@@ -60,7 +70,7 @@ interface FormSecurityFieldOwnProps<TItem> extends FormFieldProps {
  * />;
  * ```
  */
-function FormSecurityField<TItem>({
+function FormSecurityField<TItem, TValue extends string | null | undefined = string>({
   field,
   label,
   description,
@@ -72,8 +82,10 @@ function FormSecurityField<TItem>({
   itemValue = itemKey,
   renderItem,
   kinds,
-}: FormSecurityFieldOwnProps<TItem>): ReactElement {
+  ...emptiness
+}: FormSecurityFieldProps<TItem, TValue>): ReactElement {
   const parts = useFieldParts(field, id);
+  const held = useHeldSecurity({ itemValue, kinds, search, value: field.state.value });
   return (
     <Field data-invalid={parts.invalid}>
       <FieldLabel htmlFor={parts.id}>{label}</FieldLabel>
@@ -85,8 +97,10 @@ function FormSecurityField<TItem>({
         itemLabel={itemLabel}
         {...(renderItem === undefined ? {} : { renderItem })}
         {...(kinds === undefined ? {} : { kinds })}
+        value={held.item}
         onValueChange={(item) => {
-          field.handleChange(item === null ? "" : itemValue(item));
+          held.choose(item);
+          holdText(field, emptyOf(emptiness), item === null ? "" : itemValue(item));
           field.handleBlur();
         }}
         aria-invalid={parts.invalid}
@@ -101,3 +115,4 @@ function FormSecurityField<TItem>({
 }
 
 export { FormSecurityField };
+export type { FormSecurityFieldProps };

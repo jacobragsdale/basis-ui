@@ -48,12 +48,26 @@ that makes a new set need a unit; an app spreads `rateSuffixes` for one, and non
 - **Severity:** fix before release.
 - **Confidence:** confirmed by reading. Its test covers only choosing and errors.
 
+Done in Forms: an empty field holds what its schema takes, and FormSecurityField shows its form's value: the picker is controlled by the form's value. The field keeps the item last chosen while the
+identifier is still its, finds the item for any other identifier through the app's `search`, by TanStack Query, as an
+edit form opened on a CUSIP must, and shows none while the field is empty (`form-security-held.ts`). Held by gallery
+tests of an edit form, a reset to empty and a reset to the bond the form opened on.
+
 **5. `packages/ui/src/components/form-fields.tsx:127,177` and `form-choice-fields.tsx:27`**
 
 - **Defect:** the form fields hold `""` for "none" and are typed `FormFieldApi<string>`, so an optional field has no empty state.
 - **Scenario:** an optional date, enum or pattern field left blank fails the generated schema; a plain optional string is sent as `""`. The scaffold writes only required fields, so every optional one is hand-added.
 - **Severity:** fix before release.
 - **Confidence:** schema half confirmed by running Zod 4.6.7 (`zod-empty.ts`); binding by reading.
+
+Done in Forms: an empty field holds what its schema takes, and FormSecurityField shows its form's value: a field says what it holds while empty as its schema does. `optional` holds `undefined`, so the
+form submits no such key, and `nullable` holds `null`, on FormTextField, FormDateField, FormSelectField and
+FormSecurityField; FormAmountField takes `optional`, its `null` already serving `.nullable()`. A required field holds
+`""` as before. The field's value type asks for the prop: a field that may hold `undefined` does not compile without
+`optional`, nor one that may hold `null` without `nullable`. An optional or nullable select keeps its placeholder in
+the list, so a choice can be taken back. The fields' props types are now generic, `FormTextFieldProps<TValue>`, with
+the old types as their defaults. Held by a gallery test of a TanStack form submitted empty and emptied by the user,
+whose result passes its schema, and a type test. The README's "Building a form" says how a field declares itself.
 
 **6. `packages/ui/src/components/date-range-picker.tsx:95`**
 
@@ -175,3 +189,14 @@ Not read: the `*-variants.ts` style files, `src/dates`, `src/securities`, `forma
 
 - TypedConfirmDialog never confirms an empty `confirmText`, and matches a name with doubled or trailing spaces as its
   label shows it. What to do: nothing.
+
+- The form fields take `optional` and `nullable`, as the schema says: an optional text, date, choice or security
+  field holds `undefined` while empty, so the form submits no such key, and a nullable one `null`; `FormAmountField`
+  takes `optional`. A field whose value type may be `undefined` or `null` must say which, or it does not compile.
+  `FormSelectFieldProps` and the other fields' props types take the value type, `FormTextFieldProps<string | undefined>`.
+  What to do: for each optional or nullable property of a form's schema, start the field's default value at
+  `undefined` or `null` and pass `optional` or `nullable`; a field that held `""` for none of an optional property
+  failed the schema or sent `""`.
+
+- `FormSecurityField` shows the form's value: an edit form opened on an identifier finds its security through
+  `search`, and `form.reset()` empties the picker with the field. What to do: nothing.
