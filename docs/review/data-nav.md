@@ -85,6 +85,9 @@ Two findings are release blockers and eight more should be fixed before release;
 - **Severity:** fix before release.
 - **Confidence:** confirmed by running (`views.mjs`). This file may belong to the forms reviewer.
 
+Done in Filters: an inverted number range is never written, and a date range reads an instant's New York date (step 7.3, as `inputs.md` finding 8): `dateOf` takes the date `DateTime` shows, New York's for an
+instant.
+
 **11. Shortcut listener gaps**
 
 - **Where:** `packages/ui/src/components/shortcuts.tsx:56-66`, `shortcuts-context.ts:88-99`

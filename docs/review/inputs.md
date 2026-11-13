@@ -11,6 +11,10 @@ No release blocker in the strict sense, but 1–3 can each put a value on screen
 - **Severity:** fix before release; the nearest to a blocker.
 - **Confidence:** confirmed by running the real `useFilterDraft` and `readFilterValues` in a happy-dom harness (`range-draft.ts`). The gallery test at `packages/gallery/src/pages/data/filter-bar.test.ts:168` uses `fill()`, so it never types through a prefix.
 
+Done in Filters: an inverted number range is never written, and a date range reads an instant's New York date: `NumberRangeControl` writes a range only while Min is not above Max, so the draft keeps `5` while
+`5mm` is typed, and once the range is left inverted Max is marked invalid with "Max is below Min." The gallery's tests
+type through the prefix key by key and pause past the 300 ms write.
+
 **2. `packages/ui/src/components/file-import-preview.tsx:72`**
 
 - **Defect:** the preview shows each cell's text, never the value the schema read, so the user confirms blind.
@@ -59,6 +63,10 @@ No release blocker in the strict sense, but 1–3 can each put a value on screen
 - **Scenario:** `2026-11-10T01:30:00Z` shows as 20:30 on 9 November in `DateTime`, fails a 9 November filter and passes a 10 November one.
 - **Severity:** fix before release.
 - **Confidence:** confirmed by running `filterRows`.
+
+Done in Filters: an inverted number range is never written, and a date range reads an instant's New York date: `filterRows` reads a cell's ISO text through `DateTime`'s own reading (`shownDate` in
+`date-time-text.ts`): a date as it is, a wall-clock time's date, and an instant's date in New York. Held by a unit test
+of an instant, an offset, a bracketed zone, a wall-clock time and a date.
 
 **9. `packages/ui/src/components/date-field.tsx:113`**
 
@@ -116,3 +124,13 @@ The area is in better shape than a week of agent-written code suggests. The amou
 The tests are real browser tests of stated behaviour, including the stale-answer race. They rarely cover state over time: reset and edit forms, controlled parents, key-by-key typing, bounds combined with presets, forms inside forms, and keyboard at a bound. Every finding above sits in one of those gaps.
 
 Not read: the `*-variants.ts` style files, `src/dates`, `src/securities`, `format/format.ts`, `num-text.ts`, and the workbook reader beyond the head of `workbook-cells.ts`. I read the thin Base UI wrappers (Select, Combobox, Checkbox, Switch, Slider, Toggle, RadioGroup, Input, Textarea, NativeSelect, NumberField) but did not exercise them, and read most gallery tests by title only.
+
+## Changelog
+
+- FilterBar's range of numbers never writes a range whose Min is above Max: what was typed stays, so `5` on the way
+  to `5mm` no longer blanks both inputs, and once the range is left inverted Max says "Max is below Min." What to do:
+  nothing.
+
+- `filterRows` reads an instant's date range by its date in New York, as `DateTime` shows it, not by the UTC date its
+  ISO text begins with: `2026-11-10T01:30:00Z` is 9 November. What to do: nothing; a page that filtered timestamps
+  by their UTC date now filters by the date it shows.

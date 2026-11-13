@@ -211,6 +211,32 @@ describe(filterRows, () => {
     expect(keep({ name: "aapl" })).toBe(1);
     expect(keep({ settles: { end: "2026-11-30", start: "2026-11-01" } })).toBe(1);
   });
+
+  test("a date range takes an instant's date in New York, as DateTime shows it", () => {
+    // 01:30 UTC on 10 November is 20:30 on 9 November in New York.
+    const rows = [
+      { at: "2026-11-10T01:30:00Z", id: "instant" },
+      { at: "2026-11-09T20:30:00-05:00", id: "offset" },
+      { at: "2026-11-10T01:30:00[America/New_York]", id: "zoned" },
+      { at: "2026-11-09T23:59:59", id: "wall clock" },
+      { at: "2026-11-09", id: "date" },
+      { at: "not a date", id: "bad" },
+    ];
+    const filters = defineFilters({ at: { kind: "dateRange", label: "At" } });
+    const keep = (start: string, end: string): string[] =>
+      filterRows(rows, {
+        fields: { at: (row) => row.at },
+        filters,
+        values: { at: { end, start } },
+      }).map(({ id }) => id);
+    expect(keep("2026-11-09", "2026-11-09")).toStrictEqual([
+      "instant",
+      "offset",
+      "wall clock",
+      "date",
+    ]);
+    expect(keep("2026-11-10", "2026-11-10")).toStrictEqual(["zoned"]);
+  });
 });
 
 describe("an active filter in words", () => {

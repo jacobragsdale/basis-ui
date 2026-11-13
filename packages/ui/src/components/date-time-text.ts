@@ -200,5 +200,20 @@ function dateTimeShown(value: DateTimeValue, format: DateTimeFormat = {}): Shown
     : timeShown(time, formatter, format.show ?? "date-time");
 }
 
-export { dateTimeShown };
+/** The date ISO 8601 text names as `DateTime` shows it, in its default zone: a date as it is, a wall-clock time's own
+ * date, and an instant's date in New York, so `2026-11-10T01:30:00Z` is 9 November. `undefined` for text that is not
+ * ISO 8601. */
+function shownDate(text: string): Temporal.PlainDate | undefined {
+  const time = temporalOf(text);
+  if (time === undefined || time instanceof Temporal.PlainDate) {
+    return time;
+  }
+  if (time instanceof Temporal.PlainDateTime) {
+    return time.toPlainDate();
+  }
+  const instant = time instanceof Temporal.ZonedDateTime ? time.toInstant() : time;
+  return instant.toZonedDateTimeISO(defaultZone).toPlainDate();
+}
+
+export { dateTimeShown, shownDate };
 export type { DateTimeFormat, DateTimePart, DateTimeValue, ShownTime };

@@ -1,6 +1,7 @@
 import "#styles.css";
 
 import { FilterBar } from "@basis/ui";
+import { sleep } from "@basis/ui/utils";
 import { beforeEach, describe, expect, test } from "vite-plus/test";
 import { page, userEvent } from "vite-plus/test/browser";
 
@@ -174,6 +175,35 @@ describe("FilterBar's range of numbers", () => {
     await par.getByRole("textbox", { name: "Min" }).fill("5mm");
     await expectSearch(router, { par: { max: 10_000_000, min: 5_000_000 } });
     expect(issuers()).toStrictEqual(["US Treasury", "Fannie Mae", "Microsoft"]);
+  });
+
+  test("writes nothing while the range is inverted, and keeps what was typed", async () => {
+    const router = await openTrades({ par: { min: 1_000_000 } });
+    const max = par.getByRole("textbox", { name: "Max" });
+    await max.click();
+    // Key by key, as a person types `5mm`: `5` alone is below Min, and the range pauses there inverted.
+    await userEvent.keyboard("5");
+    // Past the filter bar's 300 ms pause, so the draft would have been written.
+    await sleep(600);
+    await expect.element(max).toHaveValue("5");
+    await expect.element(par.getByRole("textbox", { name: "Min" })).toHaveValue("1000000");
+    expect([searchOf(router), chipTexts()]).toStrictEqual([
+      { par: { min: 1_000_000 } },
+      ["Par: at least 1,000,000"],
+    ]);
+    await userEvent.keyboard("mm");
+    await expectSearch(router, { par: { max: 5_000_000, min: 1_000_000 } });
+  });
+
+  test("names an inverted range once the range is left", async () => {
+    const router = await openTrades({ par: { min: 1_000_000 } });
+    const max = par.getByRole("textbox", { name: "Max" });
+    await max.click();
+    await userEvent.keyboard("5");
+    await userEvent.tab();
+    await expect.element(max).toHaveAttribute("aria-invalid", "true");
+    await expect.element(par.getByText("Max is below Min.")).toBeVisible();
+    expect(searchOf(router)).toStrictEqual({ par: { min: 1_000_000 } });
   });
 
   test("writes nothing while an end reads as no number", async () => {

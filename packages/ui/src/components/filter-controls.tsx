@@ -8,7 +8,6 @@ import type { ReactElement } from "react";
 
 import { SearchIcon } from "#vendor/lucide/search.tsx";
 
-import { AmountInput } from "./amount-input.tsx";
 import { useComboboxAnchor } from "./combobox-anchor.ts";
 import { ComboboxChip, ComboboxChips, ComboboxChipsInput } from "./combobox-chips.tsx";
 import {
@@ -20,23 +19,17 @@ import {
   ComboboxValue,
 } from "./combobox.tsx";
 import { DateRangePicker } from "./date-range-picker.tsx";
-import {
-  chosenOf,
-  isDateRangeValue,
-  isNumberRangeValue,
-  optionLabel,
-  optionsOf,
-} from "./filter-definitions.ts";
+import { chosenOf, isDateRangeValue, optionLabel, optionsOf } from "./filter-definitions.ts";
 import type {
   AnyFilterValue,
   ChoiceFilter,
   DateRangeFilter,
   FilterDefinition,
   MultiChoiceFilter,
-  NumberRangeFilter,
   TextFilter,
 } from "./filter-definitions.ts";
 import { useFilterDraft } from "./filter-draft.ts";
+import { NumberRangeControl } from "./filter-number-range.tsx";
 import type { FilterWrite } from "./filter-state.ts";
 import { Field, FieldLabel } from "./field.tsx";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "./input-group.tsx";
@@ -192,66 +185,6 @@ function DateRangeControl({
         max={definition.max ?? null}
         presets={definition.presets}
       />
-    </Field>
-  );
-}
-
-/** What a range's two inputs hold: a number, `null` while empty, or the text while it reads as no number. */
-interface RangeDraft {
-  readonly min: number | string | null;
-  readonly max: number | string | null;
-}
-
-function sameRange(left: RangeDraft, right: RangeDraft): boolean {
-  return left.min === right.min && left.max === right.max;
-}
-
-/** A range of numbers: two AmountInputs, either left empty, written once typing pauses and only while both read. */
-function NumberRangeControl({
-  definition,
-  value,
-  onChange,
-}: ControlProps<NumberRangeFilter>): ReactElement {
-  const labelId = useId();
-  const minId = useId();
-  const range = isNumberRangeValue(value) ? value : undefined;
-  const typed = useFilterDraft<RangeDraft>({
-    commit: ({ min, max }, replace) => {
-      if (typeof min === "string" || typeof max === "string") {
-        return false;
-      }
-      onChange({ max: max ?? undefined, min: min ?? undefined }, { replace });
-      return true;
-    },
-    same: sameRange,
-    value: { max: range?.max ?? null, min: range?.min ?? null },
-  });
-  return (
-    <Field data-slot="filter" className="w-64" aria-labelledby={labelId} {...typed.group}>
-      <FieldLabel id={labelId} htmlFor={minId}>
-        {definition.label}
-      </FieldLabel>
-      <div className="flex items-start gap-2">
-        <AmountInput
-          id={minId}
-          aria-label="Min"
-          placeholder="Min"
-          suffixes={definition.suffixes}
-          value={typed.draft.min}
-          onValueChange={(min) => {
-            typed.change({ ...typed.draft, min });
-          }}
-        />
-        <AmountInput
-          aria-label="Max"
-          placeholder="Max"
-          suffixes={definition.suffixes}
-          value={typed.draft.max}
-          onValueChange={(max) => {
-            typed.change({ ...typed.draft, max });
-          }}
-        />
-      </div>
     </Field>
   );
 }

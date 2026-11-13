@@ -1,8 +1,10 @@
 /* Which rows a page's active filters keep: each filter reads its field from a row through the page's accessor, and a
  * row stays when every active filter takes its field. Text matches the text a field shows, ignoring case; a choice, the
- * option's value; a date range, a `Temporal.PlainDate` or ISO 8601 text between its ends; a number range, a number
- * between its ends. A field with no value, `null` or `undefined`, passes no active filter. */
+ * option's value; a date range, a `Temporal.PlainDate` or ISO 8601 text between its ends, an instant by its date in
+ * New York, as `DateTime` shows it; a number range, a number between its ends. A field with no value, `null` or
+ * `undefined`, passes no active filter. */
 
+import { shownDate } from "./date-time-text.ts";
 import { chosenOf, isDateRangeValue, isNumberRangeValue } from "./filter-definitions.ts";
 import type {
   DateRangeFilterValue,
@@ -31,12 +33,13 @@ function textsOf(cell: FilterCell): readonly string[] {
   return [];
 }
 
-/** A cell's date as ISO 8601 text, which orders as the dates do. */
+/** A cell's date as ISO 8601 text, which orders as the dates do: the date `DateTime` shows for it, so an instant's is
+ * its date in New York, not the UTC date its text begins with. */
 function dateOf(cell: FilterCell): string | undefined {
   if (cell instanceof Temporal.PlainDate) {
     return cell.toString();
   }
-  return typeof cell === "string" ? cell.slice(0, "YYYY-MM-DD".length) : undefined;
+  return typeof cell === "string" ? shownDate(cell)?.toString() : undefined;
 }
 
 function inDateRange(cell: FilterCell, { start, end }: DateRangeFilterValue): boolean {
