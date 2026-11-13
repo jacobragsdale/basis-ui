@@ -4,11 +4,11 @@ import { drawingAt, handleAt } from "#chart/drawing-hits.ts";
 import { anchorPosition, drawingFrom, moved, shapesOf } from "#chart/drawings.ts";
 import type { Shape } from "#chart/drawings.ts";
 import type { ChartModel } from "#chart/model-types.ts";
-import { seriesAt, snap } from "#chart/snap.ts";
-import type { ChartFrameData, SeriesData } from "#frame/chart-data.ts";
+import { snap } from "#chart/snap.ts";
+import type { ChartFrameData } from "#frame/chart-data.ts";
 import type { LayoutChart } from "#layout/chart.ts";
 
-import { chartOf, days, frameOf, measure, modelOf, tenCandles } from "./chart-pointer-inputs.ts";
+import { chartOf, frameOf, measure, modelOf, tenCandles } from "./chart-pointer-inputs.ts";
 
 /** A candlestick chart of the ten candles, with drawings, on a linear or a log scale. */
 function candleChart(
@@ -192,49 +192,6 @@ describe(drawingFrom, () => {
     expect(moved({ kind: "horizontal", y: 1 }, 0, to)).toStrictEqual({
       kind: "horizontal",
       y: 104,
-    });
-  });
-});
-
-/** A line of ten days of a series' close, rising from `base`. */
-function closes(label: string, base: number): SeriesData {
-  return {
-    column: "close",
-    key: "",
-    label,
-    right: false,
-    x: Float64Array.from(days),
-    xJson: days.map(String),
-    xText: days.map(String),
-    y: Float64Array.from(days, (day) => base + day),
-    yText: days.map(String),
-  };
-}
-
-describe(seriesAt, () => {
-  test("is the shown series whose line is nearest the press", () => {
-    const chart = chartOf({ kind: "line", series: "ticker", x: "date", y: ["close"] });
-    const frame: ChartFrameData = {
-      ...candleFrame(),
-      content: { kind: "series", series: [closes("close AAPL", 100), closes("close MSFT", 200)] },
-    };
-    const model = candleModel(chart, frame);
-    const near = (price: number): { readonly x: number; readonly y: number } => ({
-      x: model.x?.map(4) ?? 0,
-      y: model.yAxes[0]?.scale.map(price) ?? 0,
-    });
-    expect(seriesAt(frame, model, { hidden: [], point: near(195) })).toStrictEqual({
-      key: "MSFT",
-      label: "close MSFT",
-    });
-    expect(seriesAt(frame, model, { hidden: [], point: near(105) })).toStrictEqual({
-      key: "AAPL",
-      label: "close AAPL",
-    });
-    // A hidden series is never measured.
-    expect(seriesAt(frame, model, { hidden: ["close MSFT"], point: near(195) })).toStrictEqual({
-      key: "AAPL",
-      label: "close AAPL",
     });
   });
 });

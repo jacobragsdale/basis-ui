@@ -8,6 +8,7 @@ import type { ChartColors } from "#theme/charts.ts";
 
 import type { IndicatorStyle } from "./model-types.ts";
 import type { PaneSpec } from "./panes.ts";
+import { seriesLabel } from "./series-keys.ts";
 
 const overlayKinds: ReadonlySet<LayoutIndicator["kind"]> = new Set([
   "sma",
@@ -194,7 +195,7 @@ function indicatorStyles(
   frame: ChartFrameData,
   { colors, muted, plotted }: StyleColors,
 ): readonly IndicatorStyle[] {
-  // Lines follow a series of a line chart, whose legend label is its price column and the series' value.
+  // Lines follow a series of a line chart, of its price column and with the series' key.
   const price = chart.y[0] ?? "";
   const panes = paneIndexes(chart);
   const groups = new Map<string, number>();
@@ -205,7 +206,7 @@ function indicatorStyles(
     const indicator = chart.indicators[line.indicator] ?? { kind: "volume" };
     const series = many && line.series !== "" ? ` ${line.series}` : "";
     const group = `${indicatorLabel(indicator)}${series}`;
-    const follows = line.series === "" || price === "" ? "" : `${price} ${line.series}`;
+    const follows = price === "" ? "" : seriesLabel(frame, { column: price, key: line.series });
     const pane = panes[line.indicator] ?? null;
     if (pane === null) {
       return overlayStyle({

@@ -15,11 +15,12 @@ import { axisFormats } from "./axis-styles.ts";
 import { categoryAt } from "./interaction.ts";
 import { dotPicked } from "./marks-at.ts";
 import { chartModel } from "./model.ts";
-import type { CategoryData, ChartModel, ModelInput, Point } from "./model-types.ts";
+import type { CategoryData, ChartModel, LegendEntry, ModelInput, Point } from "./model-types.ts";
 import type { Range } from "./range.ts";
 import { FrameShapes, fitsShape, groupOf } from "./scene-inputs.ts";
 import type { PlotSize } from "./scene-inputs.ts";
 import type { ChartSelection } from "./scene.ts";
+import { toggledHidden } from "./series-keys.ts";
 import { categoriesOf, rowsPart, shapeOf } from "./source.ts";
 
 /** How a scene's model tells it to draw again, and measures labels: null until it can. */
@@ -179,14 +180,9 @@ class SceneModel {
     }));
   }
 
-  /** The layout with series `label` hidden, or shown again. */
-  public toggled(label: string, apply: (next: Layout) => void): void {
-    this.#withChart(apply, (chart) => ({
-      ...chart,
-      hidden: chart.hidden.includes(label)
-        ? chart.hidden.filter((hidden) => hidden !== label)
-        : [...chart.hidden, label],
-    }));
+  /** The layout with a legend entry's series hidden, or shown again. */
+  public toggled(entry: LegendEntry, apply: (next: Layout) => void): void {
+    this.#withChart(apply, (chart) => ({ ...chart, hidden: toggledHidden(chart.hidden, entry) }));
   }
 
   /** The layout with the drawings `drawings`. */

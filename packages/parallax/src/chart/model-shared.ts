@@ -19,6 +19,7 @@ import type {
 import { plain, styleOf, styledTicks } from "./axis-styles.ts";
 import type { AxisStyle } from "./axis-styles.ts";
 import { linearScale, logDomain, logScale, niceDomain, valueTicks } from "./scale.ts";
+import { hiddenLabels } from "./series-keys.ts";
 
 /** The padding around the plot, and a compact chart's. */
 const pad = 8;
@@ -79,8 +80,10 @@ function seriesColor(input: ModelInput, index: number): string {
   return input.colors.series[index] ?? input.muted;
 }
 
+/** Whether the series, group or overlay labelled `label` is hidden: by its key or its label, as `hiddenLabels`
+ * reads the layout. */
 function hidden(input: ModelInput, label: string): boolean {
-  return input.chart.hidden.includes(label);
+  return hiddenLabels(input.chart, input.frame).includes(label);
 }
 
 /** Whether an indicator line is shown: neither it nor the series it follows is hidden. */
@@ -88,18 +91,25 @@ function shown(input: ModelInput, style: IndicatorStyle): boolean {
   return !hidden(input, style.group) && !hidden(input, style.follows);
 }
 
+/** A series a legend names: its label, and the key `hidden` holds for it, if that is not the label. */
+type Named = string | { readonly label: string; readonly key: string };
+
 /** A legend entry per series, in the series' colours. */
 function seriesEntries(
   input: ModelInput,
-  labels: readonly string[],
+  names: readonly Named[],
   shape: LegendEntry["shape"],
 ): LegendEntry[] {
-  return labels.map((label, i) => ({
-    color: seriesColor(input, i),
-    hidden: hidden(input, label),
-    label,
-    shape,
-  }));
+  return names.map((name, i) => {
+    const label = typeof name === "string" ? name : name.label;
+    return {
+      color: seriesColor(input, i),
+      hidden: hidden(input, label),
+      label,
+      shape,
+      ...(typeof name === "string" ? {} : { key: name.key }),
+    };
+  });
 }
 
 /** A legend, when there is more than one series to tell apart. */
@@ -277,4 +287,4 @@ export {
   valueScale,
   xAxisHeight,
 };
-export type { Gutters, ScaleSpan };
+export type { Gutters, Named, ScaleSpan };

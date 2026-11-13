@@ -184,7 +184,12 @@ const chartSchema = z.strictObject({
   horizontal: z.boolean().default(false),
   /** The x range shown, as the x axis's numbers, which zooming and panning record; everything when null. */
   range: z.strictObject({ from: z.number(), to: z.number() }).nullable().default(null),
-  /** The series hidden from the legend, by label. */
+  /**
+   * The series hidden from the legend. A line or area chart's series by its key: the series column's value on a chart
+   * of one column, the column's name for a series not split, and the column and the value, a space between, on a
+   * chart of several columns split by series; a legend label, as layouts saved before keys held, still hides its
+   * series. Other charts' series, groups and overlays by their legend labels.
+   */
   hidden: z.array(z.string()).default([]),
   /** Indicators over the price: moving averages, bands and oscillators. */
   indicators: z.array(indicatorSchema).default([]),

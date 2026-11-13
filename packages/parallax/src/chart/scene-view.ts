@@ -15,6 +15,7 @@ import type { SceneModel } from "./scene-model.ts";
 import { bandOf, flag, measuredOf, paintCanvas, writeText } from "./scene-paint.ts";
 import type { SceneElements } from "./scene.ts";
 import { asOfLine, chartSummary, chartWords } from "./summary.ts";
+import { hiddenLabels } from "./series-keys.ts";
 import { chartSync } from "./sync.ts";
 import type { ChartZoom } from "./zoom.ts";
 import { ZoomPreview } from "./zoom-preview.ts";
@@ -136,7 +137,7 @@ class SceneView {
         ? null
         : readingOf({
             frame: scene.frame,
-            hidden: scene.chart?.hidden ?? [],
+            hidden: scene.chart === null ? [] : hiddenLabels(scene.chart, scene.frame),
             hover: this.hover,
             model,
             synced: this.#synced(parts.source),

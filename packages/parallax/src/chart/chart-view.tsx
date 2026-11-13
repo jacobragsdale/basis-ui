@@ -103,8 +103,8 @@ function ChartHead({
         <ChartLegend
           entries={legend}
           beside={beside}
-          onToggle={(label) => {
-            scene.toggle(label);
+          onToggle={(entry) => {
+            scene.toggle(entry);
           }}
         />
       ) : null}

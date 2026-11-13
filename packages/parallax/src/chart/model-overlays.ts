@@ -12,6 +12,8 @@ import type {
   Scale,
 } from "./model-types.ts";
 import { hidden, seriesEntries, shown } from "./model-shared.ts";
+import type { Named } from "./model-shared.ts";
+import { seriesLabel } from "./series-keys.ts";
 import { segmentsOf } from "./panes.ts";
 import { pixel } from "./scale.ts";
 
@@ -124,7 +126,7 @@ function overlayMarks(input: ModelInput, { frame, styles, x, y }: OverlayPlot): 
 /** The legend: the series when there is more than one, and every overlay, one entry each per indicator and series. */
 function legendWithOverlays(
   input: ModelInput,
-  series: readonly string[],
+  series: readonly Named[],
   {
     shape,
     styles,
@@ -147,9 +149,12 @@ function legendWithOverlays(
 
 /** The events of series shown: a hidden series' events go with it. */
 function eventMarks(input: ModelInput, frame: ChartFrameData, x: Scale): readonly EventMark[] {
-  const price = input.chart.y[0] ?? "";
+  const column = input.chart.y[0] ?? "";
   return frame.events
-    .filter((event) => event.series === "" || !hidden(input, `${price} ${event.series}`))
+    .filter(
+      (event) =>
+        event.series === "" || !hidden(input, seriesLabel(frame, { column, key: event.series })),
+    )
     .map((event) => ({ px: pixel(x, event.x), text: event.text, x: event.x, xText: event.xText }));
 }
 

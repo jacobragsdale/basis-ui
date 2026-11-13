@@ -142,6 +142,8 @@ type Mark =
 /** A legend entry: the same shape as the series' mark. */
 interface LegendEntry {
   readonly label: string;
+  /** What the layout's `hidden` holds while it is hidden: a line series' key; the label when absent. */
+  readonly key?: string;
   readonly color: string;
   readonly shape: "line" | "rect" | "dot";
   readonly hidden: boolean;
@@ -200,7 +202,8 @@ interface IndicatorStyle {
   readonly columns: boolean;
   /** A dashed line: Bollinger Bands' middle, or a pane's second line when several series share its colours. */
   readonly dashed: boolean;
-  /** The legend label of the series it follows, which hides it too, or "" for none. */
+  /** The legend label the engine gave the series it follows, found by the series' key, which hides it too, or "" for
+   * none. */
   readonly follows: string;
 }
 

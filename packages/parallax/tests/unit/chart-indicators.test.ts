@@ -6,7 +6,7 @@ import { plotBottom } from "#chart/model.ts";
 import { paneDomain, paneHeight, paneScale } from "#chart/panes.ts";
 import { chartColors } from "#theme/charts.ts";
 
-import { candleChart, candleFrame, days, line, model } from "./chart-indicator-inputs.ts";
+import { candleChart, candleFrame, closes, days, line, model } from "./chart-indicator-inputs.ts";
 import { marksOf } from "./chart-model-inputs.ts";
 
 const colors = chartColors.light;
@@ -79,20 +79,27 @@ describe("indicator labels, panes and styles", () => {
   test("keeps each series' colour in a pane shared by several, dashing the second line, and ties lines to their series", () => {
     const chart = { ...candleChart([{ kind: "macd" }], "line"), y: ["close"] };
     const point: readonly (readonly [number, number])[] = [[0, 1]];
-    const both = candleFrame([
-      line({ indicator: 0, name: "macd", series: "AAPL" }, point),
-      line({ indicator: 0, name: "signal", series: "AAPL" }, point),
-      line({ indicator: 0, name: "macd", series: "MSFT" }, point),
-      line({ indicator: 0, name: "signal", series: "MSFT" }, point),
-    ]);
+    // Each line follows the series of its key, which the engine labels with the ticker alone.
+    const both = {
+      ...candleFrame([
+        line({ indicator: 0, name: "macd", series: "AAPL" }, point),
+        line({ indicator: 0, name: "signal", series: "AAPL" }, point),
+        line({ indicator: 0, name: "macd", series: "MSFT" }, point),
+        line({ indicator: 0, name: "signal", series: "MSFT" }, point),
+      ]),
+      content: {
+        kind: "series" as const,
+        series: [closes("AAPL", [1], "AAPL"), closes("MSFT", [1], "MSFT")],
+      },
+    };
     const styles = indicatorStyles(chart, both, { ...styleColors, plotted: 2 });
     expect(
       styles.map((style) => [style.label, style.color, style.dashed, style.follows]),
     ).toStrictEqual([
-      ["MACD AAPL", colors.series[0], false, "close AAPL"],
-      ["Signal AAPL", colors.series[0], true, "close AAPL"],
-      ["MACD MSFT", colors.series[1], false, "close MSFT"],
-      ["Signal MSFT", colors.series[1], true, "close MSFT"],
+      ["MACD AAPL", colors.series[0], false, "AAPL"],
+      ["Signal AAPL", colors.series[0], true, "AAPL"],
+      ["MACD MSFT", colors.series[1], false, "MSFT"],
+      ["Signal MSFT", colors.series[1], true, "MSFT"],
     ]);
   });
 

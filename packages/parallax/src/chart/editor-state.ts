@@ -29,6 +29,8 @@ interface DrawingHost {
   readonly measure: (text: string) => number;
   /** Series hidden from the plot, by their legend labels, which anchors never snap to. */
   readonly hidden: () => readonly string[];
+  /** The column a measurement measures, the chart's first y column. */
+  readonly price: () => string;
   /** Asks the engine to measure between two axis positions. */
   readonly measureChart: (from: number, to: number, series: string) => Promise<Measurement | null>;
   /** After every change: `state` when `state` changed, and the canvas with it; `paint` when only the canvas did. */
@@ -198,7 +200,7 @@ function seriesUnder(host: DrawingHost, point: Point): SeriesChoice | null {
   const [model, frame] = [host.model(), host.frame()];
   return model === null || frame === null
     ? null
-    : seriesAt(frame, model, { hidden: host.hidden(), point });
+    : seriesAt(frame, model, { hidden: host.hidden(), point, price: host.price() });
 }
 
 /** A measurement starting at an anchor, or null where the anchor has no price. */

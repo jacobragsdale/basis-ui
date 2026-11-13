@@ -6,6 +6,7 @@ import type { ChartModel, Point } from "./model-types.ts";
 import { brushFilters } from "./range.ts";
 import type { Range } from "./range.ts";
 import type { SceneModel } from "./scene-model.ts";
+import { hiddenLabels } from "./series-keys.ts";
 import type { PointerScene } from "./scene-pointer.ts";
 import type { SceneView } from "./scene-view.ts";
 import type { SceneHost } from "./scene.ts";
@@ -79,7 +80,11 @@ class SceneGestures implements PointerScene {
     const result =
       brush === null || frame === null || chart === null
         ? null
-        : brushFilters(frame, { column: chart.x, hidden: chart.hidden, range: brush });
+        : brushFilters(frame, {
+            column: chart.x,
+            hidden: hiddenLabels(chart, frame),
+            range: brush,
+          });
     this.brushed = result?.range ?? null;
     this.#parts.schedule();
     this.#parts.host()?.brushed(result?.filters ?? null);

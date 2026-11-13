@@ -4,7 +4,15 @@
 import type { ChartContent, ChartFrameData, SeriesData } from "#frame/chart-data.ts";
 
 import { indicatorStyles } from "./indicators.ts";
-import type { ChartModel, Mark, ModelInput, Rect, Scale } from "./model-types.ts";
+import type {
+  ChartModel,
+  IndicatorStyle,
+  LegendEntry,
+  Mark,
+  ModelInput,
+  Rect,
+  Scale,
+} from "./model-types.ts";
 import { eventMarks, legendWithOverlays, overlayMarks, overlayValues } from "./model-overlays.ts";
 import {
   axis,
@@ -21,6 +29,7 @@ import {
 } from "./model-shared.ts";
 import { segmentsOf } from "./panes.ts";
 import { linearScale, pixel } from "./scale.ts";
+import { seriesKey } from "./series-keys.ts";
 
 /** A series shown, and its place among all the series, which picks its colour. */
 interface Visible {
@@ -111,6 +120,16 @@ function seriesMarks(
   });
 }
 
+/** The legend of a line or area chart: each series by its label, hidden by its key, and the overlays. */
+function lineLegend(
+  input: ModelInput,
+  series: readonly SeriesData[],
+  options: { readonly shape: "line" | "rect"; readonly styles: readonly IndicatorStyle[] },
+): readonly LegendEntry[] {
+  const names = series.map((line) => ({ key: seriesKey(input.chart, line), label: line.label }));
+  return legendWithOverlays(input, names, options);
+}
+
 /** The model of a line or area chart. */
 function lineModel(
   input: ModelInput,
@@ -134,11 +153,7 @@ function lineModel(
     events: eventMarks(input, frame, x),
     height: input.height,
     indicators: styles,
-    legend: legendWithOverlays(
-      input,
-      content.series.map((series) => series.label),
-      { shape, styles },
-    ),
+    legend: lineLegend(input, content.series, { shape, styles }),
     marks: [
       ...seriesMarks(input, visible, { ...axes, x }),
       ...overlayMarks(input, { frame, styles, x, y: left }),

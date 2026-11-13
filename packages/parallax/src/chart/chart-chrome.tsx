@@ -28,7 +28,7 @@ const noteOffset = { x: 8, y: -11 };
 
 interface ChartLegendProps {
   readonly entries: readonly LegendEntry[];
-  readonly onToggle: (label: string) => void;
+  readonly onToggle: (entry: LegendEntry) => void;
   /** Beside a big pie the legend is a column: key, label, and the share right-aligned. */
   readonly beside: boolean;
 }
@@ -47,7 +47,7 @@ function ChartLegend({ entries, onToggle, beside }: ChartLegendProps): ReactNode
           size="sm"
           pressed={!entry.hidden}
           onPressedChange={() => {
-            onToggle(entry.label);
+            onToggle(entry);
           }}
           className={cn(beside && "w-full")}
         >

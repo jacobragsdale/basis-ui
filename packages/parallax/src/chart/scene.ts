@@ -201,9 +201,9 @@ class ChartScene {
     this.#readTheme();
   }
 
-  /** Hides a series, or shows it again. */
-  public toggle(label: string): void {
-    this.#model.toggled(label, this.#changeLayout);
+  /** Hides a legend entry's series, or shows it again. */
+  public toggle(entry: LegendEntry): void {
+    this.#model.toggled(entry, this.#changeLayout);
   }
 
   /** Deletes the selected drawing, and gives the plot the keyboard back. */

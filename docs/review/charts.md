@@ -26,6 +26,12 @@ is stopped after two seconds.
 - Expected: `key: "MSFT"`; `SeriesData.key` already carries it.
 - Severity: fix before release. Confidence: TypeScript half confirmed by running, Rust half by reading.
 
+Done in Charts: a series is hidden and measured by the engine's key, and a layout that hid it by label still does: the measure tool asks for the pressed series by the engine's `key`, and chooses only among the
+series of the chart's first y column, the one the engine measures, so the card names the series it measured. Held by
+`tests/browser/chart-series-keys.test.ts`, whose frames and measurement the engine makes; the hand-built
+`seriesAt` unit test is gone. Not changed: the engine measures only the first y column, so a second column's line
+cannot be measured; it would need `parallax-session`'s `measure` to take a column, which is the engine lane's.
+
 **3. `packages/parallax/src/chart/indicators.ts:208` and `packages/parallax/src/chart/model-overlays.ts:152`** — An indicator's and an event's "series it follows" is built as `` `${y[0]} ${series}` ``, which never equals the legend label.
 
 - Scenario: the same chart with `indicators: [{ kind: "sma" }]`; hide AAPL from the legend.
@@ -33,6 +39,15 @@ is stopped after two seconds.
 - Tests that don't test what they claim: `tests/unit/chart-indicator-lines.test.ts:10-54` and `:94-115`, and `tests/unit/chart-drawings.test.ts:214-239` (which covers finding 2), hand-build series labelled `"close AAPL"` with `key: ""`, a shape the engine doesn't produce.
 - Related footgun: `chart.hidden` stores labels, and labels change with `titles` or with the number of y columns, so saved layouts stop matching.
 - Severity: fix before release. Confidence: confirmed by running.
+
+Done in Charts: a series is hidden and measured by the engine's key, and a layout that hid it by label still does: an indicator and an event follow the series the engine labelled with their key
+(`seriesLabel` in `src/chart/series-keys.ts`), so hiding a series hides its indicators, in the plot, the scale and
+the tooltip, and its events; a series that is not split hides its indicators too. `hidden` now holds a line
+series' key: the series column's value on a chart of one column, the column's name for a series not split, and
+the column and value on a chart of several; a legend label, as layouts saved before held, still hides its series,
+and the legend drops it when the series is shown again. Other charts' series, groups and overlays keep their
+labels, as they have no key. The hand-built unit tests the review names are gone; their cases run in the browser
+over the engine's frames, and the one pane test left keeps its frame in the engine's shape.
 
 **4. `packages/parallax/src/chart/source.ts:24-33`** — Bar charts, heatmaps and waterfalls read only the first 500 rows of the grouped view, and row 0 is the grand total (`crates/parallax-engine/src/view.rs:3006-3010`), so at most 499 groups are drawn and nothing says so.
 
@@ -136,3 +151,9 @@ The defects cluster in three places the pixel-parity port could not catch:
 - A chart whose values are a few units in the last place apart, such as a sum of weights that reads 1, no longer
   hangs the tab: it draws a flat line on an axis centred on the value. Values past a thousand trillion, or a range
   finer than twelve decimals, label their axis in scientific notation. What to do: nothing.
+
+- A line or area chart's `hidden` holds each series by its key: the series column's value on a chart of one
+  column, such as `"AAPL"`, the column's name for a series not split, and the column and the value, as `"close
+  AAPL"`, on a chart of several. A series hidden by its legend label, as saved layouts hold them, is still hidden.
+  Hiding a series hides its indicators and events with it, and the measure tool measures the series pressed. What to
+  do: nothing; a layout written by hand may name its series by key.

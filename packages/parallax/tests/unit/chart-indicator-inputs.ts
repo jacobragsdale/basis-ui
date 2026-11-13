@@ -93,11 +93,11 @@ function model(chart: LayoutChart, data: ChartFrameData): ChartModel {
   });
 }
 
-/** A series of closes, one a day. */
-function closes(label: string, values: readonly number[]): SeriesData {
+/** A series of closes, one a day, with the engine's key: the series column's value, "" for one not split. */
+function closes(label: string, values: readonly number[], key = ""): SeriesData {
   return {
     column: "close",
-    key: "",
+    key,
     label,
     right: false,
     x: Float64Array.from(days),

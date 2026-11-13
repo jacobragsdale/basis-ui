@@ -10,6 +10,7 @@ import type { TextMeasurer } from "./measurer.ts";
 import type { ChartModel } from "./model-types.ts";
 import { hasDrawingTools } from "./scene-inputs.ts";
 import type { SceneModel } from "./scene-model.ts";
+import { hiddenLabels } from "./series-keys.ts";
 
 /** The scene's parts the editor reads and changes. */
 interface EditorParts {
@@ -30,13 +31,14 @@ function editorHostOf(parts: EditorParts): DrawingHost {
     drawings: () => model.chart?.drawings ?? [],
     editable: () => hasDrawingTools(model.chart),
     frame: () => model.frame,
-    hidden: () => model.chart?.hidden ?? [],
+    hidden: () => (model.chart === null ? [] : hiddenLabels(model.chart, model.frame)),
     measure: (text) => parts.measurer()?.measure(text, model.theme.font) ?? 0,
     measureChart: async (from, to, series): Promise<Measurement | null> => {
       const handle = parts.handle();
       return handle === null ? null : handle.measure(from, to, series);
     },
     model: parts.drawn,
+    price: () => model.chart?.y[0] ?? "",
     save: (drawings) => {
       model.drawn(drawings, parts.changeLayout);
     },
