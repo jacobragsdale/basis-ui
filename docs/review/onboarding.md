@@ -10,6 +10,7 @@ A new developer cannot get from nothing to a deployed, signed-in app today, and 
    - Who: every developer creating a repo, the day step 1.8 publishes.
    - Severity: release blocker (one-word fix). Confidence: confirmed in both files.
    - Done in Template: vp create reads its manifest, the app pins Node and pnpm, and the skills' front matter parses: `createConfig.templates[0]` names `template`; `tests/create-manifest.test.ts` reads the manifest with Vite+ 1.5.0's own `validateManifest`, taken from the installed `vite-plus`, and failed on `path` with the review's message. Running `vp create` itself against a registry is 7.13's.
+   - Done in "CI: the template proven on Windows from packed packages, made by @basis/create's own creator": the proof ran `vp create @basis:app` against a registry of its own on 127.0.0.1, which served the packed `@basis/create`, and it read the manifest and copied the template, but Vite+ 1.5.0 rewrote the app (a `vite` catalog and `peerDependencyRules` in `pnpm-workspace.yaml`, `fmt` and `lint` blocks in `vite.config.ts`, `vite-plus` as `catalog:`), so its drift check failed at once. By decision 6, `@basis/create` is its own creator, `vp dlx @basis/create NAME`; `createConfig` is gone, and the proof makes its app with that command from the packed tarball, on Linux and on Windows, so what a developer types is what CI runs.
 
 2. **There is no real sign-in, no example adapter, and nothing stops the fake one shipping.**
    - Where: `packages/create/templates/app/src/main.tsx:16` hard-codes `fakeSignIn()`. `packages/ui/src/shell/sign-in.ts` has only `fakeSignIn` and `anonymousSignIn`.
@@ -194,3 +195,8 @@ The two check scripts are `(a scratch folder)` and `(a scratch folder)`.
   needs and the one it found, in place of an empty page: the head script checks before the app's modules load. The
   README's "Browsers" states the floor, Chrome and Edge 144 or later. What to do: nothing; `vp dev` and `vp build`
   write the new head script.
+
+- A UI repo is made with `vp dlx @basis/create NAME`, `@basis/create`'s own creator, which copies the template into
+  the folder NAME, names the package and the page after it, and runs `git init`. `vp create @basis:app` no longer
+  offers the template: Vite+ 1.5.0 rewrites every app it makes into a configuration the drift check refuses. What to
+  do: nothing for an app that exists.

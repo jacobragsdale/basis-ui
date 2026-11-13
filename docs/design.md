@@ -82,8 +82,12 @@ causes, would pass it. As in basis, every file `vp run sync` writes opens with a
 the drift check fails when someone edits one, and every failure is one line that starts with `ERROR`, gives the reason
 and ends with the fix.
 
-A UI repo is made with `vp create` and `@basis/ui`'s template, if Vite+ accepts a template from a package, and with
-`pnpm create @basis/app` if it does not.
+A UI repo is made with `vp dlx @basis/create NAME`: `@basis/create`'s own creator, plain Node with no dependency,
+copies its template into the folder NAME, names the package and the page after it, and runs `git init`. Vite+ 1.5.0's
+`vp create` does take a template from a package, but rewrites every app it makes, with no flag to stop it: a `vite`
+catalog and `peerDependencyRules` in `pnpm-workspace.yaml`, `fmt` and `lint` blocks in `vite.config.ts`, and
+`vite-plus` as `catalog:`, which the drift check refuses at once, so the fallback this page named is the way.
+`@basis/create` names no `createConfig`, and `vp create @basis:app` offers nothing.
 
 ## The packages
 

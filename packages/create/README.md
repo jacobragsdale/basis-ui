@@ -3,11 +3,16 @@
 The template a UI repo is made from, for an app on `@basis/ui` and `@basis/parallax`:
 
 ```sh
-vp create @basis:app --directory positions-ui
+vp dlx @basis/create positions-ui
 ```
 
-`vp create` reads it from the registry the repo's `.npmrc` names for the `@basis` scope, which waits for roadmap step
-1.8. The app it makes is `templates/app`:
+`bin/create.mjs`, plain Node with no dependency, copies `templates/app` into the folder named, which must be new or
+empty, renames `_gitignore` to `.gitignore`, names the package and the page's title after the folder, runs `git init`,
+and prints the commands that come next: `vp install`, `vp run doctor`, `vp dev`. Every failure is one `ERROR` line that
+ends with its fix. `vp dlx` fetches `@basis/create` from the registry the `.npmrc` names for the `@basis` scope, which
+waits for roadmap step 1.8; until then, `vp dlx PATH/basis-create-VERSION.tgz positions-ui` runs it from a tarball.
+It is not `vp create @basis:app`: Vite+ 1.5.0 rewrites every app it makes into a configuration the app's own drift
+check refuses (`docs/design.md`, "A UI repo"). The app it makes is `templates/app`:
 
 - the preset's configuration with exactly the lines `@basis/ui`'s README shows, and `AppShell` with a home page;
 - a sample API: `openapi.json` is basis's example document, `src/api/generated/` its client, and `src/sample/` and
@@ -24,10 +29,11 @@ vp create @basis:app --directory positions-ui
 
 The template's framework files are written by `vp run sync` itself (`node ../../../ui/src/preset/tasks.ts sync` in
 `templates/app`), and `@basis/ui`'s tests fail when they differ from what it writes. A packed package drops its
-`.gitignore`, so the template holds it as `_gitignore`, which `vp create` renames: after a sync in `templates/app`,
+`.gitignore`, so the template holds it as `_gitignore`, which the creator renames: after a sync in `templates/app`,
 move the `.gitignore` it writes over `_gitignore`.
 
-`vp run @basis/create#prove` proves the template: it packs the three packages, makes an app from the packed template in
-a temporary folder outside the workspace, installs it from the tarballs, commits it through its hook, and runs
-`vp run verify`, `vp run shot --all` and `vp build` in it. CI runs it when the template or either package changes;
+`vp run @basis/create#prove` proves the template: it packs the three packages, makes an app with `vp dlx` of the
+packed `@basis/create` in a temporary folder outside the workspace, installs it from the tarballs, commits it through
+its hook, and runs `vp run verify`, `vp run shot --all` and `vp build` in it. CI runs it on Linux and on Windows when
+the template or either package changes;
 [`@basis/ui`'s CONTRIBUTING.md](../ui/CONTRIBUTING.md#the-template-proven) says how to run it here.

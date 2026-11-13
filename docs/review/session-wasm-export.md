@@ -74,6 +74,7 @@ No release blocker in these four crates, but 13 findings: one trap on spec-valid
 - Confidence: config confirmed. The local wasm's `target_features` section does list `simd128`. The precedence is from Cargo's documentation.
 
 - Not done here: CI's flags are step 7.13's, by the brief; `ci.yml` is left to it.
+- Done in "CI: the template proven on Windows from packed packages, made by @basis/create's own creator": `ci.yml` sets no global `RUSTFLAGS`. The native Rust job denies warnings with its own `RUSTFLAGS`; the wasm test job sets `CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUSTFLAGS` to `-D warnings -C target-feature=+simd128`; the jobs that build the engine set nothing, so `build-wasm.ts`'s SIMD applies; and the package job fails when the built module's `target_features` section does not name `simd128`.
 
 **8. Hostile IPC bytes can still panic inside arrow** — polish
 

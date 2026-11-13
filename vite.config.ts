@@ -47,6 +47,8 @@ const themeFiles = "packages/ui/src/theme/themes/*.ts";
 const nodeCode = [
   "packages/*/scripts/**",
   "packages/*/tests/**",
+  // @basis/create's creator, `vp dlx @basis/create NAME`.
+  "packages/create/bin/**",
   "packages/ui/src/preset/**",
   "packages/ui/src/codemods/**",
   "packages/ui/src/catalogue/**",

@@ -39,6 +39,7 @@ from it, by that app's own configuration. Run, from the repo's root:
 
 ```sh
 vp run @basis/create#prove           # every stage; -- --keep keeps the app when it passes
+node packages/create/scripts/prove.ts --tarballs DIR   # the stages after the pack, on DIR's three tarballs
 ```
 
 It builds `@basis/ui` and `@basis/parallax`, the engine's WebAssembly included, so the Rust toolchain is needed, as for
@@ -46,8 +47,8 @@ It builds `@basis/ui` and `@basis/parallax`, the engine's WebAssembly included, 
 outside the workspace, `scripts/prove.ts` runs its stages in order:
 
 - `pack`: `vp pm pack` of `@basis/ui`, `@basis/parallax` and `@basis/create`, as a release ships them;
-- `make`: the packed template copied as `vp create @basis:app` copies it, `_gitignore` renamed `.gitignore`, and a
-  git repository;
+- `make`: `vp dlx` of the packed `@basis/create` and the app's name, as a developer makes an app: its creator copies
+  the template, renames `_gitignore` to `.gitignore`, names the app and runs `git init`;
 - `install`: `vp install`, with a pnpmfile outside the app that takes both packages from their tarballs, so no
   registry and no workspace link is involved, and pnpm's store gives the rest;
 - `commit`: the first commit, through the app's commit hook;
@@ -57,7 +58,9 @@ outside the workspace, `scripts/prove.ts` runs its stages in order:
 
 A stage that fails ends the run with one line, `ERROR the template's STAGE stage failed: ...`, after the command's own
 output, and keeps the app at the path it names. CI runs it when `packages/ui`, `packages/parallax/src`,
-`packages/create` or the workflow changes. A packed package drops its `.gitignore`, so the template holds it as
+`packages/create` or the workflow changes: on Linux, which builds and packs the three packages, then on Windows, in
+PowerShell, from those tarballs, so the Windows job needs no Rust and no install of the workspace. `--tarballs DIR`
+skips the pack, taking the three tarballs from DIR. A packed package drops its `.gitignore`, so the template holds it as
 `_gitignore`. After a change to the framework's files, run the sync in `packages/create/templates/app`,
 `node ../../../ui/src/preset/tasks.ts sync`, as its README says, and move the `.gitignore` it writes over `_gitignore`.
 

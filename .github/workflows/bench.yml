@@ -23,14 +23,14 @@ jobs:
     env:
       CARGO_BUILD_JOBS: 4
     steps:
-      - uses: actions/checkout@v7.0.1
-      - uses: voidzero-dev/setup-vp@v1.22.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: voidzero-dev/setup-vp@cab1ab9eaff52d4857875f4f2c016e36af8f2c76 # v1.22.0
         with:
           node-version-file: .node-version
           cache: true
       - run: rustup toolchain install
         working-directory: packages/parallax
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           workspaces: packages/parallax -> target
       - name: Install wasm-bindgen
@@ -45,7 +45,7 @@ jobs:
       - run: vp exec --filter @basis/parallax playwright install --with-deps chromium
       # Builds the package, writes the datasets, builds the harness and measures, failing on a figure over its budget.
       - run: vp run @basis/parallax#bench --modes plain --rounds 1 --budgets nightly
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: parallax-bench

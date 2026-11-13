@@ -1,23 +1,18 @@
 {
   "name": "@basis/create",
   "version": "0.0.0",
-  "description": "The UI repo template for apps on @basis/ui and @basis/parallax: vp create @basis:app.",
+  "description": "The UI repo template for apps on @basis/ui and @basis/parallax, and its creator: vp dlx @basis/create NAME.",
   "license": "MIT",
+  "bin": {
+    "create": "bin/create.mjs"
+  },
   "files": [
+    "bin",
     "templates"
   ],
   "type": "module",
   "devDependencies": {
     "@types/node": "catalog:",
     "vite-plus": "catalog:"
-  },
-  "createConfig": {
-    "templates": [
-      {
-        "name": "app",
-        "description": "A basis-ui app: AppShell, the preset's checks and tasks, fixture mode, and a Dockerfile it owns",
-        "template": "./templates/app"
-      }
-    ]
   }
 }

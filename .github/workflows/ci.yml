@@ -14,17 +14,18 @@ concurrency:
   # newer push cancels its older run.
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
+# No RUSTFLAGS here: Cargo takes RUSTFLAGS in place of a target's own flags, so a global one hid the wasm build's
+# +simd128 and CI never built the engine as it ships. Warnings are errors in the jobs that set them, each its own way.
 env:
   CARGO_TERM_COLOR: always
-  RUSTFLAGS: -D warnings
 
 jobs:
   # Formatting, linting and type checking cover the whole repo, docs included, so they run on every change.
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7.0.1
-      - uses: voidzero-dev/setup-vp@v1.22.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: voidzero-dev/setup-vp@cab1ab9eaff52d4857875f4f2c016e36af8f2c76 # v1.22.0
         with:
           node-version-file: .node-version
           cache: true
@@ -39,8 +40,8 @@ jobs:
       parallax: ${{ steps.filter.outputs.parallax }}
       template: ${{ steps.filter.outputs.template }}
     steps:
-      - uses: actions/checkout@v7.0.1
-      - uses: dorny/paths-filter@v4.0.3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         id: filter
         with:
           filters: |
@@ -86,8 +87,8 @@ jobs:
     if: needs.changes.outputs.ui == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7.0.1
-      - uses: voidzero-dev/setup-vp@v1.22.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: voidzero-dev/setup-vp@cab1ab9eaff52d4857875f4f2c016e36af8f2c76 # v1.22.0
         with:
           node-version-file: .node-version
           cache: true
@@ -115,10 +116,10 @@ jobs:
       # one: its configuration, lint, types, test and build, and its budget, weighed in Chromium.
       - run: vp run @basis/consumer#verify
 
-  # The template, proven: an app made from @basis/create's packed template, outside the workspace, installed from the
-  # packed @basis/ui and @basis/parallax, whose engine comes built in its tarball, then committed through its hook and
-  # checked as its developer checks it, with `vp run verify`, `vp run shot --all` and `vp build`
-  # (packages/create/scripts/prove.ts).
+  # The template, proven: an app made as its developer makes one, `vp dlx @basis/create NAME` from the packed
+  # @basis/create, outside the workspace, installed from the packed @basis/ui and @basis/parallax, whose engine comes
+  # built in its tarball, then committed through its hook and checked as its developer checks it, with `vp run verify`,
+  # `vp run shot --all` and `vp build` (packages/create/scripts/prove.ts). The tarballs go on to the Windows job.
   template:
     name: create / The template, made into an app from the packed packages
     needs: changes
@@ -128,10 +129,10 @@ jobs:
     env:
       CARGO_BUILD_JOBS: 4
     steps:
-      - uses: actions/checkout@v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         timeout-minutes: 2
       # Its cache is pnpm's store, which the app's install takes its packages from.
-      - uses: voidzero-dev/setup-vp@v1.22.0
+      - uses: voidzero-dev/setup-vp@cab1ab9eaff52d4857875f4f2c016e36af8f2c76 # v1.22.0
         timeout-minutes: 5
         with:
           node-version-file: .node-version
@@ -139,7 +140,7 @@ jobs:
       - run: rustup toolchain install
         timeout-minutes: 5
         working-directory: packages/parallax
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         timeout-minutes: 5
         with:
           workspaces: packages/parallax -> target
@@ -160,10 +161,60 @@ jobs:
         run: |
           timeout 3m vp exec --filter @basis/ui playwright install --with-deps chromium ||
             timeout 3m vp exec --filter @basis/ui playwright install --with-deps chromium
-      # Packs the three packages, makes the app, installs, commits, verifies, shoots every route and builds; a stage
-      # that fails names itself in its ERROR line.
-      - run: vp run @basis/create#prove
+      # The three packages as a release ships them, and the Playwright version @basis/ui pins, for the Windows job.
+      - name: Pack @basis/ui, @basis/parallax and @basis/create
+        timeout-minutes: 3
+        run: |
+          mkdir -p "$RUNNER_TEMP/tarballs"
+          for name in ui parallax create; do
+            (cd "packages/$name" && vp pm pack --pack-destination "$RUNNER_TEMP/tarballs")
+          done
+          node -p "require('./packages/ui/node_modules/playwright/package.json').version" > "$RUNNER_TEMP/tarballs/playwright-version"
+      # Makes the app, installs, commits, verifies, shoots every route and builds; a stage that fails names itself in
+      # its ERROR line.
+      - run: node packages/create/scripts/prove.ts --tarballs "$RUNNER_TEMP/tarballs"
         timeout-minutes: 10
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: template-tarballs
+          path: ${{ runner.temp }}/tarballs
+          retention-days: 3
+
+  # The same proof on Windows, the firm's desktop, in PowerShell as a developer's terminal is: the Linux job's tarballs,
+  # so it needs no Rust and no install of the workspace. It holds what winbox proved by hand (docs/release-plan.md, "On
+  # winbox"): the install, the commit through the hook, `vp run verify`, `vp run shot --all` started with no dev server,
+  # which must stop the one it starts, `vp build`, and a clean tree.
+  template-windows:
+    name: create / The template on Windows, from the packed packages
+    needs: template
+    runs-on: windows-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        timeout-minutes: 2
+      # Vite+ and the Node .node-version pins; the proof is plain Node, and the app installs its own.
+      - uses: voidzero-dev/setup-vp@cab1ab9eaff52d4857875f4f2c016e36af8f2c76 # v1.22.0
+        timeout-minutes: 5
+        with:
+          node-version-file: .node-version
+          run-install: false
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: template-tarballs
+          path: ${{ runner.temp }}/tarballs
+      # The app's paths under node_modules can pass Windows' old limit of 260 characters.
+      - run: git config --global core.longpaths true
+      # As vp run doctor names it: the Chromium of the Playwright @basis/ui pins, from Playwright's own download site.
+      - name: Install Playwright's Chromium
+        timeout-minutes: 7
+        run: |
+          $version = Get-Content "$env:RUNNER_TEMP/tarballs/playwright-version"
+          vp dlx "playwright@$version" install chromium
+      - run: node packages/create/scripts/prove.ts --tarballs "$env:RUNNER_TEMP/tarballs"
+        timeout-minutes: 20
 
   # The gallery's eleven whole-page screenshots and the axe check on every section, in the pinned Playwright image,
   # against the gallery built here on @basis/ui's build. A change to either runs them.
@@ -173,14 +224,14 @@ jobs:
     if: needs.changes.outputs.ui == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7.0.1
-      - uses: voidzero-dev/setup-vp@v1.22.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: voidzero-dev/setup-vp@cab1ab9eaff52d4857875f4f2c016e36af8f2c76 # v1.22.0
         with:
           node-version-file: .node-version
           cache: true
       # Builds @basis/ui and the gallery, and runs the whole-page screenshots and every section's axe check in the image.
       - run: vp run @basis/gallery#shots
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: failure()
         with:
           name: gallery-shots-results
@@ -198,14 +249,14 @@ jobs:
       # The runner's cores: the engine's build uses one rustc job unless told more.
       CARGO_BUILD_JOBS: 4
     steps:
-      - uses: actions/checkout@v7.0.1
-      - uses: voidzero-dev/setup-vp@v1.22.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: voidzero-dev/setup-vp@cab1ab9eaff52d4857875f4f2c016e36af8f2c76 # v1.22.0
         with:
           node-version-file: .node-version
           cache: true
       - run: rustup toolchain install
         working-directory: packages/parallax
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           workspaces: packages/parallax -> target
       - name: Install wasm-bindgen
@@ -221,6 +272,19 @@ jobs:
       - run: vp run @basis/parallax#build
       # The committed declaration of wasm-bindgen's glue, which `vp check` type-checks against, must be this build's.
       - run: git diff --exit-code -- packages/parallax/wasm/parallax_wasm.d.ts
+      # The engine as it ships: built with SIMD, which its target_features section names.
+      - name: The engine's WebAssembly is built with SIMD
+        run: |
+          node -e '
+            const bytes = require("node:fs").readFileSync("packages/parallax/dist/parallax_wasm_bg.wasm");
+            const [section] = WebAssembly.Module.customSections(new WebAssembly.Module(bytes), "target_features");
+            const names = section === undefined ? "" : Buffer.from(section).toString("latin1");
+            if (!names.includes("simd128")) {
+              console.error("ERROR the engine was built without +simd128, as its target_features section shows: check that nothing sets RUSTFLAGS, which hides the wasm target'"'"'s own flags.");
+              process.exit(1);
+            }
+            console.log("target_features names simd128");
+          '
       # Playwright's download has hung on a runner for half an hour: three minutes, then once more.
       - name: Install Playwright's Chromium
         timeout-minutes: 7
@@ -248,14 +312,14 @@ jobs:
     env:
       CARGO_BUILD_JOBS: 4
     steps:
-      - uses: actions/checkout@v7.0.1
-      - uses: voidzero-dev/setup-vp@v1.22.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: voidzero-dev/setup-vp@cab1ab9eaff52d4857875f4f2c016e36af8f2c76 # v1.22.0
         with:
           node-version-file: .node-version
           cache: true
       - run: rustup toolchain install
         working-directory: packages/parallax
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           workspaces: packages/parallax -> target
       - name: Install wasm-bindgen
@@ -267,7 +331,7 @@ jobs:
       - run: vp run @basis/ui#build
       # Builds the engine, writes the datasets, builds the harness, and runs every spec in the image.
       - run: vp run @basis/parallax#charts-e2e
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: failure()
         with:
           name: parallax-charts-e2e-results
@@ -283,14 +347,14 @@ jobs:
     env:
       CARGO_BUILD_JOBS: 4
     steps:
-      - uses: actions/checkout@v7.0.1
-      - uses: voidzero-dev/setup-vp@v1.22.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: voidzero-dev/setup-vp@cab1ab9eaff52d4857875f4f2c016e36af8f2c76 # v1.22.0
         with:
           node-version-file: .node-version
           cache: true
       - run: rustup toolchain install
         working-directory: packages/parallax
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           workspaces: packages/parallax -> target
       - name: Install wasm-bindgen
@@ -302,7 +366,7 @@ jobs:
       - run: vp run @basis/ui#build
       # Builds the engine, writes the datasets, builds the harness, and runs every spec in the image.
       - run: vp run @basis/parallax#grid-e2e
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: failure()
         with:
           name: parallax-grid-e2e-results
@@ -318,14 +382,14 @@ jobs:
     env:
       CARGO_BUILD_JOBS: 4
     steps:
-      - uses: actions/checkout@v7.0.1
-      - uses: voidzero-dev/setup-vp@v1.22.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: voidzero-dev/setup-vp@cab1ab9eaff52d4857875f4f2c016e36af8f2c76 # v1.22.0
         with:
           node-version-file: .node-version
           cache: true
       - run: rustup toolchain install
         working-directory: packages/parallax
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           workspaces: packages/parallax -> target
       - name: Install wasm-bindgen
@@ -337,7 +401,7 @@ jobs:
       - run: vp run @basis/ui#build
       # Builds the engine, writes the dataset, builds the harness, and runs every spec in the image.
       - run: vp run @basis/parallax#pivot-e2e
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: failure()
         with:
           name: parallax-pivot-e2e-results
@@ -353,14 +417,14 @@ jobs:
     env:
       CARGO_BUILD_JOBS: 4
     steps:
-      - uses: actions/checkout@v7.0.1
-      - uses: voidzero-dev/setup-vp@v1.22.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: voidzero-dev/setup-vp@cab1ab9eaff52d4857875f4f2c016e36af8f2c76 # v1.22.0
         with:
           node-version-file: .node-version
           cache: true
       - run: rustup toolchain install
         working-directory: packages/parallax
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           workspaces: packages/parallax -> target
       - name: Install wasm-bindgen
@@ -372,7 +436,7 @@ jobs:
       - run: vp run @basis/ui#build
       # Builds the package, writes the datasets, builds the demo, and runs every spec in the image.
       - run: vp run @basis/parallax-demo#e2e
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: failure()
         with:
           name: parallax-demo-e2e-results
@@ -384,14 +448,17 @@ jobs:
     needs: changes
     if: needs.changes.outputs.parallax == 'true'
     runs-on: ubuntu-latest
+    # Native builds only, so RUSTFLAGS hides no target's flags here.
+    env:
+      RUSTFLAGS: -D warnings
     defaults:
       run:
         working-directory: packages/parallax
     steps:
-      - uses: actions/checkout@v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       # Installs the toolchain pinned in rust-toolchain.toml.
       - run: rustup toolchain install
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           workspaces: packages/parallax -> target
       - run: cargo fmt --all --check
@@ -403,13 +470,16 @@ jobs:
     needs: changes
     if: needs.changes.outputs.parallax == 'true'
     runs-on: ubuntu-latest
+    # The wasm target's flags as the browser's build sets them (scripts/build-wasm.ts), with warnings as errors.
+    env:
+      CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUSTFLAGS: -D warnings -C target-feature=+simd128
     defaults:
       run:
         working-directory: packages/parallax
     steps:
-      - uses: actions/checkout@v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: rustup toolchain install
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           workspaces: packages/parallax -> target
       # The test runner must match the wasm-bindgen version in Cargo.lock.
@@ -426,8 +496,8 @@ jobs:
     if: needs.changes.outputs.parallax == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7.0.1
-      - uses: EmbarkStudios/cargo-deny-action@v2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: EmbarkStudios/cargo-deny-action@3c6349835b2b7b196a839186cb8b78e02f7b5f25 # v2.1.1
         with:
           manifest-path: packages/parallax/Cargo.toml
           command: check licenses bans sources advisories

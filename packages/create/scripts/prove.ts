@@ -1,28 +1,18 @@
 /* Proves the app template: packs @basis/ui, @basis/parallax and @basis/create as an app receives them, makes an app
- * from the packed template outside the workspace, as `vp create @basis:app` makes one, installs it from the tarballs,
- * commits it through its hook, and runs what its developer runs: `vp run verify`, `vp run shot --all` and `vp build`.
- * Run it with `vp run @basis/create#prove`, which builds both packages first, as packages/ui/CONTRIBUTING.md says;
- * `-- --keep` keeps the app that passed. A stage that fails prints one ERROR line naming it, and keeps the app. */
+ * outside the workspace as its developer does, with `vp dlx` of the packed @basis/create and the app's name, installs
+ * it from the tarballs, commits it through its hook, and runs what its developer runs: `vp run verify`, `vp run shot
+ * --all` with no `vp dev` running, and `vp build`. Run it with `vp run @basis/create#prove`, which builds both packages
+ * first, as packages/ui/CONTRIBUTING.md says; `-- --keep` keeps the app that passed, and `-- --tarballs DIR` takes the
+ * three tarballs from DIR rather than packing them, as CI's Windows job does with those its Linux job packed. A stage
+ * that fails prints one ERROR line naming it, and keeps the app. */
 
 import { spawnSync } from "node:child_process";
-import {
-  cpSync,
-  existsSync,
-  mkdirSync,
-  mkdtempSync,
-  readdirSync,
-  readFileSync,
-  renameSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
+import { existsSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const repo = fileURLToPath(new URL("../../..", import.meta.url));
-// Vite+'s own renames in an org template, since a packed package drops its `.gitignore`.
-const renamed: Readonly<Record<string, string>> = { _gitignore: ".gitignore", _npmrc: ".npmrc" };
 // The template's route with a parameter, which `vp run shot --all` skips, at its sample fixture's bond.
 const parameterRoutes = ["/bonds/US91282CRF04"];
 const appName = "positions-ui";
@@ -92,7 +82,7 @@ function git(work: Work, ...args: readonly string[]): string {
 function tarball(work: Work, name: string): string {
   const file = readdirSync(work.tarballs).find((entry) => entry.startsWith(`basis-${name}-`));
   if (file === undefined) {
-    throw new StageError(`vp pm pack wrote no basis-${name}-*.tgz`);
+    throw new StageError(`${work.tarballs} holds no basis-${name}-*.tgz`);
   }
   return path.join(work.tarballs, file);
 }
@@ -101,7 +91,10 @@ function tarball(work: Work, name: string): string {
  * app's package.json, and in @basis/parallax's dependency on @basis/ui. */
 function writePnpmfile(work: Work): void {
   const tarballs = Object.fromEntries(
-    ["ui", "parallax"].map((name) => [`@basis/${name}`, `file:${tarball(work, name)}`]),
+    ["ui", "parallax"].map((name) => [
+      `@basis/${name}`,
+      `file:${tarball(work, name).replaceAll("\\", "/")}`,
+    ]),
   );
   writeFileSync(
     path.join(work.root, "pnpmfile.cjs"),
@@ -119,39 +112,27 @@ module.exports = { hooks: { readPackage } };
   );
 }
 
-/** What `vp create` does to an org template once copied: its renames, and its package's name. */
-function finishCopy(app: string): void {
-  for (const [from, to] of Object.entries(renamed)) {
-    if (existsSync(path.join(app, from))) {
-      renameSync(path.join(app, from), path.join(app, to));
-    }
+/** Makes the app as its developer does, `vp dlx @basis/create NAME`, from the packed @basis/create: the creator copies
+ * the template, names the app and runs git init, before the install, so that `prepare` installs the app's hooks. */
+function makeApp(work: Work): void {
+  // First, since the environment names it, and pnpm refuses a pnpmfile it cannot find, vp dlx's install too.
+  writePnpmfile(work);
+  run(work.env, work.root, ["vp", "dlx", tarball(work, "create"), appName]);
+  if (!existsSync(path.join(work.app, ".git"))) {
+    throw new StageError(`@basis/create made no git repository at ${work.app}`);
   }
-  const manifest = path.join(app, "package.json");
-  const text = readFileSync(manifest, "utf8");
-  writeFileSync(manifest, text.replace(/"name": "[^"]*"/u, `"name": "${appName}"`));
 }
 
-/** Copies the packed template as `vp create` copies an org template, and makes it a git repository. */
-function makeApp(work: Work): void {
-  const unpacked = path.join(work.root, "create");
-  mkdirSync(unpacked);
-  run(work.env, work.root, ["tar", "-xzf", tarball(work, "create"), "-C", unpacked]);
-  cpSync(path.join(unpacked, "package/templates/app"), work.app, { recursive: true });
-  finishCopy(work.app);
-  writePnpmfile(work);
-  // Before the install, so that `prepare` installs the app's hooks.
-  git(work, "init", "--quiet", "--initial-branch=main");
-}
+const packStage: Stage = {
+  name: "pack",
+  run: (work): void => {
+    for (const name of ["ui", "parallax", "create"]) {
+      packPackage(name, work.tarballs);
+    }
+  },
+};
 
 const stages: readonly Stage[] = [
-  {
-    name: "pack",
-    run: (work): void => {
-      for (const name of ["ui", "parallax", "create"]) {
-        packPackage(name, work.tarballs);
-      }
-    },
-  },
   { name: "make", run: makeApp },
   {
     name: "install",
@@ -177,6 +158,7 @@ const stages: readonly Stage[] = [
   {
     name: "shot",
     run: (work): void => {
+      // With no vp dev running, so that shot starts its own, and must stop it for the stage to end.
       run(work.env, work.app, ["vp", "run", "shot", "--all", ...parameterRoutes]);
     },
   },
@@ -213,8 +195,8 @@ function seconds(since: number): string {
   return `${((performance.now() - since) / millisecondsInSecond).toFixed(1)} s`;
 }
 
-function prove(work: Work): string | undefined {
-  for (const stage of stages) {
+function prove(work: Work, all: readonly Stage[]): string | undefined {
+  for (const stage of all) {
     const started = performance.now();
     process.stdout.write(`\n== ${stage.name}\n`);
     try {
@@ -228,30 +210,42 @@ function prove(work: Work): string | undefined {
   return undefined;
 }
 
-/** A new temporary folder outside the workspace, for the tarballs and the app. */
-function newWork(): Work {
+/** A new temporary folder outside the workspace, for the app, and the tarballs unless `given` names their folder. */
+function newWork(given: string | undefined): Work {
   const root = mkdtempSync(path.join(tmpdir(), "basis-template-"));
   return {
     app: path.join(root, appName),
     env: appEnvironment(root),
     root,
-    tarballs: path.join(root, "tarballs"),
+    tarballs: given === undefined ? path.join(root, "tarballs") : path.resolve(given),
   };
+}
+
+/** The folder `--tarballs DIR` names, if the arguments give one. */
+function tarballsOption(args: readonly string[]): string | undefined {
+  const at = args.indexOf("--tarballs");
+  return at === -1 ? undefined : args[at + 1];
+}
+
+/** The stages to run: the pack's too, unless the tarballs were given. */
+function stagesFor(given: string | undefined): readonly Stage[] {
+  return given === undefined ? [packStage, ...stages] : stages;
 }
 
 function main(): void {
   const started = performance.now();
-  const work = newWork();
-  const failure = prove(work);
-  if (failure !== undefined) {
+  const given = tarballsOption(process.argv.slice(2));
+  const work = newWork(given);
+  const failure = prove(work, stagesFor(given));
+  if (failure === undefined) {
+    if (!process.argv.includes("--keep")) {
+      rmSync(work.root, { force: true, recursive: true });
+    }
+    process.stdout.write(`\nThe template passed every stage in ${seconds(started)}.\n`);
+  } else {
     process.stderr.write(`${failure}\n`);
     process.exitCode = 1;
-    return;
   }
-  if (!process.argv.includes("--keep")) {
-    rmSync(work.root, { force: true, recursive: true });
-  }
-  process.stdout.write(`\nThe template passed every stage in ${seconds(started)}.\n`);
 }
 
 main();
