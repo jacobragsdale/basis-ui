@@ -206,19 +206,19 @@ The orchestrator's, once every lane has landed:
 
 ## Status
 
-| Step | State       | Commits |
-| ---- | ----------- | ------- |
-| 7.1  | not started |         |
-| 7.2  | not started |         |
-| 7.3  | not started |         |
-| 7.4  | not started |         |
-| 7.5  | not started |         |
-| 7.6  | not started |         |
-| 7.7  | not started |         |
-| 7.8  | not started |         |
-| 7.9  | not started |         |
-| 7.10 | not started |         |
-| 7.11 | not started |         |
-| 7.12 | not started |         |
-| 7.13 | not started |         |
-| 7.14 | not started |         |
+| Step | State       | Commits                                                          |
+| ---- | ----------- | ---------------------------------------------------------------- |
+| 7.1  | done        | `342555c`, `9b7940c`, `a77b071`, `93a1bba`, `7380686`, `f045d96` |
+| 7.2  | done        | `3525da6`, `549406c`                                             |
+| 7.3  | in progress |                                                                  |
+| 7.4  | not started |                                                                  |
+| 7.5  | in progress |                                                                  |
+| 7.6  | in progress |                                                                  |
+| 7.7  | not started |                                                                  |
+| 7.8  | not started |                                                                  |
+| 7.9  | in progress |                                                                  |
+| 7.10 | not started |                                                                  |
+| 7.11 | not started |                                                                  |
+| 7.12 | in progress |                                                                  |
+| 7.13 | not started |                                                                  |
+| 7.14 | not started |                                                                  |
