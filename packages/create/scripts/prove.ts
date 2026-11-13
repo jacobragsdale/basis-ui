@@ -7,7 +7,7 @@
  * that fails prints one ERROR line naming it, and keeps the app. */
 
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readdirSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -212,7 +212,10 @@ function prove(work: Work, all: readonly Stage[]): string | undefined {
 
 /** A new temporary folder outside the workspace, for the app, and the tarballs unless `given` names their folder. */
 function newWork(given: string | undefined): Work {
-  const root = mkdtempSync(path.join(tmpdir(), "basis-template-"));
+  /* By its long name: a runner's TEMP can be an 8.3 short path, as C:\Users\RUNNER~1, and Vite then refuses the
+   * app's own node_modules as outside its allow list, which compares the long one. */
+  const temporary = realpathSync.native(tmpdir());
+  const root = mkdtempSync(path.join(temporary, "basis-template-"));
   return {
     app: path.join(root, appName),
     env: appEnvironment(root),
