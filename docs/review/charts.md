@@ -146,10 +146,19 @@ engine's (`parallax-engine`'s density), which t4 has been told.
 - The grid lets the wheel through at its ends; the chart has no equivalent.
 - Severity: polish. Confidence: confirmed by reading.
 
+Done in Charts: the wheel and the browser's keys pass to the page, and a drag that loses its pointer ends: the wheel is left to the page when the chart shows everything and it would zoom out
+further, which also no longer asks the engine for the same window; Ctrl, Cmd or Alt with the wheel or a key is the
+browser's (`browsers` and `wheelZoom` in `pointer-keys.ts`). `tests/browser/chart-pointer.test.tsx` checks which
+events the plot takes.
+
 **12. `packages/parallax/src/chart/scene-pointer.ts:158-171` and `:194-204`** — A drag ends only on `pointerup` or `pointercancel`; there is no `lostpointercapture` handler and no `event.buttons` check.
 
 - Scenario: capture is lost mid-pan (Alt-Tab or a Citrix focus change). `#drag` stays set and the chart pans under a plain hover until the next click.
 - Severity: polish. Confidence: plausible.
+
+Done in Charts: the wheel and the browser's keys pass to the page, and a drag that loses its pointer ends: `lostpointercapture` ends a drag as `pointercancel` does, and a move whose primary button is
+no longer down ends it as its `pointerup` would have; both are held in `tests/browser/chart-pointer.test.tsx`, which
+fail on the old code.
 
 **13. `packages/parallax/src/chart/model-pie.ts:66` and `:109-121`** — Hiding a slice rescales the rest, but each keeps the engine's share of the original total.
 
@@ -228,3 +237,7 @@ The defects cluster in three places the pixel-parity port could not catch:
 - A histogram or area on a log axis shows its smallest values, such as a bin of one row, where they had no height;
   a scatter's log axis fits its dots though one is at or below zero, and a density, which stays linear, says so.
   What to do: nothing.
+
+- Over a chart that shows everything, the wheel scrolls the page, and with Ctrl, Cmd or Alt the wheel and the keys
+  are the browser's (zooming the page, going back). A pan that loses its pointer, as to a remote desktop's change of
+  focus, ends. What to do: nothing.

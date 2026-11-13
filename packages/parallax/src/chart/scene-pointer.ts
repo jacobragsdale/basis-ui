@@ -5,9 +5,9 @@
 
 import type { DrawingEditor } from "./drawing-editor.ts";
 import type { ChartModel, Point, Scale } from "./model-types.ts";
-import { keyed, keys, zoomIn, zoomOut } from "./pointer-keys.ts";
+import { browsers, keyed, keys, wheelZoom } from "./pointer-keys.ts";
 import type { KeyAction } from "./pointer-keys.ts";
-import { panRange, zoomRange } from "./range.ts";
+import { panRange } from "./range.ts";
 import type { Range } from "./range.ts";
 import type { ChartZoom } from "./zoom.ts";
 
@@ -20,6 +20,7 @@ const listened = [
   "pointermove",
   "pointerup",
   "pointercancel",
+  "lostpointercapture",
   "pointerleave",
   "wheel",
   "click",
@@ -63,6 +64,12 @@ class ChartPointer implements EventListenerObject {
   #dragged = false;
   /** What each pointer event does. */
   readonly #pointerHandlers: Readonly<Partial<Record<string, (event: PointerEvent) => void>>> = {
+    // Capture lost mid-drag, as to a remote desktop's change of focus, ends the drag as a cancel does.
+    lostpointercapture: (event) => {
+      if (this.#drag !== null) {
+        this.#cancel(event);
+      }
+    },
     pointercancel: (event) => {
       this.#cancel(event);
     },
@@ -192,6 +199,10 @@ class ChartPointer implements EventListenerObject {
   }
 
   #move(event: PointerEvent): void {
+    // A drag whose button is no longer down missed its pointerup: it ends here, as the pointerup would have.
+    if (this.#drag !== null && event.buttons % 2 === 0) {
+      this.#up(event);
+    }
     const scene = this.#scene;
     const at = this.#local(event);
     scene.hoverAt(at);
@@ -251,26 +262,15 @@ class ChartPointer implements EventListenerObject {
     }
   }
 
-  /** Zooms around the pointer: up to zoom in, down to zoom out. */
   #wheel(event: WheelEvent): void {
-    const { zoom } = this.#scene;
-    const x = this.#scene.model()?.x ?? null;
-    const range = zoom.shown();
-    if (x === null || range === null || event.deltaY === 0) {
-      return;
-    }
-    event.preventDefault();
-    const factor = event.deltaY < 0 ? zoomIn : zoomOut;
-    const anchor = x.invert(this.#local(event).x);
-    zoom.schedule(zoomRange(range, { anchor, factor, full: this.#scene.extent() }));
-    zoom.settle("at rest");
+    const [x, full] = [this.#scene.model()?.x ?? null, this.#scene.extent()];
+    wheelZoom(event, { at: this.#local(event).x, full, x, zoom: this.#scene.zoom });
   }
 
-  /** Plus and minus zoom, the arrows pan, 0 shows everything, Delete removes the selected drawing, and Escape drops a
-   * drawing in progress or the selection, then the brush; an Escape with nothing to drop is left to the page, which
-   * restores a maximized chart with it. */
+  /** Plus and minus zoom, the arrows pan, 0 shows everything, Delete removes the selected drawing, Escape drops a
+   * drawing in progress, the selection, then the brush, or is left to the page; with Ctrl, Cmd or Alt, the browser's. */
   #key(event: KeyboardEvent): void {
-    const action = keys[event.key];
+    const action = browsers(event) ? undefined : keys[event.key];
     const range = this.#scene.zoom.shown();
     const mine = action !== undefined && range !== null && event.target === this.#plot;
     if (mine && this.#act(action, range)) {

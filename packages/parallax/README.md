@@ -573,7 +573,8 @@ plots change, however often the page builds them:
 | `label`                  | The chart's name for a screen reader, in place of what it says it draws                                                                                            |
 
 The wheel and `+` and `-` zoom, a drag and the arrows pan, a double-click and
-`0` show everything, Delete removes the selected drawing, and Escape drops a
+`0` show everything; once everything shows, the wheel scrolls the page, and with
+Ctrl, Cmd or Alt the wheel and the keys are the browser's; Delete removes the selected drawing, and Escape drops a
 drawing in progress, then the brush, then restores a maximized chart. The pointer, the wheel and the engine's
 frames redraw the canvas without a React render: the chart draws outside
 React, through its view's handle, and renders again only when its chrome
