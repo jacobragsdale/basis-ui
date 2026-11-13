@@ -412,9 +412,13 @@ the route's URL from the generated client, and `@basis/parallax`'s `useDataset` 
 before the last arrive:
 
 ```ts
-const trades = useDataset("trades", async () => arrowResponse(getTradesUrl()), {
-  primaryKey: "trade_id",
-});
+const trades = useDataset(
+  "trades",
+  async ({ signal }) => arrowResponse(getTradesUrl(), { signal }),
+  {
+    primaryKey: "trade_id",
+  },
+);
 ```
 
 Inside `BasisApp`, `arrowResponse` goes through the shell as a generated hook does: a network failure or a 502, 503 or

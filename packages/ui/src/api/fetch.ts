@@ -235,7 +235,8 @@ async function apiFetch<TResponse>(url: string, init: ApiRequestInit = {}): Prom
 }
 
 /** A dataset route's response, its Arrow body unread, for `@basis/parallax`'s `useDataset` to stream batch by batch:
- * `useDataset("trades", async () => arrowResponse(getTradesUrl()))`, with the URL from the generated client. It asks
+ * `useDataset("trades", async ({ signal }) => arrowResponse(getTradesUrl(), { signal }))`, with the URL from the
+ * generated client, and the signal that aborts the request once no component waits for the load. It asks
  * for Arrow under `/api` with the user's token, as the generated call does, whose `Blob` has arrived whole before the
  * engine sees a byte; a failure throws the same `ApiError`. Inside `BasisApp` it goes through the shell as a query does:
  * a failure that may pass is asked again, and the last is reported to telemetry and its sign-in problem answered. */
