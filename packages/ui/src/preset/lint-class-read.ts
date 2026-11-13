@@ -92,7 +92,26 @@ function returnedBy(reading: Reading, written: ESTree.Node): readonly ESTree.Nod
   return functionTypes.has(helper.type) ? (reading.returns.get(helper) ?? []) : undefined;
 }
 
-/** What a call gives as classes: `cn`'s arguments, or the values a helper of this file returns. */
+/** The class string `node` is, if it is one written whole. */
+function stringOf(node: ESTree.Node): string | undefined {
+  if (node.type === "Literal") {
+    return typeof node.value === "string" ? node.value : undefined;
+  }
+  return node.type === "TemplateLiteral" && node.expressions.length === 0
+    ? node.quasis.map((quasi) => quasi.value.cooked ?? quasi.value.raw).join("")
+    : undefined;
+}
+
+/** The arguments of a call that are class strings written whole, as `cell("dark:bg-muted")` passes one: a helper that
+ * returns what it is passed returns them, and a value passed in is read where it is written. */
+function writtenArguments(node: ESTree.CallExpression): readonly ESTree.Node[] {
+  return node.arguments.filter(
+    (argument) => argument.type !== "SpreadElement" && stringOf(unwrapped(argument)) !== undefined,
+  );
+}
+
+/** What a call gives as classes: `cn`'s arguments, or the values a helper of this file returns, with the class strings
+ * the call passes it. */
 function callParts(
   reading: Reading,
   node: ESTree.CallExpression,
@@ -107,7 +126,8 @@ function callParts(
     );
   }
   const origin = originOf(reading.sourceCode, callee);
-  return origin.kind === "written" ? returnedBy(reading, origin.node) : undefined;
+  const returned = origin.kind === "written" ? returnedBy(reading, origin.node) : undefined;
+  return returned === undefined ? undefined : [...returned, ...writtenArguments(node)];
 }
 
 /** An object's keys, as `cn` reads them, each a class: a written one is reported found, a computed one returned. */
@@ -177,16 +197,6 @@ function partsOf(reading: Reading, node: ESTree.Node): readonly ESTree.Node[] | 
     return callParts(reading, node);
   }
   return choicesOf(node) ?? containedBy(reading, node) ?? referenceParts(reading, node);
-}
-
-/** The class string `node` is, if it is one written whole. */
-function stringOf(node: ESTree.Node): string | undefined {
-  if (node.type === "Literal") {
-    return typeof node.value === "string" ? node.value : undefined;
-  }
-  return node.type === "TemplateLiteral" && node.expressions.length === 0
-    ? node.quasis.map((quasi) => quasi.value.cooked ?? quasi.value.raw).join("")
-    : undefined;
 }
 
 /** Whether `node` is a class string or one built at run time, which it reports. */

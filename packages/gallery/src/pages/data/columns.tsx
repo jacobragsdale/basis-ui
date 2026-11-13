@@ -25,6 +25,7 @@ const positionColumns: readonly DataTableColumn<Position>[] = [
     header: "CUSIP",
     hideable: false,
     id: "cusip",
+    identifier: true,
     value: (row) => row.cusip,
   },
   { header: "Security", id: "security", value: (row) => row.security },

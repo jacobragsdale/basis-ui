@@ -168,4 +168,10 @@ describe("DataTable sorting", () => {
       cusips.toSorted((left, right) => (left < right ? -1 : 1)),
     );
   });
+
+  test("the page's positions mark their CUSIP column an identifier, as an app's should", () => {
+    expect(positionColumns.find((column) => column.id === "cusip")).toMatchObject({
+      identifier: true,
+    });
+  });
 });

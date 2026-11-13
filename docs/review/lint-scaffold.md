@@ -243,3 +243,37 @@ The area is better than its age suggests: modules are small and pure, every fail
 - A generated handler's answer passes the generated client's own schema for every string format the client checks:
   `time`, `time-local`, `date-time-local` and a `pattern` were mocked with text the client refused. What to do: run
   `vp run client-pull`.
+
+## Sweep
+
+What the other lanes' reports left, given to the `template` lane by the orchestrator after step 7.8, each with its
+test. Done in Sweep: cn's look-alikes are refused, a helper's class arguments are read, review counts comments as
+verify does:
+
+1. `vp run sync --check` refuses `cn`, `clsx`, `classnames` and `tailwind-merge` as an app's dependencies by name,
+   "since classes are merged with cn from @basis/ui", as it refuses the libraries the design decided against
+   (`src/preset/dependencies.ts`; `tests/dependencies.test.ts`).
+2. `basis/theme-classes` reads the class strings a call passes a helper of the same file that returns classes, as
+   `shade("dark:bg-accent")`, and reports them at the call (`src/preset/lint-class-read.ts`). It reads only an
+   argument written whole as a string, so a variable passed in is read where it is written, as before, and a helper
+   of data, as `cell(row.price)`, raises nothing new. `tests/preset-errors-classes.test.ts` gains the evasion, which
+   failed before the change, and an ordinary `padded("text-gain")`, which passes.
+3. `vp run review`'s count of suppressions reads each file's comments through the parser, as verify's suppressions
+   stage does: `git grep -l` finds the files at each commit where a directive's name appears, and `git show` gives
+   each one's text to `suppressionsInText`. A directive's name in a string is no longer counted, and one on a block
+   comment's later line is (`tests/framework-tasks.test.ts`, which failed before). `suppressionInLine`, which read
+   `git grep`'s lines as text, is removed.
+4. The gallery's positions CUSIP column (`packages/gallery/src/pages/data/columns.tsx`) says `identifier: true`, held
+   by a test in `data-table-sorting.test.tsx`.
+
+Changelog:
+
+- `vp run sync --check` refuses `cn`, `clsx`, `classnames` and `tailwind-merge` as dependencies, and names `cn` from
+  `@basis/ui` as the fix. What to do: an app that lists one removes it with `vp remove NAME` and imports `cn` from
+  `@basis/ui`.
+
+- `basis/theme-classes` reads the class strings a call passes a helper of the same file, as `cell("dark:bg-muted")`,
+  and reports a class it refuses at the call. What to do: fix what the lint now reports.
+
+- `vp run review` counts the comments that turn a check off as `vp run verify` does, through the parser: a directive
+  quoted in a string is not counted, and one on a block comment's later line is. What to do: nothing.

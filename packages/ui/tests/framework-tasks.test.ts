@@ -232,6 +232,20 @@ describe("vp run review", () => {
     );
   });
 
+  test("reads comments as the parser gives them: one in a string is none, one on a block's later line counts", async () => {
+    write("src/hint.ts", 'export const hint = "// @ts-ignore is refused";\n');
+    write(
+      "src/page.tsx",
+      "/*\n * Why the value is a string.\n * @ts-ignore\n */\nexport const page = 1;\n",
+    );
+    git("add", "--all");
+    git("commit", "--quiet", "-m", "Comments");
+    await recordCheck(app);
+    expect(run("review", "main").stdout).toContain(
+      "### Suppressions\n\n1 comment in `src` turns a check off, against 0 on main.\n\n- `src/page.tsx:1` `@ts-ignore`, refused\n",
+    );
+  });
+
   test("records no check while the worktree has uncommitted changes", async () => {
     write("notes.txt", "uncommitted\n");
     expect(await recordCheck(app)).toMatch(

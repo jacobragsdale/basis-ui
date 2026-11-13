@@ -131,19 +131,6 @@ async function suppressionsInText(file: string, text: string): Promise<readonly 
   });
 }
 
-const opening = /\/[/*]/u;
-
-/** The suppression in one line of `file`, line `line`, as `git grep` prints it, in the first comment the line opens:
- * a block comment may close on a later line. */
-function suppressionInLine(file: string, line: number, text: string): readonly Found[] {
-  const start = opening.exec(text);
-  const comment = start === null ? "" : text.slice(start.index + 2).replace(/\*\/[\s\S]*$/u, "");
-  const suppression = start === null ? undefined : suppressionIn(comment);
-  return suppression === undefined
-    ? []
-    : [{ directive: suppression.directive, file, line, refusal: refusal(suppression, file) }];
-}
-
 const sourceFile = /\.[cm]?[jt]sx?$/u;
 const generated = "src/api/generated/";
 
@@ -194,7 +181,6 @@ export {
   refusal,
   suppressible,
   suppressionIn,
-  suppressionInLine,
   suppressionsIn,
   suppressionsInText,
   suppressionsTask,

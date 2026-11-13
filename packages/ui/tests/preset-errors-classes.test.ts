@@ -26,6 +26,10 @@ function toneOf(pnl: number): string {
   return pnl < 0 ? "text-loss" : "text-gain";
 }
 
+function padded(tone: string): string {
+  return cn("p-2", tone);
+}
+
 function Panel({ className, children }: { readonly className?: string; readonly children: string }): ReactElement {
   return <div className={cn("p-2", className)}>{children}</div>;
 }
@@ -40,6 +44,7 @@ function Rows({ rows, selected, size }: { readonly rows: readonly Row[]; readonl
             <td className={cn("tabular-nums", row.pnl < 0 && "text-loss")}>{row.pnl}</td>
             <td className={tones[row.pnl < 0 ? "loss" : "gain"]}>{row.id}</td>
             <td className={toneOf(row.pnl)}>{Math.floor(index / size)}</td>
+            <td className={padded("text-gain")}>{row.id}</td>
             <td className={cell}>
               <Panel className="mt-2">{row.id}</Panel>
             </td>
@@ -74,6 +79,10 @@ function Panel({ className }: { readonly className: string }): ReactElement {
   return <div className={className} />;
 }
 
+function shade(tone: string): string {
+  return tone;
+}
+
 function Page({ kind }: { readonly kind: "bad" | "good" }): ReactElement {
   const fromHook = useMemo(() => "p-2", []);
   return (
@@ -81,6 +90,7 @@ function Page({ kind }: { readonly kind: "bad" | "good" }): ReactElement {
       <div className={tone[kind]} />
       <div className={status[kind === "bad" ? "fill" : "fill"]} />
       <div className={toneOf(kind === "bad")} />
+      <div className={shade("dark:bg-accent")} />
       <div className={cellClasses} />
       <div className={nested.row.cell} />
       <div {...{ className: "invert" }} />
@@ -152,6 +162,10 @@ describe("basis/theme-classes on a class written away from its element", () => {
     expect(at(rule, '"text-white" as string')).toStrictEqual([
       `ERROR "text-white" ${rawColourText}`,
     ]);
+  });
+
+  test("reads the classes a call passes a helper of the file that returns them", () => {
+    expect(at(rule, 'shade("dark:bg-accent")')).toStrictEqual([darkMode("dark:bg-accent")]);
   });
 
   test("reads the classes an app's own component is given, as a plain element's", () => {

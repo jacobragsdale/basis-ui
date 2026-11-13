@@ -30,6 +30,9 @@ const rejected: Readonly<Record<string, string>> = {
   axios: "the API is called through the generated client",
   "big.js": "every number is a double, totalled with sumPrecise from @basis/ui/numbers",
   "bignumber.js": "every number is a double, totalled with sumPrecise from @basis/ui/numbers",
+  classnames: "classes are merged with cn from @basis/ui",
+  clsx: "classes are merged with cn from @basis/ui",
+  cn: "classes are merged with cn from @basis/ui",
   "date-fns": "dates are Temporal's and @basis/ui/dates'",
   dayjs: "dates are Temporal's and @basis/ui/dates'",
   "decimal.js": "every number is a double, totalled with sumPrecise from @basis/ui/numbers",
@@ -47,6 +50,7 @@ const rejected: Readonly<Record<string, string>> = {
   shadcn: "the components are @basis/ui's, which no app copies",
   sonner: "toasts are @basis/ui's toast",
   storybook: "the components' pictures are @basis/ui's gallery's",
+  "tailwind-merge": "classes are merged with cn from @basis/ui",
   "typescript-eslint": "the lint is Oxlint's, which vp check runs",
   underscore: "the helpers are @basis/ui/utils' and the native APIs'",
 };

@@ -16,7 +16,7 @@ import { z } from "zod";
 import { excludeAdvice, git, refusedClone, uncommittedList } from "./git.ts";
 import { ignored, manifestSchema } from "./installed.ts";
 import { TaskError } from "./task-error.ts";
-import { suppressionInLine, turningOff } from "./suppressions.ts";
+import { suppressionsInText, turningOff } from "./suppressions.ts";
 import type { Found } from "./suppressions.ts";
 import { installedUi } from "./sync.ts";
 
@@ -201,11 +201,15 @@ function headSection(
   ].join("\n");
 }
 
-/** The comments that turn a check off in src/ at `commit`, but the generated client's, as `git grep` finds them. */
-function suppressionsAt(root: string, commit: string): readonly Found[] {
-  const lines = git(root, [
+const sourceFile = /\.[cm]?[jt]sx?$/u;
+
+/** The comments that turn a check off in src/ at `commit`, but the generated client's, read as verify's stage reads
+ * them, through the parser, so a directive's name in a string is no comment and one on a block comment's later line
+ * counts: in each source file where `git grep` finds a directive's name. */
+async function suppressionsAt(root: string, commit: string): Promise<readonly Found[]> {
+  const matched = git(root, [
     "grep",
-    "-n",
+    "-l",
     "-I",
     "-E",
     String.raw`(oxlint|eslint)-disable|@ts-(expect-error|ignore|nocheck)`,
@@ -214,19 +218,27 @@ function suppressionsAt(root: string, commit: string): readonly Found[] {
     "src",
     ":(exclude)src/api/generated",
   ]);
-  return (lines ?? "").split("\n").flatMap((entry) => {
-    const [file = "", line = "", ...text] = entry.slice(commit.length + 1).split(":");
-    return suppressionInLine(file, Number(line), text.join(":"));
-  });
+  const files = (matched ?? "")
+    .split("\n")
+    .map((entry) => entry.slice(commit.length + 1))
+    .filter((file) => sourceFile.test(file));
+  const found = await Promise.all(
+    files.map(async (file) =>
+      suppressionsInText(file, git(root, ["show", `${commit}:${file}`]) ?? ""),
+    ),
+  );
+  return found.flat();
 }
 
 /** How many comments turn a check off, on the branch and on the one it merges into, and where each is. */
-function suppressionsSection(
+async function suppressionsSection(
   root: string,
   base: string,
   commits: readonly [string, string],
-): string {
-  const [before = [], after = []] = commits.map((commit) => suppressionsAt(root, commit));
+): Promise<string> {
+  const [before = [], after = []] = await Promise.all(
+    commits.map(async (commit) => suppressionsAt(root, commit)),
+  );
   const where = after.map(
     ({ directive, file, line, refusal: refused }) =>
       `- \`${file}:${String(line)}\` \`${directive}\`${refused === undefined ? "" : ", refused"}`,
@@ -261,7 +273,7 @@ async function review(root: string, args: readonly string[]): Promise<string> {
     headSection(root, record, [base, mergeBase]),
     versionsSection(root, base, commits),
     clientSection(root, commits),
-    suppressionsSection(root, base, commits),
+    await suppressionsSection(root, base, commits),
     screenshotsSection,
   ].join("\n\n");
 }
