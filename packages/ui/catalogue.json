@@ -18411,13 +18411,6 @@
     {
       "kind": "hook",
       "module": "@basis/parallax",
-      "name": "useParallaxClient",
-      "purpose": "The page's engine, from the nearest `ParallaxProvider`. Throws without one.",
-      "signature": "useParallaxClient(): ParallaxClient"
-    },
-    {
-      "kind": "hook",
-      "module": "@basis/parallax",
       "name": "useDataset",
       "purpose": "Loads a table into the page's engine as `name`, from `source`, and reports the load's state. It loads again when `name`, `source` or the options change, so give it a stable source: bytes held in state or a query, or a function the React Compiler keeps. A null source waits, as `idle`. Views of the dataset, opened with `useView`, may open while it loads: they wait for its first rows. A first load shows as it arrives, from a source that streams: its views open on its first rows and see more each time the rows read have grown fourfold, while `progress` says how many have been read of how many are expected, and a grid's status bar how many are still to come. Sorts, filters and pivots apply to the rows so far and update as more arrive; a chart waits for the whole load, and an export is refused until it is done. A reload is read whole and checked before anything changes: its views keep the rows before it until it applies, and a refused reload leaves them so, while `progress` says how far it has read. When the engine runs out of memory it starts again empty and fails every view; a dataset that was loaded then loads its source again, and its views reopen. A dataset whose load was under way, most likely the one that ran the engine out of memory, fails with the reason until `reload` is called or the source changes, as does every dataset once the engine keeps stopping. Components that ask for the same name and the same source share one load, so a page whose cards and grid show one dataset fetches it once, and `reload` reloads it for all of them. The name is the page's key for the rows: two components that give it different data both fail, saying so, so a dataset that takes a parameter puts it in the name, as `` `positions-${fund}` ``. A function source is given `{ signal }`, which aborts once nothing waits for the load, when the source changes again or the last component unmounts first: pass it to the fetch. When the last component that shows a dataset unmounts, the engine drops it and its memory goes to later loads; once the engine's memory, which never shrinks, has grown past what its tables need, it starts again with what is still shown, which loads again as after a restart.",
       "signature": "useDataset<TRow extends AnyRow = AnyRow>(name: string, source: DatasetSource | null, options: LoadOptions = {}): Dataset<TRow>",
@@ -18452,13 +18445,6 @@
       "name": "drillLayout",
       "purpose": "A flat view of the rows behind one group: the pivot's filters plus one filter per group level and, for a cell under column pivots, one per pivot level, with the pivot's formats. An empty path is the grand total.",
       "signature": "drillLayout(layout: Layout, path: readonly LayoutScalar[], split: readonly LayoutScalar[] | null = null): Layout"
-    },
-    {
-      "kind": "class",
-      "module": "@basis/parallax",
-      "name": "ParallaxClient",
-      "purpose": "The page's engine and its worker, started on first use.",
-      "signature": "class ParallaxClient"
     },
     {
       "kind": "constant",
@@ -20908,6 +20894,83 @@
       "purpose": "A decoded, checked chart frame."
     },
     {
+      "extends": [
+        "Message<\"parallax.v1.ChartMeasure\">"
+      ],
+      "fields": [
+        {
+          "description": "",
+          "name": "viewId",
+          "optional": false,
+          "type": "number"
+        },
+        {
+          "description": "False when the series has no row with a price.",
+          "name": "found",
+          "optional": false,
+          "type": "boolean"
+        },
+        {
+          "description": "The rows' x values, and their axis positions.",
+          "name": "fromX",
+          "optional": false,
+          "type": "string"
+        },
+        {
+          "description": "",
+          "name": "toX",
+          "optional": false,
+          "type": "string"
+        },
+        {
+          "description": "",
+          "name": "fromPosition",
+          "optional": false,
+          "type": "number"
+        },
+        {
+          "description": "",
+          "name": "toPosition",
+          "optional": false,
+          "type": "number"
+        },
+        {
+          "description": "Their prices, in the price column's format.",
+          "name": "fromValue",
+          "optional": false,
+          "type": "string"
+        },
+        {
+          "description": "",
+          "name": "toValue",
+          "optional": false,
+          "type": "string"
+        },
+        {
+          "description": "The later price less the earlier, in the price's format, and as a percentage of the earlier; \"\" when the earlier is zero.",
+          "name": "change",
+          "optional": false,
+          "type": "string"
+        },
+        {
+          "description": "",
+          "name": "percent",
+          "optional": false,
+          "type": "string"
+        },
+        {
+          "description": "Rows with a price from the earlier to the later, counting the later and not the earlier: the bars between them.",
+          "name": "rows",
+          "optional": false,
+          "type": "bigint"
+        }
+      ],
+      "exported": false,
+      "module": "@basis/parallax",
+      "name": "ChartMeasure",
+      "purpose": "What changed between two rows of a chart's series, all as the engine's text."
+    },
+    {
       "fields": [
         {
           "description": "Called with the layout the chart changed: a series hidden or shown, a zoom, a drawing. Without it the chart keeps its own changes until its `layout` changes.",
@@ -21156,48 +21219,10 @@
           "type": "number"
         }
       ],
-      "exported": false,
+      "exported": true,
       "module": "@basis/parallax",
       "name": "ChartWindow",
       "purpose": "The part of a chart to reduce and the plot it fills, in pixels. Without an x range, the whole data."
-    },
-    {
-      "fields": [
-        {
-          "description": "The WebAssembly memory past which a worker holding less than half of it is replaced once idle: 1 GiB by default.",
-          "name": "restartAboveBytes",
-          "optional": true,
-          "type": "number"
-        },
-        {
-          "description": "The most restarts recovered from in a row, each within `recoveryWindowMs` of the one before; 2 by default.",
-          "name": "maxRecoveries",
-          "optional": true,
-          "type": "number"
-        },
-        {
-          "description": "Five minutes by default: a restart that long after the one before starts the count again.",
-          "name": "recoveryWindowMs",
-          "optional": true,
-          "type": "number"
-        },
-        {
-          "description": "The clock, in milliseconds; `performance.now()` by default.",
-          "name": "now",
-          "optional": true,
-          "type": "() => number"
-        },
-        {
-          "description": "Never starts a worker, as in a Node DOM, which has no Web Worker: every load and view waits, and a dataset's source is never called.",
-          "name": "inert",
-          "optional": true,
-          "type": "boolean"
-        }
-      ],
-      "exported": true,
-      "module": "@basis/parallax",
-      "name": "ClientOptions",
-      "purpose": "How the client counts restarts and gives memory back, which tests change."
     },
     {
       "extends": [
@@ -23457,6 +23482,71 @@
       "purpose": "Arrow IPC stream bytes to load as a dataset: whole, the buffer moved to the worker with the message, or null when a response's body follows in `load-bytes` as it arrives."
     },
     {
+      "extends": [
+        "Omit<Message<\"parallax.v1.ChartMeasure\">, \"$typeName\" | \"$unknown\" | \"viewId\" | \"found\" | \"rows\">"
+      ],
+      "fields": [
+        {
+          "description": "The rows' x values, and their axis positions.",
+          "name": "fromX",
+          "optional": false,
+          "type": "string"
+        },
+        {
+          "description": "",
+          "name": "toX",
+          "optional": false,
+          "type": "string"
+        },
+        {
+          "description": "",
+          "name": "fromPosition",
+          "optional": false,
+          "type": "number"
+        },
+        {
+          "description": "",
+          "name": "toPosition",
+          "optional": false,
+          "type": "number"
+        },
+        {
+          "description": "Their prices, in the price column's format.",
+          "name": "fromValue",
+          "optional": false,
+          "type": "string"
+        },
+        {
+          "description": "",
+          "name": "toValue",
+          "optional": false,
+          "type": "string"
+        },
+        {
+          "description": "The later price less the earlier, in the price's format, and as a percentage of the earlier; \"\" when the earlier is zero.",
+          "name": "change",
+          "optional": false,
+          "type": "string"
+        },
+        {
+          "description": "",
+          "name": "percent",
+          "optional": false,
+          "type": "string"
+        },
+        {
+          "description": "",
+          "name": "rows",
+          "optional": false,
+          "type": "number"
+        }
+      ],
+      "exported": true,
+      "module": "@basis/parallax",
+      "name": "Measurement",
+      "purpose": "What changed between two rows of a chart's series, as the engine measured and wrote it."
+    },
+    {
       "fields": [
         {
           "description": "",
@@ -23790,32 +23880,6 @@
       "module": "@basis/parallax",
       "name": "ResolvedScheme",
       "purpose": "A scheme as drawn."
-    },
-    {
-      "fields": [
-        {
-          "description": "Why the engine stopped, which every view that was open has failed with.",
-          "name": "reason",
-          "optional": false,
-          "type": "string"
-        },
-        {
-          "description": "Whether to load the data again and reopen the views; false once the engine keeps stopping.",
-          "name": "recover",
-          "optional": false,
-          "type": "boolean"
-        },
-        {
-          "description": "Whether the restart was planned, to give back the memory of tables the page unloaded, rather than a trap: no load of the engine before it ran it out of memory, so every dataset loads again.",
-          "name": "planned",
-          "optional": false,
-          "type": "boolean"
-        }
-      ],
-      "exported": true,
-      "module": "@basis/parallax",
-      "name": "Restart",
-      "purpose": "A restart, as the client's listeners hear of it."
     },
     {
       "definition": "\"total\" | \"group\" | \"leaf\" | \"other\" | \"row\"",
@@ -24674,6 +24738,98 @@
       "module": "@basis/parallax",
       "name": "View",
       "purpose": "A view as `useView` returns it."
+    },
+    {
+      "fields": [
+        {
+          "description": "",
+          "name": "id",
+          "optional": false,
+          "type": "number"
+        },
+        {
+          "description": "`true` once the view is closed.",
+          "name": "isClosed",
+          "optional": false,
+          "type": "boolean"
+        },
+        {
+          "description": "The newest layout the view was opened or updated with, whether sent yet or waiting behind another update.",
+          "name": "layoutJson",
+          "optional": false,
+          "type": "string"
+        },
+        {
+          "description": "The most recent window asked for, whether answered yet or not.",
+          "name": "requested",
+          "optional": false,
+          "type": "() => Viewport | null"
+        },
+        {
+          "description": "The newest window asked for, answered or not, which a layout update is answered with; null before the first.",
+          "name": "latestViewport",
+          "optional": false,
+          "type": "() => Viewport | null"
+        },
+        {
+          "description": "Asks for a window of rows and data columns.",
+          "name": "setViewport",
+          "optional": false,
+          "type": "(viewport: Viewport) => void"
+        },
+        {
+          "description": "Asks for a chart's reduction; a newer window replaces any waiting one.",
+          "name": "setChartWindow",
+          "optional": false,
+          "type": "(window: ChartWindow) => void"
+        },
+        {
+          "description": "Fetches one window without moving the viewport, for copying. At most 1,000,000 cells.",
+          "name": "fetch",
+          "optional": false,
+          "type": "(viewport: Viewport) => Promise<FrameData>"
+        },
+        {
+          "description": "Lists a column's values, with the view's other filters applied, for a filter pick-list.",
+          "name": "distinctValues",
+          "optional": false,
+          "type": "(column: string, search: string, limit: number) => Promise<DistinctValues>"
+        },
+        {
+          "description": "Measures a chart between two axis positions; null when the engine found no row to measure.",
+          "name": "measure",
+          "optional": false,
+          "type": "(from: number, to: number, series?: string) => Promise<Measurement | null>"
+        },
+        {
+          "description": "Replaces the view's layout, answered with the window `window` gives, if any.",
+          "name": "update",
+          "optional": false,
+          "type": "(layoutJson: string, window?: (() => Viewport | null) | null) => void"
+        },
+        {
+          "description": "The layout the view was opened or last updated with at `configVersion`, if it is still remembered.",
+          "name": "layoutAt",
+          "optional": false,
+          "type": "(configVersion: bigint) => string | undefined"
+        },
+        {
+          "description": "Expands or collapses the group at `path`.",
+          "name": "setExpanded",
+          "optional": false,
+          "type": "(path: readonly (string | number | boolean | null)[], expanded: boolean) => void"
+        },
+        {
+          "description": "Closes the view. Requests still waiting fail.",
+          "name": "close",
+          "optional": false,
+          "type": "() => void"
+        }
+      ],
+      "exported": true,
+      "module": "@basis/parallax",
+      "name": "ViewHandle",
+      "purpose": "One open view, as an app's code reaches it through `useView`'s `handle`: what it may ask of the view."
     },
     {
       "extends": [

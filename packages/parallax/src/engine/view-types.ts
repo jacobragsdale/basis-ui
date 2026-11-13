@@ -124,6 +124,37 @@ function sameChartWindow(first: ChartWindow, second: ChartWindow): boolean {
   );
 }
 
+/** One open view, as an app's code reaches it through `useView`'s `handle`: what it may ask of the view. */
+interface ViewHandle {
+  readonly id: number;
+  /** `true` once the view is closed. */
+  readonly isClosed: boolean;
+  /** The newest layout the view was opened or updated with, whether sent yet or waiting behind another update. */
+  readonly layoutJson: string;
+  /** The most recent window asked for, whether answered yet or not. */
+  requested: () => Viewport | null;
+  /** The newest window asked for, answered or not, which a layout update is answered with; null before the first. */
+  latestViewport: () => Viewport | null;
+  /** Asks for a window of rows and data columns. */
+  setViewport: (viewport: Viewport) => void;
+  /** Asks for a chart's reduction; a newer window replaces any waiting one. */
+  setChartWindow: (window: ChartWindow) => void;
+  /** Fetches one window without moving the viewport, for copying. At most 1,000,000 cells. */
+  fetch: (viewport: Viewport) => Promise<FrameData>;
+  /** Lists a column's values, with the view's other filters applied, for a filter pick-list. */
+  distinctValues: (column: string, search: string, limit: number) => Promise<DistinctValues>;
+  /** Measures a chart between two axis positions; null when the engine found no row to measure. */
+  measure: (from: number, to: number, series?: string) => Promise<Measurement | null>;
+  /** Replaces the view's layout, answered with the window `window` gives, if any. */
+  update: (layoutJson: string, window?: (() => Viewport | null) | null) => void;
+  /** The layout the view was opened or last updated with at `configVersion`, if it is still remembered. */
+  layoutAt: (configVersion: bigint) => string | undefined;
+  /** Expands or collapses the group at `path`. */
+  setExpanded: (path: readonly (string | number | boolean | null)[], expanded: boolean) => void;
+  /** Closes the view. Requests still waiting fail. */
+  close: () => void;
+}
+
 export { chartWindowMessage, gridWindow, sameChartWindow, sameViewport };
 export type {
   ChartWindow,
@@ -131,6 +162,7 @@ export type {
   DistinctValues,
   Measurement,
   ViewChannel,
+  ViewHandle,
   ViewListener,
   Viewport,
 };

@@ -11,7 +11,7 @@ import { FrameError } from "#frame/readers.ts";
 import { ClientMessageSchema, ServerMessageSchema } from "#proto/parallax_pb.ts";
 import type { ChartFrame, Frame, ServerMessage } from "#proto/parallax_pb.ts";
 
-import { ViewHandle } from "./view.ts";
+import { OpenView } from "./view.ts";
 import type { ClientBody, ViewChannel, ViewListener } from "./view-types.ts";
 
 /** What the engine sends a view besides its frames and errors. */
@@ -49,7 +49,7 @@ function decoded<TEncoded, TFrame>(
 /** A protocol connection over one transport. */
 class Connection implements ViewChannel {
   readonly #transport: Transport;
-  readonly #views = new Map<number, ViewHandle>();
+  readonly #views = new Map<number, OpenView>();
   readonly #errors: ((message: string) => void)[] = [];
   #nextRequest = firstRequest;
   #nextView = 1;
@@ -65,10 +65,10 @@ class Connection implements ViewChannel {
   }
 
   /** Opens a view of `dataset` with a layout document. */
-  public open(dataset: string, layoutJson: string, listener: ViewListener): ViewHandle {
+  public open(dataset: string, layoutJson: string, listener: ViewListener): OpenView {
     const id = this.#nextView;
     this.#nextView += 1;
-    const view = new ViewHandle(id, this, listener);
+    const view = new OpenView(id, this, listener);
     view.opened(layoutJson);
     this.#views.set(id, view);
     this.send({ case: "openView", value: { dataset, layoutJson, viewId: id } });

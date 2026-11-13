@@ -5,7 +5,7 @@ import { fromBinary } from "@bufbuild/protobuf";
 import { vi } from "vite-plus/test";
 
 import { Connection } from "#engine/connection.ts";
-import type { ViewHandle } from "#engine/view.ts";
+import type { OpenView } from "#engine/view.ts";
 import type { Viewport } from "#engine/view-types.ts";
 import type { ChartFrameData } from "#frame/chart-data.ts";
 import type { FrameData } from "#frame/frame.ts";
@@ -20,7 +20,7 @@ interface Recorded {
 
 /** An open view and what it sent and received. */
 interface Opened extends Recorded {
-  readonly view: ViewHandle;
+  readonly view: OpenView;
   readonly frames: FrameData[];
   readonly charts: ChartFrameData[];
   readonly errors: string[];

@@ -4,7 +4,7 @@
 // The React layer.
 export { ParallaxProvider, type ParallaxProviderProps } from "./react/provider.tsx";
 export { PerformanceOverlay } from "./tools/performance-overlay.tsx";
-export { useParallaxClient, type ParallaxThemeState } from "./react/context.ts";
+export type { ParallaxThemeState } from "./react/context.ts";
 export {
   useDataset,
   type Dataset,
@@ -49,15 +49,10 @@ export { Pivot, type PivotProps } from "./pivot/pivot.tsx";
 export { drillLayout } from "./pivot/drill.ts";
 
 // The engine, its worker and its protocol.
-export {
-  ParallaxClient,
-  type ClientOptions,
-  type Restart,
-  type WorkerSource,
-} from "./engine/client.ts";
+export type { WorkerSource } from "./engine/client.ts";
 export type { WorkerPort } from "./engine/port.ts";
 export type { ViewHandle } from "./engine/view.ts";
-export type { DistinctValues, Viewport } from "./engine/view-types.ts";
+export type { ChartWindow, DistinctValues, Measurement, Viewport } from "./engine/view-types.ts";
 export {
   maxArrowBytes,
   maxRows,

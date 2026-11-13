@@ -13,11 +13,12 @@ function describe(error: unknown): string {
 }
 
 /** A response's length, when it says it and its body arrives as it was sent: a compressed body's `Content-Length`
- * counts the bytes before they are decompressed. */
+ * counts the bytes before they are decompressed. From another origin, `Content-Encoding` reads as absent unless the
+ * API exposes it, so only one that says `identity` counts as sent as it is. */
 function contentLength(response: Response): number | null {
   const encoding = response.headers.get("content-encoding");
   const length = Number(response.headers.get("content-length") ?? Number.NaN);
-  const plain = encoding === null || encoding === "identity";
+  const plain = encoding === "identity" || (encoding === null && response.type !== "cors");
   return plain && Number.isSafeInteger(length) && length >= 0 ? length : null;
 }
 

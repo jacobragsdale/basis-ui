@@ -594,7 +594,7 @@ While a load is under way, `progress` says where it stands:
 | Field          | What it says                                                                                                                         |
 | -------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
 | `rows`         | The rows read so far                                                                                                                 |
-| `expectedRows` | The rows the load brings: counted when its bytes came whole, estimated from the response's `Content-Length` while it streams, or null |
+| `expectedRows` | The rows the load brings: counted when its bytes came whole, estimated from the response's `Content-Length` while it streams, or null; from another origin, only when the API exposes `Content-Encoding` as `identity`, since a compressed body's length is not its size |
 | `estimated`    | Whether `expectedRows` is an estimate                                                                                                |
 | `shown`        | Whether the rows so far show: a first load's do; a reload's views keep the rows before it until it has all arrived and applies whole |
 

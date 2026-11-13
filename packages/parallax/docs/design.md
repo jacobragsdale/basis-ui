@@ -860,8 +860,9 @@ step 2.6, and step 2.7 deleted that layer; its README has the API.
 - `<ParallaxProvider worker>` starts the engine's worker for the tree inside it,
   and ends it when it unmounts.
 - `useDataset` loads the app's data, and `useView` opens a view of it, which
-  the components build on; `useParallaxClient` offers the engine's operations
-  to code.
+  the components build on. The engine's client, and `useParallaxClient`, are
+  in `@basis/parallax/internals`: closing it, or loading and unloading behind
+  the hooks' backs, would leave them showing what the engine no longer holds.
 - The npm package ships the WebAssembly engine and its worker built in; the
   app's bundler bundles the worker from `@basis/parallax/worker?worker` with
   the engine beside it. The worker starts when the app first loads data or a

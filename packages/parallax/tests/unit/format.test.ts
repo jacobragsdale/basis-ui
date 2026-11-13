@@ -45,6 +45,9 @@ describe(exactDecimal, () => {
     [123_456_789_012n, 2, "1234567890.12"],
     [-(10n ** 20n), 2, "-1000000000000000000.00"],
     [42n, 0, "42"],
+    // A negative scale counts tens: 5 at scale -2 is 500.
+    [5n, -2, "500"],
+    [-12n, -3, "-12000"],
   ])("writes %s at scale %s as %s", (unscaled, scale, expected) => {
     expect(exactDecimal(unscaled, scale)).toBe(expected);
   });
@@ -75,10 +78,24 @@ describe(pathValue, () => {
     expect(pathValue({ kind: "timestamp", micros: -1n, zoned: true })).toBe(
       "1969-12-31T23:59:59.999999Z",
     );
+    // A year before 0 has its sign and six digits.
+    expect(pathValue({ kind: "timestamp", micros: -62_198_755_200_000_000n, zoned: false })).toBe(
+      "-000001-01-01T00:00:00.000000",
+    );
   });
 
   test("writes dates as ISO days", () => {
     expect(pathValue({ days: 20_758, kind: "date" })).toBe("2026-11-01");
+    expect(pathValue({ days: 2_932_896, kind: "date" })).toBe("9999-12-31");
+  });
+
+  test("writes a date or a time outside the years the engine reads as its number, which the engine refuses", () => {
+    // Year 10,000, and the last day and microsecond an Arrow column can hold, which no ISO text names.
+    expect(pathValue({ days: 2_932_897, kind: "date" })).toBe("2932897");
+    expect(pathValue({ days: 2 ** 31 - 1, kind: "date" })).toBe("2147483647");
+    const last = 2n ** 63n - 1n;
+    expect(pathValue({ kind: "timestamp", micros: last, zoned: true })).toBe(String(last));
+    expect(pathValue({ kind: "timestamp", micros: -last, zoned: false })).toBe(String(-last));
   });
 });
 

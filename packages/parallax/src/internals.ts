@@ -5,7 +5,11 @@
 
 export { BrowserEngine } from "./engine/browser-engine.ts";
 export { Connection, type Transport } from "./engine/connection.ts";
-export { ViewHandle } from "./engine/view.ts";
+export { OpenView } from "./engine/view.ts";
+export { ParallaxClient, type ClientOptions, type Restart } from "./engine/client.ts";
+export type { LoadRun } from "./engine/holdings.ts";
+export type { Unloaded } from "./engine/memory.ts";
+export { useParallaxClient } from "./react/context.ts";
 export type { ChartWindow, Measurement, ViewListener } from "./engine/view-types.ts";
 export { exportTypes, trapReason } from "./engine/limits.ts";
 export { decodeFrame } from "./frame/frame.ts";

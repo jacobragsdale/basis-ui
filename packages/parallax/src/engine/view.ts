@@ -28,6 +28,7 @@ import type {
   DistinctValues,
   Measurement,
   ViewChannel,
+  ViewHandle,
   ViewListener,
   Viewport,
 } from "./view-types.ts";
@@ -35,8 +36,8 @@ import type {
 const closedReason = "The view is closed.";
 const firstLoad = 0n;
 
-/** One open view. */
-class ViewHandle {
+/** One open view, and what the connection hands it of the engine's replies. */
+class OpenView implements ViewHandle {
   public readonly id: number;
   readonly #channel: ViewChannel;
   readonly #listener: ViewListener;
@@ -64,7 +65,6 @@ class ViewHandle {
     });
   }
 
-  /** `true` once the view is closed. */
   public get isClosed(): boolean {
     return this.#closed;
   }
@@ -74,7 +74,6 @@ class ViewHandle {
     return this.#updates.latest;
   }
 
-  /** The most recent window asked for, whether answered yet or not. */
   public requested(): Viewport | null {
     return this.#rows.requested();
   }
@@ -297,4 +296,5 @@ class ViewHandle {
   }
 }
 
-export { ViewHandle };
+export { OpenView };
+export type { ViewHandle } from "./view-types.ts";

@@ -115,15 +115,29 @@ No release blocker in the strict sense, but 1–7 should be fixed before tens of
     - `Unloaded` and `Connection`, which public methods return, are not exported from the main entry.
     - No app in the repo uses any of this. `./internals` itself is fine as labelled.
     - Severity: polish, but cheap only before release. Confidence: confirmed by reading.
+    - Done in Parallax: the main entry keeps what an app can use safely, and lengths, decimals and dates hold at their edges: `ParallaxClient`, `useParallaxClient`, `ClientOptions` and `Restart` moved to
+      `@basis/parallax/internals`, with `Unloaded` and `LoadRun`, since an app could only break the hooks with them.
+      `ViewHandle` is now an interface of what an app may ask of a view, and the class, `OpenView`, with its
+      `receive*` methods, is in `internals`. `ChartWindow` and `Measurement`, which the handle's methods take and
+      return, are exported from the main entry. No app in the repo used what moved. `packages/parallax/docs/design.md`
+      says so. The catalogue is regenerated.
 
 14. **`packages/parallax/src/engine/stream.ts:16-21` — a cross-origin response hides `Content-Encoding`.**
     - A gzipped body's `Content-Length` is read as plain, so `expectedRows` and the status bar's "rows to come" are low by the compression ratio. The byte cap still holds as it streams.
     - Severity: polish. Confidence: plausible, by reading.
+    - Done in Parallax: the main entry keeps what an app can use safely, and lengths, decimals and dates hold at their edges: a cross-origin response's length counts only when the API exposes `Content-Encoding` as
+      `identity`; otherwise the rows to come are unknown rather than low. The byte cap still holds as the body
+      streams. Held by `tests/unit/content-length.test.ts`; the README's `expectedRows` row says so.
 
 15. **`packages/parallax/src/format.ts:20-39, 77-79` — exact conversions fail at their edges.**
     - `exactDecimal(5n, -2)` gives `"5"`; a timestamp of i64 max throws `RangeError`; dates past year 9999 give `"+010183-09"`.
     - I did not check whether the engine can send a negative scale.
     - Severity: polish. Confidence: confirmed by running (`check2.ts` i).
+    - Done in Parallax: the main entry keeps what an app can use safely, and lengths, decimals and dates hold at their edges: a negative scale counts tens (`5` at -2 is `500`), as the engine reads and writes it. The
+      engine reads date and timestamp paths only for years -9999 to 9999, and writes a date outside them as its
+      number, which it refuses; the page now does the same for both, rather than throwing (i64 max) or writing
+      `+010183-09`, and writes a year before 0 with its sign and six digits, as the engine reads it. Held by
+      `tests/unit/format.test.ts`.
 
 ## Overall quality
 
@@ -197,3 +211,12 @@ Nothing documents this, and none of it was run in a browser; it is from reading 
 - `ParallaxProvider` mounts in the Node DOM that `BASIS_TEST_DOM=node` runs tests in: with no Web Worker it starts no
   engine, and its datasets wait as `loading` without calling their sources. What to do: nothing; a route check of a
   page with a grid now passes there.
+
+- `ParallaxClient`, `useParallaxClient`, `ClientOptions` and `Restart` are no longer exported from `@basis/parallax`,
+  since closing the engine, or loading and unloading behind the hooks, left them showing what it no longer held; they
+  are in `@basis/parallax/internals`. `ViewHandle` is a type of what a view's `handle` offers, without the methods
+  the engine's connection calls, and `ChartWindow` and `Measurement` are exported. What to do: nothing; a tool that
+  needs the client imports it from `@basis/parallax/internals`.
+
+- A grid's "rows to come" no longer reads low for a compressed response from another origin: its length counts only
+  when the API exposes `Content-Encoding` as `identity`. What to do: nothing.
