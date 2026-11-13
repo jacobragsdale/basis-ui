@@ -121,7 +121,7 @@ describe("column order and totals", () => {
     );
   });
 
-  test("show a hidden column last, and give a grid without totals sums of its numbers", () => {
+  test("show a hidden column last, and give a grid without totals a count of its rows", () => {
     const layout = parseLayout({ columns: ["position_id", "fund"] });
     expect(withShown(layout, fields, { column: "price", shown: true }).columns).toStrictEqual([
       "position_id",

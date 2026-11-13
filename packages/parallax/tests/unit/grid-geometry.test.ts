@@ -119,7 +119,8 @@ describe("rowGeometry", () => {
       const viewport = 600;
       const rows = rowGeometry(1_000_000, { headerPx: 30, rowPx }, viewport);
       expect(rows.spacerPx).toBeLessThan(1_000_000 * rowPx);
-      // A browser keeps a scroll offset in whole device pixels.
+      /* A browser keeps a scroll offset in whole device pixels. One height on both sides: that the painter and hit
+       * testing take the same one is held by tests/browser/scaled-rows.test.tsx, at the ratios themselves. */
       const landed = (row: number): number =>
         rows.firstRow(Math.round(rows.scrollTopFor(row, viewport) * ratio) / ratio, viewport);
       const sample = Array.from({ length: 2000 }, (_unused, index) => index * 487 + (index % 7));

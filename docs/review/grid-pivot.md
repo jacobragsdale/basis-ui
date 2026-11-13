@@ -155,6 +155,12 @@ I found no stale-frame or wrong-cell drawing bug, but two release blockers: one 
 - `tests/unit/grid-geometry.test.ts:101-128`: "as a browser rounds the offset" uses one viewport for both sides and misses finding 2.
 - `tests/unit/grid-edit.test.ts:119`: the name says "sums of its numbers" but the body asserts counts.
 - No test crosses selection with a layout change (findings 1 and 3), and "Filter by" is tested on text only.
+- Done in Grid: the tests of the late-frame rule, the totals and the scaled scroll test what they say: `frameToShow` has unit tests with a window in view, for a late answer kept out, one that holds the
+  rows taken, and another load taken; the totals test's name says the count it asserts; and the rounding test says
+  that the one height on both sides is held, at the ratios themselves, by `tests/browser/scaled-rows.test.tsx`.
+  Selection crossed with a layout change is now held by `grid-choices.test.tsx` and `grid-keys.test.tsx`, a refused
+  opening layout by `refused-views.test.tsx` and `grid-states.test.tsx`, and "Filter by" beyond text by
+  `filter-values.test.ts`.
 
 **15. Smaller items, all polish, by reading.**
 
