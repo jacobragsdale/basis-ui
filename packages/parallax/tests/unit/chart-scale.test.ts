@@ -6,6 +6,7 @@ import {
   logScale,
   niceDomain,
   pixel,
+  stepsAcross,
   tickLabels,
   valueTicks,
 } from "#chart/scale.ts";
@@ -44,5 +45,30 @@ describe("value scales", () => {
     // One style per axis: once a log axis reaches 10,000, its thousands are compact too.
     const wide = valueTicks(logScale([0.1, 100_000], [0, 1]), 5).map((tick) => tick.label);
     expect(wide).toStrictEqual(["0.1", "1", "10", "100", "1K", "10K", "100K"]);
+  });
+
+  test("take values no step can tell apart as one value, and walk a range in whole steps, bounded", () => {
+    const one = niceDomain(1, 1, { count: 5, zero: false });
+    expect(
+      niceDomain(0.9999999999999999, 1.0000000000000002, { count: 5, zero: false }),
+    ).toStrictEqual(one);
+    expect(valueTicks(linearScale(one, [0, 1]), 5).map((tick) => tick.label)).toStrictEqual([
+      "0.5",
+      "1.0",
+      "1.5",
+    ]);
+    // A step too fine for the range gives no ticks rather than millions, and a range of one value gives that value.
+    expect(stepsAcross([0, 1], 1e-9)).toStrictEqual([]);
+    expect(stepsAcross([1, 1.0000000000000002], 1e-16)).toStrictEqual([1]);
+    expect(stepsAcross([0, 1], Number.NaN)).toStrictEqual([]);
+    // A domain past the largest double keeps its values' ends, and a log domain stays within the powers it holds.
+    expect(niceDomain(1e308, 1.7e308, { count: 5, zero: false })[1]).toBe(1.7e308);
+    expect(logDomain(1.7e308, 1.7e308)).toStrictEqual([1e307, 1e308]);
+    expect(pixel(linearScale([-1.7e308, 1.7e308], [0, 100]), 0)).toBeCloseTo(50);
+  });
+
+  test("label a range past a thousand trillion, or finer than twelve decimals, in scientific notation", () => {
+    expect(tickLabels([0, 2e15, 4e15], 2e15)).toStrictEqual(["0", "2E15", "4E15"]);
+    expect(tickLabels([1e-20, 2e-20], 1e-20)).toStrictEqual(["1E-20", "2E-20"]);
   });
 });

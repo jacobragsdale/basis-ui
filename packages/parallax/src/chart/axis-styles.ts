@@ -11,7 +11,7 @@ import { parseLayout } from "#layout/layout.ts";
 import type { Layout, LayoutFormat } from "#layout/layout.ts";
 
 import type { ModelInput, Scale, ValueTick } from "./model-types.ts";
-import { pixel, tickLabels } from "./scale.ts";
+import { niceStep, pixel, stepsAcross, tickLabels } from "./scale.ts";
 
 /** A price's finest steps, as parts of a point. */
 type Precision = "thirty-seconds" | "halves" | "quarters" | "eighths";
@@ -118,7 +118,6 @@ function axisFormats(
 }
 
 const ten = 10;
-const five = 5;
 /** Values this close to a whole number of steps count as on it. */
 const epsilon = 1e-9;
 /** A basis point's and a percent's share of the whole. */
@@ -142,24 +141,6 @@ const parUnits: readonly (readonly [number, string])[] = [
   [thousand, "M"],
 ];
 
-/** The multiples of `step` across a domain. */
-function multiples([low, high]: readonly [number, number], step: number): number[] {
-  const values: number[] = [];
-  for (let i = Math.ceil(low / step - epsilon); i <= Math.floor(high / step + epsilon); i += 1) {
-    values.push(Math.abs(i * step) < step * epsilon ? 0 : i * step);
-  }
-  return values;
-}
-
-/** A round step of 1, 2 or 5 times a power of ten near `span / count`. */
-function roundStep(span: number, count: number): number {
-  const raw = span / Math.max(1, count);
-  const power = ten ** Math.floor(Math.log10(raw));
-  return (
-    [1, 2, five, ten].map((multiple) => multiple * power).find((step) => step >= raw) ?? ten * power
-  );
-}
-
 /** A step of a halving of a point no finer than the precision shows, or whole points and round numbers of them. */
 function thirtySecondsStep(span: number, count: number, precision: Precision): number {
   const raw = span / Math.max(1, count);
@@ -168,7 +149,7 @@ function thirtySecondsStep(span: number, count: number, precision: Precision): n
       return 1 / parts;
     }
   }
-  return Math.max(1, roundStep(span, count));
+  return Math.max(1, niceStep(span, count));
 }
 
 /** The decimals that show every multiple of `step` exactly. */
@@ -199,22 +180,22 @@ function thirtySecondsTicks(
 ): readonly ValueTick[] {
   const step = thirtySecondsStep(scale.domain[1] - scale.domain[0], count, precision);
   const formatter = createFormatter({ thirtySeconds: precision });
-  return ticksAt(scale, multiples(scale.domain, step), (value) => formatter.float(value));
+  return ticksAt(scale, stepsAcross(scale.domain, step), (value) => formatter.float(value));
 }
 
 function bpsTicks(scale: Scale, count: number): readonly ValueTick[] {
-  const step = roundStep(scale.domain[1] - scale.domain[0], count);
+  const step = niceStep(scale.domain[1] - scale.domain[0], count);
   const formatter = createFormatter({ bps: true, decimals: decimalsOf(step * bpsPerWhole) });
-  return ticksAt(scale, multiples(scale.domain, step), (value) => formatter.float(value));
+  return ticksAt(scale, stepsAcross(scale.domain, step), (value) => formatter.float(value));
 }
 
 function percentTicks(scale: Scale, count: number): readonly ValueTick[] {
-  const step = roundStep(scale.domain[1] - scale.domain[0], count);
+  const step = niceStep(scale.domain[1] - scale.domain[0], count);
   const formatter = createFormatter({
     decimals: decimalsOf(step * percentPerWhole),
     percent: true,
   });
-  return ticksAt(scale, multiples(scale.domain, step), (value) => formatter.float(value));
+  return ticksAt(scale, stepsAcross(scale.domain, step), (value) => formatter.float(value));
 }
 
 /**
@@ -223,8 +204,8 @@ function percentTicks(scale: Scale, count: number): readonly ValueTick[] {
  * labels.
  */
 function parTicks(scale: Scale, count: number): readonly ValueTick[] {
-  const step = roundStep(scale.domain[1] - scale.domain[0], count);
-  const values = multiples(scale.domain, step);
+  const step = niceStep(scale.domain[1] - scale.domain[0], count);
+  const values = stepsAcross(scale.domain, step);
   const unit = parUnits.find(([size]) => step >= size);
   if (unit === undefined) {
     const labels = tickLabels(values, step);

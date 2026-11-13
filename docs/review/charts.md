@@ -10,6 +10,14 @@
 - Trigger window: ranges of 1 to about 6 ULPs. No unit test covers degenerate domains (`tests/unit/chart-scale.test.ts` has four tests).
 - Severity: **release blocker**. Confidence: confirmed by running.
 
+Done in Charts: a value axis over any range of values returns a few ticks: ticks are counted in whole steps and at
+most 100 of them (`stepsAcross` in `scale.ts`, which the styled axes share), a range narrower than a billionth of
+its values' size is one value and centres the axis, a range past the largest double is measured in halves and keeps
+its own ends, and a log axis stays within the powers of ten a double holds. Labels past a thousand trillion or finer
+than twelve decimals are scientific. `tests/unit/chart-domains.test.ts` draws each degenerate range the review
+names on a line's left and right axes, a log axis, a bar chart and a density, in each axis style, in a worker that
+is stopped after two seconds.
+
 **2. `packages/parallax/src/chart/snap.ts:151` (used at `packages/parallax/src/chart/editor-steps.ts:117`)** — The measure tool derives the series key as `label.slice(column.length + 1)`, an old `"column value"` label format the engine no longer writes.
 
 - Scenario: a line chart with `y: ["close"], series: "ticker"`; the engine labels the series `AAPL` and `MSFT` (`crates/parallax-session/src/chart.rs:278-289`). Press on MSFT's line with Measure.
@@ -122,3 +130,9 @@ The defects cluster in three places the pixel-parity port could not catch:
 - `src/chart/ink.ts` past line 60; `src/frame/chart-frame.ts`; the engine client.
 - `src/canvas/device-pixels.ts` beyond the `DevicePixels` class.
 - Most unit tests beyond their names, and the e2e specs beyond their test names.
+
+## Changelog
+
+- A chart whose values are a few units in the last place apart, such as a sum of weights that reads 1, no longer
+  hangs the tab: it draws a flat line on an axis centred on the value. Values past a thousand trillion, or a range
+  finer than twelve decimals, label their axis in scientific notation. What to do: nothing.

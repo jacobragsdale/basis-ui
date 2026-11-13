@@ -15,6 +15,17 @@ const epsilon = 1e-9;
 const maxDecimals = 12;
 /** From this largest value on, an axis's labels are compact: K, M, B and T. */
 const compactFrom = 1e4;
+/** From this largest value on, past a thousand trillion, an axis's labels are in scientific notation. */
+const scientificFrom = 1e15;
+/** The most ticks an axis takes. A step its values cannot be walked by gives none, never a loop without end. */
+const maxTicks = 100;
+/** A range narrower than this share of its values' size is one value: floating point cannot step across it. */
+const narrowest = 1e-9;
+/** Values smaller than this are zero to an axis: no power of ten under them has the digits to step by. */
+const smallest = 1e-300;
+/** The powers of ten a double holds, from its smallest to its largest. */
+const lowestPower = -323;
+const highestPower = 308;
 const thousand = 1e3;
 const million = 1e6;
 const billion = 1e9;
@@ -35,16 +46,17 @@ function pixel(scale: Scale, value: number): number {
   return map(value);
 }
 
-/** A linear scale from `domain` onto `range`. */
+/** A linear scale from `domain` onto `range`. A domain wider than a double holds is measured in halves. */
 function linearScale(domain: readonly [number, number], range: readonly [number, number]): Scale {
   const [d0, d1] = domain;
   const [r0, r1] = range;
-  const span = d1 - d0 === 0 ? 1 : d1 - d0;
+  const halves = Number.isFinite(d1 - d0) ? 1 : 2;
+  const span = d1 / halves - d0 / halves === 0 ? 1 : d1 / halves - d0 / halves;
   return {
     domain,
-    invert: (px) => d0 + ((px - r0) / (r1 - r0 === 0 ? 1 : r1 - r0)) * span,
+    invert: (px) => (d0 / halves + ((px - r0) / (r1 - r0 === 0 ? 1 : r1 - r0)) * span) * halves,
     log: false,
-    map: (value) => r0 + ((value - d0) / span) * (r1 - r0),
+    map: (value) => r0 + ((value / halves - d0 / halves) / span) * (r1 - r0),
     range,
   };
 }
@@ -63,11 +75,42 @@ function logScale(domain: readonly [number, number], range: readonly [number, nu
   };
 }
 
-/** A round step of 1, 2 or 5 times a power of ten near `span / count`. */
+/** A round step of 1, 2 or 5 times a power of ten near `span / count`; NaN for a span no step divides. A span wider
+ * than a double holds counts as the widest it holds. */
 function niceStep(span: number, count: number): number {
-  const raw = span / Math.max(1, count);
+  const raw = Math.min(span, Number.MAX_VALUE) / Math.max(1, count);
+  if (!(raw >= smallest)) {
+    return Number.NaN;
+  }
   const power = ten ** Math.floor(Math.log10(raw));
   return roundSteps.map((multiple) => multiple * power).find((step) => step >= raw) ?? ten * power;
+}
+
+/** Whether `low..high` is too narrow for its values' size to step across, and so is one value to an axis. */
+function narrow(low: number, high: number): boolean {
+  return high - low <= Math.max(Math.abs(low), Math.abs(high)) * narrowest || high - low < smallest;
+}
+
+/**
+ * The multiples of `step` across `low..high`, counted in whole steps and at most `maxTicks` of them: none when the
+ * step does not divide the range, and only `low` when the range is one value.
+ */
+function stepsAcross([low, high]: readonly [number, number], step: number): number[] {
+  if (!Number.isFinite(low) || !Number.isFinite(high)) {
+    return [];
+  }
+  if (narrow(low, high)) {
+    return [low];
+  }
+  const first = Math.ceil(low / step - epsilon);
+  const steps = Math.floor(high / step + epsilon) - first;
+  if (!(steps >= 0 && steps <= maxTicks)) {
+    return [];
+  }
+  return Array.from({ length: steps + 1 }, (_unused, taken) => {
+    const value = (first + taken) * step;
+    return Math.abs(value) < step * epsilon ? 0 : value;
+  });
 }
 
 /** How a domain is rounded: about `count` steps, and whether it reaches zero. */
@@ -89,21 +132,31 @@ function niceDomain(
   if (!Number.isFinite(low) || !Number.isFinite(high)) {
     return [0, 1];
   }
-  if (low === high) {
-    [low, high] = low === 0 ? [0, 1] : [low - Math.abs(low) / 2, high + Math.abs(high) / 2];
+  // Values no step can tell apart are one value, and an axis centres on it.
+  if (narrow(low, high)) {
+    const middle = low / 2 + high / 2;
+    [low, high] =
+      Math.abs(middle) < smallest
+        ? [0, 1]
+        : [middle - Math.abs(middle) / 2, middle + Math.abs(middle) / 2];
   }
   const step = niceStep(high - low, count);
-  return [Math.floor(low / step) * step, Math.ceil(high / step) * step];
+  const [from, to] = [Math.floor(low / step) * step, Math.ceil(high / step) * step];
+  // Rounding out past the largest double keeps the values' own end.
+  return [Number.isFinite(from) ? from : low, Number.isFinite(to) ? to : high];
 }
 
 /** A positive domain for a log scale covering `min..max`, widened to whole powers of ten. */
 function logDomain(min: number, max: number): readonly [number, number] {
-  if (!(min > 0) || !(max > 0)) {
+  if (!(min > 0) || !(max > 0) || !Number.isFinite(min) || !Number.isFinite(max)) {
     return [1, ten];
   }
-  const low = ten ** Math.floor(Math.log10(min));
-  const high = ten ** Math.ceil(Math.log10(max));
-  return [low, high === low ? low * ten : high];
+  // At least one decade, within the powers a double holds.
+  const top = Math.ceil(Math.log10(max));
+  const high = Math.min(highestPower, Math.max(lowestPower + 1, top));
+  const bottom = Math.floor(Math.log10(min));
+  const low = Math.max(lowestPower, Math.min(high - 1, bottom));
+  return [ten ** low, ten ** high];
 }
 
 /** The decimals that show every multiple of `scaled` exactly. */
@@ -125,6 +178,14 @@ function decimalsOf(scaled: number): number {
  */
 function tickLabels(values: readonly number[], step: number): readonly string[] {
   const largest = Math.max(0, ...values.map((value) => Math.abs(value)));
+  // Past a thousand trillion, and for steps finer than an axis's decimals, the digits that differ come first.
+  if (largest >= scientificFrom || (step > 0 && step < ten ** -maxDecimals)) {
+    const format = new Intl.NumberFormat("en-US", {
+      maximumFractionDigits: 3,
+      notation: "scientific",
+    });
+    return values.map((value) => (value === 0 ? "0" : format.format(value)));
+  }
   const [divisor, suffix] =
     largest >= compactFrom ? (suffixes.find(([size]) => largest >= size) ?? [1, ""]) : [1, ""];
   // Ticks are multiples of the step, so the step's own decimals show each exactly.
@@ -139,12 +200,12 @@ function tickLabels(values: readonly number[], step: number): readonly string[] 
 /** The ticks of a log scale: its powers of ten. */
 function logTicks(scale: Scale): readonly ValueTick[] {
   const [low, high] = scale.domain;
+  const [first, last] = [
+    Math.max(lowestPower, Math.ceil(Math.log10(low) - epsilon)),
+    Math.min(highestPower, Math.floor(Math.log10(high) + epsilon)),
+  ];
   const values: number[] = [];
-  for (
-    let power = Math.ceil(Math.log10(low) - epsilon);
-    power <= Math.floor(Math.log10(high) + epsilon);
-    power += 1
-  ) {
+  for (let power = first; power <= last && values.length < maxTicks; power += 1) {
     values.push(ten ** power);
   }
   // One style for the axis: compact throughout once it reaches 10,000, where every power from 1,000 takes a suffix.
@@ -165,13 +226,20 @@ function valueTicks(scale: Scale, count: number): readonly ValueTick[] {
   }
   const [low, high] = scale.domain;
   const step = niceStep(high - low, count);
-  const values: number[] = [];
-  for (let i = Math.ceil(low / step - epsilon); i <= Math.floor(high / step + epsilon); i += 1) {
-    values.push(Math.abs(i * step) < step * epsilon ? 0 : i * step);
-  }
-  const labels = tickLabels(values, step);
+  const values = stepsAcross(scale.domain, step);
+  const labels = tickLabels(values, Number.isNaN(step) ? Math.abs(low) : step);
   return values.map((value, i) => ({ label: labels[i] ?? "", px: pixel(scale, value), value }));
 }
 
-export { linearScale, logDomain, logScale, niceDomain, pixel, tickLabels, valueTicks };
+export {
+  linearScale,
+  logDomain,
+  logScale,
+  niceDomain,
+  niceStep,
+  pixel,
+  stepsAcross,
+  tickLabels,
+  valueTicks,
+};
 export type { NiceOptions };
