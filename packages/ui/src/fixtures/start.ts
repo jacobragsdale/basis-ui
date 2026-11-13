@@ -25,7 +25,33 @@ interface FixtureModeOptions {
   readonly base?: string;
 }
 
-/** Starts MSW's service worker with fixture mode's handler, and reports what it answers from. */
+/** Why fixture mode cannot start on this page, or `undefined` when it can: the browser gives a service worker only to a
+ * secure page, one served over HTTPS or from `localhost`, so a page opened over plain HTTP by hostname has none. */
+function noServiceWorker(): string | undefined {
+  if ("serviceWorker" in navigator) {
+    return undefined;
+  }
+  const local = location.port === "" ? "http://localhost" : `http://localhost:${location.port}`;
+  return `Fixture mode answers /api with a service worker, which the browser gives only a secure page, and ${location.protocol}//${location.host} is not one: open ${local}, or serve the app over HTTPS.`;
+}
+
+/** Says on the page, as text, and in the console, that fixture mode could not start, so the page is not left blank:
+ * the page's inline script calls it, and imports none of the app's modules, which would ask a real API. */
+function fixtureModeFailed(error: unknown): void {
+  // oxlint-disable-next-line eslint/no-console -- the page cannot run, and the console is where a developer looks.
+  console.error("[fixture mode] could not start", error);
+  const heading = document.createElement("h1");
+  heading.textContent = "Fixture mode could not start";
+  const reason = document.createElement("p");
+  reason.textContent = error instanceof Error ? error.message : String(error);
+  const notice = document.createElement("main");
+  notice.style.cssText = "font: 16px/1.5 system-ui, sans-serif; margin: 2rem; max-width: 40rem";
+  notice.append(heading, reason);
+  document.body.replaceChildren(notice);
+}
+
+/** Starts MSW's service worker with fixture mode's handler, and reports what it answers from. It fails, saying what
+ * to open instead, on a page that has no service worker. */
 async function startFixtureMode({
   records,
   fixtures,
@@ -33,6 +59,10 @@ async function startFixtureMode({
   telemetry = consoleTelemetry,
   base = "/",
 }: FixtureModeOptions): Promise<void> {
+  const refused = noServiceWorker();
+  if (refused !== undefined) {
+    throw new Error(refused);
+  }
   const handlers = generatedHandlers(generated);
   const bodyFiles = servedBodyFiles(base);
   const worker = setupWorker(
@@ -50,5 +80,5 @@ async function startFixtureMode({
   });
 }
 
-export { startFixtureMode };
+export { fixtureModeFailed, startFixtureMode };
 export type { FixtureModeOptions };

@@ -18309,8 +18309,15 @@
     {
       "kind": "function",
       "module": "@basis/ui/fixtures",
+      "name": "fixtureModeFailed",
+      "purpose": "Says on the page, as text, and in the console, that fixture mode could not start, so the page is not left blank: the page's inline script calls it, and imports none of the app's modules, which would ask a real API.",
+      "signature": "fixtureModeFailed(error: unknown): void"
+    },
+    {
+      "kind": "function",
+      "module": "@basis/ui/fixtures",
       "name": "startFixtureMode",
-      "purpose": "Starts MSW's service worker with fixture mode's handler, and reports what it answers from.",
+      "purpose": "Starts MSW's service worker with fixture mode's handler, and reports what it answers from. It fails, saying what to open instead, on a page that has no service worker.",
       "signature": "startFixtureMode({ records, fixtures, generated, telemetry = consoleTelemetry, base = \"/\", }: FixtureModeOptions): Promise<void>"
     },
     {

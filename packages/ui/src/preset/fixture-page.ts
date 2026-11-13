@@ -18,7 +18,8 @@ const scriptTag = /<script\b(?<attributes>[^>]*)>\s*<\/script>/giu;
 const sourceAttribute = /\bsrc=["'](?<source>(?:\/(?!\/)|\.\/)[^"']+)["']/iu;
 const moduleType = /\btype=["']module["']/iu;
 
-/** The page, its own module scripts replaced by one that starts fixture mode and then imports them, in order. */
+/** The page, its own module scripts replaced by one that starts fixture mode and then imports them, in order, or, when
+ * fixture mode cannot start, says why on the page. */
 function withFixtureMode(html: string, root: string, base = "/"): string | undefined {
   const entries: string[] = [];
   const rest = html.replaceAll(scriptTag, (tag: string, attributes: string) => {
@@ -35,15 +36,26 @@ function withFixtureMode(html: string, root: string, base = "/"): string | undef
   const generated = existsSync(path.join(root, generatedHandlersFile))
     ? `import * as generated from "/${generatedHandlersFile}";`
     : "const generated = {};";
+  const options =
+    base === "/"
+      ? "{ ...fixtures, generated }"
+      : `{ ...fixtures, generated, base: ${JSON.stringify(base)} }`;
+  // A worker that cannot start says why on the page, and the app's own modules, which would ask a real API, stay out.
   const script = [
     '<script type="module">',
-    'import { startFixtureMode } from "@basis/ui/fixtures";',
+    'import { fixtureModeFailed, startFixtureMode } from "@basis/ui/fixtures";',
     `import fixtures from "${fixturesModule}";`,
     generated,
-    base === "/"
-      ? "await startFixtureMode({ ...fixtures, generated });"
-      : `await startFixtureMode({ ...fixtures, generated, base: ${JSON.stringify(base)} });`,
+    `const started = await startFixtureMode(${options}).then(`,
+    "  () => true,",
+    "  (error) => {",
+    "    fixtureModeFailed(error);",
+    "    return false;",
+    "  },",
+    ");",
+    "if (started) {",
     ...entries.map((entry) => `await import(${JSON.stringify(entry)});`),
+    "}",
     "</script>",
   ].join("\n");
   return rest.replace("<!-- basis:fixture-mode -->", () => script);

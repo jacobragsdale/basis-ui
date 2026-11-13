@@ -47,7 +47,7 @@ afterAll(() => {
 });
 
 describe(withFixtureMode, () => {
-  test("starts fixture mode, then imports the page's own module scripts, leaving other scripts alone", () => {
+  test("starts fixture mode, then imports the page's own module scripts, leaving other scripts alone, or says why it could not start", () => {
     const html = withFixtureMode(page, app) ?? "";
     expect(html).toContain('<script src="https://cdn.example/analytics.js"></script>');
     expect(html).not.toContain('src="/src/main.tsx"');
@@ -55,11 +55,19 @@ describe(withFixtureMode, () => {
       "body"
     ];
     expect(script?.split("\n")).toStrictEqual([
-      'import { startFixtureMode } from "@basis/ui/fixtures";',
+      'import { fixtureModeFailed, startFixtureMode } from "@basis/ui/fixtures";',
       'import fixtures from "virtual:basis/fixtures";',
       "const generated = {};",
-      "await startFixtureMode({ ...fixtures, generated });",
+      "const started = await startFixtureMode({ ...fixtures, generated }).then(",
+      "  () => true,",
+      "  (error) => {",
+      "    fixtureModeFailed(error);",
+      "    return false;",
+      "  },",
+      ");",
+      "if (started) {",
       'await import("/src/main.tsx");',
+      "}",
       "",
     ]);
   });

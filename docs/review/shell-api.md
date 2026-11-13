@@ -108,6 +108,12 @@ window's `error` (`source: "page"`) and `unhandledrejection` (`source: "unhandle
 - **Scenario:** A fixture build or `vp dev` is opened over plain HTTP by hostname, where there is no service worker API. MSW's invariant throws, the entry is never imported, and the page is blank with only a console error.
 - **Confidence:** confirmed by reading MSW 3.0.4 (`lib/browser/index.js:228`). Nothing in the docs mentions a secure context.
 
+Done in Fixtures: a page that cannot start fixture mode says why, not blank: `startFixtureMode` refuses at once on a page with no service worker, naming the address to
+open (`http://localhost:PORT`, or HTTPS), and the page's inline script catches whatever it throws, calls
+`fixtureModeFailed`, which writes "Fixture mode could not start" and the reason on the page as text and to the console,
+and imports none of the app's modules. The README says fixture mode needs a secure page. Tested in happy-dom; not
+opened over plain HTTP by hostname in a browser.
+
 **11. `packages/ui/src/theme/preferences-cookie.ts:64-81`, `:107-109`, `preferences.ts:156-165` — polish**
 
 - **Defect:** both readers take the first cookie of the name, and the comment's premise that a host-only cookie is listed first is wrong; equal paths are ordered oldest first (RFC 6265 §5.4).
@@ -194,4 +200,7 @@ Throwaway scripts are in `(a scratch folder)`.
   unhandled rejections (`source: "unhandled-rejection"`). What to do: nothing.
 - `vp dev`'s body-file route, `__basis/fixture-body/`, serves only a file inside `fixtures/` or `.fixtures/` by the
   path it resolves to, where an encoded `/` or `\` let a request read any file the developer could. What to do:
+  nothing.
+- A page in fixture mode that the browser gives no service worker, such as `vp dev --host` opened over plain HTTP by
+  hostname, says "Fixture mode could not start" and the address to open instead, where it was blank. What to do:
   nothing.

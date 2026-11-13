@@ -390,6 +390,10 @@ handlers, as `vp dev` does. MSW's worker script goes beside the page, and the fi
 `__basis/fixture-body/`. The records in `.fixtures/` hold client data and are never built in. The build needs an
 absolute `base`, `/` unless `vite.config.ts` or `--base` says otherwise.
 
+Fixture mode needs a service worker, which the browser gives only a secure page: one served over HTTPS, or from
+`localhost`. A page opened over plain HTTP by another name, such as `vp dev --host` reached as `http://devbox:28765`,
+says "Fixture mode could not start" and names the address to open instead, and runs none of the app's code.
+
 `vp dev` serves each app on a port of its own, from 20000 to 29999, derived from the app's folder: the same port on
 every run, and another in another git worktree, so worktrees running at once never collide. If another program holds
 the port, Vite takes the next free one. `vp dev --port 5173`, or `server.port` in `vite.config.ts`, chooses one. It
