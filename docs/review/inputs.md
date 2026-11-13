@@ -29,6 +29,13 @@ type through the prefix key by key and pause past the 300 ms write.
 - **Severity:** fix before release. The code does what it says; this needs the maintainer's decision, and the design records none for bare numbers.
 - **Confidence:** confirmed by running `parseAmount` (`rate.ts`).
 
+Done in AmountInput: a rate needs its unit, and digits too many for a double are refused: by decision 3, a suffix set can need a unit, which `rateSuffixes` does, kept under a symbol so a
+spread of the set keeps it and a refusal's list of suffixes never shows it. Such a set refuses a bare number other
+than zero, `"25" needs a unit: write 25% or 25bp.`, through `parseAmount`, so `amountSchema` and FileImport refuse it
+too; a bare `0` stands, and AmountInput's echo reads as a percentage, `= 0.25%` for `25bp`. Amount and par sets are
+unchanged. `docs/design.md`'s "Numbers" and the README's "Taking amounts and dates" say so. Not done: a public helper
+that makes a new set need a unit; an app spreads `rateSuffixes` for one, and none has asked for another.
+
 **4. `packages/ui/src/components/form-security-field.tsx:80`**
 
 - **Defect:** the picker is never given the form's value, so it is uncontrolled and the two drift apart.
@@ -117,6 +124,9 @@ of an instant, an offset, a bracketed zone, a wall-clock time and a date.
 - **Severity:** polish.
 - **Confidence:** confirmed by running (`amount.ts`).
 
+Done in AmountInput: a rate needs its unit, and digits too many for a double are refused: `parseAmount` refuses text whose number is not finite as a double, `"…" is too large for a number.`,
+so the input holds the text, shows no echo, and `amountSchema` gives the reason. A tiny fraction still reads as 0.
+
 ## Overall
 
 The area is in better shape than a week of agent-written code suggests. The amount parser is strict and exact, typed dates refuse two-digit years and impossible days, and "today" is New York's and is looked at again on open. I looked for the bypasses you named and found none: FileImport cannot send a row that failed, SecurityPicker re-checks before every search, a non-empty TypedConfirmDialog cannot be confirmed by Enter or click, and stale search answers are dropped.
@@ -134,3 +144,12 @@ Not read: the `*-variants.ts` style files, `src/dates`, `src/securities`, `forma
 - `filterRows` reads an instant's date range by its date in New York, as `DateTime` shows it, not by the UTC date its
   ISO text begins with: `2026-11-10T01:30:00Z` is 9 November. What to do: nothing; a page that filtered timestamps
   by their UTC date now filters by the date it shows.
+
+- A field of `rateSuffixes` refuses a bare number: `25` is `"25" needs a unit: write 25% or 25bp.` rather than the
+  fraction 25, or 2,500%; a bare `0` stands, and the echo under the field reads as a percentage, `= 0.25%` for `25bp`.
+  `amountSchema(rateSuffixes)` and a FileImport column of it refuse the same text. A spread of `rateSuffixes` keeps
+  the rule; amounts and par are unchanged. What to do: tell users of a rate field to type its unit, and give a rate
+  column of an import file its `%` or `bp`; a default value set as a number is unaffected.
+
+- `parseAmount`, AmountInput and `amountSchema` refuse digits too many for a double, which read as `Infinity` and were
+  sent as `null`. What to do: nothing.

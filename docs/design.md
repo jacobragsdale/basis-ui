@@ -541,7 +541,12 @@ both follow it, so a value reads the same in the grid, a chart, a card and a for
 - **One unit.** Rates and spreads are fractions: 0.0525 is 5.25% and 525 bp. `Pct`, `Bps` and the formatter take a
   fraction and offer no unit for a value already in percent or basis points.
 - **Inputs.** `AmountInput` parses its text exactly, suffix included, then converts the result to a number, so `1.1m`
-  is the double nearest 1,100,000.
+  is the double nearest 1,100,000. A rate needs its unit, by the maintainer's decision of 2026-11-13: a field whose
+  suffixes are a rate's, `rateSuffixes`, refuses a bare number with a reason that names the units, `"25" needs a unit:
+  write 25% or 25bp.`, since `25` once committed 2,500% with no hint; a bare `0` stands, and the echo under the field
+  reads as a percentage, `= 0.25%` for `25bp`. The rule is the suffix set's, so a spread of `rateSuffixes` keeps it,
+  and amounts and prices take a bare number as before. Digits too many for a double are refused, never read as
+  `Infinity`.
 - **No sums by default.** Most of a desk's numbers, its prices, yields, spreads and durations, do not add, so nothing
   sums a column on its own, by the maintainer's choice on 2026-11-08: a grid's totals row counts its rows until a
   column's menu picks a sum, and a number put in a pivot's values starts as its mean. A sum is written into a layout

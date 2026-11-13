@@ -54,10 +54,40 @@ test.each([
   ["25 bps", "0.0025"],
   ["4.125%", "0.04125"],
   ["-12.5bp", "-0.00125"],
-  ["0.0425", "0.0425"],
+  ["0", "0"],
+  ["0.00", "0"],
+  ["-0", "0"],
 ])("the rate %s reads as %s", (text, value) => {
   expect(parseAmountText(text, rateSuffixes)).toEqual({ ok: true, value });
   expect(parseAmount(text, rateSuffixes)).toEqual({ ok: true, value: Number(value) });
+});
+
+test.each([
+  ["25", '"25" needs a unit: write 25% or 25bp.'],
+  ["4.375", '"4.375" needs a unit: write 4.375% or 4.375bp.'],
+  ["(1,500.5)", '"(1,500.5)" needs a unit: write -1,500.5% or -1,500.5bp.'],
+  [".5", '".5" needs a unit: write .5% or .5bp.'],
+])("a rate field refuses the bare number %s, naming its units", (text, reason) => {
+  expect(parseAmount(text, rateSuffixes)).toEqual({ ok: false, reason });
+  expect(parseAmountText(text, rateSuffixes)).toEqual({ ok: false, reason });
+});
+
+test("a rate field's need of a unit is the suffix set's, and a spread of it keeps it", () => {
+  expect(parseAmount("25", { ...rateSuffixes, pct: -2 }).ok).toBe(false);
+  expect(parseAmount("25pct", { ...rateSuffixes, pct: -2 })).toEqual({ ok: true, value: 0.25 });
+  expect(parseAmount("25", amountSuffixes)).toEqual({ ok: true, value: 25 });
+  expect(parseAmount("25", parSuffixes)).toEqual({ ok: true, value: 25 });
+});
+
+test("digits too many for a double are refused, not read as Infinity", () => {
+  const digits = "9".repeat(309);
+  expect(parseAmount(digits)).toEqual({
+    ok: false,
+    reason: `"${digits}" is too large for a number.`,
+  });
+  expect(parseAmount(`-${digits}`).ok).toBe(false);
+  expect(parseAmount("9".repeat(308)).ok).toBe(true);
+  expect(parseAmount(`0.${"0".repeat(400)}1`)).toEqual({ ok: true, value: 0 });
 });
 
 test("a number is read exactly, then converted once, so a suffix adds no rounding of its own", () => {

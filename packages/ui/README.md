@@ -1140,8 +1140,10 @@ those errors.
 
 `AmountInput` reads what is typed through `parseAmount` with the suffixes it declares, `amountSuffixes` unless set,
 and shows the number it read under the input, such as `= 1,500,000`. Bond markets write `M` for thousands, so a par
-field declares `parSuffixes`, and a spread `rateSuffixes`, where `25bp` is 0.0025. The text is read exactly, the suffix
-moving the decimal point, and only then converted to a number. Its value is that number, `null` while it is empty, and
+field declares `parSuffixes`, and a spread `rateSuffixes`, where `25bp` is 0.0025. A rate needs its unit: a bare `25`
+in a `rateSuffixes` field is refused with `"25" needs a unit: write 25% or 25bp.`, a bare `0` stands, and the echo
+reads as a percentage, `= 0.25%` for `25bp`. The text is read exactly, the suffix moving the decimal point, and only
+then converted to a number. Its value is that number, `null` while it is empty, and
 the text itself while that reads as no number, which `amountSchema` refuses with the parser's reason and otherwise
 turns into the number:
 

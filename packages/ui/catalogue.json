@@ -17331,14 +17331,14 @@
       "kind": "function",
       "module": "@basis/ui",
       "name": "parseAmount",
-      "purpose": "Reads `text` into the number it means, such as 1500000 for `1.5mm` or 0.0025 for `25bp`, or says why it cannot: the text is read exactly, then converted to the nearest double.",
+      "purpose": "Reads `text` into the number it means, such as 1500000 for `1.5mm` or 0.0025 for `25bp`, or says why it cannot: the text is read exactly, then converted to the nearest double. A number too large for a double, which would be `Infinity`, is refused.",
       "signature": "parseAmount(text: string, suffixes: Suffixes = amountSuffixes): ParseResult"
     },
     {
       "kind": "constant",
       "module": "@basis/ui",
       "name": "rateSuffixes",
-      "purpose": "Rates: `%` hundredths and `bp` or `bps` basis points, ten-thousandths.",
+      "purpose": "Rates: `%` hundredths and `bp` or `bps` basis points, ten-thousandths. A rate needs its unit, `5.25%` or `525bp`, since a bare `25` could mean 25%, 25 bp or the fraction 25; a bare `0` is zero in any unit, and stands. An AmountInput echoes a rate as a percentage.",
       "signature": "const rateSuffixes: Suffixes"
     },
     {
@@ -27242,11 +27242,21 @@
       "purpose": "What `onSubmitAsync` returns for a failure: a form error's text, or the errors of the fields a 422 names."
     },
     {
-      "definition": "Readonly<Record<string, number>>",
+      "extends": [
+        "Record<string, number>"
+      ],
+      "fields": [
+        {
+          "description": "",
+          "name": "unitRequired",
+          "optional": true,
+          "type": "string"
+        }
+      ],
       "exported": true,
       "module": "@basis/ui",
       "name": "Suffixes",
-      "purpose": "Each suffix a field accepts, and the power of ten it multiplies by. Suffixes match without regard to case."
+      "purpose": "Each suffix a field accepts, and the power of ten it multiplies by. Suffixes match without regard to case. A set that refuses a bare number, as `rateSuffixes` does, also names the suffix its numbers are echoed in, and a spread of it, `{ ...rateSuffixes, pct: -2 }`, keeps that."
     },
     {
       "definition": "\"amount\" | \"par\"",

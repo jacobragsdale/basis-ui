@@ -42,8 +42,9 @@ describe("AmountInput", () => {
   test.each([
     { echo: "= 1,500,000", set: "amounts", typed: "1.5mm", value: 1_500_000 },
     { echo: "= 250,000", set: "amounts", typed: "250k", value: 250_000 },
-    { echo: "= 0.0025", set: "rates", typed: "25bp", value: 0.0025 },
-    { echo: "= 0.0525", set: "rates", typed: "5.25%", value: 0.0525 },
+    { echo: "= 0.25%", set: "rates", typed: "25bp", value: 0.0025 },
+    { echo: "= 5.25%", set: "rates", typed: "5.25%", value: 0.0525 },
+    { echo: "= 0%", set: "rates", typed: "0", value: 0 },
     { echo: "= 5,000", set: "par", typed: "5M", value: 5000 },
     { echo: "= 1,500,000", set: "par", typed: "1.5mm", value: 1_500_000 },
     { echo: "= -1,234.5", set: "amounts", typed: "(1,234.50)", value: -1234.5 },
@@ -63,6 +64,23 @@ describe("AmountInput", () => {
       expect(onValueChange).toHaveBeenLastCalledWith(value);
     },
   );
+
+  test("a rate field refuses a bare number, naming the units, and holds the text", async () => {
+    const onValueChange = vi.fn<(next: number | string | null) => void>();
+    const screen = await render(
+      <AmountField suffixes={rateSuffixes} onValueChange={onValueChange} />,
+    );
+    const input = screen.getByRole("textbox", { name: "Amount" });
+    await userEvent.fill(input, "25");
+    await userEvent.tab();
+    await expect
+      .element(input)
+      .toHaveAccessibleDescription('"25" needs a unit: write 25% or 25bp.');
+    expect(onValueChange).toHaveBeenLastCalledWith("25");
+    await userEvent.fill(input, "25bp");
+    await expect.element(screen.getByRole("status")).toHaveTextContent("= 0.25%");
+    expect(onValueChange).toHaveBeenLastCalledWith(0.0025);
+  });
 
   test("a field left with text it cannot read says why, and holds the text, not a number", async () => {
     const onValueChange = vi.fn<(next: number | string | null) => void>();

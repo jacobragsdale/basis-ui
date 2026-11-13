@@ -111,6 +111,11 @@ describe("Treasury price text", () => {
   });
 });
 
+/** The messages a schema's refusal of `held` gives. */
+function messages(schema: ReturnType<typeof amountSchema>, held: string): unknown {
+  return schema.safeParse(held).error?.issues.map(({ message }) => message);
+}
+
 describe(amountSchema, () => {
   test("accepts the number an AmountInput read", () => {
     expect(amountSchema(parSuffixes).parse(5000)).toBe(5000);
@@ -121,6 +126,18 @@ describe(amountSchema, () => {
     expect(amountSchema(parSuffixes).parse("5M")).toBe(5000);
     expect(amountSchema(rateSuffixes).parse("25bp")).toBe(0.0025);
     expect(amountSchema().parse("1.1mm")).toBe(1_100_000);
+  });
+
+  test("refuses a bare rate, and a number too large for a double, with the parser's reasons", () => {
+    expect(messages(amountSchema(rateSuffixes), "25")).toStrictEqual([
+      '"25" needs a unit: write 25% or 25bp.',
+    ]);
+    expect(amountSchema(rateSuffixes).parse("0")).toBe(0);
+    const digits = "9".repeat(309);
+    expect(messages(amountSchema(), digits)).toStrictEqual([
+      `"${digits}" is too large for a number.`,
+    ]);
+    expect(amountSchema().safeParse(Number.POSITIVE_INFINITY).success).toBe(false);
   });
 
   test("gives the parser's reason for text that reads as no number", () => {

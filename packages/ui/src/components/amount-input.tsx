@@ -3,8 +3,9 @@
  * person sees what the field took: `5M` par is 5,000 in bond markets.
  *
  * The field declares its suffixes: `amountSuffixes` by default, where `m` is millions; `parSuffixes`, where `M` is
- * thousands; or `rateSuffixes`, where `bp` is a ten-thousandth, so `25bp` is 0.0025. Base UI's Number Field reads no
- * suffixes, so this is Base UI's input in an InputGroup.
+ * thousands; or `rateSuffixes`, where `bp` is a ten-thousandth, so `25bp` is 0.0025. A rate needs its unit: a bare
+ * `25` is refused with the units named, a bare `0` stands, and the echo reads as a percentage, `= 0.25%`. Base UI's
+ * Number Field reads no suffixes, so this is Base UI's input in an InputGroup.
  *
  * Its value is the number the text reads as, such as 1500000 for `1.5mm`, or `null` while the field is empty. While
  * the text reads as no number its value is the text itself, so no form takes it for a number, and the parser's reason
@@ -16,7 +17,7 @@
 import { useId, useState } from "react";
 import type { ComponentProps, FocusEvent, ReactElement } from "react";
 
-import { amountSuffixes, parseAmount, parseAmountText } from "#format/parse.ts";
+import { amountSuffixes, parseAmount, parseAmountText, unitOf } from "#format/parse.ts";
 import type { Suffixes } from "#format/parse.ts";
 import { decimalText, parseDecimal } from "#numbers/decimal-text.ts";
 import { idList, useControlled } from "./field-state.ts";
@@ -54,13 +55,25 @@ function valueOf(text: string, suffixes: Suffixes): number | string | null {
   return reading.ok ? reading.value : text;
 }
 
-/** What the field shows under its input while the text reads: the number in full, such as `= 1,500,000`. */
+/** The exact decimal text in a set's unit, when it needs one, as decimal text's exponent moves it: `0.0025` is
+ * `0.25%`. */
+function inUnit(exact: string, suffixes: Suffixes): string {
+  const unit = unitOf(suffixes);
+  const power = unit === undefined ? undefined : suffixes[unit];
+  if (unit === undefined || power === undefined) {
+    return exactText(exact);
+  }
+  return `${exactText(`${exact}E${power > 0 ? "" : "+"}${String(-power)}`)}${unit}`;
+}
+
+/** What the field shows under its input while the text reads: the number in full, such as `= 1,500,000`, or in the
+ * unit of a set that needs one, so a rate echoes as a percentage, `= 0.25%` for `25bp`. */
 function echoOf(text: string, suffixes: Suffixes): string | undefined {
-  if (text.trim() === "") {
+  if (text.trim() === "" || !parseAmount(text, suffixes).ok) {
     return undefined;
   }
   const reading = parseAmountText(text, suffixes);
-  return reading.ok ? `= ${exactText(reading.value)}` : undefined;
+  return reading.ok ? `= ${inUnit(reading.value, suffixes)}` : undefined;
 }
 
 /** Why the text reads as no number, or `undefined` when it reads or is empty. */

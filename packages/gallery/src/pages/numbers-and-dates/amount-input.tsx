@@ -45,7 +45,8 @@ const examples: readonly AmountExample[] = [
   },
   {
     defaultValue: null,
-    description: "% is a hundredth and bp a basis point, so 25bp reads as 0.0025.",
+    description:
+      "% is a hundredth and bp a basis point, so 25bp reads as 0.0025. A rate needs its unit; 0 alone stands.",
     id: "amount-spread",
     label: "Spread",
     placeholder: "25bp",

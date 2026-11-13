@@ -6,8 +6,15 @@
  * $5,000, while elsewhere `m` means millions; a field states which it means, and the input shows the full number back
  * so the person sees what was read. */
 
-/** Each suffix a field accepts, and the power of ten it multiplies by. Suffixes match without regard to case. */
-type Suffixes = Readonly<Record<string, number>>;
+/** Where a suffix set keeps the suffix a number must carry: a set that has one, as `rateSuffixes` does, refuses a bare
+ * number other than zero, and AmountInput echoes what it read in that suffix's unit. A symbol, so `Object.keys` and a
+ * refusal's list of suffixes never see it, while a spread of the set keeps it. */
+const unitRequired: unique symbol = Symbol("basis.unitRequired");
+
+/** Each suffix a field accepts, and the power of ten it multiplies by. Suffixes match without regard to case. A set
+ * that refuses a bare number, as `rateSuffixes` does, also names the suffix its numbers are echoed in, and a spread of
+ * it, `{ ...rateSuffixes, pct: -2 }`, keeps that. */
+type Suffixes = Readonly<Record<string, number>> & { readonly [unitRequired]?: string };
 
 /** A value read from typed text, or why it cannot be read. */
 type Reading<TValue> =
@@ -40,18 +47,30 @@ const parSuffixes: Suffixes = Object.fromEntries([
   ["bn", billions],
 ]);
 
-/** Rates: `%` hundredths and `bp` or `bps` basis points, ten-thousandths. */
-const rateSuffixes: Suffixes = Object.fromEntries([
-  ["%", hundredths],
-  ["bp", tenThousandths],
-  ["bps", tenThousandths],
-]);
+/** Rates: `%` hundredths and `bp` or `bps` basis points, ten-thousandths. A rate needs its unit, `5.25%` or `525bp`,
+ * since a bare `25` could mean 25%, 25 bp or the fraction 25; a bare `0` is zero in any unit, and stands. An
+ * AmountInput echoes a rate as a percentage. */
+const rateSuffixes: Suffixes = {
+  ...Object.fromEntries([
+    ["%", hundredths],
+    ["bp", tenThousandths],
+    ["bps", tenThousandths],
+  ]),
+  [unitRequired]: "%",
+};
+
+/** The suffix a set's numbers must carry and are echoed in, or `undefined` for a set that takes a bare number. */
+function unitOf(suffixes: Suffixes): string | undefined {
+  return suffixes[unitRequired];
+}
 
 const shape =
-  /^(?<sign>[+-]?)(?<whole>\d[\d,]*|)(?:\.(?<fraction>\d*))?\s*(?<suffix>[^\d\s.,+-]*)$/u;
+  /^(?<sign>[+-]?)(?<number>(?<whole>\d[\d,]*|)(?:\.(?<fraction>\d*))?)\s*(?<suffix>[^\d\s.,+-]*)$/u;
 
 /** A number as typed: its sign, its digits either side of the point, and its suffix in lower case. */
 interface Parts {
+  /** The number as typed without its suffix, a bracketed one written with a minus, such as `-1,500.5`. */
+  readonly written: string;
   readonly negative: boolean;
   readonly whole: string;
   readonly fraction: string;
@@ -87,6 +106,7 @@ function checkedParts(
       negative: minus || bracketed,
       suffix: (groups["suffix"] ?? "").toLowerCase(),
       whole,
+      written: `${bracketed ? "-" : (groups["sign"] ?? "")}${groups["number"] ?? ""}`,
     },
   };
 }
@@ -106,10 +126,23 @@ function partsOf(text: string): Reading<Parts> {
   return checkedParts(text, bracketed, groups);
 }
 
-/** The power of ten a suffix multiplies by, if the field accepts it. */
-function powerOf(suffix: string, suffixes: Suffixes): Reading<number> {
+/** Why a bare number needs a unit, with the number written in the set's first two suffixes. */
+function needsUnit(text: string, written: string, suffixes: Suffixes): string {
+  const examples = Object.keys(suffixes)
+    .slice(0, 2)
+    .map((suffix) => `${written}${suffix}`);
+  return `"${text}" needs a unit: write ${examples.join(" or ")}.`;
+}
+
+/** The power of ten a suffix multiplies by, if the field accepts it. A bare number is a power of none, unless the set
+ * needs a unit and the number is not zero. */
+function powerOf(text: string, parts: Parts, suffixes: Suffixes): Reading<number> {
+  const { suffix } = parts;
   if (suffix === "") {
-    return { ok: true, value: 0 };
+    const zero = /^0*$/u.test(parts.whole.replaceAll(",", "") + parts.fraction);
+    return unitOf(suffixes) === undefined || zero
+      ? { ok: true, value: 0 }
+      : refuse(needsUnit(text, parts.written, suffixes));
   }
   const declared = Object.entries(suffixes).find(([name]) => name.toLowerCase() === suffix);
   if (declared === undefined) {
@@ -144,8 +177,8 @@ function parseAmountText(text: string, suffixes: Suffixes = amountSuffixes): Rea
   if (!parts.ok) {
     return parts;
   }
-  const { fraction, negative, suffix, whole } = parts.value;
-  const power = powerOf(suffix, suffixes);
+  const { fraction, negative, whole } = parts.value;
+  const power = powerOf(text, parts.value, suffixes);
   if (!power.ok) {
     return power;
   }
@@ -160,11 +193,18 @@ function parseAmountText(text: string, suffixes: Suffixes = amountSuffixes): Rea
 }
 
 /** Reads `text` into the number it means, such as 1500000 for `1.5mm` or 0.0025 for `25bp`, or says why it cannot:
- * the text is read exactly, then converted to the nearest double. */
+ * the text is read exactly, then converted to the nearest double. A number too large for a double, which would be
+ * `Infinity`, is refused. */
 function parseAmount(text: string, suffixes: Suffixes = amountSuffixes): ParseResult {
   const reading = parseAmountText(text, suffixes);
-  return reading.ok ? { ok: true, value: Number(reading.value) } : reading;
+  if (!reading.ok) {
+    return reading;
+  }
+  const value = Number(reading.value);
+  return Number.isFinite(value)
+    ? { ok: true, value }
+    : refuse(`"${text}" is too large for a number.`);
 }
 
-export { amountSuffixes, parSuffixes, parseAmount, parseAmountText, rateSuffixes };
+export { amountSuffixes, parSuffixes, parseAmount, parseAmountText, rateSuffixes, unitOf };
 export type { ParseResult, Suffixes };
