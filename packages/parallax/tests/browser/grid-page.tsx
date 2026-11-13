@@ -6,6 +6,7 @@ import type { ReactNode, Ref } from "react";
 
 import { Grid } from "#grid/grid.tsx";
 import type { GridProps } from "#grid/grid.tsx";
+import type { GridRowSelection } from "#grid/types.ts";
 import type { GridHandle } from "#grid/use-grid-handles.ts";
 import type { Layout, LayoutInput } from "#layout/layout.ts";
 import { useDataset } from "#react/use-dataset.ts";
@@ -21,11 +22,12 @@ interface GridPageProps {
   readonly controlled?: boolean;
   readonly changes?: Layout[];
   readonly gridRef?: Ref<GridHandle>;
-  readonly grid?: Partial<GridProps>;
+  /** More of the grid's props, with its row selection whole, as an app gives it. */
+  readonly grid?: Partial<Omit<GridProps, keyof GridRowSelection>> & GridRowSelection;
 }
 
 const noLayout: LayoutInput = {};
-const noProps: Partial<GridProps> = {};
+const noProps: GridPageProps["grid"] = {};
 
 function GridPage({
   source = positionsBytes,

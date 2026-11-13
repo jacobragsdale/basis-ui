@@ -34,6 +34,8 @@ interface GridInputs {
   readonly maxHeight: number | null;
   /** Row selection, when the app asks for it. */
   readonly rowSelection: RowSelectionInputs | null;
+  /** The column whose value names a row, when the app names one, with rows chosen or not. */
+  readonly rowKey: string | null;
 }
 
 /** Choosing rows: by checkbox, any number (`true`), or the focused cell's row alone (`"single"`), each named by its
@@ -41,7 +43,9 @@ interface GridInputs {
 type GridRowSelection =
   | {
       readonly selectable?: false | undefined;
-      readonly rowKey?: undefined;
+      /** The column whose value names a row, such as a trade id or a CUSIP, so that every row event carries the row's
+       * key: a view row moves with every sort and filter, a key never does. */
+      readonly rowKey?: string | undefined;
       readonly selected?: undefined;
       readonly onSelectionChange?: undefined;
       readonly onRowsChange?: undefined;
@@ -63,6 +67,11 @@ type GridRowSelection =
        * view without fetching a key, however many rows the view has. */
       readonly onRowsChange?: ((rows: RowsChosen) => void) | undefined;
     };
+
+/** The column whose value names a row, if the app names one. */
+function rowKeyOf(props: GridRowSelection): string | null {
+  return props.rowKey ?? null;
+}
 
 /** What the controller takes of the row selection props. */
 function rowSelectionOf(props: GridRowSelection): GridInputs["rowSelection"] {
@@ -113,6 +122,6 @@ interface Interaction {
   menu: OpenMenu | null;
 }
 
-export { rowSelectionOf };
+export { rowKeyOf, rowSelectionOf };
 export type { AnyRow, LayoutFor } from "#layout/typed.ts";
 export type { DrillRequest, GridEventProps, GridInputs, GridRowSelection, Interaction, OpenMenu };

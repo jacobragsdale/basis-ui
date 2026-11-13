@@ -57,9 +57,10 @@ function keyColumn(layout: Layout | null, fields: readonly SourceField[], key: s
     : { index, ok: true };
 }
 
-/** The key of view row `row`, if the frame holds the row and the key column, and the row is one of the table's: a
- * group row and a total have none, nor does a row whose key is empty. */
-function rowKeyAt(frame: FrameData | null, row: number, index: number): string | null {
+/** The key of view row `row`, if the frame holds the row and the key column, named `column`, and the row is one of
+ * the table's: a group row and a total have none, nor does a row whose key is empty. The column is found in the frame
+ * by its name, so a frame of the layout before, whose columns stood elsewhere, still gives the key. */
+function rowKeyAt(frame: FrameData | null, row: number, column: string): string | null {
   if (frame === null) {
     return null;
   }
@@ -67,15 +68,15 @@ function rowKeyAt(frame: FrameData | null, row: number, index: number): string |
   if (local < 0 || local >= frame.rowCount || (frame.tree?.kind(local) ?? "row") !== "row") {
     return null;
   }
-  const key = frame.columns[index - frame.firstColumn]?.copy(local) ?? "";
+  const key = frame.columns.find(({ name }) => name === column)?.copy(local) ?? "";
   return key === "" ? null : key;
 }
 
-/** The keys of every table row a frame holds, in order. */
-function keysIn(frame: FrameData, index: number): string[] {
+/** The keys of every table row a frame holds, in order, from the key column named `column`. */
+function keysIn(frame: FrameData, column: string): string[] {
   const keys: string[] = [];
   for (let row = frame.firstRow; row < frame.firstRow + frame.rowCount; row += 1) {
-    const key = rowKeyAt(frame, row, index);
+    const key = rowKeyAt(frame, row, column);
     if (key !== null) {
       keys.push(key);
     }
@@ -86,6 +87,13 @@ function keysIn(frame: FrameData, index: number): string[] {
 /** Row selection's mode and the key column's index among the view's columns, when the grid chooses rows. */
 interface RowSelect {
   readonly mode: SelectMode;
+  readonly index: number;
+}
+
+/** The column whose value names a row, and its index among the view's columns, while the app names one and the view
+ * shows it: rows chosen or not, every row event carries its key. */
+interface KeyedBy {
+  readonly name: string;
   readonly index: number;
 }
 
@@ -145,6 +153,8 @@ class RowChoice {
   #except: Set<string> | null = null;
   /** How rows are chosen, while the app asks for it and the view shows the key column; null otherwise. */
   public select: RowSelect | null = null;
+  /** The key column, while the app names one and the view shows it, whether rows are chosen or not; null otherwise. */
+  public keyed: KeyedBy | null = null;
   /** The view row last checked or unchecked, which a Shift range starts from; null after a change of layout. */
   public anchor: number | null = null;
   /** The keys the header's checkbox chose, every row the view showed, until the layout or the choice changes; null
@@ -198,9 +208,9 @@ class RowChoice {
     return this.#except === null ? this.#keys.has(key) : !this.#except.has(key);
   }
 
-  /** The key of view row `row` in `frame`: null when rows are not chosen, or the row is a group's or not loaded. */
+  /** The key of view row `row` in `frame`: null without a key column, or for a row that is a group's or not loaded. */
   public keyAt(frame: FrameData | null, row: number): string | null {
-    return this.select === null ? null : rowKeyAt(frame, row, this.select.index);
+    return this.keyed === null ? null : rowKeyAt(frame, row, this.keyed.name);
   }
 
   /** Whether view row `row` in `frame` is chosen. */
@@ -267,6 +277,7 @@ export {
 export type {
   ChosenView,
   HeaderCheck,
+  KeyedBy,
   KeyColumn,
   RowSelect,
   RowSelectionInputs,

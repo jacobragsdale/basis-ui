@@ -45,6 +45,8 @@ class RowChecks {
   readonly #host: RowChecksHost;
   /** In single mode, the key of the row last focused, so only a move to another row changes the choice. */
   #focusKey: string | null = null;
+  /** In single mode, whether the user moved the focus to a row not yet loaded, which is chosen once it arrives. */
+  #pendingFocus = false;
   /** Why rows cannot be chosen, as the status bar last said it, so it is said once each time it changes. */
   #reason = "";
 
@@ -54,18 +56,34 @@ class RowChecks {
 
   /** Takes the app's row selection: where its key column is, and the keys the app holds, if it holds them. After a
    * new layout, the rows have moved: a Shift range has no row to start from, and "every row" no longer holds. */
-  public take({ rowSelection, layout, fields }: GridInputs, moved: boolean): void {
+  public take({ rowSelection, rowKey, layout, fields }: GridInputs, moved: boolean): void {
     const { choice } = this.#host.model;
     if (moved) {
       choice.moved();
+      // A row the focus was on before its rows loaded may now be another.
+      this.#pendingFocus = false;
     }
-    const column = rowSelection === null ? null : keyColumn(layout, fields, rowSelection.key);
+    const column = this.#takeKey(rowSelection?.key ?? rowKey, { fields, layout });
     const select = selectOf(rowSelection, column);
-    this.#sayWhy(column);
+    this.#sayWhy(rowSelection === null ? null : column);
     if (!sameSelect(select, choice.select)) {
       choice.select = select;
     }
     this.#takeRows(rowSelection);
+  }
+
+  /** Takes the column the app names rows by, if it names one, and returns where the view shows it. */
+  #takeKey(
+    name: string | null,
+    { fields, layout }: Pick<GridInputs, "fields" | "layout">,
+  ): KeyColumn | null {
+    const { choice } = this.#host.model;
+    const column = name === null ? null : keyColumn(layout, fields, name);
+    const keyed = name !== null && column?.ok === true ? { index: column.index, name } : null;
+    if (keyed?.index !== choice.keyed?.index || keyed?.name !== choice.keyed?.name) {
+      choice.keyed = keyed;
+    }
+    return column;
   }
 
   /** Takes the rows the app holds, if it holds them. */
@@ -169,32 +187,39 @@ class RowChecks {
     return { ...rows, view };
   }
 
-  /** In single mode, chooses the focused cell's row once the focus moves to another row with a key. */
-  public followFocus(): void {
+  /**
+   * In single mode, chooses the focused cell's row when the user moves the focus, `moved`, to another row with a key,
+   * or once the rows of one moved to before they loaded arrive. A sort, a filter or a reload that brings another row
+   * under a focus that stayed put chooses nothing: the choice stays with its row.
+   */
+  public followFocus(moved: boolean): void {
     const { model } = this.#host;
     const focus = model.interaction.selection?.focus;
     const key = focus === undefined ? null : model.choice.keyAt(model.frame, focus.row);
-    if (model.choice.select?.mode !== "single" || key === null || key === this.#focusKey) {
+    if (model.choice.select?.mode !== "single" || !(moved || this.#pendingFocus)) {
       return;
     }
-    this.#focusKey = key;
-    this.#commit({ all: false, keys: [key] }, false);
+    this.#pendingFocus = key === null && focus !== undefined;
+    if (key !== null && key !== this.#focusKey) {
+      this.#focusKey = key;
+      this.#commit({ all: false, keys: [key] }, false);
+    }
   }
 
   /** The keys of view rows `first` to `first + count - 1`, fetched from the view; null when it is not open, or the
    * rows are more than a fetch takes, which the status bar says. */
   async #keysOf(first: number, count: number): Promise<string[] | null> {
     const handle = this.#host.handle();
-    const { select } = this.#host.model.choice;
-    if (handle === null || select === null || count === 0) {
+    const { keyed } = this.#host.model.choice;
+    if (handle === null || keyed === null || count === 0) {
       return null;
     }
     if (count > maxRowsFetched) {
       this.#host.say(tooMany);
       return null;
     }
-    const window = { columnCount: 1, firstColumn: select.index, firstRow: first, rowCount: count };
-    return keysIn(await handle.fetch(window), select.index);
+    const window = { columnCount: 1, firstColumn: keyed.index, firstRow: first, rowCount: count };
+    return keysIn(await handle.fetch(window), keyed.name);
   }
 
   /** Checks every row from `from` to `to`, both included. */

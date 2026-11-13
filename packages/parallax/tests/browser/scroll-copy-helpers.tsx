@@ -11,7 +11,6 @@ import { render } from "vitest-browser-react";
 import type { RenderResult } from "vitest-browser-react";
 
 import type { WorkerPort } from "#engine/port.ts";
-import type { GridProps } from "#grid/grid.tsx";
 import { metricsOf } from "#grid/paint/metrics.ts";
 import type { Metrics } from "#grid/paint/metrics.ts";
 import type { DrawStats } from "#grid/paint/stats.ts";
@@ -23,6 +22,7 @@ import { readTheme } from "#theme/read.ts";
 import { startWorker } from "./data.ts";
 import { canvasOf } from "./grid-helpers.tsx";
 import { GridPage } from "./grid-page.tsx";
+import type { GridPageProps } from "./grid-page.tsx";
 
 const tableRows = 3000;
 const books = ["Rates", "Credit", "Macro", "Equity"];
@@ -101,7 +101,7 @@ interface Shown {
 /** What the test renders: the layout, the grid's props, and the engine's worker. */
 interface Shows {
   readonly layout?: LayoutInput;
-  readonly grid?: Partial<GridProps>;
+  readonly grid?: GridPageProps["grid"];
   readonly worker?: () => WorkerPort;
   /** The rows the grid shows, the table's unless grouped. */
   readonly rows?: number;

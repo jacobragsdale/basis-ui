@@ -36,6 +36,10 @@ I found no stale-frame or wrong-cell drawing bug, but two release blockers: one 
 - Scenario: the user selects T2 and sorts by quantity; `onSelectionChange(["T1"])` fires and the detail pane switches trade. Pinning `ticker` emits `["MSFT"]` as a key before correcting itself.
 - Severity: fix before release. It contradicts the README's "a choice stays with its rows".
 - Confidence: confirmed by running (sequence heard: `T2`, `MSFT`, `T2`, `T1`).
+- Done in Grid: rows are known by their key, with rowKey alone, and a row chosen by focus stays with its row: a row's key is read from the frame's column of that name, never by the new layout's index, so a
+  frame of the layout before cannot hand another column's value; and single mode chooses a row only when the user
+  moves the focus, or when the row it moved to arrives, never when a sort, filter or reload brings another row under a
+  focus that stayed put. Held by `tests/browser/grid-keys.test.tsx`.
 
 **4. Context-menu "Filter by / Exclude" builds its operand from the displayed text.** `src/grid/actions.ts:22-30`, `src/grid/events.ts:64`
 
@@ -81,6 +85,9 @@ I found no stale-frame or wrong-cell drawing bug, but two release blockers: one 
 - Scenario: `onRowActivate` gives `{ row, key: null }` on an ordinary grid and there is no `getRow`. An agent-written `rows[row]` opens the wrong record after any sort. `getSelection()` and `scrollTo(row)` have the same shape.
 - Severity: fix before release; this is cheap now and painful later. Let `rowKey` work without `selectable`.
 - Confidence: confirmed by reading; the app skill lists these events with no caution.
+- Done in Grid: rows are known by their key, with rowKey alone, and a row chosen by focus stays with its row: `rowKey` works without `selectable`, and every cell and row event then carries the row's `key`;
+  the README and the `show-data` skill say to name a record by it, and that `row` is the view row. `getSelection()`
+  and `scrollTo(row)` keep view rows, which the README's table says. Held by `tests/browser/grid-keys.test.tsx`.
 
 **10. Blank rows after a late frame.** `src/grid/paint/rows.ts:110-116`, `src/grid/paint/cells.ts:45-51`
 
@@ -163,3 +170,10 @@ Everything else in `src/grid` and `src/pivot` was read in full. The scripts are 
 
 - At 125 % and 150 % scaling, past about 535,000 rows, a click, a hover or a menu lands on the row drawn under the
   pointer, where it could take the row below. What to do: nothing.
+
+- `Grid`'s `rowKey` works without `selectable`: every `onCellClick`, `onRowActivate` and `onContextMenu` then carries
+  the row's `key`. A row event's `row` is the view row, which the next sort or filter gives another record. What to
+  do: give a grid whose events open a record a `rowKey`, and name the record by `key`, never `rows[row]`.
+
+- With `selectable="single"`, the row chosen stays chosen through a sort, a filter or a reload; it changes only when
+  the user moves the focus. What to do: nothing.

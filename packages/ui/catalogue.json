@@ -17003,10 +17003,10 @@
           "type": "false | undefined | true | \"single\""
         },
         {
-          "description": "The column whose value names a row, such as a trade id or a CUSIP: one of the view's columns, with a different value on every row. A row's key is the column's text as a copy writes it, every digit of a number.",
+          "description": "The column whose value names a row, such as a trade id or a CUSIP, so that every row event carries the row's key: a view row moves with every sort and filter, a key never does.",
           "name": "rowKey",
           "optional": true,
-          "type": "string"
+          "type": "string | undefined | string"
         },
         {
           "description": "The rows chosen, when the app holds them: their keys, or `RowsChosen`, which can say every row but some; without it, the grid keeps the choice itself.",
@@ -22194,10 +22194,10 @@
           "type": "false | undefined | true | \"single\""
         },
         {
-          "description": "The column whose value names a row, such as a trade id or a CUSIP: one of the view's columns, with a different value on every row. A row's key is the column's text as a copy writes it, every digit of a number.",
+          "description": "The column whose value names a row, such as a trade id or a CUSIP, so that every row event carries the row's key: a view row moves with every sort and filter, a key never does.",
           "name": "rowKey",
           "optional": true,
-          "type": "string"
+          "type": "string | undefined | string"
         },
         {
           "description": "The rows chosen, when the app holds them: their keys, or `RowsChosen`, which can say every row but some; without it, the grid keeps the choice itself.",
@@ -22245,7 +22245,7 @@
       "purpose": "A row of the grid, as the app is told of it: its view row and its key, when rows are chosen by `rowKey`."
     },
     {
-      "definition": "| { readonly selectable?: false | undefined; readonly rowKey?: undefined; readonly selected?: undefined; readonly onSelectionChange?: undefined; readonly onRowsChange?: undefined; } | { /** Chooses rows: by checkbox, any number (`true`), or the focused cell's row alone (`\"single\"`). */ readonly selectable: true | \"single\"; /** The column whose value names a row, such as a trade id or a CUSIP: one of the view's columns, with a * different value on every row. A row's key is the column's text as a copy writes it, every digit of a number. */ readonly rowKey: string; /** The rows chosen, when the app holds them: their keys, or `RowsChosen`, which can say every row but some; * without it, the grid keeps the choice itself. */ readonly selected?: readonly string[] | RowsChosen | undefined; /** Takes the keys of the rows chosen, in the order they were chosen, whenever the user changes them. For every * row of a flat view, the header's checkbox, they are fetched, up to 1,000,000. */ readonly onSelectionChange?: ((keys: readonly string[]) => void) | undefined; /** Takes the rows chosen whenever the user changes them: `{ all: false, keys }` for those rows, or * `{ all: true, keys }` for every row the view shows but those, which the header's checkbox chooses in a flat * view without fetching a key, however many rows the view has. */ readonly onRowsChange?: ((rows: RowsChosen) => void) | undefined; }",
+      "definition": "| { readonly selectable?: false | undefined; /** The column whose value names a row, such as a trade id or a CUSIP, so that every row event carries the row's * key: a view row moves with every sort and filter, a key never does. */ readonly rowKey?: string | undefined; readonly selected?: undefined; readonly onSelectionChange?: undefined; readonly onRowsChange?: undefined; } | { /** Chooses rows: by checkbox, any number (`true`), or the focused cell's row alone (`\"single\"`). */ readonly selectable: true | \"single\"; /** The column whose value names a row, such as a trade id or a CUSIP: one of the view's columns, with a * different value on every row. A row's key is the column's text as a copy writes it, every digit of a number. */ readonly rowKey: string; /** The rows chosen, when the app holds them: their keys, or `RowsChosen`, which can say every row but some; * without it, the grid keeps the choice itself. */ readonly selected?: readonly string[] | RowsChosen | undefined; /** Takes the keys of the rows chosen, in the order they were chosen, whenever the user changes them. For every * row of a flat view, the header's checkbox, they are fetched, up to 1,000,000. */ readonly onSelectionChange?: ((keys: readonly string[]) => void) | undefined; /** Takes the rows chosen whenever the user changes them: `{ all: false, keys }` for those rows, or * `{ all: true, keys }` for every row the view shows but those, which the header's checkbox chooses in a flat * view without fetching a key, however many rows the view has. */ readonly onRowsChange?: ((rows: RowsChosen) => void) | undefined; }",
       "fields": [
         {
           "description": "Chooses rows: by checkbox, any number (`true`), or the focused cell's row alone (`\"single\"`).",
@@ -22254,10 +22254,10 @@
           "type": "false | undefined | true | \"single\""
         },
         {
-          "description": "The column whose value names a row, such as a trade id or a CUSIP: one of the view's columns, with a different value on every row. A row's key is the column's text as a copy writes it, every digit of a number.",
+          "description": "The column whose value names a row, such as a trade id or a CUSIP, so that every row event carries the row's key: a view row moves with every sort and filter, a key never does.",
           "name": "rowKey",
           "optional": true,
-          "type": "string"
+          "type": "string | undefined | string"
         },
         {
           "description": "The rows chosen, when the app holds them: their keys, or `RowsChosen`, which can say every row but some; without it, the grid keeps the choice itself.",

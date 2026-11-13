@@ -35,7 +35,7 @@ import { StatusBar } from "./status-bar.tsx";
 import { allParts } from "./parts.ts";
 import type { ToolbarParts } from "./parts.ts";
 import { GridToolbar } from "./toolbar.tsx";
-import { rowSelectionOf } from "./types.ts";
+import { rowKeyOf, rowSelectionOf } from "./types.ts";
 import type { AnyRow, DrillRequest, GridEventProps, GridRowSelection, LayoutFor } from "./types.ts";
 import { useHandles } from "./use-grid-handles.ts";
 import type { GridHandle } from "./use-grid-handles.ts";
@@ -150,6 +150,7 @@ function useGrid(props: GridProps): GridState {
       layout: view.layout,
       maxHeight: height === "auto" ? maxHeight : null,
       measureMenus,
+      rowKey: rowKeyOf(props),
       rowSelection: rowSelectionOf(props),
     });
   });

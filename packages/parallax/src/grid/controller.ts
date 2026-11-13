@@ -214,7 +214,7 @@ class GridController {
       },
       select: (selection) => {
         surface()?.select(selection);
-        this.#rows.followFocus();
+        this.#rows.followFocus(true);
       },
       toggleRow: (row) => {
         const toggle = toggleAt(model.frame, row);
@@ -281,7 +281,7 @@ class GridController {
       this.#request(metrics);
       this.#surface?.layoutElements(metrics, this.#inputs?.maxHeight ?? null);
     }
-    this.#rows.followFocus();
+    this.#rows.followFocus(false);
     this.#redraw();
     this.#publish(this.#opening(metrics));
   }

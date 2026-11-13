@@ -146,7 +146,7 @@ class GridModel {
         rowCount,
       };
     }
-    const columns = windowColumns(geometry, this.area, this.choice.select?.index ?? null);
+    const columns = windowColumns(geometry, this.area, this.choice.keyed?.index ?? null);
     return { ...columns, firstRow, rowCount };
   }
 

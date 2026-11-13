@@ -40,7 +40,9 @@ const positions = useDataset<Position>(
 - **Cells**: `cells` draws a column as a `bar`, `heat`, `badge`, `sparkline` or `link`, and `rules` formats cells by the
   filters' conditions. Exports write what Excel can express.
 - **Events and menu**: `onCellClick`, `onRowActivate`, `onContextMenu`, and `contextMenuItems` for the app's own items
-  in the right-click menu; the `ref`'s `scrollTo`, `getSelection`, `copy` and `export("xlsx" | "csv")`.
+  in the right-click menu; the `ref`'s `scrollTo`, `getSelection`, `copy` and `export("xlsx" | "csv")`. Give the grid
+  a `rowKey`, such as `trade_id`, and name a record by the event's `key`: its `row` is the view row, which the next
+  sort or filter gives another record, so `rows[event.row]` opens the wrong one.
 - **Pivot**: `<Pivot>` groups rows and columns with measures; a double click shows the rows behind a value.
 - **Charts**: `<Chart>` takes the same dataset and a layout whose `chart` section says what to draw: line, area, bar,
   scatter, heatmap, histogram, candlestick, OHLC, pie, donut or waterfall, with indicators and panes. It takes its
