@@ -16,7 +16,7 @@
    `BASIS_TEST_DOM=node` for the tests stage, verify can pass on a desktop with only the internal registry. The line for
    a missing Chromium names `PLAYWRIGHT_DOWNLOAD_HOST` for a mirror of Playwright's downloads. `docs/design.md` says so,
    and its "Not yet verified" gains whether a desktop reaches Playwright's download site. `tests/shot.test.ts` holds the
-   line; the Edge fallback can only be shown on Windows, and was on winbox (see the report). `vp test`'s browser mode
+   line; the Edge fallback can only be shown on Windows: on winbox, with `PLAYWRIGHT_BROWSERS_PATH` naming an empty folder, `vp run verify --stage budget` passed in Edge, saying so, and `vp run shot /` took its picture in Edge, which logged one 404 the headless Chromium does not, most likely for the `favicon.ico` no app has yet (step 7.8 adds an icon). `vp test`'s browser mode
    still needs Playwright's Chromium: `index.ts`'s test setup is not this step's.
 
 2. **`src/preset/dev-server.ts:62-72` (with `:89-94`, `shot.ts:105-107`)** — the dev server that `vp run shot` starts is never stopped on Windows.
@@ -222,17 +222,17 @@ What `docs/release-plan.md`'s "On winbox" gives step 7.6.
 - **W3**, `vp run verify` never exits when Chromium cannot start.
   Done in "Preset: the budget ends when Chromium cannot start": `weighRoutes` launches the browser inside the `try`
   that closes its server, so a launch that fails ends the task with its `ERROR` line. `tests/budget.test.ts` runs the
-  task with an empty `PLAYWRIGHT_BROWSERS_PATH` and expects it to exit 1 within 30 s; before, it was killed at 30 s.
+  task with an empty `PLAYWRIGHT_BROWSERS_PATH` and expects it to exit 1 within 30 s; before, it was killed at 30 s. In WSL on winbox, from the packed packages, `vp run verify --stage budget` with no Chromium ended in 3 s with its `ERROR` line.
 - **W5**, `vp run shot /` never exits on Windows when it starts `vp dev` itself.
   Done in "Preset: the vp dev that shot starts is stopped on Windows, and when shot is interrupted": finding 2's fix. `vp dev` is also run from the app's own Vite+, its `bin/vp` through Node, as
-  verify runs its tools, so no `vp` on the `PATH` is needed.
+  verify runs its tools, so no `vp` on the `PATH` is needed. On winbox, from the packed packages, `vp run shot /` with no `vp dev` running wrote its files and exited in 8.3 s, leaving no listener on the app's port and no `node` but the proof's own.
 - **W1**, behind a proxy that inspects TLS, every Node tool fails until `NODE_EXTRA_CA_CERTS` names the proxy's CA.
   Done in "Preset: doctor checks Node, the registry's certificate and that Chromium starts, and shot reads Git Bash's routes" (doctor's part; the docs are step 7.8's): `vp run doctor` makes one `HEAD` request to the registry the
   app installs from, `.npmrc`'s `registry` or npm's, from a Node of its own with `NODE_USE_ENV_PROXY=1`, so it goes
   through `HTTPS_PROXY` as pnpm does. A certificate Node does not trust is an `ERROR` line naming its code and
   `NODE_EXTRA_CA_CERTS`, with `setx` on Windows; a registry that does not answer is one too; and a
   `NODE_EXTRA_CA_CERTS` that names no file is another. `tests/doctor.test.ts` serves a registry over HTTPS with a
-  certificate made for the test, and expects the line, then `ok` once `NODE_EXTRA_CA_CERTS` names the certificate.
+  certificate made for the test, and expects the line, then `ok` once `NODE_EXTRA_CA_CERTS` names the certificate. On winbox, `vp run doctor` passed with `NODE_EXTRA_CA_CERTS` set, and without it named `UNABLE_TO_VERIFY_LEAF_SIGNATURE` from the proxy, with the fix.
 - **W2**, an older Node on the `PATH`, which Vite+ prefers. Done in "Preset: doctor checks Node, the registry's certificate and that Chromium starts, and shot reads Git Bash's routes" (doctor's part): `vp run doctor` holds the
   Node that runs it to `vite-plus`'s `engines.node`, and `@basis/ui`'s once it has one (step 7.8), and names
   `vp env on`. Under Node 18 `vp run` itself fails before any task of `@basis/ui`'s runs, so nothing here can make
@@ -246,7 +246,16 @@ What `docs/release-plan.md`'s "On winbox" gives step 7.6.
 - **W6**, Git Bash rewrites `vp run shot /conventions` to `C:/Program Files/Git/conventions`. Done in "Preset: doctor checks Node, the registry's certificate and that Chromium starts, and shot reads Git Bash's routes": on
   Windows, a route that arrives as a Windows path under Git's own folder, which `git --exec-path` gives, is taken
   back to the route; one under another folder is refused with an `ERROR` line naming `MSYS_NO_PATHCONV=1`.
-  `tests/shot-options.test.ts` holds both with the root given.
+  `tests/shot-options.test.ts` holds both with the root given. On winbox, in Git Bash, `vp run shot /conventions --json` reported `ok` with no `MSYS_NO_PATHCONV`.
+- **W7**, `vp run shot` unreliable in WSL with no GPU. Not done: an hour, as the plan allows, found where the time
+  goes but not why. In WSL on winbox (5 processors, 5 GB, no GPU, SwiftShader's Vulkan), against the template's
+  `vp dev`, each of four launches loaded `/` or `/conventions` in under 300 ms with its fonts ready in under 100 ms;
+  the time is all in `page.screenshot`, on no pattern of flag. On `/` and then `/conventions`: Playwright's headless
+  shell passed the 30 s limit, then took 12 s; `--disable-gpu` passed it, then took 93 ms; `--use-angle=swiftshader`
+  took 23 s, then passed it; the new headless mode (`channel: "chromium"`) took 105 ms, then passed it. Neither page
+  draws a canvas, so it is the compositor's frame, not WebGL.
+  The proof's `vp run shot /` in WSL failed so, after 35 s, and now ends, leaving nothing running. Still to try: a screenshot with `animations: "disabled"` and `caret: "hide"`, a smaller viewport, and the same run
+  with Defender's real-time scanning off, which only the maintainer may change.
 
 ## Changelog
 
