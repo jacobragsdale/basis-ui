@@ -6,6 +6,7 @@ import { z } from "zod";
 
 import { decodeText, fileRefusal } from "#components/file-import-file.ts";
 import { checkRecords } from "#components/file-import-rows.ts";
+import { sentText } from "#components/file-import-sent.ts";
 import type { ImportReading } from "#components/file-import-rows.ts";
 import { isCusip } from "#securities/index.ts";
 import { parseCsv } from "#utils/index.ts";
@@ -155,5 +156,29 @@ describe(checkRecords, () => {
       ok: false,
       reason: "positions.csv has no rows under a header row.",
     });
+  });
+});
+
+describe(sentText, () => {
+  test.each([
+    ["5M", 5000, "5,000"],
+    ["FALSE", true, "true"],
+    ["1e3", 1000, "1,000"],
+    [" rates ", "RATES", "RATES"],
+    ["n/a", undefined, "nothing"],
+  ])("says %s is sent as %s", (cell, value, sent) => {
+    expect(sentText(cell, value)).toBe(sent);
+  });
+
+  test.each([
+    ["5,000", 5000],
+    ["99.50", 99.5],
+    ["-12", -12],
+    ["TRUE", true],
+    ["false", false],
+    ["Rates", "Rates"],
+    ["", undefined],
+  ])("says nothing for %s, which reads as what is sent", (cell, value) => {
+    expect(sentText(cell, value)).toBeUndefined();
   });
 });

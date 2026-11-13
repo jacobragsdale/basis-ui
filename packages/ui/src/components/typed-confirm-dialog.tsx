@@ -26,12 +26,25 @@ interface TypedConfirmDialogProps {
   readonly title: string;
   /** What the action does and what it cannot undo. */
   readonly description: ReactNode;
-  /** The text to type, such as the book's name; it must match exactly, case and all. */
+  /** The text to type, such as the book's name; it must match exactly, case and all, its runs of spaces read as one,
+   * as the label shows them. An empty text never matches, so the action stays off until there is a subject. */
   readonly confirmText: string;
   /** The button's words, such as "Delete book". */
   readonly actionLabel: string;
   /** Runs once the text matches and the button is pressed; the dialog closes. */
   readonly onConfirm: () => void;
+}
+
+/** Text with its runs of white space as one space and none at its ends, as the label shows it. */
+function shownText(text: string): string {
+  return text.trim().replaceAll(/\s+/gu, " ");
+}
+
+/** Whether what was typed matches the text to type, case and all, its spaces as the label shows them. An empty text
+ * never matches, so a subject not yet chosen cannot be confirmed with nothing typed. */
+function confirmTextMatches(typed: string, confirmText: string): boolean {
+  const wanted = shownText(confirmText);
+  return wanted !== "" && shownText(typed) === wanted;
 }
 
 /** The field that asks for the text, and the buttons, which start again each time the dialog opens. */
@@ -46,12 +59,15 @@ function ConfirmBody({
 >): ReactElement {
   const [typed, setTyped] = useState("");
   const id = useId();
-  const matches = typed === confirmText;
+  const matches = confirmTextMatches(typed, confirmText);
   return (
     <form
       className="flex flex-col gap-4"
       onSubmit={(event) => {
+        // The dialog is portaled, but React bubbles its submit to a form it is rendered in, such as the edit form of
+        // the record it deletes, which it must not send.
         event.preventDefault();
+        event.stopPropagation();
         if (matches) {
           onConfirm();
           onOpenChange(false);

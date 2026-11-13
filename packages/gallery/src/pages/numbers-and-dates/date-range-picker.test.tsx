@@ -169,6 +169,31 @@ describe("DateRangePicker's typed range and Clear", () => {
     expect(heard(onValueChange)).toStrictEqual(["2026-10-01 – 2026-11-10"]);
   });
 
+  test("inside a form, Enter takes the typed range without submitting the form", async () => {
+    const onSubmit = vi.fn<() => void>();
+    const onValueChange = vi.fn<(range: DateRange | null) => void>();
+    const screen = await render(
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          onSubmit();
+        }}
+      >
+        <PeriodField onValueChange={onValueChange} />
+      </form>,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Period" }));
+    const dialog = page.getByRole("dialog", { name: "Choose a date range" });
+    await userEvent.fill(dialog.getByRole("textbox", { name: "From" }), "2026-10-01");
+    await userEvent.fill(dialog.getByRole("textbox", { name: "To" }), "2026-11-10");
+    await userEvent.keyboard("{Enter}");
+    await expect.element(dialog).not.toBeInTheDocument();
+    expect([heard(onValueChange), onSubmit.mock.calls.length]).toStrictEqual([
+      ["2026-10-01 – 2026-11-10"],
+      0,
+    ]);
+  });
+
   test("says why a typed end cannot be taken, and keeps the dialog open", async () => {
     const onValueChange = vi.fn<(range: DateRange | null) => void>();
     const screen = await render(<PeriodField onValueChange={onValueChange} />);

@@ -15655,7 +15655,7 @@
       "name": "FileImport",
       "props": [
         {
-          "description": "What a row must be: an object whose keys are the file's columns. Its fields read text, as a CSV's cells are and a workbook's are given (a number as Excel shows it, a date as ISO 8601, a boolean as TRUE or FALSE), such as `z.coerce.number()`, `amountSchema(parSuffixes)` or `z.enum([...])`; an empty cell is a missing value, which an optional field takes.",
+          "description": "What a row must be: an object whose keys are the file's columns. Its fields read text, as a CSV's cells are and a workbook's are given (a number as Excel shows it, a date as ISO 8601, a boolean as TRUE or FALSE), such as `z.coerce.number()`, `amountSchema(parSuffixes)` or `z.enum([...])`, and a boolean with `z.stringbool()`, never `z.coerce.boolean()`, which reads any text but an empty cell, FALSE included, as true. An empty cell is a missing value, which an optional field takes. The preview shows under a cell what will be sent where the schema reads it as something its text does not say, such as `5M` par as 5,000.",
           "name": "schema",
           "optional": false,
           "type": "TSchema"
@@ -16189,7 +16189,7 @@
           "type": "ReactNode"
         },
         {
-          "description": "The text to type, such as the book's name; it must match exactly, case and all.",
+          "description": "The text to type, such as the book's name; it must match exactly, case and all, its runs of spaces read as one, as the label shows them. An empty text never matches, so the action stays off until there is a subject.",
           "name": "confirmText",
           "optional": false,
           "type": "string"

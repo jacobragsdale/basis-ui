@@ -43,8 +43,10 @@ import { Spinner } from "./spinner.tsx";
 interface FileImportProps<TSchema extends ImportSchema> {
   /** What a row must be: an object whose keys are the file's columns. Its fields read text, as a CSV's cells are and
    * a workbook's are given (a number as Excel shows it, a date as ISO 8601, a boolean as TRUE or FALSE), such as
-   * `z.coerce.number()`, `amountSchema(parSuffixes)` or `z.enum([...])`; an empty cell is a missing value, which an
-   * optional field takes. */
+   * `z.coerce.number()`, `amountSchema(parSuffixes)` or `z.enum([...])`, and a boolean with `z.stringbool()`, never
+   * `z.coerce.boolean()`, which reads any text but an empty cell, FALSE included, as true. An empty cell is a missing
+   * value, which an optional field takes. The preview shows under a cell what will be sent where the schema reads it
+   * as something its text does not say, such as `5M` par as 5,000. */
   readonly schema: TSchema;
   /** The header, or headers, a key's column goes by in a file, when not the key itself; the first heads the preview. */
   readonly headers?: ImportHeaders<TSchema> | undefined;

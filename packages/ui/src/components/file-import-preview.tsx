@@ -1,8 +1,9 @@
 /* FileImport's preview: what the file holds, checked, before anything is sent. For a workbook with several sheets
  * that hold the schema's columns, a select chooses the sheet. A line says how many rows are ready and how many have
  * problems, and which of the file's columns the import ignores; a DataTable, paged, shows every row by its line in the
- * CSV or its row in the sheet, with each refused cell marked and its reason under it in words; a switch narrows it to
- * the rows with problems; and the import button hands the app only the valid rows. */
+ * CSV or its row in the sheet, with each refused cell marked and its reason under it in words, and under a cell whose
+ * value the schema reads as something its text does not say, such as `5M` par as 5,000, what will be sent; a switch
+ * narrows it to the rows with problems; and the import button hands the app only the valid rows. */
 
 import { useId, useState } from "react";
 import type { ReactElement, ReactNode } from "react";
@@ -15,6 +16,7 @@ import { Label } from "./label.tsx";
 import { NativeSelect, NativeSelectOption } from "./native-select.tsx";
 import { Switch } from "./switch.tsx";
 import type { ImportCheck, ImportedRow } from "./file-import-rows.ts";
+import { sentText } from "./file-import-sent.ts";
 
 const counts = new Intl.NumberFormat("en-US");
 /** Rows a page of the preview. */
@@ -24,16 +26,29 @@ function rowsText(rows: number): string {
   return `${counts.format(rows)} ${rows === 1 ? "row" : "rows"}`;
 }
 
-/** A cell's text, and, when it is refused, a mark and the reason. */
+/** A cell's text, and, when it is refused, a mark and the reason, or, when what will be sent differs from the text,
+ * what that is. */
 function ImportCell({
   text,
   problem,
+  sent,
 }: {
   readonly text: ReactNode;
   readonly problem: string | undefined;
+  readonly sent?: string | undefined;
 }): ReactNode {
-  if (problem === undefined) {
+  if (problem === undefined && sent === undefined) {
     return text;
+  }
+  if (problem === undefined) {
+    return (
+      <span className="flex flex-col gap-0.5">
+        <span>{text}</span>
+        <span data-slot="file-import-sent" className="text-xs text-muted-foreground">
+          Sent as {sent}
+        </span>
+      </span>
+    );
   }
   return (
     <span
@@ -48,6 +63,16 @@ function ImportCell({
       </span>
     </span>
   );
+}
+
+/** What a valid row sends for a key, where that differs from its cell's text. */
+function sentOf<TRow>(row: ImportedRow<TRow>, key: string): string | undefined {
+  const { value } = row;
+  if (typeof value !== "object" || value === null) {
+    return undefined;
+  }
+  const sent: unknown = Object.getOwnPropertyDescriptor(value, key)?.value;
+  return sentText(row.cells[key] ?? "", sent);
 }
 
 /** What the preview calls a record's number: a CSV's line, or a sheet's row. */
@@ -70,7 +95,9 @@ function previewColumns<TRow>(
       variant: "numeric",
     },
     ...check.keys.map((key): DataTableColumn<ImportedRow<TRow>> => ({
-      cell: (row) => <ImportCell text={row.cells[key]} problem={row.problems[key]} />,
+      cell: (row) => (
+        <ImportCell text={row.cells[key]} problem={row.problems[key]} sent={sentOf(row, key)} />
+      ),
       header: headerOf(key),
       id: `field-${key}`,
       value: (row) => row.cells[key],

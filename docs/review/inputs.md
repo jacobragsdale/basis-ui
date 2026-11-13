@@ -22,6 +22,11 @@ type through the prefix key by key and pause past the 300 ms write.
 - **Severity:** fix before release.
 - **Confidence:** confirmed by running `checkRecords` (`import-blind.ts`).
 
+Done in FileImport, DateRangePicker, TypedConfirmDialog: the preview shows what is sent, and a portaled form never submits its parent: under a valid row's cell the preview shows "Sent as …" wherever the schema's value differs from the
+cell's text (`5M` par as 5,000, `FALSE` as true); a number written as plain decimal text, and a boolean or text that
+reads as itself, is not repeated (`file-import-sent.ts`). The prop's doc names `z.stringbool()` for TRUE or FALSE and
+warns off `z.coerce.boolean()`, which reads FALSE as true.
+
 **3. `packages/ui/src/format/parse.ts:110` (echo at `amount-input.tsx:58`)**
 
 - **Defect:** a rate field takes a bare number as a fraction, and the echo gives no hint.
@@ -64,6 +69,9 @@ that makes a new set need a unit; an app spreads `rateSuffixes` for one, and non
 - **Severity:** fix before release.
 - **Confidence:** React 19 behaviour confirmed by running (`portal-submit.ts`); the two components by reading.
 
+Done in FileImport, DateRangePicker, TypedConfirmDialog: the preview shows what is sent, and a portaled form never submits its parent: both forms stop their submit's propagation. Held by gallery tests of each inside a `<form>`; the
+range entry's Enter had reached the parent twice. `saved-views-dialogs.tsx` has the same pattern, and is step 7.4's.
+
 **8. `packages/ui/src/components/filter-rows.ts:35`**
 
 - **Defect:** a date-range filter cuts ISO text to its first ten characters, which is the UTC date of an instant.
@@ -88,6 +96,9 @@ of an instant, an offset, a bracketed zone, a wall-clock time and a date.
 - **Scenario:** `packages/showcase/src/pages/book-trade.tsx:212` passes `confirmText={cusip}`; with no bond chosen the action is enabled with nothing typed. A name with a trailing or doubled space cannot be matched at all, because HTML collapses it in the label.
 - **Severity:** fix before release (one line).
 - **Confidence:** confirmed by reading.
+
+Done in FileImport, DateRangePicker, TypedConfirmDialog: the preview shows what is sent, and a portaled form never submits its parent: the typed text and `confirmText` are compared with their runs of white space read as one and their
+ends trimmed, as the label shows them, and an empty `confirmText` never matches, so the action stays off.
 
 **11. `packages/ui/src/components/month-picker.tsx:140,213,279`**
 
@@ -153,3 +164,14 @@ Not read: the `*-variants.ts` style files, `src/dates`, `src/securities`, `forma
 
 - `parseAmount`, AmountInput and `amountSchema` refuse digits too many for a double, which read as `Infinity` and were
   sent as `null`. What to do: nothing.
+
+- FileImport's preview shows "Sent as …" under a cell whose value the schema reads as something its text does not
+  say, such as `5M` par as 5,000 or `FALSE` as true, so the user confirms what the app receives. Its `schema` prop's
+  doc names `z.stringbool()` for a TRUE or FALSE column: `z.coerce.boolean()` reads any text, FALSE included, as
+  true. What to do: replace `z.coerce.boolean()` in an import schema with `z.stringbool()`.
+
+- DateRangePicker's typed range and TypedConfirmDialog no longer submit a `<form>` they are rendered in: their own
+  submit stops there. What to do: nothing.
+
+- TypedConfirmDialog never confirms an empty `confirmText`, and matches a name with doubled or trailing spaces as its
+  label shows it. What to do: nothing.

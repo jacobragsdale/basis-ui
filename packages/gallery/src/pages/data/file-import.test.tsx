@@ -69,16 +69,26 @@ describe("FileImport with a good file", () => {
       .toBeVisible();
   });
 
-  test("previews the rows, mapped by their headers, then hands over the rows typed", async () => {
+  test("previews the rows, mapped by their headers, with what is sent, then hands over the rows typed", async () => {
     const received: (readonly ImportedPosition[])[] = [];
     const screen = await render(<PositionsImport received={received} />);
     await choose(csvFile(goodFile));
     await expect
       .element(screen.getByText("positions.csv: 3 rows, 3 ready to import, 0 with problems."))
       .toBeVisible();
-    await expect
-      .element(screen.getByRole("table", { name: "Rows in positions.csv" }))
-      .toBeVisible();
+    const table = screen.getByRole("table", { name: "Rows in positions.csv" });
+    await expect.element(table).toBeVisible();
+    // Under each par, `5000M`, `250M` and `1.5mm`, what is sent, which its text does not say; a price reads as itself.
+    expect(
+      [...table.element().querySelectorAll('[data-slot="file-import-sent"]')].map((note) => [
+        note.closest("td")?.cellIndex,
+        note.textContent,
+      ]),
+    ).toStrictEqual([
+      [3, "Sent as 5,000,000"],
+      [3, "Sent as 250,000"],
+      [3, "Sent as 1,500,000"],
+    ]);
     await screen.getByRole("button", { name: "Import 3 rows" }).click();
     await expect
       .element(screen.getByRole("status", { name: "Imported 3 rows from positions.csv." }))

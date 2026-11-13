@@ -97,7 +97,9 @@ function RangeEntry({ current, rules, onChoose, onClear }: RangeEntryProps): Rea
       aria-label="Type a range"
       className="flex flex-col gap-2 border-t border-edge pt-3"
       onSubmit={(event) => {
+        // The popover is portaled, but React bubbles its submit to a form the picker sits in, which it must not send.
         event.preventDefault();
+        event.stopPropagation();
         const typed = typedRange(from, to, rules);
         if ("reason" in typed) {
           setReason(typed.reason);
