@@ -222,10 +222,10 @@ The orchestrator's, once every lane has landed:
 | 7.5  | done                                                         | `85821de`, `4372e4a`, and the two after                                       |
 | 7.6  | done, proven on winbox, on Windows and in WSL; W7 not solved | `6842fd6`, `c7ea099`, `40948f7`, `38b4451`, `b497216`, `713e78b` and one more |
 | 7.7  | done                                                         | `77c07b6`, `af45522` and five more                                            |
-| 7.8  | in progress, in a lane of its own, `template`                |                                                                               |
+| 7.8  | done, proven on winbox                                       | `645902c` and the eight around it; a sweep after, `cf85ba7`                   |
 | 7.9  | done                                                         | `f75b731`, `18a568f`, `a02483e`, `aa5c042`, `e6b290e`, `d92d4f6`              |
 | 7.10 | done                                                         | `624891b` and the eight around it                                             |
 | 7.11 | done                                                         | `b840c65`, `5e3e358` and eight more                                           |
 | 7.12 | done                                                         | `f2d0bf0`, `a5704ce`, `7ee636b`, `b94b2c7` and three more                     |
-| 7.13 | in progress                                                  |                                                                               |
-| 7.14 | not started                                                  |                                                                               |
+| 7.13 | done; CI green on `ea338b4`, the Windows job included        | `b98a704`, `b6ae9e6`, `07b7b94`, `a4c2ca7`, `42ee255`, `ea338b4`              |
+| 7.14 | in progress                                                  |                                                                               |

@@ -801,28 +801,57 @@ from a worktree of its own.
 
 1. **7.1 The API layer and the shell.** A 204 or an empty body no longer fails a request that succeeded, an error
    that is no problem details keeps its status, a programming error is not shown as a network failure, and the dev
-   server's body files cannot reach outside the fixture folders.
+   server's body files cannot reach outside the fixture folders. Built on 2026-11-13: a failed `fetch` is a
+   `NetworkError`, a hook's `error` is typed as what the client throws, a collector that throws cannot stop a toast,
+   and a route test makes its router with the app's own options.
 2. **7.2 Sign-in.** `windowsSignIn`, the adapter for a token endpoint behind Windows authentication, the user's
-   roles, and a production build that cannot sign users in with the fake. Needs 7.1.
-3. **7.3 Inputs and forms.** What the review found in the amount, date, filter, import and form components.
-4. **7.4 Tables, saved views, shortcuts, overlays and navigation.** What the review found there. Needs 7.3.
+   roles, and a production build that cannot sign users in with the fake. Needs 7.1. Built on 2026-11-13: the token
+   in local storage, renewed before it expires and, without a word, when an API refuses it; `useUser` and `roles`;
+   `basis:sessionchange`; a dataset's request answered as a query's; the template's `src/sign-in.ts`; and verify's
+   build stage refusing a production build that holds the development key. Not yet: a real token endpoint, the
+   firm's.
+3. **7.3 Inputs and forms.** What the review found in the amount, date, filter, import and form components. Built on
+   2026-11-13, all fifteen findings: a rate needs its unit, an import's preview shows what is sent, a form field is
+   `optional` or `nullable` as its schema is, and a portaled form never submits its parent.
+4. **7.4 Tables, saved views, shortcuts, overlays and navigation.** What the review found there. Needs 7.3. Built on
+   2026-11-13: a table sorts by its columns as they are now, a shortcut's keys follow one stated grammar, a store
+   keeps the views it cannot read, toasts show over a dialog, and the sidebar reads a nested route tree.
 5. **7.5 The utilities and the file readers.** A CSV or a workbook that is damaged or hostile fails with a reason,
-   at once. Needs 7.2.
+   at once. Needs 7.2. Built on 2026-11-13, with a test that flips a workbook's bytes; a column of identifiers says
+   so and sorts as text; a closed trade date rolls before it settles.
 6. **7.6 The preset's tasks.** On Windows as on Linux: `shot` and `verify` end, `doctor` finds what stops a desktop,
-   and a stage never passes when its tool crashed.
+   and a stage never passes when its tool crashed. Built on 2026-11-13 and proven on winbox, on Windows and in WSL:
+   an upgrade that stops part-way is finished with `--continue`, sync keeps an app's own files, and on a Windows
+   desktop without Playwright's Chromium `shot` and the budget use Edge. Not solved: screenshots in WSL with no GPU,
+   which time out at random.
 7. **7.7 Lint rules, scaffolding and the fixture tooling.** The holes and the false alarms the review found. Needs
-   7.6.
+   7.6. Built on 2026-11-13: `cn` is `@basis/ui`'s and the class rule reads where a file writes its classes, the
+   suppression scan reads comments through the parser, what `vp run new` writes passes on a second document, and a
+   generated client's mocks pass its own schemas, optional properties and string formats among them.
 8. **7.8 The template, the synced files and the docs.** A repo that `vp create` can make, pinned to its Node, the
    deploy files handed to the app, a page that says when a browser is too old, and the docs a person starts from.
-   Needs 7.7.
+   Needs 7.7. Built on 2026-11-13: `vp dlx @basis/create NAME` makes the repo (7.13), a Node older than the pin stops
+   the install with the fix, the Dockerfile and Caddyfile are the app's, a browser before Chrome or Edge 144 is told
+   so, and every README sample compiles in a test.
 9. **7.9 Parallax's React layer.** A view the engine refuses recovers, a dataset is never loaded for nobody or shown
-   to the next user, and a restart does not fail what was still on its way.
+   to the next user, and a restart does not fail what was still on its way. Built on 2026-11-13, with `onError` on
+   `Grid`, `Pivot` and `Chart`, a load that is cancelled when nobody waits for it, and a provider that mounts in a
+   Node DOM.
 10. **7.10 The grid and the pivot.** A choice of rows that stays true through a filter, a click that lands on the row
-    under it at any scaling, and filters that take what the column shows. Needs 7.9.
+    under it at any scaling, and filters that take what the column shows. Needs 7.9. Built on 2026-11-13: rows are
+    known by their key with `rowKey` alone, a copy pastes text as text, and the keyboard reaches the header's
+    checkbox, a link and the cell menu; the README says what a screen reader gets.
 11. **7.11 The charts.** An axis that cannot hang the page, series named as the engine names them, and the small-data
-    API as its docs show it. Needs 7.10.
+    API as its docs show it. Needs 7.10. Built on 2026-11-13: a grouped chart draws up to 2,000 groups or says what
+    to change, the measure tool measures the line pressed, and a setting a chart does not draw is refused. Not built:
+    stacked areas, bars on two axes, a log axis under a scatter's density.
 12. **7.12 The Rust.** No panic that data or a layout can reach, a panic that says what it was, a load that grows as
-    a stream of any shape arrives, and memory that is bounded.
-13. **7.13 CI.** The template proven on Windows, and the wasm built as it ships. Needs 7.8.
+    a stream of any shape arrives, and memory that is bounded. Built on 2026-11-13, with integer overflow checked in
+    the browser's build. Not yet: one large record batch still costs its stream beside the table until basis writes
+    batches of 65,536 rows (jacobragsdale/basis#37).
+13. **7.13 CI.** The template proven on Windows, and the wasm built as it ships. Needs 7.8. Built on 2026-11-13: a
+    `windows-latest` job makes the app with `vp dlx @basis/create` from the Linux job's tarballs and proves it, the
+    package job fails unless the module names `simd128`, every action is pinned by its commit, and each push to
+    `main` has a run of its own.
 14. **7.14 Release.** The proof on winbox again, the end-to-end suites, the changelog, version 0.1.0 and its tag.
     Needs every step.
