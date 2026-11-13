@@ -27,6 +27,8 @@ No release blocker in these four crates, but 13 findings: one trap on spec-valid
 
 - Confidence: mechanism confirmed; the time cost is arithmetic, not measured.
 
+- Done in Engine: a panic says what and where, and a stream with no length grows its columns a few times: the rows expected are estimated from the rows the batches' headers announce, the rest of a batch being sliced included, so one batch makes room for its rows once, with or without the stream's length; room that is outgrown grows by half again at least, so a stream with no length copies its columns about ten times from its first batch to 300,000 rows rather than once a batch; and a first load gives back the room it did not use once it ends, each vector shrunk where it lies. Test: `a_stream_with_no_length_grows_its_columns_a_few_times`, which counted 19 reallocations for one batch of 300,000 rows before.
+
 **3. basis writes each table as one record batch, so the whole stream is copied into wasm and pinned for the whole load** — fix before release
 
 - Where: `packages/parallax/crates/parallax-protocol/src/ipc.rs:304-309, 486-503` and `crates/parallax-wasm/src/lib.rs:596-618`.
@@ -35,12 +37,17 @@ No release blocker in these four crates, but 13 findings: one trap on spec-valid
 - The budgets were measured on 65,536-row batches (`crates/parallax-datagen/src/main.rs:41`). `write_table(table, max_chunksize=65_536)` in basis fixes it.
 - Confidence: the copy and pin are confirmed; one-batch-per-chunk is pyarrow's documented behaviour, not run; the memory figures are arithmetic.
 
+- Done in Engine: a panic says what and where, and a stream with no length grows its columns a few times, as far as parallax can: one batch now makes room for its rows once (finding 2), and its copy is freed with its last slice, as before.
+- Not done: the copy itself. Arrow's reader decodes a message from one buffer holding its whole body, and every array of the batch slices that buffer, so the body stays in WebAssembly's memory until the batch's last slice is read. A table sent as one batch therefore costs its stream and its table at once, about 910 MB at 1,000,000 rows against the 449 MB the design budgets, and since WebAssembly's memory never shrinks, that high-water stays until the worker is replaced, which `src/engine/memory.ts` does once it passes 1 GiB and is idle; a reload adds its staging. Freeing the body column by column would need a decoder of parallax's own, with a buffer per column. The fix is basis's: `write_table(table, max_chunksize=65_536)`, which the orchestrator has asked basis for.
+
 **4. No panic hook, so every Rust panic is reported as "most likely out of memory"** — fix before release
 
 - Where: `packages/parallax/crates/parallax-wasm/src/lib.rs:202-212` (no `set_hook` anywhere in the crate).
 - Scenario: any panic (finding 1, an `expect`, an index) surfaces as `RuntimeError: unreachable`. `src/engine/serve.ts:48-50` forwards only name and message, drops `error.stack`, and logs nothing; `src/engine/limits.ts:113-114` adds the memory guess. The name section is removed (`scripts/build-wasm.ts:115`, a recorded decision).
 - The built wasm already contains the panic file paths in its data section, so a hook that passes the message to the worker costs almost nothing.
 - Confidence: confirmed.
+
+- Done in Engine: a panic says what and where, and a stream with no length grows its columns a few times: the worker sets a panic hook when it starts that keeps the panic's message and place; after a trap, `serve.ts` asks the engine for it with `takePanic`, a free function, since the trapped worker stays borrowed, sends it as the trap's message and logs it to the console; `trapReason` in `limits.ts` names a panic an internal error, and keeps the out-of-memory wording for a trap with no panic, which is what a failed allocation is: it aborts without one. Tests: `a_panic_is_kept_with_its_place_for_the_page` natively, and `tests/unit/trap-reason.test.ts`.
 
 **5. `catch_up` applies several missed change sets against the newest table, which `View::apply` does not support for pivots** — latent today; blocker for live updates or any batching of refreshes
 
@@ -97,11 +104,15 @@ No release blocker in these four crates, but 13 findings: one trap on spec-valid
 - Scenario: a 1M×40 CSV formats 40M cells with no yield, so the worker answers no viewport for any dataset until it ends. Loads yield between slices; exports do not.
 - Confidence: plausible; the duration is not measured.
 
+- Not done: an export that yields needs an export the worker can step, chunk by chunk, between the page's other messages, as loads do: a resumable `exportCsv` in the wasm and a loop in `src/engine/serve.ts` and the worker's queue, which are the `parallax` lane's beyond a panic's message. The CSV already reaches the page in 1 MB chunks, so its memory is bounded; what it costs is that other datasets' viewports wait while it runs, unmeasured. Left for the `parallax` lane with this note.
+
 **12. CSV protects formula-like text only** — polish
 
 - Where: `packages/parallax/crates/parallax-export/src/lib.rs:809-811, 903-909`.
 - Scenario: text that reads as a number is written raw. In Excel `037833100` loses its zero and `912828E72` becomes 9.12828E+77, and CSV is the mandated path above 1,000,000 cells.
 - Confidence: confirmed that nothing guards or notes it; the Excel behaviour is from knowledge.
+
+- Not done: each way to write such text trades one reader's wrong outcome for another's. `="037833100"` keeps the zero in Excel and gives every program that reads the CSV a formula; a leading apostrophe, as formula-like text gets, shows in Excel as part of the text and changes the value for programs. The CSV's promise is every digit as the screen has it, which it keeps; the Excel export, up to 1,000,000 cells, writes such text as text. A decision for the maintainer: whether CSV is written for Excel or for programs.
 
 **13. Tests that do not test their claim** — polish
 
@@ -132,3 +143,14 @@ It is not diagnosable: there is no panic message, no stack and no console log, s
 - The prost-generated code and `schema/layout.schema.json`.
 - `Cargo.lock` advisories: versions listed only. cargo-deny runs in CI with no ignores.
 - Engine and TypeScript were read only where my crates call them or are called.
+
+## Changelog
+
+- `@basis/parallax`: when the engine stops on a fault of its own, the reason every view shows names it as an internal
+  error, with what the engine said and where, and the worker logs it to the console; "most likely because it ran out
+  of memory" is kept for a trap with no such message, which is what running out of memory is. What to do: report
+  such an error with the steps that led to it.
+- `@basis/parallax`: a response with no length, as a gzipped or chunked one is, and a table sent as one record batch,
+  load with their columns copied a few times rather than once a batch or slice. A table sent as one batch still holds
+  its whole stream in the engine's memory beside the table until it has loaded. What to do: an API that serves large
+  tables writes them in batches of about 65,536 rows, as `write_table(table, max_chunksize=65_536)` does in pyarrow.

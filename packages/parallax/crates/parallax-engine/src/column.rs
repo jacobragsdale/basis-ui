@@ -108,6 +108,13 @@ impl Decimals {
         }
     }
 
+    fn shrink_to_fit(&mut self) {
+        match self {
+            Self::Narrow(v) => v.shrink_to_fit(),
+            Self::Wide(v) => v.shrink_to_fit(),
+        }
+    }
+
     fn heap_bytes(&self) -> usize {
         match self {
             Self::Narrow(v) => v.capacity() * 8,
@@ -467,6 +474,19 @@ impl Column {
             Values::Date32(v) => v.reserve_exact(additional),
         }
         self.valid.reserve(additional);
+    }
+
+    /// Gives back the room [`Column::reserve`] made for slots that never came.
+    pub(crate) fn shrink_to_fit(&mut self) {
+        match &mut self.values {
+            Values::Boolean(v) => v.shrink_to_fit(),
+            Values::Int64(v) | Values::Timestamp(v) => v.shrink_to_fit(),
+            Values::Float64(v) => v.shrink_to_fit(),
+            Values::Decimal(v) => v.shrink_to_fit(),
+            Values::Utf8 { codes, .. } => codes.shrink_to_fit(),
+            Values::Date32(v) => v.shrink_to_fit(),
+        }
+        self.valid.shrink_to_fit();
     }
 
     /// Appends every value of an Arrow array, converting it to this column's type.

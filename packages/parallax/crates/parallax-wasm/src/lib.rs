@@ -148,8 +148,8 @@ struct Loading {
     /// The rest of the record batch being read, from the row a step reaches next.
     pending: Option<(arrow_array::RecordBatch, usize)>,
     /// The rows the table or staging has room for: reserved once from the rows
-    /// expected, and again only if the rows outgrow it, since each time copies
-    /// every column.
+    /// expected, and again only if the rows outgrow it, by half again at least,
+    /// since each time copies every column.
     room: usize,
     /// The load's status from the schema's metadata, and its source time, once
     /// the schema is read.
@@ -159,18 +159,28 @@ struct Loading {
 
 impl Loading {
     /// The rows the stream holds, counted or estimated, and whether estimated.
+    /// An estimate scales the rows of the batches read so far, the rest of the
+    /// batch being sliced included, by the bytes the page expects over the bytes
+    /// those batches took.
     fn expected(&self) -> (Option<u64>, bool) {
         if let Some(rows) = self.counted {
             return (Some(rows), false);
         }
         let read = self.batches.position();
+        let rows = self.announced();
         match self.expected_bytes {
-            Some(bytes) if self.rows > 0 && read > 0 => {
-                let estimate = (self.rows as f64 * bytes as f64 / read as f64).round() as u64;
-                (Some(estimate.max(self.rows)), true)
+            Some(bytes) if rows > 0 && read > 0 => {
+                let estimate = (rows as f64 * bytes as f64 / read as f64).round() as u64;
+                (Some(estimate.max(rows)), true)
             }
             _ => (None, false),
         }
+    }
+
+    /// The rows the headers of the batches read so far announce: those staged
+    /// or published, and the rest of the batch being read a slice at a time.
+    fn announced(&self) -> u64 {
+        self.batches.rows().max(self.rows)
     }
 
     fn progress(&self, published: bool, waiting: bool, ended: bool) -> Progress {
@@ -185,6 +195,44 @@ impl Loading {
             ended,
         }
     }
+}
+
+/// What the last panic said, where it was, until the page takes it.
+static PANIC: std::sync::Mutex<Option<String>> = std::sync::Mutex::new(None);
+
+/// Records each panic's message and location in [`PANIC`], for [`take_panic`],
+/// then reports it as before. In the browser a panic aborts, which traps as
+/// `unreachable`, the same as running out of memory does; the message tells
+/// them apart.
+fn record_panics() {
+    static HOOK: std::sync::Once = std::sync::Once::new();
+    HOOK.call_once(|| {
+        let report = std::panic::take_hook();
+        std::panic::set_hook(Box::new(move |info| {
+            let message = info.payload_as_str().unwrap_or("a panic with no message");
+            let place = info.location().map_or_else(String::new, |l| {
+                format!(" at {}:{}:{}", l.file(), l.line(), l.column())
+            });
+            *PANIC
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner) =
+                Some(format!("panicked{place}: {message}"));
+            report(info);
+        }));
+    });
+}
+
+/// What the engine's last panic said and where, once: after a trap, the page
+/// asks it to tell a fault in the engine from running out of memory, which
+/// aborts without one. It reads no worker, so it answers after a trap has
+/// left the worker borrowed.
+#[wasm_bindgen(js_name = takePanic)]
+#[must_use]
+pub fn take_panic() -> Option<String> {
+    PANIC
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .take()
 }
 
 /// Tables and a protocol session, for one page.
@@ -202,6 +250,7 @@ impl Worker {
     #[wasm_bindgen(constructor)]
     #[must_use]
     pub fn new() -> Self {
+        record_panics();
         let catalog = Arc::new(MemoryCatalog::new());
         let session = Session::new(Arc::clone(&catalog) as Arc<dyn Catalog>);
         Self {
@@ -645,7 +694,7 @@ impl Worker {
         let rows = loading.rows;
         let needed = usize::try_from(rows).unwrap_or(usize::MAX);
         if needed > loading.room {
-            loading.room = room_for(rows, loading.expected());
+            loading.room = room_for(loading.announced(), loading.expected(), loading.room);
         }
         let room = loading.room;
         let locked = || "the table is unavailable after an internal error".to_owned();
@@ -884,17 +933,26 @@ impl<F: FnMut(&[u8]) -> std::io::Result<()>> Write for Chunks<F> {
 /// batch doubles every column.
 const ESTIMATE_MARGIN_PERCENT: u64 = 3;
 
-/// The rows a load makes room for once it has read `rows`: those counted, or
-/// those estimated with a margin, and never fewer than it has read.
-fn room_for(rows: u64, (expected, estimated): (Option<u64>, bool)) -> usize {
-    let expected = expected.map_or(rows, |e| {
+/// The rows a load that has room for `room` makes room for once the batches it
+/// has read announce `announced`: those counted, or those estimated with a
+/// margin, and never fewer than announced. Room that is outgrown grows by half
+/// again at least, as a vector grows, so a stream that says nothing of its
+/// length, as a gzipped or chunked response does not, copies its columns a few
+/// times rather than once a batch; the table gives back what it did not use
+/// once the load ends.
+fn room_for(announced: u64, (expected, estimated): (Option<u64>, bool), room: usize) -> usize {
+    let expected = expected.map_or(announced, |e| {
         if estimated {
             e + e * ESTIMATE_MARGIN_PERCENT / 100
         } else {
             e
         }
     });
-    usize::try_from(expected.max(rows)).unwrap_or(usize::MAX)
+    let wanted = usize::try_from(expected.max(announced)).unwrap_or(usize::MAX);
+    if wanted <= room {
+        return room;
+    }
+    wanted.max(room.saturating_add(room / 2))
 }
 
 /// A load's status from its stream's schema, and its source time: the time the
@@ -1369,6 +1427,96 @@ mod tests {
         writer.finish().unwrap();
         drop(writer);
         out
+    }
+
+    /// A stream of `rows` ids in batches of at most `batch_rows`: one column of
+    /// eight bytes a row, so that the table's bytes follow its room.
+    fn ids_in(rows: i64, batch_rows: i64) -> Vec<u8> {
+        let schema = Arc::new(Schema::new(vec![Field::new("id", DataType::Int64, false)]));
+        let mut out = Vec::new();
+        let mut writer = arrow_ipc::writer::StreamWriter::try_new(&mut out, &schema).unwrap();
+        for start in (0..rows).step_by(batch_rows as usize) {
+            let ids = Int64Array::from_iter_values(start..(start + batch_rows).min(rows));
+            writer
+                .write(&RecordBatch::try_new(Arc::clone(&schema), vec![Arc::new(ids)]).unwrap())
+                .unwrap();
+        }
+        writer.finish().unwrap();
+        drop(writer);
+        out
+    }
+
+    /// Loads `bytes` as a stream still arriving, so that its rows are not
+    /// counted first, with `expected_bytes` as a response's length says, and
+    /// returns how many times the table made room for more rows, and the rows
+    /// it has room for once loaded.
+    fn reallocations(bytes: Vec<u8>, expected_bytes: Option<u64>) -> (usize, usize) {
+        let mut worker = Worker::new();
+        worker
+            .begin("app", load(10_000_000), expected_bytes)
+            .unwrap();
+        worker.add_bytes("app", Box::new(bytes)).unwrap();
+        let mut held = 0;
+        let mut grew = 0;
+        loop {
+            let progress = worker.step("app").unwrap();
+            // Between reservations the table's bytes grow by a bit or two a row,
+            // of its validity and its live rows, whose bitmap doubles at a
+            // publish, by 32 KB at most here; a reservation grows them by 16
+            // bytes a row of room, by 128 KB at least.
+            let now = worker.held_bytes();
+            if now > held + 65_536 {
+                grew += 1;
+            }
+            held = now;
+            if progress.waiting || progress.ended {
+                break;
+            }
+        }
+        worker.end_bytes("app").unwrap();
+        while !worker.step("app").unwrap().ended {}
+        let rows = worker.finish("app").unwrap();
+        let shared = worker.catalog.get("app").unwrap();
+        let room = read_table(&shared).unwrap().table.heap_bytes() / 16;
+        assert!(room >= rows as usize);
+        (grew, room)
+    }
+
+    #[test]
+    fn a_stream_with_no_length_grows_its_columns_a_few_times() {
+        let rows = 300_000;
+        // One batch: the batch's header says how many rows follow, with or
+        // without the stream's length.
+        let one = ids_in(rows, rows);
+        let length = Some(one.len() as u64);
+        assert_eq!(reallocations(one.clone(), None).0, 1);
+        assert_eq!(reallocations(one, length).0, 1);
+        // Many batches and no length, as a gzipped or chunked response comes:
+        // the room grows by half again each time it is outgrown, so about ten
+        // times from the first batch to 300,000 rows, and once loaded the
+        // table gives back what it did not use.
+        let (grew, room) = reallocations(ids_in(rows, 1_000), None);
+        assert!(grew <= 15, "{grew} reallocations");
+        assert!(room < rows as usize * 11 / 10, "room for {room} rows");
+        // With the length, the estimate makes room once, or twice when it
+        // falls short.
+        let many = ids_in(rows, 1_000);
+        let length = Some(many.len() as u64);
+        assert!(reallocations(many, length).0 <= 2);
+    }
+
+    #[test]
+    fn a_panic_is_kept_with_its_place_for_the_page() {
+        let _worker = Worker::new();
+        let line = line!() + 1;
+        let caught = std::panic::catch_unwind(|| panic!("a fault in the engine"));
+        assert!(caught.is_err());
+        let said = take_panic().unwrap();
+        assert_eq!(
+            said,
+            format!("panicked at {}:{line}:50: a fault in the engine", file!())
+        );
+        assert_eq!(take_panic(), None, "taken once");
     }
 
     #[test]

@@ -7,9 +7,10 @@
  *
  * A WebAssembly trap, such as running out of memory, leaves the engine unusable: its state may be half-changed and
  * its object stays borrowed. The worker then sends `trapped` and answers nothing more, and the page ends it, which
- * frees all its memory, and starts another. */
+ * frees all its memory, and starts another. A panic in the engine traps the same way, so the worker asks the engine
+ * what its last panic said and where, and sends that, and logs it, in place of the trap's bare `unreachable`. */
 
-import init, { Worker as Engine } from "#wasm/parallax_wasm.js";
+import init, { Worker as Engine, takePanic } from "#wasm/parallax_wasm.js";
 
 import { parseToWorker } from "./messages.ts";
 import type { ExportRequest, FromWorker, UnloadRequest } from "./messages.ts";
@@ -33,8 +34,26 @@ function isTrap(error: unknown): error is Error {
   return error instanceof WebAssembly.RuntimeError || error instanceof RangeError;
 }
 
+/** What the engine's last panic said and where, or null: a trap without one ran out of memory. */
+function panicOf(): string | null {
+  try {
+    return takePanic() ?? null;
+  } catch {
+    return null;
+  }
+}
+
 /** Set once the engine has trapped; nothing more is answered. */
 let trapped = false;
+
+/** Ends this worker's use after a trap: tells the page, once, with the engine's panic if it panicked, and logs it. */
+function reportTrap(error: Error): void {
+  trapped = true;
+  const message = panicOf() ?? `${error.name}: ${error.message}`;
+  // oxlint-disable-next-line eslint/no-console -- a trap ends the engine; its cause belongs in the console.
+  console.error(`The parallax engine stopped: ${message}`);
+  post({ kind: "trapped", message });
+}
 
 /** Runs `work` on the engine and returns what it returns, or null. A trap ends this worker's use, and is reported
  * once; the engine's own errors go to `failed`, for the request they belong to. */
@@ -46,8 +65,7 @@ function run<TResult>(work: () => TResult, failed: (message: string) => void): T
     return work();
   } catch (error: unknown) {
     if (isTrap(error)) {
-      trapped = true;
-      post({ kind: "trapped", message: `${error.name}: ${error.message}` });
+      reportTrap(error);
       return null;
     }
     failed(describe(error));

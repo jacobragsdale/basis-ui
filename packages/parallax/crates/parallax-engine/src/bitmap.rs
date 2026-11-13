@@ -57,6 +57,11 @@ impl Bitmap {
         self.words.reserve(words.saturating_sub(self.words.len()));
     }
 
+    /// Gives back the room [`Bitmap::reserve`] made for bits that never came.
+    pub fn shrink_to_fit(&mut self) {
+        self.words.shrink_to_fit();
+    }
+
     /// Appends `count` set bits, a word at a time.
     pub fn extend_ones(&mut self, count: usize) {
         let end = self.len + count;

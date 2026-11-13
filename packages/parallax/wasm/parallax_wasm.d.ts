@@ -17,7 +17,8 @@ export class Worker {
      *
      * # Errors
      *
-     * Returns an error if no load of `name` is under way.
+     * Returns an error if no load of `name` is under way, or its stream has
+     * ended.
      */
     addLoadBytes(name: string, piece: Uint8Array): void;
     /**
@@ -114,11 +115,20 @@ export class Worker {
     unloadTable(name: string): boolean;
 }
 
+/**
+ * What the engine's last panic said and where, once: after a trap, the page
+ * asks it to tell a fault in the engine from running out of memory, which
+ * aborts without one. It reads no worker, so it answers after a trap has
+ * left the worker borrowed.
+ */
+export function takePanic(): string | undefined;
+
 export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembly.Module;
 
 export interface InitOutput {
     readonly memory: WebAssembly.Memory;
     readonly __wbg_worker_free: (a: number, b: number) => void;
+    readonly takePanic: () => [number, number];
     readonly worker_abandonLoad: (a: number, b: number, c: number) => void;
     readonly worker_addLoadBytes: (a: number, b: number, c: number, d: any) => [number, number];
     readonly worker_beginLoad: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => [number, number];

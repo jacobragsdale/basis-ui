@@ -686,6 +686,12 @@ impl Table {
             "a growing load's last rows are published first"
         );
         self.growth = None;
+        // Room made for rows that never came goes back to the allocator, which
+        // shrinks each vector where it lies.
+        for column in &mut self.columns {
+            column.shrink_to_fit();
+        }
+        self.seq.shrink_to_fit();
     }
 
     fn stage(&self, batches: &[RecordBatch]) -> Result<Staging, LoadError> {

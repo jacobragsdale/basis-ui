@@ -109,8 +109,15 @@ interface LoadProgress {
   readonly shown: boolean;
 }
 
-/** The reason every view and request is given after the engine traps. */
+/**
+ * The reason every view and request is given after the engine traps: a panic, which the worker reports as what it
+ * said and where, is a fault in the engine; a trap without one, such as `RuntimeError: unreachable`, most likely ran
+ * out of memory, since an allocation that fails aborts without a panic.
+ */
 function trapReason(trap: string): string {
+  if (trap.startsWith("panicked")) {
+    return `The engine in this page stopped after an internal error (${trap}). It has started again without its tables: load the data again, and report the error with the steps that led to it.`;
+  }
   return `The engine in this page stopped after a fatal error (${trap}), most likely because it ran out of memory. It has started again without its tables: load the data again.`;
 }
 
