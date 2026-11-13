@@ -8,8 +8,11 @@
 
 import { createContext, use, useEffect, useRef } from "react";
 
+import { inDevelopment } from "./development.ts";
+import { comboText, isPlain, matchesCombo, parseKeys } from "./shortcut-keys.ts";
+
 /** A shortcut as a component declares it. `keys` is a combination such as `mod+k` (Ctrl on Windows, Cmd on a Mac),
- * `shift+?` or `/`; `description` is what the `?` overlay says it does. */
+ * `shift+?` or `/`, by the grammar shortcut-keys.ts states; `description` is what the `?` overlay says it does. */
 interface Shortcut {
   readonly keys: string;
   readonly description: string;
@@ -79,32 +82,35 @@ function typedIntoField(event: KeyboardEvent): boolean {
   );
 }
 
+/** Whether a modal dialog is open, which stands in front of the page's shortcuts, with or without a modifier: the
+ * page's `mod+s` must not save behind a dialog the user is working in. */
+function behindModal(event: KeyboardEvent): boolean {
+  const { target } = event;
+  const owner = target instanceof Node ? (target.ownerDocument ?? document) : document;
+  return owner.querySelector(openDialog) !== null;
+}
+
 /** Whether the page runs on a Mac, where `mod` is Cmd rather than Ctrl. */
 function onMac(): boolean {
   return /Mac|iPhone|iPad/u.test(navigator.userAgent);
 }
 
-/** Whether `event` is the combination `keys` names. */
+/** Whether `event` is the combination `keys` names; never, for keys the grammar refuses. */
 function matchesKeys(keys: string, event: KeyboardEvent): boolean {
-  const parts = keys.toLowerCase().split("+");
-  const key = parts.at(-1) ?? "";
-  const wants = new Set(parts.slice(0, -1));
-  const mod = onMac() ? event.metaKey : event.ctrlKey;
-  return (
-    event.key.toLowerCase() === key &&
-    mod === wants.has("mod") &&
-    event.altKey === wants.has("alt") &&
-    (key === "?" || event.shiftKey === wants.has("shift"))
-  );
+  const reading = parseKeys(keys);
+  return reading.ok && matchesCombo(reading.combo, event, onMac());
 }
 
-/** A combination written one way, so that `Mod+K` and `mod+k`, or `shift+?` and `?`, are the same keys: lower case,
- * its modifiers sorted, and no `shift` before `?`, which needs it. */
+/** A combination written one way, so that `Mod+K`, `ctrl+k` and `mod+k`, or `shift+?` and `?`, are the same keys. */
 function normalKeys(keys: string): string {
-  const parts = keys.toLowerCase().split("+");
-  const key = parts.at(-1) ?? "";
-  const modifiers = new Set(parts.slice(0, -1).filter((part) => key !== "?" || part !== "shift"));
-  return [...[...modifiers].toSorted(), key].join("+");
+  const reading = parseKeys(keys);
+  return reading.ok ? comboText(reading.combo) : keys.toLowerCase();
+}
+
+/** Whether a combination is a plain key, which waits while the user types into a field. */
+function plainKeys(keys: string): boolean {
+  const reading = parseKeys(keys);
+  return !reading.ok || isPlain(reading.combo);
 }
 
 /** How deep a shortcut's scope sits: 0 for the whole app's. */
@@ -136,14 +142,54 @@ function conflictLine(first: ScopedShortcut, second: ScopedShortcut): string {
   return `ERROR two shortcuts take ${second.keys} ${where}: "${first.description}" runs and "${second.description}" never does. Give one of them other keys.`;
 }
 
+/** How the `?` overlay writes a key: a character in capitals, and a name as a word, such as `Enter`. */
+function keyLabel(key: string): string {
+  const names: Readonly<Record<string, string>> = {
+    " ": "Space",
+    arrowdown: "↓",
+    arrowleft: "←",
+    arrowright: "→",
+    arrowup: "↑",
+    escape: "Esc",
+    pagedown: "PgDn",
+    pageup: "PgUp",
+  };
+  return (
+    names[key] ??
+    (key.length === 1 ? key.toUpperCase() : key.charAt(0).toUpperCase() + key.slice(1))
+  );
+}
+
 /** How the `?` overlay writes a combination: `Ctrl K`, or `⌘ K` on a Mac. */
 function keyLabels(keys: string): readonly string[] {
-  const names: Readonly<Record<string, string>> = {
-    alt: "Alt",
-    mod: onMac() ? "⌘" : "Ctrl",
-    shift: "Shift",
-  };
-  return keys.split("+").map((part) => names[part.toLowerCase()] ?? part.toUpperCase());
+  const reading = parseKeys(keys);
+  if (!reading.ok) {
+    return [keys];
+  }
+  const { mod, alt, shift, key } = reading.combo;
+  return [
+    ...(mod ? [onMac() ? "⌘" : "Ctrl"] : []),
+    ...(alt ? ["Alt"] : []),
+    ...(shift ? ["Shift"] : []),
+    keyLabel(key),
+  ];
+}
+
+/** Refuses keys the grammar does not take: thrown in development, so the developer sees it at once, and logged as
+ * an `ERROR` line in production, where the shortcut is left out rather than bound to the bare key. Returns whether
+ * the keys are taken. */
+function checkKeys(keys: string): boolean {
+  const reading = parseKeys(keys);
+  if (reading.ok) {
+    return true;
+  }
+  const line = `ERROR the shortcut ${reading.reason}`;
+  if (inDevelopment()) {
+    throw new Error(line);
+  }
+  // oxlint-disable-next-line eslint/no-console -- in production the mistake is logged, as a conflict is, never thrown.
+  console.error(line);
+  return false;
 }
 
 /** Declares a keyboard shortcut while the component is shown: `useShortcut("mod+k", "Open the command palette",
@@ -153,32 +199,37 @@ function keyLabels(keys: string): readonly string[] {
 function useShortcut(keys: string, description: string, run: () => void): void {
   const registry = use(ShortcutContext);
   const scope = use(ShortcutScopeContext);
+  const taken = checkKeys(keys);
   const latest = useRef(run);
   useEffect(() => {
     latest.current = run;
   });
   useEffect(
     () =>
-      registry?.register({
-        description,
-        keys,
-        run: () => {
-          latest.current();
-        },
-        scope,
-      }),
-    [registry, keys, description, scope],
+      taken
+        ? registry?.register({
+            description,
+            keys,
+            run: () => {
+              latest.current();
+            },
+            scope,
+          })
+        : undefined,
+    [registry, keys, description, scope, taken],
   );
 }
 
 export {
   ShortcutContext,
   ShortcutScopeContext,
+  behindModal,
   conflictLine,
   conflictOf,
   keyLabels,
   matchesKeys,
   normalKeys,
+  plainKeys,
   typedIntoField,
   useShortcut,
   winner,

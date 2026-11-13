@@ -1134,6 +1134,15 @@ padded column, as before.
   and "Refresh the trades" never does. Give one of them other keys.` It is logged, not thrown, so a conflict between
   components that meet only in some state never takes the page down; the gallery's checks and `vp run shot` see the
   console. `Mod+K` and `mod+k`, or `shift+?` and `?`, are the same keys.
+- **Keys.** A combination is its modifiers, each followed by `+`, then its key, in any case. The modifiers are `mod`,
+  Ctrl, and `ctrl`, the same key, `alt` and `shift`. The key is one character, such as `k`, `1`, `/`, `?` or `+`
+  (`mod++`), or a name: `enter`, `escape` or `esc`, `space`, `tab`, `backspace`, `delete`, `insert`, `home`, `end`,
+  `pageup`, `pagedown`, `arrowup`, `arrowdown`, `arrowleft`, `arrowright`, and `f1` to `f12`. A letter, a digit or a
+  name needs `shift` when it is pressed with it; a symbol is the character the press makes, so `?` takes the Shift it
+  needs, and `shift+1` is the 1 key with Shift. Any other modifier or key, such as `cmd+d`, is thrown in development,
+  `ERROR the shortcut "cmd+d" names "cmd", which is no modifier: …`, and logged as that line in production, where the
+  shortcut is left out rather than bound to the bare key. A key held down runs its shortcut once; a key a grid or
+  chart already handled, and any key while a modal dialog is open, runs none.
 - **Tooltips.** One `TooltipProvider` holds every tooltip in the shell to a 400 ms delay: once one has opened, its
   neighbours open at once, as on the sidebar's icon rail.
 

@@ -20,7 +20,9 @@ import {
   conflictOf,
   keyLabels,
   matchesKeys,
+  behindModal,
   normalKeys,
+  plainKeys,
   typedIntoField,
   useShortcut,
   winner,
@@ -51,14 +53,22 @@ function useRegistry(): ShortcutRegistry {
   );
 }
 
-/** Runs the shortcut each key press names, the innermost scope's; one without a modifier waits while the user types
- * into a field, or while a control or dialog that takes keys has focus. */
+/** Runs the shortcut each key press names, the innermost scope's, once however long the key is held, and none for a
+ * key something on the page already handled or while a modal dialog is open; one without a modifier waits while the
+ * user types into a field, or while a control that takes keys has focus. */
 function useKeyListener(registry: ShortcutRegistry): void {
   useEffect(() => {
     const listener = (event: KeyboardEvent): void => {
+      // A key held down runs its shortcut once, and a key a grid or chart already handled runs none.
+      if (event.repeat || event.defaultPrevented) {
+        return;
+      }
       const shortcut = winner(registry.list().filter(({ keys }) => matchesKeys(keys, event)));
-      const plain = shortcut !== undefined && !/mod\+|alt\+/u.test(shortcut.keys);
-      if (shortcut === undefined || (plain && typedIntoField(event))) {
+      if (
+        shortcut === undefined ||
+        behindModal(event) ||
+        (plainKeys(shortcut.keys) && typedIntoField(event))
+      ) {
         return;
       }
       event.preventDefault();

@@ -12,6 +12,11 @@ Two findings are release blockers and eight more should be fixed before release;
 - **Severity:** release blocker.
 - **Confidence:** confirmed by running the built `DataTable` (`table.mjs`, `table-filter.mjs`) and table-core directly (`stale-sort.mjs`).
 
+Done in DataTable, shortcuts: rows sort by the columns as they are now, and a shortcut's keys follow one stated grammar: DataTable gives TanStack a copy of its rows for each new set of columns (`useRowsFor` in
+`data-table-state.ts`), so the cached values, sorted rows and filtered rows are read again; a copy held in state, since
+the React Compiler drops a memo dependency the body does not read. Held by gallery tests that rerender with a new
+benchmark under a sort, and with names that arrive after a filter is typed (`data-table-over-time.test.tsx`).
+
 **2. `useShortcut` binds the bare key when the modifier is anything but `mod`, `alt` or `shift`**
 
 - **Where:** `packages/ui/src/components/shortcuts-context.ts:88-99`, `:146`
@@ -19,6 +24,13 @@ Two findings are release blockers and eight more should be fixed before release;
 - **Scenario:** `useShortcut("ctrl+d", "Delete the selected trades", remove)` runs on a bare `d` anywhere outside a field and never on Ctrl+D. `control+enter` runs on a bare Enter and prevents the focused button's own click. The `?` overlay shows "CTRL D", so it looks right. No lint rule or runtime check catches it.
 - **Severity:** release blocker (a few-line fix).
 - **Confidence:** confirmed by running `matchesKeys` (`keys.mjs`, `keys2.mjs`).
+
+Done in DataTable, shortcuts: rows sort by the columns as they are now, and a shortcut's keys follow one stated grammar: `shortcut-keys.ts` parses a combination once, by the grammar its head and the README's "Keys"
+state. `mod` and `ctrl` (the same key, by decision 5), `alt` and `shift` are the modifiers. Any other modifier, or a
+key with no name, is refused: thrown in development, as `ERROR the shortcut "cmd+d" names "cmd", which is no modifier:
+…` with its fix, and logged as that line in production, where the shortcut is left out rather than bound to the bare
+key (`development.ts` reads Vite's `import.meta.env.DEV`). Held by unit tests of the grammar and gallery tests of
+`ctrl+d` and `cmd+d`.
 
 **3. A DataTable state prop that returns to `undefined` falls back to a stale internal copy**
 
@@ -100,6 +112,12 @@ instant.
 - **Severity:** polish.
 - **Confidence:** the matching and case-sensitivity cases confirmed by running (`keys.mjs`), the rest by reading.
 
+Done in DataTable, shortcuts: rows sort by the columns as they are now, and a shortcut's keys follow one stated grammar: the listener runs nothing for `event.repeat` or `defaultPrevented`, nor any shortcut while a
+modal dialog is open. Whether a shortcut is plain is read from its parsed modifiers, so `Mod+S` runs from a field.
+`shift+1`, `+`, `shift+/`, `esc` and `space` match: a digit or symbol with `shift` matches its physical key, and a
+symbol without it matches the character pressed. Held by unit tests of each press and gallery tests of a held key, a
+handled key, `Mod+S` in a field and `mod+s` behind a modal.
+
 **12. In a window under 768 px the sidebar's sheet stays open after a page link is chosen**
 
 - **Where:** `packages/ui/src/components/app-sidebar.tsx:43-47`, `sidebar.tsx:95-127`
@@ -150,3 +168,17 @@ Two weak spots in what agents are shown:
 - **Only skimmed:** `popover`, `hover-card`, `context-menu`, `menubar`, `navigation-menu`, `accordion`, `collapsible`, `scroll-area`, `breadcrumb`, `toolbar`, `sidebar-menu`, `sidebar-group`, `sidebar-sections`.
 - **Read in part:** `sheet`, `drawer`, `tabs`, `pagination`, `alert-dialog`, `dropdown-menu`.
 - **`index.ts`:** the icon block was skimmed; nothing in the public surface looked accidental, and the route `staticData` augmentation reaches `dist`.
+
+## Changelog
+
+- `DataTable` sorts and filters by its columns' values as they are now when the columns change and the data does
+  not, such as a spread from a benchmark the user changed, or names a second query brought. What to do: nothing.
+
+- A shortcut's keys follow one grammar, which the README's "Keys" states: modifiers `mod`, `ctrl` (the same key),
+  `alt` and `shift`, then one character or a named key such as `enter`, `esc`, `space` or `f1`. An unknown modifier,
+  such as `cmd+d`, is thrown in development and logged as an `ERROR` line in production, never bound to the bare key.
+  `shift+1`, `+`, `shift+/`, `esc` and `space` now match, and `Mod+S` in capitals is a modified key. What to do: run
+  the app in `vp dev` once; a shortcut that throws names its fix.
+
+- Shortcuts no longer repeat while a key is held, never run for a key a grid or chart already handled, and none run
+  while a modal dialog is open. What to do: nothing.

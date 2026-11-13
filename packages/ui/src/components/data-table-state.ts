@@ -16,6 +16,7 @@ import {
   useTable,
 } from "@tanstack/react-table";
 import type { ColumnDef, ReactTable, Row, RowData, TableOptions } from "@tanstack/react-table";
+import { useState } from "react";
 
 import { cellOf, compareCells } from "./data-table-columns.ts";
 import type { DataTableColumn, DataTableSort } from "./data-table-columns.ts";
@@ -183,16 +184,34 @@ function tableOptions<TRow extends RowData>({
   };
 }
 
+/** `kept`, copied for each new set of columns, so TanStack reads the rows' values again: it caches them, and the
+ * rows it sorts and filters, until the data array changes. */
+function useRowsFor<TRow>(
+  kept: readonly TRow[],
+  columns: readonly DataTableColumn<TRow>[],
+): readonly TRow[] {
+  const [held, setHeld] = useState({ columns, kept, rows: kept });
+  if (held.kept !== kept || held.columns !== columns) {
+    const next = { columns, kept, rows: held.kept === kept ? [...kept] : kept };
+    setHeld(next);
+    return next.rows;
+  }
+  return held.rows;
+}
+
 /** The table DataTable renders. Sorting starts ascending on every column, and Shift adds a column to it. */
 function useDataTable<TRow extends RowData>(options: DataTableOptions<TRow>): DataTableState<TRow> {
   const { data, columns, getRowId, state } = options;
   const parts = useStateParts(state);
   const selection = useRowSelection(data, getRowId, state);
-  // Made again only when the columns are, so TanStack keeps its rows.
   const columnDefs = columnDefsFor(columns);
   const matches = textMatcher(columns);
+  // TanStack keeps each row's values, and its sorted and filtered rows, until the data array changes, and the columns
+  // are not part of that: a column whose value reads the page's state, such as a spread from a benchmark, would sort
+  // and filter by its old values. A copy of the rows for each new set of columns makes TanStack read them again.
+  const rows = useRowsFor(options.kept, columns);
   const table = useTable<DataTableFeatures, TRow>(
-    tableOptions({ columnDefs, matches, options, parts, selection }),
+    tableOptions({ columnDefs, matches, options: { ...options, kept: rows }, parts, selection }),
   );
   return { hidden: parts.hidden, page: parts.page, setPage: parts.setPage, table };
 }
