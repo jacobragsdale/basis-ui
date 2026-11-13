@@ -18,6 +18,21 @@ describe("relativeTime", () => {
     expect(relativeTime(ago(duration), { now })).toBe(expected);
   });
 
+  /* Now is Friday 2026-11-13 10:00 in New York: a day ago by the calendar is yesterday, however many hours. */
+  test.each([
+    ["2026-11-12T09:59-05:00[America/New_York]", "yesterday"],
+    ["2026-11-11T10:01-05:00[America/New_York]", "2 days ago"],
+    ["2026-11-11T23:30-05:00[America/New_York]", "2 days ago"],
+    ["2026-11-12T00:30-05:00[America/New_York]", "yesterday"],
+  ])("%s is %j, by the days on New York's calendar", (stamp, expected) => {
+    const friday = Temporal.ZonedDateTime.from(
+      "2026-11-13T10:00-05:00[America/New_York]",
+    ).toInstant();
+    expect(relativeTime(Temporal.ZonedDateTime.from(stamp).toInstant(), { now: friday })).toBe(
+      expected,
+    );
+  });
+
   test("a time ahead of the clock reads as now", () => {
     expect(relativeTime(now.add({ seconds: 5 }), { now })).toBe("now");
   });
@@ -42,6 +57,18 @@ describe("isStale", () => {
   ])("%o old, with a threshold of %o, is stale: %s", (age, threshold, expected) => {
     expect(isStale(ago(age), { now, threshold })).toBe(expected);
   });
+
+  test.each([
+    [{ hours: 6 * 24 }, { weeks: 1 }, false],
+    [{ hours: 8 * 24 }, { weeks: 1 }, true],
+    [{ hours: 27 * 24 }, { months: 1 }, false],
+    [{ hours: 32 * 24 }, { months: 1 }, true],
+  ])(
+    "%o old, with a threshold of %o in weeks or months, is stale: %s, never throwing",
+    (age, threshold, expected) => {
+      expect(isStale(ago(age), { now, threshold })).toBe(expected);
+    },
+  );
 
   test("takes a Temporal.Duration", () => {
     expect(

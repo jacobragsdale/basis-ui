@@ -48,11 +48,13 @@ All source in the area was read in full; the tests were skimmed (names and selec
    - Excel should then show 37833100 and 9.12828E+77. DataTable's export and copy go through this.
    - Severity: fix before release (decision). Confidence: writer output confirmed by running; the Excel behaviour is plausible, not run here.
 
+   - Done in Utilities: identifiers sort as read, and a closed trade date and an old stamp count by the calendar, by the brief's smallest change: CSV and TSV stay as RFC 4180 writes them, since other programs read them, and the README says in one sentence that Excel reads `037833100` as a number and that parallax's grid's Excel export keeps it as text (checked: `parallax-export` writes a text column with `write_string`). Not run in Excel.
 8. **`packages/ui/src/utils/sort.ts:36`** — `Intl.Collator({ numeric: true })` orders identifiers by their leading digit run. DataTable sorts text columns with it (`components/data-table-columns.ts:121`).
    - Input → actual: `sortBy(["912828XB1","9128282A7","037833100"], [x => x])` → `912828XB1, 9128282A7, 037833100`. Also `"-5"` before `"-10"` and `"1.5"` before `"1.25"`.
    - Expected for CUSIP columns: `037833100, 9128282A7, 912828XB1`.
    - Severity: polish (decision). Confidence: confirmed by running.
 
+   - Done in Utilities: identifiers sort as read, and a closed trade date and an old stamp count by the calendar, by the brief's smallest change: `compareIdentifiers`, code-point order, in `@basis/ui/utils`; DataTable's text column takes `identifier: true` and sorts by it, missing values still last; and `vp run new table` marks a text column whose field names an identifier (`id`, `*_id`, `*Id`, `cusip`, `isin`, `sedol`, `figi`). The default stays as people read it. `SecurityPicker` lists its matches in the order its search gives them and sorts no column, so it has nothing to mark. `components/data-table-columns.ts` and `data-table-state.ts` are the components lane's files; the change is the option and its one use.
 9. **`packages/ui/src/numbers/derive.ts:69`** — `Math.max(0, ...exact.map(...))` overflows the stack on large books.
    - Input → actual: `shares` of 120,000 values works; 130,000 throws `RangeError: Maximum call stack size exceeded`.
    - Severity: polish. Confidence: confirmed by running.
@@ -63,10 +65,14 @@ All source in the area was read in full; the tests were skimmed (names and selec
     - `isStale` with `threshold: { weeks: 1 }` or `{ months: 1 }` throws `RangeError: Temporal error: ` with an empty message, though the type allows them.
     - Severity: polish. Confidence: confirmed by running.
 
+- Done in Utilities: identifiers sort as read, and a closed trade date and an old stamp count by the calendar: from a day on, `relativeTime` counts calendar days in `timeZone`, New York by default, so "yesterday" is any time the day before and the review's Wednesday 10:01 seen on Friday is "2 days ago"; under a day it still cuts hours, minutes and seconds. `isStale` adds the threshold to `then` as a zoned time, so weeks and months count on the calendar and no longer throw.
+
 11. **`packages/ui/src/dates/settlement.ts:24-26`** — from a closed trade date, T+0 and T+1 give the same day.
     - Input → actual: `settlementDate(2026-11-14)` (Saturday) → Monday 11-16 for both `days: 0` and `days: 1`. Veterans Day 2026-11-11 → 11-12 for both.
     - Each rule is documented on its own; the collision is not. Rolling the trade date first would give Tuesday for T+1.
     - Severity: polish (decision). Confidence: confirmed by running.
+
+- Done in Utilities: identifiers sort as read, and a closed trade date and an old stamp count by the calendar, as the brief decides: a trade dated on a closed day is moved to the next business day first, then its cycle counted, so the Saturday 2026-11-14 settles T+0 on 11-16 and T+1 on 11-17, and Veterans Day's on 11-12 and 11-13. The doc comment and the README say so.
 
 12. **`packages/ui/src/utils/stringify.ts:53`** — `stableStringify([1, , 3])` → `[1,,3]`, which is not JSON; `JSON.stringify` gives `[1,null,3]`. Boxed primitives also differ: `new Number(1)` → `{}`.
     - Severity: polish. Confidence: confirmed by running.
@@ -140,3 +146,10 @@ The weak spot is hostile or malformed file input (findings 1, 3, 4, 5, 14), whic
   writes NaN and the infinities as `—` rather than throwing. What to do: nothing.
 - `percentChange` gains the reason `not-a-number`, for a change from or to NaN or an infinity. What to do: code that
   switches on its reason handles the new one; the compiler names each place.
+- DataTable's text column takes `identifier: true`, which sorts it by code point, `037833100` before `912828XB1`, and
+  `vp run new table` writes it for an id's or a security code's column; `compareIdentifiers` in `@basis/ui/utils`.
+  What to do: add `identifier: true` to a column of CUSIPs, ISINs or ids.
+- `settlementDate` from a closed trade date counts its cycle from the next business day, so T+1 from a Saturday is
+  Tuesday, not Monday. What to do: nothing, unless a page relied on the old day.
+- `relativeTime` says "yesterday" only for the day before on New York's calendar (`timeZone` for another), and
+  `isStale` takes a threshold in weeks or months without throwing. What to do: nothing.

@@ -17,6 +17,7 @@ export {
 } from "./collections.ts";
 export { entries, fromEntries, keys, mapValues, omit, pick, type Entry } from "./objects.ts";
 export {
+  compareIdentifiers,
   sortBy,
   type SortBy,
   type SortCriterion,

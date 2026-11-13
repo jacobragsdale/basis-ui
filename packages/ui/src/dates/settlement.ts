@@ -9,8 +9,9 @@ interface SettlementOptions extends CalendarOption {
   readonly days?: number;
 }
 
-/** The date a trade made on `tradeDate` settles: `days` business days later on the calendar. Same-day settlement of
- * a trade dated on a closed day settles on the next business day. */
+/** The date a trade made on `tradeDate` settles: `days` business days later on the calendar. A trade dated on a day
+ * the market is closed, a weekend or a holiday, is first moved to the next business day, and its cycle counted from
+ * there, so a Saturday's trade settles T+0 on Monday and T+1 on Tuesday. */
 function settlementDate(
   tradeDate: Temporal.PlainDate,
   { calendar, days = 1 }: SettlementOptions = {},
@@ -21,9 +22,8 @@ function settlementDate(
     );
   }
   const options = calendar === undefined ? {} : { calendar };
-  return days === 0
-    ? businessDayOnOrAfter(tradeDate, options)
-    : addBusinessDays(tradeDate, days, options);
+  const traded = businessDayOnOrAfter(tradeDate, options);
+  return days === 0 ? traded : addBusinessDays(traded, days, options);
 }
 
 export { settlementDate };

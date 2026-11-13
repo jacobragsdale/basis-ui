@@ -1,6 +1,7 @@
 import { describe, expect, expectTypeOf, test } from "vite-plus/test";
 
-import { sortBy } from "#utils/index.ts";
+import { compareCells } from "#components/data-table-columns.ts";
+import { compareIdentifiers, sortBy } from "#utils/index.ts";
 import type { SortKey } from "#utils/index.ts";
 
 interface Row {
@@ -136,5 +137,30 @@ describe("sortBy", () => {
     expectTypeOf<SortKey<Row>>().toEqualTypeOf<"name" | "sector" | "yield" | "price" | "settles">();
     expectTypeOf<SortKey<number>>().toBeNever();
     expectTypeOf<SortKey<string>>().toBeNever();
+  });
+});
+
+/* An identifier, a CUSIP or an ISIN, is read character by character, not as words with numbers in them: a column says
+ * so, and sorts by code point. */
+describe("identifiers", () => {
+  const cusips = ["912828XB1", "9128282A7", "037833100"];
+
+  test("sort by code point, where the reader's order takes the leading digits as a number", () => {
+    expect(cusips.toSorted(compareIdentifiers)).toStrictEqual([
+      "037833100",
+      "9128282A7",
+      "912828XB1",
+    ]);
+    expect(sortBy(cusips, [(cusip): string => cusip])).toStrictEqual([
+      "912828XB1",
+      "9128282A7",
+      "037833100",
+    ]);
+  });
+
+  test("a DataTable column that says its text is an identifier sorts it by code point, missing ones last", () => {
+    const sorted = [...cusips, null].toSorted((left, right) => compareCells(left, right, true));
+    expect(sorted).toStrictEqual(["037833100", "9128282A7", "912828XB1", null]);
+    expect(compareCells("Bond 2", "Bond 10")).toBeLessThan(0);
   });
 });

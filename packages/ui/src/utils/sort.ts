@@ -138,6 +138,16 @@ function isMissing(value: unknown): boolean {
   );
 }
 
+/** How two identifiers order, such as CUSIPs or ISINs: by code point, character by character, as the identifier is
+ * read, where `sortBy` reads text as people read words, its runs of digits as numbers, so `912828XB1` would come
+ * before `037833100`. `cusips.toSorted(compareIdentifiers)`; DataTable's `identifier` column sorts by it. */
+function compareIdentifiers(left: string, right: string): number {
+  if (left < right) {
+    return -1;
+  }
+  return left > right ? 1 : 0;
+}
+
 /** How two values order, by the rules `sortBy` applies to each key: ascending unless `order` says otherwise, with
  * missing values last either way. */
 function compareValues(left: unknown, right: unknown, order: SortOrder = "asc"): number {
@@ -185,5 +195,5 @@ function sortBy<TItem>(
   return sorted.map(({ item }) => item);
 }
 
-export { compareValues, isMissing, sortBy };
+export { compareIdentifiers, compareValues, isMissing, sortBy };
 export type { SortBy, SortCriterion, SortKey, SortOrder, SortValue };

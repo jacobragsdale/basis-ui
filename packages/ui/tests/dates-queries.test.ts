@@ -177,6 +177,18 @@ describe("settlement dates", () => {
     expect(settles("2026-11-11", { days: 0 })).toBe("2026-11-12");
   });
 
+  test("a trade dated on a closed day counts its cycle from the next business day, so T+0 and T+1 differ", () => {
+    // 2026-11-14 is a Saturday; 2026-11-11 is Veterans Day, which SIFMA closes.
+    expect([settles("2026-11-14", { days: 0 }), settles("2026-11-14")]).toStrictEqual([
+      "2026-11-16",
+      "2026-11-17",
+    ]);
+    expect([settles("2026-11-11", { days: 0 }), settles("2026-11-11")]).toStrictEqual([
+      "2026-11-12",
+      "2026-11-13",
+    ]);
+  });
+
   test("a negative or fractional cycle is refused", () => {
     expect(() => settles("2026-11-10", { days: -1 })).toThrow(RangeError);
     expect(() => settles("2026-11-10", { days: 0.5 })).toThrow(RangeError);

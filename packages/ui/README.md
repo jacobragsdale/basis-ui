@@ -1413,7 +1413,9 @@ const columns: readonly DataTableColumn<Position>[] = [
   as a number. Any other column's value is text, a boolean or a number. `sortable`, `hideable` and `filterable` are on
   unless set to `false`. `width` sets a column's width in CSS pixels, which a wider cell widens.
 - **Sorting.** A heading sorts its column ascending, then descending, then not at all; Shift adds the column to the
-  sort, and each sorted heading shows its place. Missing values sort last either way.
+  sort, and each sorted heading shows its place. Missing values sort last either way. Text sorts as people read it,
+  its runs of digits as numbers, so `Bond 2` comes before `Bond 10`; a column of identifiers says `identifier: true`
+  and sorts by code point, so `037833100` comes before `912828XB1`, as `vp run new table` writes an id's column.
 - **Selection.** `selectable` adds a checkbox to each row, named after the row (`rowLabel`, the first column's value
   unless set), and one to the heading, which selects every row the filter shows, on every page. Shift with a click
   selects a range, and Space toggles the focused row's. `onSelectionChange` hears the selected rows and their ids, and
@@ -1424,7 +1426,8 @@ const columns: readonly DataTableColumn<Position>[] = [
   on Enter. The columns menu hides and shows columns. Copy puts the selected rows on the clipboard as TSV, which
   pastes into a spreadsheet's cells; Export CSV saves the rows the filters keep as `label.csv` (`exportName` to change
   it). Both write the columns showing, through `toTsv` and `toCsv`, which write a text cell that starts with `=`, `+`,
-  `-` or `@` as text, not a formula.
+  `-` or `@` as text, not a formula. They write other text as RFC 4180 does, since other programs read it: Excel
+  reads a CUSIP such as `037833100` as the number 37833100, while parallax's grid's Excel export keeps it as text.
 - **Pages.** A table shows 50 rows a page unless `pageSize` says otherwise, and shows its pages once it holds more rows
   than a page, or is given a page size. A new sort or filter goes back to the first page.
 - **Rows.** `rowActions` lists a row's actions in a menu at its end, asked for when the menu opens. `onRowClick` hears a
@@ -1872,7 +1875,8 @@ import { debounce, sortBy, toCsv } from "@basis/ui/utils";
 - Anything with a market convention, such as accrued interest, day counts, yields or risk, is the API's to compute.
 - `utils` follows es-toolkit's signatures, and differs where the types would otherwise lie or lodash surprises:
   `keyBy`, `countBy` and `fromEntries` return `Partial` records, `zip` types the `undefined` it pads with, `throttle`
-  never calls twice within its wait, and `sortBy` puts missing values last in either order.
+  never calls twice within its wait, and `sortBy` puts missing values last in either order. `compareIdentifiers`
+  orders identifiers by code point, where `sortBy` reads digits as numbers.
 - `parseCsv` reads CSV as RFC 4180 writes it, strictly: a quoted field that never closes, or a stray double quote,
   is an error naming its line, rather than a guess that shifts every column after it.
 - `readWorkbook` reads an Excel workbook's sheets with no dependency, from the bytes of an .xlsx, .xlsm, .xltx or
@@ -1908,6 +1912,10 @@ sifma.day(Temporal.PlainDate.from("2026-11-27")); // an early close at 14:00, "A
 | `sifma`   | sifma.org         | SIFMA's published recommendations for every year from 1996 to 2027        | 08:00 to 17:00, New York  |
 | `nyse`    | parallax's Rust   | the fixtures the Rust writes, 2000 to 2050, and nyse.com for 2016 to 2028 | 09:30 to 16:00, New York  |
 | `target2` | the ECB, Dec 2000 | the ECB's six closing days, 2000 to 2050                                  | 07:00 to 18:00, Frankfurt |
+
+A trade dated on a closed day is moved to the next business day before its cycle is counted, so a Saturday's trade
+settles T+0 on Monday and T+1 on Tuesday. `relativeTime` counts a day on and more by New York's calendar, "yesterday"
+for any time the day before, and `isStale` counts a threshold of weeks or months on it (`timeZone` for another).
 
 Each calendar is its rules plus a dated list of exceptions, each with the notice behind it, since markets close on days
 no rule foresees. `publishedThrough` is the last year the publisher

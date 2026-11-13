@@ -63,14 +63,24 @@ function columnValue(field: Field): string {
   return field.required ? read : `${read} ?? null`;
 }
 
+/** A field whose name says it holds an identifier: an id, as `id`, `security_id` or `tradeId`, or a security's code. */
+const identifierName = /(?:^|_)(?:id|cusip|isin|sedol|figi)$/iu;
+/** A camel-case name ending in an id, `tradeId`, where `paid` is no id. */
+const camelIdentifierName = /[a-z]Id$/u;
+
+/** A table's column for a field: a text column whose field names an identifier sorts by code point. */
 function columnLine(field: Field): string {
   const numeric = field.kind === "number";
+  const identifier =
+    field.kind === "text" &&
+    (identifierName.test(field.name) || camelIdentifierName.test(field.name));
   const instant = field.kind === "instant" && field.required && !field.nullable;
   const parts = [
     ...(instant ? [`cell: (row) => <DateTime value={row${access(field.name)}} />`] : []),
     ...(numeric && field.format !== undefined ? [`format: ${field.format}`] : []),
     `header: ${JSON.stringify(field.label)}`,
     `id: ${JSON.stringify(field.name)}`,
+    ...(identifier ? ["identifier: true"] : []),
     `value: (row) => ${columnValue(field)}`,
     ...(numeric ? [`variant: "numeric"`] : []),
   ];
@@ -209,4 +219,4 @@ export { ${scaffold.component} };
 `;
 }
 
-export { detailPage, tablePage };
+export { columnLine, detailPage, tablePage };

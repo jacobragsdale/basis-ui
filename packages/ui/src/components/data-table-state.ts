@@ -79,7 +79,12 @@ function columnDefsFor<TRow extends RowData>(
     enableSorting: column.sortable !== false,
     header: column.header,
     id: column.id,
-    sortFn: (left, right, id) => compareCells(left.getValue(id), right.getValue(id)),
+    sortFn: (left, right, id) =>
+      compareCells(
+        left.getValue(id),
+        right.getValue(id),
+        column.variant !== "numeric" && column.identifier === true,
+      ),
     sortUndefined: "last",
   }));
 }

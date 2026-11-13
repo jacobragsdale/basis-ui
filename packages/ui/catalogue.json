@@ -17850,6 +17850,13 @@
     {
       "kind": "function",
       "module": "@basis/ui/utils",
+      "name": "compareIdentifiers",
+      "purpose": "How two identifiers order, such as CUSIPs or ISINs: by code point, character by character, as the identifier is read, where `sortBy` reads text as people read words, its runs of digits as numbers, so `912828XB1` would come before `037833100`. `cusips.toSorted(compareIdentifiers)`; DataTable's `identifier` column sorts by it.",
+      "signature": "compareIdentifiers(left: string, right: string): number"
+    },
+    {
+      "kind": "function",
+      "module": "@basis/ui/utils",
       "name": "sortBy",
       "purpose": "A new array of the items sorted by each criterion in turn, the later ones breaking ties in the earlier, and stable, so items equal on every criterion keep their order: sortBy(bonds, [\"sector\", { by: \"yield\", order: \"desc\" }, (bond) => bond.issuer.name]) Missing values (null, undefined, NaN and invalid Dates) go last in either order. Strings compare through `Intl.Collator` with numeric ordering; Dates and Temporal values compare by value.",
       "signature": "sortBy<TItem>(items: readonly TItem[], criteria: readonly SortCriterion<TItem>[]): TItem[]"
@@ -18082,7 +18089,7 @@
       "kind": "function",
       "module": "@basis/ui/dates",
       "name": "settlementDate",
-      "purpose": "The date a trade made on `tradeDate` settles: `days` business days later on the calendar. Same-day settlement of a trade dated on a closed day settles on the next business day.",
+      "purpose": "The date a trade made on `tradeDate` settles: `days` business days later on the calendar. A trade dated on a day the market is closed, a weekend or a holiday, is first moved to the next business day, and its cycle counted from there, so a Saturday's trade settles T+0 on Monday and T+1 on Tuesday.",
       "signature": "settlementDate(tradeDate: Temporal.PlainDate, { calendar, days = 1 }: SettlementOptions = {}): Temporal.PlainDate"
     },
     {
@@ -18096,15 +18103,15 @@
       "kind": "function",
       "module": "@basis/ui/dates",
       "name": "isStale",
-      "purpose": "Whether `then` is older than `threshold`. A time exactly at the threshold is not yet stale.",
-      "signature": "isStale(then: Temporal.Instant, { now = Temporal.Now.instant(), threshold }: StaleOptions): boolean"
+      "purpose": "Whether `then` is older than `threshold`. A time exactly at the threshold is not yet stale. A threshold of weeks, months or years is counted on `timeZone`'s calendar, from `then`.",
+      "signature": "isStale(then: Temporal.Instant, { now = Temporal.Now.instant(), threshold, timeZone = defaultZone }: StaleOptions): boolean"
     },
     {
       "kind": "function",
       "module": "@basis/ui/dates",
       "name": "relativeTime",
-      "purpose": "How long ago `then` was, in the largest whole unit up to days: \"now\", \"45 sec. ago\", \"4 min. ago\", \"2 hr. ago\", \"yesterday\", \"3 days ago\". Units are cut, never rounded, so 4 minutes 59 seconds is \"4 min. ago\".",
-      "signature": "relativeTime(then: Temporal.Instant, { locale = \"en-US\", now = Temporal.Now.instant(), style = \"short\" }: RelativeTimeOptions = {}): string"
+      "purpose": "How long ago `then` was, in the largest whole unit up to days: \"now\", \"45 sec. ago\", \"4 min. ago\", \"2 hr. ago\", then, from a day on, by the dates on `timeZone`'s calendar, \"yesterday\" for the day before and \"3 days ago\". Units below a day are cut, never rounded, so 4 minutes 59 seconds is \"4 min. ago\".",
+      "signature": "relativeTime(then: Temporal.Instant, { locale = \"en-US\", now = Temporal.Now.instant(), style = \"short\", timeZone = defaultZone, }: RelativeTimeOptions = {}): string"
     },
     {
       "kind": "function",
@@ -25333,6 +25340,12 @@
           "type": "(row: TRow) => Cell | (row: TRow) => NumericValue"
         },
         {
+          "description": "Whether its text is an identifier, such as a CUSIP or an ISIN, which sorts by code point, `037833100` before `912828XB1`; text sorts as people read it, its runs of digits as numbers, unless set.",
+          "name": "identifier",
+          "optional": true,
+          "type": "boolean | undefined"
+        },
+        {
           "description": "The display format the API declares for it, such as `displayFormats.CouponRow.interest` from the generated client, which the cell shows it by unless the column draws its own `cell`.",
           "name": "format",
           "optional": true,
@@ -25632,6 +25645,12 @@
           "name": "value",
           "optional": false,
           "type": "(row: TRow) => Cell"
+        },
+        {
+          "description": "Whether its text is an identifier, such as a CUSIP or an ISIN, which sorts by code point, `037833100` before `912828XB1`; text sorts as people read it, its runs of digits as numbers, unless set.",
+          "name": "identifier",
+          "optional": true,
+          "type": "boolean | undefined"
         }
       ],
       "exported": true,
@@ -27910,6 +27929,12 @@
           "name": "now",
           "optional": true,
           "type": "Temporal.Instant"
+        },
+        {
+          "description": "The zone whose calendar counts days, weeks and months, America/New_York, the display zone, by default.",
+          "name": "timeZone",
+          "optional": true,
+          "type": "string"
         }
       ],
       "exported": true,
@@ -28127,6 +28152,12 @@
           "type": "Temporal.Instant"
         },
         {
+          "description": "The zone whose calendar counts days, weeks and months, America/New_York, the display zone, by default.",
+          "name": "timeZone",
+          "optional": true,
+          "type": "string"
+        },
+        {
           "description": "The locale to write in; US English by default.",
           "name": "locale",
           "optional": true,
@@ -28203,6 +28234,12 @@
           "name": "now",
           "optional": true,
           "type": "Temporal.Instant"
+        },
+        {
+          "description": "The zone whose calendar counts days, weeks and months, America/New_York, the display zone, by default.",
+          "name": "timeZone",
+          "optional": true,
+          "type": "string"
         },
         {
           "description": "How old a time may be before it is stale.",

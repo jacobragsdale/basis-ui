@@ -9,7 +9,7 @@ import type { ReactNode } from "react";
 
 import type { DisplayFormat } from "#format/display-format.ts";
 import type { Cell, Column } from "#utils/export.ts";
-import { compareValues, isMissing } from "#utils/sort.ts";
+import { compareIdentifiers, compareValues, isMissing } from "#utils/sort.ts";
 
 import { formattedText } from "./formatted-text.ts";
 import type { NumericValue } from "./num-text.ts";
@@ -39,6 +39,9 @@ interface DataTableColumnBase<TRow> {
 interface DataTableTextColumn<TRow> extends DataTableColumnBase<TRow> {
   readonly variant?: "default" | undefined;
   readonly value: (row: TRow) => Cell;
+  /** Whether its text is an identifier, such as a CUSIP or an ISIN, which sorts by code point, `037833100` before
+   * `912828XB1`; text sorts as people read it, its runs of digits as numbers, unless set. */
+  readonly identifier?: boolean | undefined;
 }
 
 /** A column of numbers, aligned right in tabular figures, as Table's `variant="numeric"` cells are. */
@@ -117,8 +120,12 @@ function shownText<TRow>(column: DataTableColumn<TRow>, row: TRow): string {
     : cellText(cellOf(column, row));
 }
 
-/** Two values in ascending order, by `sortBy`'s rules: numbers by value, text as people read it. */
-function compareCells(left: unknown, right: unknown): number {
+/** Two values in ascending order, by `sortBy`'s rules: numbers by value, text as people read it, or, in a column whose
+ * text is an `identifier`, by code point, with missing values last either way. */
+function compareCells(left: unknown, right: unknown, identifier = false): number {
+  if (identifier && typeof left === "string" && typeof right === "string") {
+    return compareIdentifiers(left, right);
+  }
   return compareValues(left, right);
 }
 
