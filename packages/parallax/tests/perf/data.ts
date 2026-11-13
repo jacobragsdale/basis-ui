@@ -31,6 +31,25 @@ function arrowFile(dataset: BenchDataset, rows: number): string {
   return path.join(data, `${dataset}-${String(rows)}.arrows`);
 }
 
+/** Where cargo writes its build, which `CARGO_TARGET_DIR` may move out of the package, as `scripts/build-wasm.ts` finds
+ * it: cargo metadata's `target_directory`. */
+function targetDirectory(): string {
+  const metadata: unknown = JSON.parse(
+    output("cargo", ["metadata", "--format-version", "1", "--no-deps"]),
+  );
+  if (
+    typeof metadata === "object" &&
+    metadata !== null &&
+    "target_directory" in metadata &&
+    typeof metadata.target_directory === "string"
+  ) {
+    return metadata.target_directory;
+  }
+  throw new Error(
+    `ERROR cargo metadata named no target directory: check that \`cargo metadata\` runs in ${parallax}.`,
+  );
+}
+
 /** Writes the datasets that are missing, as Arrow IPC streams: the same seed and options always give the same bytes. */
 function writeData(datasets: readonly BenchDataset[], sizes: readonly number[]): void {
   mkdirSync(data, { recursive: true });
@@ -40,9 +59,10 @@ function writeData(datasets: readonly BenchDataset[], sizes: readonly number[]):
       .map((dataset) => ({ dataset, out: arrowFile(dataset, rows), rows }))
       .filter(({ out }) => !existsSync(out)),
   );
+  const datagen = path.join(targetDirectory(), "release", "parallax-datagen");
   for (const { dataset, out, rows } of missing) {
     const args = [dataset, "--rows", String(rows), "--seed", "42", "--stream", "--out", out];
-    run(path.join(parallax, "target/release/parallax-datagen"), args);
+    run(datagen, args);
   }
 }
 
