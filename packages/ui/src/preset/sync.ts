@@ -25,17 +25,21 @@ import { TaskError } from "./task-error.ts";
 import {
   agentsFile,
   blockBegin,
+  claudeText,
   frontMatterStart,
   opensAsWritten,
+  ownFile,
+  ownFileProblem,
   problem,
   retiredProblem,
   skillStamp,
+  sortedForWriting,
 } from "./sync-problems.ts";
 import { inWorkspace, workspaceFile } from "./workspace.ts";
 
 const blockEnd = "<!-- basis-ui:end -->";
-const blockPattern = /<!-- basis-ui:begin\b[^\n]*-->\n[\s\S]*?<!-- basis-ui:end -->\n?/gu;
-const claudeText = "@AGENTS.md\n";
+// A line may end in CRLF, as an editor on Windows saves it, and the block is found all the same.
+const blockPattern = /<!-- basis-ui:begin\b[^\n]*-->\r?\n[\s\S]*?<!-- basis-ui:end -->(?:\r?\n)?/gu;
 
 /** Each file of `sync/` an app holds, by its path in the app, `/`-separated, and its name in `sync/`, which has no
  * leading dot, since a package's dotfiles do not all survive publishing. */
@@ -215,7 +219,9 @@ async function driftProblems(
   const differing = await stale(root, plan);
   const files = differing.map(({ current, file }) => ({
     file: file.path,
-    text: problem(file.path, current, plan.version),
+    text: ownFile(file.path, current)
+      ? ownFileProblem(file.path)
+      : problem(file, current, plan.version),
   }));
   const retired = plan.retired.map((file) => ({ file, text: retiredProblem(file, plan.version) }));
   return {
@@ -240,10 +246,11 @@ async function remove(root: string, file: string): Promise<void> {
 }
 
 /** Writes each framework file that differs, removes each retired one, and says what it did, or fails with what it
- * cannot put right. */
+ * cannot put right. An app's own file at a framework path, and a file with changes git has not committed, are kept,
+ * each named by an ERROR line, and the rest written all the same. */
 async function syncWrite(root: string, retired = retiredPaths): Promise<string> {
   const plan = await planSync(root, retired);
-  const writing = await stale(root, plan);
+  const { kept, writing } = sortedForWriting(root, await stale(root, plan), plan.version);
   await Promise.all(
     writing.map(async ({ file }) => {
       const target = path.join(root, file.path);
@@ -252,14 +259,15 @@ async function syncWrite(root: string, retired = retiredPaths): Promise<string> 
     }),
   );
   await Promise.all(plan.retired.map(async (file) => remove(root, file)));
-  const left = await appProblems(root);
-  if (left.length > 0) {
-    throw new TaskError(left.map(({ text }) => text).join("\n"));
-  }
   const done = [
     ...writing.map(({ file }) => `Wrote ${file.path}.`),
     ...plan.retired.map((file) => `Removed ${file}.`),
   ];
+  const configProblems = await appProblems(root);
+  const left = [...kept, ...configProblems.map(({ text }) => text)];
+  if (left.length > 0) {
+    throw new TaskError([...done, ...left].join("\n"));
+  }
   return done.length === 0
     ? `The framework's files match @basis/ui ${plan.version}.`
     : done.join("\n");

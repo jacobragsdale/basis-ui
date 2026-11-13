@@ -80,6 +80,14 @@
    - Rewriting managed files is a recorded decision; the defect is the silent overwrite of files it did not write and of uncommitted work. `retiredFiles` already protects an app's own file; `stale` does not.
    - Severity: fix before release.
 
+   Done in "Preset: sync keeps an app's own files and uncommitted work, and reads CRLF": `vp run sync` keeps a file at a
+   framework path that does not open as it wrote it, and a `CLAUDE.md` other than its own one line, with one `ERROR`
+   line each saying it is the app's own and how to take basis-ui's; and it keeps a file it would rewrite that holds
+   changes git has not committed (changed since the index, or untracked), with an `ERROR` line to commit or discard
+   them. It writes the rest and says so, and exits 1. `--check` and verify's sync stage name an own file the same way.
+   Outside a git clone no change can be told, and none is held back. Which files sync manages is unchanged: decision 2's
+   change waits for step 7.8. `tests/sync-own-files.test.ts` holds both; both failed before.
+
 8. **`src/preset/verify-tools.ts:153-161`** — the lint stage ignores `vp lint`'s exit status whenever its JSON parses.
    - Scenario: a non-zero exit with no `error`-severity, non-compiler diagnostics reports ok. That covers a type-aware pass that fails after the report is printed, or compiler errors in a file outside `tsconfig`'s `include`, which the types stage never sees.
    - Severity: fix before release.
@@ -122,6 +130,12 @@
     - An `AGENTS.md` saved with CRLF gets a second basis-ui block appended instead of the first replaced, and the check then passes with both.
     - A CRLF `tsconfig.json` is reported as "an app loosens no check".
     - Severity: polish. Confidence: confirmed by running (two begin markers after sync, zero problems reported).
+
+    Done in "Preset: sync keeps an app's own files and uncommitted work, and reads CRLF": the pattern that finds
+    basis-ui's block in `AGENTS.md` takes a CRLF line ending, so a CRLF file's block is replaced, not doubled, and a
+    file that differs from what sync writes only in its line endings is named as such, with the fix, rather than as a
+    loosened check. A framework file checked out with CRLF still counts as one sync wrote.
+    `tests/sync-own-files.test.ts` holds both; both failed before.
 
 14. **`src/preset/upgrade.ts:49-62`, `review.ts:64`, `sync/gitignore`** — any untracked file blocks `upgrade` and stops `verify` being recorded, and an app cannot add an ignore.
     - `.idea/`, `.vscode/` or `.env` are not in the managed `.gitignore`. The only way out is `.git/info/exclude`, which no message names.
@@ -188,3 +202,9 @@ What `docs/release-plan.md`'s "On winbox" gives step 7.6.
   installed version cannot parse no longer stops an upgrade, and a codemod that cannot change one file still writes
   the others. Sync now installs again, and moves the app's exact pins on `vite-plus` and `typescript` to the versions
   the new release needs. What to do: nothing; when an upgrade stops, do as its last `ERROR` line says.
+
+- `vp run sync` keeps an app's own file at a path where it writes basis-ui's, such as a `Dockerfile` or `CLAUDE.md` it
+  did not write, and a file with changes git has not committed, naming each in an `ERROR` line; it writes the rest and
+  exits 1. Before, it overwrote both and said only "Wrote X". What to do: when it names a file, do as its line says.
+- `vp run sync` replaces the basis-ui block of an `AGENTS.md` saved with CRLF line endings, rather than adding a
+  second, and `--check` names a file that differs only in its line endings as such. What to do: nothing.
