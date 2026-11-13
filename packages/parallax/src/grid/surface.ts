@@ -85,7 +85,10 @@ class GridSurface {
     const { scroll, canvas } = this.dom.parts;
     const pointer = this.#pointer;
     const scrolled = (): void => {
-      this.#measure();
+      // A tooltip is of the cell a scroll moves from under the pointer.
+      if (this.#measure()) {
+        pointer.clearTooltip();
+      }
       pointer.hoverAt();
       changed();
     };
@@ -119,14 +122,12 @@ class GridSurface {
     };
   }
 
-  /** When the rows shrink to end at or above the first row in view, as after a search, shows them from the top; the
-   * engine answers such a change from row 0, so the rows are already here. The selection is kept to the cells the view
-   * now has. */
+  /** When the rows shrink past the first row in view, as after a search, shows them from the top, where the engine's
+   * answer starts, and keeps the selection to the cells the view now has. */
   public rowsChanged(before: number): void {
     const { model } = this.#host;
-    const { metrics, area, interaction } = model;
-    interaction.selection = clampSelection(interaction.selection, model.extent);
-    const rows = model.totalRows;
+    model.interaction.selection = clampSelection(model.interaction.selection, model.extent);
+    const { metrics, area, totalRows: rows } = model;
     if (metrics === null || rows >= before) {
       return;
     }
@@ -253,9 +254,10 @@ class GridSurface {
     model.interaction.menu = { ...menu, name: menu.name ?? "" };
   }
 
-  /** Reads the visible area's size and scroll, and a horizontal scrollbar's height once one shows. */
-  #measure(): void {
+  /** Reads the area's size and scroll, and a horizontal scrollbar's height; returns whether the scroll moved. */
+  #measure(): boolean {
     const { scroll } = this.dom.parts;
+    const was = this.#host.model.area;
     const scrollbar = scroll.offsetHeight - scroll.clientHeight;
     if (scrollbar > 0) {
       this.#scrollbarPx = scrollbar;
@@ -266,6 +268,7 @@ class GridSurface {
       scrollTop: scroll.scrollTop,
       width: scroll.clientWidth,
     };
+    return was.scrollTop !== scroll.scrollTop || was.scrollLeft !== scroll.scrollLeft;
   }
 
   #revealColumn(column: number): void {

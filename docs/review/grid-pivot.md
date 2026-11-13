@@ -71,6 +71,8 @@ I found no stale-frame or wrong-cell drawing bug, but two release blockers: one 
 - Scenario: rest on a `###` cell, the tooltip shows its number, then wheel three rows. The tooltip stays beside a different row's `###` showing the old number, and it is the only way to read a cut number.
 - Severity: fix before release.
 - Confidence: confirmed by reading.
+- Done in Grid: a tooltip goes with a scroll, and a row cleared before its late frame draws again: a scroll that moves the grid clears the tooltip, and the next pointer move shows the tooltip of
+  the cell now under it. Held by `tests/browser/grid-tooltip.test.ts`.
 
 **7. A grid whose opening layout the engine refuses never recovers, and the app is not told.** `src/react/use-view.ts:68-80`, `crates/parallax-session/src/lib.rs:972-975`, `src/grid/grid.tsx:211-213`
 
@@ -110,6 +112,8 @@ I found no stale-frame or wrong-cell drawing bug, but two release blockers: one 
 - Scenario: scroll away far enough to send a request, then back to a spot the old frame only partly covers before the reply lands. This is plausible when another view keeps the single worker busy. The rows are cleared, then skipped as "unchanged" when their frame arrives, and stay blank until hover or the next scroll.
 - Severity: polish, with a one-line fix.
 - Confidence: confirmed by running `drawRows` with a fake context; the race itself by reading.
+- Done in Grid: a tooltip goes with a scroll, and a row cleared before its late frame draws again: clearing a row forgets the text its cells were drawn with, so the late frame draws them. Held
+  by `tests/unit/grid-clear-row.test.ts`; the race itself is not run.
 
 **11. Menu "Copy", "Copy with headers" and `ref.copy()` fail silently.** `src/grid/actions.ts:90-103`
 
@@ -212,3 +216,6 @@ Everything else in `src/grid` and `src/pivot` was read in full. The scripts are 
 
 - The menu's Copy and `ref.copy()` say in the status bar why a copy failed, and a selection is kept to the cells the
   view has after a filter or an ungroup, so it copies. What to do: nothing.
+
+- A cut cell's tooltip goes when the grid scrolls, rather than staying beside another row's cell with the number of
+  the one it was about, and rows a late frame fills are drawn rather than left blank. What to do: nothing.

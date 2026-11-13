@@ -94,7 +94,9 @@ function drawPlaced(pass: Pass, rows: readonly Placed[]): number {
 }
 
 /** The body, where rows draw: between the header and the totals row, or the bottom. */
-function bodyOf(pass: Pass): readonly [number, number, number, number] {
+function bodyOf(
+  pass: Pick<Pass, "bodyBottom" | "metrics" | "width">,
+): readonly [number, number, number, number] {
   const top = pass.metrics.headerPx;
   return [0, top, pass.width, pass.bodyBottom - top];
 }
@@ -106,12 +108,33 @@ function walks(pass: Pass, row: number, chosen: boolean): boolean {
   return pass.full || !pass.sameFrame || pass.stale.has(row) || pass.chosenRows.get(row) !== chosen;
 }
 
-/** Clears a row drawn before that no longer has data. */
-function clearRow(pass: Pass, at: { readonly row: number; readonly y: number }): void {
+/** Clears a row drawn before that no longer has data, and forgets the text its cells were drawn with, so that when
+ * its data comes, as a late frame's does, each cell is drawn again rather than left blank as unchanged. */
+function clearRow(
+  pass: Pick<
+    Pass,
+    | "bodyBottom"
+    | "context"
+    | "drawn"
+    | "drawnRows"
+    | "metrics"
+    | "ratio"
+    | "tally"
+    | "theme"
+    | "width"
+  >,
+  at: { readonly row: number; readonly y: number },
+): void {
   if (pass.drawnRows.delete(at.row)) {
     const rect = [0, at.y, pass.width, pass.metrics.rowPx] as const;
     fillRect(pass, pass.theme.background, rect);
     pass.tally.cell(rect, bodyOf(pass));
+    const prefix = `${String(at.row)}:`;
+    for (const key of pass.drawn.keys()) {
+      if (key.startsWith(prefix)) {
+        pass.drawn.delete(key);
+      }
+    }
   }
 }
 
@@ -234,4 +257,4 @@ function drawFooter(pass: Pass, frame: FrameData, height: number): void {
   fillFromStart(pass, theme.totalBorder, [0, y, pass.width, 1]);
 }
 
-export { bodyOf, drawFooter, drawRows };
+export { bodyOf, clearRow, drawFooter, drawRows };
