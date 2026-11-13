@@ -17,8 +17,9 @@ import {
   bannedPatterns,
   bannedRounding,
   browserOnly,
-  browserTestImports,
+  featureImports,
   generatedImports,
+  testImports,
 } from "./lint-bans.ts";
 import {
   arbitraryValue,
@@ -167,10 +168,7 @@ const lint: OxlintConfig = {
         ],
         "eslint/no-restricted-imports": [
           "error",
-          {
-            paths: [...bannedImports, ...browserTestImports],
-            patterns: [...bannedPatterns, generatedImports],
-          },
+          { paths: testImports, patterns: [...bannedPatterns, generatedImports] },
         ],
       },
     },
@@ -180,7 +178,7 @@ const lint: OxlintConfig = {
       rules: {
         "eslint/no-restricted-imports": [
           "error",
-          { paths: bannedImports, patterns: [...bannedPatterns, generatedImports] },
+          { paths: featureImports, patterns: [...bannedPatterns, generatedImports] },
         ],
         "eslint/no-restricted-properties": "off",
       },
@@ -208,7 +206,7 @@ const lint: OxlintConfig = {
      * the design decided against. */
     "eslint/no-restricted-imports": [
       "error",
-      { paths: bannedImports, patterns: [...bannedPatterns, generatedImports] },
+      { paths: featureImports, patterns: [...bannedPatterns, generatedImports] },
     ],
     // Only the number and date components and parallax round and format, once, for display.
     "eslint/no-restricted-properties": ["error", ...bannedRounding],

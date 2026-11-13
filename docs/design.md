@@ -197,11 +197,13 @@ basis-ui adds one lint plugin, `@shadcn/lint`, described below:
   `[&>*]:`, a filter such as `grayscale` or `brightness-50`, black and white, and a class built from a template
   string, and since 2026-11-13 follows a `className` to the constant, object or helper of the file that writes it,
   reads `cn(...)` as clsx does, checks an app's own components as plain elements, and refuses classes from another
-  module or a function's result, which no check can read; `basis/no-hand-rounding`, for `Math.ceil(n * 100) / 100` and its `floor` and `trunc` forms, and
+  module or a function's result, which no check can read; `basis/no-hand-rounding`, for `Math.ceil(n * 100) / 100` and its `floor` and `trunc` forms, and any of them over a power of ten or the factor its value was scaled by, and
   `toLocaleDateString`, `toLocaleTimeString`, `Intl.DateTimeFormat` and `Intl.RelativeTimeFormat` beside the number
   bans; `basis/no-as-child`, which refuses Radix's `asChild`, which shadcn's examples write, with the line that says to
   pass the element through `render` (step 6.7.10, 2026-11-11); `basis/no-fetch`, which also refuses `XMLHttpRequest`, `WebSocket`, `EventSource` and `navigator.sendBeacon`,
-  and `fetch` in `src/api`, and which basis-ui's own code keeps, its client layers aside; and imports of the libraries [Decided against](#decided-against) names. The messages that
+  and `fetch` in `src/api`, read also through an alias of the global object or destructured from it, and which
+  basis-ui's own code keeps, its client layers aside; an import of `apiFetch` outside `src/api`, since only the
+  generated client's hooks parse what it answers; and imports of the libraries [Decided against](#decided-against) names. The messages that
   sent an app to declare a class, a colour or a CSS rule in its stylesheet, `no-unknown-classes`',
   `no-arbitrary-values`' and `no-inline-styles`', name the theme's classes and tokens instead.
 - Oxfmt with its defaults.

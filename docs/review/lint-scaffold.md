@@ -112,6 +112,8 @@ Done in Suppressions: a directive on a block comment's later line is refused, an
 - Severity: fix before release for `apiFetch`; polish for the aliases.
 - Confidence: confirmed by reading; the scope-dependent cases were not run.
 
+Done in No fetch: fetch through an alias of the global object fails, and apiFetch is the client's alone: of the plan's two choices, the smaller, the lint: an import of `apiFetch` from `@basis/ui` or `@basis/ui/mutator`, named or through the whole module, is refused outside `src/api` by `eslint/no-restricted-imports`, with a line that names the client's hooks; `apiFetch` stays in the main entry, where the mutator imports it. `basis/no-fetch` (moved to `lint-fetch.ts`) follows the global object through `as`, a member such as `globalThis.window`, a constant alias such as `const w = window` and a written key such as `window["fetch"]`, and refuses `fetch` destructured from it. Held by `tests/preset-errors-fetch.test.ts`, whose seven tests all failed before. Also, from "Overall quality": `basis/no-hand-rounding` now flags `Math.floor(scaled) / 100` and `Math.trunc(n * cents) / cents`, and passes `Math.floor(index / size) / pages`.
+
 **12. Verify's text scan is not string-aware.**
 
 - Where: `suppressions.ts:88`.
@@ -197,3 +199,8 @@ The area is better than its age suggests: modules are small and pure, every fail
 - `vp run shot` fails a route that matches none of the router's paths, whose picture was the page not found, and
   `--all` keeps every other route's shot when one cannot be pictured, as when its load times out; both report a
   problem of the new kind `route` in `--json`. What to do: name a route the router has.
+
+- An import of `apiFetch` from `@basis/ui` or `@basis/ui/mutator` outside `src/api` fails the lint: a page calls the
+  API through the generated client's hooks, which parse each answer by its schema. `basis/no-fetch` also refuses
+  `fetch` through an alias of the global object or destructured from it, and `basis/no-hand-rounding` a floored value
+  over a power of ten. What to do: replace a call to `apiFetch` with the operation's hook from `src/api/client.ts`.

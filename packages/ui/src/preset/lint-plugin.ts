@@ -2,76 +2,16 @@
  * could not say what an app should do (docs/design.md, The toolchain, at its strictest): `fetch` and the browser's
  * other network APIs, which `eslint/no-restricted-globals` followed with advice to shadow them; a number with no name,
  * which an app may write inside JSX; rounding by hand to decimals; a comment that turns a check off; Radix's `asChild`,
- * which Base UI's `render` replaces; and a plain element's classes (lint-classes.ts). Each message is one line that starts with `ERROR` and ends with its fix. lint.ts
+ * which Base UI's `render` replaces; and a plain element's classes (lint-classes.ts) and the network (lint-fetch.ts). Each message is one line that starts with `ERROR` and ends with its fix. lint.ts
  * applies them, to app code only. */
 
 import { definePlugin, defineRule } from "vite-plus/lint/plugins";
 import type { ESTree, SourceCode } from "vite-plus/lint/plugins";
 
-import { bannedFetch, bannedNetwork, clientOnly, showWithComponents } from "./lint-bans.ts";
+import { showWithComponents } from "./lint-bans.ts";
 import { themeClasses } from "./lint-classes.ts";
+import { noFetch } from "./lint-fetch.ts";
 import { refusal, suppressionIn } from "./suppressions.ts";
-
-// The objects a network API is reached through as a property, as `window.fetch`.
-const globalObjects = new Set(["globalThis", "self", "window"]);
-
-/** Whether `node` reads a global the module does not declare, such as the browser's `fetch`. Oxlint's
- * `isGlobalReference` says no for a global no configured environment names, which `fetch` is not. */
-function readsGlobal(sourceCode: SourceCode, node: ESTree.Node): boolean {
-  const reference = sourceCode
-    .getScope(node)
-    .references.find(({ identifier }) => identifier === node);
-  if (reference === undefined) {
-    return false;
-  }
-  const { resolved } = reference;
-  return resolved === null || (resolved.scope.type === "global" && resolved.defs.length === 0);
-}
-
-/** What a network API at `name` is refused with in `file`: `fetch` in the client layer, src/api, is its own case. */
-function networkMessage(name: string, file: string): string | undefined {
-  if (name === bannedFetch.name) {
-    return /[/\\]src[/\\]api[/\\]/u.test(file) ? clientOnly : bannedFetch.message;
-  }
-  return Object.hasOwn(bannedNetwork, name) ? bannedNetwork[name] : undefined;
-}
-
-/** `fetch`, `XMLHttpRequest`, `WebSocket` and `EventSource`, also as `window.fetch`, unless the module declares one of
- * its own, and `navigator.sendBeacon`, in any file of the app, src/api's included. */
-const noFetch = defineRule({
-  create(context) {
-    const { physicalFilename: file, sourceCode } = context;
-    return {
-      Identifier(node): void {
-        const message = node.name === "sendBeacon" ? undefined : networkMessage(node.name, file);
-        if (message !== undefined && readsGlobal(sourceCode, node)) {
-          context.report({ message, node });
-        }
-      },
-      MemberExpression(node): void {
-        const { object, property } = node;
-        if (node.computed || property.type !== "Identifier") {
-          return;
-        }
-        const message = networkMessage(property.name, file);
-        const beacon = property.name === "sendBeacon";
-        if (
-          message !== undefined &&
-          (beacon ||
-            (object.type === "Identifier" &&
-              globalObjects.has(object.name) &&
-              readsGlobal(sourceCode, object)))
-        ) {
-          context.report({ message, node });
-        }
-      },
-    };
-  },
-  meta: {
-    docs: { description: "An app calls its API only through the generated client." },
-    type: "problem",
-  },
-});
 
 /** A comment that turns a check off, but one the allowlist in suppressions.ts names, at the comment. */
 const noSuppressions = defineRule({
@@ -129,6 +69,21 @@ const roundings: Readonly<Record<string, string>> = {
   trunc: "toward-zero",
 };
 
+/** Whether `divisor` undoes a scale to decimals: a power of ten, as `/ 100`, or the factor `scaled` was multiplied
+ * by, as `Math.floor(n * cents) / cents`. A page's count, as `Math.floor(index / size) / pages`, is neither. */
+function undoesScale(sourceCode: SourceCode, scaled: ESTree.Node, divisor: ESTree.Node): boolean {
+  if (divisor.type === "Literal" && typeof divisor.value === "number") {
+    const digits = Math.log10(divisor.value);
+    return digits >= 1 && Number.isInteger(digits);
+  }
+  const text = sourceCode.getText(divisor);
+  return (
+    scaled.type === "BinaryExpression" &&
+    scaled.operator === "*" &&
+    [scaled.left, scaled.right].some((factor) => sourceCode.getText(factor) === text)
+  );
+}
+
 /** `Math.ceil(n * 100) / 100`, and the same with `floor` or `trunc`: rounding to decimals by hand, which `Math.round`'s
  * ban does not see. */
 const noHandRounding = defineRule({
@@ -141,10 +96,12 @@ const noHandRounding = defineRule({
         }
         const [name = "", method = ""] = sourceTextOf(left.callee).split(".");
         const rounding = roundings[method];
+        const [scaled] = left.arguments;
         if (
           name !== "Math" ||
           rounding === undefined ||
-          left.arguments[0]?.type !== "BinaryExpression"
+          scaled === undefined ||
+          !undoesScale(context.sourceCode, scaled, node.right)
         ) {
           return;
         }

@@ -139,6 +139,15 @@ const bannedFetch = {
 };
 const clientOnly =
   "ERROR src/api holds the generated client and the files that re-export it, which call the API through @basis/ui's apiFetch: call no fetch here, and for an operation the client lacks, pull the API's new openapi.json with vp run client-pull.";
+/* The client's own fetch, which the generated hooks call with each answer's schema: imported elsewhere, a page
+ * would call the API by hand with a type it asserts and nothing parsed. src/api, which re-exports the client, may. */
+const apiFetchMessage =
+  "ERROR feature code calls the API only through the generated client, whose hooks parse each answer by its schema, never through apiFetch: import the operation's hook from src/api/client.ts, and for an operation the client lacks, pull the API's new openapi.json with vp run client-pull.";
+const clientImports = ["@basis/ui", "@basis/ui/mutator"].map((name) => ({
+  importNames: ["apiFetch"],
+  message: apiFetchMessage,
+  name,
+}));
 /** The network APIs besides `fetch`, by the global that opens one, with what to use instead. */
 const bannedNetwork: Readonly<Record<string, string>> = {
   EventSource:
@@ -149,8 +158,15 @@ const bannedNetwork: Readonly<Record<string, string>> = {
   sendBeacon: bannedFetch.message,
 };
 
+/** What feature code may not import, outside the client layer, and what a test that runs in a Node DOM may not. */
+const featureImports = [...bannedImports, ...clientImports];
+const testImports = [...featureImports, ...browserTestImports];
+
 export {
+  apiFetchMessage,
   bannedFetch,
+  featureImports,
+  testImports,
   bannedNetwork,
   clientOnly,
   bannedImports,
