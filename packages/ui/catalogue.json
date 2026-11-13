@@ -18233,8 +18233,8 @@
       "kind": "function",
       "module": "@basis/ui/testing",
       "name": "renderApp",
-      "purpose": "The app's routes at `path`, in BasisApp, on a memory history, as a user signed in with `signIn` sees them. Find what it shows with `screen`, and wait for data with `await screen.findByText(...)`.",
-      "signature": "renderApp(routeTree: AnyRoute, path: string, { signIn = anonymousSignIn() }: RenderAppOptions = {}): RenderedApp"
+      "purpose": "The app's routes at `path`, in BasisApp, on a memory history, as a user signed in with `signIn` sees them, the router made with the app's own `router` options. Find what it shows with `screen`, and wait for data with `await screen.findByText(...)`.",
+      "signature": "renderApp(routeTree: AnyRoute, path: string, { signIn = anonymousSignIn(), router: routerOptions }: RenderAppOptions = {}): RenderedApp"
     },
     {
       "kind": "function",
@@ -28592,6 +28592,13 @@
       "purpose": "What BasisApp reported while a test ran."
     },
     {
+      "definition": "Partial< Omit< RouterConstructorOptions< AnyRoute, TrailingSlashOption, boolean, RouterHistory, Record<string, unknown> >, \"history\" | \"routeTree\" > >",
+      "exported": true,
+      "module": "@basis/ui/testing",
+      "name": "AppRouterOptions",
+      "purpose": "The app's router options but the route tree and the history, which the test gives."
+    },
+    {
       "fields": [
         {
           "description": "A sample for each route with a parameter that no fixture gives, such as `{ \"/bonds/$security\": { security: \"US91282CRF04\" } }`. A route without one is skipped, with a line that says so.",
@@ -28604,6 +28611,12 @@
           "name": "signIn",
           "optional": true,
           "type": "SignIn"
+        },
+        {
+          "description": "The app's own router options, as its `router.ts` gives `createRouter`, but the route tree and the history: its `context`, `basepath` or search serializer. A function of the query client BasisApp holds makes them for a context that carries it: `(queryClient) => ({ context: { queryClient } })`.",
+          "name": "router",
+          "optional": true,
+          "type": "TestRouterOptions"
         }
       ],
       "exported": true,
@@ -28644,6 +28657,12 @@
           "name": "signIn",
           "optional": true,
           "type": "SignIn"
+        },
+        {
+          "description": "The app's own router options, as its `router.ts` gives `createRouter`, but the route tree and the history: its `context`, `basepath` or search serializer. A function of the query client BasisApp holds makes them for a context that carries it: `(queryClient) => ({ context: { queryClient } })`.",
+          "name": "router",
+          "optional": true,
+          "type": "TestRouterOptions"
         }
       ],
       "exported": true,
@@ -28674,6 +28693,13 @@
       "module": "@basis/ui/testing",
       "name": "RouteParams",
       "purpose": "Each route's sample, by its path as the router writes it, such as `{ \"/bonds/$security\": { security: \"US91282CRF04\" } }`. A splat, `$`, takes its value as `_splat`."
+    },
+    {
+      "definition": "AppRouterOptions | ((queryClient: QueryClient) => AppRouterOptions)",
+      "exported": true,
+      "module": "@basis/ui/testing",
+      "name": "TestRouterOptions",
+      "purpose": "The app's router options, or a function that makes them from the query client BasisApp holds, for a context that carries it, as a loader that fills `context.queryClient` needs: `(queryClient) => ({ context: { queryClient } })`."
     },
     {
       "definition": "string | number | boolean | Temporal.PlainDate | null | undefined",

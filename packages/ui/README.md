@@ -598,6 +598,22 @@ checkRoutes(routeTree, { params: { "/books/$book": { book: "RATES" } } });
 A route with no sample is skipped, and the skipped test's name says how to give it one. `signIn` sets the user, as
 `renderApp`'s does.
 
+Both build the router from the route tree on a memory history. `router` gives them the app's own options, as its
+`router.ts` gives `createRouter`, so that a `context`, a `basepath` or a search serializer is under test; a function
+of the query client `BasisApp` holds makes them for a context that carries it, as a loader that fills
+`context.queryClient` needs:
+
+```ts
+checkRoutes(routeTree, { router: (queryClient) => ({ context: { queryClient } }) });
+renderApp(routeTree, "/desk/", { router: { basepath: "/desk" } });
+```
+
+What a route's test does not cover: what loads outside the router and the query client, such as a parallax dataset
+through `useDataset`, whose failure shows on its grid and is not reported to telemetry; what fails after the page has
+been still for 100 ms, such as a request a timer starts; the page as drawn, its layout, colours and canvases, which
+`vp run shot` and a `*.browser.test.tsx` see; and the sign-in adapter the app ships, since it runs under
+`anonymousSignIn()` unless `signIn` says otherwise.
+
 `expectAccessible(container?)` runs the same axe check in any test. With no argument it checks the whole document, as
 after `renderApp`. With an element, such as the `container` that `render` returns, it checks only what is inside it,
 and leaves out `region`, since a component rendered alone sits in no landmark.

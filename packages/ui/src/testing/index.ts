@@ -8,14 +8,17 @@
 import { cleanup, render } from "@testing-library/react";
 import type { RenderResult } from "@testing-library/react";
 import type { AnyRoute } from "@tanstack/react-router";
-import { createMemoryHistory, createRouter } from "@tanstack/react-router";
 import { createElement } from "react";
 import { afterEach } from "vite-plus/test";
 
 import { BasisApp } from "#shell/basis-app.tsx";
+import { createQueryClient } from "#shell/query-client.ts";
 import type { SignIn } from "#shell/sign-in.ts";
 import { anonymousSignIn } from "#shell/sign-in.ts";
 import type { Telemetry } from "#shell/telemetry.ts";
+
+import { testRouter } from "./test-router.ts";
+import type { TestRouterOptions } from "./test-router.ts";
 
 // Testing Library unmounts what a test rendered after it, as Vitest runs without globals.
 afterEach(() => {
@@ -49,25 +52,28 @@ function recordingTelemetry(): { readonly reports: AppReports; readonly telemetr
 interface RenderAppOptions {
   /** The sign-in adapter: `anonymousSignIn()` unless set, or `fakeSignIn()` for a signed-in user. */
   readonly signIn?: SignIn;
+  /** The app's own router options, as its `router.ts` gives `createRouter`, but the route tree and the history: its
+   * `context`, `basepath` or search serializer. A function of the query client BasisApp holds makes them for a context
+   * that carries it: `(queryClient) => ({ context: { queryClient } })`. */
+  readonly router?: TestRouterOptions;
 }
 
 interface RenderedApp extends RenderResult {
   readonly reports: AppReports;
 }
 
-/** The app's routes at `path`, in BasisApp, on a memory history, as a user signed in with `signIn` sees them. Find
- * what it shows with `screen`, and wait for data with `await screen.findByText(...)`. */
+/** The app's routes at `path`, in BasisApp, on a memory history, as a user signed in with `signIn` sees them, the
+ * router made with the app's own `router` options. Find what it shows with `screen`, and wait for data with
+ * `await screen.findByText(...)`. */
 function renderApp(
   routeTree: AnyRoute,
   path: string,
-  { signIn = anonymousSignIn() }: RenderAppOptions = {},
+  { signIn = anonymousSignIn(), router: routerOptions }: RenderAppOptions = {},
 ): RenderedApp {
-  const router = createRouter({
-    history: createMemoryHistory({ initialEntries: [path] }),
-    routeTree,
-  });
+  const queryClient = createQueryClient();
+  const router = testRouter({ options: routerOptions, path, queryClient, routeTree });
   const { reports, telemetry } = recordingTelemetry();
-  const rendered = render(createElement(BasisApp, { router, signIn, telemetry }));
+  const rendered = render(createElement(BasisApp, { queryClient, router, signIn, telemetry }));
   return { ...rendered, reports };
 }
 
@@ -77,6 +83,7 @@ export { checkRoutes, type CheckRoutesOptions } from "./check-routes.ts";
 export { expectAccessible } from "./axe.ts";
 export { mockApi, type MockApi } from "./mock-api.ts";
 export type { RouteParams } from "./route-samples.ts";
+export type { AppRouterOptions, TestRouterOptions } from "./test-router.ts";
 export { renderApp };
 export { workbookFile, type WorkbookCell, type WorkbookFileOptions } from "./workbook-file.ts";
 export type { AppReports, RenderAppOptions, RenderedApp };

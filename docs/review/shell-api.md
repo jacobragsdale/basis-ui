@@ -134,6 +134,13 @@ account of the cookie says so. Tested with the cookie-jar fake in both orders, a
 - **Scenario:** A router `context`, `basepath` or search serializer the app sets is never under test, and a loader reading `context.queryClient` cannot be tested at all. A dataset load that fails after the 100 ms still-window is not reported.
 - **Confidence:** the first is confirmed by reading; the second is plausible.
 
+Done in Testing: route tests make the router with the app's own options: `checkRoutes` and `renderApp` take `router`, the app's own router options, or a function of the
+query client `BasisApp` holds that makes them, so a context carrying that client reaches a loader; both make the
+router through one `testRouter`, and `renderApp` now gives `BasisApp` its query client. The README says what a route
+test does not cover: a dataset loaded through `useDataset`, a failure after the 100 ms still-window, the page as drawn,
+and the shipped sign-in adapter. Not done: the "loaded" rule still watches only the router and the query client;
+watching parallax's datasets would need `@basis/ui/testing` to know parallax, which 7.9's lane owns.
+
 **13. `packages/ui/src/api/problem.ts:39`, `basis-app.tsx:159-165` — polish**
 
 - **Defect:** `pointerPath` lets `decodeURIComponent` throw.
@@ -215,3 +222,7 @@ Throwaway scripts are in `(a scratch folder)`.
 - The preferences cookie an app keeps for itself, with no `preferencesDomain`, ends in `.host`, as
   `dark.compact.full.default.host`, and is read before a shared one, so an app on a host under another app's shared
   domain keeps its own choice. What to do: nothing; a test that reads the cookie's value expects the mark.
+- `checkRoutes` and `renderApp` take `router`, the app's own router options, as its `router.ts` gives `createRouter`,
+  or a function of `BasisApp`'s query client that makes them: `{ router: (queryClient) => ({ context: { queryClient }
+  }) }`. What to do: an app whose router sets a `context`, a `basepath` or a search serializer passes them, so that
+  its route tests run the router it ships.

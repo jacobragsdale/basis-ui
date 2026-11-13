@@ -14,7 +14,7 @@
 
 import { render } from "@testing-library/react";
 import type { QueryClient } from "@tanstack/react-query";
-import { createMemoryHistory, createRouter } from "@tanstack/react-router";
+import { createRouter } from "@tanstack/react-router";
 import type { AnyRoute, AnyRouter } from "@tanstack/react-router";
 import { createElement } from "react";
 import { afterAll, describe, test, vi } from "vite-plus/test";
@@ -37,6 +37,8 @@ import { nothingFound, recordingTelemetry, reportedLines } from "./page-report.t
 import type { Found } from "./page-report.ts";
 import { routeSamples } from "./route-samples.ts";
 import type { RouteParams, RouteSample } from "./route-samples.ts";
+import { testRouter } from "./test-router.ts";
+import type { TestRouterOptions } from "./test-router.ts";
 
 interface CheckRoutesOptions {
   /** A sample for each route with a parameter that no fixture gives, such as
@@ -45,6 +47,10 @@ interface CheckRoutesOptions {
   readonly params?: RouteParams;
   /** The sign-in adapter: `anonymousSignIn()` unless set, or `fakeSignIn()` for a signed-in user. */
   readonly signIn?: SignIn;
+  /** The app's own router options, as its `router.ts` gives `createRouter`, but the route tree and the history: its
+   * `context`, `basepath` or search serializer. A function of the query client BasisApp holds makes them for a context
+   * that carries it: `(queryClient) => ({ context: { queryClient } })`. */
+  readonly router?: TestRouterOptions;
 }
 
 /** How long a page may take to load before its test fails. */
@@ -62,6 +68,7 @@ interface PageCheck {
   readonly sources: RouteSources;
   readonly api: MockApi;
   readonly signIn?: SignIn | undefined;
+  readonly router?: TestRouterOptions | undefined;
   readonly limitMs?: number;
 }
 
@@ -111,10 +118,7 @@ function renderPage(
 } {
   const { routeTree, path, signIn = anonymousSignIn() } = check;
   const queryClient = createQueryClient();
-  const router = createRouter({
-    history: createMemoryHistory({ initialEntries: [path] }),
-    routeTree,
-  });
+  const router = testRouter({ options: check.router, path, queryClient, routeTree });
   const telemetry = recordingTelemetry(found);
   const { unmount } = render(createElement(BasisApp, { queryClient, router, signIn, telemetry }));
   return {
@@ -179,7 +183,14 @@ function routeTests(
         fail([plan.problem]);
       });
     } else {
-      const check = { api, path: plan.path, routeTree, signIn: options.signIn, sources };
+      const check = {
+        api,
+        path: plan.path,
+        router: options.router,
+        routeTree,
+        signIn: options.signIn,
+        sources,
+      };
       test(
         testName(plan),
         async () => {
