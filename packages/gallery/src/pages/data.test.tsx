@@ -11,6 +11,7 @@ const sections = [
   "DataTable",
   "DataTable at its row cap",
   "DataTable states",
+  "Board",
   "FilterBar",
   "SavedViews",
   "EntityPicker",

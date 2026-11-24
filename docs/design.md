@@ -330,7 +330,9 @@ The firm's own components cover what shadcn does not:
   field as TanStack Form does, so the errors go straight onto the form; the example app's settlement form does this.
 - **Data.** `DataTable`, on TanStack Table, is for small data whose cells hold links and buttons; it shows 50 rows a
   page unless told otherwise, its state can be the app's, and past its row cap it fails with a message that points to
-  parallax's grid. `EntityPicker` searches through the generated client, and
+  parallax's grid. `Board` lays cards out in columns, and in a lane per person or desk across them, moved by the
+  browser's own drag and drop or a "Move to" menu, with no motion and each card laid out only in view, for the
+  CPU-drawn desktop. `EntityPicker` searches through the generated client, and
   `SecurityPicker` sends only a valid CUSIP, ISIN or SEDOL. `FileImport` reads CSV and Excel workbooks (.xlsx), previews
   the rows, and checks them against a schema before anything is sent; a workbook's cells read as the text Excel shows,
   with dates in ISO 8601, and a workbook with several sheets of the schema's columns offers a choice of sheet. An .xls,

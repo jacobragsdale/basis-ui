@@ -15123,6 +15123,101 @@
     },
     {
       "extends": [],
+      "family": "board",
+      "module": "@basis/ui",
+      "name": "Board",
+      "props": [
+        {
+          "description": "The board's name, such as \"Work items\".",
+          "name": "aria-label",
+          "optional": false,
+          "type": "string"
+        },
+        {
+          "description": "The columns, left to right.",
+          "name": "columns",
+          "optional": false,
+          "type": "readonly BoardColumn[]"
+        },
+        {
+          "description": "The lanes, top to bottom; a board without lanes is one row of cells.",
+          "name": "lanes",
+          "optional": true,
+          "type": "readonly BoardLane[] | undefined"
+        },
+        {
+          "description": "The cards, in the order each cell lists them. An item whose column or lane is not on the board is not shown.",
+          "name": "items",
+          "optional": false,
+          "type": "readonly TItem[]"
+        },
+        {
+          "description": "What a card shows.",
+          "name": "renderCard",
+          "optional": false,
+          "type": "(item: TItem) => ReactNode"
+        },
+        {
+          "description": "A card's accessible name, which the \"Move to\" menu also names it by.",
+          "name": "cardLabel",
+          "optional": false,
+          "type": "(item: TItem) => string"
+        },
+        {
+          "description": "Moves a card to another cell; without it the board is read only.",
+          "name": "onMove",
+          "optional": true,
+          "type": "((item: TItem, to: BoardMove) => void) | undefined"
+        },
+        {
+          "description": "Whether a card may go to a cell; every cell unless set.",
+          "name": "canMove",
+          "optional": true,
+          "type": "((item: TItem, to: BoardMove) => boolean) | undefined"
+        },
+        {
+          "description": "The card chosen, by id, which is drawn as selected.",
+          "name": "selected",
+          "optional": true,
+          "type": "string | undefined"
+        },
+        {
+          "description": "Called when a card is chosen: clicked, or Space on it.",
+          "name": "onSelect",
+          "optional": true,
+          "type": "((item: TItem) => void) | undefined"
+        },
+        {
+          "description": "Called when a card is opened: Enter on it, or a double click.",
+          "name": "onOpen",
+          "optional": true,
+          "type": "((item: TItem) => void) | undefined"
+        },
+        {
+          "description": "What an empty cell says; nothing unless set.",
+          "name": "empty",
+          "optional": true,
+          "type": "((column: BoardColumn, lane: BoardLane | undefined) => ReactNode) | undefined"
+        },
+        {
+          "description": "Places the board, as with `flex-1`; its look is fixed.",
+          "name": "className",
+          "optional": true,
+          "type": "string | undefined"
+        }
+      ],
+      "purpose": "Cards in columns, and in lanes across them, that the user can move with the mouse or the keyboard.",
+      "use": "For work laid out by stage, such as tickets by state or orders by status, with a lane per person or desk when the work is split that way. For rows to sort and compare, use DataTable or parallax's grid.",
+      "with": [
+        "Badge",
+        "DropdownMenu",
+        "Sheet"
+      ],
+      "variants": {},
+      "example": "import { Board } from \"@basis/ui\";\n\nconst columns = [\n  { id: \"todo\", title: \"To do\" },\n  { id: \"doing\", title: \"Doing\" },\n  { id: \"done\", title: \"Done\" },\n];\nconst items = [\n  { column: \"todo\", id: \"1\", title: \"Settle the batch\" },\n  { column: \"doing\", id: \"2\", title: \"Retry the feed\" },\n];\n\n<Board\n  aria-label=\"Work\"\n  columns={columns}\n  items={items}\n  cardLabel={(item) => item.title}\n  renderCard={(item) => item.title}\n  onMove={() => undefined}\n/>;\n"
+    },
+    {
+      "extends": [],
       "family": "data-table",
       "module": "@basis/ui",
       "name": "DataTable",
@@ -25283,6 +25378,130 @@
       "module": "@basis/ui",
       "name": "AsOfOptions",
       "purpose": ""
+    },
+    {
+      "fields": [
+        {
+          "description": "The column's key, which each item's `column` names.",
+          "name": "id",
+          "optional": false,
+          "type": "string"
+        },
+        {
+          "description": "The column's heading.",
+          "name": "title",
+          "optional": false,
+          "type": "string"
+        },
+        {
+          "description": "What the heading shows beside the title, such as a count or a limit.",
+          "name": "aside",
+          "optional": true,
+          "type": "ReactNode"
+        }
+      ],
+      "exported": true,
+      "module": "@basis/ui",
+      "name": "BoardColumn",
+      "purpose": "One column of the board, such as a state."
+    },
+    {
+      "fields": [
+        {
+          "description": "",
+          "name": "id",
+          "optional": false,
+          "type": "string"
+        },
+        {
+          "description": "The column the item is in.",
+          "name": "column",
+          "optional": false,
+          "type": "string"
+        },
+        {
+          "description": "The lane it is in, on a board with lanes.",
+          "name": "lane",
+          "optional": true,
+          "type": "string | undefined"
+        },
+        {
+          "description": "A heading the cell draws above the first card of each run of cards that share it, such as \"On hold\".",
+          "name": "section",
+          "optional": true,
+          "type": "string | undefined"
+        }
+      ],
+      "exported": true,
+      "module": "@basis/ui",
+      "name": "BoardItem",
+      "purpose": "What a board shows of an item: its id and the cell it is in."
+    },
+    {
+      "fields": [
+        {
+          "description": "",
+          "name": "column",
+          "optional": false,
+          "type": "string"
+        },
+        {
+          "description": "",
+          "name": "lane",
+          "optional": false,
+          "type": "string | undefined"
+        }
+      ],
+      "exported": false,
+      "module": "@basis/ui",
+      "name": "BoardKey",
+      "purpose": "A cell's address: its column, and its lane on a board with lanes."
+    },
+    {
+      "fields": [
+        {
+          "description": "The lane's key, which each item's `lane` names.",
+          "name": "id",
+          "optional": false,
+          "type": "string"
+        },
+        {
+          "description": "The lane's name, for the menu and the cells' accessible names.",
+          "name": "title",
+          "optional": false,
+          "type": "string"
+        },
+        {
+          "description": "What the lane's header shows, its title unless set, such as a name with figures under it.",
+          "name": "header",
+          "optional": true,
+          "type": "ReactNode"
+        }
+      ],
+      "exported": true,
+      "module": "@basis/ui",
+      "name": "BoardLane",
+      "purpose": "One lane across the columns, such as a person."
+    },
+    {
+      "fields": [
+        {
+          "description": "",
+          "name": "column",
+          "optional": false,
+          "type": "string"
+        },
+        {
+          "description": "",
+          "name": "lane",
+          "optional": false,
+          "type": "string | undefined"
+        }
+      ],
+      "exported": true,
+      "module": "@basis/ui",
+      "name": "BoardMove",
+      "purpose": "Where a card was moved to: a column, and on a board with lanes a lane."
     },
     {
       "fields": [

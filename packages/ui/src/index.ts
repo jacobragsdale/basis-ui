@@ -400,7 +400,16 @@ export {
 } from "./format/display-format.ts";
 export { numberText, type NumberFormat, type NumericValue } from "./components/num-text.ts";
 
-// Data: the firm's own components for small tables, filtering them, searching for an entity, and importing a CSV file.
+// Data: the firm's own components for small tables, boards of cards, filtering them, searching for an entity, and
+// importing a CSV file.
+export {
+  Board,
+  type BoardColumn,
+  type BoardLane,
+  type BoardMove,
+  type BoardProps,
+} from "./components/board.tsx";
+export type { BoardItem } from "./components/board-model.ts";
 export { DataTable, type DataTableProps } from "./components/data-table.tsx";
 export type {
   DataTableColumn,

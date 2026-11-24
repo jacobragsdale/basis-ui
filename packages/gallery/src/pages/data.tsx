@@ -1,5 +1,5 @@
 /* The data family, the firm's own components: DataTable, for small data whose cells hold links and buttons, at its
- * row cap and in its states; FilterBar, a page's filters kept in its address; SavedViews, a page's views by name;
+ * row cap and in its states; Board, cards in columns and lanes that move by dragging or by a menu; FilterBar, a page's filters kept in its address; SavedViews, a page's views by name;
  * EntityPicker and SecurityPicker, which search as the user types; and FileImport, which reads a CSV file and checks
  * it before anything is sent. The pickers and the saved views load through a query client, as they do inside
  * BasisApp. Each section's module is under data/, with its tests beside it. */
@@ -8,6 +8,7 @@ import { createQueryClient } from "@basis/ui";
 import { QueryClientProvider } from "@tanstack/react-query";
 import type { ReactElement } from "react";
 
+import { BoardSection } from "./data/board.tsx";
 import {
   DataTableAtItsCapSection,
   DataTableSection,
@@ -28,6 +29,7 @@ function Data(): ReactElement {
         <DataTableSection />
         <DataTableAtItsCapSection />
         <DataTableStatesSection />
+        <BoardSection />
         <FilterBarSection />
         <SavedViewsSection />
         <EntityPickerSection />

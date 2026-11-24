@@ -9,6 +9,12 @@ anything of an app.
 
 ## Unreleased
 
+- `Board`, cards in columns and optionally in a lane per person or desk across them, for work laid out by stage. A
+  card moves by the browser's own drag and drop or by its "Move to" menu, both through `onMove`; without `onMove` the
+  board is read only. The arrow keys move the focus between cards, Enter opens one (`onOpen`) and Space chooses it
+  (`onSelect`). An item's `section` heads a run of cards in a cell, such as an on-hold strip. It is DOM, with no
+  motion or shadow, and each card is laid out only in view (`content-visibility`), for a desktop that draws on the CPU.
+
 ## 0.1.0 - 2026-11-13
 
 - `windowsSignIn({ tokenUrl })`, the adapter for the firm's Windows authentication: the token from the endpoint, kept

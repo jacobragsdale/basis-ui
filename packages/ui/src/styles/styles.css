@@ -20,3 +20,10 @@
     @apply bg-background text-foreground tabular-nums;
   }
 }
+
+/* A card on a long board or list, laid out only when it is in view: a column of hundreds costs a CPU-drawn desktop
+   only the cards it can see. The size stands in for a card's until it is drawn. */
+@utility content-auto {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 4rem;
+}
