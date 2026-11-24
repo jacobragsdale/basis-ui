@@ -15158,7 +15158,7 @@
           "type": "(item: TItem) => ReactNode"
         },
         {
-          "description": "A card's accessible name, which the \"Move to\" menu also names it by.",
+          "description": "A card's short name, such as its id and title, which its \"Move to\" menu and a drag are named by. The card's own accessible name is its text.",
           "name": "cardLabel",
           "optional": false,
           "type": "(item: TItem) => string"

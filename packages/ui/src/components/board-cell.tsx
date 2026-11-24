@@ -47,21 +47,19 @@ function Section({ name }: { readonly name: string }): ReactElement {
   );
 }
 
-/** The card's body: what the app renders, as the button that takes the focus and chooses the card. */
+/** The card's body: what the app renders, as the button that takes the focus and chooses the card. Its text is its
+ * accessible name, so what a sighted user reads is what a screen reader announces. */
 function Body<TItem extends BoardItem>({
   item,
-  label,
   context,
 }: {
   readonly item: TItem;
-  readonly label: string;
   readonly context: CardContext<TItem>;
 }): ReactElement {
   return (
     <button
       type="button"
       id={context.cardId(item.id)}
-      aria-label={label}
       aria-pressed={item.id === context.selected}
       tabIndex={item.id === context.focused ? 0 : -1}
       data-slot="board-card-body"
@@ -99,7 +97,7 @@ function Card<TItem extends BoardItem>({
       className={boardCardVariants({ selected: chosen })}
       {...context.drag.card(item, label)}
     >
-      <Body item={item} label={label} context={context} />
+      <Body item={item} context={context} />
       {targets === undefined ? null : (
         <MoveMenu
           label={label}

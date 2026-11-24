@@ -53,7 +53,8 @@ interface BoardProps<TItem extends BoardItem> {
   readonly items: readonly TItem[];
   /** What a card shows. */
   readonly renderCard: (item: TItem) => ReactNode;
-  /** A card's accessible name, which the "Move to" menu also names it by. */
+  /** A card's short name, such as its id and title, which its "Move to" menu and a drag are named by. The card's
+   * own accessible name is its text. */
   readonly cardLabel: (item: TItem) => string;
   /** Moves a card to another cell; without it the board is read only. */
   readonly onMove?: ((item: TItem, to: BoardMove) => void) | undefined;

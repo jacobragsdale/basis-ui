@@ -53,7 +53,7 @@ function moved(list: readonly Ticket[], item: Ticket, to: BoardMove): readonly T
 function Card({ ticket }: { readonly ticket: Ticket }): ReactElement {
   return (
     <span className="flex flex-col gap-1">
-      <span className="text-xs text-muted-foreground tabular-nums">{ticket.id}</span>
+      <span className="text-xs text-muted-foreground tabular-nums">{ticket.id}</span>{" "}
       <span>{ticket.title}</span>
     </span>
   );
