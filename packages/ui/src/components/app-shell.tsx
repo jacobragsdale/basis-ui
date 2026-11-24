@@ -50,6 +50,12 @@ interface AppShellProps {
    * needs the sidebar's width, so an app that folds to icons gives `sidebarFooter` SidebarMenuButtons of its own.
    * @default "offcanvas" */
   readonly collapsible?: "offcanvas" | "icon";
+  /** What each page's sidebar item shows at its end, by the page's path, such as `{ "/inbox": 12 }`: a count of what
+   * needs doing there, kept current by the app. */
+  readonly badges?: Readonly<Record<string, ReactNode>> | undefined;
+  /** What the sidebar holds below the pages, such as a list of saved views, each a SidebarMenuItem in a
+   * SidebarGroup. */
+  readonly sidebarSections?: ReactNode;
   /** The page; the matched route's, through `<Outlet />`, unless set. */
   readonly children?: ReactNode;
 }
@@ -132,6 +138,8 @@ function AppShell({
   sidebarHeader,
   sidebarFooter,
   collapsible = "offcanvas",
+  badges,
+  sidebarSections,
   children,
 }: AppShellProps): ReactElement {
   const pageCrumb = usePageCrumbState();
@@ -150,6 +158,8 @@ function AppShell({
                 header={sidebarHeader}
                 footer={sidebarFooter}
                 collapsible={collapsible}
+                badges={badges}
+                sections={sidebarSections}
               />
               <ShellPage header={header}>{children}</ShellPage>
             </SidebarProvider>

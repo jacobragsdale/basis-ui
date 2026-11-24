@@ -9,6 +9,10 @@ anything of an app.
 
 ## Unreleased
 
+- `AppShell` takes `badges`, what each page's sidebar item shows at its end by the page's path, such as a count of
+  what needs doing there, and `sidebarSections`, what the sidebar holds below the pages, such as saved views.
+  `AppSidebar` takes them as `badges` and `sections`. `InboxIcon`, `SunIcon` and `UsersIcon` join the icons.
+
 - `Board`, cards in columns and optionally in a lane per person or desk across them, for work laid out by stage. A
   card moves by the browser's own drag and drop or by its "Move to" menu, both through `onMove`; without `onMove` the
   board is read only. The arrow keys move the focus between cards, Enter opens one (`onOpen`) and Space chooses it

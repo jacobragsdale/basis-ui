@@ -14862,6 +14862,18 @@
           "type": "\"offcanvas\" | \"icon\""
         },
         {
+          "description": "What each page's sidebar item shows at its end, by the page's path, such as `{ \"/inbox\": 12 }`: a count of what needs doing there, kept current by the app.",
+          "name": "badges",
+          "optional": true,
+          "type": "Readonly<Record<string, ReactNode>> | undefined"
+        },
+        {
+          "description": "What the sidebar holds below the pages, such as a list of saved views, each a SidebarMenuItem in a SidebarGroup.",
+          "name": "sidebarSections",
+          "optional": true,
+          "type": "ReactNode"
+        },
+        {
           "description": "The page; the matched route's, through `<Outlet />`, unless set.",
           "name": "children",
           "optional": true,
@@ -14913,6 +14925,18 @@
           "name": "collapsible",
           "optional": true,
           "type": "\"offcanvas\" | \"icon\""
+        },
+        {
+          "description": "What each page's item shows at its end, by the page's path, such as a count of what needs doing there.",
+          "name": "badges",
+          "optional": true,
+          "type": "Readonly<Record<string, ReactNode>> | undefined"
+        },
+        {
+          "description": "What the sidebar holds below the pages, such as a list of saved views.",
+          "name": "sections",
+          "optional": true,
+          "type": "ReactNode"
         }
       ],
       "purpose": "The sidebar of an app's pages, from the titles and groups its routes set in `staticData`. `AppShell` holds one.",
@@ -18768,6 +18792,7 @@
     "GripVerticalIcon",
     "GroupIcon",
     "IconProps",
+    "InboxIcon",
     "InfoIcon",
     "LayoutDashboardIcon",
     "LineChartIcon",
@@ -18799,6 +18824,7 @@
     "SortAscIcon",
     "SortDescIcon",
     "SquarePenIcon",
+    "SunIcon",
     "SunMoonIcon",
     "TableIcon",
     "Trash2Icon",
@@ -18809,6 +18835,7 @@
     "TriangleExclamationPointIcon",
     "UploadIcon",
     "UserIcon",
+    "UsersIcon",
     "XCircleIcon",
     "XIcon",
     "XOctagonIcon"

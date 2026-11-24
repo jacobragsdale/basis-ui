@@ -567,6 +567,7 @@ export { FunnelIcon, FunnelIcon as FilterIcon } from "./vendor/lucide/funnel.tsx
 export { GaugeIcon } from "./vendor/lucide/gauge.tsx";
 export { GripVerticalIcon } from "./vendor/lucide/grip-vertical.tsx";
 export { GroupIcon } from "./vendor/lucide/group.tsx";
+export { InboxIcon } from "./vendor/lucide/inbox.tsx";
 export { InfoIcon } from "./vendor/lucide/info.tsx";
 export { LayoutDashboardIcon } from "./vendor/lucide/layout-dashboard.tsx";
 export {
@@ -595,6 +596,7 @@ export {
   SquarePenIcon as PenSquareIcon,
 } from "./vendor/lucide/square-pen.tsx";
 export { SunMoonIcon } from "./vendor/lucide/sun-moon.tsx";
+export { SunIcon } from "./vendor/lucide/sun.tsx";
 export { TableIcon } from "./vendor/lucide/table.tsx";
 export { TrashIcon, TrashIcon as Trash2Icon } from "./vendor/lucide/trash.tsx";
 export { TrendingDownIcon } from "./vendor/lucide/trending-down.tsx";
@@ -606,6 +608,7 @@ export {
 } from "./vendor/lucide/triangle-exclamation-point.tsx";
 export { UploadIcon } from "./vendor/lucide/upload.tsx";
 export { UserIcon } from "./vendor/lucide/user.tsx";
+export { UsersIcon } from "./vendor/lucide/users.tsx";
 export { XIcon } from "./vendor/lucide/x.tsx";
 export type { IconProps } from "./vendor/lucide/icon.tsx";
 

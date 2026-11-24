@@ -11,7 +11,7 @@ import { useSidebar } from "./sidebar-context.ts";
 import type { RouteEntry } from "./route-entries.ts";
 import { Sidebar, SidebarRail } from "./sidebar.tsx";
 import { SidebarGroup, SidebarGroupContent, SidebarGroupLabel } from "./sidebar-group.tsx";
-import { SidebarMenu, SidebarMenuItem } from "./sidebar-menu.tsx";
+import { SidebarMenu, SidebarMenuBadge, SidebarMenuItem } from "./sidebar-menu.tsx";
 import { SidebarMenuButton } from "./sidebar-menu-button.tsx";
 import { SidebarContent, SidebarFooter, SidebarHeader } from "./sidebar-sections.tsx";
 import { UserMenu } from "./user-menu.tsx";
@@ -25,10 +25,12 @@ function PageGroup({
   label,
   entries,
   current,
+  badges,
 }: {
   readonly label: string | undefined;
   readonly entries: readonly RouteEntry[];
   readonly current: RouteEntry | undefined;
+  readonly badges: Readonly<Record<string, ReactNode>> | undefined;
 }): ReactElement {
   // In a narrow window the sidebar is a sheet over the page, which a page chosen from it closes, to show the page.
   const { setOpenMobile } = useSidebar();
@@ -56,6 +58,9 @@ function PageGroup({
                 {Icon === undefined ? null : <Icon />}
                 <span>{title}</span>
               </SidebarMenuButton>
+              {badges?.[to] === undefined ? null : (
+                <SidebarMenuBadge>{badges[to]}</SidebarMenuBadge>
+              )}
             </SidebarMenuItem>
           ))}
         </SidebarMenu>
@@ -77,6 +82,10 @@ interface AppSidebarProps {
    * icons takes a `footer` of SidebarMenuButtons.
    * @default "offcanvas" */
   readonly collapsible?: "offcanvas" | "icon";
+  /** What each page's item shows at its end, by the page's path, such as a count of what needs doing there. */
+  readonly badges?: Readonly<Record<string, ReactNode>> | undefined;
+  /** What the sidebar holds below the pages, such as a list of saved views. */
+  readonly sections?: ReactNode;
 }
 
 /** The sidebar of an app's pages, from the titles and groups its routes set in `staticData`. `AppShell` holds one.
@@ -100,6 +109,8 @@ function AppSidebar({
   header,
   footer,
   collapsible = "offcanvas",
+  badges,
+  sections,
 }: AppSidebarProps): ReactElement {
   const entries = useRouteEntries();
   const path = useRouterState({ select: (state) => state.location.pathname });
@@ -115,9 +126,16 @@ function AppSidebar({
       <SidebarContent>
         <nav aria-label="Pages">
           {groupEntries(entries).map(([label, grouped]) => (
-            <PageGroup key={label ?? ""} label={label} entries={grouped} current={current} />
+            <PageGroup
+              key={label ?? ""}
+              label={label}
+              entries={grouped}
+              current={current}
+              badges={badges}
+            />
           ))}
         </nav>
+        {sections}
       </SidebarContent>
       <SidebarFooter>{footer ?? <UserMenu />}</SidebarFooter>
       <SidebarRail />

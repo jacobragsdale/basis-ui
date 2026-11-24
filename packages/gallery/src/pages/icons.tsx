@@ -43,6 +43,7 @@ import {
   GaugeIcon,
   GripVerticalIcon,
   GroupIcon,
+  InboxIcon,
   InfoIcon,
   LayoutDashboardIcon,
   LoaderCircleIcon,
@@ -63,6 +64,7 @@ import {
   SigmaIcon,
   SquarePenIcon,
   SunMoonIcon,
+  SunIcon,
   TableIcon,
   TrashIcon,
   TrendingDownIcon,
@@ -70,6 +72,7 @@ import {
   TriangleExclamationPointIcon,
   UploadIcon,
   UserIcon,
+  UsersIcon,
   XIcon,
 } from "@basis/ui";
 import type { ReactElement } from "react";
@@ -119,6 +122,7 @@ const icons = {
   GaugeIcon,
   GripVerticalIcon,
   GroupIcon,
+  InboxIcon,
   InfoIcon,
   LayoutDashboardIcon,
   LoaderCircleIcon,
@@ -139,6 +143,7 @@ const icons = {
   SigmaIcon,
   SquarePenIcon,
   SunMoonIcon,
+  SunIcon,
   TableIcon,
   TrashIcon,
   TrendingDownIcon,
@@ -146,6 +151,7 @@ const icons = {
   TriangleExclamationPointIcon,
   UploadIcon,
   UserIcon,
+  UsersIcon,
   XIcon,
 };
 
